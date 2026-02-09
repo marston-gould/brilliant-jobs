@@ -591,6 +591,11 @@
     }
 
     checkSession();
+
+    // Auto-switch to signup tab if URL hash is #signup
+    if (window.location.hash === '#signup') {
+      document.querySelector('.auth-tab[data-form="signup"]').click();
+    }
   </script>
 </body>
 </html>
