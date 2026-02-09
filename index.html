@@ -238,8 +238,14 @@
           </div>
           <div class="field">
             <label>LinkedIn Profile URL</label>
-            <input type="url" id="signup-linkedin" placeholder="https://www.linkedin.com/in/your-profile">
+            <input type="url" id="signup-linkedin" placeholder="https://www.linkedin.com/in/your-profile" value="https://www.linkedin.com/in/">
             <div class="hint">Required for verification. We check this to prevent abuse.</div>
+          </div>
+          <div class="field" style="display: flex; align-items: flex-start; gap: 8px;">
+            <input type="checkbox" id="signup-optin" style="margin-top: 3px; accent-color: #0a66c2;">
+            <label for="signup-optin" style="text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 12px; color: #8892b0; cursor: pointer;">
+              I'd like to receive occasional product updates and tips via email. You can unsubscribe at any time.
+            </label>
           </div>
           <button class="btn btn-primary" id="signup-btn">Create Account</button>
           <div class="msg" id="signup-msg"></div>
@@ -295,6 +301,7 @@
       const email = $('#signup-email').value.trim();
       const password = $('#signup-password').value;
       const linkedinUrl = $('#signup-linkedin').value.trim();
+      const emailOptin = $('#signup-optin').checked;
 
       if (!email || !password || !linkedinUrl) {
         showMsg('#signup-msg', 'All fields are required.', 'error');
@@ -322,22 +329,40 @@
           password
         });
 
-        if (error) throw error;
+        if (error) {
+          // Handle duplicate email
+          if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
+            showMsg('#signup-msg', 'An account with this email already exists. Please log in instead.', 'error');
+          } else {
+            throw error;
+          }
+          $('#signup-btn').disabled = false;
+          $('#signup-btn').textContent = 'Create Account';
+          return;
+        }
+
+        // Check if user was actually created (Supabase returns fake success for existing emails when email confirmation is on)
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          showMsg('#signup-msg', 'An account with this email already exists. Please log in instead.', 'error');
+          $('#signup-btn').disabled = false;
+          $('#signup-btn').textContent = 'Create Account';
+          return;
+        }
 
         // Create profile
-        const { error: profileError } = await supabase
+        const { error: profileError } = await sb
           .from('profiles')
           .insert({
             id: data.user.id,
             email,
             linkedin_slug: slug,
             linkedin_url: linkedinUrl,
+            email_optin: emailOptin,
             approved: false
           });
 
         if (profileError) {
           console.error('Profile insert error:', profileError);
-          // Non-fatal — user is created even if profile insert fails
         }
 
         showMsg('#signup-msg', 'Account created! Check your email to confirm, then log in. Your account will be reviewed for approval.', 'success');
