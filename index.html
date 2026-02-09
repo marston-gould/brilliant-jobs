@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brilliant Jobs — Sign Up</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #c8ccd4;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+    .card {
+      background: #16182a;
+      border: 1px solid #2a2d42;
+      border-radius: 12px;
+      padding: 32px 28px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .logo h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .logo p {
+      font-size: 13px;
+      color: #6b7080;
+    }
+
+    /* Tabs */
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #2a2d42;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #6b7080;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .auth-tab:hover { color: #a0a8be; }
+    .auth-tab.active { color: #4da3ff; border-bottom-color: #4da3ff; }
+
+    /* Forms */
+    .form { display: none; }
+    .form.active { display: block; }
+
+    .field {
+      margin-bottom: 16px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #8892b0;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input {
+      width: 100%;
+      padding: 10px 12px;
+      background: #0f0f1a;
+      border: 1px solid #2a2d42;
+      border-radius: 8px;
+      color: #e0e0e0;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus {
+      border-color: #4da3ff;
+    }
+    .field input::placeholder {
+      color: #444;
+    }
+    .field .hint {
+      font-size: 11px;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-top: 8px;
+    }
+    .btn-primary {
+      background: #0a66c2;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #0858a8; }
+    .btn-primary:disabled {
+      background: #2a2d42;
+      color: #555;
+      cursor: not-allowed;
+    }
+
+    /* Messages */
+    .msg {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 16px;
+      display: none;
+    }
+    .msg.error {
+      display: block;
+      background: rgba(231, 76, 60, 0.15);
+      border: 1px solid rgba(231, 76, 60, 0.3);
+      color: #e74c3c;
+    }
+    .msg.success {
+      display: block;
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      color: #2ecc71;
+    }
+    .msg.info {
+      display: block;
+      background: rgba(77, 163, 255, 0.15);
+      border: 1px solid rgba(77, 163, 255, 0.3);
+      color: #4da3ff;
+    }
+
+    /* Logged in state */
+    .logged-in {
+      display: none;
+      text-align: center;
+    }
+    .logged-in.active { display: block; }
+    .logged-in .user-email {
+      font-size: 16px;
+      font-weight: 600;
+      color: #4da3ff;
+      margin-bottom: 8px;
+    }
+    .logged-in .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .badge-pending {
+      background: rgba(243, 156, 18, 0.15);
+      border: 1px solid rgba(243, 156, 18, 0.3);
+      color: #f39c12;
+    }
+    .badge-approved {
+      background: rgba(46, 204, 113, 0.15);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      color: #2ecc71;
+    }
+    .logged-in p {
+      font-size: 13px;
+      color: #6b7080;
+      margin-bottom: 16px;
+    }
+    .btn-logout {
+      background: transparent;
+      border: 1px solid #2a2d42;
+      color: #8892b0;
+      padding: 8px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-logout:hover { border-color: #e74c3c; color: #e74c3c; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="logo">
+        <h1>💼 Brilliant Jobs</h1>
+        <p>Find jobs through your network</p>
+      </div>
+
+      <!-- Auth forms -->
+      <div id="auth-section">
+        <div class="auth-tabs">
+          <div class="auth-tab active" data-form="login">Log In</div>
+          <div class="auth-tab" data-form="signup">Sign Up</div>
+        </div>
+
+        <!-- Login form -->
+        <div class="form active" id="form-login">
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="login-email" placeholder="you@email.com">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="login-password" placeholder="Your password">
+          </div>
+          <button class="btn btn-primary" id="login-btn">Log In</button>
+          <div class="msg" id="login-msg"></div>
+        </div>
+
+        <!-- Signup form -->
+        <div class="form" id="form-signup">
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="signup-email" placeholder="you@email.com">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="signup-password" placeholder="Min 6 characters">
+          </div>
+          <div class="field">
+            <label>LinkedIn Profile URL</label>
+            <input type="url" id="signup-linkedin" placeholder="https://www.linkedin.com/in/your-profile">
+            <div class="hint">Required for verification. We check this to prevent abuse.</div>
+          </div>
+          <button class="btn btn-primary" id="signup-btn">Create Account</button>
+          <div class="msg" id="signup-msg"></div>
+        </div>
+      </div>
+
+      <!-- Logged in state -->
+      <div class="logged-in" id="logged-in-section">
+        <div class="user-email" id="user-email"></div>
+        <div class="status-badge badge-pending" id="status-badge">Pending Approval</div>
+        <p id="logged-in-msg">Your account is pending review. You'll be able to use the extension once approved.</p>
+        <button class="btn-logout" id="logout-btn">Log Out</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const $ = (sel) => document.querySelector(sel);
+
+    // ---- Tab switching ----
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.form').forEach(f => f.classList.remove('active'));
+        tab.classList.add('active');
+        $(`#form-${tab.dataset.form}`).classList.add('active');
+        // Clear messages
+        $('#login-msg').className = 'msg';
+        $('#signup-msg').className = 'msg';
+      });
+    });
+
+    // ---- Show message ----
+    function showMsg(id, text, type) {
+      const el = $(id);
+      el.textContent = text;
+      el.className = `msg ${type}`;
+    }
+
+    // ---- Extract slug from LinkedIn URL ----
+    function extractSlug(url) {
+      const match = url.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
+    }
+
+    // ---- Signup ----
+    $('#signup-btn').addEventListener('click', async () => {
+      const email = $('#signup-email').value.trim();
+      const password = $('#signup-password').value;
+      const linkedinUrl = $('#signup-linkedin').value.trim();
+
+      if (!email || !password || !linkedinUrl) {
+        showMsg('#signup-msg', 'All fields are required.', 'error');
+        return;
+      }
+
+      if (password.length < 6) {
+        showMsg('#signup-msg', 'Password must be at least 6 characters.', 'error');
+        return;
+      }
+
+      const slug = extractSlug(linkedinUrl);
+      if (!slug) {
+        showMsg('#signup-msg', 'Please enter a valid LinkedIn profile URL (e.g. https://www.linkedin.com/in/your-name)', 'error');
+        return;
+      }
+
+      $('#signup-btn').disabled = true;
+      $('#signup-btn').textContent = 'Creating account...';
+
+      try {
+        // Sign up
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email,
+            linkedin_slug: slug,
+            linkedin_url: linkedinUrl,
+            approved: false
+          });
+
+        if (profileError) {
+          console.error('Profile insert error:', profileError);
+          // Non-fatal — user is created even if profile insert fails
+        }
+
+        showMsg('#signup-msg', 'Account created! Check your email to confirm, then log in. Your account will be reviewed for approval.', 'success');
+
+      } catch (e) {
+        showMsg('#signup-msg', e.message || 'Signup failed.', 'error');
+      }
+
+      $('#signup-btn').disabled = false;
+      $('#signup-btn').textContent = 'Create Account';
+    });
+
+    // ---- Login ----
+    $('#login-btn').addEventListener('click', async () => {
+      const email = $('#login-email').value.trim();
+      const password = $('#login-password').value;
+
+      if (!email || !password) {
+        showMsg('#login-msg', 'Email and password required.', 'error');
+        return;
+      }
+
+      $('#login-btn').disabled = true;
+      $('#login-btn').textContent = 'Logging in...';
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        showLoggedIn(data.user);
+
+      } catch (e) {
+        showMsg('#login-msg', e.message || 'Login failed.', 'error');
+      }
+
+      $('#login-btn').disabled = false;
+      $('#login-btn').textContent = 'Log In';
+    });
+
+    // ---- Logout ----
+    $('#logout-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      $('#auth-section').style.display = 'block';
+      $('#logged-in-section').classList.remove('active');
+    });
+
+    // ---- Show logged in state ----
+    async function showLoggedIn(user) {
+      $('#auth-section').style.display = 'none';
+      $('#logged-in-section').classList.add('active');
+      $('#user-email').textContent = user.email;
+
+      // Check approval status
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('approved')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.approved) {
+          $('#status-badge').textContent = 'Approved';
+          $('#status-badge').className = 'status-badge badge-approved';
+          $('#logged-in-msg').textContent = 'Your account is approved. Open the Chrome extension to get started.';
+        } else {
+          $('#status-badge').textContent = 'Pending Approval';
+          $('#status-badge').className = 'status-badge badge-pending';
+          $('#logged-in-msg').textContent = 'Your account is pending review. You\'ll be able to use the extension once approved.';
+        }
+      } catch (e) {
+        // Profile might not exist yet
+        $('#logged-in-msg').textContent = 'Account created. Approval status will update shortly.';
+      }
+
+      // Store session info for the extension to pick up
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Broadcast to any open extension tabs
+          window.postMessage({
+            type: 'LINKEDIN_TOOL_AUTH',
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+            userId: user.id,
+            email: user.email
+          }, '*');
+        }
+      } catch (e) {
+        console.error('Session broadcast error:', e);
+      }
+    }
+
+    // ---- Check existing session on load ----
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        showLoggedIn(session.user);
+      }
+    }
+
+    checkSession();
+  </script>
+</body>
+</html>
