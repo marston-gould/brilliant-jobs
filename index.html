@@ -260,7 +260,7 @@
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const $ = (sel) => document.querySelector(sel);
 
@@ -317,7 +317,7 @@
 
       try {
         // Sign up
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await sb.auth.signUp({
           email,
           password
         });
@@ -364,7 +364,7 @@
       $('#login-btn').textContent = 'Logging in...';
 
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await sb.auth.signInWithPassword({
           email,
           password
         });
@@ -383,7 +383,7 @@
 
     // ---- Logout ----
     $('#logout-btn').addEventListener('click', async () => {
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       $('#auth-section').style.display = 'block';
       $('#logged-in-section').classList.remove('active');
     });
@@ -418,7 +418,7 @@
 
       // Store session info for the extension to pick up
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await sb.auth.getSession();
         if (session) {
           // Broadcast to any open extension tabs
           window.postMessage({
@@ -436,7 +436,7 @@
 
     // ---- Check existing session on load ----
     async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await sb.auth.getSession();
       if (session?.user) {
         showLoggedIn(session.user);
       }
