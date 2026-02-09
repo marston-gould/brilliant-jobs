@@ -343,6 +343,12 @@
       el.className = `msg ${type}`;
     }
 
+    // ---- LinkedIn URL cursor fix ----
+    $('#signup-linkedin').addEventListener('focus', function() {
+      const len = this.value.length;
+      setTimeout(() => this.setSelectionRange(len, len), 0);
+    });
+
     // ---- Extract slug from LinkedIn URL ----
     function extractSlug(url) {
       const match = url.match(/linkedin\.com\/in\/([a-zA-Z0-9_-]+)/);
