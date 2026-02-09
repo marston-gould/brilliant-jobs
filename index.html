@@ -195,6 +195,45 @@
       font-size: 13px;
     }
     .btn-logout:hover { border-color: #e74c3c; color: #e74c3c; }
+
+    /* Password field with toggle */
+    .password-wrap {
+      position: relative;
+    }
+    .password-wrap input {
+      padding-right: 44px;
+    }
+    .password-toggle {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #6b7080;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 4px 6px;
+    }
+    .password-toggle:hover { color: #4da3ff; }
+
+    /* Inline links */
+    .inline-link {
+      color: #4da3ff;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .inline-link:hover { color: #7bbfff; }
+
+    /* Forgot password section */
+    .forgot-section {
+      display: none;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #2a2d42;
+      font-size: 12px;
+    }
+    .forgot-section.active { display: block; }
   </style>
 </head>
 <body>
@@ -220,10 +259,21 @@
           </div>
           <div class="field">
             <label>Password</label>
-            <input type="password" id="login-password" placeholder="Your password">
+            <div class="password-wrap">
+              <input type="password" id="login-password" placeholder="Your password">
+              <button type="button" class="password-toggle" data-target="login-password">Show</button>
+            </div>
           </div>
           <button class="btn btn-primary" id="login-btn">Log In</button>
           <div class="msg" id="login-msg"></div>
+          <div class="forgot-section" id="forgot-section">
+            <div class="field">
+              <label>Reset Password</label>
+              <div class="hint" style="margin-bottom: 8px;">Enter your email above and click the button below. We'll send a reset link.</div>
+            </div>
+            <button class="btn btn-outline" id="forgot-btn" style="font-size: 12px; padding: 8px;">Send Password Reset Email</button>
+            <div class="msg" id="forgot-msg"></div>
+          </div>
         </div>
 
         <!-- Signup form -->
@@ -234,7 +284,10 @@
           </div>
           <div class="field">
             <label>Password</label>
-            <input type="password" id="signup-password" placeholder="Min 6 characters">
+            <div class="password-wrap">
+              <input type="password" id="signup-password" placeholder="Min 6 characters">
+              <button type="button" class="password-toggle" data-target="signup-password">Show</button>
+            </div>
           </div>
           <div class="field">
             <label>LinkedIn Profile URL</label>
@@ -286,7 +339,7 @@
     // ---- Show message ----
     function showMsg(id, text, type) {
       const el = $(id);
-      el.textContent = text;
+      el.innerHTML = text;
       el.className = `msg ${type}`;
     }
 
@@ -375,6 +428,20 @@
       $('#signup-btn').textContent = 'Create Account';
     });
 
+    // ---- Password toggle ----
+    document.querySelectorAll('.password-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = $(`#${btn.dataset.target}`);
+        if (input.type === 'password') {
+          input.type = 'text';
+          btn.textContent = 'Hide';
+        } else {
+          input.type = 'password';
+          btn.textContent = 'Show';
+        }
+      });
+    });
+
     // ---- Login ----
     $('#login-btn').addEventListener('click', async () => {
       const email = $('#login-email').value.trim();
@@ -394,7 +461,32 @@
           password
         });
 
-        if (error) throw error;
+        if (error) {
+          if (error.message?.includes('Invalid login credentials')) {
+            // Try to determine if it's email or password
+            // Supabase doesn't distinguish, so we check if signup would create a new user
+            const { data: checkData } = await sb.auth.signUp({ email, password: 'check_only_' + Date.now() });
+            if (checkData?.user?.identities?.length > 0) {
+              // New user was created — meaning no account existed. Clean up by not confirming.
+              showMsg('#login-msg', 'No account found with this email. Please <span class="inline-link" id="switch-to-signup">sign up</span> first.', 'error');
+              $('#login-msg').querySelector('#switch-to-signup')?.addEventListener('click', () => {
+                document.querySelector('.auth-tab[data-form="signup"]').click();
+                $('#signup-email').value = email;
+              });
+            } else {
+              // Account exists but wrong password
+              showMsg('#login-msg', 'Incorrect password. <span class="inline-link" id="show-forgot">Forgot your password?</span>', 'error');
+              $('#login-msg').querySelector('#show-forgot')?.addEventListener('click', () => {
+                $('#forgot-section').classList.add('active');
+              });
+            }
+          } else {
+            throw error;
+          }
+          $('#login-btn').disabled = false;
+          $('#login-btn').textContent = 'Log In';
+          return;
+        }
 
         showLoggedIn(data.user);
 
@@ -404,6 +496,31 @@
 
       $('#login-btn').disabled = false;
       $('#login-btn').textContent = 'Log In';
+    });
+
+    // ---- Forgot password ----
+    $('#forgot-btn').addEventListener('click', async () => {
+      const email = $('#login-email').value.trim();
+      if (!email) {
+        showMsg('#forgot-msg', 'Enter your email address above first.', 'error');
+        return;
+      }
+
+      $('#forgot-btn').disabled = true;
+      $('#forgot-btn').textContent = 'Sending...';
+
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin
+        });
+        if (error) throw error;
+        showMsg('#forgot-msg', 'Password reset email sent! Check your inbox.', 'success');
+      } catch (e) {
+        showMsg('#forgot-msg', e.message || 'Failed to send reset email.', 'error');
+      }
+
+      $('#forgot-btn').disabled = false;
+      $('#forgot-btn').textContent = 'Send Password Reset Email';
     });
 
     // ---- Logout ----
