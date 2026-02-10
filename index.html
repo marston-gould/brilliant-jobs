@@ -265,6 +265,9 @@
             </div>
           </div>
           <button class="btn btn-primary" id="login-btn">Log In</button>
+          <div style="text-align: center; margin-top: 10px;">
+            <span class="inline-link" id="show-forgot-link" style="font-size: 12px; color: #8892b0; cursor: pointer;">Forgot your password?</span>
+          </div>
           <div class="msg" id="login-msg"></div>
           <div class="forgot-section" id="forgot-section">
             <div class="field">
@@ -305,11 +308,29 @@
         </div>
       </div>
 
-      <!-- Logged in state -->
+      <!-- Logged in state — Pending -->
       <div class="logged-in" id="logged-in-section">
         <div class="user-email" id="user-email"></div>
-        <div class="status-badge badge-pending" id="status-badge">Pending Approval</div>
-        <p id="logged-in-msg">Your account is pending review. You'll be able to use the extension once approved.</p>
+        <div id="pending-view">
+          <div class="status-badge badge-pending" id="status-badge">Pending Approval</div>
+          <p id="logged-in-msg">Your account is pending review. You'll be able to use the extension once approved.</p>
+          <p style="font-size: 12px; color: #5a6070; margin-top: 12px;">We'll email you once your account is approved. This usually takes less than 24 hours.</p>
+        </div>
+        <div id="approved-view" style="display: none;">
+          <div class="status-badge badge-approved">✓ Active Account</div>
+          <p style="margin: 16px 0;">Your account is active. Open the Brilliant Jobs extension in Chrome to get started.</p>
+          <div style="margin: 16px 0;">
+            <div style="font-size: 13px; color: #8892b0; margin-bottom: 12px;">Account</div>
+            <button class="btn btn-outline" id="change-pw-btn" style="font-size: 12px; padding: 8px; width: 100%; margin-bottom: 8px;">Change Password</button>
+            <div class="forgot-section" id="change-pw-section">
+              <div class="field">
+                <div class="hint" style="margin-bottom: 8px;">We'll send a password reset link to your email.</div>
+              </div>
+              <button class="btn btn-outline" id="send-reset-btn" style="font-size: 12px; padding: 8px;">Send Reset Email</button>
+              <div class="msg" id="change-pw-msg"></div>
+            </div>
+          </div>
+        </div>
         <button class="btn-logout" id="logout-btn">Log Out</button>
       </div>
     </div>
@@ -502,6 +523,11 @@
       $('#login-btn').textContent = 'Log In';
     });
 
+    // ---- Forgot password link ----
+    $('#show-forgot-link').addEventListener('click', () => {
+      $('#forgot-section').classList.add('active');
+    });
+
     // ---- Forgot password ----
     $('#forgot-btn').addEventListener('click', async () => {
       const email = $('#login-email').value.trim();
@@ -533,15 +559,40 @@
       // Reset UI fully
       $('#auth-section').style.display = 'block';
       $('#logged-in-section').classList.remove('active');
+      $('#pending-view').style.display = 'block';
+      $('#approved-view').style.display = 'none';
       $('#login-email').value = '';
       $('#login-password').value = '';
       $('#login-msg').className = 'msg';
       $('#login-msg').textContent = '';
-      // Reset badge to default
-      $('#status-badge').textContent = 'Pending Approval';
-      $('#status-badge').className = 'status-badge badge-pending';
       // Show login tab
       document.querySelector('.auth-tab[data-form="login"]').click();
+    });
+
+    // ---- Change password (from approved view) ----
+    $('#change-pw-btn')?.addEventListener('click', () => {
+      $('#change-pw-section').classList.toggle('active');
+    });
+
+    $('#send-reset-btn')?.addEventListener('click', async () => {
+      const email = $('#user-email').textContent;
+      if (!email) return;
+
+      $('#send-reset-btn').disabled = true;
+      $('#send-reset-btn').textContent = 'Sending...';
+
+      try {
+        const { error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin
+        });
+        if (error) throw error;
+        showMsg('#change-pw-msg', 'Reset email sent! Check your inbox.', 'success');
+      } catch (e) {
+        showMsg('#change-pw-msg', e.message || 'Failed to send reset email.', 'error');
+      }
+
+      $('#send-reset-btn').disabled = false;
+      $('#send-reset-btn').textContent = 'Send Reset Email';
     });
 
     // ---- Show logged in state ----
@@ -559,16 +610,13 @@
           .single();
 
         if (profile?.approved) {
-          $('#status-badge').textContent = 'Approved';
-          $('#status-badge').className = 'status-badge badge-approved';
-          $('#logged-in-msg').textContent = 'Your account is approved. Open the Chrome extension to get started.';
+          $('#pending-view').style.display = 'none';
+          $('#approved-view').style.display = 'block';
         } else {
-          $('#status-badge').textContent = 'Pending Approval';
-          $('#status-badge').className = 'status-badge badge-pending';
-          $('#logged-in-msg').textContent = 'Your account is pending review. You\'ll be able to use the extension once approved.';
+          $('#pending-view').style.display = 'block';
+          $('#approved-view').style.display = 'none';
         }
       } catch (e) {
-        // Profile might not exist yet
         $('#logged-in-msg').textContent = 'Account created. Approval status will update shortly.';
       }
 
