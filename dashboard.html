@@ -203,19 +203,65 @@
     .instance-info span { color: var(--accent); }
 
     /* ======================== JOBS ======================== */
-    /* Filter builder (Ahrefs-style) */
-    .filter-builder { margin-bottom: 20px; }
+    /* Tag-based query builder */
+    .query-builder {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 12px;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+      min-height: 44px; cursor: text; transition: border-color 0.15s;
+    }
+    .query-builder:focus-within { border-color: var(--accent); }
+    .query-builder .qb-input {
+      flex: 1; min-width: 120px; border: none; outline: none;
+      background: transparent; color: var(--text); font-family: var(--sans);
+      font-size: 13px; padding: 4px 0;
+    }
+    .query-builder .qb-input::placeholder { color: var(--text-faint); }
+
+    .qb-pill {
+      display: inline-flex; align-items: center;
+      background: var(--accent-glow); border: 1px solid rgba(61,126,255,0.2);
+      border-radius: 6px; overflow: hidden; font-size: 12px; font-weight: 600;
+      animation: pillIn 0.15s ease;
+    }
+    @keyframes pillIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+    .qb-pill-text {
+      padding: 4px 8px; color: var(--accent); cursor: pointer; transition: background 0.1s;
+    }
+    .qb-pill-text:hover { background: rgba(61,126,255,0.08); }
+    .qb-pill-remove {
+      padding: 4px 6px; color: rgba(61,126,255,0.5); cursor: pointer;
+      font-size: 14px; line-height: 1; transition: all 0.1s;
+      border-left: 1px solid rgba(61,126,255,0.15);
+    }
+    .qb-pill-remove:hover { background: var(--red-dim); color: var(--red); }
+
+    .qb-pill.or-group { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.2); }
+    .qb-pill.or-group .qb-pill-text { color: var(--purple); }
+    .qb-pill.or-group .qb-pill-remove { color: rgba(139,92,246,0.5); border-left-color: rgba(139,92,246,0.15); }
+    .qb-pill.or-group .or-sep { color: rgba(139,92,246,0.4); padding: 0 1px; font-size: 10px; font-weight: 700; }
+
+    .qb-pill.salary-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
+    .qb-pill.salary-pill .qb-pill-text { color: var(--green); }
+    .qb-pill.salary-pill .qb-pill-remove { color: rgba(34,197,94,0.4); border-left-color: rgba(34,197,94,0.15); }
+
+    .qb-pill.type-pill { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+    .qb-pill.type-pill .qb-pill-text { color: var(--warm); }
+    .qb-pill.type-pill .qb-pill-remove { color: rgba(245,158,11,0.4); border-left-color: rgba(245,158,11,0.15); }
+
+    .qb-and {
+      font-size: 10px; font-weight: 700; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; padding: 0 2px; user-select: none;
+    }
+
     .filter-toolbar {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;
     }
-    .filter-toolbar .btn { padding: 7px 14px; font-size: 12px; }
+    .filter-toolbar .btn { padding: 6px 12px; font-size: 11px; }
     .filter-count {
-      font-family: var(--mono); font-size: 12px; color: var(--text-faint);
-      margin-left: auto;
+      font-family: var(--mono); font-size: 12px; color: var(--text-faint); margin-left: auto;
     }
-    .saved-filters-dd {
-      position: relative; display: inline-block;
-    }
+    .saved-filters-dd { position: relative; display: inline-block; }
     .saved-filters-list {
       display: none; position: absolute; top: 100%; left: 0; z-index: 50;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
@@ -226,73 +272,32 @@
     .saved-filter-item {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 14px; font-size: 13px; cursor: pointer; color: var(--text-dim);
-      transition: background 0.1s;
     }
     .saved-filter-item:hover { background: var(--bg-hover); color: var(--text); }
-    .saved-filter-item .sf-del {
-      opacity: 0; font-size: 14px; color: var(--text-faint); cursor: pointer;
-      padding: 0 4px; transition: opacity 0.1s;
-    }
+    .saved-filter-item .sf-del { opacity:0; font-size:14px; color:var(--text-faint); cursor:pointer; padding:0 4px; }
     .saved-filter-item:hover .sf-del { opacity: 1; }
     .saved-filter-item .sf-del:hover { color: var(--red); }
 
-    .filter-rules { display: flex; flex-direction: column; gap: 6px; }
-    .filter-rule {
-      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    .qb-hint {
+      font-size: 11px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.6;
     }
-    .filter-rule select, .filter-rule input {
-      padding: 7px 10px; background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 12px;
-      outline: none; transition: border-color 0.15s;
-    }
-    .filter-rule select { cursor: pointer; appearance: none; -webkit-appearance: none;
-      padding-right: 28px;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239298ae' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 8px center;
-    }
-    .filter-rule input { width: 160px; }
-    .filter-rule input:focus, .filter-rule select:focus { border-color: var(--accent); }
-    .filter-rule input::placeholder { color: var(--text-faint); }
-    .rule-field { min-width: 130px; }
-    .rule-op { min-width: 110px; }
-    .rule-remove {
-      width: 26px; height: 26px; border: none; background: transparent;
-      color: var(--text-faint); cursor: pointer; font-size: 16px; border-radius: 4px;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.1s;
-    }
-    .rule-remove:hover { background: var(--red-dim); color: var(--red); }
-    .rule-and {
-      font-size: 10px; font-weight: 700; color: var(--accent);
-      text-transform: uppercase; letter-spacing: 1px; padding: 0 4px;
+    .qb-hint kbd {
+      display: inline-block; padding: 1px 5px; background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: 3px;
+      font-family: var(--mono); font-size: 10px; color: var(--text-dim);
     }
 
-    /* Quick search above filter builder */
-    .quick-search {
-      width: 100%; padding: 10px 14px; margin-bottom: 12px;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); font-family: var(--sans); font-size: 13px;
-      outline: none; transition: border-color 0.15s;
-    }
-    .quick-search:focus { border-color: var(--accent); }
-    .quick-search::placeholder { color: var(--text-faint); }
-
-    /* Job table */
     .job-table { width: 100%; border-collapse: collapse; }
     .job-table th {
       text-align: left; font-size: 11px; color: var(--text-faint);
       text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
       padding: 10px 12px; border-bottom: 2px solid var(--border);
       cursor: pointer; user-select: none; white-space: nowrap;
-      transition: color 0.15s;
     }
     .job-table th:hover { color: var(--text-dim); }
     .job-table th .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.4; }
     .job-table th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
-    .job-table td {
-      padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border);
-      color: var(--text-dim); vertical-align: middle;
-    }
+    .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
     .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; }
     .job-table .jt-company { font-weight: 500; color: var(--text); }
@@ -300,7 +305,6 @@
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
     .job-table .jt-ghost { font-family: var(--mono); font-size: 12px; font-weight: 600; }
 
-    /* Source pills */
     .source-pills { display: flex; gap: 4px; flex-wrap: wrap; }
     .source-pill {
       display: inline-flex; align-items: center; padding: 2px 8px;
@@ -315,7 +319,6 @@
     .pill-ashby { background: #fce7f3; color: #9d174d; }
     .pill-career { background: #e5e7eb; color: #374151; }
 
-    /* Apply button */
     .apply-btn {
       padding: 5px 14px; border: none; border-radius: 6px;
       font-family: var(--sans); font-size: 11px; font-weight: 700;
@@ -327,7 +330,6 @@
     .apply-btn-linkedin { background: #0a66c2; color: #fff; }
     .apply-btn-linkedin:hover { background: #004182; }
 
-    /* Save/bookmark icon in table */
     .save-btn {
       background: none; border: none; cursor: pointer; font-size: 16px;
       color: var(--text-faint); transition: color 0.15s; padding: 2px;
@@ -547,23 +549,24 @@
             <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved</div></div>
           </div>
 
-          <input type="text" class="quick-search" id="j-search" placeholder="Quick search — title, company, or keyword...">
+          <!-- Tag query builder -->
+          <div class="query-builder" id="query-builder">
+            <input type="text" class="qb-input" id="qb-input" placeholder="Type to filter — e.g. project manager, denver, remote, $100k+">
+          </div>
+          <div class="qb-hint">
+            <kbd>Enter</kbd> to add filter &nbsp; <kbd>or</kbd> before a term to OR it with the previous &nbsp; Click a pill to add OR options &nbsp; <kbd>Backspace</kbd> to remove last
+          </div>
 
-          <!-- Ahrefs-style filter builder -->
-          <div class="filter-builder">
-            <div class="filter-toolbar">
-              <button class="btn btn-secondary" id="add-filter-btn" style="padding:7px 14px;font-size:12px;">+ Add Filter</button>
-              <div class="saved-filters-dd">
-                <button class="btn btn-secondary" id="saved-filters-btn" style="padding:7px 14px;font-size:12px;">Saved Filters ▾</button>
-                <div class="saved-filters-list" id="saved-filters-list">
-                  <div class="saved-filter-item" style="color:var(--text-faint);font-size:12px;cursor:default;">No saved filters yet</div>
-                </div>
+          <div class="filter-toolbar">
+            <div class="saved-filters-dd">
+              <button class="btn btn-secondary" id="saved-filters-btn">Saved Filters ▾</button>
+              <div class="saved-filters-list" id="saved-filters-list">
+                <div class="saved-filter-item" style="color:var(--text-faint);font-size:12px;cursor:default;">No saved filters yet</div>
               </div>
-              <button class="btn btn-secondary" id="save-filter-btn" style="padding:7px 14px;font-size:12px;display:none;">Save Filter</button>
-              <button class="btn btn-secondary" id="clear-filters-btn" style="padding:7px 14px;font-size:12px;display:none;">Clear All</button>
-              <div class="filter-count" id="filter-count"></div>
             </div>
-            <div class="filter-rules" id="filter-rules"></div>
+            <button class="btn btn-secondary" id="save-filter-btn" style="display:none;">💾 Save Filter</button>
+            <button class="btn btn-secondary" id="clear-filters-btn" style="display:none;">Clear All</button>
+            <div class="filter-count" id="filter-count"></div>
           </div>
 
           <!-- Job results table -->
@@ -773,135 +776,130 @@
     });
 
     // ============================================================
-    // JOBS — FILTER BUILDER
+    // JOBS — TAG QUERY BUILDER
     // ============================================================
-    const FILTER_FIELDS = {
-      title:          { label: 'Title',          type: 'text' },
-      company_name:   { label: 'Company',        type: 'text' },
-      location:       { label: 'Location',       type: 'text' },
-      workplace_type: { label: 'Workplace',      type: 'select', options: ['remote','hybrid','onsite'] },
-      salary_min:     { label: 'Salary Min',     type: 'number' },
-      salary_max:     { label: 'Salary Max',     type: 'number' },
-      source:         { label: 'Source',          type: 'select', options: ['greenhouse','lever','workday','linkedin','indeed','ashby'] },
-      department:     { label: 'Department',      type: 'text' },
-      company_size:   { label: 'Company Size',   type: 'select', options: ['1-50','51-200','201-500','501-1000','1001-5000','5001-10000','10000+'] },
-      ghost_rate:     { label: 'Ghost Rate %',   type: 'number' },
-      avg_response_days:{ label: 'Avg Response (days)', type: 'number' },
-      days_posted:    { label: 'Days Posted',    type: 'number' },
-      saved:          { label: 'Saved',          type: 'boolean' },
-      applied:        { label: 'Applied',        type: 'boolean' },
-    };
-    const OPS_TEXT    = ['contains','not contains','equals','starts with'];
-    const OPS_NUMBER  = ['=','≠','>','≥','<','≤'];
-    const OPS_SELECT  = ['is','is not'];
-    const OPS_BOOLEAN = ['is true','is false'];
-
-    let filterRules = [];
+    // Each pill is { values: ['term1','term2'], type: 'keyword'|'salary'|'type' }
+    // Multiple values in one pill = OR, multiple pills = AND
+    let queryPills = [];
     let savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    const WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
+    const SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
 
-    function getOpsForField(fieldKey) {
-      const f = FILTER_FIELDS[fieldKey];
-      if (!f) return OPS_TEXT;
-      if (f.type === 'number') return OPS_NUMBER;
-      if (f.type === 'select') return OPS_SELECT;
-      if (f.type === 'boolean') return OPS_BOOLEAN;
-      return OPS_TEXT;
+    function classifyTerm(term) {
+      const lower = term.toLowerCase().trim();
+      if (WORKPLACE_WORDS.includes(lower.replace('-',''))) return 'type';
+      if (SALARY_RE.test(lower) || /^\d{4,}$/.test(lower)) return 'salary';
+      return 'keyword';
     }
 
-    function renderFilterRules() {
-      const container = $('#filter-rules');
-      container.innerHTML = '';
-      filterRules.forEach((rule, i) => {
-        const row = document.createElement('div');
-        row.className = 'filter-rule';
-        if (i > 0) row.innerHTML += '<span class="rule-and">AND</span>';
+    function renderPills() {
+      const builder = $('#query-builder');
+      // Remove existing pills and AND connectors, keep input
+      builder.querySelectorAll('.qb-pill, .qb-and').forEach(el => el.remove());
+      const input = $('#qb-input');
 
-        // Field select
-        let fieldHtml = '<select class="rule-field" data-idx="' + i + '">';
-        Object.entries(FILTER_FIELDS).forEach(([k, v]) => {
-          fieldHtml += `<option value="${k}" ${rule.field === k ? 'selected' : ''}>${v.label}</option>`;
-        });
-        fieldHtml += '</select>';
-
-        // Operator select
-        const ops = getOpsForField(rule.field);
-        let opHtml = '<select class="rule-op" data-idx="' + i + '">';
-        ops.forEach(op => {
-          opHtml += `<option value="${op}" ${rule.op === op ? 'selected' : ''}>${op}</option>`;
-        });
-        opHtml += '</select>';
-
-        // Value input
-        const ft = FILTER_FIELDS[rule.field];
-        let valHtml = '';
-        if (ft?.type === 'boolean') {
-          valHtml = ''; // no value needed, operator IS the value
-        } else if (ft?.type === 'select') {
-          valHtml = '<select class="rule-val" data-idx="' + i + '">';
-          (ft.options || []).forEach(o => {
-            valHtml += `<option value="${o}" ${rule.value === o ? 'selected' : ''}>${o}</option>`;
-          });
-          valHtml += '</select>';
-        } else if (ft?.type === 'number') {
-          valHtml = `<input type="number" class="rule-val" data-idx="${i}" value="${rule.value || ''}" placeholder="Value">`;
-        } else {
-          valHtml = `<input type="text" class="rule-val" data-idx="${i}" value="${rule.value || ''}" placeholder="Value">`;
+      queryPills.forEach((pill, i) => {
+        if (i > 0) {
+          const andEl = document.createElement('span');
+          andEl.className = 'qb-and';
+          andEl.textContent = 'AND';
+          builder.insertBefore(andEl, input);
         }
 
-        row.innerHTML += fieldHtml + opHtml + valHtml;
-        row.innerHTML += `<button class="rule-remove" data-idx="${i}">×</button>`;
-        container.appendChild(row);
+        const el = document.createElement('span');
+        let cls = 'qb-pill';
+        if (pill.values.length > 1) cls += ' or-group';
+        else if (pill.type === 'salary') cls += ' salary-pill';
+        else if (pill.type === 'type') cls += ' type-pill';
+        el.className = cls;
+
+        // Build text part
+        const textParts = pill.values.map(v => `<span>${v}</span>`);
+        const display = pill.values.length > 1
+          ? textParts.join('<span class="or-sep"> or </span>')
+          : textParts[0];
+
+        el.innerHTML = `<span class="qb-pill-text" data-idx="${i}">${display}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
+        builder.insertBefore(el, input);
       });
 
       // Show/hide toolbar buttons
-      $('#save-filter-btn').style.display = filterRules.length > 0 ? '' : 'none';
-      $('#clear-filters-btn').style.display = filterRules.length > 0 ? '' : 'none';
+      $('#save-filter-btn').style.display = queryPills.length > 0 ? '' : 'none';
+      $('#clear-filters-btn').style.display = queryPills.length > 0 ? '' : 'none';
 
-      // Bind events
-      container.querySelectorAll('.rule-field').forEach(el => {
-        el.addEventListener('change', e => {
-          const idx = parseInt(e.target.dataset.idx);
-          filterRules[idx].field = e.target.value;
-          filterRules[idx].op = getOpsForField(e.target.value)[0];
-          filterRules[idx].value = '';
-          renderFilterRules();
+      // Bind pill click — add OR term
+      builder.querySelectorAll('.qb-pill-text').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.idx);
+          const orTerm = prompt(`Add OR term to "${queryPills[idx].values.join(' or ')}":`);
+          if (orTerm?.trim()) {
+            queryPills[idx].values.push(orTerm.trim());
+            if (queryPills[idx].values.length > 1) {
+              // mixed types become keyword
+              const types = new Set(queryPills[idx].values.map(classifyTerm));
+              if (types.size > 1) queryPills[idx].type = 'keyword';
+            }
+            renderPills();
+          }
         });
       });
-      container.querySelectorAll('.rule-op').forEach(el => {
-        el.addEventListener('change', e => {
-          filterRules[parseInt(e.target.dataset.idx)].op = e.target.value;
-        });
-      });
-      container.querySelectorAll('.rule-val').forEach(el => {
-        el.addEventListener('input', e => {
-          filterRules[parseInt(e.target.dataset.idx)].value = e.target.value;
-        });
-        el.addEventListener('change', e => {
-          filterRules[parseInt(e.target.dataset.idx)].value = e.target.value;
-        });
-      });
-      container.querySelectorAll('.rule-remove').forEach(el => {
+
+      // Bind remove
+      builder.querySelectorAll('.qb-pill-remove').forEach(el => {
         el.addEventListener('click', e => {
-          filterRules.splice(parseInt(e.target.dataset.idx), 1);
-          renderFilterRules();
+          e.stopPropagation();
+          queryPills.splice(parseInt(el.dataset.idx), 1);
+          renderPills();
         });
       });
     }
 
-    $('#add-filter-btn').addEventListener('click', () => {
-      filterRules.push({ field: 'title', op: 'contains', value: '' });
-      renderFilterRules();
+    // Input handling
+    const qbInput = $('#qb-input');
+    qbInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const raw = qbInput.value.trim();
+        if (!raw) return;
+
+        // Check for "or" prefix: adds to last pill
+        const orMatch = raw.match(/^or\s+(.+)/i);
+        if (orMatch && queryPills.length > 0) {
+          const term = orMatch[1].trim();
+          queryPills[queryPills.length - 1].values.push(term);
+          qbInput.value = '';
+          renderPills();
+          return;
+        }
+
+        // New pill
+        queryPills.push({ values: [raw], type: classifyTerm(raw) });
+        qbInput.value = '';
+        renderPills();
+
+      } else if (e.key === 'Backspace' && qbInput.value === '' && queryPills.length > 0) {
+        queryPills.pop();
+        renderPills();
+      }
     });
 
+    // Click builder to focus input
+    $('#query-builder').addEventListener('click', e => {
+      if (e.target.closest('.qb-pill')) return;
+      qbInput.focus();
+    });
+
+    // Clear all
     $('#clear-filters-btn').addEventListener('click', () => {
-      filterRules = [];
-      renderFilterRules();
+      queryPills = [];
+      renderPills();
     });
 
+    // Save filter
     $('#save-filter-btn').addEventListener('click', () => {
-      const name = prompt('Name this filter set:');
+      const name = prompt('Name this filter:');
       if (!name) return;
-      savedFilters.push({ name, rules: JSON.parse(JSON.stringify(filterRules)) });
+      savedFilters.push({ name, pills: JSON.parse(JSON.stringify(queryPills)) });
       localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
       renderSavedFilters();
     });
@@ -930,8 +928,8 @@
         el.parentElement.addEventListener('click', e => {
           if (e.target.classList.contains('sf-del')) return;
           const idx = parseInt(el.parentElement.dataset.idx);
-          filterRules = JSON.parse(JSON.stringify(savedFilters[idx].rules));
-          renderFilterRules();
+          queryPills = JSON.parse(JSON.stringify(savedFilters[idx].pills));
+          renderPills();
           list.classList.remove('open');
         });
       });
@@ -946,7 +944,7 @@
     }
     renderSavedFilters();
 
-    // Source pill helper
+    // Source pill helper (for table rows)
     function sourcePill(source) {
       const map = {
         greenhouse: 'pill-greenhouse', lever: 'pill-lever', workday: 'pill-workday',
@@ -959,9 +957,8 @@
       return `<span class="source-pill ${map[source] || 'pill-career'}">${labels[source] || source}</span>`;
     }
 
-    // Apply button helper — picks best source, styles accordingly
+    // Apply button — picks best non-LI source, falls back to LI
     function applyButton(sources, urls) {
-      // Priority: greenhouse > lever > workday > ashby > career_page > indeed > linkedin
       const priority = ['greenhouse','lever','workday','ashby','career_page','indeed','linkedin'];
       let bestSource = 'linkedin';
       let bestUrl = '#';
