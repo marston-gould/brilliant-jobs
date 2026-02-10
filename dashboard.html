@@ -261,25 +261,38 @@
     .filter-count {
       font-family: var(--mono); font-size: 12px; color: var(--text-faint); margin-left: auto;
     }
-    .saved-filters-dd { position: relative; display: inline-block; }
-    .saved-filters-panel {
-      display: none; position: absolute; top: 100%; left: 0; z-index: 50;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-      width: 280px; box-shadow: 0 12px 32px rgba(0,0,0,0.12);
-      margin-top: 4px; overflow: hidden;
+    .save-filter-row {
+      display: inline-flex; align-items: center; gap: 8px;
     }
-    .saved-filters-panel.open { display: block; }
-    .sf-search-wrap { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .save-label { font-size: 12px; font-weight: 600; color: var(--text-dim); white-space: nowrap; }
+    .save-filter-name {
+      padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 12px;
+      outline: none; width: 180px;
+    }
+    .save-filter-name:focus { border-color: var(--accent); }
+    .save-filter-name::placeholder { color: var(--text-faint); }
+
+    .saved-filters-section {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .sf-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-bottom: 1px solid var(--border);
+    }
+    .sf-title { font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
     .sf-search {
-      width: 100%; padding: 7px 10px; background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 12px; outline: none;
+      background: var(--bg-input); border: 1px solid var(--border); border-radius: 5px;
+      padding: 4px 8px; font-size: 11px; color: var(--text); font-family: var(--sans);
+      outline: none; width: 140px;
     }
     .sf-search:focus { border-color: var(--accent); }
     .sf-search::placeholder { color: var(--text-faint); }
-    .sf-list { max-height: 240px; overflow-y: auto; padding: 4px 0; }
+    .sf-list { max-height: 200px; overflow-y: auto; padding: 4px 0; }
     .sf-list::-webkit-scrollbar { width: 4px; }
     .sf-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-    .sf-empty { padding: 20px 14px; text-align: center; color: var(--text-faint); font-size: 12px; }
+    .sf-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-faint); }
     .sf-item {
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 12px; cursor: pointer; color: var(--text-dim); font-size: 13px;
@@ -295,16 +308,6 @@
     }
     .sf-item:hover .sf-del { opacity: 1; }
     .sf-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
-
-    .save-inline {
-      display: inline-flex; align-items: center; gap: 4px;
-    }
-    .save-inline-input {
-      padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 12px;
-      outline: none; width: 160px;
-    }
-    .save-inline-input:focus { border-color: var(--accent); }
 
     .qb-hint {
       font-size: 11px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.6;
@@ -586,25 +589,22 @@
           </div>
 
           <div class="filter-toolbar">
-            <div class="saved-filters-dd">
-              <button class="btn btn-secondary" id="saved-filters-btn">Saved Filters ▾</button>
-              <div class="saved-filters-panel" id="saved-filters-panel">
-                <div class="sf-search-wrap">
-                  <input type="text" class="sf-search" id="sf-search" placeholder="Search saved filters…">
-                </div>
-                <div class="sf-list" id="sf-list">
-                  <div class="sf-empty">No saved filters yet</div>
-                </div>
-              </div>
+            <div class="save-filter-row" id="save-filter-row" style="display:none;">
+              <label class="save-label">Save Filter:</label>
+              <input type="text" class="save-filter-name" id="save-filter-name" placeholder="Name this filter…" maxlength="40">
+              <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
             </div>
-            <button class="btn btn-secondary" id="save-filter-btn" style="display:none;">💾 Save</button>
-            <div class="save-inline" id="save-inline" style="display:none;">
-              <input type="text" class="save-inline-input" id="save-inline-input" placeholder="Filter name…" maxlength="40">
-              <button class="btn btn-primary btn-sm" id="save-inline-confirm">Save</button>
-              <button class="btn btn-secondary btn-sm" id="save-inline-cancel">✕</button>
-            </div>
-            <button class="btn btn-secondary" id="clear-filters-btn" style="display:none;">Clear All</button>
+            <button class="btn btn-secondary btn-sm" id="clear-filters-btn" style="display:none;">Clear All</button>
             <div class="filter-count" id="filter-count"></div>
+          </div>
+
+          <!-- Saved filters list -->
+          <div class="saved-filters-section" id="saved-filters-section" style="display:none;">
+            <div class="sf-header">
+              <span class="sf-title">Saved Filters</span>
+              <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
+            </div>
+            <div class="sf-list" id="sf-list"></div>
           </div>
 
           <!-- Job results table -->
@@ -862,8 +862,11 @@
       });
 
       // Show/hide toolbar buttons
-      $('#save-filter-btn').style.display = queryPills.length > 0 ? '' : 'none';
+      $('#save-filter-row').style.display = queryPills.length > 0 ? 'inline-flex' : 'none';
       $('#clear-filters-btn').style.display = queryPills.length > 0 ? '' : 'none';
+
+      // Show saved filters section if any exist
+      $('#saved-filters-section').style.display = savedFilters.length > 0 ? '' : 'none';
 
       // Bind pill click — add OR term inline
       builder.querySelectorAll('.qb-pill-text').forEach(el => {
@@ -951,19 +954,10 @@
       renderPills();
     });
 
-    // Save filter — inline input instead of prompt()
-    $('#save-filter-btn').addEventListener('click', () => {
-      $('#save-filter-btn').style.display = 'none';
-      const inl = $('#save-inline');
-      inl.style.display = 'inline-flex';
-      const inp = $('#save-inline-input');
-      inp.value = '';
-      inp.focus();
-    });
-
+    // Save filter — always-visible inline input
     function commitSaveFilter() {
-      const name = $('#save-inline-input').value.trim();
-      if (!name) return;
+      const name = $('#save-filter-name').value.trim();
+      if (!name || queryPills.length === 0) return;
       savedFilters.push({
         name,
         pills: JSON.parse(JSON.stringify(queryPills)),
@@ -971,35 +965,13 @@
         useCount: 1
       });
       localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
-      $('#save-inline').style.display = 'none';
-      $('#save-filter-btn').style.display = '';
+      $('#save-filter-name').value = '';
       renderSavedFilters();
     }
 
-    $('#save-inline-confirm').addEventListener('click', commitSaveFilter);
-    $('#save-inline-input').addEventListener('keydown', e => {
+    $('#save-filter-go').addEventListener('click', commitSaveFilter);
+    $('#save-filter-name').addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); commitSaveFilter(); }
-      if (e.key === 'Escape') {
-        $('#save-inline').style.display = 'none';
-        $('#save-filter-btn').style.display = '';
-      }
-    });
-    $('#save-inline-cancel').addEventListener('click', () => {
-      $('#save-inline').style.display = 'none';
-      $('#save-filter-btn').style.display = '';
-    });
-
-    // Saved filters panel — toggle
-    $('#saved-filters-btn').addEventListener('click', () => {
-      $('#saved-filters-panel').classList.toggle('open');
-      if ($('#saved-filters-panel').classList.contains('open')) {
-        $('#sf-search').value = '';
-        renderSavedFilters();
-        $('#sf-search').focus();
-      }
-    });
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.saved-filters-dd')) $('#saved-filters-panel').classList.remove('open');
     });
 
     // Search within saved filters
@@ -1007,7 +979,14 @@
 
     function renderSavedFilters() {
       const list = $('#sf-list');
+      const section = $('#saved-filters-section');
       const query = ($('#sf-search')?.value || '').toLowerCase();
+
+      if (savedFilters.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = '';
 
       // Sort by last used (most recent first)
       const sorted = [...savedFilters]
@@ -1043,7 +1022,6 @@
           savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
           renderPills();
-          $('#saved-filters-panel').classList.remove('open');
         });
       });
 
