@@ -530,8 +530,18 @@
     // ---- Logout ----
     $('#logout-btn').addEventListener('click', async () => {
       await sb.auth.signOut();
+      // Reset UI fully
       $('#auth-section').style.display = 'block';
       $('#logged-in-section').classList.remove('active');
+      $('#login-email').value = '';
+      $('#login-password').value = '';
+      $('#login-msg').className = 'msg';
+      $('#login-msg').textContent = '';
+      // Reset badge to default
+      $('#status-badge').textContent = 'Pending Approval';
+      $('#status-badge').className = 'status-badge badge-pending';
+      // Show login tab
+      document.querySelector('.auth-tab[data-form="login"]').click();
     });
 
     // ---- Show logged in state ----
