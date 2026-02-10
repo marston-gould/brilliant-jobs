@@ -723,7 +723,11 @@
       try {
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) {
-          if (error.message?.includes('Invalid login credentials')) showMsg('#login-msg', 'Invalid email or password.', 'error');
+          if (error.message?.includes('Invalid login credentials')) {
+            showMsg('#login-msg', 'Invalid email or password. <span style="color:var(--accent);cursor:pointer;text-decoration:underline;" id="err-forgot">Forgot password?</span> Or <span style="color:var(--accent);cursor:pointer;text-decoration:underline;" id="err-signup">sign up</span>.', 'error');
+            $('#login-msg').querySelector('#err-forgot')?.addEventListener('click', () => { $('#forgot-section').classList.add('active'); });
+            $('#login-msg').querySelector('#err-signup')?.addEventListener('click', () => { $$('.auth-tab')[1].click(); $('#signup-email').value = email; });
+          }
           else if (error.message?.includes('Email not confirmed')) showMsg('#login-msg', 'Check your email and click the confirmation link first.', 'error');
           else throw error;
           return;
@@ -755,7 +759,7 @@
         if (data.user?.identities?.length === 0) { showMsg('#signup-msg', 'Account already exists.', 'error'); return; }
         await sb.from('profiles').update({ linkedin_slug: slug, linkedin_url: linkedinUrl, email_optin: emailOptin }).eq('id', data.user.id);
         showMsg('#signup-msg', 'Account created! Check your email to confirm, then log in.', 'success');
-        setTimeout(() => $$('.auth-tab')[0].click(), 4000);
+        setTimeout(() => { $$('.auth-tab')[0].click(); $('#login-email').value = email; }, 4000);
       } catch (e) { showMsg('#signup-msg', e.message || 'Signup failed.', 'error'); }
       finally { $('#signup-btn').disabled = false; $('#signup-btn').textContent = 'Create Account'; }
     });
@@ -776,9 +780,14 @@
 
     // Logout
     $('#logout-btn').addEventListener('click', async () => {
+      const email = $('#li-email').textContent;
       await sb.auth.signOut();
       $('#logged-in-view').classList.remove('active');
       $('#auth-forms').style.display = 'block';
+      $('#login-email').value = email;
+      $('#login-password').value = '';
+      $$('.msg').forEach(m => m.className = 'msg');
+      $$('.auth-tab')[0].click();
       closeModal();
     });
 
