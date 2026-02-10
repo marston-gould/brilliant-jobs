@@ -542,7 +542,7 @@
 
       // Check approval status
       try {
-        const { data: profile, error } = await supabase
+        const { data: profile, error } = await sb
           .from('profiles')
           .select('approved')
           .eq('id', user.id)
