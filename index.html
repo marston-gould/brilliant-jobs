@@ -408,23 +408,28 @@
           return;
         }
 
-        // Create profile
+        // Update profile with LinkedIn info (row auto-created by DB trigger)
         const { error: profileError } = await sb
           .from('profiles')
-          .insert({
-            id: data.user.id,
-            email,
+          .update({
             linkedin_slug: slug,
             linkedin_url: linkedinUrl,
-            email_optin: emailOptin,
-            approved: false
-          });
+            email_optin: emailOptin
+          })
+          .eq('id', data.user.id);
 
         if (profileError) {
-          console.error('Profile insert error:', profileError);
+          console.error('Profile update error:', profileError);
         }
 
         showMsg('#signup-msg', 'Account created! Check your email to confirm, then log in. Your account will be reviewed for approval.', 'success');
+
+        // Auto-switch to login tab after 5 seconds
+        setTimeout(() => {
+          document.querySelector('.auth-tab[data-form="login"]').click();
+          const loginEmail = document.querySelector('#login-email');
+          if (loginEmail) loginEmail.value = email;
+        }, 5000);
 
       } catch (e) {
         showMsg('#signup-msg', e.message || 'Signup failed.', 'error');
@@ -469,23 +474,16 @@
 
         if (error) {
           if (error.message?.includes('Invalid login credentials')) {
-            // Try to determine if it's email or password
-            // Supabase doesn't distinguish, so we check if signup would create a new user
-            const { data: checkData } = await sb.auth.signUp({ email, password: 'check_only_' + Date.now() });
-            if (checkData?.user?.identities?.length > 0) {
-              // New user was created — meaning no account existed. Clean up by not confirming.
-              showMsg('#login-msg', 'No account found with this email. Please <span class="inline-link" id="switch-to-signup">sign up</span> first.', 'error');
-              $('#login-msg').querySelector('#switch-to-signup')?.addEventListener('click', () => {
-                document.querySelector('.auth-tab[data-form="signup"]').click();
-                $('#signup-email').value = email;
-              });
-            } else {
-              // Account exists but wrong password
-              showMsg('#login-msg', 'Incorrect password. <span class="inline-link" id="show-forgot">Forgot your password?</span>', 'error');
-              $('#login-msg').querySelector('#show-forgot')?.addEventListener('click', () => {
-                $('#forgot-section').classList.add('active');
-              });
-            }
+            showMsg('#login-msg', 'Invalid email or password. <span class="inline-link" id="show-forgot">Forgot your password?</span> Or <span class="inline-link" id="switch-to-signup">sign up</span> for a new account.', 'error');
+            $('#login-msg').querySelector('#show-forgot')?.addEventListener('click', () => {
+              $('#forgot-section').classList.add('active');
+            });
+            $('#login-msg').querySelector('#switch-to-signup')?.addEventListener('click', () => {
+              document.querySelector('.auth-tab[data-form="signup"]').click();
+              $('#signup-email').value = email;
+            });
+          } else if (error.message?.includes('Email not confirmed')) {
+            showMsg('#login-msg', 'Please check your email and click the confirmation link first.', 'error');
           } else {
             throw error;
           }
