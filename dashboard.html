@@ -203,39 +203,137 @@
     .instance-info span { color: var(--accent); }
 
     /* ======================== JOBS ======================== */
-    .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    .filter-input {
-      flex: 1; min-width: 200px; padding: 9px 14px;
+    /* Filter builder (Ahrefs-style) */
+    .filter-builder { margin-bottom: 20px; }
+    .filter-toolbar {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .filter-toolbar .btn { padding: 7px 14px; font-size: 12px; }
+    .filter-count {
+      font-family: var(--mono); font-size: 12px; color: var(--text-faint);
+      margin-left: auto;
+    }
+    .saved-filters-dd {
+      position: relative; display: inline-block;
+    }
+    .saved-filters-list {
+      display: none; position: absolute; top: 100%; left: 0; z-index: 50;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      min-width: 220px; padding: 6px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      margin-top: 4px;
+    }
+    .saved-filters-list.open { display: block; }
+    .saved-filter-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 14px; font-size: 13px; cursor: pointer; color: var(--text-dim);
+      transition: background 0.1s;
+    }
+    .saved-filter-item:hover { background: var(--bg-hover); color: var(--text); }
+    .saved-filter-item .sf-del {
+      opacity: 0; font-size: 14px; color: var(--text-faint); cursor: pointer;
+      padding: 0 4px; transition: opacity 0.1s;
+    }
+    .saved-filter-item:hover .sf-del { opacity: 1; }
+    .saved-filter-item .sf-del:hover { color: var(--red); }
+
+    .filter-rules { display: flex; flex-direction: column; gap: 6px; }
+    .filter-rule {
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .filter-rule select, .filter-rule input {
+      padding: 7px 10px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--sans); font-size: 12px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .filter-rule select { cursor: pointer; appearance: none; -webkit-appearance: none;
+      padding-right: 28px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239298ae' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 8px center;
+    }
+    .filter-rule input { width: 160px; }
+    .filter-rule input:focus, .filter-rule select:focus { border-color: var(--accent); }
+    .filter-rule input::placeholder { color: var(--text-faint); }
+    .rule-field { min-width: 130px; }
+    .rule-op { min-width: 110px; }
+    .rule-remove {
+      width: 26px; height: 26px; border: none; background: transparent;
+      color: var(--text-faint); cursor: pointer; font-size: 16px; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.1s;
+    }
+    .rule-remove:hover { background: var(--red-dim); color: var(--red); }
+    .rule-and {
+      font-size: 10px; font-weight: 700; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 1px; padding: 0 4px;
+    }
+
+    /* Quick search above filter builder */
+    .quick-search {
+      width: 100%; padding: 10px 14px; margin-bottom: 12px;
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-family: var(--sans); font-size: 13px;
       outline: none; transition: border-color 0.15s;
     }
-    .filter-input:focus { border-color: var(--accent); }
-    .filter-input::placeholder { color: var(--text-faint); }
-    .filter-select {
-      padding: 9px 14px; background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text-dim); font-family: var(--sans); font-size: 13px;
-      outline: none; cursor: pointer; appearance: none; -webkit-appearance: none;
-      padding-right: 32px;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239298ae' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center;
-    }
+    .quick-search:focus { border-color: var(--accent); }
+    .quick-search::placeholder { color: var(--text-faint); }
 
-    .job-list { display: flex; flex-direction: column; gap: 8px; }
-    .job-row {
-      display: flex; align-items: center; gap: 16px;
-      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 10px; cursor: pointer; transition: all 0.15s;
+    /* Job table */
+    .job-table { width: 100%; border-collapse: collapse; }
+    .job-table th {
+      text-align: left; font-size: 11px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+      padding: 10px 12px; border-bottom: 2px solid var(--border);
+      cursor: pointer; user-select: none; white-space: nowrap;
+      transition: color 0.15s;
     }
-    .job-row:hover { border-color: var(--border-hover); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .job-co-icon {
-      width: 40px; height: 40px; border-radius: 8px; background: var(--bg-input);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 700; color: var(--text-dim); flex-shrink: 0;
+    .job-table th:hover { color: var(--text-dim); }
+    .job-table th .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.4; }
+    .job-table th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+    .job-table td {
+      padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border);
+      color: var(--text-dim); vertical-align: middle;
     }
-    .job-info { flex: 1; }
-    .job-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; color: var(--text); }
-    .job-meta { font-size: 12px; color: var(--text-faint); display: flex; gap: 12px; align-items: center; }
+    .job-table tr:hover td { background: var(--bg-hover); }
+    .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; }
+    .job-table .jt-company { font-weight: 500; color: var(--text); }
+    .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+    .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
+    .job-table .jt-ghost { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+    /* Source pills */
+    .source-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+    .source-pill {
+      display: inline-flex; align-items: center; padding: 2px 8px;
+      border-radius: 4px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap;
+    }
+    .pill-greenhouse { background: #dcfce7; color: #166534; }
+    .pill-lever { background: #ede9fe; color: #5b21b6; }
+    .pill-workday { background: #ccfbf1; color: #115e59; }
+    .pill-linkedin { background: #dbeafe; color: #1e40af; }
+    .pill-indeed { background: #fef3c7; color: #92400e; }
+    .pill-ashby { background: #fce7f3; color: #9d174d; }
+    .pill-career { background: #e5e7eb; color: #374151; }
+
+    /* Apply button */
+    .apply-btn {
+      padding: 5px 14px; border: none; border-radius: 6px;
+      font-family: var(--sans); font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .apply-btn-default { background: var(--accent); color: #fff; }
+    .apply-btn-default:hover { background: var(--accent-hover); }
+    .apply-btn-linkedin { background: #0a66c2; color: #fff; }
+    .apply-btn-linkedin:hover { background: #004182; }
+
+    /* Save/bookmark icon in table */
+    .save-btn {
+      background: none; border: none; cursor: pointer; font-size: 16px;
+      color: var(--text-faint); transition: color 0.15s; padding: 2px;
+    }
+    .save-btn:hover { color: var(--warm); }
+    .save-btn.saved { color: var(--warm); }
 
     /* ======================== PIPELINE ======================== */
     .pipeline-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
@@ -448,17 +546,54 @@
             <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New Today</div></div>
             <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved</div></div>
           </div>
-          <div class="filter-bar">
-            <input type="text" class="filter-input" id="j-search" placeholder="Search by title, company, or keyword...">
-            <select class="filter-select" id="j-type"><option value="">All Types</option><option value="remote">Remote</option><option value="hybrid">Hybrid</option><option value="onsite">On-site</option></select>
-            <select class="filter-select" id="j-source"><option value="">All Sources</option><option value="greenhouse">Greenhouse</option><option value="lever">Lever</option><option value="workday">Workday</option><option value="linkedin">LinkedIn</option><option value="indeed">Indeed</option></select>
-            <select class="filter-select" id="j-ghost"><option value="">Any Ghost Rate</option><option value="low">Low (&lt;25%)</option><option value="med">Medium (25-50%)</option><option value="high">High (&gt;50%)</option></select>
-          </div>
-          <div class="job-list" id="job-list">
-            <div class="empty-state">
-              <h3>No jobs loaded yet</h3>
-              <p>Complete setup first. Jobs from multiple sources will appear here once your data is ready.</p>
+
+          <input type="text" class="quick-search" id="j-search" placeholder="Quick search — title, company, or keyword...">
+
+          <!-- Ahrefs-style filter builder -->
+          <div class="filter-builder">
+            <div class="filter-toolbar">
+              <button class="btn btn-secondary" id="add-filter-btn" style="padding:7px 14px;font-size:12px;">+ Add Filter</button>
+              <div class="saved-filters-dd">
+                <button class="btn btn-secondary" id="saved-filters-btn" style="padding:7px 14px;font-size:12px;">Saved Filters ▾</button>
+                <div class="saved-filters-list" id="saved-filters-list">
+                  <div class="saved-filter-item" style="color:var(--text-faint);font-size:12px;cursor:default;">No saved filters yet</div>
+                </div>
+              </div>
+              <button class="btn btn-secondary" id="save-filter-btn" style="padding:7px 14px;font-size:12px;display:none;">Save Filter</button>
+              <button class="btn btn-secondary" id="clear-filters-btn" style="padding:7px 14px;font-size:12px;display:none;">Clear All</button>
+              <div class="filter-count" id="filter-count"></div>
             </div>
+            <div class="filter-rules" id="filter-rules"></div>
+          </div>
+
+          <!-- Job results table -->
+          <div style="overflow-x:auto;">
+            <table class="job-table" id="job-table">
+              <thead>
+                <tr>
+                  <th style="width:28px;"></th>
+                  <th data-sort="title">Title <span class="sort-arrow">↕</span></th>
+                  <th data-sort="company">Company <span class="sort-arrow">↕</span></th>
+                  <th data-sort="location">Location <span class="sort-arrow">↕</span></th>
+                  <th data-sort="salary">Salary <span class="sort-arrow">↕</span></th>
+                  <th>Sources</th>
+                  <th data-sort="ghost">Ghost Rate <span class="sort-arrow">↕</span></th>
+                  <th data-sort="days">Days <span class="sort-arrow">↕</span></th>
+                  <th style="width:80px;"></th>
+                </tr>
+              </thead>
+              <tbody id="job-table-body">
+                <tr>
+                  <td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                    <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs loaded yet</div>
+                    <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+                      Complete setup first. Jobs from Greenhouse, Lever, Indeed, LinkedIn, and more will appear here.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -636,6 +771,208 @@
       } catch (e) { status.textContent = 'Error: ' + e.message; }
       btn.disabled = false; btn.textContent = 'Download Extension';
     });
+
+    // ============================================================
+    // JOBS — FILTER BUILDER
+    // ============================================================
+    const FILTER_FIELDS = {
+      title:          { label: 'Title',          type: 'text' },
+      company_name:   { label: 'Company',        type: 'text' },
+      location:       { label: 'Location',       type: 'text' },
+      workplace_type: { label: 'Workplace',      type: 'select', options: ['remote','hybrid','onsite'] },
+      salary_min:     { label: 'Salary Min',     type: 'number' },
+      salary_max:     { label: 'Salary Max',     type: 'number' },
+      source:         { label: 'Source',          type: 'select', options: ['greenhouse','lever','workday','linkedin','indeed','ashby'] },
+      department:     { label: 'Department',      type: 'text' },
+      company_size:   { label: 'Company Size',   type: 'select', options: ['1-50','51-200','201-500','501-1000','1001-5000','5001-10000','10000+'] },
+      ghost_rate:     { label: 'Ghost Rate %',   type: 'number' },
+      avg_response_days:{ label: 'Avg Response (days)', type: 'number' },
+      days_posted:    { label: 'Days Posted',    type: 'number' },
+      saved:          { label: 'Saved',          type: 'boolean' },
+      applied:        { label: 'Applied',        type: 'boolean' },
+    };
+    const OPS_TEXT    = ['contains','not contains','equals','starts with'];
+    const OPS_NUMBER  = ['=','≠','>','≥','<','≤'];
+    const OPS_SELECT  = ['is','is not'];
+    const OPS_BOOLEAN = ['is true','is false'];
+
+    let filterRules = [];
+    let savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+
+    function getOpsForField(fieldKey) {
+      const f = FILTER_FIELDS[fieldKey];
+      if (!f) return OPS_TEXT;
+      if (f.type === 'number') return OPS_NUMBER;
+      if (f.type === 'select') return OPS_SELECT;
+      if (f.type === 'boolean') return OPS_BOOLEAN;
+      return OPS_TEXT;
+    }
+
+    function renderFilterRules() {
+      const container = $('#filter-rules');
+      container.innerHTML = '';
+      filterRules.forEach((rule, i) => {
+        const row = document.createElement('div');
+        row.className = 'filter-rule';
+        if (i > 0) row.innerHTML += '<span class="rule-and">AND</span>';
+
+        // Field select
+        let fieldHtml = '<select class="rule-field" data-idx="' + i + '">';
+        Object.entries(FILTER_FIELDS).forEach(([k, v]) => {
+          fieldHtml += `<option value="${k}" ${rule.field === k ? 'selected' : ''}>${v.label}</option>`;
+        });
+        fieldHtml += '</select>';
+
+        // Operator select
+        const ops = getOpsForField(rule.field);
+        let opHtml = '<select class="rule-op" data-idx="' + i + '">';
+        ops.forEach(op => {
+          opHtml += `<option value="${op}" ${rule.op === op ? 'selected' : ''}>${op}</option>`;
+        });
+        opHtml += '</select>';
+
+        // Value input
+        const ft = FILTER_FIELDS[rule.field];
+        let valHtml = '';
+        if (ft?.type === 'boolean') {
+          valHtml = ''; // no value needed, operator IS the value
+        } else if (ft?.type === 'select') {
+          valHtml = '<select class="rule-val" data-idx="' + i + '">';
+          (ft.options || []).forEach(o => {
+            valHtml += `<option value="${o}" ${rule.value === o ? 'selected' : ''}>${o}</option>`;
+          });
+          valHtml += '</select>';
+        } else if (ft?.type === 'number') {
+          valHtml = `<input type="number" class="rule-val" data-idx="${i}" value="${rule.value || ''}" placeholder="Value">`;
+        } else {
+          valHtml = `<input type="text" class="rule-val" data-idx="${i}" value="${rule.value || ''}" placeholder="Value">`;
+        }
+
+        row.innerHTML += fieldHtml + opHtml + valHtml;
+        row.innerHTML += `<button class="rule-remove" data-idx="${i}">×</button>`;
+        container.appendChild(row);
+      });
+
+      // Show/hide toolbar buttons
+      $('#save-filter-btn').style.display = filterRules.length > 0 ? '' : 'none';
+      $('#clear-filters-btn').style.display = filterRules.length > 0 ? '' : 'none';
+
+      // Bind events
+      container.querySelectorAll('.rule-field').forEach(el => {
+        el.addEventListener('change', e => {
+          const idx = parseInt(e.target.dataset.idx);
+          filterRules[idx].field = e.target.value;
+          filterRules[idx].op = getOpsForField(e.target.value)[0];
+          filterRules[idx].value = '';
+          renderFilterRules();
+        });
+      });
+      container.querySelectorAll('.rule-op').forEach(el => {
+        el.addEventListener('change', e => {
+          filterRules[parseInt(e.target.dataset.idx)].op = e.target.value;
+        });
+      });
+      container.querySelectorAll('.rule-val').forEach(el => {
+        el.addEventListener('input', e => {
+          filterRules[parseInt(e.target.dataset.idx)].value = e.target.value;
+        });
+        el.addEventListener('change', e => {
+          filterRules[parseInt(e.target.dataset.idx)].value = e.target.value;
+        });
+      });
+      container.querySelectorAll('.rule-remove').forEach(el => {
+        el.addEventListener('click', e => {
+          filterRules.splice(parseInt(e.target.dataset.idx), 1);
+          renderFilterRules();
+        });
+      });
+    }
+
+    $('#add-filter-btn').addEventListener('click', () => {
+      filterRules.push({ field: 'title', op: 'contains', value: '' });
+      renderFilterRules();
+    });
+
+    $('#clear-filters-btn').addEventListener('click', () => {
+      filterRules = [];
+      renderFilterRules();
+    });
+
+    $('#save-filter-btn').addEventListener('click', () => {
+      const name = prompt('Name this filter set:');
+      if (!name) return;
+      savedFilters.push({ name, rules: JSON.parse(JSON.stringify(filterRules)) });
+      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      renderSavedFilters();
+    });
+
+    // Saved filters dropdown
+    $('#saved-filters-btn').addEventListener('click', () => {
+      $('#saved-filters-list').classList.toggle('open');
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.saved-filters-dd')) $('#saved-filters-list').classList.remove('open');
+    });
+
+    function renderSavedFilters() {
+      const list = $('#saved-filters-list');
+      if (savedFilters.length === 0) {
+        list.innerHTML = '<div class="saved-filter-item" style="color:var(--text-faint);font-size:12px;cursor:default;">No saved filters yet</div>';
+        return;
+      }
+      list.innerHTML = savedFilters.map((sf, i) =>
+        `<div class="saved-filter-item" data-idx="${i}">
+          <span class="sf-name">${sf.name}</span>
+          <span class="sf-del" data-delidx="${i}">×</span>
+        </div>`
+      ).join('');
+      list.querySelectorAll('.sf-name').forEach(el => {
+        el.parentElement.addEventListener('click', e => {
+          if (e.target.classList.contains('sf-del')) return;
+          const idx = parseInt(el.parentElement.dataset.idx);
+          filterRules = JSON.parse(JSON.stringify(savedFilters[idx].rules));
+          renderFilterRules();
+          list.classList.remove('open');
+        });
+      });
+      list.querySelectorAll('.sf-del').forEach(el => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          savedFilters.splice(parseInt(el.dataset.delidx), 1);
+          localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+          renderSavedFilters();
+        });
+      });
+    }
+    renderSavedFilters();
+
+    // Source pill helper
+    function sourcePill(source) {
+      const map = {
+        greenhouse: 'pill-greenhouse', lever: 'pill-lever', workday: 'pill-workday',
+        linkedin: 'pill-linkedin', indeed: 'pill-indeed', ashby: 'pill-ashby', career_page: 'pill-career'
+      };
+      const labels = {
+        greenhouse: 'GH', lever: 'Lever', workday: 'WD',
+        linkedin: 'LI', indeed: 'Indeed', ashby: 'Ashby', career_page: 'Direct'
+      };
+      return `<span class="source-pill ${map[source] || 'pill-career'}">${labels[source] || source}</span>`;
+    }
+
+    // Apply button helper — picks best source, styles accordingly
+    function applyButton(sources, urls) {
+      // Priority: greenhouse > lever > workday > ashby > career_page > indeed > linkedin
+      const priority = ['greenhouse','lever','workday','ashby','career_page','indeed','linkedin'];
+      let bestSource = 'linkedin';
+      let bestUrl = '#';
+      for (const p of priority) {
+        if (urls[p]) { bestSource = p; bestUrl = urls[p]; break; }
+      }
+      const isLI = bestSource === 'linkedin';
+      const cls = isLI ? 'apply-btn apply-btn-linkedin' : 'apply-btn apply-btn-default';
+      const label = isLI ? 'Apply on LI' : 'Apply';
+      return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation()">${label} →</a>`;
+    }
 
     // Pipeline add
     $('#p-add-btn').addEventListener('click', () => {
