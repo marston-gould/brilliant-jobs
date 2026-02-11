@@ -430,6 +430,134 @@
     .top-co-name { flex: 1; font-size: 14px; font-weight: 500; }
     .top-co-count { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
+    /* ======================== RESUMES ======================== */
+    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .resume-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px; transition: border-color 0.15s; position: relative;
+    }
+    .resume-card:hover { border-color: var(--border-hover); }
+    .resume-card.is-default { border-color: var(--accent); border-width: 2px; }
+    .resume-card .rc-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .resume-card .rc-meta { font-size: 12px; color: var(--text-faint); margin-bottom: 12px; }
+    .resume-card .rc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+    .resume-card .rc-tag {
+      font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
+      background: var(--accent-glow); color: var(--accent);
+    }
+    .resume-card .rc-actions { display: flex; gap: 8px; }
+    .resume-card .rc-default-badge {
+      position: absolute; top: 12px; right: 14px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      color: var(--accent); letter-spacing: 0.5px;
+    }
+    .resume-upload-zone {
+      border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px;
+      text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 20px;
+    }
+    .resume-upload-zone:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .resume-upload-zone h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .resume-upload-zone p { font-size: 12px; color: var(--text-faint); }
+    .resume-match-list { margin-top: 12px; }
+    .resume-match-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .resume-match-item:last-child { border-bottom: none; }
+    .resume-match-score {
+      font-family: var(--mono); font-size: 12px; font-weight: 700;
+      padding: 3px 8px; border-radius: 4px;
+    }
+    .match-high { background: var(--green-dim); color: var(--green); }
+    .match-med { background: var(--warm-dim); color: var(--warm); }
+    .match-low { background: var(--red-dim); color: var(--red); }
+
+    /* ======================== APPLICATIONS ======================== */
+    .app-flow-tabs {
+      display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px;
+    }
+    .app-flow-tab {
+      padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--text-faint);
+      cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+      transition: all 0.15s;
+    }
+    .app-flow-tab:hover { color: var(--text-dim); }
+    .app-flow-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .app-flow-panel { display: none; }
+    .app-flow-panel.active { display: block; }
+
+    .app-queue-table { width: 100%; border-collapse: collapse; }
+    .app-queue-table th {
+      text-align: left; font-size: 11px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+      padding: 10px 12px; border-bottom: 2px solid var(--border);
+    }
+    .app-queue-table td {
+      padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border);
+      color: var(--text-dim); vertical-align: middle;
+    }
+    .app-queue-table tr:hover td { background: var(--bg-hover); }
+
+    .app-mode-badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 6px; font-size: 11px; font-weight: 600;
+    }
+    .mode-manual { background: var(--accent-glow); color: var(--accent); }
+    .mode-auto { background: var(--green-dim); color: var(--green); }
+    .mode-notify { background: var(--purple-dim); color: var(--purple); }
+
+    .app-status-badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 6px; font-size: 11px; font-weight: 600;
+    }
+    .status-queued { background: var(--bg-input); color: var(--text-faint); }
+    .status-pending { background: var(--warm-dim); color: var(--warm); }
+    .status-sent { background: var(--accent-glow); color: var(--accent); }
+    .status-submitted { background: var(--green-dim); color: var(--green); }
+    .status-failed { background: var(--red-dim); color: var(--red); }
+
+    .notify-config {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    .notify-config-row {
+      display: flex; align-items: center; gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .notify-config-row:last-child { border-bottom: none; }
+    .notify-config-row label { flex: 1; color: var(--text-dim); }
+    .toggle-switch {
+      position: relative; width: 40px; height: 22px; cursor: pointer;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 11px; transition: all 0.2s;
+    }
+    .toggle-slider:before {
+      content: ''; position: absolute; width: 16px; height: 16px;
+      left: 2px; top: 2px; background: var(--text-faint);
+      border-radius: 50%; transition: all 0.2s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: var(--accent-glow); border-color: var(--accent);
+    }
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(18px); background: var(--accent);
+    }
+
+    .app-rule-card {
+      background: var(--bg-main); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 10px;
+    }
+    .app-rule-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .app-rule-header h4 { font-size: 13px; font-weight: 600; }
+    .app-rule-desc { font-size: 12px; color: var(--text-faint); line-height: 1.5; }
+
     /* ======================== AUTH GATE ======================== */
     .auth-gate {
       display: flex; align-items: center; justify-content: center;
@@ -492,6 +620,16 @@
           <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
           <span>Pipeline</span>
         </div>
+        <div class="nav-item" data-page="resumes">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+          <span>Resumes</span>
+          <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
+        </div>
+        <div class="nav-item" data-page="applications">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <span>Applications</span>
+          <div class="nav-badge" id="nav-app-count" style="display:none;">0</div>
+        </div>
 
         <div class="nav-section-label">Intelligence</div>
         <div class="nav-item" data-page="ghost">
@@ -508,7 +646,7 @@
         <div class="nav-user">
           <div class="nav-avatar" id="nav-avatar">?</div>
           <div class="nav-user-info">
-            <div class="nav-user-email" id="nav-email">user@email.com</div>
+            <div class="nav-user-email" id="nav-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="374244524577525a565e5b1954585a">[email&#160;protected]</a></div>
             <div class="nav-user-plan">Free Plan</div>
           </div>
         </div>
@@ -710,6 +848,254 @@
         </div>
       </div>
 
+      <!-- ============ RESUMES ============ -->
+      <div class="page" id="page-resumes">
+        <div class="page-header">
+          <h2>Resumes</h2>
+          <p>Upload, manage, and match resumes to job openings</p>
+        </div>
+        <div class="page-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Resumes</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-default">—</div><div class="stat-label">Default Resume</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-matched">0</div><div class="stat-label">Jobs Matched</div></div>
+          </div>
+
+          <div class="resume-upload-zone" id="resume-upload-zone">
+            <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
+            <h4>Drop resumes here or click to upload</h4>
+            <p>PDF, DOC, or DOCX — up to 5MB each. Upload multiple versions for different roles.</p>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div>
+                <div class="card-title" style="margin:0;">Your Resumes</div>
+                <div class="card-sub" style="margin:0;">Tag resumes by role type for automatic matching</div>
+              </div>
+            </div>
+            <div class="resume-grid" id="resume-grid">
+              <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
+                <h3>No resumes uploaded</h3>
+                <p>Upload your first resume to start matching it against job openings and enable auto-apply.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Resume-Job Match Scores <span class="badge-soon">Coming Soon</span></div>
+            <div class="card-sub">Predictive match scoring based on keywords, title, and company preferences</div>
+            <div class="resume-match-list" id="resume-match-list">
+              <div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px;">
+                Upload resumes and discover jobs to see match scores
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ APPLICATIONS ============ -->
+      <div class="page" id="page-applications">
+        <div class="page-header">
+          <h2>Applications</h2>
+          <p>Manage how jobs get applied to — manual, automatic, or via notification</p>
+        </div>
+        <div class="page-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
+            <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
+            <div class="stat-card"><div class="stat-val" id="a-submitted">0</div><div class="stat-label">Submitted</div></div>
+            <div class="stat-card"><div class="stat-val" id="a-failed">0</div><div class="stat-label">Failed</div></div>
+          </div>
+
+          <!-- Application mode tabs -->
+          <div class="app-flow-tabs">
+            <div class="app-flow-tab active" data-panel="queue">Queue</div>
+            <div class="app-flow-tab" data-panel="rules">Rules &amp; Settings</div>
+            <div class="app-flow-tab" data-panel="history">History</div>
+          </div>
+
+          <!-- QUEUE PANEL -->
+          <div class="app-flow-panel active" id="panel-queue">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin:0;">Application Queue</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="a-add-manual">+ Manual Add</button>
+                <button class="btn btn-primary btn-sm" id="a-process-queue" disabled>Process Queue</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="app-queue-table" id="app-queue-table">
+                <thead>
+                  <tr>
+                    <th style="width:28px;"><input type="checkbox" id="a-select-all"></th>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Added</th>
+                    <th style="width:60px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="app-queue-body">
+                  <tr>
+                    <td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                      <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">📬</div>
+                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
+                      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+                        Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RULES PANEL -->
+          <div class="app-flow-panel" id="panel-rules">
+            <div class="card" style="margin-bottom:20px;">
+              <div class="card-title">Default Application Mode</div>
+              <div class="card-sub">Controls how saved/matched jobs get processed</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button class="btn btn-sm app-mode-select active" data-mode="manual" style="border:2px solid var(--accent);">
+                  Manual — I review &amp; click Apply
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="notify">
+                  Notify — Send me email/SMS, I approve to submit
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto">
+                  Auto — Apply automatically when matched
+                </button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Notification Settings</div>
+              <div class="card-sub">Configure how you get notified about queued applications</div>
+              <div class="notify-config">
+                <div class="notify-config-row">
+                  <label>Email notifications</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notify-email" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notify-config-row">
+                  <label>SMS notifications</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notify-sms">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notify-config-row">
+                  <label>Notification email</label>
+                  <input type="email" id="notify-email-addr" class="save-filter-name" style="width:240px;" placeholder="your@email.com">
+                </div>
+                <div class="notify-config-row">
+                  <label>Phone for SMS</label>
+                  <input type="tel" id="notify-phone" class="save-filter-name" style="width:180px;" placeholder="+1 555-0123">
+                </div>
+                <div class="notify-config-row">
+                  <label>Batch digest (group notifications)</label>
+                  <select id="notify-batch" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                    <option value="instant">Instant — each job immediately</option>
+                    <option value="hourly">Hourly digest</option>
+                    <option value="daily" selected>Daily digest</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Auto-Apply Rules</div>
+              <div class="card-sub">When in Auto mode, jobs matching these rules are submitted without approval</div>
+              <div id="auto-rules-list">
+                <div class="app-rule-card">
+                  <div class="app-rule-header">
+                    <h4>High-match jobs at network companies</h4>
+                    <label class="toggle-switch">
+                      <input type="checkbox" class="rule-toggle" data-rule="high-match">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="app-rule-desc">Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection at the company</div>
+                </div>
+                <div class="app-rule-card">
+                  <div class="app-rule-header">
+                    <h4>Saved filter matches</h4>
+                    <label class="toggle-switch">
+                      <input type="checkbox" class="rule-toggle" data-rule="saved-filter">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="app-rule-desc">Auto-apply to new jobs matching any of your saved search filters</div>
+                </div>
+                <div class="app-rule-card">
+                  <div class="app-rule-header">
+                    <h4>Re-posts from ghosting companies</h4>
+                    <label class="toggle-switch">
+                      <input type="checkbox" class="rule-toggle" data-rule="repost">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="app-rule-desc">Auto-apply when a company re-posts a role you previously applied to (they may have lost your application)</div>
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="add-rule-btn" style="margin-top:12px;">+ Add Custom Rule</button>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Resume Assignment</div>
+              <div class="card-sub">Which resume gets sent for each application type</div>
+              <div class="notify-config">
+                <div class="notify-config-row">
+                  <label>Default resume for all applications</label>
+                  <select id="resume-assign-default" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                    <option value="">— Upload a resume first —</option>
+                  </select>
+                </div>
+                <div class="notify-config-row">
+                  <label>Auto-select best-match resume per job</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="resume-auto-match" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HISTORY PANEL -->
+          <div class="app-flow-panel" id="panel-history">
+            <div style="overflow-x:auto;">
+              <table class="app-queue-table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume Used</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="app-history-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No application history yet</div>
+                      <div style="font-size:12px;">Completed applications will appear here with full audit trail.</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ============ GHOST MONITOR ============ -->
       <div class="page" id="page-ghost">
         <div class="page-header">
@@ -780,7 +1166,7 @@
     </div>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1164,6 +1550,339 @@
       $('#p-active').textContent = parseInt($('#p-active').textContent || 0) + 1;
     });
 
+    // ============================================================
+    // RESUMES
+    // ============================================================
+    let resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+
+    function renderResumes() {
+      const grid = $('#resume-grid');
+      const countEl = $('#r-total');
+      const defaultEl = $('#r-default');
+      const navBadge = $('#nav-resume-count');
+
+      countEl.textContent = resumes.length;
+      if (navBadge && resumes.length > 0) {
+        navBadge.style.display = '';
+        navBadge.textContent = resumes.length;
+      }
+
+      const defaultResume = resumes.find(r => r.isDefault);
+      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 16) : '—';
+
+      // Update resume assignment dropdowns
+      const assignSelect = $('#resume-assign-default');
+      if (assignSelect) {
+        const current = assignSelect.value;
+        assignSelect.innerHTML = resumes.length === 0
+          ? '<option value="">— Upload a resume first —</option>'
+          : resumes.map(r => `<option value="${r.id}" ${r.isDefault ? 'selected' : ''}>${r.name}</option>`).join('');
+        if (current && resumes.find(r => r.id === current)) assignSelect.value = current;
+      }
+
+      if (resumes.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
+          <h3>No resumes uploaded</h3>
+          <p>Upload your first resume to start matching it against job openings and enable auto-apply.</p>
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = resumes.map((r, i) => `
+        <div class="resume-card ${r.isDefault ? 'is-default' : ''}">
+          ${r.isDefault ? '<div class="rc-default-badge">★ Default</div>' : ''}
+          <div class="rc-name">${r.name}</div>
+          <div class="rc-meta">${r.fileName} · ${r.size} · Uploaded ${r.uploadedAt}</div>
+          <div class="rc-tags">
+            ${(r.tags || []).map(t => `<span class="rc-tag">${t}</span>`).join('')}
+          </div>
+          <div class="rc-actions">
+            ${!r.isDefault ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})">Set Default</button>` : ''}
+            <button class="btn btn-secondary btn-sm" onclick="editResumeTags(${i})">Edit Tags</button>
+            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="color:var(--red);">Remove</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addResume(file) {
+      const id = 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      const sizeStr = file.size < 1024 * 1024
+        ? (file.size / 1024).toFixed(0) + ' KB'
+        : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      const resume = {
+        id,
+        name: file.name.replace(/\.(pdf|docx?|doc)$/i, ''),
+        fileName: file.name,
+        size: sizeStr,
+        isDefault: resumes.length === 0,
+        tags: [],
+        uploadedAt: new Date().toLocaleDateString()
+      };
+      resumes.push(resume);
+      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      renderResumes();
+    }
+
+    window.setDefaultResume = function(idx) {
+      resumes.forEach((r, i) => r.isDefault = (i === idx));
+      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      renderResumes();
+    };
+
+    window.editResumeTags = function(idx) {
+      const current = (resumes[idx].tags || []).join(', ');
+      const input = prompt('Tags (comma separated):\ne.g. SEO, Marketing Director, Technical', current);
+      if (input === null) return;
+      resumes[idx].tags = input.split(',').map(t => t.trim()).filter(Boolean);
+      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      renderResumes();
+    };
+
+    window.removeResume = function(idx) {
+      if (!confirm(`Remove "${resumes[idx].name}"?`)) return;
+      const wasDefault = resumes[idx].isDefault;
+      resumes.splice(idx, 1);
+      if (wasDefault && resumes.length > 0) resumes[0].isDefault = true;
+      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      renderResumes();
+    };
+
+    // Upload zone
+    const uploadZone = $('#resume-upload-zone');
+    const fileInput = $('#resume-file-input');
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--accent)'; });
+    uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.style.borderColor = '';
+      [...e.dataTransfer.files].forEach(f => {
+        if (/\.(pdf|docx?|doc)$/i.test(f.name)) addResume(f);
+      });
+    });
+    fileInput.addEventListener('change', () => {
+      [...fileInput.files].forEach(f => addResume(f));
+      fileInput.value = '';
+    });
+
+    renderResumes();
+
+    // ============================================================
+    // APPLICATIONS — Flow Management
+    // ============================================================
+    let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
+    let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+    let appMode = localStorage.getItem('bj_app_mode') || 'manual';
+
+    // Tab switching
+    $$('.app-flow-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        $$('.app-flow-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        $$('.app-flow-panel').forEach(p => p.classList.remove('active'));
+        $(`#panel-${tab.dataset.panel}`).classList.add('active');
+      });
+    });
+
+    // Mode selection
+    $$('.app-mode-select').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('.app-mode-select').forEach(b => {
+          b.classList.remove('active');
+          b.className = b.className.replace(/btn-primary/g, 'btn-secondary');
+          b.style.border = '';
+        });
+        btn.classList.add('active');
+        btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
+        btn.style.border = '2px solid var(--accent)';
+        appMode = btn.dataset.mode;
+        localStorage.setItem('bj_app_mode', appMode);
+      });
+    });
+
+    // Set active mode on load
+    $$('.app-mode-select').forEach(btn => {
+      if (btn.dataset.mode === appMode) {
+        btn.classList.add('active');
+        btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
+        btn.style.border = '2px solid var(--accent)';
+      } else {
+        btn.classList.remove('active');
+        btn.className = btn.className.replace(/btn-primary/g, 'btn-secondary');
+        btn.style.border = '';
+      }
+    });
+
+    function modeBadge(mode) {
+      const map = { manual: 'mode-manual', auto: 'mode-auto', notify: 'mode-notify' };
+      const labels = { manual: 'Manual', auto: 'Auto', notify: 'Notify' };
+      return `<span class="app-mode-badge ${map[mode] || 'mode-manual'}">${labels[mode] || mode}</span>`;
+    }
+
+    function statusBadge(status) {
+      const map = { queued: 'status-queued', pending: 'status-pending', sent: 'status-sent', submitted: 'status-submitted', failed: 'status-failed' };
+      const labels = { queued: 'Queued', pending: 'Pending Approval', sent: 'Notification Sent', submitted: 'Submitted', failed: 'Failed' };
+      return `<span class="app-status-badge ${map[status] || 'status-queued'}">${labels[status] || status}</span>`;
+    }
+
+    function renderAppQueue() {
+      const tbody = $('#app-queue-body');
+      const navBadge = $('#nav-app-count');
+
+      // Update stat cards
+      const queued = appQueue.filter(a => a.status === 'queued').length;
+      const pending = appQueue.filter(a => a.status === 'pending' || a.status === 'sent').length;
+      const submitted = [...appQueue, ...appHistory].filter(a => a.status === 'submitted').length;
+      const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
+      $('#a-queued').textContent = queued;
+      $('#a-pending').textContent = pending;
+      $('#a-submitted').textContent = submitted;
+      $('#a-failed').textContent = failed;
+
+      if (navBadge && appQueue.length > 0) {
+        navBadge.style.display = '';
+        navBadge.textContent = appQueue.length;
+      }
+
+      // Enable process button if items exist
+      const processBtn = $('#a-process-queue');
+      processBtn.disabled = appQueue.filter(a => a.status === 'queued').length === 0;
+
+      if (appQueue.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+          <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">📬</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
+          <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+            Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
+          </div>
+        </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = appQueue.map((app, i) => `
+        <tr>
+          <td><input type="checkbox" class="a-row-check" data-idx="${i}"></td>
+          <td style="font-weight:600;color:var(--text);">${app.jobTitle}</td>
+          <td>${app.company}</td>
+          <td style="font-size:12px;">${app.resumeName || '—'}</td>
+          <td>${modeBadge(app.mode)}</td>
+          <td>${statusBadge(app.status)}</td>
+          <td style="font-size:12px;color:var(--text-faint);">${app.addedAt}</td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="removeFromQueue(${i})" style="padding:4px 8px;font-size:11px;color:var(--red);">✕</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAppHistory() {
+      const tbody = $('#app-history-body');
+      if (appHistory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+          <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No application history yet</div>
+          <div style="font-size:12px;">Completed applications will appear here with full audit trail.</div>
+        </td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = appHistory.map(app => `
+        <tr>
+          <td style="font-weight:600;color:var(--text);">${app.jobTitle}</td>
+          <td>${app.company}</td>
+          <td style="font-size:12px;">${app.resumeName || '—'}</td>
+          <td>${modeBadge(app.mode)}</td>
+          <td>${statusBadge(app.status)}</td>
+          <td style="font-size:12px;color:var(--text-faint);">${app.submittedAt || '—'}</td>
+          <td style="font-size:12px;">${app.source || '—'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Manual add to queue
+    $('#a-add-manual').addEventListener('click', () => {
+      const title = prompt('Job title:');
+      if (!title) return;
+      const company = prompt('Company:');
+      if (!company) return;
+      const url = prompt('Application URL (optional):') || '';
+
+      const defaultResume = resumes.find(r => r.isDefault);
+      appQueue.push({
+        id: 'app_' + Date.now(),
+        jobTitle: title,
+        company: company,
+        url: url,
+        resumeName: defaultResume ? defaultResume.name : '',
+        resumeId: defaultResume ? defaultResume.id : '',
+        mode: appMode,
+        status: appMode === 'auto' ? 'queued' : (appMode === 'notify' ? 'pending' : 'queued'),
+        addedAt: new Date().toLocaleDateString(),
+        source: 'manual'
+      });
+      localStorage.setItem('bj_app_queue', JSON.stringify(appQueue));
+      renderAppQueue();
+    });
+
+    // Process queue — simulate sending notifications or submitting
+    $('#a-process-queue').addEventListener('click', () => {
+      let processed = 0;
+      appQueue.forEach(app => {
+        if (app.status !== 'queued') return;
+        if (app.mode === 'auto') {
+          app.status = 'submitted';
+          app.submittedAt = new Date().toLocaleDateString();
+          processed++;
+        } else if (app.mode === 'notify') {
+          app.status = 'sent';
+          processed++;
+        } else {
+          // Manual — mark as pending user action
+          app.status = 'pending';
+          processed++;
+        }
+      });
+
+      // Move submitted ones to history
+      const submitted = appQueue.filter(a => a.status === 'submitted');
+      appHistory.push(...submitted);
+      appQueue = appQueue.filter(a => a.status !== 'submitted');
+
+      localStorage.setItem('bj_app_queue', JSON.stringify(appQueue));
+      localStorage.setItem('bj_app_history', JSON.stringify(appHistory));
+      renderAppQueue();
+      renderAppHistory();
+
+      if (processed > 0) {
+        alert(`Processed ${processed} application(s).\n\n` +
+          (submitted.length > 0 ? `${submitted.length} auto-submitted.\n` : '') +
+          (appQueue.filter(a => a.status === 'sent').length > 0 ? `Notifications sent — awaiting your approval.\n` : '') +
+          (appQueue.filter(a => a.status === 'pending').length > 0 ? `Manual applications ready for you to review.` : '')
+        );
+      }
+    });
+
+    // Remove from queue
+    window.removeFromQueue = function(idx) {
+      appQueue.splice(idx, 1);
+      localStorage.setItem('bj_app_queue', JSON.stringify(appQueue));
+      renderAppQueue();
+    };
+
+    // Select all checkbox
+    $('#a-select-all')?.addEventListener('change', e => {
+      $$('.a-row-check').forEach(cb => cb.checked = e.target.checked);
+    });
+
+    // Set notification email from user
+    if (currentUser?.email) {
+      const emailInput = $('#notify-email-addr');
+      if (emailInput && !emailInput.value) emailInput.value = currentUser.email;
+    }
+
+    renderAppQueue();
+    renderAppHistory();
+
     // Gmail
     $('#gmail-connect-btn').addEventListener('click', () => {
       alert('Gmail integration coming soon.\n\nThis will use Gmail OAuth to auto-detect responses from companies you\'ve applied to.');
@@ -1215,11 +1934,4 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `brilliant-jobs-export-${new Date().toISOString().slice(0,10)}.csv`;
         a.click(); URL.revokeObjectURL(a.href);
-      } catch (e) { alert('Export failed: ' + e.message); }
-    });
-
-    // Logout
-    $('#logout-btn').addEventListener('click', async () => { await sb.auth.signOut(); window.location.href = '/'; });
-  </script>
-</body>
-</html>
+    
