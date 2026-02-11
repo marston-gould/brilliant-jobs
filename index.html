@@ -827,8 +827,4 @@
     const obs = new IntersectionObserver(entries => {
       entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
     }, { threshold: 0.1 });
-    $$('.fade-up').forEach(el => obs.observe(el));
-
-    $$('a[href^="#"]').forEach(link => {
-      link.addEventListener('click', e => {
-        const t = document.querySelector
+    $$('.fade-up').forE
