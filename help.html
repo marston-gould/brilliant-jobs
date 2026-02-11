@@ -1,253 +1,104 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Brilliant Jobs — Help &amp; Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg-main: #f5f6fa;
+      --bg-card: #ffffff;
+      --border: #e2e4ed;
+      --text: #1a1d2e;
+      --text-dim: #5c6277;
+      --text-faint: #9298ae;
+      --accent: #3d7eff;
+      --accent-hover: #2b6aeb;
+      --warm: #f59e0b;
+      --sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0f0f1a;
-      color: #c8ccd4;
+      font-family: var(--sans);
+      background: var(--bg-main);
+      color: var(--text);
+      padding: 16px;
+      font-size: 13px;
       line-height: 1.6;
-    }
-
-    /* Nav */
-    .nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 24px;
-      border-bottom: 1px solid #2a2d42;
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .nav a { color: #4da3ff; text-decoration: none; font-size: 13px; }
-    .nav a:hover { text-decoration: underline; }
-    .nav .logo { font-size: 16px; font-weight: 700; color: #fff; }
-
-    /* Content */
-    .content {
-      max-width: 680px;
-      margin: 0 auto;
-      padding: 32px 24px 64px;
+      -webkit-font-smoothing: antialiased;
     }
     h1 {
-      font-size: 28px; color: #fff; margin-bottom: 8px;
+      font-size: 16px; font-weight: 700; color: var(--text);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
     }
-    .subtitle {
-      font-size: 15px; color: #6b7080; margin-bottom: 32px;
+    h1 .mark {
+      width: 22px; height: 22px; background: var(--accent); border-radius: 5px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0;
     }
     h2 {
-      font-size: 18px; color: #fff; margin: 36px 0 12px;
-      padding-bottom: 6px; border-bottom: 1px solid #1e2035;
+      font-size: 11px; color: var(--accent); margin: 18px 0 8px;
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
     }
-    h3 {
-      font-size: 14px; color: #4da3ff; margin: 20px 0 8px;
-      text-transform: uppercase; letter-spacing: 0.5px;
-    }
-    p { margin-bottom: 12px; font-size: 14px; }
-    a { color: #4da3ff; }
-
-    .steps {
-      counter-reset: step;
-      list-style: none;
-      margin: 16px 0;
-    }
-    .steps li {
-      counter-increment: step;
-      display: flex;
-      gap: 14px;
-      margin-bottom: 16px;
-      font-size: 14px;
-    }
-    .steps li::before {
-      content: counter(step);
-      flex-shrink: 0;
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      background: #0a66c2;
-      color: #fff;
-      font-size: 12px; font-weight: 700;
+    p { margin-bottom: 8px; color: var(--text-dim); }
+    .step { display: flex; gap: 10px; margin-bottom: 10px; }
+    .step-num {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 11px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
     }
-    .steps li strong { color: #fff; }
-
+    .step-text { color: var(--text-dim); }
+    .step-text strong { color: var(--text); }
     .tip {
-      background: #1a1d30;
-      border-left: 3px solid #f39c12;
-      padding: 12px 14px;
-      margin: 14px 0;
-      border-radius: 0 6px 6px 0;
-      font-size: 13px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; margin: 10px 0; font-size: 12px; color: var(--text-dim);
     }
-    .tip strong { color: #f39c12; }
-
-    .warning {
-      background: rgba(231, 76, 60, 0.1);
-      border-left: 3px solid #e74c3c;
-      padding: 12px 14px;
-      margin: 14px 0;
-      border-radius: 0 6px 6px 0;
-      font-size: 13px;
-    }
-    .warning strong { color: #e74c3c; }
-
-    .faq-q {
-      font-size: 14px; font-weight: 600; color: #fff;
-      margin: 20px 0 6px;
-    }
-    .faq-a {
-      font-size: 13px; color: #8892b0; margin-bottom: 16px;
-    }
-
-    table {
-      width: 100%; border-collapse: collapse; margin: 14px 0;
-      font-size: 13px;
-    }
-    th {
-      text-align: left; color: #6b7080; font-size: 11px;
-      text-transform: uppercase; letter-spacing: 0.5px;
-      padding: 8px 10px; border-bottom: 1px solid #2a2d42;
-    }
-    td {
-      padding: 8px 10px; border-bottom: 1px solid #1a1d30;
-    }
-
-    .footer {
-      max-width: 680px;
-      margin: 0 auto;
-      padding: 24px;
-      border-top: 1px solid #1e2035;
-      font-size: 12px;
-      color: #444;
-      text-align: center;
-    }
+    .tip strong { color: #b47a08; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; color: var(--accent-hover); }
   </style>
 </head>
 <body>
+  <h1><span class="mark">B</span> Brilliant Jobs — Quick Start</h1>
 
-  <div class="nav">
-    <span class="logo">💼 Brilliant Jobs</span>
-    <a href="/">← Back to Login</a>
+  <h2>How It Works</h2>
+  <p>Brilliant Jobs discovers job opportunities through your professional network. It scans your connections, finds where they work, and helps you find open positions at those companies.</p>
+
+  <h2>Step-by-Step</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-text"><strong>Harvest</strong> — Collects your connections list. Click "Harvest Connections" while on the networking site. Takes a few minutes for large networks.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-text"><strong>Scan</strong> — Visits each connection's profile to extract their work history. Runs automatically at a safe pace (40-90 profiles/day) with built-in breaks.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-text"><strong>Jobs</strong> — Navigate to a job search page and click "Scrape All Pages" to collect listings. Works on search results pages.</div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-text"><strong>Data</strong> — Export your connections and discovered companies as TSV files for analysis.</div>
   </div>
 
-  <div class="content">
-    <h1>Help &amp; Documentation</h1>
-    <p class="subtitle">Everything you need to get started finding jobs through your professional network.</p>
+  <h2>Tips</h2>
 
-    <!-- GETTING STARTED -->
-    <h2>Getting Started</h2>
-
-    <h3>Installation</h3>
-    <ol class="steps">
-      <li><strong>Create an account</strong> at <a href="/">brilliantjobs.app</a> with your email, password, and professional profile URL. Your account will be reviewed before activation.</li>
-      <li><strong>Install the extension</strong> — download the Chrome extension and load it as an unpacked extension via <code>chrome://extensions</code> with Developer Mode enabled.</li>
-      <li><strong>Log in</strong> — open the extension side panel and log in with your email and password. The panel unlocks once your account is approved.</li>
-    </ol>
-
-    <div class="tip">
-      <strong>Tip:</strong> Pin the extension to your toolbar for easy access. You'll see a blue "B" icon that fills solid when you're on a networking page.
-    </div>
-
-    <!-- HOW IT WORKS -->
-    <h2>How It Works</h2>
-
-    <p>Brilliant Jobs helps you discover where your professional connections work, so you can find job opportunities at companies where you already have an inside contact. Here's the workflow:</p>
-
-    <h3>Step 1: Harvest Connections</h3>
-    <p>Go to the <strong>Harvest</strong> tab and click "Harvest Connections." The tool navigates to your connections page and collects everyone in your network. For large networks (2,000+), this takes a few minutes as it clicks through all the pages.</p>
-
-    <p>The harvester stores names, profile slugs, and any visible company information. You can re-run it anytime to pick up new connections — it won't overwrite profiles that have already been scanned.</p>
-
-    <h3>Step 2: Scan Profiles</h3>
-    <p>The <strong>Scan</strong> tab visits each connection's profile to extract their full work history — current and past employers, titles, and company pages. This is where the real data comes from.</p>
-
-    <p>Scanning runs automatically at a safe, metered pace:</p>
-
-    <table>
-      <tr><th>Setting</th><th>Range</th></tr>
-      <tr><td>Profiles per day</td><td>40 – 90 (randomized daily)</td></tr>
-      <tr><td>Profiles between breaks</td><td>8 – 25</td></tr>
-      <tr><td>Time between visits</td><td>15 – 45 seconds</td></tr>
-      <tr><td>Break duration</td><td>1 – 8 minutes</td></tr>
-    </table>
-
-    <div class="tip">
-      <strong>Why so slow?</strong> Professional networking platforms monitor automated activity. Randomized pacing with realistic delays mimics natural browsing behavior. For a network of 2,500 connections, expect scanning to take about 4-6 weeks.
-    </div>
-
-    <p>The scanner picks up automatically each day — no need to restart it. You'll see a progress indicator showing visited/queued counts, today's progress, and an estimated completion date.</p>
-
-    <h3>Step 3: Search Jobs</h3>
-    <p>The <strong>Jobs</strong> tab scrapes job listings from search results pages. Navigate to a job search, then click "Scrape All Pages" to collect all listings across every page of results. Export as TSV for analysis.</p>
-
-    <h3>Step 4: Export Data</h3>
-    <p>The <strong>Data</strong> tab lets you export everything as TSV files — connections with their work history, and all discovered companies. Open in Excel or Google Sheets for filtering and analysis.</p>
-
-    <!-- FEATURES -->
-    <h2>Features</h2>
-
-    <h3>Smart Resuming</h3>
-    <p>The scanner remembers exactly where it left off. If you close Chrome, restart your computer, or walk away for a few days, it resumes automatically the next time you open the browser. The daily limit resets each morning between 8-10 AM.</p>
-
-    <h3>Chrome Notifications</h3>
-    <p>You'll receive desktop notifications when:</p>
-    <ul class="steps">
-      <li>A new day starts and the scanner resumes</li>
-      <li>The daily profile limit is reached</li>
-      <li>All profiles have been scanned</li>
-    </ul>
-
-    <h3>Dynamic Icon</h3>
-    <p>The toolbar icon changes based on your active tab. Solid blue "B" when you're on a networking page, outline "B" on other sites. A quick visual indicator that the extension is context-aware.</p>
-
-    <!-- ACCOUNT & SECURITY -->
-    <h2>Account &amp; Security</h2>
-
-    <h3>Why do we ask for your profile URL?</h3>
-    <p>We verify your professional profile during signup to prevent abuse and ensure our users are real professionals. Your profile URL is checked during the approval process and is never shared.</p>
-
-    <h3>What data do we store?</h3>
-    <p>Your connection names, profile slugs, headlines, and work history (companies, titles) are stored in our database. This data is tied to your account and is only accessible by you. We do not sell or share your data.</p>
-
-    <h3>Password Reset</h3>
-    <p>If you forget your password, use the "Forgot your password?" link on the login page. You can also reset it from the <a href="/">main login page</a>.</p>
-
-    <!-- TROUBLESHOOTING -->
-    <h2>Troubleshooting</h2>
-
-    <div class="faq-q">The scanner shows "0 in queue" but I have thousands of connections</div>
-    <div class="faq-a">You need to run Harvest first (Tab ①) before scanning. The scanner only processes connections that have been harvested.</div>
-
-    <div class="faq-q">Harvest is stuck at a small number and not finding more connections</div>
-    <div class="faq-a">Make sure you're on the correct connections page and that the page is fully loaded. The harvester clicks "Load More" to paginate through your full list.</div>
-
-    <div class="faq-q">The scanner stopped and says "Done for today"</div>
-    <div class="faq-a">This is normal. The scanner has a randomized daily limit (40-90 profiles) to stay under the radar. It will automatically resume the next morning.</div>
-
-    <div class="faq-q">I see "Invalid login credentials" in the extension</div>
-    <div class="faq-a">Make sure you've confirmed your email (check for a confirmation link in your inbox) and that your account has been approved. If you've forgotten your password, reset it at brilliantjobs.app.</div>
-
-    <div class="faq-q">The extension shows "Pending Approval"</div>
-    <div class="faq-a">New accounts require manual approval. This typically happens within 24 hours. If it's been longer, contact us.</div>
-
-    <div class="faq-q">My data disappeared after reinstalling the extension</div>
-    <div class="faq-a">Your data is stored in the cloud and tied to your account. Log in again after reinstalling and your counts will reappear. Local state (like today's visit count) resets on reinstall, but no data is lost.</div>
-
-    <div class="warning">
-      <strong>Important:</strong> Never run multiple scanning tools simultaneously on the same networking platform. This significantly increases the risk of account restrictions.
-    </div>
-
-    <!-- CONTACT -->
-    <h2>Contact &amp; Support</h2>
-    <p>Have a question not covered here? Email us at <strong>support@brilliantjobs.app</strong> and we'll get back to you within 24 hours.</p>
+  <div class="tip">
+    <strong>Scanner pacing:</strong> The scanner deliberately runs slowly with randomized delays and daily limits to stay under the radar. Don't worry if it takes several days — this is by design.
+  </div>
+  <div class="tip">
+    <strong>Re-harvesting:</strong> You can run Harvest again anytime to pick up new connections. It won't overwrite data from profiles that have already been scanned.
+  </div>
+  <div class="tip">
+    <strong>Keep a tab open:</strong> The scanner needs a browser tab available to visit profiles. It will create one if needed, but keeping one open helps.
   </div>
 
-  <div class="footer">
-    © 2026 Brilliant Jobs. All rights reserved.
-  </div>
-
+  <p style="margin-top: 20px; font-size: 11px; color: var(--text-faint);">
+    Full documentation: <a href="https://brilliantjobs.app/help" target="_blank">brilliantjobs.app/help</a>
+  </p>
 </body>
 </html>
