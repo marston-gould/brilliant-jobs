@@ -1934,4 +1934,15 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `brilliant-jobs-export-${new Date().toISOString().slice(0,10)}.csv`;
         a.click(); URL.revokeObjectURL(a.href);
+      } catch (e) { alert('Export failed: ' + e.message); }
+    });
+
+    // Logout
+    $('#logout-btn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>
     
