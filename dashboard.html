@@ -2260,12 +2260,33 @@
       // Load global tuning settings
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-      // WHAT — title ilike (AND across pills, OR within)
+      // WHAT — title matching with word-boundary awareness
+      // For each term, match: start of title + term, space before term, hyphen before term, or exact term
+      // This prevents "search" from matching "research" while still matching "search engineer", "paid search", etc.
       for (const pill of w) {
         if (pill.values.length === 1) {
-          query = query.ilike('title', `%${pill.values[0]}%`);
+          const t = pill.values[0];
+          // Match word boundary: start, space, hyphen, slash, or paren before the term
+          query = query.or([
+            `title.ilike.${t}%`,         // starts with term
+            `title.ilike.% ${t}%`,       // space before
+            `title.ilike.%- ${t}%`,      // hyphen-space before (not really needed but safe)
+            `title.ilike.%-${t}%`,       // hyphen before
+            `title.ilike.%/${t}%`,       // slash before
+            `title.ilike.%(${t}%`,       // paren before
+            `title.ilike.%, ${t}%`,      // comma-space before
+          ].join(','));
         } else {
-          query = query.or(pill.values.map(v => `title.ilike.%${v}%`).join(','));
+          // OR across values within the pill — each with word boundary
+          const clauses = pill.values.flatMap(v => [
+            `title.ilike.${v}%`,
+            `title.ilike.% ${v}%`,
+            `title.ilike.%-${v}%`,
+            `title.ilike.%/${v}%`,
+            `title.ilike.%(${v}%`,
+            `title.ilike.%, ${v}%`,
+          ]);
+          query = query.or(clauses.join(','));
         }
       }
 
