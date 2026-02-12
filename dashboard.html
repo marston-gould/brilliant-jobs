@@ -652,7 +652,7 @@
         <div class="nav-user">
           <div class="nav-avatar" id="nav-avatar">?</div>
           <div class="nav-user-info">
-            <div class="nav-user-email" id="nav-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="057076607745607d64687569602b666a68">[email&#160;protected]</a></div>
+            <div class="nav-user-email" id="nav-email">loading...</div>
             <div class="nav-user-plan">Free Plan</div>
           </div>
         </div>
@@ -1186,6 +1186,7 @@
     </div>
   </div>
 
+  <script>
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1914,10 +1915,7 @@
         $('#st-connections').textContent = (conn.count || 0).toLocaleString();
         const scanned = await sb.from('connections').select('id', { count: 'exact', head: true }).eq('visit_status', 'completed');
         $('#st-scanned').textContent = (scanned.count || 0).toLocaleString();
-        const comp = await sb.from('companies').select('id', { count: 'exact', head: true });
-        $('#st-companies').textContent = (comp.count || 0).toLocaleString();
-        const { data: topCos } = await sb.from('companies').select('company_name').not('company_name', 'is', null).limit(500);
-        if (topCos?.length > 0) {
+        const comp = await sb.from('companies').select('id', { count: 'exact', head: pCos?.length > 0) {
           const counts = {};
           topCos.forEach(c => { const n = c.company_name?.trim(); if (n && n.length > 1) counts[n] = (counts[n] || 0) + 1; });
           const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
@@ -1953,4 +1951,15 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `brilliant-jobs-export-${new Date().toISOString().slice(0,10)}.csv`;
         a.click(); URL.revokeObjectURL(a.href);
-      } catch (e) { al
+      } catch (e) { alert('Export failed: ' + e.message); }
+    });
+
+    // Logout
+    $('#logout-btn').addEventListener('click', async () => {
+      await sb.auth.signOut();
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>
+    
