@@ -259,7 +259,6 @@
     .qb-pill.location-pill { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
     .qb-pill.location-pill .qb-pill-text { color: #f59e0b; }
     .qb-pill.location-pill .qb-pill-remove { color: rgba(245,158,11,0.4); border-left-color: rgba(245,158,11,0.15); }
-    .qb-pill.location-pill .qb-pill-text::before { content: '📍 '; }
     .qb-pill.location-pill .pill-radius {
       font-size: 10px; opacity: 0.7; margin-left: 4px; font-weight: 400;
     }
@@ -850,8 +849,22 @@
           </div>
           <div class="qb-row">
             <label class="qb-row-label">How Much</label>
-            <div class="query-builder" id="query-builder-pay">
-              <input type="text" class="qb-input" id="qb-input-pay" placeholder="Salary — e.g. $150k+, $80k-$120k, $100k minimum">
+            <div class="qb-salary-row">
+              <div class="qb-salary-field">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
+              </div>
+              <span class="qb-salary-sep">to</span>
+              <div class="qb-salary-field">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
+              </div>
+              <button class="btn btn-sm btn-primary" id="qb-pay-apply" style="padding:8px 14px;white-space:nowrap;">Apply</button>
+            </div>
+          </div>
+          <div class="qb-row" id="qb-pay-pills-row" style="display:none;">
+            <label class="qb-row-label"></label>
+            <div class="query-builder" id="query-builder-pay" style="min-height:auto;padding:6px 12px;">
             </div>
           </div>
           <div class="qb-hint">
@@ -1491,7 +1504,7 @@
       renderPillsFor(wherePills, '#query-builder-where', '#qb-input-where', true, '');
       renderPillsFor(whenPills, '#query-builder-when', '#qb-input-when', false, 'when-pill');
       renderPillsFor(whoPills, '#query-builder-who', '#qb-input-who', false, 'who-pill');
-      renderPillsFor(payPills, '#query-builder-pay', '#qb-input-pay', false, 'pay-pill');
+      renderPayPills();
 
       // Show/hide toolbar
       const hasAny = allPills() > 0;
@@ -1522,7 +1535,7 @@
       return true;
     }
 
-    const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay'];
+    const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
 
     function focusNextInput(currentId) {
       const idx = qbInputOrder.indexOf(currentId);
@@ -1685,28 +1698,59 @@
     });
 
     // Search within saved filters
-    // Input handling — Pay row
-    const qbInputPay = $('#qb-input-pay');
-    qbInputPay.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ',') {
-        e.preventDefault();
-        commitPill(qbInputPay, payPills, raw => ({ values: [raw], type: 'pay' }));
-      } else if (e.key === 'Tab') {
-        if (qbInputPay.value.trim()) {
-          e.preventDefault();
-          commitPill(qbInputPay, payPills, raw => ({ values: [raw], type: 'pay' }));
-        }
-      } else if (e.key === 'Backspace' && qbInputPay.value === '' && payPills.length > 0) {
-        payPills.pop();
-        renderAllPills();
-      }
+    // Input handling — Pay row (min/max → pill)
+    function parseSalaryVal(val) {
+      if (!val) return '';
+      let clean = val.replace(/[\$\s,]/g, '').trim();
+      const kMatch = clean.match(/^(\d+)k$/i);
+      if (kMatch) return String(parseInt(kMatch[1]) * 1000);
+      const num = parseInt(clean.replace(/[^0-9]/g, ''));
+      return isNaN(num) ? '' : String(num);
+    }
+    function fmtSalary(v) {
+      if (!v) return '';
+      const n = parseInt(v);
+      if (isNaN(n)) return v;
+      return n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + n;
+    }
+    function applyPayFilter() {
+      const minRaw = parseSalaryVal($('#qb-input-pay-min').value);
+      const maxRaw = parseSalaryVal($('#qb-input-pay-max').value);
+      if (!minRaw && !maxRaw) return;
+      const label = minRaw && maxRaw ? `${fmtSalary(minRaw)} – ${fmtSalary(maxRaw)}`
+        : minRaw ? `${fmtSalary(minRaw)}+` : `Up to ${fmtSalary(maxRaw)}`;
+      // Replace existing pay pill or add new one
+      payPills = [{ values: [label], type: 'pay', min: minRaw, max: maxRaw }];
+      $('#qb-input-pay-min').value = '';
+      $('#qb-input-pay-max').value = '';
+      renderAllPills();
+      renderPayPills();
+    }
+    function renderPayPills() {
+      const row = $('#qb-pay-pills-row');
+      const container = $('#query-builder-pay');
+      container.innerHTML = '';
+      if (payPills.length === 0) { row.style.display = 'none'; return; }
+      row.style.display = '';
+      payPills.forEach((pill, i) => {
+        const el = document.createElement('span');
+        el.className = 'qb-pill pay-pill';
+        el.innerHTML = `<span class="qb-pill-text">${pill.values[0]}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
+        el.querySelector('.qb-pill-remove').addEventListener('click', () => {
+          payPills.splice(i, 1);
+          renderAllPills();
+          renderPayPills();
+        });
+        container.appendChild(el);
+      });
+    }
+    $('#qb-pay-apply').addEventListener('click', applyPayFilter);
+    $('#qb-input-pay-min').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); if ($('#qb-input-pay-max').value || $('#qb-input-pay-min').value) applyPayFilter(); else $('#qb-input-pay-max').focus(); }
+      if (e.key === 'Tab' && !e.shiftKey && !$('#qb-input-pay-max').value && $('#qb-input-pay-min').value) { /* let tab go to max */ }
     });
-    qbInputPay.addEventListener('blur', () => {
-      commitPill(qbInputPay, payPills, raw => ({ values: [raw], type: 'pay' }));
-    });
-    $('#query-builder-pay').addEventListener('click', e => {
-      if (e.target.closest('.qb-pill')) return;
-      qbInputPay.focus();
+    $('#qb-input-pay-max').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); applyPayFilter(); }
     });
 
     $('#sf-search').addEventListener('input', () => renderSavedFilters());
@@ -1847,6 +1891,7 @@
           whenPills = JSON.parse(JSON.stringify(sf.whenPills || []));
           whoPills = JSON.parse(JSON.stringify(sf.whoPills || []));
           payPills = JSON.parse(JSON.stringify(sf.payPills || []));
+          renderPayPills();
           savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
