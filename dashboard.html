@@ -2554,7 +2554,8 @@
           saveBtn = isSaved
             ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Saved</button>`
             : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Save</button>`;
-          applyBtn = applyButton(['greenhouse'], { greenhouse: job.url }, job.greenhouse_id);
+          const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
+          applyBtn = applyButton(['greenhouse'], { greenhouse: jobUrl }, job.greenhouse_id);
         }
 
         // Filter number badges
@@ -2607,42 +2608,44 @@
       const footerEl = $('#job-modal-footer');
       const extLink = $('#job-modal-external');
 
-      // Show modal immediately with loading state
+      // Look up from cached results — instant, no extra fetch
+      let job = allJobs.find(j => j.greenhouse_id === jobId);
+      if (!job) {
+        // Fallback: quick fetch just this one row
+        const { data } = await sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single();
+        job = data;
+      }
+
+      // Show modal
       overlay.style.display = 'flex';
-      titleEl.textContent = 'Loading…';
-      metaEl.textContent = '';
-      bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading job details…</div>';
-      footerEl.innerHTML = '';
       document.body.style.overflow = 'hidden';
 
-      // Look up from cached results first
-      let job = allJobs.find(j => j.greenhouse_id === jobId);
-
-      // If no content field or not found, fetch from Supabase
-      if (!job || !job.content) {
-        const { data } = await sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single();
-        if (data) job = data;
-      }
-
       if (!job) {
-        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Job not found.</div>';
+        titleEl.textContent = 'Job not found';
+        metaEl.textContent = '';
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">This job could not be loaded.</div>';
+        footerEl.innerHTML = '<button class="job-modal-close-btn" onclick="closeJobModal()">Close</button>';
+        extLink.href = '#';
         return;
       }
+
+      // Build proper URL
+      const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
 
       // Populate header
       titleEl.textContent = job.title || 'Untitled';
       const metaParts = [job.company_name, job.location].filter(Boolean);
       if (job.department) metaParts.push(job.department);
-      metaEl.textContent = metaParts.join('  ·  ');
-      extLink.href = job.url || '#';
+      metaEl.textContent = metaParts.join('  \u00b7  ');
+      extLink.href = jobUrl;
 
-      // Populate body with job content
+      // Populate body
       if (job.content) {
         bodyEl.innerHTML = job.content;
       } else if (job.description) {
         bodyEl.innerHTML = job.description;
       } else {
-        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">No job description available. Click "Open on ATS" to view on the company site.</div>';
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--text-faint);margin-bottom:16px;">Job description not yet scraped for this listing.</div><a href="' + jobUrl + '" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration:none;">View Full Job Spec on ATS \u2197</a></div>';
       }
 
       // Footer with action buttons — all sync back to feed
@@ -2650,19 +2653,20 @@
       const isApplied = appliedJobIds.includes(jobId);
       let footerHtml = '';
       if (isApplied) {
-        footerHtml += '<span class="job-action-btn applied-btn">Applied ✓</span>';
+        footerHtml += '<span class="job-action-btn applied-btn">Applied \u2713</span>';
       } else {
-        footerHtml += `<button class="apply-btn apply-btn-default" onclick="modalApply('${jobId}', '${(job.url||'').replace(/'/g,"\\'")}')" style="padding:6px 16px;font-size:12px;">Apply →</button>`;
+        footerHtml += '<button class="apply-btn apply-btn-default" onclick="modalApply(\'' + jobId + '\', \'' + jobUrl.replace(/'/g, "\\'") + '\')" style="padding:6px 16px;font-size:12px;">Apply \u2192</button>';
       }
-      const saveClass = isSaved ? 'job-action-btn saved-btn' : 'job-action-btn';
-      const saveLabel = isSaved ? 'Saved' : 'Save';
       if (!isApplied) {
-        footerHtml += `<button class="${saveClass}" id="modal-save-btn" onclick="modalSave('${jobId}', this)">${saveLabel}</button>`;
+        const saveClass = isSaved ? 'job-action-btn saved-btn' : 'job-action-btn';
+        const saveLabel = isSaved ? 'Saved' : 'Save';
+        footerHtml += '<button class="' + saveClass + '" id="modal-save-btn" onclick="modalSave(\'' + jobId + '\', this)">' + saveLabel + '</button>';
       }
-      footerHtml += `<button class="job-action-btn hide-btn" onclick="modalHide('${jobId}')" style="padding:4px 10px;font-size:11px;">Hide</button>`;
-      footerHtml += `<button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>`;
+      footerHtml += '<button class="job-action-btn hide-btn" onclick="modalHide(\'' + jobId + '\')" style="padding:4px 10px;font-size:11px;">Hide</button>';
+      footerHtml += '<button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
       footerEl.innerHTML = footerHtml;
     }
+
 
     function closeJobModal(e) {
       if (e && e.target !== e.currentTarget) return;
