@@ -256,9 +256,9 @@
     .qb-pill.type-pill .qb-pill-text { color: var(--warm); }
     .qb-pill.type-pill .qb-pill-remove { color: rgba(245,158,11,0.4); border-left-color: rgba(245,158,11,0.15); }
 
-    .qb-pill.location-pill { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.2); }
-    .qb-pill.location-pill .qb-pill-text { color: #f97316; }
-    .qb-pill.location-pill .qb-pill-remove { color: rgba(249,115,22,0.4); border-left-color: rgba(249,115,22,0.15); }
+    .qb-pill.location-pill { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+    .qb-pill.location-pill .qb-pill-text { color: #f59e0b; }
+    .qb-pill.location-pill .qb-pill-remove { color: rgba(245,158,11,0.4); border-left-color: rgba(245,158,11,0.15); }
     .qb-pill.location-pill .qb-pill-text::before { content: '📍 '; }
     .qb-pill.location-pill .pill-radius {
       font-size: 10px; opacity: 0.7; margin-left: 4px; font-weight: 400;
@@ -320,9 +320,9 @@
       font-family: var(--mono); font-size: 10px; font-weight: 600;
       padding: 2px 6px; border-radius: 4px; text-align: center; min-width: 42px;
     }
-    .sf-count-today { background: var(--green-dim); color: var(--green); }
-    .sf-count-week { background: var(--accent-glow); color: var(--accent); }
-    .sf-count-month { background: var(--warm-dim); color: var(--warm); }
+    .sf-count-today { background: var(--bg-input); color: var(--text-dim); }
+    .sf-count-week { background: var(--bg-input); color: var(--text-dim); }
+    .sf-count-month { background: var(--bg-input); color: var(--text-dim); }
 
     .qb-and {
       font-size: 10px; font-weight: 700; color: var(--text-faint);
@@ -392,7 +392,7 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
       background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.15); color: var(--accent);
     }
-    .sf-mini-pill.location-pill { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.15); color: var(--warm); }
+    .sf-mini-pill.location-pill { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.15); color: #f59e0b; }
     .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
     .sf-mini-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.15); color: #ec4899; }
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
@@ -850,16 +850,8 @@
           </div>
           <div class="qb-row">
             <label class="qb-row-label">How Much</label>
-            <div class="qb-salary-row">
-              <div class="qb-salary-field">
-                <span class="qb-salary-prefix">$</span>
-                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min" maxlength="10">
-              </div>
-              <span class="qb-salary-sep">—</span>
-              <div class="qb-salary-field">
-                <span class="qb-salary-prefix">$</span>
-                <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max" maxlength="10">
-              </div>
+            <div class="query-builder" id="query-builder-pay">
+              <input type="text" class="qb-input" id="qb-input-pay" placeholder="Salary — e.g. $150k+, $80k-$120k, $100k minimum">
             </div>
           </div>
           <div class="qb-hint">
@@ -1398,8 +1390,7 @@
     let wherePills = [];
     let whenPills = [];
     let whoPills = [];
-    let salaryMin = '';
-    let salaryMax = '';
+    let payPills = [];
     let savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
     const WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
     const SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
@@ -1412,7 +1403,7 @@
       return 'keyword';
     }
 
-    function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + (salaryMin || salaryMax ? 1 : 0); }
+    function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length; }
 
     function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass) {
       const builder = $(builderId);
@@ -1500,6 +1491,7 @@
       renderPillsFor(wherePills, '#query-builder-where', '#qb-input-where', true, '');
       renderPillsFor(whenPills, '#query-builder-when', '#qb-input-when', false, 'when-pill');
       renderPillsFor(whoPills, '#query-builder-who', '#qb-input-who', false, 'who-pill');
+      renderPillsFor(payPills, '#query-builder-pay', '#qb-input-pay', false, 'pay-pill');
 
       // Show/hide toolbar
       const hasAny = allPills() > 0;
@@ -1530,7 +1522,7 @@
       return true;
     }
 
-    const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
+    const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay'];
 
     function focusNextInput(currentId) {
       const idx = qbInputOrder.indexOf(currentId);
@@ -1654,10 +1646,7 @@
       wherePills = [];
       whenPills = [];
       whoPills = [];
-      salaryMin = '';
-      salaryMax = '';
-      $('#qb-input-pay-min').value = '';
-      $('#qb-input-pay-max').value = '';
+      payPills = [];
       renderAllPills();
     });
 
@@ -1671,8 +1660,7 @@
         wherePills: JSON.parse(JSON.stringify(wherePills)),
         whenPills: JSON.parse(JSON.stringify(whenPills)),
         whoPills: JSON.parse(JSON.stringify(whoPills)),
-        salaryMin: salaryMin,
-        salaryMax: salaryMax,
+        payPills: JSON.parse(JSON.stringify(payPills)),
         createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
@@ -1697,57 +1685,28 @@
     });
 
     // Search within saved filters
-    // Salary min/max inputs
-    function parseSalaryInput(val) {
-      if (!val) return '';
-      // Strip $ and spaces
-      let clean = val.replace(/[\$\s,]/g, '').trim();
-      // Handle "150k" -> "150000"
-      const kMatch = clean.match(/^(\d+)k$/i);
-      if (kMatch) return String(parseInt(kMatch[1]) * 1000);
-      // Handle plain number
-      const num = parseInt(clean.replace(/[^0-9]/g, ''));
-      return isNaN(num) ? '' : String(num);
-    }
-
-    function formatSalaryDisplay(val) {
-      if (!val) return '';
-      const n = parseInt(val);
-      if (isNaN(n)) return val;
-      return n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
-    }
-
-    $('#qb-input-pay-min').addEventListener('blur', () => {
-      const raw = $('#qb-input-pay-min').value;
-      salaryMin = parseSalaryInput(raw);
-      $('#qb-input-pay-min').value = formatSalaryDisplay(salaryMin);
-      renderAllPills();
-    });
-    $('#qb-input-pay-min').addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        salaryMin = parseSalaryInput($('#qb-input-pay-min').value);
-        $('#qb-input-pay-min').value = formatSalaryDisplay(salaryMin);
-        if (e.key === 'Enter') {
+    // Input handling — Pay row
+    const qbInputPay = $('#qb-input-pay');
+    qbInputPay.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        commitPill(qbInputPay, payPills, raw => ({ values: [raw], type: 'pay' }));
+      } else if (e.key === 'Tab') {
+        if (qbInputPay.value.trim()) {
           e.preventDefault();
-          $('#qb-input-pay-max').focus();
+          commitPill(qbInputPay, payPills, raw => ({ values: [raw], type: 'pay' }));
         }
+      } else if (e.key === 'Backspace' && qbInputPay.value === '' && payPills.length > 0) {
+        payPills.pop();
         renderAllPills();
       }
     });
-
-    $('#qb-input-pay-max').addEventListener('blur', () => {
-      const raw = $('#qb-input-pay-max').value;
-      salaryMax = parseSalaryInput(raw);
-      $('#qb-input-pay-max').value = formatSalaryDisplay(salaryMax);
-      renderAllPills();
+    qbInputPay.addEventListener('blur', () => {
+      commitPill(qbInputPay, payPills, raw => ({ values: [raw], type: 'pay' }));
     });
-    $('#qb-input-pay-max').addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        salaryMax = parseSalaryInput($('#qb-input-pay-max').value);
-        $('#qb-input-pay-max').value = formatSalaryDisplay(salaryMax);
-        if (e.key === 'Enter') e.preventDefault();
-        renderAllPills();
-      }
+    $('#query-builder-pay').addEventListener('click', e => {
+      if (e.target.closest('.qb-pill')) return;
+      qbInputPay.focus();
     });
 
     $('#sf-search').addEventListener('input', () => renderSavedFilters());
@@ -1798,9 +1757,9 @@
         <div style="width:16px;"></div>
         <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
         <div style="display:flex;gap:6px;">
-          <div style="font-size:9px;font-weight:700;color:var(--green);min-width:42px;text-align:center;line-height:1.3;">JOBS<br>TODAY</div>
-          <div style="font-size:9px;font-weight:700;color:var(--accent);min-width:42px;text-align:center;line-height:1.3;">JOBS<br>7 DAYS</div>
-          <div style="font-size:9px;font-weight:700;color:var(--warm);min-width:42px;text-align:center;line-height:1.3;">JOBS<br>30 DAYS</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">JOBS<br>TODAY</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">JOBS<br>7 DAYS</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">JOBS<br>30 DAYS</div>
         </div>
         <div style="width:24px;"></div>
       </div>` + sorted.map(sf => {
@@ -1817,9 +1776,10 @@
           ...(sf.wherePills || []).map(p => ({ ...p, row: 'where' })),
           ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
           ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
+          ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
         ];
-        // Add salary as a synthetic pill if present
-        if (sf.salaryMin || sf.salaryMax) {
+        // Legacy: convert old salaryMin/Max to pay pill
+        if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
           function fmtSalary(v) {
             if (!v) return '';
             const n = parseInt(v.toString().replace(/[^0-9]/g, ''));
@@ -1886,10 +1846,8 @@
           }
           whenPills = JSON.parse(JSON.stringify(sf.whenPills || []));
           whoPills = JSON.parse(JSON.stringify(sf.whoPills || []));
-          salaryMin = sf.salaryMin || '';
-          salaryMax = sf.salaryMax || '';
-          $('#qb-input-pay-min').value = salaryMin;
-          $('#qb-input-pay-max').value = salaryMax;
+          payPills = JSON.parse(JSON.stringify(sf.payPills || []));
+          savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
