@@ -1649,7 +1649,7 @@
     function commitSaveFilter() {
       const name = $('#save-filter-name').value.trim();
       if (!name || allPills() === 0) return;
-      savedFilters.push({
+      const filterData = {
         name,
         whatPills: JSON.parse(JSON.stringify(whatPills)),
         wherePills: JSON.parse(JSON.stringify(wherePills)),
@@ -1660,7 +1660,16 @@
         createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
-      });
+      };
+      // Replace if same name exists
+      const existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+      if (existingIdx >= 0) {
+        filterData.createdAt = savedFilters[existingIdx].createdAt || Date.now();
+        filterData.useCount = (savedFilters[existingIdx].useCount || 0) + 1;
+        savedFilters[existingIdx] = filterData;
+      } else {
+        savedFilters.push(filterData);
+      }
       localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
       $('#save-filter-name').value = '';
       renderSavedFilters();
@@ -1752,8 +1761,16 @@
         ];
         // Add salary as a synthetic pill if present
         if (sf.salaryMin || sf.salaryMax) {
-          const salaryLabel = sf.salaryMin && sf.salaryMax ? `$${sf.salaryMin} – $${sf.salaryMax}`
-            : sf.salaryMin ? `$${sf.salaryMin}+` : `Up to $${sf.salaryMax}`;
+          function fmtSalary(v) {
+            if (!v) return '';
+            const n = parseInt(v.toString().replace(/[^0-9]/g, ''));
+            if (isNaN(n)) return v;
+            return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
+          }
+          const fMin = fmtSalary(sf.salaryMin);
+          const fMax = fmtSalary(sf.salaryMax);
+          const salaryLabel = fMin && fMax ? `$${fMin} – $${fMax}`
+            : fMin ? `$${fMin}+` : `Up to $${fMax}`;
           allSfPills.push({ values: [salaryLabel], row: 'pay' });
         }
         if (allSfPills.length > 0) {
