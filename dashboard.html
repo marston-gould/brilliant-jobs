@@ -557,6 +557,7 @@
     .job-modal-body li { margin-bottom: 4px; }
     .job-modal-body p { margin: 8px 0; }
     .job-modal-body a { color: var(--accent); }
+    .job-modal-body img { max-width: 100%; height: auto; border-radius: 8px; }
     .job-modal-footer {
       padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
       display: flex; align-items: center; gap: 8px;
@@ -1988,8 +1989,20 @@
         setTimeout(() => item.classList.remove('tab-flash'), 1000);
         $$('.page').forEach(p => p.classList.remove('active'));
         $(`#page-${item.dataset.page}`).classList.add('active');
+        // Persist active tab
+        localStorage.setItem('bj_active_tab', item.dataset.page);
       });
     });
+
+    // Restore last active tab on load
+    const lastTab = localStorage.getItem('bj_active_tab');
+    if (lastTab && $(`#page-${lastTab}`)) {
+      $$('.page').forEach(p => p.classList.remove('active'));
+      $(`#page-${lastTab}`).classList.add('active');
+      $$('.nav-item').forEach(n => {
+        n.classList.toggle('active', n.dataset.page === lastTab);
+      });
+    }
 
     // Extension detection — check if extension has updated the profile recently
     async function checkExtensionStatus() {
@@ -2613,7 +2626,7 @@
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-gid="${job.greenhouse_id}" onclick="openJobModal(this.dataset.gid)" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc">${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
@@ -2640,6 +2653,15 @@
 
       tbody.innerHTML = html;
     }
+
+    // Event delegation for job title clicks
+    document.addEventListener('click', e => {
+      const link = e.target.closest('.job-title-link');
+      if (link && link.dataset.jobid) {
+        e.preventDefault();
+        openJobModal(link.dataset.jobid);
+      }
+    });
 
     // Job Spec Modal
     async function openJobModal(jobId, e) {
@@ -2683,17 +2705,15 @@
       metaEl.textContent = metaParts.join('  \u00b7  ');
       extLink.href = jobUrl;
 
-      // Populate body — decode HTML entities if needed
-      if (job.content) {
-        const c = job.content;
-        bodyEl.innerHTML = c.startsWith('&lt;') || c.startsWith('&amp;') 
-          ? new DOMParser().parseFromString(c, 'text/html').body.innerHTML 
-          : c;
-      } else if (job.description) {
-        const d = job.description;
-        bodyEl.innerHTML = d.startsWith('&lt;') || d.startsWith('&amp;')
-          ? new DOMParser().parseFromString(d, 'text/html').body.innerHTML
-          : d;
+      // Populate body — always decode through DOMParser to handle any encoding issues
+      const rawContent = job.content || job.description || null;
+      if (rawContent) {
+        try {
+          const parsed = new DOMParser().parseFromString(rawContent, 'text/html');
+          bodyEl.innerHTML = parsed.body.innerHTML;
+        } catch(e) {
+          bodyEl.innerHTML = rawContent;
+        }
       } else {
         // Show loading state and fetch on demand
         bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
@@ -2716,8 +2736,10 @@
         const embedMatch = jobUrl.match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
         if (embedMatch) {
           footerHtml += '<button class="apply-btn apply-btn-default" id="modal-apply-here" onclick="toggleApplyForm()" style="padding:6px 16px;font-size:12px;">Apply Here</button>';
+        } else {
+          // No embeddable form — show ATS link as primary
+          footerHtml += '<a href="' + jobUrl + '" target="_blank" rel="noopener" class="apply-btn apply-btn-default" style="padding:6px 16px;font-size:12px;text-decoration:none;">Apply on ATS ↗</a>';
         }
-        footerHtml += '<button class="apply-btn" onclick="modalApply(\'' + jobId + '\', \'' + jobUrl.replace(/'/g, "\\'") + '\')" style="padding:6px 12px;font-size:11px;background:none;color:var(--accent);border:1px solid var(--accent);">Open on ATS ↗</button>';
         const saveClass = isSaved ? 'job-action-btn saved-btn' : 'job-action-btn';
         const saveLabel = isSaved ? 'In Pipeline' : 'Add to Pipeline';
         footerHtml += '<button class="' + saveClass + '" id="modal-save-btn" onclick="modalSave(\'' + jobId + '\', this)">' + saveLabel + '</button>';
@@ -2823,14 +2845,9 @@
           if (resp.ok) {
             const data = await resp.json();
             if (data.content) {
-              // Greenhouse API returns HTML content — may need decoding
-              let htmlContent = data.content;
-              // If it starts with encoded entities, decode first
-              if (htmlContent.includes('&lt;') || htmlContent.includes('&amp;lt;')) {
-                const tmp = document.createElement('textarea');
-                tmp.innerHTML = htmlContent;
-                htmlContent = tmp.value;
-              }
+              // Greenhouse API returns HTML content — decode through DOMParser
+              const parsed = new DOMParser().parseFromString(data.content, 'text/html');
+              const htmlContent = parsed.body.innerHTML;
               // Set as HTML
               bodyEl.innerHTML = htmlContent;
               // Also show department/location from API if available
