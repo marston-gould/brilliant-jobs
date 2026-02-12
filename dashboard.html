@@ -814,25 +814,44 @@
     .top-co-count { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
     /* ======================== RESUMES ======================== */
-    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
     .resume-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 20px; transition: border-color 0.15s; position: relative;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
+      display: flex; flex-direction: column; min-height: 200px;
     }
-    .resume-card:hover { border-color: var(--border-hover); }
+    .resume-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
     .resume-card.is-default { border-color: var(--accent); border-width: 2px; }
-    .resume-card .rc-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .resume-card .rc-meta { font-size: 12px; color: var(--text-faint); margin-bottom: 12px; }
-    .resume-card .rc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-    .resume-card .rc-tag {
-      font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px;
-      background: var(--accent-glow); color: var(--accent);
+    .resume-card .rc-icon {
+      width: 44px; height: 56px; border-radius: 6px; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; flex-shrink: 0;
     }
-    .resume-card .rc-actions { display: flex; gap: 8px; }
+    .resume-card .rc-icon.pdf { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .resume-card .rc-icon.doc { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .resume-card .rc-name {
+      font-size: 14px; font-weight: 600; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .resume-card .rc-meta { font-size: 11px; color: var(--text-faint); margin-bottom: 12px; }
+    .resume-card .rc-filters-label {
+      font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 6px;
+    }
+    .resume-card .rc-filter-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; flex: 1; }
+    .resume-card .rc-filter-pill {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+      cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
+    }
+    .resume-card .rc-filter-pill.active { opacity: 1; }
+    .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
+    .resume-card .rc-filter-pill:hover { opacity: 0.8; }
+    .resume-card .rc-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
     .resume-card .rc-default-badge {
       position: absolute; top: 12px; right: 14px;
-      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
       color: var(--accent); letter-spacing: 0.5px;
+      background: var(--accent-glow); padding: 2px 8px; border-radius: 4px;
     }
     .resume-upload-zone {
       border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px;
@@ -1603,43 +1622,25 @@
       <div class="page" id="page-resumes">
         <div class="page-header">
           <h2>Resumes</h2>
-          <p>Upload, manage, and match resumes to job openings</p>
+          <p>Upload multiple resumes and assign each to one or more saved filters</p>
         </div>
         <div class="page-body">
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Resumes</div></div>
             <div class="stat-card"><div class="stat-val" id="r-default">—</div><div class="stat-label">Default Resume</div></div>
-            <div class="stat-card"><div class="stat-val" id="r-matched">0</div><div class="stat-label">Jobs Matched</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
           </div>
 
           <div class="resume-upload-zone" id="resume-upload-zone">
             <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
             <h4>Drop resumes here or click to upload</h4>
-            <p>PDF, DOC, or DOCX — up to 5MB each. Upload multiple versions for different roles.</p>
+            <p>PDF, DOC, or DOCX — up to 5MB each. Upload different versions for different role types.</p>
           </div>
 
-          <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <div>
-                <div class="card-title" style="margin:0;">Your Resumes</div>
-                <div class="card-sub" style="margin:0;">Tag resumes by role type for automatic matching</div>
-              </div>
-            </div>
-            <div class="resume-grid" id="resume-grid">
-              <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
-                <h3>No resumes uploaded</h3>
-                <p>Upload your first resume to start matching it against job openings and enable auto-apply.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">Resume-Job Match Scores <span class="badge-soon">Coming Soon</span></div>
-            <div class="card-sub">Predictive match scoring based on keywords, title, and company preferences</div>
-            <div class="resume-match-list" id="resume-match-list">
-              <div style="text-align:center;padding:24px;color:var(--text-faint);font-size:13px;">
-                Upload resumes and discover jobs to see match scores
-              </div>
+          <div class="resume-grid" id="resume-grid">
+            <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
+              <h3>No resumes uploaded</h3>
+              <p>Upload your first resume to start assigning it to saved filters.</p>
             </div>
           </div>
         </div>
@@ -4256,55 +4257,87 @@
     // ============================================================
     let resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
 
+    function saveResumes() {
+      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+    }
+
+    function getFileIcon(fileName) {
+      if (/\.pdf$/i.test(fileName)) return { cls: 'pdf', text: 'PDF' };
+      return { cls: 'doc', text: 'DOC' };
+    }
+
     function renderResumes() {
       const grid = $('#resume-grid');
       const countEl = $('#r-total');
       const defaultEl = $('#r-default');
-      const navBadge = $('#nav-resume-count');
+      const assignedEl = $('#r-assigned');
 
       countEl.textContent = resumes.length;
-      if (navBadge && resumes.length > 0) {
-        navBadge.style.display = '';
-        navBadge.textContent = resumes.length;
-      }
 
       const defaultResume = resumes.find(r => r.isDefault);
-      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 16) : '—';
+      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 20) : '—';
 
-      // Update resume assignment dropdowns
-      const assignSelect = $('#resume-assign-default');
-      if (assignSelect) {
-        const current = assignSelect.value;
-        assignSelect.innerHTML = resumes.length === 0
-          ? '<option value="">— Upload a resume first —</option>'
-          : resumes.map(r => `<option value="${r.id}" ${r.isDefault ? 'selected' : ''}>${r.name}</option>`).join('');
-        if (current && resumes.find(r => r.id === current)) assignSelect.value = current;
-      }
+      // Count filters assigned
+      const totalAssigned = resumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
+      assignedEl.textContent = totalAssigned;
 
       if (resumes.length === 0) {
         grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
           <h3>No resumes uploaded</h3>
-          <p>Upload your first resume to start matching it against job openings and enable auto-apply.</p>
+          <p>Upload your first resume to start assigning it to saved filters.</p>
         </div>`;
         return;
       }
 
-      grid.innerHTML = resumes.map((r, i) => `
+      // Get saved filters for assignment
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+
+      grid.innerHTML = resumes.map((r, i) => {
+        const icon = getFileIcon(r.fileName);
+        const assignedIds = r.filterIds || [];
+
+        // Build filter pills — each saved filter as a toggleable pill
+        const filterPills = sf.length > 0
+          ? sf.map((f, fi) => {
+              const color = filterColors[fi % filterColors.length];
+              const isActive = assignedIds.includes(f.name);
+              return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
+                style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
+                data-resume="${i}" data-filter="${f.name}" onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
+                title="Click to ${isActive ? 'unassign' : 'assign'}">${f.name}</span>`;
+            }).join('')
+          : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
+
+        return `
         <div class="resume-card ${r.isDefault ? 'is-default' : ''}">
           ${r.isDefault ? '<div class="rc-default-badge">★ Default</div>' : ''}
-          <div class="rc-name">${r.name}</div>
-          <div class="rc-meta">${r.fileName} · ${r.size} · Uploaded ${r.uploadedAt}</div>
-          <div class="rc-tags">
-            ${(r.tags || []).map(t => `<span class="rc-tag">${t}</span>`).join('')}
-          </div>
+          <div class="rc-icon ${icon.cls}">${icon.text}</div>
+          <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+          <div class="rc-meta">${r.fileName} · ${r.size} · ${r.uploadedAt}</div>
+          <div class="rc-filters-label">Assigned Filters</div>
+          <div class="rc-filter-list">${filterPills}</div>
           <div class="rc-actions">
-            ${!r.isDefault ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})">Set Default</button>` : ''}
-            <button class="btn btn-secondary btn-sm" onclick="editResumeTags(${i})">Edit Tags</button>
-            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="color:var(--red);">Remove</button>
+            ${!r.isDefault ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:10px;padding:3px 10px;">Set Default</button>` : '<button class="btn btn-sm" style="font-size:10px;padding:3px 10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>★ Default</button>'}
+            <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:10px;padding:3px 10px;">Rename</button>
+            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Remove</button>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
+
+    window.toggleResumeFilter = function(resumeIdx, filterName) {
+      const r = resumes[resumeIdx];
+      if (!r.filterIds) r.filterIds = [];
+      const idx = r.filterIds.indexOf(filterName);
+      if (idx >= 0) {
+        r.filterIds.splice(idx, 1);
+      } else {
+        r.filterIds.push(filterName);
+      }
+      saveResumes();
+      renderResumes();
+    };
 
     function addResume(file) {
       const id = 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -4317,26 +4350,26 @@
         fileName: file.name,
         size: sizeStr,
         isDefault: resumes.length === 0,
-        tags: [],
+        filterIds: [],
         uploadedAt: new Date().toLocaleDateString()
       };
       resumes.push(resume);
-      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      saveResumes();
       renderResumes();
     }
 
     window.setDefaultResume = function(idx) {
       resumes.forEach((r, i) => r.isDefault = (i === idx));
-      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      saveResumes();
       renderResumes();
     };
 
-    window.editResumeTags = function(idx) {
-      const current = (resumes[idx].tags || []).join(', ');
-      const input = prompt('Tags (comma separated):\ne.g. SEO, Marketing Director, Technical', current);
-      if (input === null) return;
-      resumes[idx].tags = input.split(',').map(t => t.trim()).filter(Boolean);
-      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+    window.renameResume = function(idx) {
+      const current = resumes[idx].name;
+      const input = prompt('Resume name:', current);
+      if (input === null || !input.trim()) return;
+      resumes[idx].name = input.trim();
+      saveResumes();
       renderResumes();
     };
 
@@ -4345,7 +4378,7 @@
       const wasDefault = resumes[idx].isDefault;
       resumes.splice(idx, 1);
       if (wasDefault && resumes.length > 0) resumes[0].isDefault = true;
-      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+      saveResumes();
       renderResumes();
     };
 
