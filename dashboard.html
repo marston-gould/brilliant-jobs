@@ -3394,9 +3394,16 @@
       });
 
       // Show/hide delete-selected button and trigger job search on checkbox change
+      const checkedState = JSON.parse(localStorage.getItem('bj_sf_checked') || '{}');
       list.querySelectorAll('.sf-item-check').forEach(cb => {
-        cb.checked = true; // All checked by default
+        const idx = cb.dataset.idx;
+        // Restore saved state; default to checked if no saved state
+        cb.checked = idx in checkedState ? checkedState[idx] : true;
         cb.addEventListener('change', () => {
+          // Persist state
+          const state = {};
+          list.querySelectorAll('.sf-item-check').forEach(c => { state[c.dataset.idx] = c.checked; });
+          localStorage.setItem('bj_sf_checked', JSON.stringify(state));
           const anyChecked = list.querySelectorAll('.sf-item-check:checked').length > 0;
           $('#sf-delete-selected').style.display = anyChecked ? '' : 'none';
           updateSfActiveCount();
