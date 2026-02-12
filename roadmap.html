@@ -237,80 +237,132 @@
 const features = [
 
   // ═══════════════ DONE ═══════════════
+  // Phase 1 — Auth
   { s: 'done', n: 'User signup with email, password, and LinkedIn URL', d: 'Supabase Auth with profile auto-creation via DB trigger', p: 1 },
   { s: 'done', n: 'Login with session persistence', d: 'Fixed phantom signup bug, auto-switch to login after registration', p: 1 },
   { s: 'done', n: 'Password reset via email', d: 'Supabase resetPasswordForEmail integration', p: 1 },
   { s: 'done', n: 'Row-Level Security on all tables', d: 'Users can only access their own data, temp anon policies removed', p: 1 },
   { s: 'done', n: 'End-to-end auth flow tested', d: 'Signup → approval → login → dashboard verified', p: 1 },
+
+  // Phase 2 — Core Platform
   { s: 'done', n: 'Connection harvesting from LinkedIn', d: 'Infinite scroll + Load More button detection, batch upsert to Supabase', p: 2 },
   { s: 'done', n: 'Profile scanning with company extraction', d: 'Visit each connection, parse employer and title, store in companies table', p: 2 },
   { s: 'done', n: 'Smart skip — 30-day re-scan window', d: 'Skip profiles scanned within last 30 days to reduce LinkedIn visits', p: 2 },
-  { s: 'done', n: 'Dashboard at brilliantjobs.app', d: 'Vercel-hosted SPA with Supabase JS client, auth gate, 5-tab navigation', p: 2 },
+  { s: 'done', n: 'Dashboard at brilliantjobs.app', d: 'Vercel-hosted SPA with Supabase JS client, auth gate, multi-tab navigation', p: 2 },
   { s: 'done', n: 'Stats page — connections, scanned, companies, jobs', d: 'Live counts from Supabase with top companies ranked by connection count', p: 2 },
   { s: 'done', n: 'Extension detection from dashboard', d: 'Queries profiles.last_scan_at — green dot if <24h, gray if stale', p: 2 },
   { s: 'done', n: 'Greenhouse board discovery — 1,900 companies', d: 'Two-letter prefix brute-force across boards-api.greenhouse.io', p: 2 },
   { s: 'done', n: 'Greenhouse job scraper — 110,000+ jobs stored', d: 'Full metadata: title, location, department, URL, updated_at, last_seen', p: 2 },
   { s: 'done', n: 'Jobs Feed — 5-row filter builder', d: 'What / Where / When / Who / How Much with pill-based inputs and OR syntax', p: 2 },
-  { s: 'done', n: 'Saved filters with checkboxes and job count columns', d: 'TODAY / 7 DAYS / 30 DAYS counts, mini-pills, search, select-all, delete', p: 2 },
+  { s: 'done', n: 'Saved filters with checkboxes and job count columns', d: '24H / 7D / 30D counts, mini-pills, search, select-all, delete', p: 2 },
   { s: 'done', n: 'Salary filter with auto-formatting', d: 'Min/max boxes, interprets 80 as $80k, displays as inline pill', p: 2 },
   { s: 'done', n: 'Pill auto-commit on Enter/Tab/blur', d: 'OR syntax ("or term" adds to last pill), backspace removes last pill', p: 2 },
   { s: 'done', n: 'Subscription tab placeholder', d: 'Coming Soon state under Account nav section', p: 2 },
   { s: 'done', n: 'Settings page — account actions', d: 'Change password and export data, separated from Stats', p: 2 },
+  { s: 'done', n: 'Sparkle flourish on dashboard load', d: 'Animated sparkles and shimmer sweep on Brilliant Jobs brand', p: 2 },
+  { s: 'done', n: 'Nav reorder: Setup → Jobs → Pipeline → Resumes → Applications', d: 'Navigation restructured to match user workflow', p: 2 },
+  { s: 'done', n: 'Wire Jobs Feed to Supabase queries', d: 'Saved filter pills drive real ats_jobs table queries via Supabase client', p: 2 },
+  { s: 'done', n: 'Word-boundary title search', d: '"search" no longer matches "research" — uses ilike patterns with space/start anchors', p: 2 },
+  { s: 'done', n: 'NOT filter rows (What/Where/Who)', d: 'Exclude title keywords, locations, and companies with NOR logic across pill values', p: 2 },
+  { s: 'done', n: 'Filter auto-population on click', d: 'Clicking a saved filter loads its pills into the builder, populates name field, expands panel', p: 2 },
+  { s: 'done', n: 'Search re-runs on filter save', d: 'Saving or updating a filter immediately re-runs the search with updated criteria', p: 2 },
+  { s: 'done', n: 'Tab persistence across reloads', d: 'Active tab saved to localStorage, restored on page load', p: 2 },
+  { s: 'done', n: 'Multi-sort with numbered pills', d: 'Stackable sort by Days, Title, Company, Location, Level — each with direction toggle', p: 2 },
+
+  // Phase 2 — Job Modal & Apply
+  { s: 'done', n: 'Job spec modal with on-demand fetching', d: '3-tier strategy: Greenhouse JSON API → Edge Function → clean link fallback', p: 2 },
+  { s: 'done', n: 'HTML entity decoding for job content', d: 'Loop-based decoder handles single/double/triple encoding from Greenhouse', p: 2 },
+  { s: 'done', n: 'Embedded Greenhouse application form', d: 'Iframe loads boards.greenhouse.io embed — apply without leaving the dashboard', p: 2 },
+  { s: 'done', n: 'Dual apply submission detection', d: 'Iframe load events + extension webRequest listener catch form POSTs', p: 2 },
+  { s: 'done', n: 'Pipeline integration from modal', d: 'Add to Pipeline / In Pipeline button, Applied tracking with timestamps', p: 2 },
+
+  // Phase 2 — Search Tuning
+  { s: 'done', n: 'Search Tuning page — global exclusions', d: 'Location, Company, and Title exclusions applied across all saved filters', p: 2 },
+  { s: 'done', n: 'Title Level Hierarchy', d: 'Configurable seniority levels with keyword matching — default template plus per-filter overrides', p: 2 },
+  { s: 'done', n: 'Level column in feed with colored badges', d: 'Jobs matched to C-Suite → VP → Director → Manager etc. with sort support', p: 2 },
+  { s: 'done', n: 'Per-filter level hierarchy overrides', d: 'Each saved filter can customize its own level hierarchy via gear icon modal', p: 2 },
+
+  // Phase 2 — Resumes
+  { s: 'done', n: 'Resume upload and management', d: 'Upload PDF/DOC/DOCX, rename, set default, remove — card-based grid layout', p: 2 },
+  { s: 'done', n: 'Resume-to-filter assignment', d: 'Toggle filter pills on each resume card — right resume selected automatically on apply', p: 2 },
+  { s: 'done', n: 'Filter coverage tracking', d: 'Stats show assigned count and coverage ratio, amber alert for unassigned filters', p: 2 },
+  { s: 'done', n: 'Create resumes by level', d: 'Scaffold placeholder resume cards for each title level from hierarchy — upload files after', p: 2 },
+  { s: 'done', n: 'Google Drive integration (Setup)', d: 'Connect Drive, link Google Docs as resumes, import to resume cards with sync metadata', p: 2 },
+
+  // Phase 2 — Pipeline
+  { s: 'done', n: 'Pipeline page with Saved and Applied columns', d: 'Kanban-style layout rendering from localStorage with relative date badges', p: 2 },
+
+  // Phase 2.5 — Anti-detection
   { s: 'done', n: 'Business hours enforcement', d: 'Scanner only runs 7 AM – 7 PM local time, pauses outside hours', p: 2.5 },
   { s: 'done', n: 'Randomized morning start', d: 'Scanner resumes between 7:45 and 10:30 AM each day', p: 2.5 },
   { s: 'done', n: 'Randomized daily cap, delays, and session breaks', d: 'Variable profiles per day, random pause lengths between visits', p: 2.5 },
   { s: 'done', n: 'Stuck scanner recovery', d: 'onInstalled + service worker wakeup restarts scanning loop after reload', p: 2.5 },
   { s: 'done', n: 'Activity log with timestamps and scan routing', d: 'Unified feed with dates, countdown timers, stale time fix', p: 2.5 },
-  { s: 'done', n: 'Sparkle flourish on dashboard load', d: 'Animated sparkles and shimmer sweep on Brilliant Jobs brand', p: 2 },
+
+  // Phase 2 — Extension
+  { s: 'done', n: 'Extension webRequest listener for Greenhouse', d: 'background.js monitors POST requests to boards.greenhouse.io for submission detection', p: 2 },
+  { s: 'done', n: 'Chrome notification on application submit', d: 'Extension fires desktop notification when ATS form submission is detected', p: 2 },
 
   // ═══════════════ IN PROGRESS ═══════════════
-  { s: 'progress', n: 'Wire Jobs Feed to Supabase queries', d: 'Connect saved filter pills to actual ats_jobs table queries', p: 2 },
-  { s: 'progress', n: 'Nav reorder: Setup → Jobs → Resumes → Applications → Pipeline', d: 'Restructure navigation to match user workflow', p: 2 },
   { s: 'progress', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
-  { s: 'progress', n: 'Daily job refresh cron', d: 'Re-scrape Greenhouse boards, update last_seen_at, mark missing as closed', p: 2 },
+  { s: 'progress', n: 'Daily job refresh cron', d: 'Re-scrape Greenhouse boards via Supabase Edge Function on pg_cron schedule', p: 2 },
+  { s: 'progress', n: 'NOT filter debugging', d: 'Verifying NOT exclusions fire correctly — added console logging and trim() to diagnose', p: 2 },
 
   // ═══════════════ PLANNED ═══════════════
+  // Phase 2 — Feed & Filters
+  { s: 'todo', n: 'Wire includeNoSalary checkbox into query', d: 'Option to include jobs with no listed salary when salary filter is set', p: 2 },
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users', p: 2 },
   { s: 'todo', n: 'Location disambiguation', d: 'Portland OR vs Portland ME, Springfield — resolve ambiguous city names', p: 2 },
   { s: 'todo', n: 'Location radius search', d: 'Geocode jobs + filter terms, default 30mi radius with adjustable slider', p: 2 },
   { s: 'todo', n: 'Company lookup from Who filter', d: 'Browse/search companies from connections + ats_companies tables', p: 2 },
   { s: 'todo', n: 'Industry filter row', d: 'Filter by tech, healthcare, finance — requires company enrichment data', p: 2 },
+
+  // Phase 2.5 — Anti-detection
   { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 2.5 },
   { s: 'todo', n: 'Randomized scroll patterns', d: 'Variable scroll speeds and pause points to mimic human behavior', p: 2.5 },
   { s: 'todo', n: 'Shuffled visit order', d: 'Randomize the sequence of profile visits instead of alphabetical', p: 2.5 },
   { s: 'todo', n: 'Random lightweight interactions', d: 'Expand About sections, click posts occasionally during scanning', p: 2.5 },
   { s: 'todo', n: 'Mouse movement simulation', d: 'Generate realistic cursor paths between click targets', p: 2.5 },
   { s: 'todo', n: 'CAPTCHA auto-stop', d: 'Detect warning signals and halt scanning immediately', p: 2.5 },
+
+  // Phase 3 — Go-to-Market
   { s: 'todo', n: 'Landing / marketing page', d: 'Public-facing page on brilliantjobs.app explaining the product', p: 3 },
   { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', p: 3 },
   { s: 'todo', n: 'Terms of service and privacy policy', d: 'Legal pages covering data usage, LinkedIn interaction, and user rights', p: 3 },
   { s: 'todo', n: 'Email setup (support@brilliantjobs.app)', d: 'Transactional email for password resets, notifications, and support', p: 3 },
   { s: 'todo', n: 'Chrome Web Store submission', d: 'Package extension, write listing copy, submit for review', p: 3 },
+  { s: 'todo', n: 'Uninstall win-back page', d: 'Capture churn reason + offer discount via uninstall_url in manifest', p: 3 },
+
+  // Phase 4 — User Management
   { s: 'todo', n: 'Automated user approval', d: 'Edge Function validates LinkedIn URL and auto-approves signups', p: 4 },
   { s: 'todo', n: 'DataForSEO profile verification', d: 'Cross-reference signup LinkedIn URL against DataForSEO for legitimacy', p: 4 },
   { s: 'todo', n: 'Two-factor authentication', d: 'TOTP-based 2FA for account security', p: 4 },
   { s: 'todo', n: 'Admin dashboard', d: 'View pending approvals, user stats, and system health', p: 4 },
+
+  // Phase 5 — Monetization
   { s: 'todo', n: 'Stripe integration', d: 'Payment processing for subscription and success fee models', p: 5 },
   { s: 'todo', n: 'Pricing tiers: Free / $29 Pro / $149 Success Fee', d: 'Dual pricing model with referral discount engine', p: 5 },
   { s: 'todo', n: 'Referral reward system', d: 'Invite friends, earn discounts on subscription or success fee', p: 5 },
-  { s: 'todo', n: 'Upload and manage multiple resumes', d: 'Store PDFs and DOCX files in Supabase Storage with metadata', p: 6 },
+
+  // Phase 6 — Resumes & Applications
   { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 6 },
   { s: 'todo', n: 'Resume-to-job match scoring', d: 'Keyword overlap analysis → High/Med/Low match badge per job', p: 6 },
-  { s: 'todo', n: 'Default resume per filter or job type', d: 'Assign specific resumes to specific saved filters for auto-apply', p: 6 },
-  { s: 'todo', n: 'Manual application tracking', d: 'Click Apply → opens ATS link → user logs the application', p: 6 },
   { s: 'todo', n: 'Auto-apply mode', d: 'Jobs matching saved filters + resume → auto-submit via ATS form fill', p: 6 },
   { s: 'todo', n: 'Notification-based apply (email/SMS)', d: 'Match found → send notification → user replies apply/skip → resume sent', p: 6 },
   { s: 'todo', n: 'Application queue and status tracking', d: 'Table with job, company, mode, status (Queued → Pending → Submitted)', p: 6 },
   { s: 'todo', n: 'ATS filter reverse-engineering', d: 'Aggregate user outcomes to decode what filters companies use to screen applicants', p: 6 },
   { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns', p: 6 },
   { s: 'todo', n: 'Application auto-detect from extension', d: 'Detect LinkedIn Easy Apply and external ATS redirects, prompt to track', p: 6 },
-  { s: 'todo', n: 'Pipeline board — kanban status tracking', d: 'Applied → Responded → Phone Screen → Interview → Offer/Rejected/Ghosted', p: 6 },
-  { s: 'todo', n: 'Days-in-stage tracking', d: 'Show how long each application has been in its current pipeline stage', p: 6 },
+  { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters', p: 6 },
   { s: 'todo', n: 'Company enrichment during job scraping', d: 'Grab employee count, industry, HQ from company pages in same visit', p: 6 },
+
+  // Phase 7 — Ghost Monitor
   { s: 'todo', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates', p: 7 },
   { s: 'todo', n: 'Auto-detect company email responses', d: 'Match incoming emails to companies in pipeline, flag new responses', p: 7 },
   { s: 'todo', n: 'Ghost detection from email', d: 'Applied X days ago + no response = ghosted, auto-update pipeline', p: 7 },
   { s: 'todo', n: 'Interview scheduling detection', d: 'Parse calendar invites and scheduling links from recruiter emails', p: 7 },
+
+  // Phase 8 — Intelligence
   { s: 'todo', n: 'Job market trend velocity', d: 'Track job posting volume by title, location, salary, industry over time', p: 8 },
   { s: 'todo', n: 'Filter-driven trend indicators', d: 'Show ↑12% or ↓30% on saved filters based on historical job count snapshots', p: 8 },
   { s: 'todo', n: 'Supply vs demand signals', d: '"47 users watching this filter, only 3 matching jobs" — opportunity scoring', p: 8 },
@@ -318,6 +370,8 @@ const features = [
   { s: 'todo', n: 'Network strength scoring', d: 'Rate connection quality per company — 1st degree, mutual connections, recency', p: 8 },
   { s: 'todo', n: 'Warm intro pathways', d: 'You → Sarah → Tom at Company X — multi-hop connection mapping', p: 8 },
   { s: 'todo', n: 'Hiring velocity detection and alerts', d: 'Company posting 10x more jobs than usual → alert subscribed users', p: 8 },
+
+  // Phase 9 — Multi-ATS
   { s: 'todo', n: 'Lever job scraper', d: 'Fetch open roles from jobs.lever.co/{company} public API', p: 9 },
   { s: 'todo', n: 'Workable job scraper', d: 'Fetch open roles from apply.workable.com/{company} public API', p: 9 },
   { s: 'todo', n: 'Ashby job scraper', d: 'Fetch open roles from Ashby public board API', p: 9 },
@@ -325,16 +379,19 @@ const features = [
   { s: 'todo', n: 'TheirStack integration for bulk board discovery', d: 'Import 24K+ Greenhouse, 11K Lever, 35K Workable slugs', p: 9 },
   { s: 'todo', n: 'LinkedIn outbound link → ATS board discovery', d: 'During scanning, capture outbound links to Greenhouse/Lever/Workable boards', p: 9 },
   { s: 'todo', n: 'DataForSEO outbound link harvesting', d: 'Mine LinkedIn/Indeed company pages for ATS board URLs at scale', p: 9 },
-  { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across all sources', p: 9 },
+  { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across aggregator sources', p: 9 },
   { s: 'todo', n: 'Google Jobs Discovery Engine', d: 'DataForSEO Google Jobs API as fallback for companies on closed ATS platforms', p: 9 },
+
+  // Phase 10 — SEO Content
   { s: 'todo', n: 'Public company ghost rate reports', d: 'SEO-friendly pages showing employer hiring accountability scores', p: 10 },
   { s: 'todo', n: 'Community benchmark data', d: 'Aggregated stats on response rates, time to hire, salary ranges by role', p: 10 },
   { s: 'todo', n: 'Public job market trend reports', d: 'Velocity data by title, location, industry — attracts organic traffic', p: 10 },
   { s: 'todo', n: 'Programmatic company SEO pages', d: 'Auto-generated pages per company with jobs, ghost rate, hiring patterns', p: 10 },
+
+  // Phase 11 — Beta
   { s: 'todo', n: 'Beta user onboarding (5-10 users)', d: 'Guided setup, feedback collection, bug reporting workflow', p: 11 },
   { s: 'todo', n: 'UX feedback and bug triage', d: 'Prioritize fixes based on real usage patterns', p: 11 },
   { s: 'todo', n: 'Performance testing at scale', d: 'Verify dashboard and queries handle 100K+ jobs with multiple concurrent users', p: 11 },
-  { s: 'todo', n: 'Uninstall win-back page', d: 'Capture churn reason + offer discount via uninstall_url in manifest', p: 3 },
 ];
 
 function phaseLabel(p) {
