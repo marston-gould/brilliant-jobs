@@ -283,7 +283,7 @@
     }
     .sf-count {
       font-family: var(--mono); font-size: 10px; font-weight: 600;
-      padding: 2px 6px; border-radius: 4px; text-align: center; min-width: 28px;
+      padding: 2px 6px; border-radius: 4px; text-align: center; min-width: 36px;
     }
     .sf-count-today { background: var(--green-dim); color: var(--green); }
     .sf-count-week { background: var(--accent-glow); color: var(--accent); }
@@ -795,7 +795,7 @@
             </div>
           </div>
           <div class="qb-row">
-            <label class="qb-row-label">Pay</label>
+            <label class="qb-row-label">How Much</label>
             <div class="query-builder" id="query-builder-pay">
               <input type="text" class="qb-input" id="qb-input-pay" placeholder="Salary range — e.g. $100k+, $80k-$120k, $150k minimum">
             </div>
@@ -1509,6 +1509,7 @@
         name,
         whatPills: JSON.parse(JSON.stringify(whatPills)),
         wherePills: JSON.parse(JSON.stringify(wherePills)),
+        createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
       });
@@ -1571,15 +1572,14 @@
         <div style="width:16px;"></div>
         <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
         <div style="display:flex;gap:6px;">
-          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:28px;text-align:center;">Day</div>
-          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:28px;text-align:center;">Wk</div>
-          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:28px;text-align:center;">Mo</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:36px;text-align:center;" title="Jobs matching this filter posted today">Today</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:36px;text-align:center;" title="Jobs matching this filter posted this week">7 Days</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:36px;text-align:center;" title="Jobs matching this filter posted this month">30 Days</div>
         </div>
         <div style="width:24px;"></div>
       </div>` + sorted.map(sf => {
-        const ago = sf.lastUsed ? timeAgo(sf.lastUsed) : '';
-        const count = sf.useCount || 0;
-        const meta = [ago, count > 1 ? `used ${count}×` : ''].filter(Boolean).join(' · ');
+        const ago = sf.createdAt ? timeAgo(sf.createdAt) : '';
+        const meta = ago ? `created ${ago}` : '';
         const jToday = sf.jobsToday || '—';
         const jWeek = sf.jobsWeek || '—';
         const jMonth = sf.jobsMonth || '—';
