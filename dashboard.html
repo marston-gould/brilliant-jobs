@@ -2537,7 +2537,7 @@
       let html = '';
       for (const job of jobs) {
         const daysAgo = job.updated_at ? Math.floor((now - new Date(job.updated_at)) / 86400000) : '—';
-        const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'Today' : daysAgo + 'd') : '—';
+        const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
         const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
 
         const isSaved = savedJobIds.includes(job.greenhouse_id);
@@ -2570,7 +2570,7 @@
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<a href="javascript:void(0)" onclick="openJobModal('${job.greenhouse_id}', event)" style="color:inherit;text-decoration:none;cursor:pointer;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
+          <td class="jt-title">${filterBadges}<a href="javascript:void(0)" class="job-title-link" data-jobid="${job.greenhouse_id}" style="color:inherit;text-decoration:none;cursor:pointer;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc">${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
@@ -2597,6 +2597,15 @@
 
       tbody.innerHTML = html;
     }
+
+    // Event delegation for job title clicks
+    document.addEventListener('click', e => {
+      const link = e.target.closest('.job-title-link');
+      if (link) {
+        e.preventDefault();
+        openJobModal(link.dataset.jobid);
+      }
+    });
 
     // Job Spec Modal
     async function openJobModal(jobId, e) {
@@ -3394,15 +3403,28 @@
       });
 
       // Show/hide delete-selected button and trigger job search on checkbox change
-      const checkedState = JSON.parse(localStorage.getItem('bj_sf_checked') || '{}');
+      // Save current checkbox state before re-render (in case this is a re-render)
+      const prevState = {};
+      $$('.sf-item-check').forEach(c => {
+        const name = savedFilters[parseInt(c.dataset.idx)]?.name;
+        if (name) prevState[name] = c.checked;
+      });
+      const storedState = JSON.parse(localStorage.getItem('bj_sf_checked') || '{}');
+      // Merge: prefer live DOM state over stored (handles mid-session re-renders)
+      const checkedState = { ...storedState, ...prevState };
+
       list.querySelectorAll('.sf-item-check').forEach(cb => {
-        const idx = cb.dataset.idx;
-        // Restore saved state; default to checked if no saved state
-        cb.checked = idx in checkedState ? checkedState[idx] : true;
+        const sf = savedFilters[parseInt(cb.dataset.idx)];
+        const name = sf?.name;
+        // Restore saved state; default to checked only if never seen before
+        cb.checked = name && name in checkedState ? checkedState[name] : true;
         cb.addEventListener('change', () => {
-          // Persist state
+          // Persist state keyed by filter name
           const state = {};
-          list.querySelectorAll('.sf-item-check').forEach(c => { state[c.dataset.idx] = c.checked; });
+          list.querySelectorAll('.sf-item-check').forEach(c => {
+            const n = savedFilters[parseInt(c.dataset.idx)]?.name;
+            if (n) state[n] = c.checked;
+          });
           localStorage.setItem('bj_sf_checked', JSON.stringify(state));
           const anyChecked = list.querySelectorAll('.sf-item-check:checked').length > 0;
           $('#sf-delete-selected').style.display = anyChecked ? '' : 'none';
