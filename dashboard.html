@@ -349,6 +349,19 @@
     .sf-item:hover .sf-del { opacity: 1; }
     .sf-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
 
+    .sf-item-pills {
+      display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 1; margin-left: 8px; overflow: hidden; max-width: 50%;
+    }
+    .sf-mini-pill {
+      font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 10px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+      background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.15); color: var(--accent);
+    }
+    .sf-mini-pill.location-pill { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.15); color: var(--warm); }
+    .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
+    .sf-mini-pill.who-pill { background: rgba(14,165,233,0.08); border-color: rgba(14,165,233,0.15); color: #0ea5e9; }
+    .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
+
     .qb-hint {
       font-size: 11px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.6;
     }
@@ -1583,12 +1596,31 @@
         const jToday = sf.jobsToday || '—';
         const jWeek = sf.jobsWeek || '—';
         const jMonth = sf.jobsMonth || '—';
+
+        // Build mini pill HTML from saved filter criteria
+        let miniPills = '';
+        const allSfPills = [
+          ...(sf.whatPills || sf.pills || []).map(p => ({ ...p, row: 'what' })),
+          ...(sf.wherePills || []).map(p => ({ ...p, row: 'where' })),
+          ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
+          ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
+          ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
+        ];
+        if (allSfPills.length > 0) {
+          miniPills = '<div class="sf-item-pills">' + allSfPills.map(p => {
+            const cls = p.row === 'where' ? 'location-pill' : p.row === 'when' ? 'when-pill' : p.row === 'who' ? 'who-pill' : p.row === 'pay' ? 'pay-pill' : '';
+            const label = p.values ? p.values.join(' | ') : '';
+            return `<span class="sf-mini-pill ${cls}">${label}</span>`;
+          }).join('') + '</div>';
+        }
+
         return `<div class="sf-item" data-idx="${sf._idx}">
           <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}">
           <div class="sf-item-info">
             <div class="sf-item-name">${sf.name}</div>
             ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
           </div>
+          ${miniPills}
           <div class="sf-item-counts">
             <span class="sf-count sf-count-today">${jToday}</span>
             <span class="sf-count sf-count-week">${jWeek}</span>
