@@ -2261,33 +2261,19 @@
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
       // WHAT — title matching with word-boundary awareness
-      // For each term, match: start of title + term, space before term, hyphen before term, or exact term
-      // This prevents "search" from matching "research" while still matching "search engineer", "paid search", etc.
+      // We use two ilike patterns per term: starts-with and has-space-before
+      // This prevents "search" from matching "research"
+      // PostgREST .or() needs simple patterns without special chars that break parsing
       for (const pill of w) {
-        if (pill.values.length === 1) {
-          const t = pill.values[0];
-          // Match word boundary: start, space, hyphen, slash, or paren before the term
-          query = query.or([
-            `title.ilike.${t}%`,         // starts with term
-            `title.ilike.% ${t}%`,       // space before
-            `title.ilike.%- ${t}%`,      // hyphen-space before (not really needed but safe)
-            `title.ilike.%-${t}%`,       // hyphen before
-            `title.ilike.%/${t}%`,       // slash before
-            `title.ilike.%(${t}%`,       // paren before
-            `title.ilike.%, ${t}%`,      // comma-space before
-          ].join(','));
-        } else {
-          // OR across values within the pill — each with word boundary
-          const clauses = pill.values.flatMap(v => [
-            `title.ilike.${v}%`,
-            `title.ilike.% ${v}%`,
-            `title.ilike.%-${v}%`,
-            `title.ilike.%/${v}%`,
-            `title.ilike.%(${v}%`,
-            `title.ilike.%, ${v}%`,
-          ]);
-          query = query.or(clauses.join(','));
-        }
+        const allClauses = pill.values.flatMap(v => {
+          // Escape any PostgREST-special chars in the value
+          const safe = v.replace(/[,()]/g, '');
+          return [
+            `title.ilike.${safe}%`,
+            `title.ilike.% ${safe}%`,
+          ];
+        });
+        query = query.or(allClauses.join(','));
       }
 
       // WHAT NOT — title not ilike
