@@ -473,6 +473,53 @@
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
     .job-table .jt-ghost { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+
+    /* Sort bar */
+    .sort-bar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .sort-bar-label { font-size: 11px; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .sort-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .sort-pill {
+      display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+      background: var(--accent-dim); color: var(--accent); border-radius: 5px;
+      font-size: 11px; font-weight: 600; cursor: default;
+    }
+    .sort-pill .sort-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%; background: var(--accent);
+      color: var(--bg); font-size: 9px; font-weight: 700;
+    }
+    .sort-pill .sort-dir {
+      cursor: pointer; padding: 0 2px; font-size: 13px; opacity: 0.7;
+      transition: opacity 0.1s;
+    }
+    .sort-pill .sort-dir:hover { opacity: 1; }
+    .sort-pill .sort-remove {
+      cursor: pointer; font-size: 12px; opacity: 0.5; margin-left: 2px;
+      transition: opacity 0.1s;
+    }
+    .sort-pill .sort-remove:hover { opacity: 1; color: var(--red); }
+    .sort-add-wrap { position: relative; }
+    .sort-add-btn {
+      background: none; border: 1px dashed var(--border); color: var(--text-faint);
+      padding: 3px 10px; border-radius: 5px; font-size: 11px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sort-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .sort-dropdown {
+      position: absolute; top: 100%; left: 0; margin-top: 4px; z-index: 100;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); min-width: 160px; overflow: hidden;
+    }
+    .sort-opt {
+      padding: 8px 12px; font-size: 12px; color: var(--text-dim); cursor: pointer;
+      transition: background 0.1s;
+    }
+    .sort-opt:hover { background: var(--bg-hover); color: var(--text); }
+    .sort-opt.disabled { opacity: 0.3; pointer-events: none; }
     .hide-job-btn {
       background: none; border: none; color: var(--text-faint); cursor: pointer;
       font-size: 11px; padding: 2px 5px; border-radius: 3px; margin-left: 4px;
@@ -971,18 +1018,33 @@
             <div class="sf-list" id="sf-list"></div>
           </div>
 
+          <!-- Sort bar -->
+          <div class="sort-bar" id="sort-bar">
+            <span class="sort-bar-label">Sort by:</span>
+            <div class="sort-pills" id="sort-pills"></div>
+            <div class="sort-add-wrap">
+              <button class="sort-add-btn" id="sort-add-btn">+ Add sort</button>
+              <div class="sort-dropdown" id="sort-dropdown" style="display:none;">
+                <div class="sort-opt" data-field="updated_at" data-label="Days">Days (newest)</div>
+                <div class="sort-opt" data-field="title" data-label="Title">Title (A→Z)</div>
+                <div class="sort-opt" data-field="company_name" data-label="Company">Company (A→Z)</div>
+                <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Job results table -->
           <div style="overflow-x:auto;">
             <table class="job-table" id="job-table">
               <thead>
                 <tr>
-                  <th data-sort="title">Title <span class="sort-arrow">↕</span></th>
-                  <th data-sort="company">Company <span class="sort-arrow">↕</span></th>
-                  <th data-sort="location">Location <span class="sort-arrow">↕</span></th>
-                  <th data-sort="salary">Salary <span class="sort-arrow">↕</span></th>
+                  <th data-sort="title">Title</th>
+                  <th data-sort="company">Company</th>
+                  <th data-sort="location">Location</th>
+                  <th>Salary</th>
                   <th>Sources</th>
-                  <th data-sort="ghost">Ghost Rate <span class="sort-arrow">↕</span></th>
-                  <th data-sort="days">Days <span class="sort-arrow">↕</span></th>
+                  <th>Ghost Rate</th>
+                  <th data-sort="days">Days</th>
                   <th style="width:100px;"></th>
                 </tr>
               </thead>
@@ -1969,51 +2031,109 @@
       return str.length > max ? str.slice(0, max) + '…' : str;
     }
 
-    // Multi-column sort — click = primary, shift+click = add to stack
-    $$('.job-table th[data-sort]').forEach(th => {
-      th.style.cursor = 'pointer';
-      th.addEventListener('click', (e) => {
-        const field = th.dataset.sort;
-        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', salary: 'updated_at', ghost: 'updated_at' };
-        const dbField = fieldMap[field] || 'updated_at';
+    // ============================================================
+    // SORT BAR — Visible multi-sort with numbered pills
+    // ============================================================
 
-        if (e.shiftKey) {
-          // Shift+click: add to sort stack or toggle existing
-          const existing = jobSortStack.findIndex(s => s.field === dbField);
-          if (existing >= 0) {
-            jobSortStack[existing].asc = !jobSortStack[existing].asc;
-          } else {
-            jobSortStack.push({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' });
-          }
-        } else {
-          // Regular click: make primary sort
-          const existing = jobSortStack.find(s => s.field === dbField);
-          if (existing && jobSortStack[0]?.field === dbField) {
-            existing.asc = !existing.asc;
-          } else {
-            jobSortStack = [{ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' }];
-          }
-        }
+    function renderSortPills() {
+      const container = $('#sort-pills');
+      container.innerHTML = '';
+      jobSortStack.forEach((s, i) => {
+        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location' };
+        const label = labelMap[s.field] || s.field;
+        const dirLabel = s.asc ? '↑' : '↓';
+        const dirTitle = s.asc
+          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : 'A→Z — click to flip')
+          : (s.field === 'updated_at' ? 'Newest first — click to flip' : 'Z→A — click to flip');
 
-        // Update sort arrows
-        $$('.job-table th[data-sort]').forEach(h => {
-          h.classList.remove('sorted');
-          h.querySelector('.sort-arrow').textContent = '↕';
+        const pill = document.createElement('span');
+        pill.className = 'sort-pill';
+        pill.innerHTML = `
+          <span class="sort-num">${i + 1}</span>
+          ${label}
+          <span class="sort-dir" title="${dirTitle}" data-idx="${i}">${dirLabel}</span>
+          <span class="sort-remove" title="Remove" data-idx="${i}">✕</span>
+        `;
+        container.appendChild(pill);
+      });
+
+      // Bind direction toggle
+      container.querySelectorAll('.sort-dir').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.idx);
+          jobSortStack[idx].asc = !jobSortStack[idx].asc;
+          renderSortPills();
+          searchJobs(0);
         });
-        jobSortStack.forEach((s, i) => {
-          const sortField = Object.entries(fieldMap).find(([k, v]) => v === s.field);
-          if (sortField) {
-            const header = $(`.job-table th[data-sort="${sortField[0]}"]`);
-            if (header) {
-              header.classList.add('sorted');
-              const label = s.asc ? '↑' : '↓';
-              header.querySelector('.sort-arrow').textContent = jobSortStack.length > 1 ? `${i + 1}${label}` : label;
-            }
-          }
+      });
+
+      // Bind remove
+      container.querySelectorAll('.sort-remove').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.idx);
+          jobSortStack.splice(idx, 1);
+          if (jobSortStack.length === 0) jobSortStack.push({ field: 'updated_at', asc: false });
+          renderSortPills();
+          searchJobs(0);
         });
+      });
+
+      // Update dropdown — disable already-used fields
+      $$('#sort-dropdown .sort-opt').forEach(opt => {
+        const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
+        opt.classList.toggle('disabled', inUse);
+      });
+    }
+
+    // Sort add button + dropdown
+    $('#sort-add-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const dd = $('#sort-dropdown');
+      dd.style.display = dd.style.display === 'none' ? '' : 'none';
+    });
+
+    $$('#sort-dropdown .sort-opt').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const field = opt.dataset.field;
+        if (jobSortStack.some(s => s.field === field)) return;
+        const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
+        jobSortStack.push({ field, asc: defaultAsc });
+        $('#sort-dropdown').style.display = 'none';
+        renderSortPills();
         searchJobs(0);
       });
     });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.sort-add-wrap')) {
+        $('#sort-dropdown').style.display = 'none';
+      }
+    });
+
+    // Also allow clicking table headers as a quick single-sort shortcut
+    $$('.job-table th[data-sort]').forEach(th => {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at' };
+        const dbField = fieldMap[field] || 'updated_at';
+
+        // If already primary sort, toggle direction
+        if (jobSortStack.length > 0 && jobSortStack[0].field === dbField) {
+          jobSortStack[0].asc = !jobSortStack[0].asc;
+        } else {
+          // Make it the primary sort (keep others)
+          jobSortStack = jobSortStack.filter(s => s.field !== dbField);
+          jobSortStack.unshift({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' });
+        }
+        renderSortPills();
+        searchJobs(0);
+      });
+    });
+
+    // Initial render of sort pills
+    renderSortPills();
 
     // Input handling — What row
     const qbInputWhat = $('#qb-input-what');
@@ -2164,6 +2284,21 @@
     function commitSaveFilter() {
       const name = $('#save-filter-name').value.trim();
       if (!name || allPills() === 0) return;
+
+      // Warn if no WHERE filter set
+      if (wherePills.length === 0) {
+        const proceed = confirm(
+          'No location filter set.\n\n' +
+          'Without a location, this filter will match jobs worldwide. ' +
+          'Consider adding a location like "United States", "Remote", or a specific city.\n\n' +
+          'Save anyway?'
+        );
+        if (!proceed) {
+          $('#qb-input-where').focus();
+          return;
+        }
+      }
+
       const filterData = {
         name,
         whatPills: JSON.parse(JSON.stringify(whatPills)),
