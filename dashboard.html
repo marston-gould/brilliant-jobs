@@ -1516,32 +1516,47 @@
 
     // Input handling — What row
     const qbInputWhat = $('#qb-input-what');
+    function commitPill(input, pillArray, makePill) {
+      const raw = input.value.trim();
+      if (!raw) return false;
+      const orMatch = raw.match(/^or\s+(.+)/i);
+      if (orMatch && pillArray.length > 0) {
+        pillArray[pillArray.length - 1].values.push(orMatch[1].trim());
+      } else {
+        pillArray.push(makePill(raw));
+      }
+      input.value = '';
+      renderAllPills();
+      return true;
+    }
+
+    const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
+
+    function focusNextInput(currentId) {
+      const idx = qbInputOrder.indexOf(currentId);
+      if (idx >= 0 && idx < qbInputOrder.length - 1) {
+        const next = $('#' + qbInputOrder[idx + 1]);
+        if (next) setTimeout(() => next.focus(), 10);
+      }
+    }
+
     qbInputWhat.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
-        const raw = qbInputWhat.value.trim();
-        if (!raw) return;
-        const orMatch = raw.match(/^or\s+(.+)/i);
-        if (orMatch && whatPills.length > 0) {
-          whatPills[whatPills.length - 1].values.push(orMatch[1].trim());
-          qbInputWhat.value = '';
-          renderAllPills();
-          return;
+        commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+      } else if (e.key === 'Tab') {
+        if (qbInputWhat.value.trim()) {
+          e.preventDefault();
+          commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+          focusNextInput('qb-input-what');
         }
-        whatPills.push({ values: [raw], type: classifyTerm(raw) });
-        qbInputWhat.value = '';
-        renderAllPills();
       } else if (e.key === 'Backspace' && qbInputWhat.value === '' && whatPills.length > 0) {
         whatPills.pop();
         renderAllPills();
       }
     });
     qbInputWhat.addEventListener('blur', () => {
-      const raw = qbInputWhat.value.trim();
-      if (!raw) return;
-      whatPills.push({ values: [raw], type: classifyTerm(raw) });
-      qbInputWhat.value = '';
-      renderAllPills();
+      commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
     });
 
     // Input handling — Where row
@@ -1549,29 +1564,20 @@
     qbInputWhere.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
-        const raw = qbInputWhere.value.trim();
-        if (!raw) return;
-        const orMatch = raw.match(/^or\s+(.+)/i);
-        if (orMatch && wherePills.length > 0) {
-          wherePills[wherePills.length - 1].values.push(orMatch[1].trim());
-          qbInputWhere.value = '';
-          renderAllPills();
-          return;
+        commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'location', radius: DEFAULT_RADIUS }));
+      } else if (e.key === 'Tab') {
+        if (qbInputWhere.value.trim()) {
+          e.preventDefault();
+          commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'location', radius: DEFAULT_RADIUS }));
+          focusNextInput('qb-input-where');
         }
-        wherePills.push({ values: [raw], type: 'location', radius: DEFAULT_RADIUS });
-        qbInputWhere.value = '';
-        renderAllPills();
       } else if (e.key === 'Backspace' && qbInputWhere.value === '' && wherePills.length > 0) {
         wherePills.pop();
         renderAllPills();
       }
     });
     qbInputWhere.addEventListener('blur', () => {
-      const raw = qbInputWhere.value.trim();
-      if (!raw) return;
-      wherePills.push({ values: [raw], type: 'location', radius: DEFAULT_RADIUS });
-      qbInputWhere.value = '';
-      renderAllPills();
+      commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'location', radius: DEFAULT_RADIUS }));
     });
 
     // Click builders to focus respective inputs
@@ -1597,29 +1603,20 @@
     qbInputWhen.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
-        const raw = qbInputWhen.value.trim();
-        if (!raw) return;
-        const orMatch = raw.match(/^or\s+(.+)/i);
-        if (orMatch && whenPills.length > 0) {
-          whenPills[whenPills.length - 1].values.push(orMatch[1].trim());
-          qbInputWhen.value = '';
-          renderAllPills();
-          return;
+        commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+      } else if (e.key === 'Tab') {
+        if (qbInputWhen.value.trim()) {
+          e.preventDefault();
+          commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+          focusNextInput('qb-input-when');
         }
-        whenPills.push({ values: [raw], type: 'when' });
-        qbInputWhen.value = '';
-        renderAllPills();
       } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
         whenPills.pop();
         renderAllPills();
       }
     });
     qbInputWhen.addEventListener('blur', () => {
-      const raw = qbInputWhen.value.trim();
-      if (!raw) return;
-      whenPills.push({ values: [raw], type: 'when' });
-      qbInputWhen.value = '';
-      renderAllPills();
+      commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
     });
 
     // Input handling — Who row
@@ -1627,29 +1624,20 @@
     qbInputWho.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
-        const raw = qbInputWho.value.trim();
-        if (!raw) return;
-        const orMatch = raw.match(/^or\s+(.+)/i);
-        if (orMatch && whoPills.length > 0) {
-          whoPills[whoPills.length - 1].values.push(orMatch[1].trim());
-          qbInputWho.value = '';
-          renderAllPills();
-          return;
+        commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+      } else if (e.key === 'Tab') {
+        if (qbInputWho.value.trim()) {
+          e.preventDefault();
+          commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+          focusNextInput('qb-input-who');
         }
-        whoPills.push({ values: [raw], type: 'who' });
-        qbInputWho.value = '';
-        renderAllPills();
       } else if (e.key === 'Backspace' && qbInputWho.value === '' && whoPills.length > 0) {
         whoPills.pop();
         renderAllPills();
       }
     });
     qbInputWho.addEventListener('blur', () => {
-      const raw = qbInputWho.value.trim();
-      if (!raw) return;
-      whoPills.push({ values: [raw], type: 'who' });
-      qbInputWho.value = '';
-      renderAllPills();
+      commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
     });
 
     // Collapse toggle
