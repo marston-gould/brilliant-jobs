@@ -1330,27 +1330,27 @@
               </div>
             </div>
             <div class="qb-row">
-              <!-- empty right column to match grid -->
+              <!-- empty right column -->
             </div>
           </div>
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">How Much</label>
-              <div class="qb-salary-row">
-                <div class="qb-salary-field">
-                  <span class="qb-salary-prefix">$</span>
-                  <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
-                </div>
-                <span class="qb-salary-sep">to</span>
-                <div class="qb-salary-field">
+              <div class="qb-salary-field" style="flex:1;">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label" style="visibility:hidden;">to</label>
+              <div style="display:flex;align-items:center;gap:8px;flex:1;">
+                <span style="color:var(--text-faint);font-size:12px;">to</span>
+                <div class="qb-salary-field" style="flex:1;">
                   <span class="qb-salary-prefix">$</span>
                   <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
                 </div>
                 <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;"></div>
               </div>
-            </div>
-            <div class="qb-row">
-              <!-- empty right column to match grid -->
             </div>
           </div>
           <div class="qb-hint">
