@@ -264,6 +264,31 @@
       font-size: 10px; opacity: 0.7; margin-left: 4px; font-weight: 400;
     }
 
+    .qb-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.2); }
+    .qb-pill.when-pill .qb-pill-text { color: #a855f7; }
+    .qb-pill.when-pill .qb-pill-remove { color: rgba(168,85,247,0.4); border-left-color: rgba(168,85,247,0.15); }
+
+    .qb-pill.who-pill { background: rgba(14,165,233,0.08); border-color: rgba(14,165,233,0.2); }
+    .qb-pill.who-pill .qb-pill-text { color: #0ea5e9; }
+    .qb-pill.who-pill .qb-pill-remove { color: rgba(14,165,233,0.4); border-left-color: rgba(14,165,233,0.15); }
+
+    .qb-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
+    .qb-pill.pay-pill .qb-pill-text { color: var(--green); }
+    .qb-pill.pay-pill .qb-pill-remove { color: rgba(34,197,94,0.4); border-left-color: rgba(34,197,94,0.15); }
+
+    .sf-item { gap: 8px; }
+    .sf-item-check { flex-shrink: 0; margin: 0; cursor: pointer; }
+    .sf-item-counts {
+      display: flex; gap: 6px; flex-shrink: 0; margin-left: auto;
+    }
+    .sf-count {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      padding: 2px 6px; border-radius: 4px; text-align: center; min-width: 28px;
+    }
+    .sf-count-today { background: var(--green-dim); color: var(--green); }
+    .sf-count-week { background: var(--accent-glow); color: var(--accent); }
+    .sf-count-month { background: var(--warm-dim); color: var(--warm); }
+
     .qb-and {
       font-size: 10px; font-weight: 700; color: var(--text-faint);
       text-transform: uppercase; letter-spacing: 0.5px; padding: 0 2px; user-select: none;
@@ -613,7 +638,7 @@
         <div class="nav-section-label">Search</div>
         <div class="nav-item" data-page="jobs">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
-          <span>Jobs</span>
+          <span>Jobs Feed</span>
           <div class="nav-badge" id="nav-jobs-count" style="display:none;">0</div>
         </div>
         <div class="nav-item" data-page="pipeline">
@@ -733,7 +758,7 @@
       <!-- ============ JOBS ============ -->
       <div class="page" id="page-jobs">
         <div class="page-header">
-          <h2>Jobs</h2>
+          <h2>Jobs Feed</h2>
           <p>Openings aggregated from multiple sources</p>
         </div>
         <div class="page-body">
@@ -744,21 +769,39 @@
             <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved</div></div>
           </div>
 
-          <!-- Two-row query builder -->
+          <!-- Five-row query builder -->
           <div class="qb-row">
             <label class="qb-row-label">What</label>
             <div class="query-builder" id="query-builder-what">
-              <input type="text" class="qb-input" id="qb-input-what" placeholder="Title, keyword, salary, workplace — e.g. project manager, $100k+, remote">
+              <input type="text" class="qb-input" id="qb-input-what" placeholder="Title, keyword, department — e.g. project manager, engineering, director">
             </div>
           </div>
           <div class="qb-row">
             <label class="qb-row-label">Where</label>
             <div class="query-builder" id="query-builder-where">
-              <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, or zip — e.g. Seattle, Austin TX, 30301">
+              <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, or remote — e.g. Seattle, Austin TX, remote">
+            </div>
+          </div>
+          <div class="qb-row">
+            <label class="qb-row-label">When</label>
+            <div class="query-builder" id="query-builder-when">
+              <input type="text" class="qb-input" id="qb-input-when" placeholder="Posted timeframe — e.g. today, this week, last 30 days">
+            </div>
+          </div>
+          <div class="qb-row">
+            <label class="qb-row-label">Who</label>
+            <div class="query-builder" id="query-builder-who">
+              <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name — e.g. Google, Stripe, Amazon">
+            </div>
+          </div>
+          <div class="qb-row">
+            <label class="qb-row-label">Pay</label>
+            <div class="query-builder" id="query-builder-pay">
+              <input type="text" class="qb-input" id="qb-input-pay" placeholder="Salary range — e.g. $100k+, $80k-$120k, $150k minimum">
             </div>
           </div>
           <div class="qb-hint">
-            <kbd>Enter</kbd> to add filter &nbsp; <kbd>or</kbd> before a term to OR it &nbsp; Click a pill to add OR options &nbsp; <kbd>Backspace</kbd> to remove last &nbsp; Where pills auto-expand to metro area
+            <kbd>Enter</kbd> to add filter &nbsp; <kbd>or</kbd> before a term to OR it &nbsp; Click a pill to add OR options &nbsp; <kbd>Backspace</kbd> to remove last
           </div>
 
           <div class="filter-toolbar">
@@ -774,8 +817,14 @@
           <!-- Saved filters list -->
           <div class="saved-filters-section" id="saved-filters-section" style="display:none;">
             <div class="sf-header">
-              <span class="sf-title">Saved Filters</span>
-              <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="sf-select-all" style="margin:0;cursor:pointer;" title="Select all">
+                <span class="sf-title">Saved Filters</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:5px;cursor:pointer;">Delete Selected</button>
+                <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
+              </div>
             </div>
             <div class="sf-list" id="sf-list"></div>
           </div>
@@ -1476,6 +1525,25 @@
     // Search within saved filters
     $('#sf-search').addEventListener('input', () => renderSavedFilters());
 
+    // Select all checkbox
+    $('#sf-select-all').addEventListener('change', e => {
+      $$('.sf-item-check').forEach(cb => cb.checked = e.target.checked);
+      $('#sf-delete-selected').style.display = e.target.checked && $$('.sf-item-check').length > 0 ? '' : 'none';
+    });
+
+    // Delete selected filters
+    $('#sf-delete-selected').addEventListener('click', () => {
+      const checked = [...$$('.sf-item-check:checked')].map(cb => parseInt(cb.dataset.idx));
+      if (checked.length === 0) return;
+      if (!confirm(`Delete ${checked.length} saved filter${checked.length > 1 ? 's' : ''}?`)) return;
+      // Delete in reverse order to preserve indices
+      checked.sort((a, b) => b - a).forEach(idx => savedFilters.splice(idx, 1));
+      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      $('#sf-select-all').checked = false;
+      $('#sf-delete-selected').style.display = 'none';
+      renderSavedFilters();
+    });
+
     function renderSavedFilters() {
       const list = $('#sf-list');
       const section = $('#saved-filters-section');
@@ -1498,23 +1566,43 @@
         return;
       }
 
-      list.innerHTML = sorted.map(sf => {
+      // Column headers
+      list.innerHTML = `<div style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:8px;">
+        <div style="width:16px;"></div>
+        <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
+        <div style="display:flex;gap:6px;">
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:28px;text-align:center;">Day</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:28px;text-align:center;">Wk</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);text-transform:uppercase;min-width:28px;text-align:center;">Mo</div>
+        </div>
+        <div style="width:24px;"></div>
+      </div>` + sorted.map(sf => {
         const ago = sf.lastUsed ? timeAgo(sf.lastUsed) : '';
         const count = sf.useCount || 0;
         const meta = [ago, count > 1 ? `used ${count}×` : ''].filter(Boolean).join(' · ');
+        const jToday = sf.jobsToday || '—';
+        const jWeek = sf.jobsWeek || '—';
+        const jMonth = sf.jobsMonth || '—';
         return `<div class="sf-item" data-idx="${sf._idx}">
+          <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}">
           <div class="sf-item-info">
             <div class="sf-item-name">${sf.name}</div>
             ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
+          </div>
+          <div class="sf-item-counts">
+            <span class="sf-count sf-count-today">${jToday}</span>
+            <span class="sf-count sf-count-week">${jWeek}</span>
+            <span class="sf-count sf-count-month">${jMonth}</span>
           </div>
           <span class="sf-del" data-delidx="${sf._idx}">✕</span>
         </div>`;
       }).join('');
 
-      // Bind load
+      // Bind load (skip if clicking checkbox)
       list.querySelectorAll('.sf-item').forEach(el => {
         el.addEventListener('click', e => {
           if (e.target.classList.contains('sf-del')) return;
+          if (e.target.classList.contains('sf-item-check')) return;
           const idx = parseInt(el.dataset.idx);
           const sf = savedFilters[idx];
           // Support both old format (pills) and new format (whatPills/wherePills)
@@ -1539,6 +1627,14 @@
           savedFilters.splice(parseInt(el.dataset.delidx), 1);
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
           renderSavedFilters();
+        });
+      });
+
+      // Show/hide delete-selected button based on checkbox state
+      list.querySelectorAll('.sf-item-check').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const anyChecked = list.querySelectorAll('.sf-item-check:checked').length > 0;
+          $('#sf-delete-selected').style.display = anyChecked ? '' : 'none';
         });
       });
     }
