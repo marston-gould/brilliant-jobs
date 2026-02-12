@@ -859,12 +859,7 @@
                 <span class="qb-salary-prefix">$</span>
                 <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
               </div>
-              <button class="btn btn-sm btn-primary" id="qb-pay-apply" style="padding:8px 14px;white-space:nowrap;">Apply</button>
-            </div>
-          </div>
-          <div class="qb-row" id="qb-pay-pills-row" style="display:none;">
-            <label class="qb-row-label"></label>
-            <div class="query-builder" id="query-builder-pay" style="min-height:auto;padding:6px 12px;">
+              <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;"></div>
             </div>
           </div>
           <div class="qb-hint">
@@ -1698,14 +1693,17 @@
     });
 
     // Search within saved filters
-    // Input handling — Pay row (min/max → pill)
+    // Input handling — Pay row (min/max auto-pill)
     function parseSalaryVal(val) {
       if (!val) return '';
       let clean = val.replace(/[\$\s,]/g, '').trim();
       const kMatch = clean.match(/^(\d+)k$/i);
       if (kMatch) return String(parseInt(kMatch[1]) * 1000);
       const num = parseInt(clean.replace(/[^0-9]/g, ''));
-      return isNaN(num) ? '' : String(num);
+      if (isNaN(num)) return '';
+      // 2-3 digit numbers interpreted as thousands (e.g. 80 → 80000, 150 → 150000)
+      if (num >= 10 && num <= 999) return String(num * 1000);
+      return String(num);
     }
     function fmtSalary(v) {
       if (!v) return '';
@@ -1719,38 +1717,51 @@
       if (!minRaw && !maxRaw) return;
       const label = minRaw && maxRaw ? `${fmtSalary(minRaw)} – ${fmtSalary(maxRaw)}`
         : minRaw ? `${fmtSalary(minRaw)}+` : `Up to ${fmtSalary(maxRaw)}`;
-      // Replace existing pay pill or add new one
       payPills = [{ values: [label], type: 'pay', min: minRaw, max: maxRaw }];
       $('#qb-input-pay-min').value = '';
       $('#qb-input-pay-max').value = '';
       renderAllPills();
-      renderPayPills();
     }
     function renderPayPills() {
-      const row = $('#qb-pay-pills-row');
-      const container = $('#query-builder-pay');
+      const container = $('#qb-pay-pill-inline');
       container.innerHTML = '';
-      if (payPills.length === 0) { row.style.display = 'none'; return; }
-      row.style.display = '';
+      if (payPills.length === 0) return;
       payPills.forEach((pill, i) => {
         const el = document.createElement('span');
         el.className = 'qb-pill pay-pill';
+        el.style.margin = '0';
         el.innerHTML = `<span class="qb-pill-text">${pill.values[0]}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
         el.querySelector('.qb-pill-remove').addEventListener('click', () => {
           payPills.splice(i, 1);
           renderAllPills();
-          renderPayPills();
         });
         container.appendChild(el);
       });
     }
-    $('#qb-pay-apply').addEventListener('click', applyPayFilter);
     $('#qb-input-pay-min').addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); if ($('#qb-input-pay-max').value || $('#qb-input-pay-min').value) applyPayFilter(); else $('#qb-input-pay-max').focus(); }
-      if (e.key === 'Tab' && !e.shiftKey && !$('#qb-input-pay-max').value && $('#qb-input-pay-min').value) { /* let tab go to max */ }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if ($('#qb-input-pay-max').value || $('#qb-input-pay-min').value) {
+          if (!$('#qb-input-pay-max').value && $('#qb-input-pay-min').value) {
+            applyPayFilter();
+          } else {
+            applyPayFilter();
+          }
+        }
+      }
     });
     $('#qb-input-pay-max').addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); applyPayFilter(); }
+    });
+    $('#qb-input-pay-min').addEventListener('blur', () => {
+      setTimeout(() => {
+        if (document.activeElement !== $('#qb-input-pay-max')) applyPayFilter();
+      }, 100);
+    });
+    $('#qb-input-pay-max').addEventListener('blur', () => {
+      setTimeout(() => {
+        if (document.activeElement !== $('#qb-input-pay-min')) applyPayFilter();
+      }, 100);
     });
 
     $('#sf-search').addEventListener('input', () => renderSavedFilters());
