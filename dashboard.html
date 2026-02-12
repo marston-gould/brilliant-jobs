@@ -2146,18 +2146,21 @@
         else if (pill.type === 'type') cls += ' type-pill';
         el.className = cls;
 
+        const isNot = extraClass && extraClass.includes('not-pill');
+        const orLabel = isNot ? ' nor ' : ' or ';
+
         let display;
         if (isLocation) {
           const radius = pill.radius || DEFAULT_RADIUS;
           const textParts = pill.values.map(v => `<span>${v}</span>`);
           const joined = pill.values.length > 1
-            ? textParts.join('<span class="or-sep"> or </span>')
+            ? textParts.join(`<span class="or-sep">${orLabel}</span>`)
             : textParts[0];
           display = `${joined}<span class="pill-radius">${radius}mi</span>`;
         } else {
           const textParts = pill.values.map(v => `<span>${v}</span>`);
           display = pill.values.length > 1
-            ? textParts.join('<span class="or-sep"> or </span>')
+            ? textParts.join(`<span class="or-sep">${orLabel}</span>`)
             : textParts[0];
         }
 
@@ -3414,6 +3417,8 @@
       }
       window._editingFilterIdx = null;
       renderSavedFilters();
+      // Re-run search with updated filters
+      debouncedSearchJobs();
     }
 
     $('#save-filter-go').addEventListener('click', commitSaveFilter);
@@ -3605,7 +3610,8 @@
             else if (p.type === 'type' || locationWords.test(val)) cls = 'location-pill';
             else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
             // else default blue for keyword/what
-            const label = p.values ? p.values.join(' | ') : '';
+            const sep = cls === 'not-pill' ? ' nor ' : ' | ';
+            const label = p.values ? p.values.join(sep) : '';
             return `<span class="sf-mini-pill ${cls}">${label}</span>`;
           }).join('') + '</div>';
         }
