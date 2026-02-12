@@ -480,6 +480,12 @@
     }
     .job-table tr:hover .hide-job-btn { opacity: 0.6; }
     .hide-job-btn:hover { opacity: 1 !important; color: var(--red); background: var(--red-dim); }
+    .save-job-btn {
+      background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px;
+      color: var(--text-faint); transition: color 0.15s;
+    }
+    .save-job-btn:hover { color: var(--accent); }
+    .save-job-btn.saved { color: var(--accent); }
 
     .source-pills { display: flex; gap: 4px; flex-wrap: wrap; }
     .source-pill {
@@ -886,7 +892,7 @@
             <div class="stat-card"><div class="stat-val" id="j-total">0</div><div class="stat-label">Total Jobs</div></div>
             <div class="stat-card"><div class="stat-val" id="j-companies">0</div><div class="stat-label">Companies</div></div>
             <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New Today</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
           </div>
 
           <!-- Collapsible query builder -->
@@ -1612,6 +1618,7 @@
     let currentJobs = [];
     let jobSortStack = [{ field: 'updated_at', asc: false }]; // multi-sort
     let hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
+    let savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
 
     function debouncedSearchJobs() {
       clearTimeout(searchTimeout);
@@ -1693,9 +1700,10 @@
       currentJobPage = page;
       const tbody = $('#job-table-body');
       const checked = getCheckedSavedFilters();
+      const hasBuilderPills = allPills() > 0;
 
-      // If no filters checked, show prompt
-      if (checked.length === 0 && allPills() === 0) {
+      // If nothing is driving the search, show prompt
+      if (checked.length === 0 && !hasBuilderPills) {
         tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
           <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
           <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
@@ -1712,14 +1720,38 @@
       </td></tr>`;
 
       try {
-        // If using filter builder directly (no saved filters checked)
-        const filtersToRun = checked.length > 0 ? checked : [{
-          whatPills: [...whatPills],
-          wherePills: [...wherePills],
-          whenPills: [...whenPills],
-          whoPills: [...whoPills],
-          payPills: [...payPills]
-        }];
+        // Build list of filters to run
+        let filtersToRun = [];
+        if (checked.length > 0) {
+          filtersToRun = checked;
+        } else if (hasBuilderPills) {
+          filtersToRun = [{
+            whatPills: JSON.parse(JSON.stringify(whatPills)),
+            wherePills: JSON.parse(JSON.stringify(wherePills)),
+            whenPills: JSON.parse(JSON.stringify(whenPills)),
+            whoPills: JSON.parse(JSON.stringify(whoPills)),
+            payPills: JSON.parse(JSON.stringify(payPills))
+          }];
+        }
+
+        // Check that at least one filter has real criteria
+        const hasRealCriteria = filtersToRun.some(sf => {
+          const w = sf.whatPills || sf.pills || [];
+          const wh = sf.wherePills || [];
+          const wn = sf.whenPills || [];
+          const wo = sf.whoPills || [];
+          return w.length > 0 || wh.length > 0 || wn.length > 0 || wo.length > 0;
+        });
+
+        if (!hasRealCriteria) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+            <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
+            <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
+          </td></tr>`;
+          updateJobStats(0, 0, 0);
+          $('#filter-count').textContent = '';
+          return;
+        }
 
         // For multiple checked filters, we run each as a separate query then merge
         // Supabase doesn't support OR across separate ilike groups easily
@@ -1860,7 +1892,7 @@
       $('#j-total').textContent = total.toLocaleString();
       $('#j-companies').textContent = companies.toLocaleString();
       $('#j-new').textContent = newToday.toLocaleString();
-      $('#j-saved').textContent = savedFilters.length;
+      $('#j-saved').textContent = savedJobIds.length.toLocaleString();
     }
 
     function renderJobRows(jobs, total, page) {
@@ -1873,6 +1905,10 @@
         const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'Today' : daysAgo + 'd') : '—';
         const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
 
+        const isSaved = savedJobIds.includes(job.greenhouse_id);
+        const saveIcon = isSaved ? '★' : '☆';
+        const saveCls = isSaved ? 'save-job-btn saved' : 'save-job-btn';
+
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td class="jt-title"><a href="${job.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
@@ -1882,6 +1918,7 @@
           <td class="jt-ghost">—</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
           <td style="white-space:nowrap;">
+            <button class="${saveCls}" onclick="toggleSaveJob('${job.greenhouse_id}', this)" title="${isSaved ? 'Unsave' : 'Save'}">${saveIcon}</button>
             ${applyButton(['greenhouse'], { greenhouse: job.url })}
             <button class="hide-job-btn" onclick="hideJob('${job.greenhouse_id}', this)" title="Hide this job">✕</button>
           </td>
@@ -1908,6 +1945,23 @@
       localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
       const row = btn.closest('tr');
       if (row) row.style.display = 'none';
+    }
+
+    function toggleSaveJob(jobId, btn) {
+      const idx = savedJobIds.indexOf(jobId);
+      if (idx >= 0) {
+        savedJobIds.splice(idx, 1);
+        btn.textContent = '☆';
+        btn.classList.remove('saved');
+        btn.title = 'Save';
+      } else {
+        savedJobIds.push(jobId);
+        btn.textContent = '★';
+        btn.classList.add('saved');
+        btn.title = 'Unsave';
+      }
+      localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
+      $('#j-saved').textContent = savedJobIds.length.toLocaleString();
     }
 
     function truncate(str, max) {
@@ -2409,40 +2463,57 @@
 
       for (let i = 0; i < savedFilters.length; i++) {
         const sf = savedFilters[i];
+
+        // Skip filters with no real criteria
+        const w = sf.whatPills || sf.pills || [];
+        const wh = sf.wherePills || [];
+        const wo = sf.whoPills || [];
+        if (w.length === 0 && wh.length === 0 && wo.length === 0) {
+          console.log(`Filter ${i} "${sf.name}" has no searchable criteria, skipping counts`);
+          continue;
+        }
+
         try {
           // Today
           let q1 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
           q1 = buildFilterQuery(sf, q1);
           q1 = q1.gte('updated_at', todayStart.toISOString());
-          const { count: c1 } = await q1;
+          const r1 = await q1;
+          const c1 = r1.error ? 0 : (r1.count || 0);
 
           // 7 days
           let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
           q2 = buildFilterQuery(sf, q2);
           q2 = q2.gte('updated_at', weekAgo.toISOString());
-          const { count: c2 } = await q2;
+          const r2 = await q2;
+          const c2 = r2.error ? 0 : (r2.count || 0);
 
           // 30 days
           let q3 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
           q3 = buildFilterQuery(sf, q3);
           q3 = q3.gte('updated_at', monthAgo.toISOString());
-          const { count: c3 } = await q3;
+          const r3 = await q3;
+          const c3 = r3.error ? 0 : (r3.count || 0);
 
-          // Update the DOM
-          const row = $(`.sf-item[data-idx="${i}"]`);
-          if (row) {
-            const counts = row.querySelectorAll('.sf-count');
-            if (counts[0]) counts[0].textContent = (c1 || 0).toLocaleString();
-            if (counts[1]) counts[1].textContent = (c2 || 0).toLocaleString();
-            if (counts[2]) counts[2].textContent = (c3 || 0).toLocaleString();
-          }
+          console.log(`Filter "${sf.name}": today=${c1}, 7d=${c2}, 30d=${c3}`);
 
-          // Also persist to savedFilters for future renders
-          savedFilters[i].jobsToday = c1 || 0;
-          savedFilters[i].jobsWeek = c2 || 0;
-          savedFilters[i].jobsMonth = c3 || 0;
+          // Update the DOM — find by data-idx which matches original array index
+          const rows = $$('.sf-item');
+          rows.forEach(row => {
+            if (parseInt(row.dataset.idx) === i) {
+              const counts = row.querySelectorAll('.sf-count');
+              if (counts[0]) counts[0].textContent = c1.toLocaleString();
+              if (counts[1]) counts[1].textContent = c2.toLocaleString();
+              if (counts[2]) counts[2].textContent = c3.toLocaleString();
+            }
+          });
+
+          // Persist
+          savedFilters[i].jobsToday = c1;
+          savedFilters[i].jobsWeek = c2;
+          savedFilters[i].jobsMonth = c3;
         } catch (e) {
-          console.error(`Count error for filter ${i}:`, e);
+          console.error(`Count error for filter ${i} "${sf.name}":`, e);
         }
       }
       localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
