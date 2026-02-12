@@ -2457,10 +2457,14 @@
         }
 
         // Filter number badges
-        const filterBadges = (job._filterNums || [])
-          .filter(f => f.num)
+        const allBadges = (job._filterNums || []).filter(f => f.num);
+        const maxBadges = 3;
+        let filterBadges = allBadges.slice(0, maxBadges)
           .map(f => `<span class="job-filter-badge" style="background:${f.color};">${f.num}</span>`)
           .join('');
+        if (allBadges.length > maxBadges) {
+          filterBadges += `<span class="job-filter-badge" style="background:var(--text-faint);font-size:8px;">+${allBadges.length - maxBadges}</span>`;
+        }
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
@@ -3183,6 +3187,14 @@
     }
     renderSavedFilters();
     renderAllPills();
+
+    // Auto-collapse filter builder and saved filters if saved filters exist
+    if (savedFilters.length > 0) {
+      $('#qb-toggle').classList.add('collapsed');
+      $('#qb-collapse-body').classList.add('collapsed');
+      $('#sf-toggle').classList.add('collapsed');
+      $('#sf-collapse-body').classList.add('collapsed');
+    }
 
     // Compute real job counts for each saved filter (async, fills in after render)
     async function updateSavedFilterCounts() {
