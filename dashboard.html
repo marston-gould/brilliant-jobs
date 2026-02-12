@@ -525,7 +525,7 @@
     @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
     .job-modal {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
-      width: 90%; max-width: 740px; max-height: 85vh; display: flex; flex-direction: column;
+      width: 92%; max-width: 780px; max-height: 90vh; display: flex; flex-direction: column;
       box-shadow: 0 24px 80px rgba(0,0,0,0.4);
       animation: modalSlideUp 0.2s ease-out;
     }
@@ -2595,8 +2595,8 @@
           applyBtn = `<span class="job-action-btn applied-btn">Applied ✓</span>`;
         } else {
           saveBtn = isSaved
-            ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Saved</button>`
-            : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Save</button>`;
+            ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline ✓</button>`
+            : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline</button>`;
           const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
           applyBtn = applyButton(['greenhouse'], { greenhouse: jobUrl }, job.greenhouse_id);
         }
@@ -2700,18 +2700,26 @@
         fetchJobSpec(jobId, jobUrl, bodyEl);
       }
 
+      // Store for toggle between spec and form
+      window._modalJobUrl = jobUrl;
+      window._modalJobId = jobId;
+      window._modalShowingForm = false;
+
       // Footer with action buttons — all sync back to feed
       const isSaved = savedJobIds.includes(jobId);
       const isApplied = appliedJobIds.includes(jobId);
       let footerHtml = '';
       if (isApplied) {
-        footerHtml += '<span class="job-action-btn applied-btn">Applied \u2713</span>';
+        footerHtml += '<span class="job-action-btn applied-btn">Applied ✓</span>';
       } else {
-        footerHtml += '<button class="apply-btn apply-btn-default" onclick="modalApply(\'' + jobId + '\', \'' + jobUrl.replace(/'/g, "\\'") + '\')" style="padding:6px 16px;font-size:12px;">Apply \u2192</button>';
-      }
-      if (!isApplied) {
+        // Build embed URL for Greenhouse iframe form
+        const embedMatch = jobUrl.match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
+        if (embedMatch) {
+          footerHtml += '<button class="apply-btn apply-btn-default" id="modal-apply-here" onclick="toggleApplyForm()" style="padding:6px 16px;font-size:12px;">Apply Here</button>';
+        }
+        footerHtml += '<button class="apply-btn" onclick="modalApply(\'' + jobId + '\', \'' + jobUrl.replace(/'/g, "\\'") + '\')" style="padding:6px 12px;font-size:11px;background:none;color:var(--accent);border:1px solid var(--accent);">Open on ATS ↗</button>';
         const saveClass = isSaved ? 'job-action-btn saved-btn' : 'job-action-btn';
-        const saveLabel = isSaved ? 'Saved' : 'Save';
+        const saveLabel = isSaved ? 'In Pipeline' : 'Add to Pipeline';
         footerHtml += '<button class="' + saveClass + '" id="modal-save-btn" onclick="modalSave(\'' + jobId + '\', this)">' + saveLabel + '</button>';
       }
       footerHtml += '<button class="job-action-btn hide-btn" onclick="modalHide(\'' + jobId + '\')" style="padding:4px 10px;font-size:11px;">Hide</button>';
@@ -2724,6 +2732,81 @@
       if (e && e.target !== e.currentTarget) return;
       $('#job-modal-overlay').style.display = 'none';
       document.body.style.overflow = '';
+      window._modalShowingForm = false;
+    }
+
+    // Toggle between job spec view and embedded Greenhouse application form
+    function toggleApplyForm() {
+      const bodyEl = $('#job-modal-body');
+      const btn = $('#modal-apply-here');
+      const jobUrl = window._modalJobUrl;
+      const jobId = window._modalJobId;
+
+      if (window._modalShowingForm) {
+        // Switch back to job spec
+        window._modalShowingForm = false;
+        btn.textContent = 'Apply Here';
+        btn.style.background = '';
+        btn.style.color = '';
+        // Re-trigger the spec load
+        const job = allJobs.find(j => j.greenhouse_id === jobId);
+        if (job?.content) {
+          const c = job.content;
+          bodyEl.innerHTML = c.startsWith('&lt;') || c.startsWith('&amp;')
+            ? new DOMParser().parseFromString(c, 'text/html').body.innerHTML : c;
+        } else {
+          bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
+          fetchJobSpec(jobId, jobUrl, bodyEl);
+        }
+        return;
+      }
+
+      // Switch to application form
+      window._modalShowingForm = true;
+      btn.textContent = '← Back to Job Spec';
+      btn.style.background = 'none';
+      btn.style.color = 'var(--accent)';
+
+      // Build Greenhouse embed URL
+      const urlMatch = jobUrl.match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
+      if (urlMatch) {
+        const [, boardToken, numId] = urlMatch;
+        const embedUrl = `https://boards.greenhouse.io/embed/job_app?for=${boardToken}&token=${numId}`;
+        bodyEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;height:100%;min-height:500px;">
+            <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+              Complete your application below — this form submits directly to the company's hiring system
+            </div>
+            <iframe id="gh-apply-frame" src="${embedUrl}" style="flex:1;border:none;border-radius:8px;min-height:500px;width:100%;background:#fff;" 
+              sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-top-navigation"
+              loading="lazy"></iframe>
+          </div>`;
+
+        // Watch for successful submission — Greenhouse shows a confirmation page after submit
+        // We detect this by polling iframe height changes or watching for the frame to reload
+        const frame = $('#gh-apply-frame');
+        let pollCount = 0;
+        const submissionPoller = setInterval(() => {
+          pollCount++;
+          if (pollCount > 600) { clearInterval(submissionPoller); return; } // stop after 10 min
+          try {
+            // Cross-origin: can't read URL, but we can detect if content shrinks
+            // (confirmation page is much shorter than the application form)
+            // Also try to detect via frame load events
+          } catch(e) {}
+        }, 1000);
+
+        // Listen for the iframe to load a new page (confirmation page after submission)
+        let frameLoads = 0;
+        frame.addEventListener('load', () => {
+          frameLoads++;
+          if (frameLoads > 1) {
+            // Second load = form was submitted and confirmation page loaded
+            clearInterval(submissionPoller);
+            markAppliedFromModal(jobId);
+          }
+        });
+      }
     }
 
     // On-demand job spec fetcher — tries Greenhouse JSON API first
@@ -2800,6 +2883,11 @@
     // Modal actions — sync back to feed
     function modalApply(jobId, url) {
       window.open(url, '_blank');
+      // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
+    }
+
+    // Called when iframe detects a form submission (second load = confirmation page)
+    function markAppliedFromModal(jobId) {
       // Update feed row
       const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
       if (row) {
@@ -2811,7 +2899,27 @@
         appliedJobIds.push(jobId);
         localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
       }
-      closeJobModal();
+      // Store applied date
+      const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+      dates[jobId] = new Date().toISOString();
+      localStorage.setItem('bj_applied_dates', JSON.stringify(dates));
+
+      // Update modal UI
+      const footerEl = $('#job-modal-footer');
+      const bodyEl = $('#job-modal-body');
+      
+      bodyEl.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;">
+          <div style="font-size:48px;margin-bottom:16px;">✓</div>
+          <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Application Submitted</div>
+          <div style="font-size:13px;color:var(--text-dim);">Tracked in your Pipeline under Applied</div>
+        </div>`;
+      
+      footerEl.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span><button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
+      
+      // Refresh pipeline in background
+      renderPipelineSaved();
+      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new').textContent);
     }
 
     function modalSave(jobId, btn) {
@@ -2819,11 +2927,11 @@
       if (idx >= 0) {
         savedJobIds.splice(idx, 1);
         btn.className = 'job-action-btn';
-        btn.textContent = 'Save';
+        btn.textContent = 'Add to Pipeline';
       } else {
         savedJobIds.push(jobId);
         btn.className = 'job-action-btn saved-btn';
-        btn.textContent = 'Saved';
+        btn.textContent = 'In Pipeline';
       }
       localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
       // Sync feed row
@@ -2833,10 +2941,10 @@
         if (saveBtn && !saveBtn.classList.contains('apply-btn-default')) {
           if (savedJobIds.includes(jobId)) {
             saveBtn.className = 'job-action-btn saved-btn';
-            saveBtn.textContent = 'Saved';
+            saveBtn.textContent = 'Pipeline ✓';
           } else {
             saveBtn.className = 'job-action-btn';
-            saveBtn.textContent = 'Save';
+            saveBtn.textContent = 'Pipeline';
           }
         }
       }
@@ -2869,11 +2977,11 @@
       const idx = savedJobIds.indexOf(jobId);
       if (idx >= 0) {
         savedJobIds.splice(idx, 1);
-        btn.textContent = 'Save';
+        btn.textContent = 'Pipeline';
         btn.classList.remove('saved-btn');
       } else {
         savedJobIds.push(jobId);
-        btn.textContent = 'Saved';
+        btn.textContent = 'Pipeline ✓';
         btn.classList.add('saved-btn');
       }
       localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
@@ -3732,33 +3840,96 @@
     // Render saved jobs in pipeline Saved column
     async function renderPipelineSaved() {
       const savedCol = $('#pl-saved');
-      const countEl = $('#pc-saved');
-      if (!savedCol || savedJobIds.length === 0) return;
+      const appliedCol = $('#pl-applied');
+      const savedCountEl = $('#pc-saved');
+      const appliedCountEl = $('#pc-applied');
 
-      // Fetch saved job details from ats_jobs
-      try {
-        const { data: jobs } = await sb.from('ats_jobs')
-          .select('greenhouse_id, title, company_name, url')
-          .in('greenhouse_id', savedJobIds.slice(0, 50));
+      // Render Saved column
+      if (savedCol && savedJobIds.length > 0) {
+        try {
+          // Only show saved jobs that haven't been applied to
+          const savedOnly = savedJobIds.filter(id => !appliedJobIds.includes(id));
+          if (savedOnly.length > 0) {
+            const { data: jobs } = await sb.from('ats_jobs')
+              .select('greenhouse_id, title, company_name, url')
+              .in('greenhouse_id', savedOnly.slice(0, 50));
 
-        if (jobs && jobs.length > 0) {
-          savedCol.innerHTML = '';
-          jobs.forEach(job => {
-            const card = document.createElement('div');
-            card.className = 'pipeline-card';
-            card.dataset.jobid = job.greenhouse_id;
-            card.innerHTML = `<div>${job.title || 'Untitled'}</div><div class="co">${job.company_name || ''}</div>
-              <div style="margin-top:4px;display:flex;gap:4px;">
-                <a href="${job.url}" target="_blank" class="apply-btn apply-btn-default" style="font-size:9px;padding:2px 8px;" onclick="event.stopPropagation(); markAppliedFromPipeline('${job.greenhouse_id}', this)">Apply →</a>
-                <button class="job-action-btn hide-btn" style="font-size:9px;padding:2px 6px;" onclick="unsaveFromPipeline('${job.greenhouse_id}', this)">Remove</button>
-              </div>`;
-            savedCol.appendChild(card);
-          });
-          countEl.textContent = jobs.length;
+            if (jobs && jobs.length > 0) {
+              savedCol.innerHTML = '';
+              jobs.forEach(job => {
+                const card = document.createElement('div');
+                card.className = 'pipeline-card';
+                card.dataset.jobid = job.greenhouse_id;
+                card.innerHTML = `<div>${job.title || 'Untitled'}</div><div class="co">${job.company_name || ''}</div>
+                  <div style="margin-top:4px;display:flex;gap:4px;">
+                    <button class="apply-btn apply-btn-default" style="font-size:9px;padding:2px 8px;" onclick="event.stopPropagation(); openJobModal('${job.greenhouse_id}')">View & Apply</button>
+                    <button class="job-action-btn hide-btn" style="font-size:9px;padding:2px 6px;" onclick="unsaveFromPipeline('${job.greenhouse_id}', this)">Remove</button>
+                  </div>`;
+                savedCol.appendChild(card);
+              });
+              savedCountEl.textContent = jobs.length;
+            } else {
+              savedCol.innerHTML = '';
+              savedCountEl.textContent = '0';
+            }
+          } else {
+            savedCol.innerHTML = '';
+            savedCountEl.textContent = '0';
+          }
+        } catch (e) {
+          console.error('Pipeline saved render error:', e);
         }
-      } catch (e) {
-        console.error('Pipeline saved render error:', e);
       }
+
+      // Render Applied column
+      if (appliedCol && appliedJobIds.length > 0) {
+        try {
+          const { data: jobs } = await sb.from('ats_jobs')
+            .select('greenhouse_id, title, company_name, url')
+            .in('greenhouse_id', appliedJobIds.slice(0, 50));
+
+          if (jobs && jobs.length > 0) {
+            appliedCol.innerHTML = '';
+            // Get timestamps
+            const appliedDates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+            jobs.forEach(job => {
+              const card = document.createElement('div');
+              card.className = 'pipeline-card';
+              card.dataset.jobid = job.greenhouse_id;
+              const appliedDate = appliedDates[job.greenhouse_id];
+              const dateStr = appliedDate ? formatTimeAgo(new Date(appliedDate)) : '';
+              card.innerHTML = `<div>${job.title || 'Untitled'}</div><div class="co">${job.company_name || ''}</div>
+                ${dateStr ? `<div style="font-size:9px;color:var(--text-faint);margin-top:2px;">Applied ${dateStr}</div>` : ''}
+                <div style="margin-top:4px;display:flex;gap:4px;">
+                  <span style="font-size:9px;color:var(--green);font-weight:600;">Applied ✓</span>
+                </div>`;
+              appliedCol.appendChild(card);
+            });
+            appliedCountEl.textContent = jobs.length;
+          }
+        } catch (e) {
+          console.error('Pipeline applied render error:', e);
+        }
+      }
+
+      // Update stats
+      updatePipelineStats();
+    }
+
+    function updatePipelineStats() {
+      const total = appliedJobIds.length;
+      $('#p-total').textContent = total;
+      $('#p-active').textContent = total; // TODO: subtract rejected/offer
+    }
+
+    function formatTimeAgo(date) {
+      const now = new Date();
+      const diffMs = now - date;
+      const diffDays = Math.floor(diffMs / 86400000);
+      if (diffDays === 0) return 'today';
+      if (diffDays === 1) return 'yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
 
     function markAppliedFromPipeline(jobId, btn) {
@@ -3766,18 +3937,12 @@
         appliedJobIds.push(jobId);
         localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
       }
-      // Move card from Saved to Applied column
-      const card = btn.closest('.pipeline-card');
-      if (card) {
-        // Remove action buttons, show as applied
-        const actionsDiv = card.querySelector('div:last-child');
-        if (actionsDiv && actionsDiv.querySelector('.apply-btn')) {
-          actionsDiv.innerHTML = '<span style="font-size:9px;color:var(--green);font-weight:600;">Applied ✓</span>';
-        }
-        $('#pl-applied').appendChild(card);
-        $('#pc-saved').textContent = $('#pl-saved').children.length;
-        $('#pc-applied').textContent = $('#pl-applied').children.length;
-      }
+      // Store applied date
+      const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+      dates[jobId] = new Date().toISOString();
+      localStorage.setItem('bj_applied_dates', JSON.stringify(dates));
+      // Re-render pipeline
+      renderPipelineSaved();
     }
 
     function unsaveFromPipeline(jobId, btn) {
