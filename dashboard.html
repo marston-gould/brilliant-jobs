@@ -2214,6 +2214,7 @@
     let searchTimeout = null;
     let currentJobPage = 0;
     const JOBS_PER_PAGE = 50;
+    let allJobs = [];
     let currentJobs = [];
     let jobSortStack = [{ field: 'updated_at', asc: false }]; // multi-sort
     let hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
@@ -2411,7 +2412,7 @@
         // For multiple checked filters, we run each as a separate query then merge
         // Supabase doesn't support OR across separate ilike groups easily
         // So we fetch per filter and deduplicate
-        let allJobs = [];
+        allJobs = [];
         let totalCount = 0;
         const seenIds = new Set();
 
@@ -2605,7 +2606,7 @@
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" onclick="openJobModal('${job.greenhouse_id}')" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc">${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
@@ -2632,15 +2633,6 @@
 
       tbody.innerHTML = html;
     }
-
-    // Event delegation for job title clicks
-    document.addEventListener('click', e => {
-      const link = e.target.closest('.job-title-link');
-      if (link) {
-        e.preventDefault();
-        openJobModal(link.dataset.jobid);
-      }
-    });
 
     // Job Spec Modal
     async function openJobModal(jobId, e) {
