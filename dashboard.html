@@ -1915,7 +1915,10 @@
         $('#st-connections').textContent = (conn.count || 0).toLocaleString();
         const scanned = await sb.from('connections').select('id', { count: 'exact', head: true }).eq('visit_status', 'completed');
         $('#st-scanned').textContent = (scanned.count || 0).toLocaleString();
-        const comp = await sb.from('companies').select('id', { count: 'exact', head: pCos?.length > 0) {
+        const comp = await sb.from('companies').select('id', { count: 'exact', head: true });
+        $('#st-companies').textContent = (comp.count || 0).toLocaleString();
+        const { data: topCos } = await sb.from('companies').select('company_name').not('company_name', 'is', null).limit(500);
+        if (topCos?.length > 0) {
           const counts = {};
           topCos.forEach(c => { const n = c.company_name?.trim(); if (n && n.length > 1) counts[n] = (counts[n] || 0) + 1; });
           const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
