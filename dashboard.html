@@ -714,9 +714,9 @@
         </div>
 
         <div class="nav-section-label">Account</div>
-        <div class="nav-item" data-page="subscription">
-          <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
-          <span>Subscription</span>
+        <div class="nav-item" data-page="settings">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+          <span>Settings</span>
         </div>
       </div>
 
@@ -1269,28 +1269,32 @@
             <div class="card-sub">Companies with the most connections</div>
             <div id="top-companies"><div style="color:var(--text-faint);font-size:13px;padding:20px 0;">Complete setup to see company data</div></div>
           </div>
-          <div class="card">
-            <div class="card-title">Account</div>
-            <div class="card-sub">Manage your account settings</div>
-            <div style="display:flex;gap:12px;flex-wrap:wrap;">
-              <button class="btn btn-secondary btn-sm" id="st-change-pw">Change Password</button>
-              <button class="btn btn-secondary btn-sm" id="st-export">Export Data</button>
-              <button class="btn btn-secondary btn-sm" id="st-redownload">Re-download Extension</button>
-            </div>
-          </div>
+
         </div>
       </div>
 
-      <!-- ============ SUBSCRIPTION ============ -->
-      <div class="page" id="page-subscription">
+      <!-- ============ SETTINGS ============ -->
+      <div class="page" id="page-settings">
         <div class="page-header">
-          <h2>Subscription</h2>
-          <p>Manage your plan, billing, and referral discounts</p>
+          <h2>Settings</h2>
+          <p>Account, preferences, and billing</p>
         </div>
         <div class="page-body">
-          <div class="empty-state">
-            <h3>Coming Soon</h3>
-            <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
+          <div class="card">
+            <div class="card-title">Account</div>
+            <div class="card-sub">Manage your account</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" id="st-change-pw">Change Password</button>
+              <button class="btn btn-secondary btn-sm" id="st-export">Export Data</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Subscription</div>
+            <div class="card-sub">Manage your plan, billing, and referral discounts</div>
+            <div class="empty-state" style="padding:20px 0;">
+              <h3>Coming Soon</h3>
+              <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -2347,13 +2351,7 @@
       } catch (e) { console.error('Stats error:', e); }
     }
 
-    // Account
-    $('#st-redownload')?.addEventListener('click', () => {
-      $$('.nav-item').forEach(n => n.classList.remove('active'));
-      $('.nav-item[data-page="setup"]').classList.add('active');
-      $$('.page').forEach(p => p.classList.remove('active'));
-      $('#page-setup').classList.add('active');
-    });
+    // Account (Settings page)
     $('#st-change-pw')?.addEventListener('click', async () => {
       try {
         const { error } = await sb.auth.resetPasswordForEmail(currentUser.email, { redirectTo: window.location.origin });
