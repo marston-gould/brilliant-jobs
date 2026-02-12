@@ -497,6 +497,8 @@
       padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-left: 8px;
     }
     .sf-item:hover .sf-del { opacity: 1; }
+    .sf-item:hover .sf-levels-btn { opacity: 0.7; }
+    .sf-item .sf-levels-btn:hover { opacity: 1; color: var(--accent); }
     .sf-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
 
     .sf-item-pills {
@@ -1562,17 +1564,6 @@
             </div>
           </div>
 
-          <!-- Global Title Exclusions -->
-          <div class="card">
-            <div class="card-title">Title Exclusions</div>
-            <div class="card-sub">Titles containing these terms will be hidden from all filters</div>
-            <div style="margin-top:12px;">
-              <div class="query-builder" id="tuning-title-exclude" style="min-height:40px;">
-                <input type="text" class="qb-input" id="tuning-title-excl-input" placeholder="Add title keywords to always exclude… e.g. intern, volunteer, part-time">
-              </div>
-            </div>
-          </div>
-
           <!-- Global Company Exclusions -->
           <div class="card">
             <div class="card-title">Company Exclusions</div>
@@ -1584,11 +1575,17 @@
             </div>
           </div>
 
-          <!-- Title Level Hierarchy -->
+          <!-- Title Rules — Hierarchy + Exclusions -->
           <div class="card">
-            <div class="card-title">Title Level Hierarchy</div>
-            <div class="card-sub">Define seniority levels to rank jobs in the feed. Drag to reorder priority. Most specific keywords match first.</div>
-            <div style="margin-top:12px;">
+            <div class="card-title">Title Rules</div>
+            <div class="card-sub">Default seniority levels (each saved filter can override via the ⚙ icon) and global title exclusions</div>
+
+            <!-- Default Level Hierarchy -->
+            <div style="margin-top:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Default Level Hierarchy</label>
+                <span style="font-size:10px;color:var(--text-faint);font-style:italic;">Each saved filter can override this with its own hierarchy</span>
+              </div>
               <table class="level-table" id="level-table">
                 <thead>
                   <tr>
@@ -1601,6 +1598,15 @@
                 <tbody id="level-table-body"></tbody>
               </table>
               <button class="btn btn-sm" id="level-add-btn" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;">+ Add Level</button>
+            </div>
+
+            <!-- Global Title Exclusions -->
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+              <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Global Title Exclusions</label>
+              <div style="font-size:11px;color:var(--text-faint);margin:4px 0 8px;">Titles containing these terms will be hidden from all filters</div>
+              <div class="query-builder" id="tuning-title-exclude" style="min-height:40px;">
+                <input type="text" class="qb-input" id="tuning-title-excl-input" placeholder="Add title keywords to always exclude… e.g. intern, volunteer, part-time">
+              </div>
             </div>
           </div>
 
@@ -2671,12 +2677,20 @@
           return;
         }
 
+        // Determine active level hierarchy — use first checked filter's custom hierarchy, or fall back to global
+        let activeLevelHierarchy = levelHierarchy;
+        if (filtersToRun.length > 0 && filtersToRun[0].levelHierarchy) {
+          activeLevelHierarchy = filtersToRun[0].levelHierarchy;
+        }
+        // Store for renderJobRows to use
+        window._activeLevelHierarchy = activeLevelHierarchy;
+
         // Client-side level sort if level is in the sort stack
         const levelSort = jobSortStack.find(s => s.field === 'level');
         if (levelSort) {
           currentJobs.sort((a, b) => {
-            const la = getJobLevel(a.title);
-            const lb = getJobLevel(b.title);
+            const la = getJobLevel(a.title, activeLevelHierarchy);
+            const lb = getJobLevel(b.title, activeLevelHierarchy);
             const ra = la ? la.rank : 999;
             const rb = lb ? lb.rank : 999;
             return levelSort.asc ? rb - ra : ra - rb;
@@ -2783,7 +2797,7 @@
           filterBadges += `<span class="job-filter-badge" style="background:var(--text-faint);font-size:8px;">+${allBadges.length - maxBadges}</span>`;
         }
 
-          const levelInfo = getJobLevel(job.title);
+          const levelInfo = getJobLevel(job.title, window._activeLevelHierarchy);
           const levelCell = levelInfo
             ? `<span class="level-badge" style="background:${levelInfo.color}20;color:${levelInfo.color};">${levelInfo.label}</span>`
             : '—';
@@ -3552,10 +3566,17 @@
         lastUsed: Date.now(),
         useCount: 1
       };
-      // Replace if same name exists
+      // Preserve existing per-filter level hierarchy if updating, otherwise inherit global default
       const existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+      if (existingIdx >= 0 && savedFilters[existingIdx].levelHierarchy) {
+        filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
+      }
       if (existingIdx >= 0) {
         filterData.createdAt = savedFilters[existingIdx].createdAt || Date.now();
+        // Preserve per-filter level hierarchy if it exists
+        if (savedFilters[existingIdx].levelHierarchy) {
+          filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
+        }
         filterData.useCount = (savedFilters[existingIdx].useCount || 0) + 1;
         savedFilters[existingIdx] = filterData;
       } else {
@@ -3785,6 +3806,7 @@
             <span class="sf-count sf-count-month">${jMonth}</span>
           </div>
           <span class="sf-del" data-delidx="${sf._idx}">✕</span>
+          <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.levelHierarchy ? 'Custom levels — click to edit' : 'Customize level hierarchy'}" style="font-size:10px;color:${sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
         </div>`;
       }).join('');
 
@@ -3836,6 +3858,15 @@
           savedFilters.splice(parseInt(el.dataset.delidx), 1);
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
           renderSavedFilters();
+        });
+      });
+
+      // Bind levels button
+      list.querySelectorAll('.sf-levels-btn').forEach(el => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          const idx = parseInt(el.dataset.idx);
+          editFilterLevelHierarchy(idx);
         });
       });
 
@@ -4272,12 +4303,13 @@
 
     // ---- Level Matching Engine ----
     // Matches a job title against the hierarchy, longest keyword first to avoid partial matches
-    function getJobLevel(title) {
-      if (!title || levelHierarchy.length === 0) return null;
+    function getJobLevel(title, hierarchy) {
+      const levels = hierarchy || levelHierarchy;
+      if (!title || levels.length === 0) return null;
       const t = ' ' + title.toLowerCase() + ' ';
       // Build flat list of {keyword, rank, label, color} sorted by keyword length desc
       const entries = [];
-      levelHierarchy.forEach((lvl, rank) => {
+      levels.forEach((lvl, rank) => {
         (lvl.keywords || '').split(',').forEach(kw => {
           const k = kw.trim().toLowerCase();
           if (k) entries.push({ keyword: k, rank, label: lvl.label, color: lvl.color || '#94a3b8' });
@@ -4298,6 +4330,99 @@
 
     // Restore state
     if (tuningSettings.usOnly) $('#tuning-us-only').checked = true;
+
+    // Per-filter level hierarchy editor — uses a modal-style overlay
+    window.editFilterLevelHierarchy = function(filterIdx) {
+      const sf = savedFilters[filterIdx];
+      if (!sf) return;
+
+      // If filter has no custom hierarchy, start from default
+      let filterLevels = sf.levelHierarchy
+        ? JSON.parse(JSON.stringify(sf.levelHierarchy))
+        : JSON.parse(JSON.stringify(levelHierarchy));
+
+      // Build overlay
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+      function renderModal() {
+        const isCustom = !!sf.levelHierarchy;
+        overlay.innerHTML = `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+              <div style="font-size:15px;font-weight:700;color:var(--text);">Level Hierarchy — ${sf.name}</div>
+              <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">
+                ${isCustom ? '<span style="color:var(--accent);font-weight:600;">Custom hierarchy</span> — different from default' : 'Using default hierarchy — customize to override'}
+              </div>
+            </div>
+            <button id="fl-close" style="background:none;border:none;font-size:20px;color:var(--text-faint);cursor:pointer;padding:4px 8px;">✕</button>
+          </div>
+          <table class="level-table">
+            <thead><tr>
+              <th style="width:36px;">#</th>
+              <th style="width:130px;">Level</th>
+              <th>Match Keywords</th>
+              <th style="width:40px;"></th>
+            </tr></thead>
+            <tbody id="fl-tbody"></tbody>
+          </table>
+          <div style="display:flex;gap:8px;margin-top:12px;">
+            <button id="fl-add" class="btn btn-sm" style="padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;">+ Add Level</button>
+            <button id="fl-reset" class="btn btn-sm" style="padding:4px 14px;font-size:11px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Reset to Default</button>
+            <div style="flex:1;"></div>
+            <button id="fl-save" class="btn btn-sm btn-primary" style="padding:6px 20px;font-size:12px;">Save</button>
+          </div>
+        </div>`;
+
+        const tbody = overlay.querySelector('#fl-tbody');
+        filterLevels.forEach((lvl, i) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="level-rank">${i + 1}</td>
+            <td><input class="level-name" data-i="${i}" data-f="label" value="${(lvl.label||'').replace(/"/g,'&quot;')}" placeholder="Level name"></td>
+            <td><input data-i="${i}" data-f="keywords" value="${(lvl.keywords||'').replace(/"/g,'&quot;')}" placeholder="keyword1, keyword2"></td>
+            <td><button class="level-del" data-i="${i}" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;">✕</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Bind inputs
+        tbody.querySelectorAll('input').forEach(inp => {
+          inp.addEventListener('change', () => {
+            filterLevels[parseInt(inp.dataset.i)][inp.dataset.f] = inp.value.trim();
+          });
+        });
+        tbody.querySelectorAll('.level-del').forEach(btn => {
+          btn.addEventListener('click', () => {
+            filterLevels.splice(parseInt(btn.dataset.i), 1);
+            renderModal();
+          });
+        });
+
+        overlay.querySelector('#fl-close').addEventListener('click', () => overlay.remove());
+        overlay.querySelector('#fl-add').addEventListener('click', () => {
+          filterLevels.push({ label: '', keywords: '', color: '#94a3b8' });
+          renderModal();
+        });
+        overlay.querySelector('#fl-reset').addEventListener('click', () => {
+          filterLevels = JSON.parse(JSON.stringify(levelHierarchy));
+          delete savedFilters[filterIdx].levelHierarchy;
+          localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+          renderModal();
+        });
+        overlay.querySelector('#fl-save').addEventListener('click', () => {
+          savedFilters[filterIdx].levelHierarchy = JSON.parse(JSON.stringify(filterLevels));
+          localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+          overlay.remove();
+          debouncedSearchJobs();
+        });
+      }
+
+      renderModal();
+      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    };
 
     // Render tuning pills
     function renderTuningPills() {
