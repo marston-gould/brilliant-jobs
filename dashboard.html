@@ -527,12 +527,16 @@
     }
     .job-table tr:hover .hide-job-btn { opacity: 0.6; }
     .hide-job-btn:hover { opacity: 1 !important; color: var(--red); background: var(--red-dim); }
-    .save-job-btn {
-      background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px 4px;
-      color: var(--text-faint); transition: color 0.15s;
+    .job-action-btn {
+      padding: 4px 10px; border: 1px solid var(--border); border-radius: 5px;
+      font-family: var(--sans); font-size: 10px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+      background: transparent; color: var(--text-dim);
     }
-    .save-job-btn:hover { color: var(--accent); }
-    .save-job-btn.saved { color: var(--accent); }
+    .job-action-btn:hover { border-color: var(--text-faint); color: var(--text); }
+    .job-action-btn.saved-btn { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.08); }
+    .job-action-btn.hide-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+    .job-action-btn.applied-btn { border-color: var(--green); color: var(--green); background: rgba(34,197,94,0.08); cursor: default; }
 
     .source-pills { display: flex; gap: 4px; flex-wrap: wrap; }
     .source-pill {
@@ -1082,6 +1086,10 @@
             <button class="btn btn-primary btn-sm" id="p-add-btn">+ Add Application</button>
           </div>
           <div class="pipeline-cols">
+            <div class="pipeline-col">
+              <div class="pipeline-col-header" style="color:var(--text-dim);">Saved <span class="pipeline-col-count" id="pc-saved">0</span></div>
+              <div id="pl-saved"></div>
+            </div>
             <div class="pipeline-col">
               <div class="pipeline-col-header" style="color:var(--accent);">Applied <span class="pipeline-col-count" id="pc-applied">0</span></div>
               <div id="pl-applied"></div>
@@ -1681,6 +1689,7 @@
     let jobSortStack = [{ field: 'updated_at', asc: false }]; // multi-sort
     let hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
     let savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
+    let appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
 
     function debouncedSearchJobs() {
       clearTimeout(searchTimeout);
@@ -1968,8 +1977,22 @@
         const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
 
         const isSaved = savedJobIds.includes(job.greenhouse_id);
-        const saveIcon = isSaved ? '★' : '☆';
-        const saveCls = isSaved ? 'save-job-btn saved' : 'save-job-btn';
+        const isApplied = appliedJobIds.includes(job.greenhouse_id);
+
+        // Action buttons
+        let saveBtn = '';
+        let applyBtn = '';
+        let hideBtn = `<button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)">Hide</button>`;
+
+        if (isApplied) {
+          saveBtn = '';
+          applyBtn = `<span class="job-action-btn applied-btn">Applied ✓</span>`;
+        } else {
+          saveBtn = isSaved
+            ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Saved</button>`
+            : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Save</button>`;
+          applyBtn = applyButton(['greenhouse'], { greenhouse: job.url }, job.greenhouse_id);
+        }
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td class="jt-title"><a href="${job.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
@@ -1979,10 +2002,8 @@
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-ghost">—</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
-          <td style="white-space:nowrap;">
-            <button class="${saveCls}" onclick="toggleSaveJob('${job.greenhouse_id}', this)" title="${isSaved ? 'Unsave' : 'Save'}">${saveIcon}</button>
-            ${applyButton(['greenhouse'], { greenhouse: job.url })}
-            <button class="hide-job-btn" onclick="hideJob('${job.greenhouse_id}', this)" title="Hide this job">✕</button>
+          <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
+            ${saveBtn}${applyBtn}${hideBtn}
           </td>
         </tr>`;
       }
@@ -2013,14 +2034,12 @@
       const idx = savedJobIds.indexOf(jobId);
       if (idx >= 0) {
         savedJobIds.splice(idx, 1);
-        btn.textContent = '☆';
-        btn.classList.remove('saved');
-        btn.title = 'Save';
+        btn.textContent = 'Save';
+        btn.classList.remove('saved-btn');
       } else {
         savedJobIds.push(jobId);
-        btn.textContent = '★';
-        btn.classList.add('saved');
-        btn.title = 'Unsave';
+        btn.textContent = 'Saved';
+        btn.classList.add('saved-btn');
       }
       localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
       $('#j-saved').textContent = savedJobIds.length.toLocaleString();
@@ -2671,7 +2690,7 @@
     }
 
     // Apply button — picks best non-LI source, falls back to LI
-    function applyButton(sources, urls) {
+    function applyButton(sources, urls, jobId) {
       const priority = ['greenhouse','lever','workday','ashby','career_page','indeed','linkedin'];
       let bestSource = 'linkedin';
       let bestUrl = '#';
@@ -2680,8 +2699,50 @@
       }
       const isLI = bestSource === 'linkedin';
       const cls = isLI ? 'apply-btn apply-btn-linkedin' : 'apply-btn apply-btn-default';
-      const label = isLI ? 'Apply on LI' : 'Apply';
-      return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation()">${label} →</a>`;
+      const label = isLI ? 'Apply on LI' : 'Apply →';
+      return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); markApplied('${jobId}', this)">${label}</a>`;
+    }
+
+    function markApplied(jobId, btn) {
+      if (!appliedJobIds.includes(jobId)) {
+        appliedJobIds.push(jobId);
+        localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+
+        // Update the row's action buttons
+        const row = btn.closest('tr');
+        if (row) {
+          const actionsCell = row.querySelector('td:last-child');
+          if (actionsCell) {
+            const hideBtn = actionsCell.querySelector('.hide-btn');
+            const hideBtnHtml = hideBtn ? hideBtn.outerHTML : '';
+            actionsCell.innerHTML = `<span class="job-action-btn applied-btn">Applied ✓</span>${hideBtnHtml}`;
+            actionsCell.style.display = 'flex';
+            actionsCell.style.gap = '4px';
+            actionsCell.style.alignItems = 'center';
+          }
+        }
+
+        // Add to pipeline
+        addToPipeline(jobId, row);
+      }
+    }
+
+    function addToPipeline(jobId, row) {
+      const title = row?.querySelector('.jt-title a')?.textContent || 'Unknown';
+      const company = row?.querySelector('.jt-company')?.textContent || 'Unknown';
+      const card = document.createElement('div');
+      card.className = 'pipeline-card';
+      card.innerHTML = `<div>${title}</div><div class="co">${company}</div><div class="days">just now</div>`;
+      const appliedCol = $('#pl-applied');
+      if (appliedCol) {
+        appliedCol.appendChild(card);
+        const countEl = $('#pc-applied');
+        if (countEl) countEl.textContent = appliedCol.children.length;
+        const totalEl = $('#p-total');
+        if (totalEl) totalEl.textContent = parseInt(totalEl.textContent || 0) + 1;
+        const activeEl = $('#p-active');
+        if (activeEl) activeEl.textContent = parseInt(activeEl.textContent || 0) + 1;
+      }
     }
 
     // Pipeline add
@@ -2698,6 +2759,70 @@
       $('#p-total').textContent = parseInt($('#p-total').textContent || 0) + 1;
       $('#p-active').textContent = parseInt($('#p-active').textContent || 0) + 1;
     });
+
+    // Render saved jobs in pipeline Saved column
+    async function renderPipelineSaved() {
+      const savedCol = $('#pl-saved');
+      const countEl = $('#pc-saved');
+      if (!savedCol || savedJobIds.length === 0) return;
+
+      // Fetch saved job details from ats_jobs
+      try {
+        const { data: jobs } = await sb.from('ats_jobs')
+          .select('greenhouse_id, title, company_name, url')
+          .in('greenhouse_id', savedJobIds.slice(0, 50));
+
+        if (jobs && jobs.length > 0) {
+          savedCol.innerHTML = '';
+          jobs.forEach(job => {
+            const card = document.createElement('div');
+            card.className = 'pipeline-card';
+            card.dataset.jobid = job.greenhouse_id;
+            card.innerHTML = `<div>${job.title || 'Untitled'}</div><div class="co">${job.company_name || ''}</div>
+              <div style="margin-top:4px;display:flex;gap:4px;">
+                <a href="${job.url}" target="_blank" class="apply-btn apply-btn-default" style="font-size:9px;padding:2px 8px;" onclick="event.stopPropagation(); markAppliedFromPipeline('${job.greenhouse_id}', this)">Apply →</a>
+                <button class="job-action-btn hide-btn" style="font-size:9px;padding:2px 6px;" onclick="unsaveFromPipeline('${job.greenhouse_id}', this)">Remove</button>
+              </div>`;
+            savedCol.appendChild(card);
+          });
+          countEl.textContent = jobs.length;
+        }
+      } catch (e) {
+        console.error('Pipeline saved render error:', e);
+      }
+    }
+
+    function markAppliedFromPipeline(jobId, btn) {
+      if (!appliedJobIds.includes(jobId)) {
+        appliedJobIds.push(jobId);
+        localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+      }
+      // Move card from Saved to Applied column
+      const card = btn.closest('.pipeline-card');
+      if (card) {
+        // Remove action buttons, show as applied
+        const actionsDiv = card.querySelector('div:last-child');
+        if (actionsDiv && actionsDiv.querySelector('.apply-btn')) {
+          actionsDiv.innerHTML = '<span style="font-size:9px;color:var(--green);font-weight:600;">Applied ✓</span>';
+        }
+        $('#pl-applied').appendChild(card);
+        $('#pc-saved').textContent = $('#pl-saved').children.length;
+        $('#pc-applied').textContent = $('#pl-applied').children.length;
+      }
+    }
+
+    function unsaveFromPipeline(jobId, btn) {
+      const idx = savedJobIds.indexOf(jobId);
+      if (idx >= 0) savedJobIds.splice(idx, 1);
+      localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
+      $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+      const card = btn.closest('.pipeline-card');
+      if (card) card.remove();
+      $('#pc-saved').textContent = $('#pl-saved').children.length;
+    }
+
+    // Render pipeline saved on load
+    setTimeout(() => renderPipelineSaved(), 800);
 
     // ============================================================
     // RESUMES
