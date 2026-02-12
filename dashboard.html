@@ -271,10 +271,15 @@
     .qb-row {
       display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;
     }
+    .qb-row-pair {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;
+    }
+    .qb-row-pair .qb-row { margin-bottom: 0; }
     .qb-row-label {
       font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase;
-      letter-spacing: 0.5px; width: 72px; min-width: 72px; padding-top: 13px; text-align: right; flex-shrink: 0;
+      letter-spacing: 0.5px; width: 64px; min-width: 64px; padding-top: 13px; text-align: right; flex-shrink: 0;
     }
+    .qb-row-label.not-label { color: var(--red); }
     .query-builder {
       flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
       padding: 10px 12px;
@@ -335,6 +340,10 @@
     .qb-pill.who-pill .qb-pill-text { color: #ec4899; }
     .qb-pill.who-pill .qb-pill-remove { color: rgba(236,72,153,0.4); border-left-color: rgba(236,72,153,0.15); }
 
+    .qb-pill.not-pill { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); }
+    .qb-pill.not-pill .qb-pill-text { color: var(--red); }
+    .qb-pill.not-pill .qb-pill-remove { color: rgba(239,68,68,0.4); border-left-color: rgba(239,68,68,0.15); }
+
     .qb-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
     .qb-pill.pay-pill .qb-pill-text { color: var(--green); }
     .qb-pill.pay-pill .qb-pill-remove { color: rgba(34,197,94,0.4); border-left-color: rgba(34,197,94,0.15); }
@@ -351,6 +360,19 @@
     .qb-collapse-body.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; }
     .qb-active-count {
       font-size: 10px; font-weight: 700; background: var(--accent); color: white;
+    }
+    .sf-collapse-header {
+      display: flex; align-items: center; gap: 8px; padding: 10px 0; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: var(--text-dim); user-select: none;
+    }
+    .sf-collapse-header:hover { color: var(--text); }
+    .sf-collapse-header.collapsed .qb-chevron { transform: rotate(-90deg); }
+    .sf-collapse-body { transition: max-height 0.25s ease, opacity 0.2s ease; overflow: hidden; }
+    .sf-collapse-body.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; }
+    .sf-active-count {
+      font-size: 10px; font-weight: 700; background: var(--green); color: white;
+      padding: 2px 8px; border-radius: 10px; margin-left: 4px;
+    }
       padding: 1px 7px; border-radius: 10px; display: none;
     }
 
@@ -459,6 +481,7 @@
     .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
     .sf-mini-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.15); color: #ec4899; }
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
+    .sf-mini-pill.not-pill { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.15); color: var(--red); }
 
     .qb-hint {
       font-size: 11px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.6;
@@ -487,6 +510,30 @@
     .job-table th:hover .sort-arrow { opacity: 1; background: rgba(99,102,241,0.15); }
     .job-table th.sorted { color: var(--accent); }
     .job-table th.sorted .sort-arrow { opacity: 1; background: var(--accent); color: #fff; }
+    /* Match sort pill colors to filter row colors */
+    .job-table th[data-sort="title"] .sort-arrow { background: rgba(61,126,255,0.08); color: var(--accent); }
+    .job-table th[data-sort="title"]:hover .sort-arrow { background: rgba(61,126,255,0.18); }
+    .job-table th[data-sort="title"].sorted .sort-arrow { background: var(--accent); color: #fff; }
+    .job-table th[data-sort="company"] .sort-arrow { background: rgba(236,72,153,0.08); color: #ec4899; }
+    .job-table th[data-sort="company"]:hover .sort-arrow { background: rgba(236,72,153,0.18); }
+    .job-table th[data-sort="company"].sorted { color: #ec4899; }
+    .job-table th[data-sort="company"].sorted .sort-arrow { background: #ec4899; color: #fff; }
+    .job-table th[data-sort="location"] .sort-arrow { background: rgba(245,158,11,0.08); color: #f59e0b; }
+    .job-table th[data-sort="location"]:hover .sort-arrow { background: rgba(245,158,11,0.18); }
+    .job-table th[data-sort="location"].sorted { color: #f59e0b; }
+    .job-table th[data-sort="location"].sorted .sort-arrow { background: #f59e0b; color: #fff; }
+    .job-table th[data-sort="salary"] .sort-arrow { background: rgba(34,197,94,0.08); color: var(--green); }
+    .job-table th[data-sort="salary"]:hover .sort-arrow { background: rgba(34,197,94,0.18); }
+    .job-table th[data-sort="salary"].sorted { color: var(--green); }
+    .job-table th[data-sort="salary"].sorted .sort-arrow { background: var(--green); color: #fff; }
+    .job-table th[data-sort="days"] .sort-arrow { background: rgba(168,85,247,0.08); color: #a855f7; }
+    .job-table th[data-sort="days"]:hover .sort-arrow { background: rgba(168,85,247,0.18); }
+    .job-table th[data-sort="days"].sorted { color: #a855f7; }
+    .job-table th[data-sort="days"].sorted .sort-arrow { background: #a855f7; color: #fff; }
+    .job-table th[data-sort="ghost"] .sort-arrow { background: rgba(239,68,68,0.08); color: var(--red); }
+    .job-table th[data-sort="ghost"]:hover .sort-arrow { background: rgba(239,68,68,0.18); }
+    .job-table th[data-sort="ghost"].sorted { color: var(--red); }
+    .job-table th[data-sort="ghost"].sorted .sort-arrow { background: var(--red); color: #fff; }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
     .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; }
@@ -967,7 +1014,7 @@
             <div class="stat-card"><div class="stat-val" id="j-total">0</div><div class="stat-label">Total Jobs</div></div>
             <div class="stat-card"><div class="stat-val" id="j-companies">0</div><div class="stat-label">Companies</div></div>
             <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New 24H</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
+            <div class="stat-card" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
           </div>
 
           <!-- Collapsible query builder -->
@@ -978,16 +1025,32 @@
             <button class="btn btn-sm" id="clear-filters-btn" style="display:none;margin-left:auto;padding:2px 10px;font-size:10px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Clear All</button>
           </div>
           <div class="qb-collapse-body" id="qb-collapse-body">
-          <div class="qb-row">
-            <label class="qb-row-label">What</label>
-            <div class="query-builder" id="query-builder-what">
-              <input type="text" class="qb-input" id="qb-input-what" placeholder="Title, keyword, department — e.g. project manager, engineering, director">
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">What</label>
+              <div class="query-builder" id="query-builder-what">
+                <input type="text" class="qb-input" id="qb-input-what" placeholder="Title, keyword, dept…">
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">Not</label>
+              <div class="query-builder" id="query-builder-what-not" style="border-color:rgba(239,68,68,0.15);">
+                <input type="text" class="qb-input" id="qb-input-what-not" placeholder="Exclude titles…">
+              </div>
             </div>
           </div>
-          <div class="qb-row">
-            <label class="qb-row-label">Where</label>
-            <div class="query-builder" id="query-builder-where">
-              <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, remote, hybrid — e.g. Seattle, Austin TX, remote">
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">Where</label>
+              <div class="query-builder" id="query-builder-where">
+                <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, remote…">
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">Not</label>
+              <div class="query-builder" id="query-builder-where-not" style="border-color:rgba(239,68,68,0.15);">
+                <input type="text" class="qb-input" id="qb-input-where-not" placeholder="Exclude locations…">
+              </div>
             </div>
           </div>
           <div class="qb-row">
@@ -996,10 +1059,18 @@
               <input type="text" class="qb-input" id="qb-input-when" placeholder="Posted timeframe — e.g. today, last 7 days, this month">
             </div>
           </div>
-          <div class="qb-row">
-            <label class="qb-row-label">Who</label>
-            <div class="query-builder" id="query-builder-who">
-              <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name — e.g. Google, Stripe, Amazon">
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">Who</label>
+              <div class="query-builder" id="query-builder-who">
+                <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name…">
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">Not</label>
+              <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(239,68,68,0.15);">
+                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="Exclude companies…">
+              </div>
             </div>
           </div>
           <div class="qb-row">
@@ -1032,11 +1103,17 @@
           </div>
 
           <!-- Saved filters list -->
+          <div class="sf-collapse-header" id="sf-toggle">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="sf-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <span>Saved Filters</span>
+            <span class="sf-active-count" id="sf-active-count" style="display:none;"></span>
+          </div>
+          <div class="sf-collapse-body" id="sf-collapse-body">
           <div class="saved-filters-section" id="saved-filters-section" style="display:none;">
             <div class="sf-header">
               <div style="display:flex;align-items:center;gap:8px;">
                 <input type="checkbox" id="sf-select-all" style="margin:0;cursor:pointer;" title="Select all">
-                <span class="sf-title">Saved Filters</span>
+                <span class="sf-title">Select / Deselect All</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:5px;cursor:pointer;">Delete Selected</button>
@@ -1044,6 +1121,7 @@
               </div>
             </div>
             <div class="sf-list" id="sf-list"></div>
+          </div>
           </div>
 
           <!-- Sort bar -->
@@ -1569,6 +1647,19 @@
     checkExtensionStatus();
     setInterval(checkExtensionStatus, 60000); // Check every minute
 
+    // Saved Jobs card → navigate to Pipeline
+    $('#j-saved-card').addEventListener('click', () => {
+      $$('.nav-item').forEach(n => n.classList.remove('active'));
+      const pipelineNav = $('[data-page="pipeline"]');
+      if (pipelineNav) {
+        pipelineNav.classList.add('active');
+        pipelineNav.classList.add('tab-flash');
+        setTimeout(() => pipelineNav.classList.remove('tab-flash'), 400);
+      }
+      $$('.page').forEach(p => p.classList.remove('active'));
+      $('#page-pipeline').classList.add('active');
+    });
+
     // Download
     $('#download-btn').addEventListener('click', async () => {
       const btn = $('#download-btn');
@@ -1607,6 +1698,9 @@
     let whenPills = [];
     let whoPills = [];
     let payPills = [];
+    let whatNotPills = [];
+    let whereNotPills = [];
+    let whoNotPills = [];
     let savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
     const WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
     const SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
@@ -1619,7 +1713,7 @@
       return 'keyword';
     }
 
-    function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length; }
+    function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length; }
 
     function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass) {
       const builder = $(builderId);
@@ -1704,9 +1798,12 @@
 
     function renderAllPills() {
       renderPillsFor(whatPills, '#query-builder-what', '#qb-input-what', false, '');
+      renderPillsFor(whatNotPills, '#query-builder-what-not', '#qb-input-what-not', false, 'not-pill');
       renderPillsFor(wherePills, '#query-builder-where', '#qb-input-where', true, '');
+      renderPillsFor(whereNotPills, '#query-builder-where-not', '#qb-input-where-not', false, 'not-pill');
       renderPillsFor(whenPills, '#query-builder-when', '#qb-input-when', false, 'when-pill');
       renderPillsFor(whoPills, '#query-builder-who', '#qb-input-who', false, 'who-pill');
+      renderPillsFor(whoNotPills, '#query-builder-who-not', '#qb-input-who-not', false, 'not-pill');
       renderPayPills();
 
       // Show/hide toolbar
@@ -1751,6 +1848,9 @@
       const wh = sf.wherePills || [];
       const wn = sf.whenPills || [];
       const wo = sf.whoPills || [];
+      const wnot = sf.whatNotPills || [];
+      const whnot = sf.whereNotPills || [];
+      const wonot = sf.whoNotPills || [];
 
       // WHAT — title ilike (AND across pills, OR within)
       for (const pill of w) {
@@ -1758,6 +1858,13 @@
           query = query.ilike('title', `%${pill.values[0]}%`);
         } else {
           query = query.or(pill.values.map(v => `title.ilike.%${v}%`).join(','));
+        }
+      }
+
+      // WHAT NOT — title not ilike
+      for (const pill of wnot) {
+        for (const v of pill.values) {
+          query = query.not('title', 'ilike', `%${v}%`);
         }
       }
 
@@ -1770,12 +1877,26 @@
         }
       }
 
+      // WHERE NOT — location not ilike
+      for (const pill of whnot) {
+        for (const v of pill.values) {
+          query = query.not('location', 'ilike', `%${v}%`);
+        }
+      }
+
       // WHO — company_name ilike
       for (const pill of wo) {
         if (pill.values.length === 1) {
           query = query.ilike('company_name', `%${pill.values[0]}%`);
         } else {
           query = query.or(pill.values.map(v => `company_name.ilike.%${v}%`).join(','));
+        }
+      }
+
+      // WHO NOT — company_name not ilike
+      for (const pill of wonot) {
+        for (const v of pill.values) {
+          query = query.not('company_name', 'ilike', `%${v}%`);
         }
       }
 
@@ -1786,10 +1907,6 @@
           if (since) query = query.gte('updated_at', since.toISOString());
         }
       }
-
-      // PAY — salary filters are NON-EXCLUSIONARY
-      // We don't filter by salary since Greenhouse doesn't provide it
-      // Jobs without salary data still appear
 
       return query;
     }
@@ -1859,7 +1976,10 @@
           const wh = sf.wherePills || [];
           const wn = sf.whenPills || [];
           const wo = sf.whoPills || [];
-          return w.length > 0 || wh.length > 0 || wn.length > 0 || wo.length > 0;
+          const wnot = sf.whatNotPills || [];
+          const whnot = sf.whereNotPills || [];
+          const wonot = sf.whoNotPills || [];
+          return w.length > 0 || wh.length > 0 || wn.length > 0 || wo.length > 0 || wnot.length > 0 || whnot.length > 0 || wonot.length > 0;
         });
 
         if (!hasRealCriteria) {
@@ -2334,6 +2454,57 @@
       commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
     });
 
+    // Input handling — What Not row
+    const qbInputWhatNot = $('#qb-input-what-not');
+    qbInputWhatNot.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }));
+      } else if (e.key === 'Backspace' && qbInputWhatNot.value === '' && whatNotPills.length > 0) {
+        whatNotPills.pop(); renderAllPills();
+      }
+    });
+    qbInputWhatNot.addEventListener('blur', () => {
+      commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }));
+    });
+    $('#query-builder-what-not').addEventListener('click', e => {
+      if (!e.target.closest('.qb-pill')) qbInputWhatNot.focus();
+    });
+
+    // Input handling — Where Not row
+    const qbInputWhereNot = $('#qb-input-where-not');
+    qbInputWhereNot.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        commitPill(qbInputWhereNot, whereNotPills, raw => ({ values: [raw], type: 'not' }));
+      } else if (e.key === 'Backspace' && qbInputWhereNot.value === '' && whereNotPills.length > 0) {
+        whereNotPills.pop(); renderAllPills();
+      }
+    });
+    qbInputWhereNot.addEventListener('blur', () => {
+      commitPill(qbInputWhereNot, whereNotPills, raw => ({ values: [raw], type: 'not' }));
+    });
+    $('#query-builder-where-not').addEventListener('click', e => {
+      if (!e.target.closest('.qb-pill')) qbInputWhereNot.focus();
+    });
+
+    // Input handling — Who Not row
+    const qbInputWhoNot = $('#qb-input-who-not');
+    qbInputWhoNot.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        commitPill(qbInputWhoNot, whoNotPills, raw => ({ values: [raw], type: 'not' }));
+      } else if (e.key === 'Backspace' && qbInputWhoNot.value === '' && whoNotPills.length > 0) {
+        whoNotPills.pop(); renderAllPills();
+      }
+    });
+    qbInputWhoNot.addEventListener('blur', () => {
+      commitPill(qbInputWhoNot, whoNotPills, raw => ({ values: [raw], type: 'not' }));
+    });
+    $('#query-builder-who-not').addEventListener('click', e => {
+      if (!e.target.closest('.qb-pill')) qbInputWhoNot.focus();
+    });
+
     // Collapse toggle
     $('#qb-toggle').addEventListener('click', (e) => {
       if (e.target.id === 'clear-filters-btn' || e.target.closest('#clear-filters-btn')) return;
@@ -2343,6 +2514,25 @@
       body.classList.toggle('collapsed');
     });
 
+    // Saved filters collapse toggle
+    $('#sf-toggle').addEventListener('click', () => {
+      $('#sf-toggle').classList.toggle('collapsed');
+      $('#sf-collapse-body').classList.toggle('collapsed');
+    });
+
+    // Update active filter count badge
+    function updateSfActiveCount() {
+      const checked = $$('.sf-item-check:checked').length;
+      const total = savedFilters.length;
+      const badge = $('#sf-active-count');
+      if (total > 0) {
+        badge.textContent = `${checked} of ${total} active`;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
     // Clear all
     $('#clear-filters-btn').addEventListener('click', () => {
       whatPills = [];
@@ -2350,6 +2540,9 @@
       whenPills = [];
       whoPills = [];
       payPills = [];
+      whatNotPills = [];
+      whereNotPills = [];
+      whoNotPills = [];
       renderAllPills();
     });
 
@@ -2382,6 +2575,9 @@
         whenPills: JSON.parse(JSON.stringify(whenPills)),
         whoPills: JSON.parse(JSON.stringify(whoPills)),
         payPills: JSON.parse(JSON.stringify(payPills)),
+        whatNotPills: JSON.parse(JSON.stringify(whatNotPills)),
+        whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
+        whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
         createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
@@ -2483,6 +2679,7 @@
     $('#sf-select-all').addEventListener('change', e => {
       $$('.sf-item-check').forEach(cb => cb.checked = e.target.checked);
       $('#sf-delete-selected').style.display = e.target.checked && $$('.sf-item-check').length > 0 ? '' : 'none';
+      updateSfActiveCount();
       debouncedSearchJobs();
     });
 
@@ -2546,6 +2743,9 @@
           ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
           ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
           ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
+          ...(sf.whatNotPills || []).map(p => ({ ...p, row: 'not' })),
+          ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not' })),
+          ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not' })),
         ];
         // Legacy: convert old salaryMin/Max to pay pill
         if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
@@ -2574,6 +2774,7 @@
             else if (p.row === 'when') cls = 'when-pill';
             else if (p.row === 'who') cls = 'who-pill';
             else if (p.row === 'pay') cls = 'pay-pill';
+            else if (p.row === 'not') cls = 'not-pill';
             else if (p.type === 'type' || locationWords.test(val)) cls = 'location-pill';
             else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
             // else default blue for keyword/what
@@ -2616,6 +2817,9 @@
           whenPills = JSON.parse(JSON.stringify(sf.whenPills || []));
           whoPills = JSON.parse(JSON.stringify(sf.whoPills || []));
           payPills = JSON.parse(JSON.stringify(sf.payPills || []));
+          whatNotPills = JSON.parse(JSON.stringify(sf.whatNotPills || []));
+          whereNotPills = JSON.parse(JSON.stringify(sf.whereNotPills || []));
+          whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
           renderPayPills();
           savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].lastUsed = Date.now();
@@ -2641,9 +2845,11 @@
         cb.addEventListener('change', () => {
           const anyChecked = list.querySelectorAll('.sf-item-check:checked').length > 0;
           $('#sf-delete-selected').style.display = anyChecked ? '' : 'none';
+          updateSfActiveCount();
           debouncedSearchJobs();
         });
       });
+      updateSfActiveCount();
 
       // Auto-run search on initial render if filters exist
       if (savedFilters.length > 0 && !window._initialSearchDone) {
@@ -2653,14 +2859,16 @@
     }
 
     function timeAgo(ts) {
-      const diff = Date.now() - ts;
-      const mins = Math.floor(diff / 60000);
-      if (mins < 1) return 'just now';
-      if (mins < 60) return `${mins}m ago`;
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) return `${hrs}h ago`;
-      const days = Math.floor(hrs / 24);
-      return `${days}d ago`;
+      const now = new Date();
+      const date = new Date(ts);
+      const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+      const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+      if (date >= todayStart) return 'today';
+      if (date >= yesterdayStart) return 'yesterday';
+      const days = Math.floor((todayStart - date) / 86400000);
+      if (days < 7) return `${days}d ago`;
+      if (days < 30) return `${Math.floor(days / 7)}w ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
     renderSavedFilters();
     renderAllPills();
@@ -2679,7 +2887,10 @@
         const w = sf.whatPills || sf.pills || [];
         const wh = sf.wherePills || [];
         const wo = sf.whoPills || [];
-        if (w.length === 0 && wh.length === 0 && wo.length === 0) {
+        const wnot = sf.whatNotPills || [];
+        const whnot = sf.whereNotPills || [];
+        const wonot = sf.whoNotPills || [];
+        if (w.length === 0 && wh.length === 0 && wo.length === 0 && wnot.length === 0 && whnot.length === 0 && wonot.length === 0) {
           console.log(`Filter ${i} "${sf.name}" has no searchable criteria, skipping counts`);
           continue;
         }
