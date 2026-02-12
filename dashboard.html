@@ -126,11 +126,19 @@
     }
     .nav-item:hover { background: var(--nav-bg-hover); color: rgba(255,255,255,0.85); }
     .nav-item.active { background: var(--nav-bg-active); color: var(--nav-text-active); font-weight: 600; }
-    .nav-item.tab-flash span {
-      animation: tabFlash 0.4s ease-out;
+    .nav-item.tab-flash {
+      animation: tabFlashBg 0.5s ease-out;
     }
-    @keyframes tabFlash {
-      0% { color: var(--accent); text-shadow: 0 0 8px rgba(99,102,241,0.5); }
+    .nav-item.tab-flash span {
+      animation: tabFlashText 0.5s ease-out;
+    }
+    @keyframes tabFlashBg {
+      0% { background: rgba(99,102,241,0.4); }
+      100% { background: var(--nav-bg-active); }
+    }
+    @keyframes tabFlashText {
+      0% { color: #fff; text-shadow: 0 0 12px rgba(99,102,241,0.8); }
+      50% { color: #fff; text-shadow: 0 0 6px rgba(99,102,241,0.4); }
       100% { color: inherit; text-shadow: none; }
     }
     .ext-status-dot {
@@ -279,7 +287,7 @@
       font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase;
       letter-spacing: 0.5px; width: 64px; min-width: 64px; padding-top: 13px; text-align: right; flex-shrink: 0;
     }
-    .qb-row-label.not-label { color: var(--red); }
+    .qb-row-label.not-label { color: #94a3b8; }
     .query-builder {
       flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
       padding: 10px 12px;
@@ -340,9 +348,9 @@
     .qb-pill.who-pill .qb-pill-text { color: #ec4899; }
     .qb-pill.who-pill .qb-pill-remove { color: rgba(236,72,153,0.4); border-left-color: rgba(236,72,153,0.15); }
 
-    .qb-pill.not-pill { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.2); }
-    .qb-pill.not-pill .qb-pill-text { color: var(--red); }
-    .qb-pill.not-pill .qb-pill-remove { color: rgba(239,68,68,0.4); border-left-color: rgba(239,68,68,0.15); }
+    .qb-pill.not-pill { background: rgba(148,163,184,0.08); border-color: rgba(148,163,184,0.25); }
+    .qb-pill.not-pill .qb-pill-text { color: #94a3b8; }
+    .qb-pill.not-pill .qb-pill-remove { color: rgba(148,163,184,0.4); border-left-color: rgba(148,163,184,0.15); }
 
     .qb-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
     .qb-pill.pay-pill .qb-pill-text { color: var(--green); }
@@ -459,6 +467,10 @@
       transition: background 0.1s;
     }
     .sf-item:hover { background: var(--bg-hover); color: var(--text); }
+    .sf-num {
+      width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
     .sf-item-info { flex: 1; min-width: 0; }
     .sf-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sf-item-meta { font-size: 10px; color: var(--text-faint); margin-top: 1px; }
@@ -481,7 +493,13 @@
     .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
     .sf-mini-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.15); color: #ec4899; }
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
-    .sf-mini-pill.not-pill { background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.15); color: var(--red); }
+    .sf-mini-pill.not-pill { background: rgba(148,163,184,0.06); border-color: rgba(148,163,184,0.15); color: #94a3b8; }
+    .tuning-level-cb {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim);
+      cursor: pointer; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .tuning-level-cb:hover { background: var(--bg-hover); }
 
     .qb-hint {
       font-size: 11px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.6;
@@ -502,41 +520,29 @@
     }
     .job-table th:hover { color: var(--accent); }
     .job-table th .sort-arrow {
-      font-size: 12px; margin-left: 4px; opacity: 0.6;
-      display: inline-block; padding: 1px 4px; border-radius: 3px;
-      background: rgba(99,102,241,0.08); color: var(--accent);
+      font-size: 13px; margin-left: 4px;
+      display: inline-block; padding: 1px 5px; border-radius: 3px;
+      background: rgba(255,255,255,0.06); color: var(--text-faint);
       font-weight: 700; vertical-align: middle;
+      transition: all 0.15s;
     }
-    .job-table th:hover .sort-arrow { opacity: 1; background: rgba(99,102,241,0.15); }
-    .job-table th.sorted { color: var(--accent); }
-    .job-table th.sorted .sort-arrow { opacity: 1; background: var(--accent); color: #fff; }
-    /* Match sort pill colors to filter row colors */
-    .job-table th[data-sort="title"] .sort-arrow { background: rgba(61,126,255,0.08); color: var(--accent); }
-    .job-table th[data-sort="title"]:hover .sort-arrow { background: rgba(61,126,255,0.18); }
-    .job-table th[data-sort="title"].sorted .sort-arrow { background: var(--accent); color: #fff; }
-    .job-table th[data-sort="company"] .sort-arrow { background: rgba(236,72,153,0.08); color: #ec4899; }
-    .job-table th[data-sort="company"]:hover .sort-arrow { background: rgba(236,72,153,0.18); }
+    .job-table th:hover .sort-arrow { background: rgba(255,255,255,0.12); color: var(--text-dim); }
+    .job-table th.sorted .sort-arrow { background: var(--text); color: var(--bg-card); }
+    /* Column header text colors match pill colors when sorted */
+    .job-table th[data-sort="title"].sorted { color: var(--accent); }
     .job-table th[data-sort="company"].sorted { color: #ec4899; }
-    .job-table th[data-sort="company"].sorted .sort-arrow { background: #ec4899; color: #fff; }
-    .job-table th[data-sort="location"] .sort-arrow { background: rgba(245,158,11,0.08); color: #f59e0b; }
-    .job-table th[data-sort="location"]:hover .sort-arrow { background: rgba(245,158,11,0.18); }
     .job-table th[data-sort="location"].sorted { color: #f59e0b; }
-    .job-table th[data-sort="location"].sorted .sort-arrow { background: #f59e0b; color: #fff; }
-    .job-table th[data-sort="salary"] .sort-arrow { background: rgba(34,197,94,0.08); color: var(--green); }
-    .job-table th[data-sort="salary"]:hover .sort-arrow { background: rgba(34,197,94,0.18); }
     .job-table th[data-sort="salary"].sorted { color: var(--green); }
-    .job-table th[data-sort="salary"].sorted .sort-arrow { background: var(--green); color: #fff; }
-    .job-table th[data-sort="days"] .sort-arrow { background: rgba(168,85,247,0.08); color: #a855f7; }
-    .job-table th[data-sort="days"]:hover .sort-arrow { background: rgba(168,85,247,0.18); }
     .job-table th[data-sort="days"].sorted { color: #a855f7; }
-    .job-table th[data-sort="days"].sorted .sort-arrow { background: #a855f7; color: #fff; }
-    .job-table th[data-sort="ghost"] .sort-arrow { background: rgba(239,68,68,0.08); color: var(--red); }
-    .job-table th[data-sort="ghost"]:hover .sort-arrow { background: rgba(239,68,68,0.18); }
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
-    .job-table th[data-sort="ghost"].sorted .sort-arrow { background: var(--red); color: #fff; }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
     .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; }
+    .job-filter-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%; font-size: 9px; font-weight: 700;
+      color: #fff; margin-right: 5px; vertical-align: middle; flex-shrink: 0;
+    }
     .job-table .jt-company { font-weight: 500; color: var(--text); }
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
@@ -873,7 +879,11 @@
       </div>
 
       <div class="nav-menu">
-        <div class="nav-item active" data-page="setup">
+        <div class="nav-item active" data-page="brilliant">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+          <span>Be Brilliant</span>
+        </div>
+        <div class="nav-item" data-page="setup">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
           <span>Setup</span>
           <div class="ext-status-dot" id="ext-status-dot" title="Extension not detected"></div>
@@ -884,6 +894,10 @@
           <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
           <span>Jobs Feed</span>
           <div class="nav-badge" id="nav-jobs-count" style="display:none;">0</div>
+        </div>
+        <div class="nav-item" data-page="tuning">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
+          <span>Tuning</span>
         </div>
         <div class="nav-item" data-page="pipeline">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
@@ -935,8 +949,134 @@
 
     <div class="main">
 
+      <!-- ============ BE BRILLIANT ============ -->
+      <div class="page active" id="page-brilliant">
+        <div class="page-header">
+          <h2>Be Brilliant ✦</h2>
+          <p>Your guide to finding the perfect role faster than anyone else</p>
+        </div>
+        <div class="page-body" style="max-width:800px;">
+
+          <!-- Hero -->
+          <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%); border:1px solid rgba(99,102,241,0.12); border-radius:14px; padding:32px; margin-bottom:24px;">
+            <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">Brilliant Jobs is not another job board.</div>
+            <div style="font-size:14px;color:var(--text-dim);line-height:1.7;">
+              It's an intelligence platform that scans company hiring pages directly, bypasses job board noise, and gives you a real-time feed of exactly what matches your criteria — before most applicants even know the role exists.
+            </div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="card" style="border-left:3px solid var(--accent);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--accent);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">1</span>
+              <div class="card-title" style="margin:0;">Install Your Extension</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Head to <strong>Setup</strong> and download your personalized Chrome extension. It's unique to your account — your own stealth scanner that harvests your LinkedIn network connections and maps them to companies hiring right now. The extension runs in the background while you browse, visiting profiles during business hours at human-like intervals.
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="card" style="border-left:3px solid #f59e0b;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:#f59e0b;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
+              <div class="card-title" style="margin:0;">Build Your Filters</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Go to <strong>Jobs Feed</strong> and open the filter builder. Think of it like building a search radar:
+            </div>
+            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div style="background:rgba(61,126,255,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">What</div>
+                <div style="font-size:12px;color:var(--text-dim);">Job titles and keywords. "director of marketing", "growth", "SEO"</div>
+              </div>
+              <div style="background:rgba(148,163,184,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Not</div>
+                <div style="font-size:12px;color:var(--text-dim);">Exclude noise. "intern", "assistant", "part-time"</div>
+              </div>
+              <div style="background:rgba(245,158,11,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Where</div>
+                <div style="font-size:12px;color:var(--text-dim);">Locations and work styles. "United States", "remote", "Seattle"</div>
+              </div>
+              <div style="background:rgba(236,72,153,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:#ec4899;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Who</div>
+                <div style="font-size:12px;color:var(--text-dim);">Target or exclude companies. "Stripe", "Google"</div>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
+              <strong>Pro tip:</strong> Type <kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:3px;font-size:11px;">or</kbd> before a term to OR it with the previous pill. "director" then "or VP" matches either. Save each search as a named filter — they run in parallel.
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="card" style="border-left:3px solid #a855f7;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:#a855f7;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">3</span>
+              <div class="card-title" style="margin:0;">Tune Your Results</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Getting noise? Head to <strong>Tuning</strong> to set global rules that apply across all your filters:
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:var(--text-dim);line-height:1.8;">
+              <span style="font-weight:600;">🌎 Location lock</span> — restrict everything to US-only with one checkbox<br>
+              <span style="font-weight:600;">🚫 Global exclusions</span> — block titles, companies, or locations forever<br>
+              <span style="font-weight:600;">📊 Level matching</span> — check "Director" and "VP" to soft-match both seniority levels<br>
+              <span style="font-weight:600;">🔍 Poor match analysis</span> — hidden jobs get analyzed for patterns to suggest exclusions
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="card" style="border-left:3px solid var(--green);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--green);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">4</span>
+              <div class="card-title" style="margin:0;">Work Your Feed Daily</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Each row in your feed has three actions:
+            </div>
+            <div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="job-action-btn" style="pointer-events:none;font-size:10px;">Save</span>
+                <span style="font-size:12px;color:var(--text-faint);">Bookmark for later — appears in Pipeline</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="apply-btn apply-btn-default" style="pointer-events:none;font-size:10px;padding:4px 10px;">Apply →</span>
+                <span style="font-size:12px;color:var(--text-faint);">Opens the ATS page and tracks it as Applied</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="job-action-btn hide-btn" style="pointer-events:none;font-size:10px;padding:2px 6px;">✕</span>
+                <span style="font-size:12px;color:var(--text-faint);">Hide irrelevant jobs — helps tune future results</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
+              Colored number badges next to titles show which saved filter matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:3px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="card" style="border-left:3px solid #ec4899;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:#ec4899;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">5</span>
+              <div class="card-title" style="margin:0;">Track Everything in Pipeline</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Saved jobs land in the <strong>Pipeline</strong> Saved column. When you apply, they move to Applied. From there, track Responded → Interview → Offer or Rejected/Ghosted. The stat cards at the top show your response rate and average days to response — the numbers that actually matter.
+            </div>
+          </div>
+
+          <!-- Data advantage -->
+          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:14px;padding:24px;margin-top:8px;">
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Your data advantage</div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Brilliant Jobs currently indexes <strong>110,000+ open positions</strong> across <strong>1,900+ companies</strong> using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ============ SETUP ============ -->
-      <div class="page active" id="page-setup">
+      <div class="page" id="page-setup">
         <div class="page-header">
           <h2>Setup</h2>
           <p>Download and install your extension</p>
@@ -1034,7 +1174,7 @@
             </div>
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
-              <div class="query-builder" id="query-builder-what-not" style="border-color:rgba(239,68,68,0.15);">
+              <div class="query-builder" id="query-builder-what-not" style="border-color:rgba(148,163,184,0.2);">
                 <input type="text" class="qb-input" id="qb-input-what-not" placeholder="Exclude titles…">
               </div>
             </div>
@@ -1048,15 +1188,9 @@
             </div>
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
-              <div class="query-builder" id="query-builder-where-not" style="border-color:rgba(239,68,68,0.15);">
+              <div class="query-builder" id="query-builder-where-not" style="border-color:rgba(148,163,184,0.2);">
                 <input type="text" class="qb-input" id="qb-input-where-not" placeholder="Exclude locations…">
               </div>
-            </div>
-          </div>
-          <div class="qb-row">
-            <label class="qb-row-label">When</label>
-            <div class="query-builder" id="query-builder-when">
-              <input type="text" class="qb-input" id="qb-input-when" placeholder="Posted timeframe — e.g. today, last 7 days, this month">
             </div>
           </div>
           <div class="qb-row-pair">
@@ -1068,24 +1202,32 @@
             </div>
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
-              <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(239,68,68,0.15);">
+              <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(148,163,184,0.2);">
                 <input type="text" class="qb-input" id="qb-input-who-not" placeholder="Exclude companies…">
               </div>
             </div>
           </div>
-          <div class="qb-row">
-            <label class="qb-row-label">How Much</label>
-            <div class="qb-salary-row">
-              <div class="qb-salary-field">
-                <span class="qb-salary-prefix">$</span>
-                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">When</label>
+              <div class="query-builder" id="query-builder-when">
+                <input type="text" class="qb-input" id="qb-input-when" placeholder="today, 7 days, month…">
               </div>
-              <span class="qb-salary-sep">to</span>
-              <div class="qb-salary-field">
-                <span class="qb-salary-prefix">$</span>
-                <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label">Pay</label>
+              <div class="qb-salary-row">
+                <div class="qb-salary-field">
+                  <span class="qb-salary-prefix">$</span>
+                  <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
+                </div>
+                <span class="qb-salary-sep">to</span>
+                <div class="qb-salary-field">
+                  <span class="qb-salary-prefix">$</span>
+                  <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
+                </div>
+                <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;"></div>
               </div>
-              <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;"></div>
             </div>
           </div>
           <div class="qb-hint">
@@ -1096,6 +1238,9 @@
             <div class="save-filter-row" id="save-filter-row" style="display:none;">
               <label class="save-label">Save Filter:</label>
               <input type="text" class="save-filter-name" id="save-filter-name" placeholder="Name this filter…" maxlength="40">
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-faint);cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="save-filter-include-no-salary" checked> Include jobs without salary
+              </label>
               <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
             </div>
             <div class="filter-count" id="filter-count"></div>
@@ -1168,6 +1313,89 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ============ TUNING ============ -->
+      <div class="page" id="page-tuning">
+        <div class="page-header">
+          <h2>Search Tuning</h2>
+          <p>Global filters, title matching, and exclusion rules that apply across all saved filters</p>
+        </div>
+        <div class="page-body">
+
+          <!-- Global Location -->
+          <div class="card">
+            <div class="card-title">Location Rules</div>
+            <div class="card-sub">Applied globally to every search</div>
+            <div style="margin-top:12px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;">
+                <input type="checkbox" id="tuning-us-only" style="margin:0;"> Only show jobs in the United States
+              </label>
+              <div style="margin-top:10px;">
+                <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Global Location Exclusions</label>
+                <div class="query-builder" id="tuning-location-exclude" style="margin-top:6px;min-height:40px;">
+                  <input type="text" class="qb-input" id="tuning-loc-excl-input" placeholder="Add locations to always exclude… e.g. India, Philippines">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Title Exclusions -->
+          <div class="card">
+            <div class="card-title">Title Exclusions</div>
+            <div class="card-sub">Titles containing these terms will be hidden from all filters</div>
+            <div style="margin-top:12px;">
+              <div class="query-builder" id="tuning-title-exclude" style="min-height:40px;">
+                <input type="text" class="qb-input" id="tuning-title-excl-input" placeholder="Add title keywords to always exclude… e.g. intern, volunteer, part-time">
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Company Exclusions -->
+          <div class="card">
+            <div class="card-title">Company Exclusions</div>
+            <div class="card-sub">Jobs from these companies will be hidden from all filters</div>
+            <div style="margin-top:12px;">
+              <div class="query-builder" id="tuning-company-exclude" style="min-height:40px;">
+                <input type="text" class="qb-input" id="tuning-co-excl-input" placeholder="Add companies to always exclude… e.g. Staffing Corp, Recruiting Agency">
+              </div>
+            </div>
+          </div>
+
+          <!-- Title Level Matching -->
+          <div class="card">
+            <div class="card-title">Title Level Matching</div>
+            <div class="card-sub">When enabled, searches will also soft-match related seniority levels</div>
+            <div style="margin-top:12px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
+                <input type="checkbox" id="tuning-level-match" style="margin:0;"> Enable soft title-level matching
+              </label>
+              <div id="tuning-levels" style="display:none;">
+                <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">Check the levels you want to include. Related titles will be added to your What filters automatically.</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                  <label class="tuning-level-cb"><input type="checkbox" value="c-level" style="margin:0;"> C-Level (CEO, CTO, CMO, CRO…)</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="vp" style="margin:0;"> VP / SVP / EVP</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="director" checked style="margin:0;"> Director / Sr. Director</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="manager" style="margin:0;"> Manager / Sr. Manager</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="lead" style="margin:0;"> Lead / Team Lead / Principal</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="senior" style="margin:0;"> Senior / Staff</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="mid" style="margin:0;"> Mid-Level / Associate</label>
+                  <label class="tuning-level-cb"><input type="checkbox" value="entry" style="margin:0;"> Entry / Junior</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Match Quality Suggestions -->
+          <div class="card">
+            <div class="card-title">Recent Poor Matches</div>
+            <div class="card-sub">Jobs that appeared in your feed but may not be relevant — click to add to exclusions</div>
+            <div id="tuning-poor-matches" style="margin-top:12px;color:var(--text-faint);font-size:12px;">
+              Suggestions will appear after you hide jobs in the feed. Hidden job titles and companies will be analyzed for common patterns to suggest global exclusions.
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -1588,32 +1816,6 @@
     init();
 
     // Extension detection — check last_scan_at from profiles
-    async function checkExtensionStatus() {
-      try {
-        const { data: profile } = await sb.from('profiles').select('last_scan_at,scanner_running,scanner_today_visited,scanner_today_limit,scanner_today_date').eq('id', currentUser.id).single();
-        if (profile?.last_scan_at) {
-          const lastScan = new Date(profile.last_scan_at);
-          const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
-          const dot = $('#ext-dot');
-          const text = $('#ext-status-text');
-          const detail = $('#ext-status-detail');
-          if (hoursSince < 24) {
-            dot.className = 'ext-dot on';
-            text.textContent = 'Extension connected';
-            const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-            const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
-            detail.textContent = profile.scanner_running
-              ? `Scanning · ${profile.scanner_today_visited || 0}/${profile.scanner_today_limit || '—'} today`
-              : `Last active ${todayStr} at ${timeStr}`;
-          } else {
-            dot.className = 'ext-dot off';
-            text.textContent = 'Extension inactive';
-            detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
-          }
-        }
-      } catch (e) {}
-    }
-
     // Nav
     $$('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
@@ -1631,21 +1833,46 @@
     async function checkExtensionStatus() {
       try {
         const { data: profile } = await sb.from('profiles')
-          .select('last_scan_at, scanner_running')
+          .select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit')
           .eq('id', currentUser.id).single();
-        const dot = $('#ext-status-dot');
-        if (!dot) return;
-        if (profile?.scanner_running || (profile?.last_scan_at && (Date.now() - new Date(profile.last_scan_at).getTime()) < 86400000)) {
-          dot.classList.add('connected');
-          dot.title = 'Extension active';
-        } else {
-          dot.classList.remove('connected');
-          dot.title = 'Extension not detected';
+
+        const navDot = $('#ext-status-dot');
+        const dot = $('#ext-dot');
+        const text = $('#ext-status-text');
+        const detail = $('#ext-status-detail');
+
+        if (profile?.last_scan_at) {
+          const lastScan = new Date(profile.last_scan_at);
+          const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
+          const isActive = hoursSince < 24 || profile.scanner_running;
+
+          // Nav dot
+          if (navDot) {
+            if (isActive) { navDot.classList.add('connected'); navDot.title = 'Extension active'; }
+            else { navDot.classList.remove('connected'); navDot.title = 'Extension not detected'; }
+          }
+
+          // Setup page status
+          if (dot && text && detail) {
+            if (isActive) {
+              dot.className = 'ext-dot on';
+              text.textContent = 'Extension connected';
+              const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+              const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
+              detail.textContent = profile.scanner_running
+                ? `Scanning · ${profile.scanner_today_visited || 0}/${profile.scanner_today_limit || '—'} today`
+                : `Last active ${todayStr} at ${timeStr}`;
+            } else {
+              dot.className = 'ext-dot off';
+              text.textContent = 'Extension inactive';
+              detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
+            }
+          }
         }
       } catch (e) { /* ignore */ }
     }
     checkExtensionStatus();
-    setInterval(checkExtensionStatus, 60000); // Check every minute
+    setInterval(checkExtensionStatus, 60000);
 
     // Saved Jobs card → navigate to Pipeline
     $('#j-saved-card').addEventListener('click', () => {
@@ -1852,6 +2079,9 @@
       const whnot = sf.whereNotPills || [];
       const wonot = sf.whoNotPills || [];
 
+      // Load global tuning settings
+      const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+
       // WHAT — title ilike (AND across pills, OR within)
       for (const pill of w) {
         if (pill.values.length === 1) {
@@ -1867,6 +2097,12 @@
           query = query.not('title', 'ilike', `%${v}%`);
         }
       }
+      // Global title exclusions
+      for (const pill of (tuning.titleExcludes || [])) {
+        for (const v of (pill.values || [])) {
+          query = query.not('title', 'ilike', `%${v}%`);
+        }
+      }
 
       // WHERE — location ilike
       for (const pill of wh) {
@@ -1876,10 +2112,20 @@
           query = query.or(pill.values.map(v => `location.ilike.%${v}%`).join(','));
         }
       }
+      // Global US-only
+      if (tuning.usOnly && wh.length === 0) {
+        query = query.ilike('location', '%United States%');
+      }
 
       // WHERE NOT — location not ilike
       for (const pill of whnot) {
         for (const v of pill.values) {
+          query = query.not('location', 'ilike', `%${v}%`);
+        }
+      }
+      // Global location exclusions
+      for (const pill of (tuning.locationExcludes || [])) {
+        for (const v of (pill.values || [])) {
           query = query.not('location', 'ilike', `%${v}%`);
         }
       }
@@ -1896,6 +2142,12 @@
       // WHO NOT — company_name not ilike
       for (const pill of wonot) {
         for (const v of pill.values) {
+          query = query.not('company_name', 'ilike', `%${v}%`);
+        }
+      }
+      // Global company exclusions
+      for (const pill of (tuning.companyExcludes || [])) {
+        for (const v of (pill.values || [])) {
           query = query.not('company_name', 'ilike', `%${v}%`);
         }
       }
@@ -1928,7 +2180,14 @@
 
     function getCheckedSavedFilters() {
       const checks = [...$$('.sf-item-check:checked')];
-      return checks.map(cb => savedFilters[parseInt(cb.dataset.idx)]).filter(Boolean);
+      return checks.map(cb => {
+        const sf = savedFilters[parseInt(cb.dataset.idx)];
+        if (sf) {
+          sf._filterNum = cb.dataset.filternum;
+          sf._filterColor = cb.dataset.filtercolor;
+        }
+        return sf;
+      }).filter(Boolean);
     }
 
     // Main search: OR across all checked saved filters
@@ -2014,7 +2273,7 @@
 
           const { data: jobs, error, count } = await query;
           if (error) throw error;
-          allJobs = jobs || [];
+          allJobs = (jobs || []).map(j => ({ ...j, _filterNums: [{ num: filtersToRun[0]._filterNum || '', color: filtersToRun[0]._filterColor || '' }] }));
           totalCount = count || 0;
         } else {
           // Multiple filters — fetch up to limit per filter, merge, dedupe
@@ -2031,16 +2290,25 @@
 
           const results = await Promise.all(promises);
           let maxTotal = 0;
-          for (const r of results) {
+          const jobFilterMap = new Map(); // greenhouse_id -> [{num, color}]
+          results.forEach((r, i) => {
             if (r.error) throw r.error;
             maxTotal += (r.count || 0);
+            const fm = { num: filtersToRun[i]._filterNum || '', color: filtersToRun[i]._filterColor || '' };
             for (const job of (r.data || [])) {
+              if (jobFilterMap.has(job.greenhouse_id)) {
+                jobFilterMap.get(job.greenhouse_id).push(fm);
+              } else {
+                jobFilterMap.set(job.greenhouse_id, [fm]);
+              }
               if (!seenIds.has(job.greenhouse_id)) {
                 seenIds.add(job.greenhouse_id);
                 allJobs.push(job);
               }
             }
-          }
+          });
+          // Attach filter tags to jobs
+          allJobs.forEach(j => { j._filterNums = jobFilterMap.get(j.greenhouse_id) || []; });
           totalCount = maxTotal; // approximate (some overlap)
 
           // Client-side sort the merged results
@@ -2167,9 +2435,15 @@
           applyBtn = applyButton(['greenhouse'], { greenhouse: job.url }, job.greenhouse_id);
         }
 
+        // Filter number badges
+        const filterBadges = (job._filterNums || [])
+          .filter(f => f.num)
+          .map(f => `<span class="job-filter-badge" style="background:${f.color};">${f.num}</span>`)
+          .join('');
+
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title"><a href="${job.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
+          <td class="jt-title">${filterBadges}<a href="${job.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td>${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
@@ -2231,6 +2505,13 @@
     function renderSortPills() {
       const container = $('#sort-pills');
       container.innerHTML = '';
+      // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
+      const sortColorMap = {
+        title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
+        company_name: { bg: 'rgba(236,72,153,0.1)', text: '#ec4899', dot: '#ec4899' },
+        location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
+        updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
+      };
       jobSortStack.forEach((s, i) => {
         const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location' };
         const label = labelMap[s.field] || s.field;
@@ -2238,11 +2519,14 @@
         const dirTitle = s.asc
           ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : 'A→Z — click to flip')
           : (s.field === 'updated_at' ? 'Newest first — click to flip' : 'Z→A — click to flip');
+        const colors = sortColorMap[s.field] || sortColorMap.title;
 
         const pill = document.createElement('span');
         pill.className = 'sort-pill';
+        pill.style.background = colors.bg;
+        pill.style.color = colors.text;
         pill.innerHTML = `
-          <span class="sort-num">${i + 1}</span>
+          <span class="sort-num" style="background:${colors.dot};">${i + 1}</span>
           ${label}
           <span class="sort-dir" title="${dirTitle}" data-idx="${i}">${dirLabel}</span>
           <span class="sort-remove" title="Remove" data-idx="${i}">✕</span>
@@ -2578,6 +2862,7 @@
         whatNotPills: JSON.parse(JSON.stringify(whatNotPills)),
         whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
         whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
+        includeNoSalary: $('#save-filter-include-no-salary').checked,
         createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
@@ -2783,8 +3068,13 @@
           }).join('') + '</div>';
         }
 
-        return `<div class="sf-item" data-idx="${sf._idx}">
-          <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}">
+        const filterNum = sorted.indexOf(sf) + 1;
+        const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+        const filterColor = filterColors[(filterNum - 1) % filterColors.length];
+
+        return `<div class="sf-item" data-idx="${sf._idx}" data-filternum="${filterNum}">
+          <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
+          <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
           <div class="sf-item-info">
             <div class="sf-item-name">${sf.name}</div>
             ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
@@ -3091,6 +3381,89 @@
 
     // Render pipeline saved on load
     setTimeout(() => renderPipelineSaved(), 800);
+
+    // ============================================================
+    // TUNING — Global search settings
+    // ============================================================
+    let tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    let tuningLocExclPills = tuningSettings.locationExcludes || [];
+    let tuningTitleExclPills = tuningSettings.titleExcludes || [];
+    let tuningCoExclPills = tuningSettings.companyExcludes || [];
+
+    function saveTuning() {
+      tuningSettings.usOnly = $('#tuning-us-only').checked;
+      tuningSettings.levelMatch = $('#tuning-level-match').checked;
+      tuningSettings.levels = [...$$('#tuning-levels input:checked')].map(cb => cb.value);
+      tuningSettings.locationExcludes = tuningLocExclPills;
+      tuningSettings.titleExcludes = tuningTitleExclPills;
+      tuningSettings.companyExcludes = tuningCoExclPills;
+      localStorage.setItem('bj_tuning', JSON.stringify(tuningSettings));
+    }
+
+    // Restore state
+    if (tuningSettings.usOnly) $('#tuning-us-only').checked = true;
+    if (tuningSettings.levelMatch) {
+      $('#tuning-level-match').checked = true;
+      $('#tuning-levels').style.display = '';
+    }
+    if (tuningSettings.levels) {
+      $$('#tuning-levels input').forEach(cb => {
+        cb.checked = tuningSettings.levels.includes(cb.value);
+      });
+    }
+
+    // Render tuning pills
+    function renderTuningPills() {
+      renderPillsFor(tuningLocExclPills, '#tuning-location-exclude', '#tuning-loc-excl-input', false, 'not-pill');
+      renderPillsFor(tuningTitleExclPills, '#tuning-title-exclude', '#tuning-title-excl-input', false, 'not-pill');
+      renderPillsFor(tuningCoExclPills, '#tuning-company-exclude', '#tuning-co-excl-input', false, 'not-pill');
+    }
+    renderTuningPills();
+
+    // Tuning input handlers
+    const tuningInputs = [
+      { input: '#tuning-loc-excl-input', pills: () => tuningLocExclPills, set: v => { tuningLocExclPills = v; tuningSettings.locationExcludes = v; }, builder: '#tuning-location-exclude' },
+      { input: '#tuning-title-excl-input', pills: () => tuningTitleExclPills, set: v => { tuningTitleExclPills = v; tuningSettings.titleExcludes = v; }, builder: '#tuning-title-exclude' },
+      { input: '#tuning-co-excl-input', pills: () => tuningCoExclPills, set: v => { tuningCoExclPills = v; tuningSettings.companyExcludes = v; }, builder: '#tuning-company-exclude' },
+    ];
+    tuningInputs.forEach(t => {
+      const el = $(t.input);
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ',') {
+          e.preventDefault();
+          commitPill(el, t.pills(), raw => ({ values: [raw], type: 'not' }));
+          saveTuning(); renderTuningPills();
+        } else if (e.key === 'Backspace' && el.value === '' && t.pills().length > 0) {
+          t.pills().pop(); saveTuning(); renderTuningPills();
+        }
+      });
+      el.addEventListener('blur', () => {
+        commitPill(el, t.pills(), raw => ({ values: [raw], type: 'not' }));
+        saveTuning(); renderTuningPills();
+      });
+      $(t.builder).addEventListener('click', e => {
+        if (!e.target.closest('.qb-pill')) el.focus();
+      });
+    });
+
+    // Checkboxes
+    $('#tuning-us-only').addEventListener('change', saveTuning);
+    $('#tuning-level-match').addEventListener('change', () => {
+      $('#tuning-levels').style.display = $('#tuning-level-match').checked ? '' : 'none';
+      saveTuning();
+    });
+    $$('#tuning-levels input').forEach(cb => cb.addEventListener('change', saveTuning));
+
+    // Analyze hidden jobs for poor match suggestions
+    function updatePoorMatchSuggestions() {
+      if (hiddenJobIds.length === 0) {
+        $('#tuning-poor-matches').innerHTML = '<span style="color:var(--text-faint);font-size:12px;">No hidden jobs yet. Hide irrelevant jobs from the feed to see suggestions here.</span>';
+        return;
+      }
+      // Count title words from hidden jobs (from localStorage is limited, but we can show count)
+      $('#tuning-poor-matches').innerHTML = `<span style="font-size:12px;color:var(--text-dim);">You've hidden <strong>${hiddenJobIds.length}</strong> job${hiddenJobIds.length > 1 ? 's' : ''}. Pattern analysis coming soon — for now, add exclusion terms above manually.</span>`;
+    }
+    updatePoorMatchSuggestions();
 
     // ============================================================
     // RESUMES
