@@ -2740,9 +2740,16 @@
           if (resp.ok) {
             const data = await resp.json();
             if (data.content) {
-              // Greenhouse API may return HTML-encoded content — decode it
-              const decoded = new DOMParser().parseFromString(data.content, 'text/html').body.innerHTML;
-              bodyEl.innerHTML = decoded;
+              // Greenhouse API returns HTML content — may need decoding
+              let htmlContent = data.content;
+              // If it starts with encoded entities, decode first
+              if (htmlContent.includes('&lt;') || htmlContent.includes('&amp;lt;')) {
+                const tmp = document.createElement('textarea');
+                tmp.innerHTML = htmlContent;
+                htmlContent = tmp.value;
+              }
+              // Set as HTML
+              bodyEl.innerHTML = htmlContent;
               // Also show department/location from API if available
               const meta = [];
               if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
@@ -2752,8 +2759,8 @@
               }
               // Cache the decoded version locally and in Supabase
               const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
-              if (cachedJob) cachedJob.content = decoded;
-              sb.from('ats_jobs').update({ content: decoded }).eq('greenhouse_id', jobId).then(() => {});
+              if (cachedJob) cachedJob.content = htmlContent;
+              sb.from('ats_jobs').update({ content: htmlContent }).eq('greenhouse_id', jobId).then(() => {});
               return;
             }
           }
