@@ -821,6 +821,7 @@
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="qb-chevron"><polyline points="6 9 12 15 18 9"/></svg>
             <span>Job Filter Builder</span>
             <span class="qb-active-count" id="qb-active-count"></span>
+            <button class="btn btn-sm" id="clear-filters-btn" style="display:none;margin-left:auto;padding:2px 10px;font-size:10px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Clear All</button>
           </div>
           <div class="qb-collapse-body" id="qb-collapse-body">
           <div class="qb-row">
@@ -872,7 +873,6 @@
               <input type="text" class="save-filter-name" id="save-filter-name" placeholder="Name this filter…" maxlength="40">
               <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
             </div>
-            <button class="btn btn-secondary btn-sm" id="clear-filters-btn" style="display:none;">Clear All</button>
             <div class="filter-count" id="filter-count"></div>
           </div>
           </div>
@@ -1517,7 +1517,7 @@
     // Input handling — What row
     const qbInputWhat = $('#qb-input-what');
     function commitPill(input, pillArray, makePill) {
-      const raw = input.value.trim();
+      const raw = input.value.trim().toLowerCase();
       if (!raw) return false;
       const orMatch = raw.match(/^or\s+(.+)/i);
       if (orMatch && pillArray.length > 0) {
@@ -1641,7 +1641,8 @@
     });
 
     // Collapse toggle
-    $('#qb-toggle').addEventListener('click', () => {
+    $('#qb-toggle').addEventListener('click', (e) => {
+      if (e.target.id === 'clear-filters-btn' || e.target.closest('#clear-filters-btn')) return;
       const header = $('#qb-toggle');
       const body = $('#qb-collapse-body');
       header.classList.toggle('collapsed');
