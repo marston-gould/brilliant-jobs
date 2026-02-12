@@ -567,6 +567,12 @@
       transition: all 0.1s;
     }
     .job-modal-close-btn:hover { background: var(--bg-hover); color: var(--text-dim); }
+    .loading-spinner {
+      width: 28px; height: 28px; border: 3px solid var(--border);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .tuning-level-cb {
       display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim);
       cursor: pointer; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
@@ -1916,6 +1922,7 @@
   </div>
 
   <script>
+    console.log('[BJ] Dashboard v2.8 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2606,7 +2613,7 @@
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" onclick="openJobModal('${job.greenhouse_id}')" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-gid="${job.greenhouse_id}" onclick="openJobModal(this.dataset.gid)" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc">${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
@@ -2637,6 +2644,7 @@
     // Job Spec Modal
     async function openJobModal(jobId, e) {
       if (e) e.preventDefault();
+      console.log('[BJ] openJobModal called with:', jobId);
       const overlay = $('#job-modal-overlay');
       const titleEl = $('#job-modal-title');
       const metaEl = $('#job-modal-meta');
@@ -2681,7 +2689,9 @@
       } else if (job.description) {
         bodyEl.innerHTML = job.description;
       } else {
-        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--text-faint);margin-bottom:16px;">Job description not yet scraped for this listing.</div><a href="' + jobUrl + '" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration:none;">View Full Job Spec on ATS \u2197</a></div>';
+        // Show loading state and fetch on demand
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
+        fetchJobSpec(jobId, jobUrl, bodyEl);
       }
 
       // Footer with action buttons — all sync back to feed
@@ -2708,6 +2718,46 @@
       if (e && e.target !== e.currentTarget) return;
       $('#job-modal-overlay').style.display = 'none';
       document.body.style.overflow = '';
+    }
+
+    // On-demand job spec fetcher — tries Greenhouse JSON API first
+    async function fetchJobSpec(jobId, jobUrl, bodyEl) {
+      try {
+        // Greenhouse public JSON API: /jobs/{id} returns structured content
+        // Extract the numeric job ID from the URL or greenhouse_id
+        const numericId = jobId.replace(/\D/g, '');
+        
+        // Try the Greenhouse embed endpoint which is CORS-friendly
+        const embedUrl = jobUrl.replace('/jobs/', '/embed/job_app?token=');
+        
+        // Try fetching via Supabase Edge Function (proxy)
+        const proxyUrl = SUPABASE_URL + '/functions/v1/fetch-job-spec';
+        const resp = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
+          body: JSON.stringify({ url: jobUrl, greenhouse_id: jobId })
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.content) {
+            bodyEl.innerHTML = data.content;
+            // Cache it in the local job object
+            const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
+            if (cachedJob) cachedJob.content = data.content;
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('[BJ] Job spec fetch failed, showing fallback:', err.message);
+      }
+
+      // Fallback — show clean message with link
+      bodyEl.innerHTML = `<div style="text-align:center;padding:40px;">
+        <div style="color:var(--text-dim);margin-bottom:8px;font-size:14px;">Click below to view the full listing</div>
+        <a href="${jobUrl}" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration:none;display:inline-block;margin-top:8px;">View on Company Site ↗</a>
+        <div style="color:var(--text-faint);font-size:11px;margin-top:16px;">Job details will load automatically once our indexer reaches this listing</div>
+      </div>`;
     }
 
     // Modal actions — sync back to feed
