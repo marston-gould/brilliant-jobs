@@ -1208,8 +1208,36 @@
       $('#nav-email').textContent = currentUser.email;
       $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
       loadStats();
+      checkExtensionStatus();
     }
     init();
+
+    // Extension detection — check last_scan_at from profiles
+    async function checkExtensionStatus() {
+      try {
+        const { data: profile } = await sb.from('profiles').select('last_scan_at,scanner_running,scanner_today_visited,scanner_today_limit,scanner_today_date').eq('id', currentUser.id).single();
+        if (profile?.last_scan_at) {
+          const lastScan = new Date(profile.last_scan_at);
+          const hoursSince = (Date.now() - lastScan.getTime()) / 3600000;
+          const dot = $('#ext-dot');
+          const text = $('#ext-status-text');
+          const detail = $('#ext-status-detail');
+          if (hoursSince < 24) {
+            dot.className = 'ext-dot on';
+            text.textContent = 'Extension connected';
+            const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            detail.textContent = profile.scanner_running
+              ? `Scanning · ${profile.scanner_today_visited || 0}/${profile.scanner_today_limit || '—'} today`
+              : `Last active ${todayStr} at ${timeStr}`;
+          } else {
+            dot.className = 'ext-dot off';
+            text.textContent = 'Extension inactive';
+            detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
+          }
+        }
+      } catch (e) {}
+    }
 
     // Nav
     $$('.nav-item').forEach(item => {
