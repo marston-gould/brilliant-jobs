@@ -820,7 +820,7 @@
           <!-- Collapsible query builder -->
           <div class="qb-collapse-header" id="qb-toggle">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="qb-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-            <span>Filter Builder</span>
+            <span>Job Filter Builder</span>
             <span class="qb-active-count" id="qb-active-count"></span>
           </div>
           <div class="qb-collapse-body" id="qb-collapse-body">
@@ -1536,6 +1536,13 @@
         renderAllPills();
       }
     });
+    qbInputWhat.addEventListener('blur', () => {
+      const raw = qbInputWhat.value.trim();
+      if (!raw) return;
+      whatPills.push({ values: [raw], type: classifyTerm(raw) });
+      qbInputWhat.value = '';
+      renderAllPills();
+    });
 
     // Input handling — Where row
     const qbInputWhere = $('#qb-input-where');
@@ -1558,6 +1565,13 @@
         wherePills.pop();
         renderAllPills();
       }
+    });
+    qbInputWhere.addEventListener('blur', () => {
+      const raw = qbInputWhere.value.trim();
+      if (!raw) return;
+      wherePills.push({ values: [raw], type: 'location', radius: DEFAULT_RADIUS });
+      qbInputWhere.value = '';
+      renderAllPills();
     });
 
     // Click builders to focus respective inputs
@@ -1600,6 +1614,13 @@
         renderAllPills();
       }
     });
+    qbInputWhen.addEventListener('blur', () => {
+      const raw = qbInputWhen.value.trim();
+      if (!raw) return;
+      whenPills.push({ values: [raw], type: 'when' });
+      qbInputWhen.value = '';
+      renderAllPills();
+    });
 
     // Input handling — Who row
     const qbInputWho = $('#qb-input-who');
@@ -1622,6 +1643,13 @@
         whoPills.pop();
         renderAllPills();
       }
+    });
+    qbInputWho.addEventListener('blur', () => {
+      const raw = qbInputWho.value.trim();
+      if (!raw) return;
+      whoPills.push({ values: [raw], type: 'who' });
+      qbInputWho.value = '';
+      renderAllPills();
     });
 
     // Collapse toggle
