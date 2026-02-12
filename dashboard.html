@@ -2683,11 +2683,17 @@
       metaEl.textContent = metaParts.join('  \u00b7  ');
       extLink.href = jobUrl;
 
-      // Populate body
+      // Populate body — decode HTML entities if needed
       if (job.content) {
-        bodyEl.innerHTML = job.content;
+        const c = job.content;
+        bodyEl.innerHTML = c.startsWith('&lt;') || c.startsWith('&amp;') 
+          ? new DOMParser().parseFromString(c, 'text/html').body.innerHTML 
+          : c;
       } else if (job.description) {
-        bodyEl.innerHTML = job.description;
+        const d = job.description;
+        bodyEl.innerHTML = d.startsWith('&lt;') || d.startsWith('&amp;')
+          ? new DOMParser().parseFromString(d, 'text/html').body.innerHTML
+          : d;
       } else {
         // Show loading state and fetch on demand
         bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
@@ -2734,8 +2740,9 @@
           if (resp.ok) {
             const data = await resp.json();
             if (data.content) {
-              // Greenhouse API returns HTML content directly
-              bodyEl.innerHTML = data.content;
+              // Greenhouse API may return HTML-encoded content — decode it
+              const decoded = new DOMParser().parseFromString(data.content, 'text/html').body.innerHTML;
+              bodyEl.innerHTML = decoded;
               // Also show department/location from API if available
               const meta = [];
               if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
@@ -2743,11 +2750,10 @@
               if (meta.length) {
                 bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${meta.join('  ·  ')}</div>` + bodyEl.innerHTML;
               }
-              // Cache locally
+              // Cache the decoded version locally and in Supabase
               const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
-              if (cachedJob) cachedJob.content = data.content;
-              // Cache in Supabase (fire and forget)
-              sb.from('ats_jobs').update({ content: data.content }).eq('greenhouse_id', jobId).then(() => {});
+              if (cachedJob) cachedJob.content = decoded;
+              sb.from('ats_jobs').update({ content: decoded }).eq('greenhouse_id', jobId).then(() => {});
               return;
             }
           }
