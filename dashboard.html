@@ -268,13 +268,48 @@
     .qb-pill.when-pill .qb-pill-text { color: #a855f7; }
     .qb-pill.when-pill .qb-pill-remove { color: rgba(168,85,247,0.4); border-left-color: rgba(168,85,247,0.15); }
 
-    .qb-pill.who-pill { background: rgba(14,165,233,0.08); border-color: rgba(14,165,233,0.2); }
-    .qb-pill.who-pill .qb-pill-text { color: #0ea5e9; }
-    .qb-pill.who-pill .qb-pill-remove { color: rgba(14,165,233,0.4); border-left-color: rgba(14,165,233,0.15); }
+    .qb-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.2); }
+    .qb-pill.who-pill .qb-pill-text { color: #ec4899; }
+    .qb-pill.who-pill .qb-pill-remove { color: rgba(236,72,153,0.4); border-left-color: rgba(236,72,153,0.15); }
 
     .qb-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
     .qb-pill.pay-pill .qb-pill-text { color: var(--green); }
     .qb-pill.pay-pill .qb-pill-remove { color: rgba(34,197,94,0.4); border-left-color: rgba(34,197,94,0.15); }
+
+    /* Collapsible query builder */
+    .qb-collapse-header {
+      display: flex; align-items: center; gap: 8px; padding: 10px 0; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: var(--text-dim); user-select: none;
+    }
+    .qb-collapse-header:hover { color: var(--text); }
+    .qb-chevron { transition: transform 0.2s; flex-shrink: 0; }
+    .qb-collapse-header.collapsed .qb-chevron { transform: rotate(-90deg); }
+    .qb-collapse-body { transition: max-height 0.25s ease, opacity 0.2s ease; overflow: hidden; }
+    .qb-collapse-body.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; }
+    .qb-active-count {
+      font-size: 10px; font-weight: 700; background: var(--accent); color: white;
+      padding: 1px 7px; border-radius: 10px; display: none;
+    }
+
+    /* Salary min/max fields */
+    .qb-salary-row {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+    }
+    .qb-salary-field {
+      display: flex; align-items: center; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+      flex: 1; min-height: 44px; transition: border-color 0.15s;
+    }
+    .qb-salary-field:focus-within { border-color: var(--accent); }
+    .qb-salary-prefix {
+      font-size: 14px; font-weight: 600; color: var(--text-faint); margin-right: 4px; flex-shrink: 0;
+    }
+    .qb-salary-input {
+      border: none; background: transparent; font-size: 14px; color: var(--text);
+      font-family: var(--mono); outline: none; width: 100%;
+    }
+    .qb-salary-input::placeholder { color: var(--text-faint); font-family: var(--sans); font-size: 13px; }
+    .qb-salary-sep { color: var(--text-faint); font-size: 16px; flex-shrink: 0; }
 
     .sf-item { gap: 8px; }
     .sf-item-check { flex-shrink: 0; margin: 0; cursor: pointer; }
@@ -359,7 +394,7 @@
     }
     .sf-mini-pill.location-pill { background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.15); color: var(--warm); }
     .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
-    .sf-mini-pill.who-pill { background: rgba(14,165,233,0.08); border-color: rgba(14,165,233,0.15); color: #0ea5e9; }
+    .sf-mini-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.15); color: #ec4899; }
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
 
     .qb-hint {
@@ -782,7 +817,13 @@
             <div class="stat-card"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved</div></div>
           </div>
 
-          <!-- Five-row query builder -->
+          <!-- Collapsible query builder -->
+          <div class="qb-collapse-header" id="qb-toggle">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="qb-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <span>Filter Builder</span>
+            <span class="qb-active-count" id="qb-active-count"></span>
+          </div>
+          <div class="qb-collapse-body" id="qb-collapse-body">
           <div class="qb-row">
             <label class="qb-row-label">What</label>
             <div class="query-builder" id="query-builder-what">
@@ -792,13 +833,13 @@
           <div class="qb-row">
             <label class="qb-row-label">Where</label>
             <div class="query-builder" id="query-builder-where">
-              <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, or remote — e.g. Seattle, Austin TX, remote">
+              <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, remote, hybrid — e.g. Seattle, Austin TX, remote">
             </div>
           </div>
           <div class="qb-row">
             <label class="qb-row-label">When</label>
             <div class="query-builder" id="query-builder-when">
-              <input type="text" class="qb-input" id="qb-input-when" placeholder="Posted timeframe — e.g. today, this week, last 30 days">
+              <input type="text" class="qb-input" id="qb-input-when" placeholder="Posted timeframe — e.g. today, last 7 days, this month">
             </div>
           </div>
           <div class="qb-row">
@@ -809,8 +850,16 @@
           </div>
           <div class="qb-row">
             <label class="qb-row-label">How Much</label>
-            <div class="query-builder" id="query-builder-pay">
-              <input type="text" class="qb-input" id="qb-input-pay" placeholder="Salary range — e.g. $100k+, $80k-$120k, $150k minimum">
+            <div class="qb-salary-row">
+              <div class="qb-salary-field">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min" maxlength="10">
+              </div>
+              <span class="qb-salary-sep">—</span>
+              <div class="qb-salary-field">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max" maxlength="10">
+              </div>
             </div>
           </div>
           <div class="qb-hint">
@@ -825,6 +874,7 @@
             </div>
             <button class="btn btn-secondary btn-sm" id="clear-filters-btn" style="display:none;">Clear All</button>
             <div class="filter-count" id="filter-count"></div>
+          </div>
           </div>
 
           <!-- Saved filters list -->
@@ -1346,6 +1396,10 @@
     // Multiple values in one pill = OR, multiple pills = AND
     let whatPills = [];
     let wherePills = [];
+    let whenPills = [];
+    let whoPills = [];
+    let salaryMin = '';
+    let salaryMax = '';
     let savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
     const WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
     const SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
@@ -1358,9 +1412,9 @@
       return 'keyword';
     }
 
-    function allPills() { return whatPills.length + wherePills.length; }
+    function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + (salaryMin || salaryMax ? 1 : 0); }
 
-    function renderPillsFor(pillArray, builderId, inputId, isLocation) {
+    function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass) {
       const builder = $(builderId);
       builder.querySelectorAll('.qb-pill, .qb-and').forEach(el => el.remove());
       const input = $(inputId);
@@ -1375,7 +1429,8 @@
 
         const el = document.createElement('span');
         let cls = 'qb-pill';
-        if (isLocation) cls += ' location-pill';
+        if (extraClass) cls += ' ' + extraClass;
+        else if (isLocation) cls += ' location-pill';
         else if (pill.values.length > 1) cls += ' or-group';
         else if (pill.type === 'salary') cls += ' salary-pill';
         else if (pill.type === 'type') cls += ' type-pill';
@@ -1441,14 +1496,22 @@
     }
 
     function renderAllPills() {
-      renderPillsFor(whatPills, '#query-builder-what', '#qb-input-what', false);
-      renderPillsFor(wherePills, '#query-builder-where', '#qb-input-where', true);
+      renderPillsFor(whatPills, '#query-builder-what', '#qb-input-what', false, '');
+      renderPillsFor(wherePills, '#query-builder-where', '#qb-input-where', true, '');
+      renderPillsFor(whenPills, '#query-builder-when', '#qb-input-when', false, 'when-pill');
+      renderPillsFor(whoPills, '#query-builder-who', '#qb-input-who', false, 'who-pill');
 
       // Show/hide toolbar
       const hasAny = allPills() > 0;
       $('#save-filter-row').style.display = hasAny ? 'inline-flex' : 'none';
       $('#clear-filters-btn').style.display = hasAny ? '' : 'none';
       $('#saved-filters-section').style.display = savedFilters.length > 0 ? '' : 'none';
+
+      // Update collapse badge count
+      const count = allPills();
+      const badge = $('#qb-active-count');
+      if (count > 0) { badge.textContent = count + ' filter' + (count > 1 ? 's' : ''); badge.style.display = ''; }
+      else { badge.style.display = 'none'; }
     }
 
     // Input handling — What row
@@ -1506,11 +1569,79 @@
       if (e.target.closest('.qb-pill')) return;
       qbInputWhere.focus();
     });
+    $('#query-builder-when').addEventListener('click', e => {
+      if (e.target.closest('.qb-pill')) return;
+      $('#qb-input-when').focus();
+    });
+    $('#query-builder-who').addEventListener('click', e => {
+      if (e.target.closest('.qb-pill')) return;
+      $('#qb-input-who').focus();
+    });
+
+    // Input handling — When row
+    const qbInputWhen = $('#qb-input-when');
+    qbInputWhen.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const raw = qbInputWhen.value.trim();
+        if (!raw) return;
+        const orMatch = raw.match(/^or\s+(.+)/i);
+        if (orMatch && whenPills.length > 0) {
+          whenPills[whenPills.length - 1].values.push(orMatch[1].trim());
+          qbInputWhen.value = '';
+          renderAllPills();
+          return;
+        }
+        whenPills.push({ values: [raw], type: 'when' });
+        qbInputWhen.value = '';
+        renderAllPills();
+      } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
+        whenPills.pop();
+        renderAllPills();
+      }
+    });
+
+    // Input handling — Who row
+    const qbInputWho = $('#qb-input-who');
+    qbInputWho.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const raw = qbInputWho.value.trim();
+        if (!raw) return;
+        const orMatch = raw.match(/^or\s+(.+)/i);
+        if (orMatch && whoPills.length > 0) {
+          whoPills[whoPills.length - 1].values.push(orMatch[1].trim());
+          qbInputWho.value = '';
+          renderAllPills();
+          return;
+        }
+        whoPills.push({ values: [raw], type: 'who' });
+        qbInputWho.value = '';
+        renderAllPills();
+      } else if (e.key === 'Backspace' && qbInputWho.value === '' && whoPills.length > 0) {
+        whoPills.pop();
+        renderAllPills();
+      }
+    });
+
+    // Collapse toggle
+    $('#qb-toggle').addEventListener('click', () => {
+      const header = $('#qb-toggle');
+      const body = $('#qb-collapse-body');
+      header.classList.toggle('collapsed');
+      body.classList.toggle('collapsed');
+    });
 
     // Clear all
     $('#clear-filters-btn').addEventListener('click', () => {
       whatPills = [];
       wherePills = [];
+      whenPills = [];
+      whoPills = [];
+      salaryMin = '';
+      salaryMax = '';
+      $('#qb-input-pay-min').value = '';
+      $('#qb-input-pay-max').value = '';
       renderAllPills();
     });
 
@@ -1522,6 +1653,10 @@
         name,
         whatPills: JSON.parse(JSON.stringify(whatPills)),
         wherePills: JSON.parse(JSON.stringify(wherePills)),
+        whenPills: JSON.parse(JSON.stringify(whenPills)),
+        whoPills: JSON.parse(JSON.stringify(whoPills)),
+        salaryMin: salaryMin,
+        salaryMax: salaryMax,
         createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
@@ -1537,6 +1672,16 @@
     });
 
     // Search within saved filters
+    // Salary min/max inputs
+    $('#qb-input-pay-min').addEventListener('input', e => {
+      salaryMin = e.target.value.replace(/[^0-9k,]/gi, '');
+      renderAllPills();
+    });
+    $('#qb-input-pay-max').addEventListener('input', e => {
+      salaryMax = e.target.value.replace(/[^0-9k,]/gi, '');
+      renderAllPills();
+    });
+
     $('#sf-search').addEventListener('input', () => renderSavedFilters());
 
     // Select all checkbox
@@ -1604,11 +1749,29 @@
           ...(sf.wherePills || []).map(p => ({ ...p, row: 'where' })),
           ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
           ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
-          ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
         ];
+        // Add salary as a synthetic pill if present
+        if (sf.salaryMin || sf.salaryMax) {
+          const salaryLabel = sf.salaryMin && sf.salaryMax ? `$${sf.salaryMin} – $${sf.salaryMax}`
+            : sf.salaryMin ? `$${sf.salaryMin}+` : `Up to $${sf.salaryMax}`;
+          allSfPills.push({ values: [salaryLabel], row: 'pay' });
+        }
         if (allSfPills.length > 0) {
+          // Detect pill color: use row if set explicitly, otherwise infer from type/value
+          const locationWords = /^(remote|hybrid|onsite|on-site|in-office)$/i;
+          const cityLike = /^[a-z\s]+(,\s*[a-z]{2})?$/i;
+          const salaryLike = /\$|k\+?$|\d{3,}/i;
+
           miniPills = '<div class="sf-item-pills">' + allSfPills.map(p => {
-            const cls = p.row === 'where' ? 'location-pill' : p.row === 'when' ? 'when-pill' : p.row === 'who' ? 'who-pill' : p.row === 'pay' ? 'pay-pill' : '';
+            let cls = '';
+            const val = (p.values ? p.values[0] : '').toLowerCase();
+            if (p.row === 'where') cls = 'location-pill';
+            else if (p.row === 'when') cls = 'when-pill';
+            else if (p.row === 'who') cls = 'who-pill';
+            else if (p.row === 'pay') cls = 'pay-pill';
+            else if (p.type === 'type' || locationWords.test(val)) cls = 'location-pill';
+            else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
+            // else default blue for keyword/what
             const label = p.values ? p.values.join(' | ') : '';
             return `<span class="sf-mini-pill ${cls}">${label}</span>`;
           }).join('') + '</div>';
@@ -1645,6 +1808,12 @@
             whatPills = JSON.parse(JSON.stringify(sf.pills));
             wherePills = [];
           }
+          whenPills = JSON.parse(JSON.stringify(sf.whenPills || []));
+          whoPills = JSON.parse(JSON.stringify(sf.whoPills || []));
+          salaryMin = sf.salaryMin || '';
+          salaryMax = sf.salaryMax || '';
+          $('#qb-input-pay-min').value = salaryMin;
+          $('#qb-input-pay-max').value = salaryMax;
           savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
