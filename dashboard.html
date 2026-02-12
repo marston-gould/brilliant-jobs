@@ -614,6 +614,7 @@
     .job-table th[data-sort="location"].sorted { color: #f59e0b; }
     .job-table th[data-sort="salary"].sorted { color: var(--green); }
     .job-table th[data-sort="days"].sorted { color: #a855f7; }
+    .job-table th[data-sort="level"].sorted { color: #06b6d4; }
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
@@ -660,6 +661,41 @@
       transition: opacity 0.1s;
     }
     .sort-pill .sort-remove:hover { opacity: 1; color: var(--red); }
+    .level-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+    .level-table th {
+      text-align: left; font-size: 10px; font-weight: 600; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .level-table td {
+      padding: 4px 8px; border-bottom: 1px solid rgba(148,163,184,0.08);
+      vertical-align: middle;
+    }
+    .level-table tr:hover { background: var(--bg-hover); }
+    .level-table .level-rank {
+      font-size: 11px; font-weight: 700; color: var(--text-faint); text-align: center;
+    }
+    .level-table input {
+      width: 100%; border: 1px solid transparent; background: transparent;
+      font-size: 12px; color: var(--text); padding: 4px 6px; border-radius: 4px;
+      font-family: var(--mono);
+    }
+    .level-table input:focus {
+      border-color: var(--accent); background: var(--bg-card); outline: none;
+    }
+    .level-table input.level-name { font-family: inherit; font-weight: 600; }
+    .level-table .level-del {
+      background: none; border: none; color: var(--text-faint); cursor: pointer;
+      font-size: 14px; padding: 2px 6px; border-radius: 4px; opacity: 0; transition: all 0.1s;
+    }
+    .level-table tr:hover .level-del { opacity: 0.6; }
+    .level-table .level-del:hover { opacity: 1; color: var(--red); background: var(--red-dim); }
+    .level-badge {
+      font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+      white-space: nowrap; display: inline-block;
+    }
     .sort-add-wrap { position: relative; }
     .sort-add-btn {
       background: none; border: 1px dashed var(--border); color: var(--text-faint);
@@ -1397,6 +1433,7 @@
               <button class="sort-add-btn" id="sort-add-btn">+ Add sort</button>
               <div class="sort-dropdown" id="sort-dropdown" style="display:none;">
                 <div class="sort-opt" data-field="updated_at" data-label="Days">Days (newest)</div>
+                <div class="sort-opt" data-field="level" data-label="Level">Level (highest)</div>
                 <div class="sort-opt" data-field="title" data-label="Title">Title (A→Z)</div>
                 <div class="sort-opt" data-field="company_name" data-label="Company">Company (A→Z)</div>
                 <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
@@ -1415,6 +1452,7 @@
                   <th data-sort="location">Location <span class="sort-arrow">↕</span></th>
                   <th data-sort="salary">Salary <span class="sort-arrow">↕</span></th>
                   <th>Sources</th>
+                  <th data-sort="level">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="ghost">Ghost Rate <span class="sort-arrow">↕</span></th>
                   <th data-sort="days">Days <span class="sort-arrow">↕</span></th>
                   <th style="width:120px;cursor:default;"></th>
@@ -1422,7 +1460,7 @@
               </thead>
               <tbody id="job-table-body">
                 <tr>
-                  <td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                  <td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
                     <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
                     <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
                     <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
@@ -1483,27 +1521,23 @@
             </div>
           </div>
 
-          <!-- Title Level Matching -->
+          <!-- Title Level Hierarchy -->
           <div class="card">
-            <div class="card-title">Title Level Matching</div>
-            <div class="card-sub">When enabled, searches will also soft-match related seniority levels</div>
+            <div class="card-title">Title Level Hierarchy</div>
+            <div class="card-sub">Define seniority levels to rank jobs in the feed. Drag to reorder priority. Most specific keywords match first.</div>
             <div style="margin-top:12px;">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
-                <input type="checkbox" id="tuning-level-match" style="margin:0;"> Enable soft title-level matching
-              </label>
-              <div id="tuning-levels" style="display:none;">
-                <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">Check the levels you want to include. Related titles will be added to your What filters automatically.</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                  <label class="tuning-level-cb"><input type="checkbox" value="c-level" style="margin:0;"> C-Level (CEO, CTO, CMO, CRO…)</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="vp" style="margin:0;"> VP / SVP / EVP</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="director" checked style="margin:0;"> Director / Sr. Director</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="manager" style="margin:0;"> Manager / Sr. Manager</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="lead" style="margin:0;"> Lead / Team Lead / Principal</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="senior" style="margin:0;"> Senior / Staff</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="mid" style="margin:0;"> Mid-Level / Associate</label>
-                  <label class="tuning-level-cb"><input type="checkbox" value="entry" style="margin:0;"> Entry / Junior</label>
-                </div>
-              </div>
+              <table class="level-table" id="level-table">
+                <thead>
+                  <tr>
+                    <th style="width:36px;">#</th>
+                    <th style="width:140px;">Level</th>
+                    <th>Match Keywords (comma-separated)</th>
+                    <th style="width:50px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="level-table-body"></tbody>
+              </table>
+              <button class="btn btn-sm" id="level-add-btn" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;">+ Add Level</button>
             </div>
           </div>
 
@@ -1657,7 +1691,7 @@
                 </thead>
                 <tbody id="app-queue-body">
                   <tr>
-                    <td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                    <td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
                       <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">📬</div>
                       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
                       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
@@ -2392,7 +2426,7 @@
 
       // If nothing is driving the search, show prompt
       if (checked.length === 0 && !hasBuilderPills) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
           <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
           <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
           <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved filters above, or use the filter builder.</div>
@@ -2403,7 +2437,7 @@
       }
 
       // Show loading
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
         <div style="font-size:13px;">Searching jobs…</div>
       </td></tr>`;
 
@@ -2435,7 +2469,7 @@
         });
 
         if (!hasRealCriteria) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
             <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
             <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
           </td></tr>`;
@@ -2456,8 +2490,9 @@
           let query = sb.from('ats_jobs').select('*', { count: 'exact' });
           query = buildFilterQuery(filtersToRun[0], query);
 
-          // Multi-sort
+          // Multi-sort (skip 'level' — client-side only)
           for (const s of jobSortStack) {
+            if (s.field === 'level') continue;
             query = query.order(s.field, { ascending: s.asc });
           }
 
@@ -2475,6 +2510,7 @@
             let q = sb.from('ats_jobs').select('*', { count: 'exact' });
             q = buildFilterQuery(sf, q);
             for (const s of jobSortStack) {
+              if (s.field === 'level') continue;
               q = q.order(s.field, { ascending: s.asc });
             }
             q = q.range(0, perFilter - 1);
@@ -2532,18 +2568,30 @@
         await updateJobStatsFromFilters(filtersToRun);
 
         if (currentJobs.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+          tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
             <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match these filters</div>
             <div style="font-size:12px;">Try broader terms or fewer filters.</div>
           </td></tr>`;
           return;
         }
 
+        // Client-side level sort if level is in the sort stack
+        const levelSort = jobSortStack.find(s => s.field === 'level');
+        if (levelSort) {
+          currentJobs.sort((a, b) => {
+            const la = getJobLevel(a.title);
+            const lb = getJobLevel(b.title);
+            const ra = la ? la.rank : 999;
+            const rb = lb ? lb.rank : 999;
+            return levelSort.asc ? rb - ra : ra - rb;
+          });
+        }
+
         renderJobRows(currentJobs, totalCount, page);
 
       } catch (e) {
         console.error('Search error:', e);
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px 12px;">
           <div style="font-size:13px;">Search failed: ${e.message}</div>
         </td></tr>`;
       }
@@ -2639,13 +2687,19 @@
           filterBadges += `<span class="job-filter-badge" style="background:var(--text-faint);font-size:8px;">+${allBadges.length - maxBadges}</span>`;
         }
 
-        html += `<tr data-jobid="${job.greenhouse_id}">
+          const levelInfo = getJobLevel(job.title);
+          const levelCell = levelInfo
+            ? `<span class="level-badge" style="background:${levelInfo.color}20;color:${levelInfo.color};">${levelInfo.label}</span>`
+            : '—';
+
+        html += `<tr data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc">${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
           <td>${sourcePill('greenhouse')}</td>
+          <td class="jt-level">${levelCell}</td>
           <td class="jt-ghost">—</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
           <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
@@ -2657,7 +2711,7 @@
       // Pagination row
       const totalPages = Math.ceil(total / JOBS_PER_PAGE);
       if (totalPages > 1) {
-        html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
+        html += `<tr><td colspan="10" style="text-align:center;padding:16px;">
           <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
             ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
             <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>
@@ -3045,14 +3099,15 @@
         company_name: { bg: 'rgba(236,72,153,0.1)', text: '#ec4899', dot: '#ec4899' },
         location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
         updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
+        level: { bg: 'rgba(6,182,212,0.1)', text: '#06b6d4', dot: '#06b6d4' },
       };
       jobSortStack.forEach((s, i) => {
-        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location' };
+        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level' };
         const label = labelMap[s.field] || s.field;
         const dirLabel = s.asc ? '↑' : '↓';
         const dirTitle = s.asc
-          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : 'A→Z — click to flip')
-          : (s.field === 'updated_at' ? 'Newest first — click to flip' : 'Z→A — click to flip');
+          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+          : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
         const colors = sortColorMap[s.field] || sortColorMap.title;
 
         const pill = document.createElement('span');
@@ -3108,7 +3163,7 @@
         const field = opt.dataset.field;
         if (jobSortStack.some(s => s.field === field)) return;
         const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
-        jobSortStack.push({ field, asc: defaultAsc });
+        jobSortStack.push({ field, asc: field === 'level' ? false : defaultAsc });
         $('#sort-dropdown').style.display = 'none';
         renderSortPills();
         searchJobs(0);
@@ -3127,7 +3182,7 @@
       th.style.cursor = 'pointer';
       th.addEventListener('click', () => {
         const field = th.dataset.sort;
-        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at' };
+        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level' };
         const dbField = fieldMap[field] || 'updated_at';
 
         // If already primary sort, toggle direction
@@ -4025,25 +4080,128 @@
 
     function saveTuning() {
       tuningSettings.usOnly = $('#tuning-us-only').checked;
-      tuningSettings.levelMatch = $('#tuning-level-match').checked;
-      tuningSettings.levels = [...$$('#tuning-levels input:checked')].map(cb => cb.value);
       tuningSettings.locationExcludes = tuningLocExclPills;
       tuningSettings.titleExcludes = tuningTitleExclPills;
       tuningSettings.companyExcludes = tuningCoExclPills;
       localStorage.setItem('bj_tuning', JSON.stringify(tuningSettings));
     }
 
-    // Restore state
-    if (tuningSettings.usOnly) $('#tuning-us-only').checked = true;
-    if (tuningSettings.levelMatch) {
-      $('#tuning-level-match').checked = true;
-      $('#tuning-levels').style.display = '';
+    // ---- Title Level Hierarchy ----
+    const DEFAULT_LEVELS = [
+      { label: 'C-Suite', keywords: 'ceo, cto, cmo, cfo, cro, coo, chief', color: '#ef4444' },
+      { label: 'VP', keywords: 'vice president, vp, svp, evp', color: '#f97316' },
+      { label: 'Sr Director', keywords: 'senior director, sr director, sr. director', color: '#f59e0b' },
+      { label: 'Director', keywords: 'director', color: '#eab308' },
+      { label: 'Assoc Director', keywords: 'associate director, asst director, assistant director', color: '#84cc16' },
+      { label: 'Sr Manager', keywords: 'senior manager, sr manager, sr. manager', color: '#22c55e' },
+      { label: 'Manager', keywords: 'manager', color: '#14b8a6' },
+      { label: 'Lead', keywords: 'lead, principal, head of', color: '#06b6d4' },
+      { label: 'Senior', keywords: 'senior, sr, sr.', color: '#3b82f6' },
+      { label: 'Mid', keywords: 'associate, coordinator', color: '#8b5cf6' },
+      { label: 'Entry', keywords: 'junior, jr, intern, entry', color: '#a855f7' },
+    ];
+    let levelHierarchy = tuningSettings.levelHierarchy || JSON.parse(JSON.stringify(DEFAULT_LEVELS));
+
+    function saveLevels() {
+      tuningSettings.levelHierarchy = levelHierarchy;
+      localStorage.setItem('bj_tuning', JSON.stringify(tuningSettings));
     }
-    if (tuningSettings.levels) {
-      $$('#tuning-levels input').forEach(cb => {
-        cb.checked = tuningSettings.levels.includes(cb.value);
+
+    function renderLevelTable() {
+      const tbody = $('#level-table-body');
+      tbody.innerHTML = '';
+      levelHierarchy.forEach((lvl, i) => {
+        const tr = document.createElement('tr');
+        tr.draggable = true;
+        tr.dataset.idx = i;
+        tr.innerHTML = `
+          <td class="level-rank">${i + 1}</td>
+          <td><input class="level-name" data-idx="${i}" data-field="label" value="${(lvl.label||'').replace(/"/g,'&quot;')}" placeholder="Level name"></td>
+          <td><input data-idx="${i}" data-field="keywords" value="${(lvl.keywords||'').replace(/"/g,'&quot;')}" placeholder="keyword1, keyword2, …"></td>
+          <td><button class="level-del" data-idx="${i}">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+
+        // Drag handlers
+        tr.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', i);
+          tr.style.opacity = '0.4';
+        });
+        tr.addEventListener('dragend', () => { tr.style.opacity = ''; });
+        tr.addEventListener('dragover', e => { e.preventDefault(); tr.style.background = 'var(--bg-hover)'; });
+        tr.addEventListener('dragleave', () => { tr.style.background = ''; });
+        tr.addEventListener('drop', e => {
+          e.preventDefault();
+          tr.style.background = '';
+          const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+          const toIdx = i;
+          if (fromIdx === toIdx) return;
+          const [moved] = levelHierarchy.splice(fromIdx, 1);
+          levelHierarchy.splice(toIdx, 0, moved);
+          saveLevels();
+          renderLevelTable();
+        });
+      });
+
+      // Bind input changes
+      tbody.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const idx = parseInt(inp.dataset.idx);
+          const field = inp.dataset.field;
+          levelHierarchy[idx][field] = inp.value.trim();
+          saveLevels();
+        });
+      });
+
+      // Bind delete
+      tbody.querySelectorAll('.level-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+          levelHierarchy.splice(parseInt(btn.dataset.idx), 1);
+          saveLevels();
+          renderLevelTable();
+        });
       });
     }
+
+    $('#level-add-btn').addEventListener('click', () => {
+      levelHierarchy.push({ label: '', keywords: '', color: '#94a3b8' });
+      saveLevels();
+      renderLevelTable();
+      // Focus the new name input
+      const lastInput = $('#level-table-body').querySelector('tr:last-child input.level-name');
+      if (lastInput) lastInput.focus();
+    });
+
+    renderLevelTable();
+
+    // ---- Level Matching Engine ----
+    // Matches a job title against the hierarchy, longest keyword first to avoid partial matches
+    function getJobLevel(title) {
+      if (!title || levelHierarchy.length === 0) return null;
+      const t = ' ' + title.toLowerCase() + ' ';
+      // Build flat list of {keyword, rank, label, color} sorted by keyword length desc
+      const entries = [];
+      levelHierarchy.forEach((lvl, rank) => {
+        (lvl.keywords || '').split(',').forEach(kw => {
+          const k = kw.trim().toLowerCase();
+          if (k) entries.push({ keyword: k, rank, label: lvl.label, color: lvl.color || '#94a3b8' });
+        });
+      });
+      // Sort longest first so "senior director" matches before "director"
+      entries.sort((a, b) => b.keyword.length - a.keyword.length);
+      for (const e of entries) {
+        // Word boundary check: keyword must be preceded/followed by space, hyphen, slash, paren, comma, or start/end
+        const escaped = e.keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(?:^|[\\s,\\-\\/\\(])${escaped}(?:[\\s,\\-\\/\\)]|$)`, 'i');
+        if (re.test(t)) {
+          return { rank: e.rank, label: e.label, color: e.color };
+        }
+      }
+      return null;
+    }
+
+    // Restore state
+    if (tuningSettings.usOnly) $('#tuning-us-only').checked = true;
 
     // Render tuning pills
     function renderTuningPills() {
@@ -4081,11 +4239,6 @@
 
     // Checkboxes
     $('#tuning-us-only').addEventListener('change', saveTuning);
-    $('#tuning-level-match').addEventListener('change', () => {
-      $('#tuning-levels').style.display = $('#tuning-level-match').checked ? '' : 'none';
-      saveTuning();
-    });
-    $$('#tuning-levels input').forEach(cb => cb.addEventListener('change', saveTuning));
 
     // Analyze hidden jobs for poor match suggestions
     function updatePoorMatchSuggestions() {
@@ -4298,7 +4451,7 @@
       processBtn.disabled = appQueue.filter(a => a.status === 'queued').length === 0;
 
       if (appQueue.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
           <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">📬</div>
           <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
           <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
