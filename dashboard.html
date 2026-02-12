@@ -978,9 +978,9 @@
                 <tr>
                   <td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
                     <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
-                    <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs loaded yet</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Add filters to search 110,000+ jobs</div>
                     <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
-                      Complete setup first. Jobs from Greenhouse, Lever, Indeed, LinkedIn, and more will appear here.
+                      Use the filter builder above. Try a title like "marketing director" or a location like "remote".
                     </div>
                   </td>
                 </tr>
@@ -1590,7 +1590,231 @@
       const badge = $('#qb-active-count');
       if (count > 0) { badge.textContent = count + ' filter' + (count > 1 ? 's' : ''); badge.style.display = ''; }
       else { badge.style.display = 'none'; }
+
+      // Trigger job search when filters change
+      debouncedSearchJobs();
     }
+
+    // ============================================================
+    // JOB SEARCH — Query ats_jobs from Supabase
+    // ============================================================
+
+    let searchTimeout = null;
+    let currentJobPage = 0;
+    const JOBS_PER_PAGE = 50;
+    let currentJobs = [];
+    let jobSortField = 'updated_at';
+    let jobSortAsc = false;
+
+    function debouncedSearchJobs() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => searchJobs(), 300);
+    }
+
+    async function searchJobs(page = 0) {
+      currentJobPage = page;
+      const tbody = $('#job-table-body');
+
+      // If no pills, show empty state
+      if (allPills() === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+          <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
+          <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Add filters to search 110,000+ jobs</div>
+          <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Use the filter builder above. Try a title like "marketing director" or a location like "remote".</div>
+        </td></tr>`;
+        $('#filter-count').textContent = '';
+        return;
+      }
+
+      // Show loading
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
+        <div style="font-size:13px;">Searching jobs…</div>
+      </td></tr>`;
+
+      try {
+        // Build the query
+        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+
+        // WHAT filters — title ilike
+        if (whatPills.length > 0) {
+          const whatConditions = whatPills.map(pill => {
+            if (pill.values.length === 1) {
+              return `title.ilike.%${pill.values[0]}%`;
+            }
+            // OR within a pill: any of these terms
+            return `or(${pill.values.map(v => `title.ilike.%${v}%`).join(',')})`;
+          });
+          // AND across pills
+          if (whatConditions.length === 1) {
+            const pill = whatPills[0];
+            if (pill.values.length === 1) {
+              query = query.ilike('title', `%${pill.values[0]}%`);
+            } else {
+              query = query.or(pill.values.map(v => `title.ilike.%${v}%`).join(','));
+            }
+          } else {
+            // Multiple AND pills — chain ilike for single-value pills, or() for multi-value
+            for (const pill of whatPills) {
+              if (pill.values.length === 1) {
+                query = query.ilike('title', `%${pill.values[0]}%`);
+              } else {
+                query = query.or(pill.values.map(v => `title.ilike.%${v}%`).join(','));
+              }
+            }
+          }
+        }
+
+        // WHERE filters — location ilike
+        if (wherePills.length > 0) {
+          for (const pill of wherePills) {
+            if (pill.values.length === 1) {
+              query = query.ilike('location', `%${pill.values[0]}%`);
+            } else {
+              query = query.or(pill.values.map(v => `location.ilike.%${v}%`).join(','));
+            }
+          }
+        }
+
+        // WHO filters — company_name ilike
+        if (whoPills.length > 0) {
+          for (const pill of whoPills) {
+            if (pill.values.length === 1) {
+              query = query.ilike('company_name', `%${pill.values[0]}%`);
+            } else {
+              query = query.or(pill.values.map(v => `company_name.ilike.%${v}%`).join(','));
+            }
+          }
+        }
+
+        // WHEN filters — updated_at
+        if (whenPills.length > 0) {
+          for (const pill of whenPills) {
+            for (const v of pill.values) {
+              const lower = v.toLowerCase();
+              const now = new Date();
+              let since = null;
+              if (lower.includes('today') || lower === '1d') {
+                since = new Date(now); since.setDate(since.getDate() - 1);
+              } else if (lower.includes('week') || lower === '7d') {
+                since = new Date(now); since.setDate(since.getDate() - 7);
+              } else if (lower.includes('month') || lower === '30d') {
+                since = new Date(now); since.setDate(since.getDate() - 30);
+              } else if (lower.includes('3 month') || lower === '90d') {
+                since = new Date(now); since.setDate(since.getDate() - 90);
+              }
+              if (since) {
+                query = query.gte('updated_at', since.toISOString());
+              }
+            }
+          }
+        }
+
+        // Sort
+        query = query.order(jobSortField, { ascending: jobSortAsc });
+
+        // Pagination
+        const from = page * JOBS_PER_PAGE;
+        query = query.range(from, from + JOBS_PER_PAGE - 1);
+
+        const { data: jobs, error, count: totalCount } = await query;
+
+        if (error) {
+          console.error('Job search error:', error);
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
+            <div style="font-size:13px;">Error: ${error.message}</div>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Check that ats_jobs has a SELECT RLS policy for authenticated users.</div>
+          </td></tr>`;
+          return;
+        }
+
+        currentJobs = jobs || [];
+        const total = totalCount || 0;
+
+        // Update filter count
+        $('#filter-count').innerHTML = `<strong>${total.toLocaleString()}</strong> job${total !== 1 ? 's' : ''} found`;
+
+        if (currentJobs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+            <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match these filters</div>
+            <div style="font-size:12px;">Try broader terms or fewer filters.</div>
+          </td></tr>`;
+          return;
+        }
+
+        // Render job rows
+        renderJobRows(currentJobs, total, page);
+
+      } catch (e) {
+        console.error('Search error:', e);
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
+          <div style="font-size:13px;">Search failed: ${e.message}</div>
+        </td></tr>`;
+      }
+    }
+
+    function renderJobRows(jobs, total, page) {
+      const tbody = $('#job-table-body');
+      const now = new Date();
+
+      let html = '';
+      for (const job of jobs) {
+        const daysAgo = job.updated_at ? Math.floor((now - new Date(job.updated_at)) / 86400000) : '—';
+        const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'Today' : daysAgo + 'd') : '—';
+        const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
+
+        html += `<tr>
+          <td><input type="checkbox" class="job-check" data-id="${job.greenhouse_id}"></td>
+          <td class="jt-title"><a href="${job.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 50)}</a></td>
+          <td class="jt-company">${truncate(job.company_name, 30)}</td>
+          <td>${truncate(job.location, 30)}</td>
+          <td class="jt-salary">—</td>
+          <td>${sourcePill('greenhouse')}</td>
+          <td class="jt-ghost">—</td>
+          <td class="jt-days" style="${daysClass}">${daysStr}</td>
+          <td>${applyButton(['greenhouse'], { greenhouse: job.url })}</td>
+        </tr>`;
+      }
+
+      // Pagination row
+      const totalPages = Math.ceil(total / JOBS_PER_PAGE);
+      if (totalPages > 1) {
+        html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
+          <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
+            ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
+            <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>
+            ${page < totalPages - 1 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page + 1})">Next →</button>` : ''}
+          </div>
+        </td></tr>`;
+      }
+
+      tbody.innerHTML = html;
+    }
+
+    function truncate(str, max) {
+      if (!str) return '—';
+      return str.length > max ? str.slice(0, max) + '…' : str;
+    }
+
+    // Column sorting
+    $$('.job-table th[data-sort]').forEach(th => {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const field = th.dataset.sort;
+        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', salary: 'updated_at', ghost: 'updated_at' };
+        const dbField = fieldMap[field] || 'updated_at';
+        if (jobSortField === dbField) {
+          jobSortAsc = !jobSortAsc;
+        } else {
+          jobSortField = dbField;
+          jobSortAsc = field === 'title' || field === 'company' || field === 'location';
+        }
+        // Update sort arrows
+        $$('.job-table th').forEach(h => h.classList.remove('sorted'));
+        th.classList.add('sorted');
+        th.querySelector('.sort-arrow').textContent = jobSortAsc ? '↑' : '↓';
+        searchJobs(0);
+      });
+    });
 
     // Input handling — What row
     const qbInputWhat = $('#qb-input-what');
@@ -2411,6 +2635,8 @@
         $('#st-scanned').textContent = (scanned.count || 0).toLocaleString();
         const comp = await sb.from('companies').select('id', { count: 'exact', head: true });
         $('#st-companies').textContent = (comp.count || 0).toLocaleString();
+        const atsJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        $('#st-jobs').textContent = (atsJobs.count || 0).toLocaleString();
         const { data: topCos } = await sb.from('companies').select('company_name').not('company_name', 'is', null).limit(500);
         if (topCos?.length > 0) {
           const counts = {};
