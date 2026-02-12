@@ -2663,6 +2663,22 @@
       }
     });
 
+    // Robust HTML content decoder — handles any level of entity encoding
+    function decodeJobContent(raw) {
+      if (!raw) return '';
+      let html = raw;
+      // Keep decoding until stable (handles double/triple encoding)
+      for (let i = 0; i < 5; i++) {
+        if (!html.includes('&lt;') && !html.includes('&amp;') && !html.includes('&#')) break;
+        const tmp = document.createElement('textarea');
+        tmp.innerHTML = html;
+        const decoded = tmp.value;
+        if (decoded === html) break; // stable
+        html = decoded;
+      }
+      return html;
+    }
+
     // Job Spec Modal
     async function openJobModal(jobId, e) {
       if (e) e.preventDefault();
@@ -2705,15 +2721,10 @@
       metaEl.textContent = metaParts.join('  \u00b7  ');
       extLink.href = jobUrl;
 
-      // Populate body — always decode through DOMParser to handle any encoding issues
+      // Populate body — robust decode that handles any level of HTML encoding
       const rawContent = job.content || job.description || null;
       if (rawContent) {
-        try {
-          const parsed = new DOMParser().parseFromString(rawContent, 'text/html');
-          bodyEl.innerHTML = parsed.body.innerHTML;
-        } catch(e) {
-          bodyEl.innerHTML = rawContent;
-        }
+        bodyEl.innerHTML = decodeJobContent(rawContent);
       } else {
         // Show loading state and fetch on demand
         bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
@@ -2773,9 +2784,7 @@
         // Re-trigger the spec load
         const job = allJobs.find(j => j.greenhouse_id === jobId);
         if (job?.content) {
-          const c = job.content;
-          bodyEl.innerHTML = c.startsWith('&lt;') || c.startsWith('&amp;')
-            ? new DOMParser().parseFromString(c, 'text/html').body.innerHTML : c;
+          bodyEl.innerHTML = decodeJobContent(job.content);
         } else {
           bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
           fetchJobSpec(jobId, jobUrl, bodyEl);
@@ -2845,10 +2854,8 @@
           if (resp.ok) {
             const data = await resp.json();
             if (data.content) {
-              // Greenhouse API returns HTML content — decode through DOMParser
-              const parsed = new DOMParser().parseFromString(data.content, 'text/html');
-              const htmlContent = parsed.body.innerHTML;
-              // Set as HTML
+              // Decode through helper that handles any encoding level
+              const htmlContent = decodeJobContent(data.content);
               bodyEl.innerHTML = htmlContent;
               // Also show department/location from API if available
               const meta = [];
