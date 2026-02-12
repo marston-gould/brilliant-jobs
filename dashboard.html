@@ -1330,7 +1330,12 @@
               </div>
             </div>
             <div class="qb-row">
-              <label class="qb-row-label">Pay</label>
+              <!-- empty right column to match grid -->
+            </div>
+          </div>
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">How Much</label>
               <div class="qb-salary-row">
                 <div class="qb-salary-field">
                   <span class="qb-salary-prefix">$</span>
@@ -1343,6 +1348,9 @@
                 </div>
                 <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;"></div>
               </div>
+            </div>
+            <div class="qb-row">
+              <!-- empty right column to match grid -->
             </div>
           </div>
           <div class="qb-hint">
@@ -3403,7 +3411,11 @@
         savedFilters.push(filterData);
       }
       localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
-      $('#save-filter-name').value = '';
+      // Only clear the name if it was a new filter
+      if (existingIdx < 0) {
+        $('#save-filter-name').value = '';
+      }
+      window._editingFilterIdx = null;
       renderSavedFilters();
     }
 
@@ -3629,6 +3641,10 @@
           if (e.target.classList.contains('sf-item-check')) return;
           const idx = parseInt(el.dataset.idx);
           const sf = savedFilters[idx];
+          // Populate the save name input with this filter's name
+          $('#save-filter-name').value = sf.name || '';
+          // Store which filter index we're editing
+          window._editingFilterIdx = idx;
           // Support both old format (pills) and new format (whatPills/wherePills)
           if (sf.whatPills) {
             whatPills = JSON.parse(JSON.stringify(sf.whatPills));
@@ -3645,10 +3661,17 @@
           whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
           renderPayPills();
           savedFilters[idx].lastUsed = Date.now();
-          savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
           renderAllPills();
+          // Expand the filter builder if collapsed
+          const body = $('#qb-collapse-body');
+          if (body) {
+            body.classList.remove('collapsed');
+            body.classList.add('open');
+          }
+          const toggle = $('#qb-toggle');
+          if (toggle) toggle.classList.remove('collapsed');
         });
       });
 
