@@ -510,6 +510,61 @@
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
     .sf-mini-pill.not-pill { background: rgba(148,163,184,0.06); border-color: rgba(148,163,184,0.15); color: #94a3b8; }
     .tuning-level-cb {
+
+    }
+    /* Job Spec Modal */
+    .job-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      animation: modalFadeIn 0.15s ease-out;
+    }
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .job-modal {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+      width: 90%; max-width: 740px; max-height: 85vh; display: flex; flex-direction: column;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+      animation: modalSlideUp 0.2s ease-out;
+    }
+    @keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .job-modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+      padding: 20px 24px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .job-modal-title-wrap { flex: 1; min-width: 0; }
+    .job-modal-title { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; line-height: 1.3; text-transform: lowercase; }
+    .job-modal-meta { font-size: 12px; color: var(--text-faint); margin-top: 4px; text-transform: lowercase; }
+    .job-modal-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .job-modal-close {
+      background: none; border: none; color: var(--text-faint); font-size: 24px; cursor: pointer;
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; transition: all 0.1s;
+    }
+    .job-modal-close:hover { background: var(--bg-hover); color: var(--text); }
+    .job-modal-body {
+      flex: 1; overflow-y: auto; padding: 24px;
+      font-size: 13px; line-height: 1.7; color: var(--text-dim);
+    }
+    .job-modal-body h1, .job-modal-body h2, .job-modal-body h3, .job-modal-body h4 {
+      color: var(--text); margin: 20px 0 8px; font-size: 14px; font-weight: 700;
+    }
+    .job-modal-body h1 { font-size: 16px; }
+    .job-modal-body h2 { font-size: 15px; }
+    .job-modal-body ul, .job-modal-body ol { padding-left: 20px; margin: 8px 0; }
+    .job-modal-body li { margin-bottom: 4px; }
+    .job-modal-body p { margin: 8px 0; }
+    .job-modal-body a { color: var(--accent); }
+    .job-modal-footer {
+      padding: 14px 24px; border-top: 1px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .job-modal-close-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-faint);
+      padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer;
+      transition: all 0.1s;
+    }
+    .job-modal-close-btn:hover { background: var(--bg-hover); color: var(--text-dim); }
+    .tuning-level-cb {
       display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim);
       cursor: pointer; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
       transition: background 0.1s;
@@ -552,7 +607,10 @@
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
-    .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; }
+    .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; text-transform: lowercase; }
+    .job-table .jt-title a::first-letter { text-transform: uppercase; }
+    .job-table .jt-company { text-transform: lowercase; }
+    .job-table td.jt-loc { text-transform: lowercase; }
     .job-filter-badge {
       display: inline-flex; align-items: center; justify-content: center;
       width: 16px; height: 16px; border-radius: 50%; font-size: 9px; font-weight: 700;
@@ -967,8 +1025,8 @@
       <!-- ============ BE BRILLIANT ============ -->
       <div class="page active" id="page-brilliant">
         <div class="page-header">
-          <h2>Be Brilliant ✦</h2>
-          <p>Your guide to finding the perfect role faster than anyone else</p>
+          <h2>Be Brilliant</h2>
+          <p>Find a Brilliant Job</p>
         </div>
         <div class="page-body" style="max-width:800px;">
 
@@ -1802,6 +1860,26 @@
     </div>
   </div>
 
+  <!-- Job Spec Modal -->
+  <div class="job-modal-overlay" id="job-modal-overlay" style="display:none;" onclick="closeJobModal(event)">
+    <div class="job-modal" onclick="event.stopPropagation()">
+      <div class="job-modal-header">
+        <div class="job-modal-title-wrap">
+          <h3 class="job-modal-title" id="job-modal-title">Loading…</h3>
+          <div class="job-modal-meta" id="job-modal-meta"></div>
+        </div>
+        <div class="job-modal-actions">
+          <a class="btn btn-sm" id="job-modal-external" href="#" target="_blank" rel="noopener" style="font-size:11px;padding:5px 12px;text-decoration:none;">Open on ATS ↗</a>
+          <button class="job-modal-close" onclick="closeJobModal()">&times;</button>
+        </div>
+      </div>
+      <div class="job-modal-body" id="job-modal-body">
+        <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading job details…</div>
+      </div>
+      <div class="job-modal-footer" id="job-modal-footer"></div>
+    </div>
+  </div>
+
   <script>
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
@@ -2491,9 +2569,9 @@
 
         html += `<tr data-jobid="${job.greenhouse_id}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<a href="${job.url}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
+          <td class="jt-title">${filterBadges}<a href="#" onclick="openJobModal('${job.greenhouse_id}', event)" style="color:inherit;text-decoration:none;" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</a></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
-          <td>${truncate(job.location, 30)}</td>
+          <td class="jt-loc">${truncate(job.location, 30)}</td>
           <td class="jt-salary">—</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-ghost">—</td>
@@ -2518,6 +2596,140 @@
 
       tbody.innerHTML = html;
     }
+
+    // Job Spec Modal
+    async function openJobModal(jobId, e) {
+      if (e) e.preventDefault();
+      const overlay = $('#job-modal-overlay');
+      const titleEl = $('#job-modal-title');
+      const metaEl = $('#job-modal-meta');
+      const bodyEl = $('#job-modal-body');
+      const footerEl = $('#job-modal-footer');
+      const extLink = $('#job-modal-external');
+
+      // Show modal immediately with loading state
+      overlay.style.display = 'flex';
+      titleEl.textContent = 'Loading…';
+      metaEl.textContent = '';
+      bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading job details…</div>';
+      footerEl.innerHTML = '';
+      document.body.style.overflow = 'hidden';
+
+      // Look up from cached results first
+      let job = allJobs.find(j => j.greenhouse_id === jobId);
+
+      // If no content field or not found, fetch from Supabase
+      if (!job || !job.content) {
+        const { data } = await sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single();
+        if (data) job = data;
+      }
+
+      if (!job) {
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Job not found.</div>';
+        return;
+      }
+
+      // Populate header
+      titleEl.textContent = job.title || 'Untitled';
+      const metaParts = [job.company_name, job.location].filter(Boolean);
+      if (job.department) metaParts.push(job.department);
+      metaEl.textContent = metaParts.join('  ·  ');
+      extLink.href = job.url || '#';
+
+      // Populate body with job content
+      if (job.content) {
+        bodyEl.innerHTML = job.content;
+      } else if (job.description) {
+        bodyEl.innerHTML = job.description;
+      } else {
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">No job description available. Click "Open on ATS" to view on the company site.</div>';
+      }
+
+      // Footer with action buttons — all sync back to feed
+      const isSaved = savedJobIds.includes(jobId);
+      const isApplied = appliedJobIds.includes(jobId);
+      let footerHtml = '';
+      if (isApplied) {
+        footerHtml += '<span class="job-action-btn applied-btn">Applied ✓</span>';
+      } else {
+        footerHtml += `<button class="apply-btn apply-btn-default" onclick="modalApply('${jobId}', '${(job.url||'').replace(/'/g,"\\'")}')" style="padding:6px 16px;font-size:12px;">Apply →</button>`;
+      }
+      const saveClass = isSaved ? 'job-action-btn saved-btn' : 'job-action-btn';
+      const saveLabel = isSaved ? 'Saved' : 'Save';
+      if (!isApplied) {
+        footerHtml += `<button class="${saveClass}" id="modal-save-btn" onclick="modalSave('${jobId}', this)">${saveLabel}</button>`;
+      }
+      footerHtml += `<button class="job-action-btn hide-btn" onclick="modalHide('${jobId}')" style="padding:4px 10px;font-size:11px;">Hide</button>`;
+      footerHtml += `<button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>`;
+      footerEl.innerHTML = footerHtml;
+    }
+
+    function closeJobModal(e) {
+      if (e && e.target !== e.currentTarget) return;
+      $('#job-modal-overlay').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    // Modal actions — sync back to feed
+    function modalApply(jobId, url) {
+      window.open(url, '_blank');
+      // Update feed row
+      const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
+      if (row) {
+        const actionCell = row.querySelector('td:last-child');
+        if (actionCell) actionCell.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span>';
+      }
+      // Update state
+      if (!appliedJobIds.includes(jobId)) {
+        appliedJobIds.push(jobId);
+        localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+      }
+      closeJobModal();
+    }
+
+    function modalSave(jobId, btn) {
+      const idx = savedJobIds.indexOf(jobId);
+      if (idx >= 0) {
+        savedJobIds.splice(idx, 1);
+        btn.className = 'job-action-btn';
+        btn.textContent = 'Save';
+      } else {
+        savedJobIds.push(jobId);
+        btn.className = 'job-action-btn saved-btn';
+        btn.textContent = 'Saved';
+      }
+      localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
+      // Sync feed row
+      const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
+      if (row) {
+        const saveBtn = row.querySelector('.job-action-btn:not(.hide-btn):not(.applied-btn)');
+        if (saveBtn && !saveBtn.classList.contains('apply-btn-default')) {
+          if (savedJobIds.includes(jobId)) {
+            saveBtn.className = 'job-action-btn saved-btn';
+            saveBtn.textContent = 'Saved';
+          } else {
+            saveBtn.className = 'job-action-btn';
+            saveBtn.textContent = 'Save';
+          }
+        }
+      }
+      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new').textContent);
+    }
+
+    function modalHide(jobId) {
+      hiddenJobIds.push(jobId);
+      localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+      const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
+      if (row) row.style.display = 'none';
+      closeJobModal();
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && $('#job-modal-overlay').style.display === 'flex') {
+        closeJobModal();
+      }
+    });
 
     function hideJob(jobId, btn) {
       hiddenJobIds.push(jobId);
