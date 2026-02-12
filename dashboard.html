@@ -2723,40 +2723,64 @@
     // On-demand job spec fetcher — tries Greenhouse JSON API first
     async function fetchJobSpec(jobId, jobUrl, bodyEl) {
       try {
-        // Greenhouse public JSON API: /jobs/{id} returns structured content
-        // Extract the numeric job ID from the URL or greenhouse_id
-        const numericId = jobId.replace(/\D/g, '');
-        
-        // Try the Greenhouse embed endpoint which is CORS-friendly
-        const embedUrl = jobUrl.replace('/jobs/', '/embed/job_app?token=');
-        
-        // Try fetching via Supabase Edge Function (proxy)
+        // Try Greenhouse public JSON API — CORS-friendly, returns structured content
+        // URL format: https://boards.greenhouse.io/{company}/jobs/{id}
+        // API format: https://boards-api.greenhouse.io/v1/boards/{company}/jobs/{id}
+        const urlMatch = jobUrl.match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
+        if (urlMatch) {
+          const [, boardToken, jobNumId] = urlMatch;
+          const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs/${jobNumId}`;
+          const resp = await fetch(apiUrl);
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.content) {
+              // Greenhouse API returns HTML content directly
+              bodyEl.innerHTML = data.content;
+              // Also show department/location from API if available
+              const meta = [];
+              if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
+              if (data.offices?.length) meta.push(data.offices.map(o => o.name).join(', '));
+              if (meta.length) {
+                bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${meta.join('  ·  ')}</div>` + bodyEl.innerHTML;
+              }
+              // Cache locally
+              const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
+              if (cachedJob) cachedJob.content = data.content;
+              // Cache in Supabase (fire and forget)
+              sb.from('ats_jobs').update({ content: data.content }).eq('greenhouse_id', jobId).then(() => {});
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.log('[BJ] Greenhouse API fetch failed:', err.message);
+      }
+
+      // Try Edge Function proxy as backup
+      try {
         const proxyUrl = SUPABASE_URL + '/functions/v1/fetch-job-spec';
         const resp = await fetch(proxyUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SUPABASE_KEY },
           body: JSON.stringify({ url: jobUrl, greenhouse_id: jobId })
         });
-
         if (resp.ok) {
           const data = await resp.json();
           if (data.content) {
             bodyEl.innerHTML = data.content;
-            // Cache it in the local job object
             const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
             if (cachedJob) cachedJob.content = data.content;
             return;
           }
         }
       } catch (err) {
-        console.log('[BJ] Job spec fetch failed, showing fallback:', err.message);
+        console.log('[BJ] Edge function fallback failed:', err.message);
       }
 
-      // Fallback — show clean message with link
+      // Final fallback
       bodyEl.innerHTML = `<div style="text-align:center;padding:40px;">
         <div style="color:var(--text-dim);margin-bottom:8px;font-size:14px;">Click below to view the full listing</div>
         <a href="${jobUrl}" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration:none;display:inline-block;margin-top:8px;">View on Company Site ↗</a>
-        <div style="color:var(--text-faint);font-size:11px;margin-top:16px;">Job details will load automatically once our indexer reaches this listing</div>
       </div>`;
     }
 
