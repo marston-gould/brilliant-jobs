@@ -640,13 +640,19 @@
           <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           <span>Stats</span>
         </div>
+
+        <div class="nav-section-label">Account</div>
+        <div class="nav-item" data-page="subscription">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+          <span>Subscription</span>
+        </div>
       </div>
 
       <div class="nav-footer">
         <div class="nav-user">
           <div class="nav-avatar" id="nav-avatar">?</div>
           <div class="nav-user-info">
-            <div class="nav-user-email" id="nav-email">user@example.com</div>
+            <div class="nav-user-email" id="nav-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="057076607745607d64687569602b666a68">[email&#160;protected]</a></div>
             <div class="nav-user-plan">Free Plan</div>
           </div>
         </div>
@@ -1163,10 +1169,24 @@
         </div>
       </div>
 
+      <!-- ============ SUBSCRIPTION ============ -->
+      <div class="page" id="page-subscription">
+        <div class="page-header">
+          <h2>Subscription</h2>
+          <p>Manage your plan, billing, and referral discounts</p>
+        </div>
+        <div class="page-body">
+          <div class="empty-state">
+            <h3>Coming Soon</h3>
+            <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <script>
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -1934,15 +1954,4 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
         a.download = `brilliant-jobs-export-${new Date().toISOString().slice(0,10)}.csv`;
         a.click(); URL.revokeObjectURL(a.href);
-      } catch (e) { alert('Export failed: ' + e.message); }
-    });
-
-    // Logout
-    $('#logout-btn').addEventListener('click', async () => {
-      await sb.auth.signOut();
-      window.location.href = '/';
-    });
-  </script>
-</body>
-</html>
-    
+      } catch (e) { al
