@@ -52,6 +52,7 @@
     .nav-brand {
       padding: 22px 24px; display: flex; align-items: center; gap: 10px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
+      position: relative; overflow: hidden;
     }
     .nav-brand .mark {
       width: 30px; height: 30px; background: #fff; border-radius: 8px;
@@ -60,6 +61,56 @@
     }
     .nav-brand-text h1 { font-size: 16px; font-weight: 700; color: #fff; line-height: 1.2; }
     .nav-brand-text span { font-size: 11px; color: var(--nav-text); font-weight: 400; }
+
+    /* Sparkle flourish */
+    .sparkle {
+      position: absolute; pointer-events: none; border-radius: 50%;
+      background: radial-gradient(circle, #fff 0%, rgba(255,255,255,0) 70%);
+      opacity: 0; animation-fill-mode: forwards;
+    }
+    .sparkle.s1 { width: 4px; height: 4px; top: 8px; left: 18px; animation: sparkPop 0.6s 0.3s ease-out forwards; }
+    .sparkle.s2 { width: 3px; height: 3px; top: 28px; left: 50px; animation: sparkPop 0.5s 0.5s ease-out forwards; }
+    .sparkle.s3 { width: 5px; height: 5px; top: 12px; left: 90px; animation: sparkPop 0.7s 0.7s ease-out forwards; }
+    .sparkle.s4 { width: 3px; height: 3px; top: 36px; left: 130px; animation: sparkPop 0.5s 0.4s ease-out forwards; }
+    .sparkle.s5 { width: 4px; height: 4px; top: 6px; left: 155px; animation: sparkPop 0.6s 0.8s ease-out forwards; }
+    .sparkle.s6 { width: 3px; height: 3px; top: 22px; left: 110px; animation: sparkPop 0.5s 0.6s ease-out forwards; }
+    .sparkle.s7 { width: 6px; height: 6px; top: 18px; left: 68px; animation: sparkPop 0.8s 0.35s ease-out forwards; }
+    .sparkle.s8 { width: 3px; height: 3px; top: 40px; left: 35px; animation: sparkPop 0.5s 0.9s ease-out forwards; }
+
+    .sparkle-star {
+      position: absolute; pointer-events: none; opacity: 0; animation-fill-mode: forwards;
+      color: #fff; font-size: 10px; line-height: 1;
+    }
+    .sparkle-star.st1 { top: 4px; left: 42px; animation: starPop 0.8s 0.25s ease-out forwards; }
+    .sparkle-star.st2 { top: 32px; left: 100px; animation: starPop 0.7s 0.55s ease-out forwards; }
+    .sparkle-star.st3 { top: 10px; left: 140px; animation: starPop 0.9s 0.75s ease-out forwards; }
+
+    /* Shimmer sweep across the text */
+    .nav-brand.sparkle-active .nav-brand-text h1 {
+      background: linear-gradient(90deg, #fff 0%, #fff 40%, #a7d8ff 50%, #fff 60%, #fff 100%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmerSweep 1.2s 0.2s ease-in-out forwards;
+    }
+
+    @keyframes sparkPop {
+      0% { opacity: 0; transform: scale(0); }
+      30% { opacity: 1; transform: scale(1.8); }
+      60% { opacity: 0.8; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0.3); }
+    }
+    @keyframes starPop {
+      0% { opacity: 0; transform: scale(0) rotate(0deg); }
+      25% { opacity: 1; transform: scale(1.3) rotate(15deg); }
+      50% { opacity: 0.9; transform: scale(1) rotate(-5deg); }
+      100% { opacity: 0; transform: scale(0.2) rotate(30deg); }
+    }
+    @keyframes shimmerSweep {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
 
     .nav-menu { flex: 1; padding: 16px 12px; }
     .nav-section-label {
@@ -668,12 +719,23 @@
   <div class="app" id="app" style="display:none;">
 
     <nav class="nav">
-      <div class="nav-brand">
+      <div class="nav-brand" id="nav-brand">
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
           <span>Dashboard</span>
         </div>
+        <div class="sparkle s1"></div>
+        <div class="sparkle s2"></div>
+        <div class="sparkle s3"></div>
+        <div class="sparkle s4"></div>
+        <div class="sparkle s5"></div>
+        <div class="sparkle s6"></div>
+        <div class="sparkle s7"></div>
+        <div class="sparkle s8"></div>
+        <div class="sparkle-star st1">✦</div>
+        <div class="sparkle-star st2">✧</div>
+        <div class="sparkle-star st3">✦</div>
       </div>
 
       <div class="nav-menu">
@@ -717,6 +779,10 @@
         <div class="nav-item" data-page="settings">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
           <span>Settings</span>
+        </div>
+        <div class="nav-item" data-page="subscription">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+          <span>Subscription</span>
         </div>
       </div>
 
@@ -1277,7 +1343,7 @@
       <div class="page" id="page-settings">
         <div class="page-header">
           <h2>Settings</h2>
-          <p>Account, preferences, and billing</p>
+          <p>Account and preferences</p>
         </div>
         <div class="page-body">
           <div class="card">
@@ -1288,13 +1354,19 @@
               <button class="btn btn-secondary btn-sm" id="st-export">Export Data</button>
             </div>
           </div>
-          <div class="card">
-            <div class="card-title">Subscription</div>
-            <div class="card-sub">Manage your plan, billing, and referral discounts</div>
-            <div class="empty-state" style="padding:20px 0;">
-              <h3>Coming Soon</h3>
-              <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
-            </div>
+        </div>
+      </div>
+
+      <!-- ============ SUBSCRIPTION ============ -->
+      <div class="page" id="page-subscription">
+        <div class="page-header">
+          <h2>Subscription</h2>
+          <p>Manage your plan, billing, and referral discounts</p>
+        </div>
+        <div class="page-body">
+          <div class="empty-state">
+            <h3>Coming Soon</h3>
+            <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
           </div>
         </div>
       </div>
@@ -1323,6 +1395,8 @@
       $('#app').style.display = 'flex';
       $('#nav-email').textContent = currentUser.email;
       $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+      // Trigger sparkle flourish
+      setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
       loadStats();
       checkExtensionStatus();
     }
