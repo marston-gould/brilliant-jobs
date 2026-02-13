@@ -2481,12 +2481,11 @@
         if (pill.type === 'collection') {
           display = `📂 ${pill.collectionName}<span class="coll-count">(${pill.values.length})</span>`;
         } else if (isLocation) {
-          const radius = pill.radius || DEFAULT_RADIUS;
           const textParts = pill.values.map(v => `<span>${v}</span>`);
           const joined = pill.values.length > 1
             ? textParts.join(`<span class="or-sep">${orLabel}</span>`)
             : textParts[0];
-          display = `${joined}<span class="pill-radius">${radius}mi</span>`;
+          display = joined;
         } else {
           const textParts = pill.values.map(v => `<span>${v}</span>`);
           display = pill.values.length > 1
@@ -3011,7 +3010,7 @@
           });
         }
 
-        renderJobRows(currentJobs, totalCount, page);
+        renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
       } catch (e) {
         console.error('Search error:', e);
@@ -3207,49 +3206,31 @@
     }
 
 
-    function renderJobRows(jobs, total, page) {
+    function renderJobRows(jobs, total, page, filtersToRun) {
       const tbody = $('#job-table-body');
       const now = new Date();
 
       // Collect active negative location terms for display
       const activeNegLocs = [];
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
-      // From global pills (active builder state)
-      for (const pill of whereNotPills) {
-        for (const v of (pill.values || [])) {
-          const t = v.trim().replace(/^nor\s+/i, '');
-          if (t) activeNegLocs.push(t);
+      // From the actual filters driving this search
+      if (filtersToRun) {
+        for (const sf of filtersToRun) {
+          for (const pill of (sf.whereNotPills || [])) {
+            for (const v of (pill.values || [])) {
+              const t = v.trim().replace(/^nor\s+/i, '');
+              if (t && !activeNegLocs.includes(t)) activeNegLocs.push(t);
+            }
+          }
         }
       }
-      // From all checked saved filters
-      const sfChecks = document.querySelectorAll('.sf-item-check:checked');
-      sfChecks.forEach(cb => {
-        const sf = savedFilters[parseInt(cb.dataset.idx)];
-        if (sf?.whereNotPills) {
-          for (const pill of sf.whereNotPills) {
-            for (const v of (pill.values || [])) {
-              const t = v.trim().replace(/^nor\s+/i, '');
-              if (t && !activeNegLocs.includes(t)) activeNegLocs.push(t);
-            }
-          }
-        }
-        // Also check whatNotPills for location-like terms (e.g. "new york city" might be stored as title exclusion)
-        if (sf?.whatNotPills) {
-          for (const pill of sf.whatNotPills) {
-            for (const v of (pill.values || [])) {
-              const t = v.trim().replace(/^nor\s+/i, '');
-              if (t && !activeNegLocs.includes(t)) activeNegLocs.push(t);
-            }
-          }
-        }
-      });
       // From tuning exclusions
       for (const pill of (tuning.locationExcludes || [])) {
         for (const v of (pill.values || [])) {
           if (!activeNegLocs.includes(v)) activeNegLocs.push(v);
         }
       }
-      if (activeNegLocs.length > 0) console.log('[BJ] Active negative locations for display:', activeNegLocs);
+      console.log('[BJ] Neg loc debug — filtersToRun:', filtersToRun?.length, 'whereNotPills in filters:', filtersToRun?.map(sf => sf.whereNotPills), 'activeNegLocs:', activeNegLocs);
 
       // Get last feed view timestamp for NEW badge
       const lastFeedView = localStorage.getItem('bj_last_feed_view');
