@@ -897,6 +897,13 @@
     .pipeline-card:hover { border-color: var(--border-hover); }
     .pipeline-card .co { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
     .pipeline-card .days { font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-top: 4px; }
+    .closed-age-badge {
+      font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px; display: inline-block; margin-top: 3px;
+    }
+    .closed-age-badge.age-fresh { background: var(--green-dim); color: var(--green); }
+    .closed-age-badge.age-recent { background: var(--amber-dim); color: var(--amber); }
+    .closed-age-badge.age-stale { background: rgba(249,115,22,0.1); color: #f97316; }
+    .closed-age-badge.age-ghost { background: rgba(248,113,113,0.1); color: var(--red); }
 
     /* ======================== GHOST ======================== */
     .ghost-table { width: 100%; border-collapse: collapse; }
@@ -1134,7 +1141,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.17</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.18</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1778,6 +1785,10 @@
               <div id="pl-applied"></div>
             </div>
             <div class="pipeline-col">
+              <div class="pipeline-col-header" style="color:var(--amber);">Posting Closed <span class="pipeline-col-count" id="pc-posting-closed">0</span></div>
+              <div id="pl-posting-closed"></div>
+            </div>
+            <div class="pipeline-col">
               <div class="pipeline-col-header" style="color:var(--warm);">Responded <span class="pipeline-col-count" id="pc-responded">0</span></div>
               <div id="pl-responded"></div>
             </div>
@@ -2218,7 +2229,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.17 loaded');
+    console.log('[BJ] Dashboard v2.18 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -5392,31 +5403,90 @@
         }
       }
 
-      // Render Applied column
+      // Render Applied column — split into still-open and posting-closed
+      const postingClosedCol = $('#pl-posting-closed');
+      const postingClosedCountEl = $('#pc-posting-closed');
+
       if (appliedCol && appliedJobIds.length > 0) {
         try {
           const { data: jobs } = await sb.from('ats_jobs')
-            .select('greenhouse_id, title, company_name, url')
-            .in('greenhouse_id', appliedJobIds.slice(0, 50));
+            .select('greenhouse_id, title, company_name, url, status, closed_at')
+            .in('greenhouse_id', appliedJobIds.slice(0, 100));
 
           if (jobs && jobs.length > 0) {
             appliedCol.innerHTML = '';
-            // Get timestamps
+            if (postingClosedCol) postingClosedCol.innerHTML = '';
+
             const appliedDates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+            const now = new Date();
+            let openCount = 0;
+            let closedCount = 0;
+
             jobs.forEach(job => {
               const card = document.createElement('div');
               card.className = 'pipeline-card';
               card.dataset.jobid = job.greenhouse_id;
+              card.style.cursor = 'pointer';
+              card.onclick = () => openJobModal(job.greenhouse_id);
+
               const appliedDate = appliedDates[job.greenhouse_id];
-              const dateStr = appliedDate ? formatTimeAgo(new Date(appliedDate)) : '';
-              card.innerHTML = `<div>${job.title || 'Untitled'}</div><div class="co">${job.company_name || ''}</div>
-                ${dateStr ? `<div style="font-size:9px;color:var(--text-faint);margin-top:2px;">Applied ${dateStr}</div>` : ''}
-                <div style="margin-top:4px;display:flex;gap:4px;">
-                  <span style="font-size:9px;color:var(--green);font-weight:600;">Applied ✓</span>
-                </div>`;
-              appliedCol.appendChild(card);
+              const appliedStr = appliedDate ? formatTimeAgo(new Date(appliedDate)) : '';
+
+              if (job.status === 'closed' && job.closed_at && postingClosedCol) {
+                // Closed posting — goes to Posting Closed column
+                const closedDate = new Date(job.closed_at);
+                const closedDaysAgo = Math.floor((now - closedDate) / 86400000);
+
+                // Aging bucket
+                let ageClass, ageLabel;
+                if (closedDaysAgo <= 7) {
+                  ageClass = 'age-fresh';
+                  ageLabel = `Closed ${closedDaysAgo}d ago`;
+                } else if (closedDaysAgo <= 14) {
+                  ageClass = 'age-recent';
+                  ageLabel = `Closed ${closedDaysAgo}d ago`;
+                } else if (closedDaysAgo <= 30) {
+                  ageClass = 'age-stale';
+                  ageLabel = `Closed ${closedDaysAgo}d ago`;
+                } else {
+                  ageClass = 'age-ghost';
+                  ageLabel = `Closed ${closedDaysAgo}d ago`;
+                }
+
+                // Days between apply and close
+                let contextStr = '';
+                if (appliedDate) {
+                  const applyDate = new Date(appliedDate);
+                  const daysAfterApply = Math.floor((closedDate - applyDate) / 86400000);
+                  if (daysAfterApply >= 0) {
+                    contextStr = `Closed ${daysAfterApply}d after you applied`;
+                  }
+                }
+
+                card.innerHTML = `
+                  <div>${job.title || 'Untitled'}</div>
+                  <div class="co">${job.company_name || ''}</div>
+                  ${appliedStr ? `<div style="font-size:9px;color:var(--text-faint);margin-top:2px;">Applied ${appliedStr}</div>` : ''}
+                  <span class="closed-age-badge ${ageClass}">${ageLabel}</span>
+                  ${contextStr ? `<div style="font-size:9px;color:var(--text-faint);margin-top:2px;">${contextStr}</div>` : ''}`;
+                postingClosedCol.appendChild(card);
+                closedCount++;
+              } else {
+                // Still open — stays in Applied column
+                card.innerHTML = `
+                  <div>${job.title || 'Untitled'}</div>
+                  <div class="co">${job.company_name || ''}</div>
+                  ${appliedStr ? `<div style="font-size:9px;color:var(--text-faint);margin-top:2px;">Applied ${appliedStr}</div>` : ''}
+                  <div style="margin-top:4px;display:flex;gap:4px;">
+                    <span style="font-size:9px;color:var(--green);font-weight:600;">Applied ✓</span>
+                  </div>`;
+                appliedCol.appendChild(card);
+                openCount++;
+              }
             });
-            appliedCountEl.textContent = jobs.length;
+
+            appliedCountEl.textContent = openCount;
+            if (postingClosedCountEl) postingClosedCountEl.textContent = closedCount;
           }
         } catch (e) {
           console.error('Pipeline applied render error:', e);
@@ -5429,8 +5499,9 @@
 
     function updatePipelineStats() {
       const total = appliedJobIds.length;
+      const closedCount = parseInt($('#pc-posting-closed')?.textContent || '0');
       $('#p-total').textContent = total;
-      $('#p-active').textContent = total; // TODO: subtract rejected/offer
+      $('#p-active').textContent = total - closedCount;
     }
 
     function formatTimeAgo(date) {
