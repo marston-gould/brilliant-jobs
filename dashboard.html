@@ -3165,7 +3165,10 @@
     function parseSalaryFromContent(html) {
       if (!html) return null;
       // Strip HTML tags for cleaner regex matching
-      const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+      let text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
+      // Decode common HTML entities that appear in salary ranges
+      text = text.replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&amp;/g, '&').replace(/&#8212;/g, '—').replace(/&#8211;/g, '–');
+      text = text.replace(/\s+/g, ' ');
 
       const allRanges = [];
 
