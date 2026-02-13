@@ -164,11 +164,28 @@
     .pb-10 { background: rgba(52,211,153,0.08); color: var(--green); }
     .pb-11 { background: rgba(77,142,255,0.08); color: var(--accent); }
 
-    /* Section dividers */
-    .section-divider {
-      padding: 40px 0 16px;
-      display: flex; align-items: center; gap: 16px;
+    /* Section containers */
+    .section-wrap {
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--bg-card);
+      overflow: hidden;
+      transition: border-color 0.2s;
     }
+    .section-wrap:hover { border-color: var(--border-hover); }
+    .section-wrap.sec-done { border-left: 3px solid var(--green); }
+    .section-wrap.sec-progress { border-left: 3px solid var(--amber); }
+    .section-wrap.sec-todo { border-left: 3px solid var(--text-faint); }
+
+    /* Section dividers / headers */
+    .section-divider {
+      padding: 18px 24px;
+      display: flex; align-items: center; gap: 16px;
+      cursor: pointer; user-select: none;
+      transition: background 0.15s;
+    }
+    .section-divider:hover { background: rgba(255,255,255,0.02); }
     .section-divider h3 {
       font-size: 11px; font-weight: 700; text-transform: uppercase;
       letter-spacing: 1.5px; white-space: nowrap;
@@ -182,6 +199,25 @@
     .section-count {
       font-family: var(--mono); font-size: 11px; color: var(--text-faint);
       font-weight: 600;
+    }
+    .section-chevron {
+      font-size: 14px; color: var(--text-faint);
+      transition: transform 0.25s ease;
+      flex-shrink: 0;
+    }
+    .section-wrap.collapsed .section-chevron { transform: rotate(-90deg); }
+
+    /* Collapsible body */
+    .section-body {
+      padding: 0 24px 16px;
+      transition: max-height 0.35s ease, opacity 0.25s ease, padding 0.25s ease;
+      overflow: hidden;
+    }
+    .section-wrap.collapsed .section-body {
+      max-height: 0 !important;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
     }
 
     /* Footer */
@@ -430,61 +466,39 @@ function render() {
   }, 300);
 
   const el = document.getElementById('roadmap');
+
+  function buildSection(items, cls, label, startCollapsed) {
+    const colClass = startCollapsed ? ' collapsed' : '';
+    let html = `<div class="section-wrap ${cls}${colClass}">`;
+    html += `<div class="section-divider ${cls}" onclick="this.parentElement.classList.toggle('collapsed')">
+      <span class="section-chevron">▼</span>
+      <h3>${label}</h3>
+      <span class="section-count">${items.length}</span>
+    </div>`;
+    html += '<div class="section-body"><ul class="feature-list">';
+    items.forEach((f, i) => {
+      const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : 'status-todo');
+      const statusIcon = f.s === 'done' ? '✓' : (f.s === 'progress' ? '◐' : '○');
+      const nameCls = f.s === 'done' ? 'feature-name is-done' : 'feature-name';
+      html += `<li class="feature-item" style="animation-delay:${i * 0.03}s">
+        <div class="status-icon ${statusCls}">${statusIcon}</div>
+        <div>
+          <div class="${nameCls}">${f.n}</div>
+          <div class="feature-detail">${f.d}</div>
+        </div>
+        <div class="phase-badge pb-${String(f.p).replace('.','')}">${phaseLabel(f.p)}</div>
+      </li>`;
+    });
+    html += '</ul></div></div>';
+    return html;
+  }
+
   let html = '';
-
-  // Done section
-  html += `<div class="section-divider sec-done">
-    <h3>Completed</h3>
-    <span class="section-count">${done.length}</span>
-  </div>`;
-  html += '<ul class="feature-list">';
-  done.forEach((f, i) => {
-    html += `<li class="feature-item" style="animation-delay:${i * 0.03}s">
-      <div class="status-icon status-done">✓</div>
-      <div>
-        <div class="feature-name is-done">${f.n}</div>
-        <div class="feature-detail">${f.d}</div>
-      </div>
-      <div class="phase-badge pb-${String(f.p).replace('.','')}">${phaseLabel(f.p)}</div>
-    </li>`;
-  });
-  html += '</ul>';
-
-  // In Progress section
-  html += `<div class="section-divider sec-progress">
-    <h3>In Progress</h3>
-    <span class="section-count">${progress.length}</span>
-  </div>`;
-  html += '<ul class="feature-list">';
-  progress.forEach((f, i) => {
-    html += `<li class="feature-item" style="animation-delay:${(done.length + i) * 0.03}s">
-      <div class="status-icon status-progress">◐</div>
-      <div>
-        <div class="feature-name">${f.n}</div>
-        <div class="feature-detail">${f.d}</div>
-      </div>
-      <div class="phase-badge pb-${String(f.p).replace('.','')}">${phaseLabel(f.p)}</div>
-    </li>`;
-  });
-  html += '</ul>';
-
-  // Planned section
-  html += `<div class="section-divider sec-todo">
-    <h3>Planned</h3>
-    <span class="section-count">${todo.length}</span>
-  </div>`;
-  html += '<ul class="feature-list">';
-  todo.forEach((f, i) => {
-    html += `<li class="feature-item" style="animation-delay:${(done.length + progress.length + i) * 0.03}s">
-      <div class="status-icon status-todo">○</div>
-      <div>
-        <div class="feature-name">${f.n}</div>
-        <div class="feature-detail">${f.d}</div>
-      </div>
-      <div class="phase-badge pb-${String(f.p).replace('.','')}">${phaseLabel(f.p)}</div>
-    </li>`;
-  });
-  html += '</ul>';
+  html += buildSection(done, 'sec-done', 'Completed', true);
+  if (progress.length > 0) {
+    html += buildSection(progress, 'sec-progress', 'In Progress', false);
+  }
+  html += buildSection(todo, 'sec-todo', 'Planned', false);
 
   el.innerHTML = html;
 }
