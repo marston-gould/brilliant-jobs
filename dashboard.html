@@ -2062,18 +2062,7 @@
             <div class="stat-card"><div class="stat-val" id="st-jobs">—</div><div class="stat-label">Jobs Found</div></div>
           </div>
 
-          <!-- Community stats -->
-          <div class="card" style="border-left:3px solid var(--accent);">
-            <div class="card-title">Community Intelligence</div>
-            <div class="card-sub">Aggregate data across all Brilliant Jobs users powering your search</div>
-            <div class="stat-grid" style="margin-bottom:0;">
-              <div class="stat-card"><div class="stat-val" id="cs-jobs">—</div><div class="stat-label">Total Jobs Tracked</div></div>
-              <div class="stat-card"><div class="stat-val" id="cs-companies">—</div><div class="stat-label">ATS Boards Monitored</div></div>
-              <div class="stat-card"><div class="stat-val" id="cs-open">—</div><div class="stat-label">Open Positions</div></div>
-              <div class="stat-card"><div class="stat-val" id="cs-closed">—</div><div class="stat-label">Closed (tracked)</div></div>
-            </div>
-            <div style="font-size:11px;color:var(--text-faint);margin-top:12px;" id="cs-refreshed">Last refresh: —</div>
-          </div>
+          <!-- Community Intelligence — backlogged until multiple data sources available -->
 
           <div class="card">
             <div class="card-title">Top Companies</div>
@@ -5904,26 +5893,7 @@
         const atsJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
         $('#st-jobs').textContent = (atsJobs.count || 0).toLocaleString();
 
-        // Community stats
-        const atsCompanies = await sb.from('ats_companies').select('slug', { count: 'exact', head: true });
-        $('#cs-companies').textContent = (atsCompanies.count || 0).toLocaleString();
-
-        const openJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true }).is('closed_at', null);
-        $('#cs-open').textContent = (openJobs.count || 0).toLocaleString();
-
-        const closedJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true }).not('closed_at', 'is', null);
-        $('#cs-closed').textContent = (closedJobs.count || 0).toLocaleString();
-
-        const totalAtsJobs = (atsJobs.count || 0);
-        $('#cs-jobs').textContent = totalAtsJobs.toLocaleString();
-
-        // Last refresh time
-        const { data: lastRefresh } = await sb.from('refresh_log').select('finished_at').order('created_at', { ascending: false }).limit(1);
-        if (lastRefresh?.length > 0 && lastRefresh[0].finished_at) {
-          const d = new Date(lastRefresh[0].finished_at);
-          const ago = Math.round((Date.now() - d.getTime()) / 3600000);
-          $('#cs-refreshed').textContent = `Last refresh: ${ago < 1 ? 'just now' : ago + 'h ago'} — ${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
-        }
+        // Community stats — backlogged until multiple data sources
 
         const { data: topCos } = await sb.from('companies').select('company_name').not('company_name', 'is', null).limit(500);
         if (topCos?.length > 0) {
