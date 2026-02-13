@@ -264,7 +264,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 12, 2026
+    Brilliant Jobs · Internal Roadmap · Updated February 13, 2026
   </div>
 
 </div>
@@ -352,16 +352,26 @@ const features = [
   { s: 'done', n: 'Slug fallback for self-hosted career pages', d: 'Uses company_name as Greenhouse board token when URL doesnt match boards.greenhouse.io pattern', p: 2 },
   { s: 'done', n: 'Pay filter wired to salary query', d: 'How Much min/max filters salary_min/max columns, includeNoSalary checkbox includes null salary jobs', p: 2 },
   { s: 'done', n: 'Location display formatting', d: 'United States → US, multi-city semicolons collapsed, Remote standardized, full text on hover', p: 2 },
+  { s: 'done', n: 'Location normalization (server-side)', d: 'Postgres function parses raw locations into loc_city, loc_state, loc_country, loc_type, loc_display — handles 110K+ rows in batches', p: 2 },
   { s: 'done', n: 'Ghost rate coming soon indicator', d: 'Feed column shows "soon" in faint italic with tooltip instead of dash', p: 2 },
+  { s: 'done', n: 'Fix: connection overload on dashboard load', d: 'Eliminated job_locations pre-fetch (getLocationMatchIds) that fired dozens of paginated 1K-row requests — replaced with direct ilike on ats_jobs.location', p: 2 },
+  { s: 'done', n: 'Fix: stat cards context-aware', d: 'Filter selected → stats reflect matching jobs only. No filter → global totals with tuning applied (US-only, exclusions). Hidden jobs excluded from all counts.', p: 2 },
+  { s: 'done', n: 'Full-text search vector column', d: 'Added tsvector search_vector (title + location + company + department) with GIN index for future FTS migration', p: 2 },
+  { s: 'done', n: 'Location filter searches normalized fields', d: 'Where pills now search location, loc_display, loc_state, and loc_country — US-only filter uses loc_country=US', p: 2 },
+  { s: 'done', n: 'Hidden jobs excluded at query level', d: 'Supabase queries use .not(greenhouse_id, in, ...) so count and rows both exclude hidden — no more count mismatches', p: 2 },
+  { s: 'done', n: 'Version stamp in nav and console', d: 'Dashboard shows version in nav bar and logs to console for cache verification', p: 2 },
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users', p: 2 },
   { s: 'todo', n: 'Location disambiguation', d: 'Portland OR vs Portland ME, Springfield — resolve ambiguous city names', p: 2 },
   { s: 'todo', n: 'Location radius search', d: 'Geocode jobs + filter terms, default 30mi radius with adjustable slider', p: 2 },
+  { s: 'todo', n: 'Migrate filters to full-text search', d: 'Replace ilike queries with tsquery against search_vector — handles millions of rows in milliseconds', p: 2 },
   { s: 'todo', n: 'Industry filter row', d: 'Filter by department/function from Greenhouse data', p: 2 },
 
   // Phase 2 — Poor Match Intelligence
-  { s: 'todo', n: 'Unhide jobs from Tuning page', d: 'Poor Matches card shows recently hidden jobs with unhide button to restore to feed', p: 2 },
-  { s: 'todo', n: 'Hide reason classification', d: 'Quick prompt on hide: Wrong title / Wrong location / Wrong company / Too old / Wrong pay / Other keyword', p: 2 },
-  { s: 'todo', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
+  { s: 'done', n: 'Unhide jobs from Tuning page', d: 'Poor Matches card shows recently hidden jobs with unhide button to restore to feed', p: 2 },
+  { s: 'done', n: 'Hide reason classification', d: 'Quick prompt on hide: Wrong title / Wrong location / Wrong company / Too old / Wrong pay / Other keyword', p: 2 },
+  { s: 'done', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
+  { s: 'done', n: 'Hidden job cards with title and link', d: 'Poor match cards show job title linking to Greenhouse spec — backfills missing titles from Supabase', p: 2 },
+  { s: 'done', n: 'Visible delete buttons on level hierarchy', d: 'Level rule ✕ buttons always visible instead of hover-only', p: 2 },
 
   // Phase 2.5 — Anti-detection
   { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 2.5 },
