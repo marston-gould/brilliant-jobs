@@ -304,18 +304,28 @@ const features = [
   { s: 'done', n: 'Chrome notification on application submit', d: 'Extension fires desktop notification when ATS form submission is detected', p: 2 },
 
   // ═══════════════ IN PROGRESS ═══════════════
-  { s: 'progress', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
+  { s: 'done', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
   { s: 'progress', n: 'Daily job refresh cron', d: 'Re-scrape Greenhouse boards via Supabase Edge Function on pg_cron schedule', p: 2 },
-  { s: 'progress', n: 'NOT filter debugging', d: 'Verifying NOT exclusions fire correctly — added console logging and trim() to diagnose', p: 2 },
+  { s: 'done', n: 'NOT filter fix', d: 'Fixed NOR prefix stripping, commitPill recognizes both or/nor, values cleaned before query', p: 2 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 2 — Feed & Filters
-  { s: 'todo', n: 'Wire includeNoSalary checkbox into query', d: 'Option to include jobs with no listed salary when salary filter is set', p: 2 },
+  { s: 'done', n: 'Company autocomplete in Who filter', d: 'Search ats_companies by slug/name and connections by parsed_company with dropdown, badges, keyboard nav', p: 2 },
+  { s: 'done', n: 'Salary extraction from job specs', d: 'Regex parser handles multi-zone ranges, HTML entities, $Xk notation — saves salary_min/max/raw to DB', p: 2 },
+  { s: 'done', n: 'Background salary enrichment', d: 'Auto-fetches specs for first 20 visible jobs without salary, parses cached content, updates feed cells live', p: 2 },
+  { s: 'done', n: 'Slug fallback for self-hosted career pages', d: 'Uses company_name as Greenhouse board token when URL doesnt match boards.greenhouse.io pattern', p: 2 },
+  { s: 'done', n: 'Pay filter wired to salary query', d: 'How Much min/max filters salary_min/max columns, includeNoSalary checkbox includes null salary jobs', p: 2 },
+  { s: 'done', n: 'Location display formatting', d: 'United States → US, multi-city semicolons collapsed, Remote standardized, full text on hover', p: 2 },
+  { s: 'done', n: 'Ghost rate coming soon indicator', d: 'Feed column shows "soon" in faint italic with tooltip instead of dash', p: 2 },
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users', p: 2 },
   { s: 'todo', n: 'Location disambiguation', d: 'Portland OR vs Portland ME, Springfield — resolve ambiguous city names', p: 2 },
   { s: 'todo', n: 'Location radius search', d: 'Geocode jobs + filter terms, default 30mi radius with adjustable slider', p: 2 },
-  { s: 'todo', n: 'Company lookup from Who filter', d: 'Browse/search companies from connections + ats_companies tables', p: 2 },
-  { s: 'todo', n: 'Industry filter row', d: 'Filter by tech, healthcare, finance — requires company enrichment data', p: 2 },
+  { s: 'todo', n: 'Industry filter row', d: 'Filter by department/function from Greenhouse data', p: 2 },
+
+  // Phase 2 — Poor Match Intelligence
+  { s: 'todo', n: 'Unhide jobs from Tuning page', d: 'Poor Matches card shows recently hidden jobs with unhide button to restore to feed', p: 2 },
+  { s: 'todo', n: 'Hide reason classification', d: 'Quick prompt on hide: Wrong title / Wrong location / Wrong company / Too old / Wrong pay / Other keyword', p: 2 },
+  { s: 'todo', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
 
   // Phase 2.5 — Anti-detection
   { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 2.5 },
