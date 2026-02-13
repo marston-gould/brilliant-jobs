@@ -716,6 +716,56 @@
     }
     .sort-opt:hover { background: var(--bg-hover); color: var(--text); }
     .sort-opt.disabled { opacity: 0.3; pointer-events: none; }
+    /* Hide reason popup */
+    .hide-reason-popup {
+      position: fixed; z-index: 1001;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      padding: 12px; min-width: 220px;
+      animation: modalFadeIn 0.1s ease-out;
+    }
+    .hide-reason-popup h4 {
+      font-size: 11px; font-weight: 700; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .hide-reason-btn {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 10px; border: none; background: none;
+      font-family: var(--sans); font-size: 12px; color: var(--text-dim);
+      cursor: pointer; border-radius: 6px; transition: all 0.1s;
+    }
+    .hide-reason-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+    /* Poor match cards on Tuning page */
+    .poor-match-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 6px; font-size: 13px; transition: background 0.1s;
+    }
+    .poor-match-card:hover { background: var(--bg-hover); }
+    .poor-match-info { flex: 1; min-width: 0; }
+    .poor-match-title { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .poor-match-meta { font-size: 11px; color: var(--text-faint); margin-top: 1px; }
+    .poor-match-reason {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+      background: var(--red-dim); color: var(--red); white-space: nowrap;
+    }
+    .poor-match-unhide {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text-faint);
+      cursor: pointer; transition: all 0.1s; font-family: var(--sans); white-space: nowrap;
+    }
+    .poor-match-unhide:hover { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+    .suggestion-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 12px; color: var(--text-dim); cursor: pointer;
+      transition: all 0.1s; margin: 3px;
+    }
+    .suggestion-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .suggestion-chip .chip-count { font-family: var(--mono); font-size: 10px; color: var(--text-faint); }
+
     .hide-job-btn {
       background: none; border: none; color: var(--text-faint); cursor: pointer;
       font-size: 11px; padding: 2px 5px; border-radius: 3px; margin-left: 4px;
@@ -1632,10 +1682,9 @@
           <!-- Match Quality Suggestions -->
           <div class="card">
             <div class="card-title">Recent Poor Matches</div>
-            <div class="card-sub">Jobs that appeared in your feed but may not be relevant — click to add to exclusions</div>
-            <div id="tuning-poor-matches" style="margin-top:12px;color:var(--text-faint);font-size:12px;">
-              Suggestions will appear after you hide jobs in the feed. Hidden job titles and companies will be analyzed for common patterns to suggest global exclusions.
-            </div>
+            <div class="card-sub">Jobs you've hidden from the feed — unhide or use patterns to refine exclusions</div>
+            <div id="tuning-poor-matches" style="margin-top:12px;"></div>
+            <div id="tuning-suggestions" style="margin-top:16px;"></div>
           </div>
 
         </div>
@@ -2394,6 +2443,21 @@
     let currentJobs = [];
     let jobSortStack = [{ field: 'updated_at', asc: false }]; // multi-sort
     let hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
+    // Migrate old format (array of strings) to new format (array of objects)
+    if (hiddenJobIds.length > 0 && typeof hiddenJobIds[0] === 'string') {
+      hiddenJobIds = hiddenJobIds.map(id => ({ id, reason: 'other', title: '', company: '', hiddenAt: null }));
+      localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+    }
+    function isJobHidden(ghId) { return hiddenJobIds.some(h => h.id === ghId); }
+
+    const HIDE_REASONS = [
+      { key: 'wrong_title', label: 'Wrong title' },
+      { key: 'wrong_location', label: 'Wrong location' },
+      { key: 'wrong_company', label: 'Wrong company' },
+      { key: 'too_old', label: 'Too old' },
+      { key: 'wrong_pay', label: 'Wrong pay' },
+      { key: 'other', label: 'Other / not relevant' },
+    ];
     let savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
     let appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
 
@@ -2711,7 +2775,7 @@
         }
 
         // Filter out hidden jobs
-        allJobs = allJobs.filter(j => !hiddenJobIds.includes(j.greenhouse_id));
+        allJobs = allJobs.filter(j => !isJobHidden(j.greenhouse_id));
 
         currentJobs = allJobs;
 
@@ -3439,25 +3503,82 @@
     }
 
     function modalHide(jobId) {
-      hiddenJobIds.push(jobId);
-      localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
-      const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
-      if (row) row.style.display = 'none';
-      closeJobModal();
+      // Get job info from current results
+      const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
+      showHideReasonPopup(jobId, job.title || '', job.company_name || '', null, () => {
+        const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
+        if (row) row.style.display = 'none';
+        closeJobModal();
+      });
     }
 
     // Close on Escape key
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && $('#job-modal-overlay').style.display === 'flex') {
-        closeJobModal();
+      if (e.key === 'Escape') {
+        // Close hide reason popup first if open
+        const popup = document.querySelector('.hide-reason-popup');
+        if (popup) { popup.remove(); return; }
+        if ($('#job-modal-overlay')?.style?.display === 'flex') {
+          closeJobModal();
+        }
       }
     });
 
+    // Close hide popup on outside click
+    document.addEventListener('click', e => {
+      const popup = document.querySelector('.hide-reason-popup');
+      if (popup && !popup.contains(e.target) && !e.target.classList.contains('hide-btn') && !e.target.classList.contains('hide-job-btn')) {
+        popup.remove();
+      }
+    });
+
+    function showHideReasonPopup(jobId, title, company, anchorEl, afterHide) {
+      // Remove any existing popup
+      document.querySelectorAll('.hide-reason-popup').forEach(p => p.remove());
+
+      const popup = document.createElement('div');
+      popup.className = 'hide-reason-popup';
+      popup.innerHTML = `<h4>Why hide this?</h4>` +
+        HIDE_REASONS.map(r =>
+          `<button class="hide-reason-btn" data-reason="${r.key}">${r.label}</button>`
+        ).join('');
+
+      // Position near the button or center of screen
+      if (anchorEl) {
+        const rect = anchorEl.getBoundingClientRect();
+        popup.style.top = (rect.bottom + 4) + 'px';
+        popup.style.left = Math.min(rect.left, window.innerWidth - 240) + 'px';
+      } else {
+        popup.style.top = '50%';
+        popup.style.left = '50%';
+        popup.style.transform = 'translate(-50%, -50%)';
+      }
+
+      popup.querySelectorAll('.hide-reason-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const reason = btn.dataset.reason;
+          hiddenJobIds.push({
+            id: jobId,
+            reason,
+            title: title || '',
+            company: company || '',
+            hiddenAt: new Date().toISOString()
+          });
+          localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+          popup.remove();
+          if (afterHide) afterHide();
+        });
+      });
+
+      document.body.appendChild(popup);
+    }
+
     function hideJob(jobId, btn) {
-      hiddenJobIds.push(jobId);
-      localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
       const row = btn.closest('tr');
-      if (row) row.style.display = 'none';
+      const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
+      showHideReasonPopup(jobId, job.title || '', job.company_name || '', btn, () => {
+        if (row) row.style.display = 'none';
+      });
     }
 
     function toggleSaveJob(jobId, btn) {
@@ -4847,13 +4968,131 @@
 
     // Analyze hidden jobs for poor match suggestions
     function updatePoorMatchSuggestions() {
+      const container = $('#tuning-poor-matches');
+      const sugContainer = $('#tuning-suggestions');
+
       if (hiddenJobIds.length === 0) {
-        $('#tuning-poor-matches').innerHTML = '<span style="color:var(--text-faint);font-size:12px;">No hidden jobs yet. Hide irrelevant jobs from the feed to see suggestions here.</span>';
+        container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">No hidden jobs yet. Hide irrelevant jobs from the feed and reasons will be tracked here.</span>';
+        if (sugContainer) sugContainer.innerHTML = '';
         return;
       }
-      // Count title words from hidden jobs (from localStorage is limited, but we can show count)
-      $('#tuning-poor-matches').innerHTML = `<span style="font-size:12px;color:var(--text-dim);">You've hidden <strong>${hiddenJobIds.length}</strong> job${hiddenJobIds.length > 1 ? 's' : ''}. Pattern analysis coming soon — for now, add exclusion terms above manually.</span>`;
+
+      // Show recent hidden jobs (newest first, max 20)
+      const recent = [...hiddenJobIds].reverse().slice(0, 20);
+      let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} hidden job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
+
+      recent.forEach((h, i) => {
+        const reasonLabel = HIDE_REASONS.find(r => r.key === h.reason)?.label || h.reason || 'Hidden';
+        const dateStr = h.hiddenAt ? new Date(h.hiddenAt).toLocaleDateString() : '';
+        html += `<div class="poor-match-card">
+          <div class="poor-match-info">
+            <div class="poor-match-title" title="${(h.title||'').replace(/"/g,'&quot;')}">${h.title || h.id}</div>
+            <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
+          </div>
+          <span class="poor-match-reason">${reasonLabel}</span>
+          <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
+        </div>`;
+      });
+
+      if (hiddenJobIds.length > 20) {
+        html += `<div style="font-size:11px;color:var(--text-faint);margin-top:8px;text-align:center;">+ ${hiddenJobIds.length - 20} more hidden</div>`;
+      }
+
+      container.innerHTML = html;
+
+      // Pattern analysis — suggest exclusions based on common words in hidden job titles/companies
+      if (!sugContainer) return;
+
+      // Analyze title words (2+ occurrences)
+      const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
+      const titleWords = {};
+      const compCounts = {};
+
+      hiddenJobIds.forEach(h => {
+        // Count title keywords
+        if (h.title) {
+          const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+          const seen = new Set();
+          words.forEach(w => {
+            if (!seen.has(w)) { titleWords[w] = (titleWords[w] || 0) + 1; seen.add(w); }
+          });
+        }
+        // Count companies
+        if (h.company) {
+          const co = h.company.trim();
+          if (co) compCounts[co] = (compCounts[co] || 0) + 1;
+        }
+      });
+
+      // Get tuning exclusions to avoid suggesting already-excluded terms
+      const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+      const existingTitleExcl = new Set((tuning.titleExcludes || []).map(t => t.toLowerCase()));
+      const existingCoExcl = new Set((tuning.companyExcludes || []).map(c => c.toLowerCase()));
+
+      const titleSuggestions = Object.entries(titleWords)
+        .filter(([w, c]) => c >= 2 && !existingTitleExcl.has(w))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      const companySuggestions = Object.entries(compCounts)
+        .filter(([co, c]) => c >= 2 && !existingCoExcl.has(co.toLowerCase()))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      if (titleSuggestions.length === 0 && companySuggestions.length === 0) {
+        sugContainer.innerHTML = '';
+        return;
+      }
+
+      let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Suggested exclusions</div>';
+
+      if (titleSuggestions.length > 0) {
+        sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Title keywords appearing in multiple hidden jobs:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+        titleSuggestions.forEach(([word, count]) => {
+          sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('title', '${word}', this)">${word} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
+        });
+        sugHtml += '</div>';
+      }
+
+      if (companySuggestions.length > 0) {
+        sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you frequently hide:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+        companySuggestions.forEach(([co, count]) => {
+          sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('company', '${co.replace(/'/g, "\\'")}', this)">${co} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
+        });
+        sugHtml += '</div>';
+      }
+
+      sugContainer.innerHTML = sugHtml;
     }
+
+    window.unhideJob = function(jobId, btn) {
+      hiddenJobIds = hiddenJobIds.filter(h => h.id !== jobId);
+      localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+      const card = btn.closest('.poor-match-card');
+      if (card) card.style.opacity = '0.3';
+      setTimeout(() => updatePoorMatchSuggestions(), 300);
+    };
+
+    window.addSuggestedExclusion = function(type, term, chip) {
+      if (type === 'title') {
+        if (!tuningTitleExclPills.some(t => t.toLowerCase() === term.toLowerCase())) {
+          tuningTitleExclPills.push(term);
+        }
+      } else if (type === 'company') {
+        if (!tuningCoExclPills.some(c => c.toLowerCase() === term.toLowerCase())) {
+          tuningCoExclPills.push(term);
+        }
+      }
+      saveTuning();
+      renderTuningPills();
+      // Visual feedback
+      chip.style.background = 'var(--green-dim)';
+      chip.style.borderColor = 'var(--green)';
+      chip.style.color = 'var(--green)';
+      chip.innerHTML = `✓ ${term} added`;
+      chip.style.pointerEvents = 'none';
+    };
+
     updatePoorMatchSuggestions();
 
     // ============================================================
