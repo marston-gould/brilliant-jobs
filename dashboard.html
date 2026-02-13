@@ -860,6 +860,24 @@
     }
     .resume-card.is-placeholder .rc-name { color: var(--text-dim); }
     .resume-card.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
+    .company-dropdown {
+      display:none; position:absolute; z-index:100;
+      background:var(--bg-card); border:1px solid var(--border);
+      border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.3);
+      max-height:220px; overflow-y:auto; width:100%;
+      left:0; top:100%; margin-top:2px;
+    }
+    .company-dropdown.open { display:block; }
+    .company-opt {
+      padding:8px 12px; cursor:pointer; display:flex;
+      align-items:center; justify-content:space-between;
+      font-size:12px; border-bottom:1px solid rgba(148,163,184,0.06);
+      color:var(--text-dim);
+    }
+    .company-opt:hover, .company-opt:focus {
+      background:var(--bg-hover); color:var(--text); outline:none;
+    }
+
     .resume-upload-zone {
       border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px;
       text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 20px;
@@ -1412,8 +1430,9 @@
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">Who</label>
-              <div class="query-builder" id="query-builder-who">
-                <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name…">
+              <div class="query-builder" id="query-builder-who" style="position:relative;">
+                <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name…" autocomplete="off">
+                <div id="company-dropdown" class="company-dropdown"></div>
               </div>
             </div>
             <div class="qb-row">
@@ -3422,20 +3441,122 @@
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
         commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+        companyDropdown.classList.remove('open');
       } else if (e.key === 'Tab') {
         if (qbInputWho.value.trim()) {
           e.preventDefault();
           commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
           focusNextInput('qb-input-who');
         }
+        companyDropdown.classList.remove('open');
       } else if (e.key === 'Backspace' && qbInputWho.value === '' && whoPills.length > 0) {
         whoPills.pop();
         renderAllPills();
+      } else if (e.key === 'Escape') {
+        companyDropdown.classList.remove('open');
+      } else if (e.key === 'ArrowDown' && companyDropdown.classList.contains('open')) {
+        e.preventDefault();
+        const first = companyDropdown.querySelector('.company-opt');
+        if (first) first.focus();
       }
     });
     qbInputWho.addEventListener('blur', () => {
       commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+      setTimeout(() => { $('#company-dropdown').classList.remove('open'); }, 200);
     });
+
+    // Company autocomplete
+    let companySearchTimeout = null;
+    const companyDropdown = $('#company-dropdown');
+
+    qbInputWho.addEventListener('input', () => {
+      const q = qbInputWho.value.trim();
+      if (q.length < 2) { companyDropdown.classList.remove('open'); return; }
+      clearTimeout(companySearchTimeout);
+      companySearchTimeout = setTimeout(() => searchCompanies(q), 200);
+    });
+
+
+    async function searchCompanies(query) {
+      const results = [];
+      try {
+        // Search ats_companies (boards with jobs)
+        const { data: atsData } = await sb
+          .from('ats_companies')
+          .select('slug, name, ats')
+          .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+          .limit(6);
+        if (atsData) {
+          atsData.forEach(c => results.push({
+            name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.ats || 'greenhouse'
+          }));
+        }
+      } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+
+      try {
+        // Search user's connections' companies
+        const { data: connData } = await sb
+          .from('profiles')
+          .select('company')
+          .ilike('company', `%${query}%`)
+          .not('company', 'is', null)
+          .limit(30);
+        if (connData) {
+          const counts = {};
+          connData.forEach(p => {
+            const n = (p.company || '').trim();
+            if (n) counts[n] = (counts[n] || 0) + 1;
+          });
+          Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .forEach(([name, count]) => {
+              if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+                results.push({ name, source: 'network', connections: count });
+              }
+            });
+        }
+      } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
+
+      renderCompanyDropdown(results, query);
+    }
+
+    function renderCompanyDropdown(results, query) {
+      if (results.length === 0) { companyDropdown.classList.remove('open'); return; }
+      companyDropdown.innerHTML = results.map(r => {
+        const badge = r.source === 'network'
+          ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
+          : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
+        const hl = highlightCompanyMatch(r.name, query);
+        return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
+          <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+      }).join('');
+      companyDropdown.classList.add('open');
+
+      companyDropdown.querySelectorAll('.company-opt').forEach(opt => {
+        opt.addEventListener('mousedown', e => {
+          e.preventDefault(); // prevent blur from firing first
+          qbInputWho.value = opt.dataset.name;
+          commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+          renderAllPills();
+          companyDropdown.classList.remove('open');
+        });
+        opt.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); opt.dispatchEvent(new Event('mousedown')); }
+          if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+          if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWho.focus(); }
+          if (e.key === 'Escape') { companyDropdown.classList.remove('open'); qbInputWho.focus(); }
+        });
+      });
+    }
+
+    function highlightCompanyMatch(text, query) {
+      const idx = text.toLowerCase().indexOf(query.toLowerCase());
+      if (idx < 0) return text;
+      return text.slice(0, idx) +
+        '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
+        text.slice(idx + query.length);
+    }
 
     // Input handling — What Not row
     const qbInputWhatNot = $('#qb-input-what-not');
