@@ -2584,13 +2584,20 @@
           for (const v of pill.values) {
             const term = v.trim();
             if (!term) continue;
-            // Search job_locations for matching normalized or raw location
-            const { data, error } = await sb
-              .from('job_locations')
-              .select('greenhouse_id')
-              .or(`location_normalized.ilike.%${term}%,location_raw.ilike.%${term}%`)
-              .limit(5000);
-            if (data) data.forEach(r => allIds.add(r.greenhouse_id));
+            // Paginate through all matching job_locations
+            let offset = 0;
+            const batchSize = 1000;
+            while (true) {
+              const { data, error } = await sb
+                .from('job_locations')
+                .select('greenhouse_id')
+                .or(`location_normalized.ilike.%${term}%,location_raw.ilike.%${term}%`)
+                .range(offset, offset + batchSize - 1);
+              if (error || !data || data.length === 0) break;
+              data.forEach(r => allIds.add(r.greenhouse_id));
+              if (data.length < batchSize) break;
+              offset += batchSize;
+            }
           }
         }
         includeIds = [...allIds];
@@ -2598,12 +2605,21 @@
 
       // US-only from tuning
       if (tuning.usOnly && wherePillsArr.length === 0) {
-        const { data } = await sb
-          .from('job_locations')
-          .select('greenhouse_id')
-          .or('location_normalized.ilike.%United States%,location_normalized.ilike.%US%,location_raw.ilike.%United States%,location_raw.ilike.%USA%')
-          .limit(50000);
-        if (data) includeIds = data.map(r => r.greenhouse_id);
+        const allUsIds = [];
+        let offset = 0;
+        const batchSize = 1000;
+        while (true) {
+          const { data } = await sb
+            .from('job_locations')
+            .select('greenhouse_id')
+            .or('location_normalized.ilike.%United States%,location_normalized.ilike.%US%,location_raw.ilike.%United States%,location_raw.ilike.%USA%')
+            .range(offset, offset + batchSize - 1);
+          if (!data || data.length === 0) break;
+          allUsIds.push(...data.map(r => r.greenhouse_id));
+          if (data.length < batchSize) break;
+          offset += batchSize;
+        }
+        if (allUsIds.length > 0) includeIds = allUsIds;
       }
 
       // WHERE NOT — find jobs to exclude
@@ -2623,12 +2639,19 @@
 
       if (allNotTerms.length > 0) {
         for (const term of allNotTerms) {
-          const { data } = await sb
-            .from('job_locations')
-            .select('greenhouse_id')
-            .or(`location_normalized.ilike.%${term}%,location_raw.ilike.%${term}%`)
-            .limit(10000);
-          if (data) data.forEach(r => excludeIds.add(r.greenhouse_id));
+          let offset = 0;
+          const batchSize = 1000;
+          while (true) {
+            const { data } = await sb
+              .from('job_locations')
+              .select('greenhouse_id')
+              .or(`location_normalized.ilike.%${term}%,location_raw.ilike.%${term}%`)
+              .range(offset, offset + batchSize - 1);
+            if (!data || data.length === 0) break;
+            data.forEach(r => excludeIds.add(r.greenhouse_id));
+            if (data.length < batchSize) break;
+            offset += batchSize;
+          }
         }
       }
 
