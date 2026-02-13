@@ -746,11 +746,11 @@
     }
     .level-table input.level-name { font-family: inherit; font-weight: 600; }
     .level-table .level-del {
-      background: none; border: none; color: var(--text-faint); cursor: pointer;
-      font-size: 14px; padding: 2px 6px; border-radius: 4px; opacity: 0; transition: all 0.1s;
+      background: none; border: 1px solid var(--border); color: var(--text-faint); cursor: pointer;
+      font-size: 13px; padding: 3px 8px; border-radius: 4px; opacity: 1; transition: all 0.1s;
     }
-    .level-table tr:hover .level-del { opacity: 0.6; }
-    .level-table .level-del:hover { opacity: 1; color: var(--red); background: var(--red-dim); }
+    .level-table tr:hover .level-del { border-color: var(--red); color: var(--red); }
+    .level-table .level-del:hover { opacity: 1; color: var(--red); background: var(--red-dim); border-color: var(--red); }
     .level-badge {
       font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
       white-space: nowrap; display: inline-block;
@@ -1722,7 +1722,7 @@
                     <th style="width:36px;">#</th>
                     <th style="width:140px;">Level</th>
                     <th>Match Keywords (comma-separated)</th>
-                    <th style="width:50px;"></th>
+                    <th style="width:56px;text-align:center;"></th>
                   </tr>
                 </thead>
                 <tbody id="level-table-body"></tbody>
@@ -2218,7 +2218,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.13 loaded');
+    console.log('[BJ] Dashboard v2.16 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3720,7 +3720,7 @@
         const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
         if (row) row.style.display = 'none';
         closeJobModal();
-      });
+      }, job.url || '', job.company_slug || '');
     }
 
     // Close on Escape key
@@ -3743,7 +3743,7 @@
       }
     });
 
-    function showHideReasonPopup(jobId, title, company, anchorEl, afterHide) {
+    function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl, companySlug) {
       // Remove any existing popup
       document.querySelectorAll('.hide-reason-popup').forEach(p => p.remove());
 
@@ -3773,6 +3773,8 @@
             reason,
             title: title || '',
             company: company || '',
+            url: jobUrl || '',
+            companySlug: companySlug || '',
             hiddenAt: new Date().toISOString()
           });
           localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
@@ -3789,7 +3791,7 @@
       const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
       showHideReasonPopup(jobId, job.title || '', job.company_name || '', btn, () => {
         if (row) row.style.display = 'none';
-      });
+      }, job.url || '', job.company_slug || '');
     }
 
     function toggleSaveJob(jobId, btn) {
@@ -5728,7 +5730,7 @@
     $('#tuning-us-only').addEventListener('change', saveTuning);
 
     // Analyze hidden jobs for poor match suggestions
-    function updatePoorMatchSuggestions() {
+    async function updatePoorMatchSuggestions() {
       const container = $('#tuning-poor-matches');
       const sugContainer = $('#tuning-suggestions');
 
@@ -5738,6 +5740,29 @@
         return;
       }
 
+      // Backfill any hidden jobs missing title/company from Supabase
+      const needsBackfill = hiddenJobIds.filter(h => !h.title);
+      if (needsBackfill.length > 0) {
+        const ids = needsBackfill.map(h => h.id);
+        const { data: jobRows } = await sb.from('ats_jobs')
+          .select('greenhouse_id, title, company_name, company_slug, url')
+          .in('greenhouse_id', ids);
+        if (jobRows) {
+          const lookup = Object.fromEntries(jobRows.map(j => [j.greenhouse_id, j]));
+          let changed = false;
+          hiddenJobIds.forEach(h => {
+            if (!h.title && lookup[h.id]) {
+              h.title = lookup[h.id].title || '';
+              h.company = lookup[h.id].company_name || '';
+              h.url = lookup[h.id].url || '';
+              h.companySlug = lookup[h.id].company_slug || '';
+              changed = true;
+            }
+          });
+          if (changed) localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+        }
+      }
+
       // Show recent hidden jobs (newest first, max 20)
       const recent = [...hiddenJobIds].reverse().slice(0, 20);
       let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} hidden job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
@@ -5745,9 +5770,14 @@
       recent.forEach((h, i) => {
         const reasonLabel = HIDE_REASONS.find(r => r.key === h.reason)?.label || h.reason || 'Hidden';
         const dateStr = h.hiddenAt ? new Date(h.hiddenAt).toLocaleDateString() : '';
+        const titleText = h.title || 'Unknown Job';
+        const jobUrl = h.url && h.url.startsWith('http') ? h.url : h.url ? 'https://boards.greenhouse.io' + h.url : (h.companySlug ? `https://boards.greenhouse.io/${h.companySlug}/jobs/${h.id}` : '');
+        const titleHtml = jobUrl
+          ? `<a href="${jobUrl}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text)'">${titleText}</a>`
+          : titleText;
         html += `<div class="poor-match-card">
           <div class="poor-match-info">
-            <div class="poor-match-title" title="${(h.title||'').replace(/"/g,'&quot;')}">${h.title || h.id}</div>
+            <div class="poor-match-title" title="${(h.title||'').replace(/"/g,'&quot;')}">${titleHtml}</div>
             <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
           </div>
           <span class="poor-match-reason">${reasonLabel}</span>
