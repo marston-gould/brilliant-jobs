@@ -1134,7 +1134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.16</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.17</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2218,7 +2218,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.16 loaded');
+    console.log('[BJ] Dashboard v2.17 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2582,6 +2582,10 @@
 
     function buildFilterQuery(sf, baseQuery, locationIds) {
       let query = baseQuery;
+
+      // Always filter to active/open jobs only
+      query = query.eq('status', 'open');
+
       const w = sf.whatPills || sf.pills || [];
       const wh = sf.wherePills || [];
       const wn = sf.whenPills || [];
@@ -2592,6 +2596,9 @@
 
       // Load global tuning settings
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+
+      // Only show active/open jobs
+      query = query.eq('status', 'open');
 
       // WHAT — title matching with word-boundary awareness
       for (const pill of w) {
@@ -6465,7 +6472,7 @@
         $('#st-scanned').textContent = (scanned.count || 0).toLocaleString();
         const comp = await sb.from('companies').select('id', { count: 'exact', head: true });
         $('#st-companies').textContent = (comp.count || 0).toLocaleString();
-        const atsJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        const atsJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true }).eq('status', 'open');
         $('#st-jobs').textContent = (atsJobs.count || 0).toLocaleString();
 
         // Community stats — backlogged until multiple data sources
