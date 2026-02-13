@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.8 -->
+<!-- Brilliant Jobs Dashboard v2.9 - 2026-02-13 - Fix: removed job_locations pre-fetch (connection overload) -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2573,89 +2573,11 @@
 
     // Build a Supabase query from a single saved filter's pills
     // Pre-fetch greenhouse_ids matching location pills from job_locations table
+    // Location filtering now handled directly in buildFilterQuery via ilike on ats_jobs.location
+    // No more pre-fetching IDs from job_locations (was causing connection overload)
     async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning) {
-      let includeIds = null; // null means no location filter (show all)
-      let excludeIds = new Set();
-
-      // WHERE — find jobs matching any location pill
-      if (wherePillsArr.length > 0) {
-        const allIds = new Set();
-        for (const pill of wherePillsArr) {
-          for (const v of pill.values) {
-            const term = v.trim();
-            if (!term) continue;
-            // Paginate through all matching job_locations
-            let offset = 0;
-            const batchSize = 1000;
-            while (true) {
-              const { data, error } = await sb
-                .from('job_locations')
-                .select('greenhouse_id')
-                .or(`location_normalized.ilike.%${term}%,location_raw.ilike.%${term}%`)
-                .range(offset, offset + batchSize - 1);
-              if (error || !data || data.length === 0) break;
-              data.forEach(r => allIds.add(r.greenhouse_id));
-              if (data.length < batchSize) break;
-              offset += batchSize;
-            }
-          }
-        }
-        includeIds = [...allIds];
-      }
-
-      // US-only from tuning
-      if (tuning.usOnly && wherePillsArr.length === 0) {
-        const allUsIds = [];
-        let offset = 0;
-        const batchSize = 1000;
-        while (true) {
-          const { data } = await sb
-            .from('job_locations')
-            .select('greenhouse_id')
-            .or('location_normalized.ilike.%United States%,location_normalized.ilike.%US%,location_raw.ilike.%United States%,location_raw.ilike.%USA%')
-            .range(offset, offset + batchSize - 1);
-          if (!data || data.length === 0) break;
-          allUsIds.push(...data.map(r => r.greenhouse_id));
-          if (data.length < batchSize) break;
-          offset += batchSize;
-        }
-        if (allUsIds.length > 0) includeIds = allUsIds;
-      }
-
-      // WHERE NOT — find jobs to exclude
-      const allNotTerms = [];
-      for (const pill of whereNotPillsArr) {
-        for (const v of pill.values) {
-          const term = v.trim().replace(/^nor\s+/i, '');
-          if (term) allNotTerms.push(term);
-        }
-      }
-      // Global location exclusions
-      for (const pill of (tuning.locationExcludes || [])) {
-        for (const v of (pill.values || [])) {
-          if (v.trim()) allNotTerms.push(v.trim());
-        }
-      }
-
-      if (allNotTerms.length > 0) {
-        for (const term of allNotTerms) {
-          let offset = 0;
-          const batchSize = 1000;
-          while (true) {
-            const { data } = await sb
-              .from('job_locations')
-              .select('greenhouse_id')
-              .or(`location_normalized.ilike.%${term}%,location_raw.ilike.%${term}%`)
-              .range(offset, offset + batchSize - 1);
-            if (!data || data.length === 0) break;
-            data.forEach(r => excludeIds.add(r.greenhouse_id));
-            if (data.length < batchSize) break;
-            offset += batchSize;
-          }
-        }
-      }
-
-      return { includeIds, excludeIds };
+      // Return null so buildFilterQuery uses the direct ilike fallback path
+      return null;
     }
 
     function buildFilterQuery(sf, baseQuery, locationIds) {
@@ -3053,60 +2975,42 @@
         const last24h = new Date(now.getTime() - 86400000);
         const lastFeedView = localStorage.getItem('bj_last_feed_view');
         const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
-        const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-        // Count total + today + new-since-login + unique companies across all checked filters
         let total = 0;
         let todayCount = 0;
         let newSinceLoginCount = 0;
-        const companies = new Set();
+        let companyCount = 0;
 
         for (const sf of filters) {
-          // Pre-fetch location IDs if needed
-          const wh = sf.wherePills || [];
-          const whnot = sf.whereNotPills || [];
-          let locIds = null;
-          if (wh.length > 0 || whnot.length > 0 || tuningForLoc.usOnly) {
-            locIds = await getLocationMatchIds(wh, whnot, tuningForLoc);
-          }
-
           // Total count
           let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q = buildFilterQuery(sf, q, locIds);
+          q = buildFilterQuery(sf, q, null);
           const { count: c1 } = await q;
           total += (c1 || 0);
 
-          // Last 24h count
+          // Last 24h count (use updated_at only — skip duplicate last_seen query)
           let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q2 = buildFilterQuery(sf, q2, locIds);
+          q2 = buildFilterQuery(sf, q2, null);
           q2 = q2.gte('updated_at', last24h.toISOString());
-          const { count: c2a } = await q2;
-
-          let q2b = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q2b = buildFilterQuery(sf, q2b, locIds);
-          q2b = q2b.gte('last_seen', last24h.toISOString());
-          const { count: c2b } = await q2b;
-
-          todayCount += Math.max(c2a || 0, c2b || 0);
+          const { count: c2 } = await q2;
+          todayCount += (c2 || 0);
 
           // New since last login
           if (lastViewDate) {
             let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-            qLogin = buildFilterQuery(sf, qLogin, locIds);
+            qLogin = buildFilterQuery(sf, qLogin, null);
             qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
             const { count: cLogin } = await qLogin;
             newSinceLoginCount += (cLogin || 0);
           }
-
-          // Companies (sample)
-          let q3 = sb.from('ats_jobs').select('company_name');
-          q3 = buildFilterQuery(sf, q3, locIds);
-          q3 = q3.limit(500);
-          const { data: cos } = await q3;
-          if (cos) cos.forEach(c => { if (c.company_name) companies.add(c.company_name); });
         }
 
-        updateJobStats(total, companies.size, newSinceLoginCount, todayCount);
+        // Company count — use a single lightweight query instead of fetching 500 rows per filter
+        // Just estimate from ats_companies table
+        const { count: totalCos } = await sb.from('ats_companies').select('slug', { count: 'exact', head: true });
+        companyCount = totalCos || 0;
+
+        updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
       } catch (e) {
         console.error('Stats update error:', e);
       }
