@@ -2507,6 +2507,36 @@
         }
       }
 
+      // PAY — salary range filter
+      const pay = sf.payPills || [];
+      if (pay.length > 0) {
+        const pill = pay[0]; // only one pay pill expected
+        const minVal = pill.min;
+        const maxVal = pill.max;
+        const includeNoSalary = sf.includeNoSalary !== false; // default true
+
+        if (minVal && maxVal) {
+          // Jobs where salary range overlaps the filter range
+          if (includeNoSalary) {
+            query = query.or(`and(salary_max.gte.${minVal},salary_min.lte.${maxVal}),salary_min.is.null`);
+          } else {
+            query = query.gte('salary_max', minVal).lte('salary_min', maxVal);
+          }
+        } else if (minVal) {
+          if (includeNoSalary) {
+            query = query.or(`salary_max.gte.${minVal},salary_min.is.null`);
+          } else {
+            query = query.gte('salary_max', minVal);
+          }
+        } else if (maxVal) {
+          if (includeNoSalary) {
+            query = query.or(`salary_min.lte.${maxVal},salary_min.is.null`);
+          } else {
+            query = query.lte('salary_min', maxVal);
+          }
+        }
+      }
+
       return query;
     }
 
@@ -2576,6 +2606,7 @@
             whatNotPills: JSON.parse(JSON.stringify(whatNotPills)),
             whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
             whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
+            includeNoSalary: $('#save-filter-include-no-salary').checked,
           }];
         }
 
@@ -2828,7 +2859,7 @@
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc">${truncate(job.location, 30)}</td>
-          <td class="jt-salary">—</td>
+          <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
           <td class="jt-ghost">—</td>
@@ -3041,6 +3072,59 @@
     }
 
     // On-demand job spec fetcher — tries Greenhouse JSON API first
+    // Salary parser — extract salary range from job description HTML
+    function parseSalaryFromContent(html) {
+      if (!html) return null;
+      // Strip HTML tags for cleaner regex matching
+      const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
+
+      // Patterns to match salary ranges (ordered by specificity)
+      const patterns = [
+        // "$120,000 - $150,000" or "$120,000 to $150,000" or "$120,000–$150,000"
+        /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:[-–—to]+)\s*\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per\s+year|annually|annual|\/\s*(?:yr|year))?/gi,
+        // "$120k - $150k" or "$120K-$150K"
+        /\$\s*(\d+(?:\.\d+)?)\s*[kK]\s*(?:[-–—to]+)\s*\$?\s*(\d+(?:\.\d+)?)\s*[kK]/gi,
+        // "120,000 - 150,000 USD" or "120000-150000"
+        /(\d{2,3},?\d{3})\s*(?:[-–—to]+)\s*(\d{2,3},?\d{3})\s*(?:USD|usd|\$|per\s+year|annually)?/gi,
+      ];
+
+      for (const pattern of patterns) {
+        pattern.lastIndex = 0;
+        const match = pattern.exec(text);
+        if (match) {
+          let min = parseFloat(match[1].replace(/,/g, ''));
+          let max = parseFloat(match[2].replace(/,/g, ''));
+          // Handle "k" notation
+          if (min < 1000 && text.includes('k')) { min *= 1000; max *= 1000; }
+          else if (min < 1000 && max < 1000) { min *= 1000; max *= 1000; }
+          // Sanity check — salary should be between $20k and $1M
+          if (min >= 20000 && min <= 1000000 && max >= min && max <= 1000000) {
+            return { min: Math.round(min), max: Math.round(max), raw: match[0].trim() };
+          }
+        }
+      }
+
+      // Single value patterns: "$150,000" or "$150k"
+      const singlePatterns = [
+        /(?:base\s+(?:salary|pay|compensation)[:\s]*)\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per\s+year|annually|annual)?/gi,
+        /(?:salary|compensation|pay)[:\s]*\$\s*([\d,]+(?:\.\d{2})?)/gi,
+        /(?:salary|compensation|pay)[:\s]*\$\s*(\d+(?:\.\d+)?)\s*[kK]/gi,
+      ];
+      for (const pattern of singlePatterns) {
+        pattern.lastIndex = 0;
+        const match = pattern.exec(text);
+        if (match) {
+          let val = parseFloat(match[1].replace(/,/g, ''));
+          if (val < 1000) val *= 1000;
+          if (val >= 20000 && val <= 1000000) {
+            return { min: Math.round(val), max: Math.round(val), raw: match[0].trim() };
+          }
+        }
+      }
+
+      return null;
+    }
+
     async function fetchJobSpec(jobId, jobUrl, bodyEl) {
       try {
         // Try Greenhouse public JSON API — CORS-friendly, returns structured content
@@ -3067,7 +3151,17 @@
               // Cache the decoded version locally and in Supabase
               const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
               if (cachedJob) cachedJob.content = htmlContent;
-              sb.from('ats_jobs').update({ content: htmlContent }).eq('greenhouse_id', jobId).then(() => {});
+              // Extract salary from content
+              const salary = parseSalaryFromContent(htmlContent);
+              const updateData = { content: htmlContent };
+              if (salary) {
+                updateData.salary_min = salary.min;
+                updateData.salary_max = salary.max;
+                updateData.salary_raw = salary.raw;
+                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; }
+                console.log(`[BJ] Salary extracted: $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
+              }
+              sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
               return;
             }
           }
