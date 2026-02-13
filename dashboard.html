@@ -3483,33 +3483,33 @@
     async function searchCompanies(query) {
       const results = [];
       try {
-        // Search ats_companies by slug
+        // Search ats_companies by slug or name
         const { data: atsData, error: atsErr } = await sb
           .from('ats_companies')
-          .select('slug, ats')
-          .ilike('slug', `%${query}%`)
+          .select('slug, name, source')
+          .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
           .limit(6);
         if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
         if (atsData) {
           atsData.forEach(c => results.push({
-            name: c.slug, source: 'ats', ats: c.ats || 'greenhouse'
+            name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
           }));
         }
       } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
 
       try {
-        // Search user's connections' companies via RPC or direct query
+        // Search user's connections by parsed_company
         const { data: connData, error: connErr } = await sb
-          .from('profiles')
-          .select('company')
-          .ilike('company', `%${query}%`)
-          .not('company', 'is', null)
+          .from('connections')
+          .select('parsed_company')
+          .ilike('parsed_company', `%${query}%`)
+          .not('parsed_company', 'is', null)
           .limit(30);
         if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
         if (connData) {
           const counts = {};
           connData.forEach(p => {
-            const n = (p.company || '').trim();
+            const n = (p.parsed_company || '').trim();
             if (n) counts[n] = (counts[n] || 0) + 1;
           });
           Object.entries(counts)
