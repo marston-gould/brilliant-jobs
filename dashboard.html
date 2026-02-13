@@ -2435,7 +2435,7 @@
       // WHAT NOT — title not ilike
       for (const pill of wnot) {
         for (const v of pill.values) {
-          const term = v.trim();
+          const term = v.trim().replace(/^nor\s+/i, '');
           if (term) {
             console.log('[BJ] NOT filter excluding title:', term);
             query = query.not('title', 'ilike', `%${term}%`);
@@ -2465,7 +2465,8 @@
       // WHERE NOT — location not ilike
       for (const pill of whnot) {
         for (const v of pill.values) {
-          query = query.not('location', 'ilike', `%${v}%`);
+          const term = v.trim().replace(/^nor\s+/i, '');
+          if (term) query = query.not('location', 'ilike', `%${term}%`);
         }
       }
       // Global location exclusions
@@ -2487,7 +2488,8 @@
       // WHO NOT — company_name not ilike
       for (const pill of wonot) {
         for (const v of pill.values) {
-          query = query.not('company_name', 'ilike', `%${v}%`);
+          const term = v.trim().replace(/^nor\s+/i, '');
+          if (term) query = query.not('company_name', 'ilike', `%${term}%`);
         }
       }
       // Global company exclusions
@@ -3335,7 +3337,8 @@
     function commitPill(input, pillArray, makePill) {
       const raw = input.value.trim().toLowerCase();
       if (!raw) return false;
-      const orMatch = raw.match(/^or\s+(.+)/i);
+      // Support both "or term" and "nor term" as OR-into-last-pill
+      const orMatch = raw.match(/^(?:or|nor)\s+(.+)/i);
       if (orMatch && pillArray.length > 0) {
         pillArray[pillArray.length - 1].values.push(orMatch[1].trim());
       } else {
@@ -3480,27 +3483,29 @@
     async function searchCompanies(query) {
       const results = [];
       try {
-        // Search ats_companies (boards with jobs)
-        const { data: atsData } = await sb
+        // Search ats_companies by slug
+        const { data: atsData, error: atsErr } = await sb
           .from('ats_companies')
-          .select('slug, name, ats')
-          .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+          .select('slug, ats')
+          .ilike('slug', `%${query}%`)
           .limit(6);
+        if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
         if (atsData) {
           atsData.forEach(c => results.push({
-            name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.ats || 'greenhouse'
+            name: c.slug, source: 'ats', ats: c.ats || 'greenhouse'
           }));
         }
       } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
 
       try {
-        // Search user's connections' companies
-        const { data: connData } = await sb
+        // Search user's connections' companies via RPC or direct query
+        const { data: connData, error: connErr } = await sb
           .from('profiles')
           .select('company')
           .ilike('company', `%${query}%`)
           .not('company', 'is', null)
           .limit(30);
+        if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
         if (connData) {
           const counts = {};
           connData.forEach(p => {
