@@ -2218,7 +2218,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.10 loaded');
+    console.log('[BJ] Dashboard v2.11 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2973,7 +2973,7 @@
     }
 
     // Update top stat cards based on filter results
-    // If filters is null/empty, show global totals (all active jobs in DB)
+    // If filters is null/empty, show global totals with tuning applied
     async function updateJobStatsFromFilters(filters) {
       try {
         const now = new Date();
@@ -2986,61 +2986,42 @@
         let newSinceLoginCount = 0;
         let companyCount = 0;
 
-        if (!filters || filters.length === 0) {
-          // No filters selected — show global totals for all active jobs
-          const { count: allJobs } = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          total = allJobs || 0;
+        // If no filters selected, create a pseudo-filter with no pills
+        // so buildFilterQuery still applies global tuning (usOnly, exclusions)
+        const effectiveFilters = (filters && filters.length > 0) ? filters : [{}];
 
-          const { count: todayJobs } = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
-            .gte('updated_at', last24h.toISOString());
-          todayCount = todayJobs || 0;
+        for (const sf of effectiveFilters) {
+          // Total count
+          let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          q = buildFilterQuery(sf, q, null);
+          const { count: c1 } = await q;
+          total += (c1 || 0);
 
+          // Last 24h count
+          let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          q2 = buildFilterQuery(sf, q2, null);
+          q2 = q2.gte('updated_at', last24h.toISOString());
+          const { count: c2 } = await q2;
+          todayCount += (c2 || 0);
+
+          // New since last login
           if (lastViewDate) {
-            const { count: sinceLogin } = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
-              .gte('first_seen_at', lastViewDate.toISOString());
-            newSinceLoginCount = sinceLogin || 0;
+            let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+            qLogin = buildFilterQuery(sf, qLogin, null);
+            qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
+            const { count: cLogin } = await qLogin;
+            newSinceLoginCount += (cLogin || 0);
           }
-
-          // All companies with active jobs
-          const { count: totalCos } = await sb.from('ats_companies').select('slug', { count: 'exact', head: true })
-            .gt('job_count', 0);
-          companyCount = totalCos || 0;
-        } else {
-          // Filters active — count only matching jobs
-          for (const sf of filters) {
-            // Total count
-            let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-            q = buildFilterQuery(sf, q, null);
-            const { count: c1 } = await q;
-            total += (c1 || 0);
-
-            // Last 24h count
-            let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-            q2 = buildFilterQuery(sf, q2, null);
-            q2 = q2.gte('updated_at', last24h.toISOString());
-            const { count: c2 } = await q2;
-            todayCount += (c2 || 0);
-
-            // New since last login
-            if (lastViewDate) {
-              let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-              qLogin = buildFilterQuery(sf, qLogin, null);
-              qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
-              const { count: cLogin } = await qLogin;
-              newSinceLoginCount += (cLogin || 0);
-            }
-          }
-
-          // Company count — get unique company_slugs from matching jobs (lightweight: just distinct slugs)
-          // Use a single query with the first filter to approximate
-          let cq = sb.from('ats_jobs').select('company_slug');
-          cq = buildFilterQuery(filters[0], cq, null);
-          cq = cq.limit(1000);
-          const { data: coRows } = await cq;
-          const uniqueCos = new Set();
-          if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
-          companyCount = uniqueCos.size;
         }
+
+        // Company count — distinct company_slugs from matching jobs
+        let cq = sb.from('ats_jobs').select('company_slug');
+        cq = buildFilterQuery(effectiveFilters[0], cq, null);
+        cq = cq.limit(2000);
+        const { data: coRows } = await cq;
+        const uniqueCos = new Set();
+        if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+        companyCount = uniqueCos.size;
 
         updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
       } catch (e) {
