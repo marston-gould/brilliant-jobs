@@ -4056,8 +4056,8 @@
 
     qbInputWhere.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
-        // If dropdown is open and has results, pick the first one on Enter
-        if (e.key === 'Enter' && locationDropdown.classList.contains('open')) {
+        // If dropdown is open and has results, force selection from dropdown
+        if (locationDropdown.classList.contains('open')) {
           const first = locationDropdown.querySelector('.company-opt');
           if (first) {
             e.preventDefault();
@@ -4066,11 +4066,9 @@
           }
         }
         if (e.key === ',' || e.key === 'Enter') e.preventDefault();
-        // Fall through to normal pill commit if no dropdown
-        if (!locationDropdown.classList.contains('open')) {
-          commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'where' }));
-          renderAllPills();
-        }
+        // Fall through to normal pill commit only if no dropdown
+        commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'where' }));
+        renderAllPills();
         locationDropdown.classList.remove('open');
       } else if (e.key === 'Backspace' && qbInputWhere.value === '' && wherePills.length > 0) {
         wherePills.pop(); renderAllPills();
