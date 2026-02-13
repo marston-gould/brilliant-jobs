@@ -686,6 +686,8 @@
       color: #fff; margin-right: 5px; vertical-align: middle; flex-shrink: 0;
     }
     .job-table .jt-company { font-weight: 500; color: var(--text); }
+    .jt-new-badge { font-size: 9px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 5px; border-radius: 3px; margin-left: 5px; letter-spacing: 0.3px; vertical-align: middle; animation: newBadgePulse 2s ease-in-out; }
+    @keyframes newBadgePulse { 0% { opacity: 0; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.05); } 100% { transform: scale(1); } }
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
     .job-table .jt-ghost { font-family: var(--mono); font-size: 12px; font-weight: 600; }
@@ -1492,7 +1494,8 @@
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="j-total">0</div><div class="stat-label">Total Jobs</div></div>
             <div class="stat-card"><div class="stat-val" id="j-companies">0</div><div class="stat-label">Companies</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New 24H</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-new-login" style="color:var(--accent);">0</div><div class="stat-label">New Since Login</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New 1D</div></div>
             <div class="stat-card" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
           </div>
 
@@ -2240,6 +2243,7 @@
       setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
       loadStats();
       checkExtensionStatus();
+      loadCollections();
     }
     init();
 
@@ -2827,7 +2831,7 @@
           <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
           <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved filters above, or use the filter builder.</div>
         </td></tr>`;
-        updateJobStats(0, 0, 0);
+        updateJobStats(0, 0, 0, 0);
         $('#filter-count').textContent = '';
         return;
       }
@@ -2873,7 +2877,7 @@
             <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
             <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
           </td></tr>`;
-          updateJobStats(0, 0, 0);
+          updateJobStats(0, 0, 0, 0);
           $('#filter-count').textContent = '';
           return;
         }
@@ -3024,11 +3028,14 @@
       try {
         const now = new Date();
         const last24h = new Date(now.getTime() - 86400000);
+        const lastFeedView = localStorage.getItem('bj_last_feed_view');
+        const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
         const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-        // Count total + today + unique companies across all checked filters
+        // Count total + today + new-since-login + unique companies across all checked filters
         let total = 0;
         let todayCount = 0;
+        let newSinceLoginCount = 0;
         const companies = new Set();
 
         for (const sf of filters) {
@@ -3059,6 +3066,15 @@
 
           todayCount += Math.max(c2a || 0, c2b || 0);
 
+          // New since last login
+          if (lastViewDate) {
+            let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+            qLogin = buildFilterQuery(sf, qLogin, locIds);
+            qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
+            const { count: cLogin } = await qLogin;
+            newSinceLoginCount += (cLogin || 0);
+          }
+
           // Companies (sample)
           let q3 = sb.from('ats_jobs').select('company_name');
           q3 = buildFilterQuery(sf, q3, locIds);
@@ -3067,15 +3083,16 @@
           if (cos) cos.forEach(c => { if (c.company_name) companies.add(c.company_name); });
         }
 
-        updateJobStats(total, companies.size, todayCount);
+        updateJobStats(total, companies.size, newSinceLoginCount, todayCount);
       } catch (e) {
         console.error('Stats update error:', e);
       }
     }
 
-    function updateJobStats(total, companies, newToday) {
+    function updateJobStats(total, companies, newSinceLogin, newToday) {
       $('#j-total').textContent = total.toLocaleString();
       $('#j-companies').textContent = companies.toLocaleString();
+      $('#j-new-login').textContent = newSinceLogin.toLocaleString();
       $('#j-new').textContent = newToday.toLocaleString();
       $('#j-saved').textContent = savedJobIds.length.toLocaleString();
     }
@@ -3106,7 +3123,12 @@
       const tbody = $('#job-table-body');
       const now = new Date();
 
+      // Get last feed view timestamp for NEW badge
+      const lastFeedView = localStorage.getItem('bj_last_feed_view');
+      const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
+
       let html = '';
+      let newCount = 0;
       for (const job of jobs) {
         const daysAgo = job.updated_at ? Math.floor((now - new Date(job.updated_at)) / 86400000) : '—';
         const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
@@ -3145,9 +3167,14 @@
             ? `<span class="level-badge" style="background:${levelInfo.color}20;color:${levelInfo.color};">${levelInfo.label}</span>`
             : '—';
 
+        // NEW badge — job first seen after last feed view
+        const isNew = lastViewDate && job.first_seen_at && new Date(job.first_seen_at) > lastViewDate;
+        if (isNew) newCount++;
+        const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
+
         html += `<tr data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location), 35)}</td>
           <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
@@ -3174,6 +3201,18 @@
       }
 
       tbody.innerHTML = html;
+
+      // Update last feed view timestamp (so NEW badges refresh next visit)
+      localStorage.setItem('bj_last_feed_view', new Date().toISOString());
+
+      // Show new jobs count in filter stats area if any
+      if (newCount > 0) {
+        const countEl = $('#filter-count');
+        if (countEl) {
+          const existing = countEl.textContent;
+          countEl.innerHTML = `${existing} <span style="color:var(--accent);font-weight:600;margin-left:6px;">🆕 ${newCount} new since last visit</span>`;
+        }
+      }
 
       // Background salary enrichment — fetch specs for jobs without salary
       backgroundEnrichSalary();
@@ -3675,7 +3714,7 @@
       
       // Refresh pipeline in background
       renderPipelineSaved();
-      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new').textContent);
+      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
     }
 
     function modalSave(jobId, btn) {
@@ -3704,7 +3743,7 @@
           }
         }
       }
-      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new').textContent);
+      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
     }
 
     function modalHide(jobId) {
@@ -4568,8 +4607,7 @@
       }
     };
 
-    // Load collections on startup
-    loadCollections();
+    // Collections loaded in init() after auth
 
     // ---- Location autocomplete / disambiguation ----
     const qbInputWhere = $('#qb-input-where');
@@ -4981,7 +5019,7 @@
         <div style="width:16px;"></div>
         <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
         <div style="display:flex;gap:6px;">
-          <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">24H</div>
+          <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">1D</div>
           <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">7D</div>
           <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">30D</div>
         </div>
