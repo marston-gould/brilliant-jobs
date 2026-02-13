@@ -1466,8 +1466,9 @@
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">Where</label>
-              <div class="query-builder" id="query-builder-where">
-                <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, remote…">
+              <div class="query-builder" id="query-builder-where" style="position:relative;">
+                <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, remote…" autocomplete="off">
+                <div id="location-dropdown" class="company-dropdown"></div>
               </div>
             </div>
             <div class="qb-row">
@@ -3771,26 +3772,7 @@
       commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
     });
 
-    // Input handling — Where row
-    const qbInputWhere = $('#qb-input-where');
-    qbInputWhere.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ',') {
-        e.preventDefault();
-        commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'location', radius: DEFAULT_RADIUS }));
-      } else if (e.key === 'Tab') {
-        if (qbInputWhere.value.trim()) {
-          e.preventDefault();
-          commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'location', radius: DEFAULT_RADIUS }));
-          focusNextInput('qb-input-where');
-        }
-      } else if (e.key === 'Backspace' && qbInputWhere.value === '' && wherePills.length > 0) {
-        wherePills.pop();
-        renderAllPills();
-      }
-    });
-    qbInputWhere.addEventListener('blur', () => {
-      commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'location', radius: DEFAULT_RADIUS }));
-    });
+    // Input handling — Where row (handled by location autocomplete section below)
 
     // Click builders to focus respective inputs
     $('#query-builder-what').addEventListener('click', e => {
@@ -3954,6 +3936,128 @@
       return text.slice(0, idx) +
         '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
         text.slice(idx + query.length);
+    }
+
+    // ---- Location autocomplete / disambiguation ----
+    const qbInputWhere = $('#qb-input-where');
+    const locationDropdown = $('#location-dropdown');
+    let locationSearchTimeout;
+
+    qbInputWhere.addEventListener('input', () => {
+      const q = qbInputWhere.value.trim();
+      if (q.length < 2) { locationDropdown.classList.remove('open'); return; }
+      clearTimeout(locationSearchTimeout);
+      locationSearchTimeout = setTimeout(() => searchLocations(q), 200);
+    });
+
+    qbInputWhere.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+        // If dropdown is open and has results, pick the first one on Enter
+        if (e.key === 'Enter' && locationDropdown.classList.contains('open')) {
+          const first = locationDropdown.querySelector('.company-opt');
+          if (first) {
+            e.preventDefault();
+            selectLocation(first.dataset.name, first.dataset.raw);
+            return;
+          }
+        }
+        if (e.key === ',' || e.key === 'Enter') e.preventDefault();
+        // Fall through to normal pill commit if no dropdown
+        if (!locationDropdown.classList.contains('open')) {
+          commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'where' }));
+          renderAllPills();
+        }
+        locationDropdown.classList.remove('open');
+      } else if (e.key === 'Backspace' && qbInputWhere.value === '' && wherePills.length > 0) {
+        wherePills.pop(); renderAllPills();
+      } else if (e.key === 'Escape') {
+        locationDropdown.classList.remove('open');
+      } else if (e.key === 'ArrowDown' && locationDropdown.classList.contains('open')) {
+        e.preventDefault();
+        const first = locationDropdown.querySelector('.company-opt');
+        if (first) first.focus();
+      }
+    });
+
+    qbInputWhere.addEventListener('blur', () => {
+      setTimeout(() => { locationDropdown.classList.remove('open'); }, 200);
+    });
+
+    async function searchLocations(query) {
+      try {
+        // Search location_cache for matches
+        const { data, error } = await sb
+          .from('location_cache')
+          .select('raw_input, normalized, lat, lng, is_remote')
+          .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`)
+          .limit(20);
+
+        if (error) { console.warn('[BJ] Location search error:', error.message); return; }
+        if (!data || data.length === 0) { locationDropdown.classList.remove('open'); return; }
+
+        // Dedupe by normalized name and group
+        const seen = new Map();
+        data.forEach(loc => {
+          const key = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
+          if (!seen.has(key)) {
+            seen.set(key, loc);
+          }
+        });
+
+        const results = [...seen.values()].slice(0, 10);
+
+        // Sort: exact prefix matches first, then alphabetical
+        const ql = query.toLowerCase();
+        results.sort((a, b) => {
+          const aStart = (a.normalized || a.raw_input).toLowerCase().startsWith(ql) ? 0 : 1;
+          const bStart = (b.normalized || b.raw_input).toLowerCase().startsWith(ql) ? 0 : 1;
+          if (aStart !== bStart) return aStart - bStart;
+          return (a.normalized || '').localeCompare(b.normalized || '');
+        });
+
+        renderLocationDropdown(results, query);
+      } catch (e) {
+        console.warn('[BJ] Location search failed:', e);
+      }
+    }
+
+    function renderLocationDropdown(results, query) {
+      if (results.length === 0) { locationDropdown.classList.remove('open'); return; }
+
+      locationDropdown.innerHTML = results.map(r => {
+        const display = r.normalized || r.raw_input;
+        const badge = r.is_remote
+          ? '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>'
+          : r.lat && r.lng
+            ? '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>'
+            : '';
+        const hl = highlightCompanyMatch(display, query);
+        return `<div class="company-opt" tabindex="0" data-name="${display.replace(/"/g,'&quot;')}" data-raw="${(r.raw_input||'').replace(/"/g,'&quot;')}">
+          <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+      }).join('');
+
+      locationDropdown.classList.add('open');
+
+      locationDropdown.querySelectorAll('.company-opt').forEach(opt => {
+        opt.addEventListener('mousedown', e => {
+          e.preventDefault();
+          selectLocation(opt.dataset.name, opt.dataset.raw);
+        });
+        opt.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); selectLocation(opt.dataset.name, opt.dataset.raw); }
+          if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+          if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhere.focus(); }
+          if (e.key === 'Escape') { locationDropdown.classList.remove('open'); qbInputWhere.focus(); }
+        });
+      });
+    }
+
+    function selectLocation(normalized, raw) {
+      qbInputWhere.value = normalized;
+      commitPill(qbInputWhere, wherePills, r => ({ values: [r], type: 'where' }));
+      renderAllPills();
+      locationDropdown.classList.remove('open');
+      qbInputWhere.value = '';
     }
 
     // Input handling — What Not row
