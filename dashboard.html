@@ -2956,6 +2956,20 @@
       const rawContent = job.content || job.description || null;
       if (rawContent) {
         bodyEl.innerHTML = decodeJobContent(rawContent);
+        // Parse salary from cached content if not already parsed
+        if (!job.salary_min) {
+          const salary = parseSalaryFromContent(rawContent);
+          if (salary) {
+            job.salary_min = salary.min;
+            job.salary_max = salary.max;
+            console.log(`[BJ] Salary extracted (cached): $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
+            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw })
+              .eq('greenhouse_id', jobId).then(() => {});
+            // Update salary cell in feed
+            const row = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
+            if (row) row.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+          }
+        }
       } else {
         // Show loading state and fetch on demand
         bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
@@ -3160,6 +3174,9 @@
                 updateData.salary_raw = salary.raw;
                 if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; }
                 console.log(`[BJ] Salary extracted: $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
+                // Update salary cell in feed
+                const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
+                if (salaryCell) salaryCell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
               }
               sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
               return;
