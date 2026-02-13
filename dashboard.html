@@ -481,6 +481,7 @@
     .sf-item-check { flex-shrink: 0; margin: 0; cursor: pointer; }
     .sf-item-counts {
       display: flex; gap: 6px; flex-shrink: 0; margin-left: auto;
+      background: var(--bg-input); border-radius: 8px; padding: 4px 8px;
     }
     .sf-count {
       font-family: var(--mono); font-size: 10px; font-weight: 600;
@@ -541,23 +542,26 @@
     }
     .sf-item:hover { background: var(--bg-hover); color: var(--text); }
     .sf-num {
-      width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+      width: 16px; height: 16px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0;
     }
     .sf-item-info { flex: 1; min-width: 0; }
     .sf-item-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .sf-item-meta { font-size: 10px; color: var(--text-faint); margin-top: 1px; }
     .sf-item .sf-del {
       opacity: 0; font-size: 14px; color: var(--text-faint); cursor: pointer;
-      padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-left: 8px;
+      padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
     }
     .sf-item:hover .sf-del { opacity: 1; }
+    .sf-item:hover .sf-dup { opacity: 0.7; }
+    .sf-item:hover .sf-dup:hover { opacity: 1; color: var(--accent); }
     .sf-item:hover .sf-levels-btn { opacity: 0.7; }
     .sf-item .sf-levels-btn:hover { opacity: 1; color: var(--accent); }
     .sf-item .sf-del:hover { color: var(--red); background: var(--red-dim); }
 
     .sf-item-pills {
-      display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 1; margin-left: 8px; overflow: hidden; max-width: 50%;
+      display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 1; overflow: hidden; max-width: 50%;
+      background: var(--bg-input); border-radius: 8px; padding: 4px 8px;
     }
     .sf-mini-pill {
       font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 10px;
@@ -568,7 +572,11 @@
     .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
     .sf-mini-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.15); color: #ec4899; }
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
-    .sf-mini-pill.not-pill { background: rgba(148,163,184,0.06); border-color: rgba(148,163,184,0.15); color: #94a3b8; }
+    /* Not-pills: gray interior with colored outlines matching source row */
+    .sf-mini-pill.not-pill { background: rgba(148,163,184,0.06); color: var(--text-faint); }
+    .sf-mini-pill.not-pill.not-what { border-color: rgba(99,102,241,0.35); }
+    .sf-mini-pill.not-pill.not-where { border-color: rgba(245,158,11,0.35); }
+    .sf-mini-pill.not-pill.not-who { border-color: rgba(236,72,153,0.35); }
     .tuning-level-cb {
 
     }
@@ -675,13 +683,19 @@
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
-    .job-preview-snippet {
-      display: none; font-size: 11px; color: var(--text-faint); line-height: 1.4;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
-      margin-top: 2px;
+    .job-table tr.job-snippet-row { display: none; }
+    .job-table tr.job-snippet-row td {
+      padding: 0 12px 8px 12px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.01);
     }
-    .job-preview-snippet .preview-more { color: var(--accent); cursor: pointer; font-weight: 600; margin-left: 4px; }
-    .show-previews .job-preview-snippet { display: block; }
+    .job-snippet-text {
+      font-size: 11px; color: var(--text-faint); line-height: 1.3;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 100%; display: block;
+    }
+    .job-snippet-text .preview-more { color: var(--accent); cursor: pointer; font-weight: 600; }
+    .show-previews tr.job-snippet-row { display: table-row; }
+    .show-previews tr.job-data-row td { border-bottom: none !important; padding-bottom: 2px; }
     .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; text-transform: lowercase; }
     .job-title-link { cursor: pointer; transition: color 0.1s; }
     .job-title-link:hover { color: var(--accent) !important; text-decoration: underline; }
@@ -3093,28 +3107,89 @@
       return str.length > max ? str.slice(0, max) + '…' : str;
     }
 
-    function formatLocation(raw, locDisplay) {
-      // Prefer normalized display if available
-      if (locDisplay) return locDisplay;
-      if (!raw) return '—';
-      let loc = raw;
-      loc = loc.replace(/,?\s*United States of America/gi, ', US');
-      loc = loc.replace(/,?\s*United States/gi, ', US');
-      loc = loc.replace(/Remote\s*[-–—]\s*,?\s*US/gi, 'Remote – US');
-      loc = loc.replace(/Remote\s*[-–—]\s*/gi, 'Remote – ');
-      loc = loc.replace(/(,\s*US)+/g, ', US');
-      loc = loc.replace(/^[,\s]+/, '');
-      if (loc === ', US' || loc === 'US') loc = 'US';
-      if (loc.includes(';')) {
-        const parts = loc.split(';').map(s => s.trim()).filter(Boolean);
-        loc = parts.length > 2 ? parts.slice(0, 2).join('; ') + ' +' + (parts.length - 2) : parts.join('; ');
-      }
-      return loc;
+    // City alias map for display normalization
+    const CITY_ALIASES = {
+      'new york city': 'new york',
+      'nyc': 'new york',
+      'la': 'los angeles',
+      'sf': 'san francisco',
+      'dc': 'washington',
+      'philly': 'philadelphia',
+    };
+
+    function normalizeCity(name) {
+      if (!name) return '';
+      const lower = name.toLowerCase().trim();
+      return CITY_ALIASES[lower] || lower;
     }
+
+    function cleanLocationPart(part) {
+      let s = part.trim();
+      // "United States of America - Pasadena, CA" → "Pasadena, CA"
+      s = s.replace(/United States of America\s*[-–—]\s*/gi, '');
+      s = s.replace(/United States\s*[-–—]\s*/gi, '');
+      // "Remote - US" → "remote, us"
+      s = s.replace(/Remote\s*[-–—]\s*/gi, 'remote, ');
+      // Trailing "United States of America" or "United States"
+      s = s.replace(/,?\s*United States of America/gi, '');
+      s = s.replace(/,?\s*United States/gi, '');
+      // Clean up
+      s = s.replace(/^[,\s]+|[,\s]+$/g, '');
+      // If just country code left, normalize
+      if (/^us$/i.test(s)) s = 'us';
+      return s;
+    }
+
+    function formatLocation(raw, locDisplay, negativeLocations) {
+      const hasNegs = negativeLocations && negativeLocations.length > 0;
+
+      // If no negative filters and we have a clean display, use it
+      if (!hasNegs && locDisplay) return locDisplay;
+      if (!raw) return locDisplay || '—';
+
+      // Split on semicolons (multi-location) or if no semicolons, treat as single
+      const rawParts = raw.includes(';') ? raw.split(';') : [raw];
+      const cleaned = rawParts.map(cleanLocationPart).filter(Boolean);
+
+      if (cleaned.length === 0) return locDisplay || '—';
+
+      // If we have negative location filters, skip matching parts
+      let displayParts = cleaned;
+      if (hasNegs) {
+        const negNormalized = negativeLocations.map(n => normalizeCity(n));
+        displayParts = cleaned.filter(part => {
+          const partLower = part.toLowerCase();
+          return !negNormalized.some(neg =>
+            partLower.includes(neg) || normalizeCity(partLower).includes(neg)
+          );
+        });
+        // If all filtered out, show first original
+        if (displayParts.length === 0) displayParts = cleaned;
+      }
+
+      if (displayParts.length === 1) return displayParts[0];
+      // Show first city + count of remaining
+      const remaining = displayParts.length - 1;
+      return displayParts[0] + ` +${remaining}`;
+    }
+
 
     function renderJobRows(jobs, total, page) {
       const tbody = $('#job-table-body');
       const now = new Date();
+
+      // Collect active negative location terms for display
+      const activeNegLocs = [];
+      const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+      for (const pill of whereNotPills) {
+        for (const v of (pill.values || [])) {
+          const t = v.trim().replace(/^nor\s+/i, '');
+          if (t) activeNegLocs.push(t);
+        }
+      }
+      for (const pill of (tuning.locationExcludes || [])) {
+        for (const v of (pill.values || [])) activeNegLocs.push(v);
+      }
 
       // Get last feed view timestamp for NEW badge
       const lastFeedView = localStorage.getItem('bj_last_feed_view');
@@ -3165,22 +3240,21 @@
         if (isNew) newCount++;
         const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
-        html += `<tr data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+        html += `<tr class="job-data-row" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}
-            <div class="job-preview-snippet" data-preview-id="${job.greenhouse_id}"></div>
-          </td>
-          <td class="jt-company">${truncate(job.company_name, 30)}</td>
-          <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display), 35)}</td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+          <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
+          <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
           <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
           <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
-          <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
+          <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
             ${saveBtn}${applyBtn}
-          </td>
-        </tr>`;
+          </div></td>
+        </tr>
+        <tr class="job-snippet-row"><td colspan="10"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td></tr>`;
       }
 
       // Pagination row
@@ -3328,7 +3402,17 @@
       });
     }
 
-    // Strip HTML and extract plain text snippet from job content
+    // Strip common Greenhouse slug suffixes from company names
+    function cleanCompanyName(name) {
+      if (!name) return '';
+      let n = name;
+      // Remove common slug junk suffixes (case-insensitive, greedy)
+      n = n.replace(/\s*(jobs?apply(?:now)?|careers?|jobs?|hiring|recruit(?:ing|ment)?|talent|hr|apply(?:now)?|greenhouse|workday|ats)\s*$/i, '');
+      // Repeat in case of stacking: "companyjobsapplynow" → strip "applynow" then "jobs"
+      n = n.replace(/(jobs?apply(?:now)?|careers?|jobs?|hiring|recruit(?:ing|ment)?|talent|hr|apply(?:now)?|greenhouse|workday|ats)$/i, '');
+      n = n.replace(/(jobs?apply(?:now)?|careers?|jobs?|hiring|recruit(?:ing|ment)?|talent|apply(?:now)?)$/i, '');
+      return n.trim() || name;
+    }
     function extractSnippet(html, maxLen) {
       if (!html) return '';
       const div = document.createElement('div');
@@ -3341,7 +3425,7 @@
 
     // Load preview snippets for all visible jobs
     async function loadPreviewSnippets() {
-      const snippetEls = document.querySelectorAll('.job-preview-snippet[data-preview-id]');
+      const snippetEls = document.querySelectorAll('.job-snippet-text[data-preview-id]');
       if (!snippetEls.length) return;
 
       for (const el of snippetEls) {
@@ -5136,14 +5220,15 @@
 
       // Column headers
       list.innerHTML = `<div style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:8px;">
+        <div style="width:20px;"></div>
         <div style="width:16px;"></div>
         <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;background:var(--bg-input);border-radius:8px;padding:4px 8px;">
           <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">1D</div>
           <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">7D</div>
           <div style="font-size:9px;font-weight:700;color:var(--text-faint);min-width:42px;text-align:center;line-height:1.3;">30D</div>
         </div>
-        <div style="width:24px;"></div>
+        <div style="width:48px;"></div>
       </div>` + sorted.map(sf => {
         const ago = sf.createdAt ? timeAgo(sf.createdAt) : '';
         const meta = ago ? `created ${ago}` : '';
@@ -5159,9 +5244,9 @@
           ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
           ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
           ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
-          ...(sf.whatNotPills || []).map(p => ({ ...p, row: 'not' })),
-          ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not' })),
-          ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not' })),
+          ...(sf.whatNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'what' })),
+          ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'where' })),
+          ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'who' })),
         ];
         // Legacy: convert old salaryMin/Max to pay pill
         if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
@@ -5190,7 +5275,7 @@
             else if (p.row === 'when') cls = 'when-pill';
             else if (p.row === 'who') cls = 'who-pill';
             else if (p.row === 'pay') cls = 'pay-pill';
-            else if (p.row === 'not') cls = 'not-pill';
+            else if (p.row === 'not') cls = 'not-pill' + (p.notSource ? ' not-' + p.notSource : '');
             else if (p.type === 'type' || locationWords.test(val)) cls = 'location-pill';
             else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
             // else default blue for keyword/what
@@ -5205,6 +5290,7 @@
         const filterColor = filterColors[(filterNum - 1) % filterColors.length];
 
         return `<div class="sf-item" data-idx="${sf._idx}" data-filternum="${filterNum}">
+          <span class="sf-del" data-delidx="${sf._idx}" title="Delete filter">✕</span>
           <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
           <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
           <div class="sf-item-info">
@@ -5217,7 +5303,7 @@
             <span class="sf-count sf-count-week">${jWeek}</span>
             <span class="sf-count sf-count-month">${jMonth}</span>
           </div>
-          <span class="sf-del" data-delidx="${sf._idx}">✕</span>
+          <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
           <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.levelHierarchy ? 'Custom levels — click to edit' : 'Customize level hierarchy'}" style="font-size:10px;color:${sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
         </div>`;
       }).join('');
@@ -5268,6 +5354,27 @@
         el.addEventListener('click', e => {
           e.stopPropagation();
           savedFilters.splice(parseInt(el.dataset.delidx), 1);
+          localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+          renderSavedFilters();
+        });
+      });
+
+      // Bind duplicate
+      list.querySelectorAll('.sf-dup').forEach(el => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          const idx = parseInt(el.dataset.dupidx);
+          const original = savedFilters[idx];
+          if (!original) return;
+          const copy = JSON.parse(JSON.stringify(original));
+          copy.name = original.name + ' (copy)';
+          copy.createdAt = Date.now();
+          copy.lastUsed = null;
+          copy.useCount = 0;
+          copy.jobsToday = null;
+          copy.jobsWeek = null;
+          copy.jobsMonth = null;
+          savedFilters.push(copy);
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
           renderSavedFilters();
         });
