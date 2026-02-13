@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taking a Coffee Break | Brilliant Jobs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0a0e1a;
+    font-family: 'Outfit', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 500px 400px at 30% 40%, rgba(245,158,11,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 400px 400px at 70% 60%, rgba(61,126,255,0.05) 0%, transparent 70%);
+    animation: warmPulse 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes warmPulse {
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 40px;
+    max-width: 560px;
+  }
+
+  .icon {
+    font-size: 100px;
+    line-height: 1;
+    margin-bottom: 16px;
+    display: inline-block;
+    animation: steam 3s ease-in-out infinite;
+  }
+
+  @keyframes steam {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Steam wisps */
+  .steam-wrap {
+    position: relative;
+    display: inline-block;
+  }
+
+  .steam {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(148,163,184,0.15);
+    filter: blur(3px);
+    animation: rise 2.5s ease-out infinite;
+  }
+
+  .steam:nth-child(1) { left: 35%; animation-delay: 0s; }
+  .steam:nth-child(2) { left: 50%; animation-delay: 0.8s; }
+  .steam:nth-child(3) { left: 65%; animation-delay: 1.6s; }
+
+  @keyframes rise {
+    0% { transform: translateY(0) scale(1); opacity: 0.6; }
+    50% { transform: translateY(-30px) scale(1.5) translateX(5px); opacity: 0.3; }
+    100% { transform: translateY(-60px) scale(2) translateX(-5px); opacity: 0; }
+  }
+
+  .tagline {
+    font-size: 28px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+
+  .tagline span {
+    color: #f59e0b;
+  }
+
+  .sub {
+    font-size: 15px;
+    font-weight: 300;
+    color: #475569;
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+
+  .status-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.12);
+    border-radius: 10px;
+    margin-bottom: 32px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+  }
+
+  .status-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #f59e0b;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .reason {
+    font-size: 13px;
+    font-weight: 300;
+    color: #334155;
+    margin-bottom: 36px;
+    line-height: 1.7;
+  }
+
+  .reason a {
+    color: #3d7eff;
+    text-decoration: none;
+  }
+  .reason a:hover { text-decoration: underline; }
+
+  .btn {
+    display: inline-block;
+    padding: 14px 32px;
+    background: rgba(148,163,184,0.08);
+    color: #94a3b8;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border: 1px solid rgba(148,163,184,0.15);
+    border-radius: 10px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn:hover {
+    background: rgba(148,163,184,0.12);
+    border-color: rgba(148,163,184,0.25);
+    transform: translateY(-1px);
+  }
+
+  .countdown {
+    margin-top: 40px;
+    font-size: 12px;
+    color: #334155;
+    font-weight: 300;
+  }
+
+  .countdown span {
+    font-weight: 600;
+    color: #475569;
+    font-family: 'Outfit', monospace;
+  }
+
+  .jokes {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(148,163,184,0.06);
+  }
+
+  .joke {
+    font-size: 12px;
+    color: #334155;
+    font-weight: 300;
+    font-style: italic;
+    transition: opacity 0.5s ease;
+  }
+
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    animation: drift linear infinite;
+  }
+
+  @keyframes drift {
+    0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10% { opacity: 0.5; }
+    90% { opacity: 0.5; }
+    100% { transform: translateY(-10vh) translateX(30px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="steam-wrap">
+      <div class="steam"></div>
+      <div class="steam"></div>
+      <div class="steam"></div>
+      <div class="icon">☕</div>
+    </div>
+    <div class="tagline">Taking a <span>coffee break</span></div>
+    <div class="sub">Even brilliant things need a moment to recharge.</div>
+
+    <div class="status-box">
+      <div class="status-dot"></div>
+      <div class="status-text">Service temporarily unavailable</div>
+    </div>
+
+    <div class="reason">
+      Our database is having a moment. It's not you, it's us.<br>
+      Check <a href="https://status.supabase.com" target="_blank" rel="noopener">Supabase status</a> for live updates.
+    </div>
+
+    <button class="btn" onclick="location.reload()">Try Again</button>
+
+    <div class="countdown">
+      Auto-retry in <span id="timer">30</span>s
+    </div>
+
+    <div class="jokes">
+      <div class="joke" id="joke"></div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-retry countdown
+    let seconds = 30;
+    const timerEl = document.getElementById('timer');
+    const interval = setInterval(() => {
+      seconds--;
+      timerEl.textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        location.reload();
+      }
+    }, 1000);
+
+    // Rotating jokes
+    const jokes = [
+      "At least you're not getting ghosted by a recruiter right now.",
+      "Fun fact: the average job posting gets 250 applications. You're not missing much.",
+      "This is what happens when the cloud takes a personal day.",
+      "Our servers are out networking. Literally.",
+      "Think of this as a practice round for handling rejection.",
+      "Pro tip: use this time to update your LinkedIn headline.",
+      "The database is in a meeting that could've been an email.",
+      "We're experiencing unprecedented demand. (Every company says that, right?)",
+      "Our hamsters needed a water break. They power the servers.",
+      "This downtime is more reliable than most recruiter callbacks.",
+    ];
+    
+    let jokeIdx = Math.floor(Math.random() * jokes.length);
+    const jokeEl = document.getElementById('joke');
+    jokeEl.textContent = jokes[jokeIdx];
+
+    setInterval(() => {
+      jokeEl.style.opacity = 0;
+      setTimeout(() => {
+        jokeIdx = (jokeIdx + 1) % jokes.length;
+        jokeEl.textContent = jokes[jokeIdx];
+        jokeEl.style.opacity = 1;
+      }, 500);
+    }, 6000);
+
+    // Particles
+    for (let i = 0; i < 12; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.animationDuration = (10 + Math.random() * 15) + 's';
+      p.style.animationDelay = Math.random() * 8 + 's';
+      p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+      p.style.background = Math.random() > 0.5 
+        ? 'rgba(245,158,11,0.12)' 
+        : 'rgba(148,163,184,0.08)';
+      document.body.appendChild(p);
+    }
+  </script>
+</body>
+</html>
