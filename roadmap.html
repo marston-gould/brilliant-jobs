@@ -341,7 +341,9 @@ const features = [
 
   // ═══════════════ IN PROGRESS ═══════════════
   { s: 'done', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
-  { s: 'progress', n: 'Daily job refresh cron', d: 'Re-scrape Greenhouse boards via Supabase Edge Function on pg_cron schedule', p: 2 },
+  { s: 'progress', n: 'Daily job refresh cron', d: 'Orchestrator fires at 4AM via pg_cron → dispatches refresh-jobs batches. Partially working: ~1-2K jobs/day updating vs expected 110K. Child functions timing out — needs Edge Function log investigation.', p: 2 },
+  { s: 'todo', n: 'Fix refresh-jobs Edge Function timeouts', d: 'Child batch functions returning null status — likely hitting 150s limit. Reduce batch size or add retry logic.', p: 2 },
+  { s: 'todo', n: 'Mark closed/inactive jobs', d: 'Jobs not found in ATS feed on refresh get is_active=false and closed_at timestamp. Dashboard filters to active-only by default.', p: 2 },
   { s: 'done', n: 'NOT filter fix', d: 'Fixed NOR prefix stripping, commitPill recognizes both or/nor, values cleaned before query', p: 2 },
 
   // ═══════════════ PLANNED ═══════════════
@@ -429,19 +431,54 @@ const features = [
   { s: 'todo', n: 'Warm intro pathways', d: 'You → Sarah → Tom at Company X — multi-hop connection mapping', p: 8 },
   { s: 'todo', n: 'Hiring velocity detection and alerts', d: 'Company posting 10x more jobs than usual → alert subscribed users', p: 8 },
 
-  // Phase 9 — Multi-ATS
-  { s: 'todo', n: 'Lever job scraper', d: 'Fetch open roles from jobs.lever.co/{company} public API', p: 9 },
-  { s: 'todo', n: 'Workable job scraper', d: 'Fetch open roles from apply.workable.com/{company} public API', p: 9 },
-  { s: 'todo', n: 'Ashby job scraper', d: 'Fetch open roles from Ashby public board API', p: 9 },
-  { s: 'todo', n: 'Indeed RSS feed integration', d: 'Poll rss.indeed.com for keyword/location job feeds', p: 9 },
-  { s: 'todo', n: 'TheirStack integration for bulk board discovery', d: 'Import 24K+ Greenhouse, 11K Lever, 35K Workable slugs', p: 9 },
-  { s: 'todo', n: 'LinkedIn outbound link → ATS board discovery', d: 'During scanning, capture outbound links to Greenhouse/Lever/Workable boards', p: 9 },
+  // Phase 9 — Multi-ATS: Per-Source Roadmaps
+  // Each data source follows: Discovery → Scrape → Normalize → Refresh → Dedup
+
+  // ── Greenhouse (ACTIVE) ──
+  { s: 'done', n: '[GH] Board discovery — 1,900 slugs via prefix brute-force', d: 'Two-letter prefix scan across boards-api.greenhouse.io', p: 9 },
+  { s: 'done', n: '[GH] Initial scrape — 110K+ jobs', d: 'Full metadata: title, location, department, URL, updated_at', p: 9 },
+  { s: 'done', n: '[GH] Location normalization', d: 'Postgres function parses raw → loc_city/state/country/type/display', p: 9 },
+  { s: 'progress', n: '[GH] Daily refresh cron', d: 'Orchestrator + batch functions deployed but child functions timing out', p: 9 },
+  { s: 'todo', n: '[GH] Closed job detection', d: 'Mark jobs not in feed as is_active=false with closed_at timestamp', p: 9 },
+  { s: 'todo', n: '[GH] New board discovery via TheirStack', d: 'Import 24K+ Greenhouse slugs, diff against existing 1,900', p: 9 },
+  { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', p: 9 },
+
+  // ── Lever ──
+  { s: 'todo', n: '[LV] Board discovery', d: 'TheirStack has 11K+ Lever slugs. Also probe jobs.lever.co/{slug} from company names', p: 9 },
+  { s: 'todo', n: '[LV] Job scraper', d: 'Fetch open roles from jobs.lever.co/{company}?mode=json public API', p: 9 },
+  { s: 'todo', n: '[LV] Location normalization', d: 'Run same normalize_job_locations() — extend for Lever location format quirks', p: 9 },
+  { s: 'todo', n: '[LV] Daily refresh cron', d: 'Add Lever boards to orchestrator batch rotation', p: 9 },
+  { s: 'todo', n: '[LV] Closed job detection', d: 'Same pattern — mark missing jobs inactive on refresh', p: 9 },
+
+  // ── Workable ──
+  { s: 'todo', n: '[WK] Board discovery', d: 'TheirStack has 35K+ Workable slugs. Probe apply.workable.com/{slug}', p: 9 },
+  { s: 'todo', n: '[WK] Job scraper', d: 'Fetch open roles from apply.workable.com/{company} public API', p: 9 },
+  { s: 'todo', n: '[WK] Location normalization', d: 'Extend normalizer for Workable format', p: 9 },
+  { s: 'todo', n: '[WK] Daily refresh cron', d: 'Add Workable boards to orchestrator', p: 9 },
+  { s: 'todo', n: '[WK] Closed job detection', d: 'Mark missing jobs inactive', p: 9 },
+
+  // ── Ashby ──
+  { s: 'todo', n: '[ASH] Board discovery', d: 'Probe Ashby public board API from known company names', p: 9 },
+  { s: 'todo', n: '[ASH] Job scraper', d: 'Fetch open roles from Ashby public board API', p: 9 },
+  { s: 'todo', n: '[ASH] Normalize + refresh + dedup', d: 'Full pipeline: normalize, cron, closed detection, cross-source dedup', p: 9 },
+
+  // ── Indeed RSS ──
+  { s: 'todo', n: '[IND] RSS feed integration', d: 'Poll rss.indeed.com for keyword/location job feeds', p: 9 },
+  { s: 'todo', n: '[IND] Normalize + refresh + dedup', d: 'Parse RSS XML, normalize locations, dedup against ATS sources', p: 9 },
+
+  // ── USAJobs ──
+  { s: 'todo', n: '[USJ] API integration', d: 'Fetch federal government jobs from developer.usajobs.gov public API', p: 9 },
+  { s: 'todo', n: '[USJ] Normalize + refresh + dedup', d: 'Map USAJobs fields to ats_jobs schema, normalize locations', p: 9 },
+
+  // ── Google Jobs (fallback) ──
+  { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS)', p: 9 },
+
+  // ── Cross-source ──
+  { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across all sources', p: 9 },
+  { s: 'todo', n: 'ATS endpoint probing', d: 'When company names discovered from non-ATS sources, probe GH/LV/WK/ASH to discover which ATS they use', p: 9 },
   { s: 'todo', n: 'DataForSEO outbound link harvesting', d: 'Mine LinkedIn/Indeed company pages for ATS board URLs at scale', p: 9 },
-  { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across aggregator sources', p: 9 },
-  { s: 'todo', n: 'USAJobs API integration', d: 'Fetch federal government jobs from developer.usajobs.gov public API', p: 9 },
-  { s: 'todo', n: 'Regional job aggregation', d: 'Group locations into metro areas (NYC, Bay Area, Chicago) using Census CSA/MSA data — search "NYC Area" matches all boroughs, LI, Newark etc.', p: 9 },
-  { s: 'todo', n: 'ATS endpoint testing', d: 'When company names discovered from non-ATS sources, probe Greenhouse/Lever/Workable/Ashby endpoints to discover which ATS they use', p: 9 },
-  { s: 'todo', n: 'Google Jobs Discovery Engine', d: 'DataForSEO Google Jobs API as fallback for companies on closed ATS platforms', p: 9 },
+  { s: 'todo', n: 'Regional job aggregation', d: 'Group locations into metro areas (NYC, Bay Area, Chicago) using Census CSA/MSA data', p: 9 },
+  { s: 'todo', n: 'Source attribution in feed', d: 'Show GH/LV/WK/ASH/IND badge per job row — already have pill CSS ready', p: 9 },
 
   // Phase 10 — SEO Content
   { s: 'todo', n: 'Public company ghost rate reports', d: 'SEO-friendly pages showing employer hiring accountability scores', p: 10 },
