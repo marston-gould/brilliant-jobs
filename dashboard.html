@@ -3118,7 +3118,7 @@
 
     function normalizeCity(name) {
       if (!name) return '';
-      const lower = name.toLowerCase().trim();
+      const lower = name.toLowerCase().trim().replace(/\s+/g, ' ');
       return CITY_ALIASES[lower] || lower;
     }
 
@@ -3218,7 +3218,7 @@
         for (const sf of filtersToRun) {
           for (const pill of (sf.whereNotPills || [])) {
             for (const v of (pill.values || [])) {
-              const t = v.trim().replace(/^nor\s+/i, '');
+              const t = v.trim().replace(/^nor\s+/i, '').replace(/\s+/g, ' ');
               if (t && !activeNegLocs.includes(t)) activeNegLocs.push(t);
             }
           }
@@ -3226,7 +3226,7 @@
           // by testing if any current job's location contains the term
           for (const pill of (sf.whatNotPills || [])) {
             for (const v of (pill.values || [])) {
-              const t = v.trim().replace(/^nor\s+/i, '');
+              const t = v.trim().replace(/^nor\s+/i, '').replace(/\s+/g, ' ');
               if (t && !activeNegLocs.includes(t)) {
                 const looksLikeLocation = jobs.some(j =>
                   j.location && j.location.toLowerCase().includes(t.toLowerCase())
