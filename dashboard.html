@@ -2811,6 +2811,28 @@
       $('#j-saved').textContent = savedJobIds.length.toLocaleString();
     }
 
+    function truncate(str, max) {
+      if (!str) return '—';
+      return str.length > max ? str.slice(0, max) + '…' : str;
+    }
+
+    function formatLocation(raw) {
+      if (!raw) return '—';
+      let loc = raw;
+      loc = loc.replace(/,?\s*United States of America/gi, ', US');
+      loc = loc.replace(/,?\s*United States/gi, ', US');
+      loc = loc.replace(/Remote\s*[-–—]\s*,?\s*US/gi, 'Remote – US');
+      loc = loc.replace(/Remote\s*[-–—]\s*/gi, 'Remote – ');
+      loc = loc.replace(/(,\s*US)+/g, ', US');
+      loc = loc.replace(/^[,\s]+/, '');
+      if (loc === ', US' || loc === 'US') loc = 'US';
+      if (loc.includes(';')) {
+        const parts = loc.split(';').map(s => s.trim()).filter(Boolean);
+        loc = parts.length > 2 ? parts.slice(0, 2).join('; ') + ' +' + (parts.length - 2) : parts.join('; ');
+      }
+      return loc;
+    }
+
     function renderJobRows(jobs, total, page) {
       const tbody = $('#job-table-body');
       const now = new Date();
@@ -3451,35 +3473,6 @@
       }
       localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
       $('#j-saved').textContent = savedJobIds.length.toLocaleString();
-    }
-
-    function truncate(str, max) {
-
-    // Clean up location strings for display
-    function formatLocation(raw) {
-      if (!raw) return '—';
-      let loc = raw;
-      // Replace "United States of America" and "United States" with "US"
-      loc = loc.replace(/,?\s*United States of America/gi, ', US');
-      loc = loc.replace(/,?\s*United States/gi, ', US');
-      // Clean up "Remote - US" patterns
-      loc = loc.replace(/Remote\s*[-–—]\s*,?\s*US/gi, 'Remote – US');
-      loc = loc.replace(/Remote\s*[-–—]\s*/gi, 'Remote – ');
-      // Remove duplicate ", US, US"
-      loc = loc.replace(/(,\s*US)+/g, ', US');
-      // Clean leading comma/space
-      loc = loc.replace(/^[,\s]+/, '');
-      // Lone ", US" at start
-      if (loc === ', US' || loc === 'US') loc = 'US';
-      // Multi-city with semicolons — take first two
-      if (loc.includes(';')) {
-        const parts = loc.split(';').map(s => s.trim()).filter(Boolean);
-        loc = parts.length > 2 ? parts.slice(0, 2).join('; ') + ' +' + (parts.length - 2) : parts.join('; ');
-      }
-      return loc;
-    }
-      if (!str) return '—';
-      return str.length > max ? str.slice(0, max) + '…' : str;
     }
 
     // ============================================================
