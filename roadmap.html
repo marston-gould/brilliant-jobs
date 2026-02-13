@@ -342,8 +342,7 @@ const features = [
 
   // ═══════════════ IN PROGRESS ═══════════════
   { s: 'done', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
-  { s: 'progress', n: 'Daily job refresh cron', d: 'Orchestrator fires at 4AM via pg_cron → dispatches refresh-jobs batches. Partially working: ~1-2K jobs/day updating vs expected 110K. Child functions timing out — needs Edge Function log investigation.', p: 2 },
-  { s: 'todo', n: 'Fix refresh-jobs Edge Function timeouts', d: 'Child batch functions returning null status — likely hitting 150s limit. Reduce batch size or add retry logic.', p: 2 },
+  { s: 'done', n: 'Daily job refresh cron', d: 'v5 orchestrator queues 184 batches of 10 boards via pg_net in ~1s. 97K+ jobs refreshed in under 5 min. Runs daily at 4AM via pg_cron.', p: 2 },
   { s: 'done', n: 'Mark closed/inactive jobs', d: 'Jobs not found in ATS feed on refresh get status=closed and closed_at timestamp. 3,596 already marked closed. Dashboard filters to status=open by default.', p: 2 },
   { s: 'done', n: 'NOT filter fix', d: 'Fixed NOR prefix stripping, commitPill recognizes both or/nor, values cleaned before query', p: 2 },
 
@@ -440,7 +439,7 @@ const features = [
   { s: 'done', n: '[GH] Board discovery — 1,900 slugs via prefix brute-force', d: 'Two-letter prefix scan across boards-api.greenhouse.io', p: 9 },
   { s: 'done', n: '[GH] Initial scrape — 110K+ jobs', d: 'Full metadata: title, location, department, URL, updated_at', p: 9 },
   { s: 'done', n: '[GH] Location normalization', d: 'Postgres function parses raw → loc_city/state/country/type/display', p: 9 },
-  { s: 'progress', n: '[GH] Daily refresh cron', d: 'Orchestrator + batch functions deployed but child functions timing out', p: 9 },
+  { s: 'done', n: '[GH] Daily refresh cron', d: 'pg_net fire-and-forget: 184 batches × 10 boards, 97K+ jobs in ~5 min. JWT baked into SQL function.', p: 9 },
   { s: 'done', n: '[GH] Closed job detection', d: '3,596 jobs marked closed — Edge Function compares live API response to DB and sets status=closed + closed_at', p: 9 },
   { s: 'todo', n: '[GH] New board discovery via TheirStack', d: 'Import 24K+ Greenhouse slugs, diff against existing 1,900', p: 9 },
   { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', p: 9 },
