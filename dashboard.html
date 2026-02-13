@@ -2900,12 +2900,18 @@
         for (const job of needsSalary) {
           const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : null;
           if (!jobUrl) continue;
+
+          let apiUrl = null;
           const urlMatch = jobUrl.match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
-          if (!urlMatch) continue;
+          if (urlMatch) {
+            apiUrl = `https://boards-api.greenhouse.io/v1/boards/${urlMatch[1]}/jobs/${urlMatch[2]}`;
+          } else if (job.company_name && job.greenhouse_id) {
+            // Slug fallback for self-hosted career pages
+            apiUrl = `https://boards-api.greenhouse.io/v1/boards/${job.company_name}/jobs/${job.greenhouse_id}`;
+          }
+          if (!apiUrl) continue;
 
           try {
-            const [, boardToken, jobNumId] = urlMatch;
-            const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs/${jobNumId}`;
             const resp = await fetch(apiUrl);
             if (!resp.ok) continue;
             const data = await resp.json();
@@ -3237,6 +3243,48 @@
         }
       } catch (err) {
         console.log('[BJ] Greenhouse API fetch failed:', err.message);
+      }
+
+      // Fallback: try using company slug from ats_companies + greenhouse_id
+      // Handles self-hosted career pages (e.g. block.xyz/careers) that use Greenhouse backend
+      try {
+        const job = allJobs.find(j => j.greenhouse_id === jobId);
+        const slug = job?.company_name;
+        if (slug && jobId) {
+          console.log(`[BJ] Trying slug fallback: ${slug}/jobs/${jobId}`);
+          const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs/${jobId}`;
+          const resp = await fetch(apiUrl);
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.content) {
+              const htmlContent = decodeJobContent(data.content);
+              bodyEl.innerHTML = htmlContent;
+              const meta = [];
+              if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
+              if (data.offices?.length) meta.push(data.offices.map(o => o.name).join(', '));
+              if (meta.length) {
+                bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${meta.join('  ·  ')}</div>` + bodyEl.innerHTML;
+              }
+              const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
+              if (cachedJob) cachedJob.content = htmlContent;
+              const salary = parseSalaryFromContent(htmlContent);
+              const updateData = { content: htmlContent };
+              if (salary) {
+                updateData.salary_min = salary.min;
+                updateData.salary_max = salary.max;
+                updateData.salary_raw = salary.raw;
+                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; }
+                console.log(`[BJ] Salary extracted (slug fallback): $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k`);
+                const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
+                if (salaryCell) salaryCell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+              }
+              sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.log('[BJ] Slug fallback failed:', err.message);
       }
 
       // Try Edge Function proxy as backup
