@@ -327,6 +327,7 @@ const features = [
 
   // Phase 2 — Pipeline
   { s: 'done', n: 'Pipeline page with Saved and Applied columns', d: 'Kanban-style layout rendering from localStorage with relative date badges', p: 2 },
+  { s: 'todo', n: 'Pipeline — Closed column for applied jobs', d: 'Auto-detect when applied jobs close in ATS. Aging badges: Closed ≤7d (green — may still hear back), 8-14d (amber), 15-30d (orange — likely ghosted), 30d+ (red — ghosted). Shows "Closed Xd after you applied" context.', p: 2 },
 
   // Phase 2.5 — Anti-detection
   { s: 'done', n: 'Business hours enforcement', d: 'Scanner only runs 7 AM – 7 PM local time, pauses outside hours', p: 2.5 },
