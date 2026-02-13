@@ -2218,7 +2218,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.12 loaded');
+    console.log('[BJ] Dashboard v2.13 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2647,16 +2647,22 @@
           }
         }
       } else if (!locationIds || locationIds.includeIds === null) {
-        // No location pre-fetch happened — use legacy ilike on ats_jobs.location
+        // Location filtering — search both raw and normalized fields
         for (const pill of wh) {
           if (pill.values.length === 1) {
-            query = query.ilike('location', `%${pill.values[0]}%`);
+            const v = pill.values[0];
+            query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_state.ilike.%${v}%,loc_country.ilike.%${v}%`);
           } else {
-            query = query.or(pill.values.map(v => `location.ilike.%${v}%`).join(','));
+            const clauses = pill.values.flatMap(v => [
+              `location.ilike.%${v}%`,
+              `loc_display.ilike.%${v}%`,
+              `loc_state.ilike.%${v}%`
+            ]);
+            query = query.or(clauses.join(','));
           }
         }
         if (tuning.usOnly && wh.length === 0) {
-          query = query.ilike('location', '%United States%');
+          query = query.or('location.ilike.%United States%,loc_country.eq.US');
         }
         for (const pill of whnot) {
           for (const v of pill.values) {
@@ -3061,7 +3067,9 @@
       return str.length > max ? str.slice(0, max) + '…' : str;
     }
 
-    function formatLocation(raw) {
+    function formatLocation(raw, locDisplay) {
+      // Prefer normalized display if available
+      if (locDisplay) return locDisplay;
       if (!raw) return '—';
       let loc = raw;
       loc = loc.replace(/,?\s*United States of America/gi, ', US');
@@ -3135,7 +3143,7 @@
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
-          <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location), 35)}</td>
+          <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display), 35)}</td>
           <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
@@ -3310,7 +3318,7 @@
 
       // Populate header
       titleEl.textContent = job.title || 'Untitled';
-      const metaParts = [job.company_name, job.location].filter(Boolean);
+      const metaParts = [job.company_name, formatLocation(job.location, job.loc_display)].filter(Boolean);
       if (job.department) metaParts.push(job.department);
       metaEl.textContent = metaParts.join('  \u00b7  ');
       extLink.href = jobUrl;
