@@ -372,12 +372,13 @@
     .qb-pill.collection-pill .coll-count { font-size: 9px; opacity: 0.7; margin-left: 2px; }
 
     .browse-companies-btn {
-      width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);
-      background: var(--bg-input); cursor: pointer; display: flex; align-items: center;
-      justify-content: center; color: var(--text-dim); font-size: 14px; flex-shrink: 0;
-      transition: all 0.15s; margin-top: 6px;
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      font-size: 11px; font-weight: 600; color: var(--accent); cursor: pointer;
+      padding: 3px 8px; border-radius: 5px; background: rgba(61,126,255,0.06);
+      border: none; transition: all 0.15s; z-index: 2; letter-spacing: 0.2px;
+      font-family: var(--sans);
     }
-    .browse-companies-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .browse-companies-btn:hover { background: rgba(61,126,255,0.14); color: var(--accent-hover); }
 
     /* Company Browser page */
     .cb-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -402,9 +403,12 @@
     .cb-toggle { width: 22px; height: 22px; border-radius: 5px; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; transition: all 0.15s; }
     .cb-toggle.included { background: var(--green); border-color: var(--green); color: #fff; }
     .cb-toggle.excluded { background: var(--red); border-color: var(--red); color: #fff; }
-    .cb-alpha-nav { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 12px; }
-    .cb-alpha-link { font-size: 11px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 2px 5px; border-radius: 4px; }
+    .cb-alpha-nav { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 4px; }
+    .cb-alpha-link { font-size: 11px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.12s; }
     .cb-alpha-link:hover { background: var(--accent-glow); }
+    .cb-alpha-link.active { background: var(--accent); color: #fff; }
+    .cb-alpha-link.dim { color: var(--text-faint); opacity: 0.35; cursor: default; }
+    .cb-alpha-link.dim:hover { background: none; }
     .cb-back-btn { padding: 6px 14px; border-radius: 6px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim); font-weight: 600; font-size: 12px; cursor: pointer; font-family: var(--sans); }
     .cb-back-btn:hover { background: var(--bg-hover); }
     .cb-list-container { max-height: 65vh; overflow-y: auto; padding-right: 4px; }
@@ -1532,18 +1536,18 @@
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">Who</label>
-              <div class="query-builder" id="query-builder-who" style="position:relative;flex:1;">
-                <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name…" autocomplete="off">
+              <div class="query-builder" id="query-builder-who" style="position:relative;">
+                <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name…" autocomplete="off" style="padding-right:70px;">
                 <div id="company-dropdown" class="company-dropdown"></div>
+                <span class="browse-companies-btn" id="browse-who-btn" title="Browse all companies">Browse</span>
               </div>
-              <button class="browse-companies-btn" id="browse-who-btn" title="Browse companies">⊞</button>
             </div>
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
-              <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(148,163,184,0.2);flex:1;">
-                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="Exclude companies…">
+              <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(148,163,184,0.2);position:relative;">
+                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="Exclude companies…" style="padding-right:70px;">
+                <span class="browse-companies-btn" id="browse-who-not-btn" title="Browse companies to exclude">Browse</span>
               </div>
-              <button class="browse-companies-btn" id="browse-who-not-btn" title="Browse companies to exclude">⊞</button>
             </div>
           </div>
           <div class="qb-row-pair">
@@ -2183,7 +2187,8 @@
             <input type="text" id="cb-collection-name" placeholder="Collection name…">
             <button class="cb-save-btn" id="cb-save-btn" disabled>Save Collection</button>
           </div>
-          <div class="cb-alpha-nav" id="cb-alpha-nav"></div>
+          <div class="cb-alpha-nav" id="cb-alpha-nav-1"></div>
+          <div class="cb-alpha-nav" id="cb-alpha-nav-2" style="margin-bottom:14px;"></div>
           <div class="cb-list-container" id="cb-list"></div>
         </div>
       </div>
@@ -4328,25 +4333,84 @@
 
       // Group by first letter
       const groups = {};
+      const twoLetterSet = new Set(); // track all two-letter prefixes that exist
       filtered.forEach(c => {
         const letter = (c.name[0] || '#').toUpperCase();
         const key = /[A-Z]/.test(letter) ? letter : '#';
         if (!groups[key]) groups[key] = [];
         groups[key].push(c);
+        // Track two-letter prefix
+        if (c.name.length >= 2) {
+          const prefix = c.name.slice(0, 2).toUpperCase();
+          if (/^[A-Z]{2}$/.test(prefix)) twoLetterSet.add(prefix);
+        }
       });
 
       const letters = Object.keys(groups).sort();
 
-      // Alpha nav
-      $('#cb-alpha-nav').innerHTML = letters.map(l =>
-        `<span class="cb-alpha-link" data-letter="${l}">${l}</span>`
-      ).join('');
-      $$('.cb-alpha-link').forEach(link => {
-        link.addEventListener('click', () => {
-          const el = document.getElementById('cb-letter-' + link.dataset.letter);
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Two-tier alpha nav
+      let cbActiveFirstLetter = null;
+
+      function renderAlphaNav1() {
+        const allLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+        $('#cb-alpha-nav-1').innerHTML = allLetters.map(l => {
+          const exists = groups[l];
+          const isActive = cbActiveFirstLetter === l;
+          const cls = isActive ? 'active' : !exists ? 'dim' : '';
+          return `<span class="cb-alpha-link ${cls}" data-letter="${l}">${l}</span>`;
+        }).join('');
+
+        $('#cb-alpha-nav-1').querySelectorAll('.cb-alpha-link:not(.dim)').forEach(link => {
+          link.addEventListener('click', () => {
+            const letter = link.dataset.letter;
+            if (cbActiveFirstLetter === letter) {
+              // Deselect — clear second row and scroll to letter
+              cbActiveFirstLetter = null;
+              renderAlphaNav1();
+              $('#cb-alpha-nav-2').innerHTML = '';
+              const el = document.getElementById('cb-letter-' + letter);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+              cbActiveFirstLetter = letter;
+              renderAlphaNav1();
+              renderAlphaNav2(letter);
+              // Also scroll to that letter group
+              const el = document.getElementById('cb-letter-' + letter);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          });
         });
-      });
+      }
+
+      function renderAlphaNav2(firstLetter) {
+        const secondLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        $('#cb-alpha-nav-2').innerHTML = secondLetters.map(s => {
+          const prefix = firstLetter + s;
+          const exists = twoLetterSet.has(prefix);
+          const cls = !exists ? 'dim' : '';
+          return `<span class="cb-alpha-link ${cls}" data-prefix="${prefix}">${s}</span>`;
+        }).join('');
+
+        $('#cb-alpha-nav-2').querySelectorAll('.cb-alpha-link:not(.dim)').forEach(link => {
+          link.addEventListener('click', () => {
+            const prefix = link.dataset.prefix;
+            // Find first company with this prefix and scroll to it
+            const target = filtered.find(c => c.name.toUpperCase().startsWith(prefix));
+            if (target) {
+              const row = list.querySelector(`[data-slug="${target.slug}"]`);
+              if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Brief highlight
+              if (row) {
+                row.style.background = 'rgba(61,126,255,0.12)';
+                setTimeout(() => { row.style.background = ''; }, 1200);
+              }
+            }
+          });
+        });
+      }
+
+      renderAlphaNav1();
+      $('#cb-alpha-nav-2').innerHTML = ''; // clear second row on fresh render
 
       if (filtered.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">No companies match your search</div>';
