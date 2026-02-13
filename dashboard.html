@@ -675,6 +675,13 @@
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; }
     .job-table tr:hover td { background: var(--bg-hover); }
+    .job-preview-snippet {
+      display: none; font-size: 11px; color: var(--text-faint); line-height: 1.4;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+      margin-top: 2px;
+    }
+    .job-preview-snippet .preview-more { color: var(--accent); cursor: pointer; font-weight: 600; margin-left: 4px; }
+    .show-previews .job-preview-snippet { display: block; }
     .job-table .jt-title { font-weight: 600; color: var(--text); max-width: 260px; text-transform: lowercase; }
     .job-title-link { cursor: pointer; transition: color 0.1s; }
     .job-title-link:hover { color: var(--accent) !important; text-decoration: underline; }
@@ -1141,7 +1148,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.18</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.19</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1657,7 +1664,11 @@
                   <th data-sort="level">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="ghost">Ghost Rate <span class="sort-arrow">↕</span></th>
                   <th data-sort="days">Days <span class="sort-arrow">↕</span></th>
-                  <th style="width:120px;cursor:default;"></th>
+                  <th style="width:120px;cursor:default;">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
+                      <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview
+                    </label>
+                  </th>
                 </tr>
               </thead>
               <tbody id="job-table-body">
@@ -2229,7 +2240,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.18 loaded');
+    console.log('[BJ] Dashboard v2.19 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3156,7 +3167,9 @@
 
         html += `<tr data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}
+            <div class="job-preview-snippet" data-preview-id="${job.greenhouse_id}"></div>
+          </td>
           <td class="jt-company">${truncate(job.company_name, 30)}</td>
           <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display), 35)}</td>
           <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
@@ -3198,6 +3211,11 @@
 
       // Background salary enrichment — fetch specs for jobs without salary
       backgroundEnrichSalary();
+
+      // Load preview snippets if toggle is on
+      if ($('#preview-toggle')?.checked) {
+        loadPreviewSnippets();
+      }
     }
 
     let _enrichRunning = false;
@@ -3271,14 +3289,132 @@
       }
     }
 
-    // Event delegation for job title clicks
+    // Event delegation for job title clicks — opens full modal
     document.addEventListener('click', e => {
       const link = e.target.closest('.job-title-link');
       if (link && link.dataset.jobid) {
         e.preventDefault();
         openJobModal(link.dataset.jobid);
       }
+      // "→" click in preview snippet opens modal
+      const more = e.target.closest('.preview-more');
+      if (more && more.dataset.jobid) {
+        e.preventDefault();
+        openJobModal(more.dataset.jobid);
+      }
     });
+
+    // Global preview toggle — shows one-line description snippets under each title
+    function initPreviewToggle() {
+      const toggle = $('#preview-toggle');
+      if (!toggle) return;
+
+      // Restore saved preference
+      if (localStorage.getItem('bj_show_previews') === '1') {
+        toggle.checked = true;
+        $('#job-table')?.classList.add('show-previews');
+      }
+
+      toggle.addEventListener('change', () => {
+        const table = $('#job-table');
+        if (toggle.checked) {
+          table.classList.add('show-previews');
+          localStorage.setItem('bj_show_previews', '1');
+          loadPreviewSnippets();
+        } else {
+          table.classList.remove('show-previews');
+          localStorage.setItem('bj_show_previews', '0');
+        }
+      });
+    }
+
+    // Strip HTML and extract plain text snippet from job content
+    function extractSnippet(html, maxLen) {
+      if (!html) return '';
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      const text = div.textContent || div.innerText || '';
+      // Clean up whitespace
+      const clean = text.replace(/\s+/g, ' ').trim();
+      return clean.length > maxLen ? clean.slice(0, maxLen) : clean;
+    }
+
+    // Load preview snippets for all visible jobs
+    async function loadPreviewSnippets() {
+      const snippetEls = document.querySelectorAll('.job-preview-snippet[data-preview-id]');
+      if (!snippetEls.length) return;
+
+      for (const el of snippetEls) {
+        const jobId = el.dataset.previewId;
+        if (el.dataset.loaded === '1') continue; // Already loaded
+
+        const job = allJobs.find(j => j.greenhouse_id === jobId);
+        let content = job?.content || null;
+
+        if (content) {
+          // Already cached — render immediately
+          const snippet = extractSnippet(content, 300);
+          el.innerHTML = snippet + `<span class="preview-more" data-jobid="${jobId}"> →</span>`;
+          el.dataset.loaded = '1';
+        } else {
+          // Mark as loading, fetch in background
+          el.innerHTML = '<span style="opacity:0.4;">loading…</span>';
+
+          // Fetch from Greenhouse API
+          try {
+            const jobUrl = job?.url || '';
+            const urlMatch = jobUrl.match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
+            let apiUrl = null;
+            if (urlMatch) {
+              apiUrl = `https://boards-api.greenhouse.io/v1/boards/${urlMatch[1]}/jobs/${urlMatch[2]}`;
+            } else if (job?.company_slug) {
+              apiUrl = `https://boards-api.greenhouse.io/v1/boards/${job.company_slug}/jobs/${jobId}`;
+            }
+
+            if (apiUrl) {
+              const resp = await fetch(apiUrl);
+              if (resp.ok) {
+                const data = await resp.json();
+                if (data.content) {
+                  content = decodeJobContent(data.content);
+                  if (job) job.content = content;
+                  sb.from('ats_jobs').update({ content }).eq('greenhouse_id', jobId).then(() => {});
+
+                  // Extract salary while we have it
+                  if (job && !job.salary_min) {
+                    const salary = parseSalaryFromContent(content);
+                    if (salary) {
+                      job.salary_min = salary.min;
+                      job.salary_max = salary.max;
+                      sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw })
+                        .eq('greenhouse_id', jobId).then(() => {});
+                      const cell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
+                      if (cell) cell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Silently skip
+          }
+
+          if (content) {
+            const snippet = extractSnippet(content, 300);
+            el.innerHTML = snippet + `<span class="preview-more" data-jobid="${jobId}"> →</span>`;
+          } else {
+            el.innerHTML = '<span style="opacity:0.3;">no description available</span>';
+          }
+          el.dataset.loaded = '1';
+
+          // Small delay between API calls
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+    }
+
+    // Initialize preview toggle after DOM ready
+    setTimeout(initPreviewToggle, 100);
 
     // Robust HTML content decoder — handles any level of entity encoding
     function decodeJobContent(raw) {
