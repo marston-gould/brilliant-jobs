@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.9 - 2026-02-13 - Fix: removed job_locations pre-fetch (connection overload) -->
+<!-- Brilliant Jobs Dashboard v2.10 - 2026-02-13 - Fix: contextual stat cards + hidden job count -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2218,7 +2218,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.9 loaded');
+    console.log('[BJ] Dashboard v2.10 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2769,14 +2769,14 @@
       const checked = getCheckedSavedFilters();
       const hasBuilderPills = allPills() > 0;
 
-      // If nothing is driving the search, show prompt
+      // If nothing is driving the search, show prompt but with global stats
       if (checked.length === 0 && !hasBuilderPills) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
           <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
           <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
           <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved filters above, or use the filter builder.</div>
         </td></tr>`;
-        updateJobStats(0, 0, 0, 0);
+        await updateJobStatsFromFilters(null);
         $('#filter-count').textContent = '';
         return;
       }
@@ -2924,8 +2924,12 @@
 
         currentJobs = allJobs;
 
-        // Update filter count display
-        $('#filter-count').innerHTML = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+        // Update filter count display (show visible count, note hidden if any)
+        const hiddenCount = totalCount - currentJobs.length;
+        const visibleCount = currentJobs.length;
+        let countHtml = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+        if (hiddenCount > 0) countHtml += ` <span style="color:var(--text-faint);">(${hiddenCount} hidden)</span>`;
+        $('#filter-count').innerHTML = countHtml;
 
         // Update top stat cards
         await updateJobStatsFromFilters(filtersToRun);
@@ -2969,6 +2973,7 @@
     }
 
     // Update top stat cards based on filter results
+    // If filters is null/empty, show global totals (all active jobs in DB)
     async function updateJobStatsFromFilters(filters) {
       try {
         const now = new Date();
@@ -2981,34 +2986,61 @@
         let newSinceLoginCount = 0;
         let companyCount = 0;
 
-        for (const sf of filters) {
-          // Total count
-          let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q = buildFilterQuery(sf, q, null);
-          const { count: c1 } = await q;
-          total += (c1 || 0);
+        if (!filters || filters.length === 0) {
+          // No filters selected — show global totals for all active jobs
+          const { count: allJobs } = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          total = allJobs || 0;
 
-          // Last 24h count (use updated_at only — skip duplicate last_seen query)
-          let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q2 = buildFilterQuery(sf, q2, null);
-          q2 = q2.gte('updated_at', last24h.toISOString());
-          const { count: c2 } = await q2;
-          todayCount += (c2 || 0);
+          const { count: todayJobs } = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
+            .gte('updated_at', last24h.toISOString());
+          todayCount = todayJobs || 0;
 
-          // New since last login
           if (lastViewDate) {
-            let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-            qLogin = buildFilterQuery(sf, qLogin, null);
-            qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
-            const { count: cLogin } = await qLogin;
-            newSinceLoginCount += (cLogin || 0);
+            const { count: sinceLogin } = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
+              .gte('first_seen_at', lastViewDate.toISOString());
+            newSinceLoginCount = sinceLogin || 0;
           }
-        }
 
-        // Company count — use a single lightweight query instead of fetching 500 rows per filter
-        // Just estimate from ats_companies table
-        const { count: totalCos } = await sb.from('ats_companies').select('slug', { count: 'exact', head: true });
-        companyCount = totalCos || 0;
+          // All companies with active jobs
+          const { count: totalCos } = await sb.from('ats_companies').select('slug', { count: 'exact', head: true })
+            .gt('job_count', 0);
+          companyCount = totalCos || 0;
+        } else {
+          // Filters active — count only matching jobs
+          for (const sf of filters) {
+            // Total count
+            let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+            q = buildFilterQuery(sf, q, null);
+            const { count: c1 } = await q;
+            total += (c1 || 0);
+
+            // Last 24h count
+            let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+            q2 = buildFilterQuery(sf, q2, null);
+            q2 = q2.gte('updated_at', last24h.toISOString());
+            const { count: c2 } = await q2;
+            todayCount += (c2 || 0);
+
+            // New since last login
+            if (lastViewDate) {
+              let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+              qLogin = buildFilterQuery(sf, qLogin, null);
+              qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
+              const { count: cLogin } = await qLogin;
+              newSinceLoginCount += (cLogin || 0);
+            }
+          }
+
+          // Company count — get unique company_slugs from matching jobs (lightweight: just distinct slugs)
+          // Use a single query with the first filter to approximate
+          let cq = sb.from('ats_jobs').select('company_slug');
+          cq = buildFilterQuery(filters[0], cq, null);
+          cq = cq.limit(1000);
+          const { data: coRows } = await cq;
+          const uniqueCos = new Set();
+          if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+          companyCount = uniqueCos.size;
+        }
 
         updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
       } catch (e) {
