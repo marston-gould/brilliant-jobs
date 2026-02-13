@@ -2597,9 +2597,6 @@
       // Load global tuning settings
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-      // Only show active/open jobs
-      query = query.eq('status', 'open');
-
       // WHAT — title matching with word-boundary awareness
       for (const pill of w) {
         const allClauses = pill.values.flatMap(v => {
