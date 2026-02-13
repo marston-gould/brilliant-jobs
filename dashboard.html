@@ -2862,7 +2862,7 @@
           <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
-          <td class="jt-ghost">—</td>
+          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
           <td style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
             ${saveBtn}${applyBtn}
@@ -3145,35 +3145,46 @@
 
     // On-demand job spec fetcher — tries Greenhouse JSON API first
     // Salary parser — extract salary range from job description HTML
+    // Finds ALL salary ranges (handles multi-zone postings) and returns lowest min / highest max
     function parseSalaryFromContent(html) {
       if (!html) return null;
       // Strip HTML tags for cleaner regex matching
       const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ');
 
-      // Patterns to match salary ranges (ordered by specificity)
-      const patterns = [
-        // "$120,000 - $150,000" or "$120,000 to $150,000" or "$120,000–$150,000"
-        /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:[-–—to]+)\s*\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per\s+year|annually|annual|\/\s*(?:yr|year))?/gi,
+      const allRanges = [];
+
+      // Patterns to match salary ranges
+      const rangePatterns = [
+        // "$120,000 - $150,000" or "$120,000 to $150,000" or "$120,000—$150,000"
+        /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:[-–—]|to)\s*\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per\s+year|annually|annual|\/\s*(?:yr|year)|USD)?/gi,
         // "$120k - $150k" or "$120K-$150K"
-        /\$\s*(\d+(?:\.\d+)?)\s*[kK]\s*(?:[-–—to]+)\s*\$?\s*(\d+(?:\.\d+)?)\s*[kK]/gi,
-        // "120,000 - 150,000 USD" or "120000-150000"
-        /(\d{2,3},?\d{3})\s*(?:[-–—to]+)\s*(\d{2,3},?\d{3})\s*(?:USD|usd|\$|per\s+year|annually)?/gi,
+        /\$\s*(\d+(?:\.\d+)?)\s*[kK]\s*(?:[-–—]|to)\s*\$?\s*(\d+(?:\.\d+)?)\s*[kK]/gi,
       ];
 
-      for (const pattern of patterns) {
+      for (const pattern of rangePatterns) {
         pattern.lastIndex = 0;
-        const match = pattern.exec(text);
-        if (match) {
+        let match;
+        while ((match = pattern.exec(text)) !== null) {
           let min = parseFloat(match[1].replace(/,/g, ''));
           let max = parseFloat(match[2].replace(/,/g, ''));
           // Handle "k" notation
-          if (min < 1000 && text.includes('k')) { min *= 1000; max *= 1000; }
-          else if (min < 1000 && max < 1000) { min *= 1000; max *= 1000; }
-          // Sanity check — salary should be between $20k and $1M
-          if (min >= 20000 && min <= 1000000 && max >= min && max <= 1000000) {
-            return { min: Math.round(min), max: Math.round(max), raw: match[0].trim() };
+          if (min < 1000) min *= 1000;
+          if (max < 1000) max *= 1000;
+          // Sanity check — annual salary between $20k and $2M
+          if (min >= 20000 && min <= 2000000 && max >= min && max <= 2000000) {
+            allRanges.push({ min: Math.round(min), max: Math.round(max), raw: match[0].trim() });
           }
         }
+      }
+
+      // If we found ranges, return the envelope (lowest min, highest max)
+      if (allRanges.length > 0) {
+        const lowestMin = Math.min(...allRanges.map(r => r.min));
+        const highestMax = Math.max(...allRanges.map(r => r.max));
+        const raw = allRanges.length > 1
+          ? `${allRanges.length} zones: $${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
+          : allRanges[0].raw;
+        return { min: lowestMin, max: highestMax, raw };
       }
 
       // Single value patterns: "$150,000" or "$150k"
@@ -3188,7 +3199,7 @@
         if (match) {
           let val = parseFloat(match[1].replace(/,/g, ''));
           if (val < 1000) val *= 1000;
-          if (val >= 20000 && val <= 1000000) {
+          if (val >= 20000 && val <= 2000000) {
             return { min: Math.round(val), max: Math.round(val), raw: match[0].trim() };
           }
         }
