@@ -2632,16 +2632,21 @@
       // Load global tuning settings
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-      // WHAT — title matching with word-boundary awareness
+      // WHAT — title matching via full-text search (with ilike fallback for short terms)
       for (const pill of w) {
         const allClauses = pill.values.flatMap(v => {
-          const safe = v.replace(/[,()]/g, '');
+          const safe = v.replace(/[,()]/g, '').trim();
+          if (!safe) return [];
+          // For single-word terms or short phrases, use FTS on search_vector
+          // FTS handles stemming: "managing" matches "manager", etc.
+          // Also keep ilike as OR fallback for substring matches FTS might miss
           return [
             `title.ilike.${safe}%`,
             `title.ilike.% ${safe}%`,
+            `search_vector.wfts(english).${safe}`,
           ];
         });
-        query = query.or(allClauses.join(','));
+        if (allClauses.length > 0) query = query.or(allClauses.join(','));
       }
 
       // WHAT NOT — title not ilike
@@ -2686,16 +2691,17 @@
           }
         }
       } else if (!locationIds || locationIds.includeIds === null) {
-        // Location filtering — search both raw and normalized fields
+        // Location filtering — search both raw, normalized, and FTS
         for (const pill of wh) {
           if (pill.values.length === 1) {
             const v = pill.values[0];
-            query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_state.ilike.%${v}%,loc_country.ilike.%${v}%`);
+            query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_state.ilike.%${v}%,loc_country.ilike.%${v}%,search_vector.wfts(english).${v}`);
           } else {
             const clauses = pill.values.flatMap(v => [
               `location.ilike.%${v}%`,
               `loc_display.ilike.%${v}%`,
-              `loc_state.ilike.%${v}%`
+              `loc_state.ilike.%${v}%`,
+              `search_vector.wfts(english).${v}`,
             ]);
             query = query.or(clauses.join(','));
           }
@@ -2717,11 +2723,16 @@
       }
 
       // WHO — company_name ilike
+      // WHO — company_name ilike + FTS
       for (const pill of wo) {
         if (pill.values.length === 1) {
-          query = query.ilike('company_name', `%${pill.values[0]}%`);
+          query = query.or(`company_name.ilike.%${pill.values[0]}%,search_vector.wfts(english).${pill.values[0]}`);
         } else {
-          query = query.or(pill.values.map(v => `company_name.ilike.%${v}%`).join(','));
+          const clauses = pill.values.flatMap(v => [
+            `company_name.ilike.%${v}%`,
+            `search_vector.wfts(english).${v}`,
+          ]);
+          query = query.or(clauses.join(','));
         }
       }
 
