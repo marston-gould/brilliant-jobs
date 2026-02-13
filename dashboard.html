@@ -3213,13 +3213,26 @@
       // Collect active negative location terms for display
       const activeNegLocs = [];
       const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
-      // From the actual filters driving this search
+      // From whereNotPills in active filters
       if (filtersToRun) {
         for (const sf of filtersToRun) {
           for (const pill of (sf.whereNotPills || [])) {
             for (const v of (pill.values || [])) {
               const t = v.trim().replace(/^nor\s+/i, '');
               if (t && !activeNegLocs.includes(t)) activeNegLocs.push(t);
+            }
+          }
+          // Also check whatNotPills for terms that look like locations
+          // by testing if any current job's location contains the term
+          for (const pill of (sf.whatNotPills || [])) {
+            for (const v of (pill.values || [])) {
+              const t = v.trim().replace(/^nor\s+/i, '');
+              if (t && !activeNegLocs.includes(t)) {
+                const looksLikeLocation = jobs.some(j =>
+                  j.location && j.location.toLowerCase().includes(t.toLowerCase())
+                );
+                if (looksLikeLocation) activeNegLocs.push(t);
+              }
             }
           }
         }
@@ -3230,7 +3243,7 @@
           if (!activeNegLocs.includes(v)) activeNegLocs.push(v);
         }
       }
-      console.log('[BJ] Neg loc debug — filtersToRun:', filtersToRun?.length, 'whereNotPills in filters:', filtersToRun?.map(sf => sf.whereNotPills), 'activeNegLocs:', activeNegLocs);
+      console.log('[BJ] Active negative locations for display:', activeNegLocs);
 
       // Get last feed view timestamp for NEW badge
       const lastFeedView = localStorage.getItem('bj_last_feed_view');
@@ -4913,8 +4926,15 @@
         const seen = new Map();
         data.forEach(loc => {
           const key = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
-          if (!seen.has(key)) {
-            seen.set(key, loc);
+          // Merge "remote" variants (e.g. "remote" and "remote, united states")
+          const mergeKey = key.startsWith('remote') ? 'remote' : key;
+          if (!seen.has(mergeKey)) {
+            // For remote variants, prefer the simpler "Remote" entry
+            if (mergeKey === 'remote') {
+              loc.normalized = 'Remote';
+              loc.is_remote = true;
+            }
+            seen.set(mergeKey, loc);
           }
         });
 
