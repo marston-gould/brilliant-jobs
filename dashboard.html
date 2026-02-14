@@ -406,6 +406,7 @@
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 14px; padding: 28px; width: 460px; max-width: 92vw;
       box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+      min-height: 640px; display: flex; flex-direction: column;
     }
     .feedback-modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
     .feedback-modal .fb-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 18px; }
@@ -420,7 +421,7 @@
     }
     .feedback-modal textarea { min-height: 100px; resize: vertical; }
     .feedback-modal select { appearance: auto; cursor: pointer; }
-    .feedback-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+    .feedback-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: auto; padding-top: 10px; }
     .feedback-actions button { padding: 8px 20px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; font-family: var(--sans); border: none; }
     .fb-cancel { background: var(--bg-input); color: var(--text-dim); border: 1px solid var(--border) !important; }
     .fb-cancel:hover { background: var(--bg-hover); }
@@ -1241,7 +1242,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.25h</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.25i</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1336,7 +1337,7 @@
       <!-- Feedback modal -->
       <div class="feedback-overlay" id="feedback-overlay" onclick="if(event.target===this)closeFeedback()">
         <div class="feedback-modal" id="feedback-modal">
-          <div id="fb-form-view">
+          <div id="fb-form-view" style="flex:1;display:flex;flex-direction:column;">
             <h3 id="fb-heading" style="display:flex;align-items:center;gap:8px;">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="fb-heading-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span id="fb-heading-text">Report a Bug</span>
@@ -1409,7 +1410,7 @@
               <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Submit</button>
             </div>
           </div>
-          <div id="fb-success-view" style="display:none;">
+          <div id="fb-success-view" style="display:none;flex:1;align-items:center;justify-content:center;">
             <div class="fb-success">
               <div class="fb-check" id="fb-success-icon" style="color:var(--green);">✓</div>
               <h4 id="fb-success-title">Bug report submitted!</h4>
@@ -2519,7 +2520,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.25h loaded');
+    console.log('[BJ] Dashboard v2.25i loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -8846,7 +8847,7 @@
         icon.style.stroke = 'var(--red)';
       } else {
         $('#fb-heading-text').textContent = 'Request a Feature';
-        $('#fb-subheading').textContent = "Have an idea to make this better? We're listening.";
+        $('#fb-subheading').textContent = "Have a brilliant idea? We're listening.";
         $('#fb-title-label').textContent = 'What would you like?';
         $('#fb-title').placeholder = 'Brief description of the feature idea…';
         $('#fb-details').placeholder = 'How would this help your job search? Any specifics on how it should work…';
@@ -8976,7 +8977,7 @@
           $('#fb-success-msg').textContent = "We'll review it and see what we can build.";
         }
         $('#fb-form-view').style.display = 'none';
-        $('#fb-success-view').style.display = '';
+        $('#fb-success-view').style.display = 'flex';
       } catch (e) {
         console.error('[BJ] Feedback submit error:', e);
         alert('Failed to submit feedback. Please try again.');
