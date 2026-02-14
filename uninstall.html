@@ -463,7 +463,7 @@
   </div>
 
   <div class="footer">
-    &copy; 2026 Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
+    &copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
   </div>
 
 </div>
@@ -539,15 +539,16 @@
     submitBtn.disabled = true;
 
     const payload = {
-      reason: selectedReason,
-      comment: comment.value.trim() || null,
-      created_at: new Date().toISOString(),
-      source: 'uninstall_page'
+      type: 'exit_survey',
+      user_id: null,
+      uninstall_reason: selectedReason,
+      answers: JSON.stringify({ reason: selectedReason, comment: comment.value.trim() || null }),
+      created_at: new Date().toISOString()
     };
 
     // Fire and forget to Supabase
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/uninstall_feedback`, {
+      await fetch(`${SUPABASE_URL}/rest/v1/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
