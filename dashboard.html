@@ -1163,7 +1163,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.24b</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.24c</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2260,7 +2260,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.24b loaded');
+    console.log('[BJ] Dashboard v2.24c loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3347,25 +3347,26 @@
       if (!job.salary_min) return '—';
       const currency = job.salary_currency || '';
       const rate = job.salary_rate || 'yr';
-      const prefixMap = { CAD: 'CA ', GBP: '£', EUR: '€', AUD: 'AU ' };
-      const prefix = prefixMap[currency] || '';
+      // Prefix map: symbol-based currencies don't need $, code-based do
+      const prefixMap = { CAD: 'CA$', GBP: '£', EUR: '€', AUD: 'AU$', NZD: 'NZ$', HKD: 'HK$' };
+      const sym = prefixMap[currency] || '$';
 
       // Rate suffix map
       const rateSuffix = { yr: '', hr: '/hr', wk: '/wk', mo: '/mo', day: '/day', session: '/session', visit: '/visit' };
       const suffix = rateSuffix[rate] || '';
 
       if (rate === 'yr') {
-        // Annual: show in $Xk format
-        const min = `${prefix}$${Math.round(job.salary_min/1000)}k`;
+        // Annual: show in Xk format
+        const min = `${sym}${Math.round(job.salary_min/1000)}k`;
         if (job.salary_max && job.salary_max !== job.salary_min) {
-          return `${min}-${prefix}$${Math.round(job.salary_max/1000)}k`;
+          return `${min}-${sym}${Math.round(job.salary_max/1000)}k`;
         }
         return min;
       } else {
         // Non-annual: show raw dollar amount with suffix
-        const min = `${prefix}$${job.salary_min}`;
+        const min = `${sym}${job.salary_min}`;
         if (job.salary_max && job.salary_max !== job.salary_min) {
-          return `${min}-$${job.salary_max}${suffix}`;
+          return `${min}-${sym}${job.salary_max}${suffix}`;
         }
         return `${min}${suffix}`;
       }
@@ -4137,10 +4138,10 @@
         const lowestMin = Math.min(...sameRate.map(r => r.min));
         const highestMax = Math.max(...sameRate.map(r => r.max));
         const currency = sameRate[0].currency;
-        const prefMap = { CAD: 'CA', GBP: '£', EUR: '€', AUD: 'AU' };
-        const prefix = prefMap[currency] || '';
+        const prefMap = { CAD: 'CA$', GBP: '£', EUR: '€', AUD: 'AU$' };
+        const sym = prefMap[currency] || '$';
         const raw = sameRate.length > 1
-          ? `${sameRate.length} zones: ${prefix}$${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
+          ? `${sameRate.length} zones: ${sym}${(lowestMin/1000).toFixed(0)}k-${sym}${(highestMax/1000).toFixed(0)}k`
           : sameRate[0].raw;
         return { min: lowestMin, max: highestMax, raw, currency, rate: rateType };
       }
@@ -7639,3 +7640,4 @@
   </script>
 </body>
 </html>
+    
