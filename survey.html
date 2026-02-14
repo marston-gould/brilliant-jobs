@@ -524,7 +524,7 @@
   </div>
 
   <div class="footer">
-    &copy; 2026 Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
+    &copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
   </div>
 
 </div>
@@ -719,7 +719,41 @@ const periodicQuestions = [
 const params = new URLSearchParams(window.location.search);
 const context = params.get('context') || 'periodic';
 const reason = params.get('reason') || null;  // from uninstall page
-const questions = context === 'churn' ? churnQuestions : periodicQuestions;
+const version = params.get('v') || null;      // explicit version override
+
+// ─── QUESTION BANK VERSIONS ───
+// Add new versions as needed for different cohorts.
+// URL: /survey?context=periodic&v=new_user_v1
+// URL: /survey?context=churn&v=exit_v2
+// If no version param, falls back to latest for the context.
+
+const exitVersions = {
+  'exit_v1': churnQuestions,
+  // 'exit_v2': churnQuestionsV2,  // future: different Qs for long-tenured churners
+};
+
+const periodicVersions = {
+  'periodic_v1': periodicQuestions,
+  // 'new_user_v1': newUserQuestions,     // future: first-week cohort
+  // 'power_user_v1': powerUserQuestions, // future: 30+ day active users
+  // 'dormant_v1': dormantQuestions,      // future: win-back for inactive users
+};
+
+function resolveVersion() {
+  if (context === 'churn') {
+    if (version && exitVersions[version]) return { id: version, questions: exitVersions[version] };
+    const latest = Object.keys(exitVersions).pop();
+    return { id: latest, questions: exitVersions[latest] };
+  } else {
+    if (version && periodicVersions[version]) return { id: version, questions: periodicVersions[version] };
+    const latest = Object.keys(periodicVersions).pop();
+    return { id: latest, questions: periodicVersions[latest] };
+  }
+}
+
+const resolved = resolveVersion();
+const surveyVersion = resolved.id;
+const questions = resolved.questions;
 const answers = {};
 let currentStep = 0;
 
@@ -737,13 +771,13 @@ function init() {
     badge.className = 'survey-badge badge-churn';
     title.textContent = "One more thing before you go.";
     subtitle.textContent = "We know you just uninstalled. This takes about 90 seconds and it genuinely helps us figure out where we went wrong. No guilt trip — just honesty.";
-    meta.textContent = `${questions.length} questions · anonymous · ~90 seconds`;
+    meta.textContent = `${questions.length} questions · anonymous · ~90 seconds · ${surveyVersion}`;
   } else {
     badge.textContent = '🎁 Quick Survey';
     badge.className = 'survey-badge badge-periodic';
     title.textContent = "Got 90 seconds? We'll make it worth your time.";
     subtitle.textContent = "Tell us what's working, what's not, and what you wish existed. Your answers directly shape what we build next.";
-    meta.textContent = `${questions.length} questions · anonymous · ~90 seconds`;
+    meta.textContent = `${questions.length} questions · anonymous · ~90 seconds · ${surveyVersion}`;
     reward.style.display = 'block';
   }
 
@@ -920,21 +954,39 @@ document.addEventListener('click', (e) => {
 // ─── SUBMIT ───
 
 async function submitSurvey() {
+  const surveyType = context === 'churn' ? 'exit_survey' : 'user_survey';
+
+  // Try to get user session for association
+  let userId = null;
+  let authHeader = `Bearer ${SUPABASE_ANON_KEY}`;
+  try {
+    const stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
+    if (stored) {
+      const session = JSON.parse(stored);
+      if (session?.access_token && session?.user?.id) {
+        userId = session.user.id;
+        authHeader = `Bearer ${session.access_token}`;
+      }
+    }
+  } catch (e) { /* no session, submit as anon */ }
+
   const payload = {
-    survey_id: context === 'churn' ? 'exit_survey_v1' : 'product_survey_v1',
-    context: context,
+    type: surveyType,
+    user_id: userId,
+    survey_version: surveyVersion,
     uninstall_reason: reason,
-    answers: JSON.stringify(answers),
+    answers: answers,
+    overall_rating: answers['overall_rating']?.rating || answers['search_quality']?.rating || null,
     created_at: new Date().toISOString()
   };
 
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/feedback`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Authorization': authHeader,
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify(payload)
