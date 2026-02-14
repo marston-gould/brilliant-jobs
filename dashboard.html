@@ -1241,7 +1241,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.25f</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.25h</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1337,13 +1337,16 @@
       <div class="feedback-overlay" id="feedback-overlay" onclick="if(event.target===this)closeFeedback()">
         <div class="feedback-modal" id="feedback-modal">
           <div id="fb-form-view">
-            <h3 id="fb-heading">🐛 Squash a Bug</h3>
-            <div class="fb-sub" id="fb-subheading">Found something weird? We want to hear about it.</div>
+            <h3 id="fb-heading" style="display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="fb-heading-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="fb-heading-text">Report a Bug</span>
+            </h3>
+            <div class="fb-sub" id="fb-subheading">Found something off? Help us fix it.</div>
 
             <label>What brings you here?</label>
             <div class="fb-type-toggle">
-              <button class="fb-type-btn bug active" data-type="bug" onclick="setFbType('bug')">🐛 Squash a Bug</button>
-              <button class="fb-type-btn" data-type="feature" onclick="setFbType('feature')">💡 Pitch an Idea</button>
+              <button class="fb-type-btn bug active" data-type="bug" onclick="setFbType('bug')">Bug Report</button>
+              <button class="fb-type-btn" data-type="feature" onclick="setFbType('feature')">Feature Request</button>
             </div>
 
             <label>Page</label>
@@ -1372,22 +1375,22 @@
             <div id="fb-bug-help" style="margin-bottom:14px;">
               <label>Screenshots &amp; Console</label>
               <div style="font-size:11px;color:var(--text-dim);line-height:1.6;background:var(--bg-input);border-radius:8px;padding:10px 12px;border:1px solid var(--border);">
-                <div style="margin-bottom:6px;">📸 <strong>Screenshot:</strong></div>
-                <div style="padding-left:20px;margin-bottom:8px;">
+                <div style="margin-bottom:6px;font-weight:600;color:var(--text);">Take a screenshot:</div>
+                <div style="padding-left:12px;margin-bottom:8px;">
                   <strong>Mac:</strong> ⌘⇧4 → drag to select → saves to Desktop<br>
                   <strong>Windows:</strong> Win+Shift+S → drag to select → copies to clipboard
                 </div>
-                <div style="margin-bottom:6px;">🔧 <strong>Console errors:</strong></div>
-                <div style="padding-left:20px;">
+                <div style="margin-bottom:6px;font-weight:600;color:var(--text);">Check the console for errors:</div>
+                <div style="padding-left:12px;">
                   <strong>Mac:</strong> ⌘⌥J (Chrome) or ⌘⌥C (Safari)<br>
                   <strong>Windows:</strong> Ctrl+Shift+J (Chrome) or F12<br>
-                  Screenshot any red errors you see!
+                  Screenshot any red errors you see
                 </div>
               </div>
 
               <label style="margin-top:12px;">Attach files</label>
               <div id="fb-upload-zone" style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:4px;" onclick="$('#fb-file-input').click()">
-                <div style="font-size:13px;color:var(--text-dim);">📎 Drop files here or <span style="color:var(--accent);font-weight:600;">click to browse</span></div>
+                <div style="font-size:13px;color:var(--text-dim);">Drop files here or <span style="color:var(--accent);font-weight:600;">click to browse</span></div>
                 <div style="font-size:10px;color:var(--text-faint);margin-top:4px;">PNG, JPG, GIF up to 5MB each · max 3 files</div>
                 <input type="file" id="fb-file-input" accept="image/*" multiple style="display:none;" onchange="handleFbFiles(this.files)">
               </div>
@@ -1403,15 +1406,15 @@
 
             <div class="feedback-actions">
               <button class="fb-cancel" onclick="closeFeedback()">Cancel</button>
-              <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Send it! 🚀</button>
+              <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Submit</button>
             </div>
           </div>
           <div id="fb-success-view" style="display:none;">
             <div class="fb-success">
-              <div class="fb-check" id="fb-success-icon">🎉</div>
-              <h4 id="fb-success-title">Bug squashed! Thanks!</h4>
+              <div class="fb-check" id="fb-success-icon" style="color:var(--green);">✓</div>
+              <h4 id="fb-success-title">Bug report submitted!</h4>
               <p id="fb-success-msg">We'll investigate and keep you posted.</p>
-              <button class="fb-submit" style="margin-top:18px;" onclick="closeFeedback()">Back to it →</button>
+              <button class="fb-submit" style="margin-top:18px;" onclick="closeFeedback()">Done</button>
             </div>
           </div>
         </div>
@@ -1885,7 +1888,7 @@
 
           <!-- Global Location -->
           <div class="tuning-card" id="tc-location">
-            <div class="tuning-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">location rules</span>
               <span class="tuning-card-badge empty" id="tc-loc-badge"></span>
@@ -1906,7 +1909,7 @@
 
           <!-- Global Company Exclusions -->
           <div class="tuning-card" id="tc-company">
-            <div class="tuning-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">company exclusions</span>
               <span class="tuning-card-badge empty" id="tc-co-badge"></span>
@@ -1923,7 +1926,7 @@
 
           <!-- Global Industry Exclusions -->
           <div class="tuning-card" id="tc-industry">
-            <div class="tuning-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">industry exclusions</span>
               <span class="tuning-card-badge empty" id="tc-ind-badge"></span>
@@ -1940,7 +1943,7 @@
 
           <!-- Title Rules — Hierarchy + Exclusions -->
           <div class="tuning-card" id="tc-title">
-            <div class="tuning-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">title rules</span>
               <span class="tuning-card-badge empty" id="tc-title-badge"></span>
@@ -1981,7 +1984,7 @@
 
           <!-- Match Quality Suggestions -->
           <div class="tuning-card" id="tc-poor">
-            <div class="tuning-card-header" onclick="this.parentElement.classList.toggle('collapsed')">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">recent poor matches</span>
               <span class="tuning-card-badge empty" id="tc-poor-badge"></span>
@@ -2516,7 +2519,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.25f loaded');
+    console.log('[BJ] Dashboard v2.25h loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -5108,46 +5111,58 @@
     // Open company browser
     let cbReturnPage = 'jobs';
     function openCompanyBrowser(mode, returnPage) {
-      cbBrowseMode = mode; // 'include' or 'exclude'
+      cbBrowseMode = mode;
       cbReturnPage = returnPage || 'jobs';
       cbSelections = {};
+
+      // If opening from Tuning, pre-populate exclusions
+      if (cbReturnPage === 'tuning') {
+        tuningCoExclPills.forEach(p => {
+          const name = typeof p === 'string' ? p : ((p.values || [])[0] || '');
+          if (name) {
+            // Try to find slug match
+            const match = cbAllCompanies.find(c => c.name.toLowerCase() === name.toLowerCase() || c.slug.toLowerCase() === name.toLowerCase());
+            if (match) cbSelections[match.slug] = 'exclude';
+          }
+        });
+      }
+
       $$('.page').forEach(p => p.classList.remove('active'));
       $('#page-company-browser').classList.add('active');
       $$('.nav-item').forEach(n => n.classList.remove('active'));
       $('#cb-search').value = '';
       $('#cb-back-btn').textContent = cbReturnPage === 'tuning' ? '← Back to Tuning' : '← Back to Jobs';
-      $$('#page-company-browser .cb-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'all'));
+
+      // Hide collections bar and included mode when in Tuning mode
+      const saveBar = $('.cb-save-bar');
+      if (saveBar) saveBar.style.display = cbReturnPage === 'tuning' ? 'none' : '';
+      $$('#page-company-browser .cb-mode-btn').forEach(b => {
+        if (b.dataset.mode === 'included') b.style.display = cbReturnPage === 'tuning' ? 'none' : '';
+        b.classList.toggle('active', b.dataset.mode === 'all');
+      });
       loadCompanyBrowser();
     }
 
     // Back button
     $('#cb-back-btn').addEventListener('click', () => {
-      // Apply selections as pills
-      const included = Object.entries(cbSelections).filter(([,v]) => v === 'include').map(([slug]) => {
-        const c = cbAllCompanies.find(x => x.slug === slug);
-        return c?.name || slug;
-      });
       const excluded = Object.entries(cbSelections).filter(([,v]) => v === 'exclude').map(([slug]) => {
         const c = cbAllCompanies.find(x => x.slug === slug);
         return c?.name || slug;
       });
 
       if (cbReturnPage === 'tuning') {
-        // Add to tuning company exclusions
-        excluded.forEach(name => {
-          const exists = tuningCoExclPills.some(p => {
-            const v = typeof p === 'string' ? p : ((p.values || [])[0] || '');
-            return v.toLowerCase() === name.toLowerCase();
-          });
-          if (!exists) tuningCoExclPills.push({ values: [name], type: 'not' });
-        });
+        // Replace tuning company exclusions with current selections
+        tuningCoExclPills = excluded.map(name => ({ values: [name], type: 'not' }));
         saveTuning(); renderTuningPills();
 
         $$('.page').forEach(p => p.classList.remove('active'));
         $('#page-tuning').classList.add('active');
         $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === 'tuning'));
       } else {
-        // Original behavior — add to Jobs Feed pills
+        const included = Object.entries(cbSelections).filter(([,v]) => v === 'include').map(([slug]) => {
+          const c = cbAllCompanies.find(x => x.slug === slug);
+          return c?.name || slug;
+        });
         if (included.length > 0 && included.length <= 5) {
           included.forEach(name => {
             if (!whoPills.find(p => p.values[0]?.toLowerCase() === name.toLowerCase())) {
@@ -5186,6 +5201,7 @@
       $('#lb-search').value = '';
       lbMode = 'all';
       $$('[data-browser="loc"]').forEach(b => b.classList.toggle('active', b.dataset.mode === 'all'));
+      $('#lb-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading locations…</div>';
       await loadLocationBrowser();
     }
 
@@ -5213,7 +5229,8 @@
         try {
           let offset = 0;
           while (true) {
-            const { data } = await sb.from('ref_city_radius').select('city, state, type').range(offset, offset + 999);
+            const { data, error } = await sb.from('ref_city_radius').select('city, state, type').range(offset, offset + 999);
+            if (error) { console.warn('[BJ] ref_city_radius error:', error.message); break; }
             if (!data || data.length === 0) break;
             data.forEach(r => {
               const display = r.type === 'metro' ? r.city : `${r.city}, ${r.state}`;
@@ -5222,13 +5239,14 @@
             if (data.length < 1000) break;
             offset += 1000;
           }
-        } catch (e) {}
+        } catch (e) { console.warn('[BJ] ref_city_radius load failed:', e); }
 
         // Add Remote
         locations.push({ display: 'Remote', type: 'remote', sortKey: 'remote' });
 
         locations.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
         lbAllLocations = locations;
+        console.log('[BJ] Location browser loaded', locations.length, 'locations');
       }
       renderLocationBrowserList();
     }
@@ -5352,6 +5370,7 @@
       $('#ib-search').value = '';
       ibMode = 'all';
       $$('[data-browser="ind"]').forEach(b => b.classList.toggle('active', b.dataset.mode === 'all'));
+      $('#ib-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading industries…</div>';
       await loadIndustryBrowser();
     }
 
@@ -5359,6 +5378,7 @@
       if (ibAllIndustries.length === 0) {
         const industries = await loadIndustryCache();
         ibAllIndustries = industries.sort((a, b) => a.name.localeCompare(b.name));
+        console.log('[BJ] Industry browser loaded', ibAllIndustries.length, 'industries');
       }
       renderIndustryBrowserList();
     }
@@ -5670,13 +5690,22 @@
           e.stopPropagation();
           const slug = toggle.dataset.slug;
           const current = cbSelections[slug];
-          if (!current) {
-            // First click: set based on browse mode
-            cbSelections[slug] = cbBrowseMode === 'exclude' ? 'exclude' : 'include';
-          } else if (current === 'include') {
-            cbSelections[slug] = 'exclude';
-          } else if (current === 'exclude') {
-            delete cbSelections[slug];
+          if (cbReturnPage === 'tuning') {
+            // Tuning mode: simple exclude toggle
+            if (current === 'exclude') {
+              delete cbSelections[slug];
+            } else {
+              cbSelections[slug] = 'exclude';
+            }
+          } else {
+            // Jobs Feed mode: cycle include → exclude → none
+            if (!current) {
+              cbSelections[slug] = cbBrowseMode === 'exclude' ? 'exclude' : 'include';
+            } else if (current === 'include') {
+              cbSelections[slug] = 'exclude';
+            } else if (current === 'exclude') {
+              delete cbSelections[slug];
+            }
           }
           // Update visual
           const sel = cbSelections[slug];
@@ -6327,18 +6356,38 @@
     }
 
     // Collapse toggle
+    // Restore Jobs Feed collapse states from localStorage
+    const collapseStates = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+    if (collapseStates.qb) {
+      $('#qb-toggle').classList.add('collapsed');
+      $('#qb-collapse-body').classList.add('collapsed');
+    }
+    if (collapseStates.sf) {
+      $('#sf-toggle').classList.add('collapsed');
+      $('#sf-collapse-body').classList.add('collapsed');
+    }
+
+    function saveCollapseStates() {
+      const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+      states.qb = $('#qb-toggle').classList.contains('collapsed');
+      states.sf = $('#sf-toggle').classList.contains('collapsed');
+      localStorage.setItem('bj_collapse', JSON.stringify(states));
+    }
+
     $('#qb-toggle').addEventListener('click', (e) => {
       if (e.target.id === 'clear-filters-btn' || e.target.closest('#clear-filters-btn')) return;
       const header = $('#qb-toggle');
       const body = $('#qb-collapse-body');
       header.classList.toggle('collapsed');
       body.classList.toggle('collapsed');
+      saveCollapseStates();
     });
 
     // Saved filters collapse toggle
     $('#sf-toggle').addEventListener('click', () => {
       $('#sf-toggle').classList.toggle('collapsed');
       $('#sf-collapse-body').classList.toggle('collapsed');
+      saveCollapseStates();
     });
 
     // Update active filter count badge
@@ -7150,6 +7199,32 @@
     // ============================================================
     // TUNING — Global search settings
     // ============================================================
+    // ---- Tuning card collapse persistence ----
+    function toggleTuningCard(header) {
+      const card = header.parentElement;
+      card.classList.toggle('collapsed');
+      saveTuningCollapseStates();
+    }
+
+    function saveTuningCollapseStates() {
+      const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+      states.tuning = {};
+      $$('.tuning-card').forEach(card => {
+        if (card.id) states.tuning[card.id] = card.classList.contains('collapsed');
+      });
+      localStorage.setItem('bj_collapse', JSON.stringify(states));
+    }
+
+    // Restore tuning card states
+    (function() {
+      const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+      const tuning = states.tuning || {};
+      Object.entries(tuning).forEach(([id, collapsed]) => {
+        const card = document.getElementById(id);
+        if (card && collapsed) card.classList.add('collapsed');
+      });
+    })();
+
     let tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
     let tuningLocExclPills = tuningSettings.locationExcludes || [];
     let tuningTitleExclPills = tuningSettings.titleExcludes || [];
@@ -8759,20 +8834,25 @@
         b.classList.remove('active');
         if (b.dataset.type === type) b.classList.add('active');
       });
+      const icon = $('#fb-heading-icon');
       if (type === 'bug') {
-        $('#fb-heading').textContent = '🐛 Squash a Bug';
-        $('#fb-subheading').textContent = 'Found something weird? We want to hear about it.';
+        $('#fb-heading-text').textContent = 'Report a Bug';
+        $('#fb-subheading').textContent = 'Found something off? Help us fix it.';
         $('#fb-title-label').textContent = 'What happened?';
         $('#fb-title').placeholder = 'Brief description of the issue…';
         $('#fb-details').placeholder = 'Steps to reproduce, expected vs actual behavior…';
         $('#fb-bug-help').style.display = '';
+        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+        icon.style.stroke = 'var(--red)';
       } else {
-        $('#fb-heading').textContent = '💡 Pitch an Idea';
-        $('#fb-subheading').textContent = "Got a brilliant idea? We're all ears.";
+        $('#fb-heading-text').textContent = 'Request a Feature';
+        $('#fb-subheading').textContent = "Have an idea to make this better? We're listening.";
         $('#fb-title-label').textContent = 'What would you like?';
         $('#fb-title').placeholder = 'Brief description of the feature idea…';
         $('#fb-details').placeholder = 'How would this help your job search? Any specifics on how it should work…';
         $('#fb-bug-help').style.display = 'none';
+        icon.innerHTML = '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none"/>';
+        icon.style.stroke = 'var(--accent)';
       }
     }
 
@@ -8836,7 +8916,7 @@
       $('#fb-form-view').style.display = '';
       $('#fb-success-view').style.display = 'none';
       $('#fb-submit-btn').disabled = false;
-      $('#fb-submit-btn').textContent = 'Send it! 🚀';
+      $('#fb-submit-btn').textContent = 'Submit';
       $('#feedback-overlay').classList.add('open');
       setTimeout(() => $('#fb-title').focus(), 100);
     }
@@ -8851,7 +8931,7 @@
 
       const btn = $('#fb-submit-btn');
       btn.disabled = true;
-      btn.textContent = 'Sending… 📡';
+      btn.textContent = 'Submitting…';
 
       // Upload images to Supabase Storage
       const imageUrls = [];
@@ -8878,20 +8958,22 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.25f',
+        dashboard_version: 'v2.25h',
       };
 
       try {
         const { error } = await sb.from('feedback').insert(payload);
         if (error) throw error;
         if (fbType === 'bug') {
-          $('#fb-success-icon').textContent = '🐛✅';
-          $('#fb-success-title').textContent = 'Bug squashed! Thanks!';
+          $('#fb-success-icon').textContent = '✓';
+          $('#fb-success-icon').style.color = 'var(--green)';
+          $('#fb-success-title').textContent = 'Bug report submitted!';
           $('#fb-success-msg').textContent = "We'll investigate and keep you posted.";
         } else {
-          $('#fb-success-icon').textContent = '💡✨';
-          $('#fb-success-title').textContent = 'Brilliant idea received!';
-          $('#fb-success-msg').textContent = "We'll review it and see what we can do.";
+          $('#fb-success-icon').textContent = '✓';
+          $('#fb-success-icon').style.color = 'var(--accent)';
+          $('#fb-success-title').textContent = 'Feature request received!';
+          $('#fb-success-msg').textContent = "We'll review it and see what we can build.";
         }
         $('#fb-form-view').style.display = 'none';
         $('#fb-success-view').style.display = '';
@@ -8899,7 +8981,7 @@
         console.error('[BJ] Feedback submit error:', e);
         alert('Failed to submit feedback. Please try again.');
         btn.disabled = false;
-        btn.textContent = 'Send it! 🚀';
+        btn.textContent = 'Submit';
       }
     }
 
