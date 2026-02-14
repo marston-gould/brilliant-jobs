@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -28,6 +29,11 @@
       --red: #f87171;
       --purple: #a78bfa;
       --purple-dim: rgba(167,139,250,0.1);
+      --pink: #f472b6;
+      --cyan: #22d3ee;
+      --lime: #a3e635;
+      --orange: #fb923c;
+      --teal: #2dd4bf;
       --sans: 'Outfit', sans-serif;
       --mono: 'JetBrains Mono', monospace;
     }
@@ -163,6 +169,11 @@
     .pb-9 { background: rgba(248,113,113,0.08); color: var(--red); }
     .pb-10 { background: rgba(52,211,153,0.08); color: var(--green); }
     .pb-11 { background: rgba(77,142,255,0.08); color: var(--accent); }
+    .pb-12 { background: rgba(244,114,182,0.08); color: var(--pink); }
+    .pb-13 { background: rgba(34,211,238,0.08); color: var(--cyan); }
+    .pb-14 { background: rgba(163,230,53,0.08); color: var(--lime); }
+    .pb-15 { background: rgba(251,146,60,0.08); color: var(--orange); }
+    .pb-16 { background: rgba(45,212,191,0.08); color: var(--teal); }
 
     /* Section containers */
     .section-wrap {
@@ -264,7 +275,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 13, 2026 · Dashboard v2.24c
+    Brilliant Jobs · Internal Roadmap · Updated February 14, 2026 · Dashboard v2.25
   </div>
 
 </div>
@@ -340,14 +351,13 @@ const features = [
   { s: 'done', n: 'Extension webRequest listener for Greenhouse', d: 'background.js monitors POST requests to boards.greenhouse.io for submission detection', p: 2 },
   { s: 'done', n: 'Chrome notification on application submit', d: 'Extension fires desktop notification when ATS form submission is detected', p: 2 },
 
-  // ═══════════════ IN PROGRESS ═══════════════
+  // Phase 2 — Data Infra
   { s: 'done', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
   { s: 'done', n: 'Daily job refresh cron', d: 'v5 orchestrator queues 184 batches of 10 boards via pg_net in ~1s. 97K+ jobs refreshed in under 5 min. Runs daily at 4AM via pg_cron.', p: 2 },
   { s: 'done', n: 'Mark closed/inactive jobs', d: 'Jobs not found in ATS feed on refresh get status=closed and closed_at timestamp. 3,596 already marked closed. Dashboard filters to status=open by default.', p: 2 },
   { s: 'done', n: 'NOT filter fix', d: 'Fixed NOR prefix stripping, commitPill recognizes both or/nor, values cleaned before query', p: 2 },
 
-  // ═══════════════ PLANNED ═══════════════
-  // Phase 2 — Feed & Filters
+  // Phase 2 — Feed & Filters (continued)
   { s: 'done', n: 'Company autocomplete in Who filter', d: 'Search ats_companies by slug/name and connections by parsed_company with dropdown, badges, keyboard nav', p: 2 },
   { s: 'done', n: 'Salary extraction from job specs', d: 'Regex parser handles multi-zone ranges, HTML entities, $Xk notation — saves salary_min/max/raw to DB', p: 2 },
   { s: 'done', n: 'Background salary enrichment', d: 'Auto-fetches specs for first 20 visible jobs without salary, parses cached content, updates feed cells live', p: 2 },
@@ -401,6 +411,10 @@ const features = [
   { s: 'done', n: 'Nav reorder: Resumes → Applications → Pipeline', d: 'Apply-track section reordered to match workflow — resumes first, then applications, then pipeline.', p: 2 },
   { s: 'done', n: 'Feedback form', d: 'Fixed-position Feedback button. Modal with Bug Report / Feature Request toggle, auto-detected page, Mac/Windows screenshot + console instructions, drag-drop image upload (3 files, 5MB each) to Supabase Storage. feedback table with image_urls JSONB, RLS, storage bucket.', p: 2 },
 
+  // ═══════════════ IN PROGRESS ═══════════════
+  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Match 1,900 Greenhouse companies against 7M PDL records by domain/name/LinkedIn. Backfill industry, size, location, founded. ref_companies loading, enrichment matching pending.', p: 6 },
+
+  // ═══════════════ PLANNED ═══════════════
   // Phase 2.5 — Anti-detection
   { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 2.5 },
   { s: 'todo', n: 'Randomized scroll patterns', d: 'Variable scroll speeds and pause points to mimic human behavior', p: 2.5 },
@@ -416,19 +430,27 @@ const features = [
   { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', p: 3 },
   { s: 'todo', n: 'Terms of service and privacy policy', d: 'Legal pages covering data usage, LinkedIn interaction, and user rights', p: 3 },
   { s: 'todo', n: 'Email setup (support@brilliantjobs.app)', d: 'Transactional email for password resets, notifications, and support', p: 3 },
-
   { s: 'todo', n: 'Uninstall win-back page', d: 'Capture churn reason + offer discount via uninstall_url in manifest', p: 3 },
+  { s: 'todo', n: 'Landing page survey data integration', d: 'Surface key survey stats on marketing page as social proof — "73% report being ghosted", "Avg 47 apps before first interview". Auto-updates from latest published survey results. Replaces vanity metrics with credible, original data.', p: 3 },
 
   // Phase 4 — User Management
   { s: 'todo', n: 'Automated user approval', d: 'Edge Function validates LinkedIn URL and auto-approves signups', p: 4 },
+  { s: 'todo', n: 'Competitor employer blocklist', d: 'Block signups from users currently or previously employed at competitors and adjacent companies: Indeed, ZipRecruiter, LinkedIn, Glassdoor, Greenhouse, Lever, Workable, Ashby, iCIMS, Workday, SmartRecruiters, Jobvite, Handshake, Hired, Wellfound, The Muse, Dice, Monster, CareerBuilder, Ladders, DataForSEO, TheirStack. Cross-reference LinkedIn profile employer history during approval. Maintain admin-editable blocklist.', p: 4 },
   { s: 'todo', n: 'DataForSEO profile verification', d: 'Cross-reference signup LinkedIn URL against DataForSEO for legitimacy', p: 4 },
   { s: 'todo', n: 'Two-factor authentication', d: 'TOTP-based 2FA for account security', p: 4 },
   { s: 'todo', n: 'Admin dashboard', d: 'View pending approvals, user stats, and system health', p: 4 },
 
-  // Phase 5 — Monetization
-  { s: 'todo', n: 'Stripe integration', d: 'Payment processing for subscription and success fee models', p: 5 },
+  // Phase 5 — Monetization & Growth
+  { s: 'todo', n: 'Stripe integration', d: 'Payment processing for subscription model', p: 5 },
   { s: 'todo', n: 'Pricing tiers: Free / $29 Pro / $149 Success Fee', d: 'Dual pricing model with referral discount engine', p: 5 },
-  { s: 'todo', n: 'Referral reward system', d: 'Invite friends, earn discounts on subscription or success fee', p: 5 },
+  { s: 'todo', n: 'Double-sided referral program', d: 'Dropbox model: referrer AND referred both get a reward on signup. Both parties benefit immediately — drives viral growth without ad spend.', p: 5 },
+  { s: 'todo', n: 'Referral reward options', d: 'Reward possibilities: free month of Pro, extended trial, XP bonus, feature unlock, additional saved filters, extra application slots. Test which incentive drives highest conversion.', p: 5 },
+  { s: 'todo', n: 'Referral link and tracking system', d: 'Unique shareable link per user. Track: clicks, signups, conversions to paid. Attribution persists across sessions (cookie + URL param). Dashboard showing referral performance.', p: 5 },
+  { s: 'todo', n: 'Referral sharing UX', d: 'One-click share to LinkedIn, email, text. Pre-written message: "I found X jobs in Y days using Brilliant Jobs — try it free." Share from dashboard, from job modal, from wins (got interview, got offer).', p: 5 },
+  { s: 'todo', n: 'Tiered referral rewards', d: 'Escalating incentives: 1 referral = 1 week Pro free. 3 = 1 month. 5 = permanent feature unlock. 10 = lifetime Pro. Drives sustained sharing, not one-and-done.', p: 5 },
+  { s: 'todo', n: 'Referral leaderboard and milestones', d: 'Opt-in leaderboard for top referrers. Milestone badges: "Connector" (3), "Evangelist" (10), "Ambassador" (25). Public recognition drives competitive sharing.', p: 5 },
+  { s: 'todo', n: 'Referral fraud prevention', d: 'Detect fake signups from same IP/device, accounts that never activate, self-referral attempts. Require referred user to complete profile + first search before reward triggers.', p: 5 },
+  { s: 'todo', n: 'Application source branding', d: 'Ensure Brilliant Jobs attribution visible to hiring teams — UTM params on ATS links, "How did you hear about us?" auto-fill. Organic employer awareness as candidates apply.', p: 5 },
 
   // Phase 6 — Resumes & Applications
   { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 6 },
@@ -439,8 +461,9 @@ const features = [
   { s: 'todo', n: 'ATS filter reverse-engineering', d: 'Aggregate user outcomes to decode what filters companies use to screen applicants', p: 6 },
   { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns', p: 6 },
   { s: 'todo', n: 'Application auto-detect from extension', d: 'Detect LinkedIn Easy Apply and external ATS redirects, prompt to track', p: 6 },
+  { s: 'todo', n: 'Referral outreach templates', d: 'Pre-written LinkedIn/email templates for requesting real referrals from connections. Personalized with job title, company, and connection context. One-click send from job modal.', p: 6 },
+  { s: 'todo', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates.', p: 6 },
   { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters', p: 6 },
-  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Match 1,900 Greenhouse companies against 7M PDL records by domain/name/LinkedIn. Backfill industry, size, location, founded. ref_companies loading, enrichment matching pending.', p: 6 },
 
   // Phase 7 — Ghost Monitor
   { s: 'todo', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates', p: 7 },
@@ -456,10 +479,11 @@ const features = [
   { s: 'todo', n: 'Network strength scoring', d: 'Rate connection quality per company — 1st degree, mutual connections, recency', p: 8 },
   { s: 'todo', n: 'Warm intro pathways', d: 'You → Sarah → Tom at Company X — multi-hop connection mapping', p: 8 },
   { s: 'todo', n: 'Hiring velocity detection and alerts', d: 'Company posting 10x more jobs than usual → alert subscribed users', p: 8 },
+  { s: 'todo', n: 'Referral availability indicator', d: 'Badge on job cards when user has 1+ connections at that company. Strength tiers: strong (1st degree, recent contact), warm (1st degree), weak (2nd degree). "You know 3 people here" in job modal.', p: 8 },
+  { s: 'todo', n: 'Referral prompt before apply', d: 'When connection exists at company, prompt before application: "Want to request a referral from [Name] first?" with templated outreach message. Referral-first flow increases success rate.', p: 8 },
 
   // Phase 9 — Multi-ATS: Per-Source Roadmaps
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 9 },
-  // Each data source follows: Discovery → Scrape → Normalize → Refresh → Dedup
 
   // ── Greenhouse (ACTIVE) ──
   { s: 'done', n: '[GH] Board discovery — 1,900 slugs via prefix brute-force', d: 'Two-letter prefix scan across boards-api.greenhouse.io', p: 9 },
@@ -507,16 +531,83 @@ const features = [
   { s: 'todo', n: 'Regional job aggregation', d: 'Group locations into metro areas (NYC, Bay Area, Chicago) using Census CSA/MSA data', p: 9 },
   { s: 'todo', n: 'Source attribution in feed', d: 'Show GH/LV/WK/ASH/IND badge per job row — already have pill CSS ready', p: 9 },
 
-  // Phase 10 — SEO Content
+  // Phase 10 — SEO Trend Content
   { s: 'todo', n: 'Public company ghost rate reports', d: 'SEO-friendly pages showing employer hiring accountability scores', p: 10 },
   { s: 'todo', n: 'Community benchmark data', d: 'Aggregated stats on response rates, time to hire, salary ranges by role', p: 10 },
   { s: 'todo', n: 'Public job market trend reports', d: 'Velocity data by title, location, industry — attracts organic traffic', p: 10 },
   { s: 'todo', n: 'Programmatic company SEO pages', d: 'Auto-generated pages per company with jobs, ghost rate, hiring patterns', p: 10 },
+  { s: 'todo', n: 'Single-parameter trend pages', d: 'Templated pages for individual dimensions: "Remote Marketing Jobs Trend", "Seattle Job Market Growth", "Director Salary Trends Tech"', p: 10 },
+  { s: 'todo', n: 'Two-parameter comparison pages', d: 'Cross-dimension analysis: "Remote vs In-Office Salaries by Industry", "Tech Salaries: SF vs Austin vs Remote", "Entry vs Senior Hiring Velocity"', p: 10 },
+  { s: 'todo', n: 'Multi-dimensional insight pages', d: 'Complex intersections: "Highest Paying Remote Marketing Roles by Company Size", "Industries Hiring Most Aggressively: Director+ Remote"', p: 10 },
+  { s: 'todo', n: 'Public data benchmark overlays', d: 'Correlate Brilliant Jobs trend data with BLS employment stats, Census data, unemployment rate — citation-worthy original research', p: 10 },
+  { s: 'todo', n: 'Remote vs non-remote differential tracker', d: 'Ongoing salary and availability comparison between remote and in-office roles across industries and levels', p: 10 },
+  { s: 'todo', n: 'Trend page template engine', d: 'Automated generation of SEO pages from aggregated data — freshness signals, "Last 30 days" callouts, update badges', p: 10 },
+  { s: 'todo', n: 'Dataset schema markup', d: 'Structured data (Dataset, StatisticalPopulation) on trend pages for rich results and Google Dataset Search', p: 10 },
+  { s: 'todo', n: 'Embeddable trend charts', d: 'Charts with "Source: Brilliant Jobs" backlink requirement — shareable on blogs, news sites, career content', p: 10 },
+  { s: 'todo', n: 'Hub-and-spoke internal linking', d: 'Industry hubs → salary trends + location comparisons + remote analysis. Role hubs → industry comparisons + top companies + pay bands', p: 10 },
+  { s: 'todo', n: 'Daily publication cadence engine', d: 'Automated content calendar spreading updates across month. Daily new or refreshed page: Mon=salary trends, Tue=location comparisons, Wed=remote vs office, Thu=industry velocity, Fri=company reports. Stagger by parameter combos so each day publishes unique content. Cron-driven with queue.', p: 10 },
+  { s: 'todo', n: 'Content freshness rotation', d: 'Each trend page on a refresh cycle (7d/14d/30d based on data volatility). Salary pages refresh weekly, location pages biweekly, industry pages monthly. Visible "Updated X hours ago" timestamps for crawlers and users.', p: 10 },
+  { s: 'todo', n: 'Publication queue and scheduling', d: 'Admin-managed queue of pending pages — auto-generated from data changes, survey results, new parameter combos. Schedule slots ensure 1+ new/refreshed page per day. Backfill gaps with "X vs Y" comparison pages.', p: 10 },
+  { s: 'todo', n: 'Sitemap and indexing automation', d: 'Dynamic XML sitemap auto-updated on each publication. Ping Google on new pages. Priority weighting: fresh trend pages > older pages. lastmod reflects actual data refresh, not template rebuild.', p: 10 },
+  { s: 'todo', n: 'Annual state-of-the-market report', d: 'Comprehensive yearly benchmark combining trend data + survey results — flagship content asset for backlinks and press', p: 10 },
+  { s: 'todo', n: 'Referral impact reports', d: 'SEO pages: "Referral vs Cold Application Success Rates by Industry", "Companies Where Referrals Matter Most", "How Many Connections You Need for a Referral" — original data from Brilliant Jobs user outcomes', p: 10 },
 
   // Phase 11 — Beta
   { s: 'todo', n: 'Beta user onboarding (5-10 users)', d: 'Guided setup, feedback collection, bug reporting workflow', p: 11 },
   { s: 'todo', n: 'UX feedback and bug triage', d: 'Prioritize fixes based on real usage patterns', p: 11 },
   { s: 'todo', n: 'Performance testing at scale', d: 'Verify dashboard and queries handle 100K+ jobs with multiple concurrent users', p: 11 },
+
+  // Phase 12 — Surveys & User Intelligence
+  { s: 'todo', n: 'Survey infrastructure', d: 'Survey engine with question types (rating, multi-select, ranking, free text), trigger rules, response storage, and analytics', p: 12 },
+  { s: 'todo', n: 'Post-search micro-surveys', d: 'Every 10th search or after 5-min session: "How relevant were these results?" [1-5 stars] + "What was missing?" quick-select', p: 12 },
+  { s: 'todo', n: 'Post-application confidence survey', d: '"How confident are you this job is real?" [1-5] + "Was the application process clear?" — triggers after each apply', p: 12 },
+  { s: 'todo', n: 'Data value assessment surveys', d: '"Did this data help your decision?" after viewing salary/accountability data — tracks perceived value per feature by tier', p: 12 },
+  { s: 'todo', n: 'Process ease & control survey', d: 'Comparative ease vs other sites + perceived control over results + filter adequacy — key UX health metrics', p: 12 },
+  { s: 'todo', n: 'Monthly NPS pulse', d: '"How likely to recommend?" [0-10] + "Main reason?" + "ONE thing to improve?" — rolling monthly for active users', p: 12 },
+  { s: 'todo', n: 'Quarterly feature prioritization', d: 'Drag-and-drop ranking of potential features — auto-apply, interview prep, salary negotiation, ATS scoring, recruiter blocking — feeds backlog weighting', p: 12 },
+  { s: 'todo', n: 'Paywall friction survey', d: 'On limit hit: "Would you pay to unlock?" [Definitely / Maybe / No] + "Why not?" [Too expensive / Not enough value / Just browsing]', p: 12 },
+  { s: 'todo', n: 'Ghost Job Reality Check (flagship survey)', d: 'First public survey — 10 questions on ghost job experiences. Target 1K+ responses. Publish report for press coverage and backlinks.', p: 12 },
+  { s: 'todo', n: 'Market sentiment surveys', d: 'Monthly confidence index, industry migration patterns, AI impact on search, salary negotiation success rates, benefits priorities', p: 12 },
+  { s: 'todo', n: 'Employer accountability surveys', d: 'Red flags in postings by industry, interview process satisfaction by company size, bait-and-switch frequency, role vs reality mismatches', p: 12 },
+  { s: 'todo', n: 'Referral effectiveness survey', d: 'Track referral vs cold application outcomes across users. "Did your referral lead to an interview?" Publishable data: "Referred candidates are Xx more likely to get interviews at [industry/company size]."', p: 12 },
+  { s: 'todo', n: 'Survey → content pipeline', d: 'Teaser (wk 2) → full report (wk 3) → derivative posts, infographics, industry breakouts, guest posts (wks 4-8) → annual compilation', p: 12 },
+  { s: 'todo', n: 'Explicit user attribute capture', d: 'Survey questions capture seniority, years experience, industries, remote preference, salary expectations, deal-breakers, search urgency', p: 12 },
+  { s: 'todo', n: 'Behavioral activity tracking', d: 'Implicit signals: job types clicked, search patterns, time on salary pages, filter combos, companies blocked, ghost reports filed', p: 12 },
+  { s: 'todo', n: 'Merged user intelligence profiles', d: 'Survey data + behavioral data + application history → unified profile powering recommendations, market positioning, red flag alerts', p: 12 },
+  { s: 'todo', n: 'Progressive profiling', d: '3-5 questions per touchpoint. "Answer 2 more to unlock salary data for this role." Gamified completion: "Profile 65% complete — unlock X"', p: 12 },
+  { s: 'todo', n: 'User data transparency dashboard', d: 'Show what Brilliant Jobs knows about each user — builds trust, never sold, export/delete controls', p: 12 },
+  { s: 'todo', n: 'Churn risk scoring', d: 'Survey signals (low relevance, low NPS, low control) + behavioral signals (low CTR, 0 apps, engagement cliff) → 0-100 risk score with auto-interventions', p: 12 },
+  { s: 'todo', n: 'Closed-loop feedback display', d: '"You told us X, so we built Y" — visible proof surveys drive product changes, boosting future response rates', p: 12 },
+
+  // Phase 13 — Admin Panel & Feature Flags
+  { s: 'todo', n: 'Feature flag system', d: 'DB-backed flags with tier assignment (Free/Pro/Premium). hasAccess(userId, featureKey) gating. canPerformAction(userId, action) for usage limits.', p: 13 },
+  { s: 'todo', n: 'Admin feature flag dashboard', d: 'Drag-and-drop feature → tier assignment. Categories: Search & Discovery, Data & Insights, Applications, Privacy & Control, Experimental.', p: 13 },
+  { s: 'todo', n: 'Usage limits per tier', d: 'Configurable: monthly apps (5/unlimited), saved searches (0/10/unlimited), stored resumes (1/3/unlimited), company blocks (0/5/unlimited)', p: 13 },
+  { s: 'todo', n: 'Data freshness gating', d: 'Salary data: Free = 30-day lag, Pro = real-time. Trend reports: Free = public only, Pro = all, Premium = all + custom.', p: 13 },
+  { s: 'todo', n: 'A/B test framework', d: 'Allocate % of users per tier to experimental features. Measure engagement, upgrade rate, retention. Admin controls for test creation and analysis.', p: 13 },
+  { s: 'todo', n: 'Per-feature usage analytics', d: 'Track usage frequency, retention correlation, upgrade correlation, satisfaction scores — per feature per tier', p: 13 },
+  { s: 'todo', n: 'Product health dashboard', d: 'Search quality (avg relevance, 0-click %), process ease, data value ratings, churn risk alerts — all from survey + behavioral data', p: 13 },
+  { s: 'todo', n: 'Tier migration analytics', d: 'What triggers Free→Pro? What predicts Premium? Churn reasons by tier. Feature-level conversion attribution.', p: 13 },
+  { s: 'todo', n: 'Adaptive upgrade nudges', d: 'Context-aware: Director+ searcher → Premium pitch. Ghost score user → accountability features. High-CoL city → salary negotiation data.', p: 13 },
+  { s: 'todo', n: 'Feature satisfaction delta analysis', d: '"If we build X, expected retention lift Y%." Combine survey priority rankings with usage data for build/kill decisions.', p: 13 },
+
+  // Phase 14 — Gamification & Rewards
+  { s: 'todo', n: 'XP reward system', d: 'Earn XP: profile completion (+50), surveys (+25), applications (+10), interviews (+100), company reviews (+20), referrals (+200). Persistent balance.', p: 14 },
+  { s: 'todo', n: 'XP reward store — user-selected feature unlocks', d: 'Spend XP to temporarily unlock chosen premium features: 1-week Pro access (500 XP), 3-day profile boost (300 XP), resume review (1000 XP), early access (250 XP).', p: 14 },
+  { s: 'todo', n: 'Profile strength game', d: 'Progress bar with levels: "Rising Star" (50%) → "Highly Sought After" (85%) → "Top Talent" (100%). Level-up unlocks: 2x employer views, premium offer filter, early salary data.', p: 14 },
+  { s: 'todo', n: 'Market Value Index', d: 'Composite score (0-200) from skills demand + offer history + profile completeness + market positioning. "Top 15% for Marketing Directors, SaaS." Tips to increase.', p: 14 },
+  { s: 'todo', n: 'Achievement badges', d: '"Salary Setter" (3 offers above min), "Remote Magnet" (10 remote offers), "Fast Responder", "Survey Champion", "Network Builder". Displayed on profile.', p: 14 },
+  { s: 'todo', n: 'Application success predictor', d: 'Pre-apply scorecard: skills match %, salary alignment, culture fit, competition level, ghost probability, response rate. "Strong apply — high interview chance."', p: 14 },
+  { s: 'todo', n: 'Streaks and engagement loops', d: 'Daily login, weekly survey, application streaks. 7-day streak = 2x XP day. Gentle re-engagement on break. No dark patterns.', p: 14 },
+  { s: 'todo', n: 'Opt-in leaderboard', d: 'Anonymized rankings: "Top profiles in your industry this week." Opt-in only. Drives completion and survey participation.', p: 14 },
+
+  // Phase 15 — Passive Job Hunting
+  { s: 'todo', n: 'Passive profile (stealth mode)', d: '"Open to opportunities" toggle: visibility controls (hide from current employer + blocked cos), interest level (casual → urgent), minimum requirements to contact.', p: 15 },
+  { s: 'todo', n: '"Just Browsing" notification preferences', d: 'Alert frequency: slam-dunk only (1-2/mo), high-quality (1-2/wk), all relevant (daily). "Worth my time" criteria: salary increase %, remote, level, ghost ceiling, employer rating.', p: 15 },
+  { s: 'todo', n: 'Snooze & wake', d: '"Happy, check back in 6 months." "Pause Aug 1-15." "Wake me when Director roles in Portland hit $160K+." Auto-reactivation on trigger conditions.', p: 15 },
+  { s: 'todo', n: 'Passive match notifications', d: 'Email/push when job matching ALL criteria posted or salary trends show market value increase. Frequency-aware delivery.', p: 15 },
+  { s: 'todo', n: 'Auto-profile from existing data', d: 'Bootstrap passive profile from LinkedIn scan + resume + behavioral data. User reviews and confirms — minimal effort to go passive.', p: 15 },
+  { s: 'todo', n: 'Hired auto-pause', d: 'Confirm new role → auto-pause passive profile, remove from active matching, invite post-hire review.', p: 15 },
 ];
 
 function phaseLabel(p) {
