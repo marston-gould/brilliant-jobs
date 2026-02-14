@@ -572,6 +572,7 @@
     .sf-mini-pill.when-pill { background: rgba(168,85,247,0.08); border-color: rgba(168,85,247,0.15); color: #a855f7; }
     .sf-mini-pill.who-pill { background: rgba(236,72,153,0.08); border-color: rgba(236,72,153,0.15); color: #ec4899; }
     .sf-mini-pill.pay-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.15); color: var(--green); }
+    .sf-mini-pill.no-salary-pill { border-style: dashed; opacity: 0.7; font-style: italic; }
     /* Not-pills: gray interior with colored outlines matching source row */
     .sf-mini-pill.not-pill { background: rgba(148,163,184,0.06); color: var(--text-faint); }
     .sf-mini-pill.not-pill.not-what { border-color: rgba(99,102,241,0.35); }
@@ -1162,7 +1163,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.22</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.24</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1522,7 +1523,7 @@
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="j-total">0</div><div class="stat-label">Total Jobs</div></div>
             <div class="stat-card"><div class="stat-val" id="j-companies">0</div><div class="stat-label">Companies</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-new-login" style="color:var(--accent);">0</div><div class="stat-label">New Since Login</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-new-login" style="color:var(--accent);">0</div><div class="stat-label">New Since Last Login</div></div>
             <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New 1D</div></div>
             <div class="stat-card" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
           </div>
@@ -1539,13 +1540,13 @@
             <div class="qb-row">
               <label class="qb-row-label">What</label>
               <div class="query-builder" id="query-builder-what">
-                <input type="text" class="qb-input" id="qb-input-what" placeholder="Title, keyword, dept…">
+                <input type="text" class="qb-input" id="qb-input-what" placeholder="title, keyword, dept…">
               </div>
             </div>
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
               <div class="query-builder" id="query-builder-what-not" style="border-color:rgba(148,163,184,0.2);">
-                <input type="text" class="qb-input" id="qb-input-what-not" placeholder="Exclude titles…">
+                <input type="text" class="qb-input" id="qb-input-what-not" placeholder="exclude titles…">
               </div>
             </div>
           </div>
@@ -1553,14 +1554,15 @@
             <div class="qb-row">
               <label class="qb-row-label">Where</label>
               <div class="query-builder" id="query-builder-where" style="position:relative;">
-                <input type="text" class="qb-input" id="qb-input-where" placeholder="City, state, remote…" autocomplete="off">
+                <input type="text" class="qb-input" id="qb-input-where" placeholder="city, state, remote…" autocomplete="off">
                 <div id="location-dropdown" class="company-dropdown"></div>
               </div>
             </div>
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
-              <div class="query-builder" id="query-builder-where-not" style="border-color:rgba(148,163,184,0.2);">
-                <input type="text" class="qb-input" id="qb-input-where-not" placeholder="Exclude locations…">
+              <div class="query-builder" id="query-builder-where-not" style="border-color:rgba(148,163,184,0.2);position:relative;">
+                <input type="text" class="qb-input" id="qb-input-where-not" placeholder="exclude locations…" autocomplete="off">
+                <div id="location-not-dropdown" class="company-dropdown"></div>
               </div>
             </div>
           </div>
@@ -1568,7 +1570,7 @@
             <div class="qb-row">
               <label class="qb-row-label">Who</label>
               <div class="query-builder" id="query-builder-who" style="position:relative;">
-                <input type="text" class="qb-input" id="qb-input-who" placeholder="Company name…" autocomplete="off" style="padding-right:70px;">
+                <input type="text" class="qb-input" id="qb-input-who" placeholder="company name…" autocomplete="off" style="padding-right:70px;">
                 <div id="company-dropdown" class="company-dropdown"></div>
                 <span class="browse-companies-btn" id="browse-who-btn" title="Browse all companies">Browse</span>
               </div>
@@ -1576,7 +1578,8 @@
             <div class="qb-row">
               <label class="qb-row-label not-label">Not</label>
               <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(148,163,184,0.2);position:relative;">
-                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="Exclude companies…" style="padding-right:70px;">
+                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="exclude companies…" autocomplete="off" style="padding-right:70px;">
+                <div id="company-not-dropdown" class="company-dropdown"></div>
                 <span class="browse-companies-btn" id="browse-who-not-btn" title="Browse companies to exclude">Browse</span>
               </div>
             </div>
@@ -1616,7 +1619,10 @@
           <div class="filter-toolbar">
             <div class="save-filter-row" id="save-filter-row" style="display:none;">
               <label class="save-label">Save Filter:</label>
-              <input type="text" class="save-filter-name" id="save-filter-name" placeholder="Name this filter…" maxlength="40">
+              <input type="text" class="save-filter-name" id="save-filter-name" placeholder="name this filter…" maxlength="40">
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-faint);cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="save-filter-include-remote"> Include remote jobs
+              </label>
               <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-faint);cursor:pointer;white-space:nowrap;">
                 <input type="checkbox" id="save-filter-include-no-salary" checked> Include jobs without salary
               </label>
@@ -2254,7 +2260,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.22 loaded');
+    console.log('[BJ] Dashboard v2.24 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2619,7 +2625,7 @@
     // Pre-fetch greenhouse_ids matching location pills from job_locations table
     // Location filtering now handled directly in buildFilterQuery via ilike on ats_jobs.location
     // No more pre-fetching IDs from job_locations (was causing connection overload)
-    async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning) {
+    async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, includeRemote = false) {
       if (!wherePillsArr || wherePillsArr.length === 0) return null;
 
       // Separate pills by type
@@ -2628,8 +2634,8 @@
       const remotePills = wherePillsArr.filter(p => p.locType === 'remote');
       const textPills = wherePillsArr.filter(p => !p.lat && !p.stateCode && p.locType !== 'remote');
 
-      // If no radius or state pills, fall through to ilike
-      if (radiusPills.length === 0 && statePills.length === 0 && remotePills.length === 0) return null;
+      // If no radius or state pills and no explicit remote, fall through to ilike
+      if (radiusPills.length === 0 && statePills.length === 0 && remotePills.length === 0 && !includeRemote) return null;
 
       const allIds = new Set();
 
@@ -2650,14 +2656,25 @@
         }
       }
 
-      // State search
+      // State search — require US country to avoid DE=Germany, GA=Georgia(country) confusion
+      // Ambiguous 2-letter codes that are both US states and country/region codes
+      const ambiguousCodes = new Set(['DE','GA','IN','ME','MD','LA','AL','CO','ID','MA','NE','PA']);
+
       for (const pill of statePills) {
         try {
-          const { data, error } = await sb
+          let query = sb
             .from('ats_jobs')
             .select('greenhouse_id')
             .eq('status', 'open')
             .eq('loc_state', pill.stateCode);
+
+          // For ambiguous codes, also require US country or exclude known non-US indicators
+          if (ambiguousCodes.has(pill.stateCode)) {
+            query = query.or('loc_country.eq.US,loc_country.is.null');
+            query = query.not('location', 'ilike', 'Remote -%');
+          }
+
+          const { data, error } = await query;
           if (!error && data) {
             data.forEach(r => allIds.add(r.greenhouse_id));
           }
@@ -2667,8 +2684,9 @@
         }
       }
 
-      // Remote search
-      if (remotePills.length > 0) {
+      // Remote search — either from explicit Remote pill OR includeRemote toggle
+      const shouldSearchRemote = remotePills.length > 0 || (includeRemote && radiusPills.length + statePills.length > 0);
+      if (shouldSearchRemote) {
         try {
           const { data, error } = await sb
             .from('ats_jobs')
@@ -2847,12 +2865,11 @@
         for (const pill of wh) {
           if (pill.values.length === 1) {
             const v = pill.values[0];
-            query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_state.ilike.%${v}%,loc_country.ilike.%${v}%,search_vector.wfts(english).${v}`);
+            query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_country.ilike.%${v}%,search_vector.wfts(english).${v}`);
           } else {
             const clauses = pill.values.flatMap(v => [
               `location.ilike.%${v}%`,
               `loc_display.ilike.%${v}%`,
-              `loc_state.ilike.%${v}%`,
               `search_vector.wfts(english).${v}`,
             ]);
             query = query.or(clauses.join(','));
@@ -2873,6 +2890,26 @@
           }
         }
       }
+
+      // Remote job handling
+      // Determine if Remote is explicitly in WHERE or NOT WHERE
+      const hasExplicitRemote = wh.some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
+      const hasExplicitNotRemote = whnot.some(p => p.values && p.values[0]?.toLowerCase() === 'remote');
+      const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null);
+      const includeRemote = sf.includeRemote === true;
+
+      if (hasExplicitNotRemote) {
+        // Explicitly exclude remote
+        query = query.not('location', 'ilike', 'Remote%');
+        query = query.not('loc_type', 'eq', 'remote');
+      } else if (!hasExplicitRemote && hasLocationFilter && !includeRemote) {
+        // Location filter is active, no explicit Remote pill, toggle is off → exclude remote
+        // This prevents "Remote - Berlin, DE" from matching a Delaware search
+        query = query.not('location', 'ilike', 'Remote%');
+        query = query.not('loc_type', 'eq', 'remote');
+      }
+      // When includeRemote is true, remote jobs are already included via getLocationMatchIds
+      // or via the ilike fallback's broad matching. No additional filter needed.
 
       // WHO — company_name ilike
       // WHO — company_name ilike + FTS
@@ -3010,6 +3047,7 @@
             whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
             whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
             includeNoSalary: $('#save-filter-include-no-salary').checked,
+            includeRemote: $('#save-filter-include-remote').checked,
           }];
         }
 
@@ -3048,9 +3086,9 @@
         for (const sf of filtersToRun) {
           const wh = sf.wherePills || [];
           const whnot = sf.whereNotPills || [];
-          const cacheKey = JSON.stringify({ wh, whnot, usOnly: tuningForLoc.usOnly, locExcl: tuningForLoc.locationExcludes });
+          const cacheKey = JSON.stringify({ wh, whnot, usOnly: tuningForLoc.usOnly, locExcl: tuningForLoc.locationExcludes, includeRemote: sf.includeRemote });
           if (!locationIdCache.has(cacheKey)) {
-            const locIds = await getLocationMatchIds(wh, whnot, tuningForLoc);
+            const locIds = await getLocationMatchIds(wh, whnot, tuningForLoc, sf.includeRemote === true);
             locationIdCache.set(cacheKey, locIds);
           }
           sf._locationIds = locationIdCache.get(cacheKey);
@@ -3219,9 +3257,9 @@
           const wh = sf.wherePills || [];
           const whnot = sf.whereNotPills || [];
           if (wh.length > 0 || whnot.length > 0 || tuningForLoc.usOnly) {
-            const cacheKey = JSON.stringify({ wh, whnot, usOnly: tuningForLoc.usOnly, locExcl: tuningForLoc.locationExcludes });
+            const cacheKey = JSON.stringify({ wh, whnot, usOnly: tuningForLoc.usOnly, locExcl: tuningForLoc.locationExcludes, includeRemote: sf.includeRemote });
             if (!locationIdCache.has(cacheKey)) {
-              const locIds = await getLocationMatchIds(wh, whnot, tuningForLoc);
+              const locIds = await getLocationMatchIds(wh, whnot, tuningForLoc, sf.includeRemote === true);
               locationIdCache.set(cacheKey, locIds);
             }
             sf._statsLocationIds = locationIdCache.get(cacheKey);
@@ -3284,16 +3322,32 @@
       $('#j-saved').textContent = savedJobIds.length.toLocaleString();
     }
 
-    // Format salary for display — shows currency prefix for non-USD
+    // Format salary for display — shows currency prefix for non-USD, rate suffix for non-annual
     function formatSalaryCell(job) {
       if (!job.salary_min) return '—';
       const currency = job.salary_currency || '';
+      const rate = job.salary_rate || 'yr';
       const prefix = (currency && currency !== 'USD') ? currency.replace('D','') + ' ' : '';
-      const min = `${prefix}$${Math.round(job.salary_min/1000)}k`;
-      if (job.salary_max && job.salary_max !== job.salary_min) {
-        return `${min}-${prefix}$${Math.round(job.salary_max/1000)}k`;
+
+      // Rate suffix map
+      const rateSuffix = { yr: '', hr: '/hr', wk: '/wk', mo: '/mo', day: '/day', session: '/session', visit: '/visit' };
+      const suffix = rateSuffix[rate] || '';
+
+      if (rate === 'yr') {
+        // Annual: show in $Xk format
+        const min = `${prefix}$${Math.round(job.salary_min/1000)}k`;
+        if (job.salary_max && job.salary_max !== job.salary_min) {
+          return `${min}-${prefix}$${Math.round(job.salary_max/1000)}k`;
+        }
+        return min;
+      } else {
+        // Non-annual: show raw dollar amount with suffix
+        const min = `${prefix}$${job.salary_min}`;
+        if (job.salary_max && job.salary_max !== job.salary_min) {
+          return `${min}-$${job.salary_max}${suffix}`;
+        }
+        return `${min}${suffix}`;
       }
-      return min;
     }
 
     function truncate(str, max) {
@@ -3553,11 +3607,11 @@
           if (salary) {
             job.salary_min = salary.min;
             job.salary_max = salary.max;
-            job.salary_currency = salary.currency || 'USD';
+            job.salary_currency = salary.currency || 'USD'; job.salary_rate = salary.rate || 'yr';
             const cell = document.querySelector(`tr[data-jobid="${job.greenhouse_id}"] .jt-salary`);
             if (cell) cell.textContent = formatSalaryCell(job);
             console.log(`[BJ] Parsed cached: ${job.title} → ${salary.currency || 'USD'} $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
-            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD' })
+            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD', salary_rate: salary.rate || 'yr' })
               .eq('greenhouse_id', job.greenhouse_id).then(() => {});
           }
         }
@@ -3595,10 +3649,10 @@
               updateData.salary_min = salary.min;
               updateData.salary_max = salary.max;
               updateData.salary_raw = salary.raw;
-              updateData.salary_currency = salary.currency || 'USD';
+              updateData.salary_currency = salary.currency || 'USD'; updateData.salary_rate = salary.rate || 'yr';
               job.salary_min = salary.min;
               job.salary_max = salary.max;
-              job.salary_currency = salary.currency || 'USD';
+              job.salary_currency = salary.currency || 'USD'; job.salary_rate = salary.rate || 'yr';
               // Update feed cell live
               const cell = document.querySelector(`tr[data-jobid="${job.greenhouse_id}"] .jt-salary`);
               if (cell) cell.textContent = formatSalaryCell(job);
@@ -3722,8 +3776,8 @@
                     if (salary) {
                       job.salary_min = salary.min;
                       job.salary_max = salary.max;
-                      job.salary_currency = salary.currency || 'USD';
-                      sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD' })
+                      job.salary_currency = salary.currency || 'USD'; job.salary_rate = salary.rate || 'yr';
+                      sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD', salary_rate: salary.rate || 'yr' })
                         .eq('greenhouse_id', jobId).then(() => {});
                       const cell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
                       if (cell) cell.textContent = formatSalaryCell(job);
@@ -3821,9 +3875,9 @@
           if (salary) {
             job.salary_min = salary.min;
             job.salary_max = salary.max;
-            job.salary_currency = salary.currency || 'USD';
+            job.salary_currency = salary.currency || 'USD'; job.salary_rate = salary.rate || 'yr';
             console.log(`[BJ] Salary extracted (cached): ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
-            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD' })
+            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD', salary_rate: salary.rate || 'yr' })
               .eq('greenhouse_id', jobId).then(() => {});
             // Update salary cell in feed
             const row = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
@@ -3948,6 +4002,8 @@
     // On-demand job spec fetcher — tries Greenhouse JSON API first
     // Salary parser — extract salary range from job description HTML
     // Finds ALL salary ranges (handles multi-zone postings) and returns lowest min / highest max
+    // Detects rate type: annual, hourly, weekly, monthly
+    // Rejects: commission disclosures, franchise FDDs
     function parseSalaryFromContent(html) {
       if (!html) return null;
       // Strip HTML tags for cleaner regex matching
@@ -3956,18 +4012,44 @@
       text = text.replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&amp;/g, '&').replace(/&#8212;/g, '—').replace(/&#8211;/g, '–');
       text = text.replace(/\s+/g, ' ');
 
+      // Early exit: skip franchise disclosure documents entirely
+      if (/franchise\s+disclosure|franchisee|reporting\s+publications?|item\s+19\b/i.test(text)) {
+        if (/average\s+(?:commission|yearly|annual).*\$[\d,]+/i.test(text)) {
+          return null;
+        }
+      }
+
       const allRanges = [];
 
       // Currency symbol pattern: matches $, CA$, C$, A$, AU$, NZ$, HK$, £, €
       const currSym = '(?:CA\\$|C\\$|A\\$|AU\\$|NZ\\$|HK\\$|US\\$|£|€|\\$)';
 
-      // Patterns to match salary ranges
-      const rangePatterns = [
-        // "CA$125,000 to CA$150,000" or "$120,000 - $150,000" or "$120,000—$150,000"
-        new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+year|annually|annual|\\/\\s*(?:yr|year)|USD|CAD|GBP|EUR)?', 'gi'),
-        // "$120k - $150k" or "CA$120K-CA$150K"
-        new RegExp(currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
+      // Rate detection patterns — check surrounding context
+      const ratePatterns = [
+        { pattern: /per\s+hour|\/\s*(?:hr|hour|h)\b|hourly/i, rate: 'hr' },
+        { pattern: /per\s+week|\/\s*(?:wk|week)\b|weekly/i, rate: 'wk' },
+        { pattern: /per\s+month|\/\s*(?:mo|month|mth)\b|monthly/i, rate: 'mo' },
+        { pattern: /per\s+day|\/\s*(?:day|d)\b|per\s+diem|daily/i, rate: 'day' },
+        { pattern: /per\s+session|\/\s*session/i, rate: 'session' },
+        { pattern: /per\s+visit|\/\s*visit/i, rate: 'visit' },
       ];
+      const commissionPattern = /commission|franchisee|earnings\s+claim|franchise\s+disclosure/i;
+
+      // Helper: detect rate type from surrounding text
+      function detectRate(matchIndex, matchLen) {
+        const afterText = text.slice(matchIndex, matchIndex + matchLen + 80);
+        const beforeText = text.slice(Math.max(0, matchIndex - 80), matchIndex + matchLen);
+        for (const rp of ratePatterns) {
+          if (rp.pattern.test(afterText) || rp.pattern.test(beforeText)) return rp.rate;
+        }
+        return 'yr'; // default annual
+      }
+
+      // Helper: check if context suggests commission/franchise disclosure
+      function isCommission(matchIndex, matchLen) {
+        const beforeText = text.slice(Math.max(0, matchIndex - 80), matchIndex + matchLen);
+        return commissionPattern.test(beforeText);
+      }
 
       // Also detect currency for metadata
       let detectedCurrency = 'USD'; // default
@@ -3976,48 +4058,107 @@
       else if (/€|EUR/i.test(text)) detectedCurrency = 'EUR';
       else if (/A\$|AU\$|AUD/i.test(text)) detectedCurrency = 'AUD';
 
+      // Patterns to match salary/rate ranges
+      const rangePatterns = [
+        // "$120,000 - $150,000" or "$77 - $96" or "$77.00 to $96.00"
+        new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+(?:year|hour|hr|week|wk|month|mo|day|session|visit)|annually|annual|hourly|weekly|monthly|\\/\\s*(?:yr|year|hr|hour|h|wk|week|mo|month|mth|day|d)|USD|CAD|GBP|EUR)?', 'gi'),
+        // "$120k - $150k"
+        new RegExp(currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
+      ];
+
       for (const pattern of rangePatterns) {
         pattern.lastIndex = 0;
         let match;
         while ((match = pattern.exec(text)) !== null) {
+          if (isCommission(match.index, match[0].length)) continue;
+
           let min = parseFloat(match[1].replace(/,/g, ''));
           let max = parseFloat(match[2].replace(/,/g, ''));
           // Handle "k" notation
-          if (min < 1000) min *= 1000;
-          if (max < 1000) max *= 1000;
-          // Sanity check — annual salary between $20k and $2M
-          if (min >= 20000 && min <= 2000000 && max >= min && max <= 2000000) {
-            allRanges.push({ min: Math.round(min), max: Math.round(max), raw: match[0].trim(), currency: detectedCurrency });
+          if (min < 1000 && max < 1000 && match[0].toLowerCase().includes('k')) { min *= 1000; max *= 1000; }
+
+          const rate = detectRate(match.index, match[0].length);
+
+          // Sanity checks per rate type
+          let valid = false;
+          if (rate === 'yr') {
+            // Annual: $20k-$2M, apply k-multiplier for small numbers without explicit k
+            if (min < 1000) min *= 1000;
+            if (max < 1000) max *= 1000;
+            valid = min >= 20000 && min <= 2000000 && max >= min && max <= 2000000;
+          } else if (rate === 'hr') {
+            valid = min >= 10 && min <= 1000 && max >= min && max <= 1000;
+          } else if (rate === 'day') {
+            valid = min >= 50 && min <= 5000 && max >= min && max <= 5000;
+          } else if (rate === 'wk') {
+            valid = min >= 200 && min <= 20000 && max >= min && max <= 20000;
+          } else if (rate === 'mo') {
+            valid = min >= 1000 && min <= 100000 && max >= min && max <= 100000;
+          } else if (rate === 'session' || rate === 'visit') {
+            valid = min >= 10 && min <= 2000 && max >= min && max <= 2000;
+          }
+
+          if (valid) {
+            allRanges.push({ min: Math.round(min), max: Math.round(max), raw: match[0].trim(), currency: detectedCurrency, rate });
           }
         }
       }
 
-      // If we found ranges, return the envelope (lowest min, highest max)
+      // If we found ranges, return the envelope (lowest min, highest max) — group by rate type
+      // Prefer annual ranges if mixed; otherwise use whatever we found
       if (allRanges.length > 0) {
-        const lowestMin = Math.min(...allRanges.map(r => r.min));
-        const highestMax = Math.max(...allRanges.map(r => r.max));
-        const currency = allRanges[0].currency;
+        const annualRanges = allRanges.filter(r => r.rate === 'yr');
+        const bestRanges = annualRanges.length > 0 ? annualRanges : allRanges;
+        // Use only ranges of the same rate type
+        const rateType = bestRanges[0].rate;
+        const sameRate = bestRanges.filter(r => r.rate === rateType);
+
+        const lowestMin = Math.min(...sameRate.map(r => r.min));
+        const highestMax = Math.max(...sameRate.map(r => r.max));
+        const currency = sameRate[0].currency;
         const prefix = currency !== 'USD' ? currency + ' ' : '';
-        const raw = allRanges.length > 1
-          ? `${allRanges.length} zones: ${prefix}$${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
-          : allRanges[0].raw;
-        return { min: lowestMin, max: highestMax, raw, currency };
+        const raw = sameRate.length > 1
+          ? `${sameRate.length} zones: ${prefix}$${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
+          : sameRate[0].raw;
+        return { min: lowestMin, max: highestMax, raw, currency, rate: rateType };
       }
 
       // Single value patterns: "$150,000" or "$150k" or "CA$150,000"
+      // Only match when preceded by salary/compensation/pay keywords
       const singlePatterns = [
-        new RegExp('(?:base\\s+(?:salary|pay|compensation)[:\\s]*)' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+year|annually|annual)?', 'gi'),
-        new RegExp('(?:salary|compensation|pay)[:\\s]*' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)', 'gi'),
-        new RegExp('(?:salary|compensation|pay)[:\\s]*' + currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
+        new RegExp('(?:base\\s+(?:salary|pay|compensation)[:\\s]*)' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+(?:year|hour|hr|week|month)|annually|annual|hourly|\\/\\s*(?:yr|year|hr|hour))?', 'gi'),
+        new RegExp('(?:salary|compensation|pay\\s+range|pay)[:\\s]*' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)', 'gi'),
+        new RegExp('(?:salary|compensation|pay\\s+range|pay)[:\\s]*' + currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
+        // "Up to $232 per hour" — common pattern for single-value rates
+        new RegExp('(?:up\\s+to|starting\\s+at|from)\\s+' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+(?:hour|hr|week|wk|month|mo|day|session|visit)|hourly|\\/\\s*(?:hr|hour|h|wk|mo))', 'gi'),
       ];
       for (const pattern of singlePatterns) {
         pattern.lastIndex = 0;
         const match = pattern.exec(text);
         if (match) {
+          if (isCommission(match.index, match[0].length)) continue;
+
+          const rate = detectRate(match.index, match[0].length);
           let val = parseFloat(match[1].replace(/,/g, ''));
-          if (val < 1000) val *= 1000;
-          if (val >= 20000 && val <= 2000000) {
-            return { min: Math.round(val), max: Math.round(val), raw: match[0].trim(), currency: detectedCurrency };
+
+          let valid = false;
+          if (rate === 'yr') {
+            if (val < 1000) val *= 1000;
+            valid = val >= 20000 && val <= 2000000;
+          } else if (rate === 'hr') {
+            valid = val >= 10 && val <= 1000;
+          } else if (rate === 'day') {
+            valid = val >= 50 && val <= 5000;
+          } else if (rate === 'wk') {
+            valid = val >= 200 && val <= 20000;
+          } else if (rate === 'mo') {
+            valid = val >= 1000 && val <= 100000;
+          } else if (rate === 'session' || rate === 'visit') {
+            valid = val >= 10 && val <= 2000;
+          }
+
+          if (valid) {
+            return { min: Math.round(val), max: Math.round(val), raw: match[0].trim(), currency: detectedCurrency, rate };
           }
         }
       }
@@ -4058,8 +4199,8 @@
                 updateData.salary_min = salary.min;
                 updateData.salary_max = salary.max;
                 updateData.salary_raw = salary.raw;
-                updateData.salary_currency = salary.currency || 'USD';
-                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; cachedJob.salary_currency = salary.currency || 'USD'; }
+                updateData.salary_currency = salary.currency || 'USD'; updateData.salary_rate = salary.rate || 'yr';
+                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; cachedJob.salary_currency = salary.currency || 'USD'; cachedJob.salary_rate = salary.rate || 'yr'; }
                 console.log(`[BJ] Salary extracted: ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
                 // Update salary cell in feed
                 const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
@@ -4102,8 +4243,8 @@
                 updateData.salary_min = salary.min;
                 updateData.salary_max = salary.max;
                 updateData.salary_raw = salary.raw;
-                updateData.salary_currency = salary.currency || 'USD';
-                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; cachedJob.salary_currency = salary.currency || 'USD'; }
+                updateData.salary_currency = salary.currency || 'USD'; updateData.salary_rate = salary.rate || 'yr';
+                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; cachedJob.salary_currency = salary.currency || 'USD'; cachedJob.salary_rate = salary.rate || 'yr'; }
                 console.log(`[BJ] Salary extracted (slug fallback): ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k`);
                 const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
                 if (salaryCell && cachedJob) salaryCell.textContent = formatSalaryCell(cachedJob);
@@ -5281,7 +5422,7 @@
 
     function selectLocationFromDropdown(opt) {
       const locData = JSON.parse(opt.dataset.locdata);
-      const pill = { values: [locData.display], type: 'where' };
+      const pill = { values: [locData.display.toLowerCase()], type: 'where' };
 
       // Attach geo data for radius search
       if (locData.type === 'state') {
@@ -5294,6 +5435,9 @@
         pill.radius_mi = locData.radius_mi;
       } else if (locData.type === 'remote') {
         pill.locType = 'remote';
+        // Auto-check the include remote toggle
+        const remoteCb = $('#save-filter-include-remote');
+        if (remoteCb) remoteCb.checked = true;
       }
 
       wherePills.push(pill);
@@ -5322,37 +5466,288 @@
 
     // Input handling — Where Not row
     const qbInputWhereNot = $('#qb-input-where-not');
+    const locationNotDropdown = $('#location-not-dropdown');
+    let locationNotSearchTimeout;
+
+    qbInputWhereNot.addEventListener('input', () => {
+      const q = qbInputWhereNot.value.trim();
+      if (q.length < 2) { locationNotDropdown.classList.remove('open'); return; }
+      clearTimeout(locationNotSearchTimeout);
+      locationNotSearchTimeout = setTimeout(() => searchLocationsForNot(q), 200);
+    });
+
     qbInputWhereNot.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
+        if (locationNotDropdown.classList.contains('open')) {
+          const first = locationNotDropdown.querySelector('.company-opt');
+          if (first) {
+            selectLocationNotFromDropdown(first);
+            return;
+          }
+        }
         commitPill(qbInputWhereNot, whereNotPills, raw => ({ values: [raw], type: 'not' }));
+        locationNotDropdown.classList.remove('open');
       } else if (e.key === 'Backspace' && qbInputWhereNot.value === '' && whereNotPills.length > 0) {
         whereNotPills.pop(); renderAllPills();
+      } else if (e.key === 'Escape') {
+        locationNotDropdown.classList.remove('open');
+      } else if (e.key === 'ArrowDown' && locationNotDropdown.classList.contains('open')) {
+        e.preventDefault();
+        const first = locationNotDropdown.querySelector('.company-opt');
+        if (first) first.focus();
       }
     });
     qbInputWhereNot.addEventListener('blur', () => {
+      setTimeout(() => { locationNotDropdown.classList.remove('open'); }, 200);
       commitPill(qbInputWhereNot, whereNotPills, raw => ({ values: [raw], type: 'not' }));
     });
     $('#query-builder-where-not').addEventListener('click', e => {
       if (!e.target.closest('.qb-pill')) qbInputWhereNot.focus();
     });
 
-    // Input handling — Who Not row
+    // NOT WHERE search — same sources but simplified (no geo data needed)
+    async function searchLocationsForNot(query) {
+      try {
+        const ql = query.toLowerCase().trim();
+        const results = [];
+        const seenKeys = new Set();
+
+        // US state codes
+        const US_STATES = {
+          'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
+          'CO':'Colorado','CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia',
+          'HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas',
+          'KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts',
+          'MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana',
+          'NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico',
+          'NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma',
+          'OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota',
+          'TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington',
+          'WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming','DC':'District of Columbia',
+        };
+
+        const stateMatches = Object.entries(US_STATES).filter(([code, name]) =>
+          code.toLowerCase() === ql || name.toLowerCase().startsWith(ql)
+        );
+        for (const [code, name] of stateMatches) {
+          const key = `state:${code}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            results.push({ display: `${name} (${code})`, badge: 'state' });
+          }
+        }
+
+        // Search ref_city_radius
+        const { data: refData } = await sb
+          .from('ref_city_radius')
+          .select('city, state, type')
+          .or(`city.ilike.%${query}%,aliases.cs.{${query}}`)
+          .limit(10);
+        if (refData) {
+          for (const r of refData) {
+            const display = r.type === 'metro' ? r.city : `${r.city}, ${r.state}`;
+            const key = display.toLowerCase();
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              results.push({ display, badge: r.type === 'metro' ? 'metro' : 'city' });
+            }
+          }
+        }
+
+        // Search location_cache
+        const { data: cacheData } = await sb
+          .from('location_cache')
+          .select('raw_input, normalized')
+          .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`)
+          .limit(8);
+        if (cacheData) {
+          for (const loc of cacheData) {
+            const display = loc.normalized || loc.raw_input;
+            const key = display.toLowerCase();
+            if (!seenKeys.has(key) && !key.startsWith('remote')) {
+              seenKeys.add(key);
+              results.push({ display, badge: 'pin' });
+            }
+          }
+        }
+
+        // Also offer "Remote" exclusion
+        if ('remote'.startsWith(ql)) {
+          if (!seenKeys.has('remote')) {
+            seenKeys.add('remote');
+            results.push({ display: 'Remote', badge: 'remote' });
+          }
+        }
+
+        renderLocationNotDropdown(results.slice(0, 10), query);
+      } catch (e) {
+        console.warn('[BJ] NOT location search failed:', e);
+      }
+    }
+
+    function renderLocationNotDropdown(results, query) {
+      if (results.length === 0) { locationNotDropdown.classList.remove('open'); return; }
+      const badgeMap = {
+        state: '<span style="font-size:9px;background:rgba(139,92,246,0.1);color:#8b5cf6;padding:1px 6px;border-radius:4px;font-weight:600;">state</span>',
+        metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
+        city: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">city</span>',
+        remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
+        pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+      };
+      locationNotDropdown.innerHTML = results.map(r => {
+        const badge = badgeMap[r.badge] || '';
+        const hl = highlightCompanyMatch(r.display, query);
+        return `<div class="company-opt" tabindex="0" data-name="${r.display.replace(/"/g,'&quot;')}">
+          <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+      }).join('');
+      locationNotDropdown.classList.add('open');
+
+      locationNotDropdown.querySelectorAll('.company-opt').forEach(opt => {
+        opt.addEventListener('mousedown', e => { e.preventDefault(); selectLocationNotFromDropdown(opt); });
+        opt.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); selectLocationNotFromDropdown(opt); }
+          if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+          if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhereNot.focus(); }
+          if (e.key === 'Escape') { locationNotDropdown.classList.remove('open'); qbInputWhereNot.focus(); }
+        });
+      });
+    }
+
+    function selectLocationNotFromDropdown(opt) {
+      const name = opt.dataset.name.toLowerCase();
+      if (!whereNotPills.find(p => p.values[0]?.toLowerCase() === name)) {
+        whereNotPills.push({ values: [name], type: 'not' });
+      }
+      // Auto-uncheck include remote when explicitly excluding Remote
+      if (name.toLowerCase() === 'remote') {
+        const remoteCb = $('#save-filter-include-remote');
+        if (remoteCb) remoteCb.checked = false;
+      }
+      renderAllPills();
+      locationNotDropdown.classList.remove('open');
+      qbInputWhereNot.value = '';
+      debouncedSearchJobs();
+    }
+
+    // Input handling — Who Not row (with typeahead)
     const qbInputWhoNot = $('#qb-input-who-not');
+    const companyNotDropdown = $('#company-not-dropdown');
+    let companyNotSearchTimeout;
+
+    qbInputWhoNot.addEventListener('input', () => {
+      const q = qbInputWhoNot.value.trim();
+      if (q.length < 2) { companyNotDropdown.classList.remove('open'); return; }
+      clearTimeout(companyNotSearchTimeout);
+      companyNotSearchTimeout = setTimeout(() => searchCompaniesForNot(q), 200);
+    });
+
     qbInputWhoNot.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ',') {
         e.preventDefault();
+        if (companyNotDropdown.classList.contains('open')) {
+          const first = companyNotDropdown.querySelector('.company-opt');
+          if (first) {
+            selectCompanyNotFromDropdown(first);
+            return;
+          }
+        }
         commitPill(qbInputWhoNot, whoNotPills, raw => ({ values: [raw], type: 'not' }));
+        companyNotDropdown.classList.remove('open');
       } else if (e.key === 'Backspace' && qbInputWhoNot.value === '' && whoNotPills.length > 0) {
         whoNotPills.pop(); renderAllPills();
+      } else if (e.key === 'Escape') {
+        companyNotDropdown.classList.remove('open');
+      } else if (e.key === 'ArrowDown' && companyNotDropdown.classList.contains('open')) {
+        e.preventDefault();
+        const first = companyNotDropdown.querySelector('.company-opt');
+        if (first) first.focus();
       }
     });
     qbInputWhoNot.addEventListener('blur', () => {
+      setTimeout(() => { companyNotDropdown.classList.remove('open'); }, 200);
       commitPill(qbInputWhoNot, whoNotPills, raw => ({ values: [raw], type: 'not' }));
     });
     $('#query-builder-who-not').addEventListener('click', e => {
       if (!e.target.closest('.qb-pill')) qbInputWhoNot.focus();
     });
+
+    // NOT WHO search — reuse same search logic as WHO
+    async function searchCompaniesForNot(query) {
+      const results = [];
+      try {
+        const { data: atsData } = await sb
+          .from('ats_companies')
+          .select('slug, name, source')
+          .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+          .limit(6);
+        if (atsData) {
+          atsData.forEach(c => results.push({
+            name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
+          }));
+        }
+      } catch (e) { console.warn('[BJ] ATS company search (not) failed:', e); }
+
+      try {
+        const { data: connData } = await sb
+          .from('connections')
+          .select('parsed_company')
+          .ilike('parsed_company', `%${query}%`)
+          .not('parsed_company', 'is', null)
+          .limit(30);
+        if (connData) {
+          const counts = {};
+          connData.forEach(p => {
+            const n = (p.parsed_company || '').trim();
+            if (n) counts[n] = (counts[n] || 0) + 1;
+          });
+          Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4)
+            .forEach(([name, count]) => {
+              if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+                results.push({ name, source: 'network', connections: count });
+              }
+            });
+        }
+      } catch (e) { console.warn('[BJ] Connection company search (not) failed:', e); }
+
+      renderCompanyNotDropdown(results, query);
+    }
+
+    function renderCompanyNotDropdown(results, query) {
+      if (results.length === 0) { companyNotDropdown.classList.remove('open'); return; }
+      companyNotDropdown.innerHTML = results.map(r => {
+        const badge = r.source === 'network'
+          ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
+          : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
+        const hl = highlightCompanyMatch(r.name, query);
+        return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
+          <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+      }).join('');
+      companyNotDropdown.classList.add('open');
+
+      companyNotDropdown.querySelectorAll('.company-opt').forEach(opt => {
+        opt.addEventListener('mousedown', e => { e.preventDefault(); selectCompanyNotFromDropdown(opt); });
+        opt.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); selectCompanyNotFromDropdown(opt); }
+          if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+          if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhoNot.focus(); }
+          if (e.key === 'Escape') { companyNotDropdown.classList.remove('open'); qbInputWhoNot.focus(); }
+        });
+      });
+    }
+
+    function selectCompanyNotFromDropdown(opt) {
+      const name = opt.dataset.name.toLowerCase();
+      if (!whoNotPills.find(p => p.values[0]?.toLowerCase() === name)) {
+        whoNotPills.push({ values: [name], type: 'not' });
+      }
+      renderAllPills();
+      companyNotDropdown.classList.remove('open');
+      qbInputWhoNot.value = '';
+      debouncedSearchJobs();
+    }
 
     // Collapse toggle
     $('#qb-toggle').addEventListener('click', (e) => {
@@ -5397,7 +5792,7 @@
 
     // Save filter — always-visible inline input
     function commitSaveFilter() {
-      const name = $('#save-filter-name').value.trim();
+      const name = $('#save-filter-name').value.trim().toLowerCase();
       if (!name || allPills() === 0) return;
 
       // Warn if no WHERE filter set
@@ -5428,6 +5823,7 @@
         whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
         whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
         includeNoSalary: $('#save-filter-include-no-salary').checked,
+        includeRemote: $('#save-filter-include-remote').checked,
         createdAt: Date.now(),
         lastUsed: Date.now(),
         useCount: 1
@@ -5621,6 +6017,16 @@
           ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'where' })),
           ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'who' })),
         ];
+        // Show "incl. no salary" pill when pay filter exists and includeNoSalary is on
+        if ((sf.payPills || []).length > 0 && sf.includeNoSalary !== false) {
+          allSfPills.push({ values: ['incl. no salary'], row: 'pay', _isNoSalary: true });
+        }
+        // Show "incl. remote" pill when location filter exists and includeRemote is on
+        const hasLocPills = (sf.wherePills || []).length > 0;
+        const hasExplicitRemotePill = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
+        if (hasLocPills && !hasExplicitRemotePill && sf.includeRemote === true) {
+          allSfPills.push({ values: ['incl. remote'], row: 'where', _isRemoteToggle: true });
+        }
         // Legacy: convert old salaryMin/Max to pay pill
         if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
           function fmtSalary(v) {
@@ -5644,10 +6050,10 @@
           miniPills = '<div class="sf-item-pills">' + allSfPills.map(p => {
             let cls = '';
             const val = (p.values ? p.values[0] : '').toLowerCase();
-            if (p.row === 'where') cls = 'location-pill';
+            if (p.row === 'where') cls = 'location-pill' + (p._isRemoteToggle ? ' no-salary-pill' : '');
             else if (p.row === 'when') cls = 'when-pill';
             else if (p.row === 'who') cls = 'who-pill';
-            else if (p.row === 'pay') cls = 'pay-pill';
+            else if (p.row === 'pay') cls = 'pay-pill' + (p._isNoSalary ? ' no-salary-pill' : '');
             else if (p.row === 'not') cls = 'not-pill' + (p.notSource ? ' not-' + p.notSource : '');
             else if (p.type === 'type' || locationWords.test(val)) cls = 'location-pill';
             else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
@@ -5708,6 +6114,12 @@
           whatNotPills = JSON.parse(JSON.stringify(sf.whatNotPills || []));
           whereNotPills = JSON.parse(JSON.stringify(sf.whereNotPills || []));
           whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
+          // Restore includeNoSalary checkbox
+          const noSalaryCb = $('#save-filter-include-no-salary');
+          if (noSalaryCb) noSalaryCb.checked = sf.includeNoSalary !== false;
+          // Restore includeRemote checkbox
+          const remoteCb = $('#save-filter-include-remote');
+          if (remoteCb) remoteCb.checked = sf.includeRemote === true;
           renderPayPills();
           savedFilters[idx].lastUsed = Date.now();
           savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
@@ -5842,7 +6254,7 @@
           const tuningLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
           let locIds = null;
           if (wh.length > 0 || whnot.length > 0 || tuningLoc.usOnly) {
-            locIds = await getLocationMatchIds(wh, whnot, tuningLoc);
+            locIds = await getLocationMatchIds(wh, whnot, tuningLoc, sf.includeRemote === true);
           }
 
           // Today (last 24h)
