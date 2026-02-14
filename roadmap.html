@@ -275,7 +275,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 14, 2026 · Dashboard v2.25d · ⚠️ Data recovery in progress (CASCADE truncate wiped ats_companies, ats_jobs, ref_companies)
+    Brilliant Jobs · Internal Roadmap · Updated February 14, 2026 · Dashboard v2.27 · ✅ Data recovered (116,206 jobs, 1,787 companies restored)
   </div>
 
 </div>
@@ -345,6 +345,9 @@ const features = [
   { s: 'done', n: 'Randomized morning start', d: 'Scanner resumes between 7:45 and 10:30 AM each day', p: 2.5 },
   { s: 'done', n: 'Randomized daily cap, delays, and session breaks', d: 'Variable profiles per day, random pause lengths between visits', p: 2.5 },
   { s: 'done', n: 'Stuck scanner recovery', d: 'onInstalled + service worker wakeup restarts scanning loop after reload', p: 2.5 },
+  { s: 'done', n: 'Auth token refresh auto-resume', d: 'keepAlive alarm now checks if scanner was paused due to auth failure and auto-resumes after successful token refresh. Max ~4 min delay vs manual intervention.', p: 2.5 },
+  { s: 'done', n: 'Interceptor crash fix', d: 'Wrapped originalFetch.apply() in try/catch — LinkedIn fetch aborts during navigation no longer crash content script.', p: 2.5 },
+  { s: 'done', n: 'Data tab timeout fix', d: 'Replaced unbounded SELECT queries with paginated batch processing and count operations to prevent Supabase statement timeouts.', p: 2.5 },
   { s: 'done', n: 'Activity log with timestamps and scan routing', d: 'Unified feed with dates, countdown timers, stale time fix', p: 2.5 },
 
   // Phase 2 — Extension
@@ -397,7 +400,7 @@ const features = [
   { s: 'done', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
   { s: 'done', n: 'Hidden job cards with title and link', d: 'Poor match cards show job title linking to Greenhouse spec — backfills missing titles from Supabase', p: 2 },
   { s: 'done', n: 'Visible delete buttons on level hierarchy', d: 'Level rule ✕ buttons always visible instead of hover-only', p: 2 },
-  { s: 'progress', n: 'PDL company dataset integration', d: 'ref_companies + ref_industries tables created, indexes and RLS in place. Data wiped by CASCADE truncate — re-import PDL CSV via psql COPY. Schema intact, data recovery needed.', p: 2 },
+  { s: 'progress', n: 'PDL company dataset integration', d: 'ref_companies + ref_industries tables created, indexes and RLS in place. ref_companies data wiped — needs PDL CSV re-import via psql COPY. ats_companies restored (1,787 slugs).', p: 2 },
   { s: 'done', n: 'Company exclusion typeahead on Tuning', d: 'Searches ats_companies + connections with ATS/network badges, match highlighting, keyboard nav. Browse button opens Company Browser in exclude-only mode.', p: 2 },
   { s: 'done', n: 'Location exclusion typeahead on Tuning', d: 'Searches US states, ref_city_radius (cities/metros), location_cache, and Remote with state/metro/city/remote badges. Browse button opens Location Browser.', p: 2 },
   { s: 'done', n: 'Industry exclusion typeahead on Tuning', d: 'Searches ref_industries with category-colored badges, dropdown positioning. Browse button opens Industry Browser with category-level toggles.', p: 2 },
@@ -412,7 +415,7 @@ const features = [
   { s: 'done', n: 'Feedback form', d: 'Fixed-position Feedback button. Modal with Bug Report / Feature Request toggle, auto-detected page, Mac/Windows screenshot + console instructions, drag-drop image upload (3 files, 5MB each) to Supabase Storage. Unified feedback table handles bugs, feature_requests, exit_surveys, user_surveys with user_id association, survey_version tracking, status workflow (new→reviewed→resolved), admin_notes. RLS: auth inserts own, anon inserts exit_survey only.', p: 2 },
 
   // ═══════════════ IN PROGRESS ═══════════════
-  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Blocked on data recovery. ref_companies needs PDL CSV re-import, ats_companies needs slug re-import + re-scrape. Then: match 1,900 Greenhouse companies against PDL records by domain/name/LinkedIn, backfill industry/size/location/founded.', p: 6 },
+  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Blocked on ref_companies re-import. Once PDL CSV reloaded: match 1,787 Greenhouse companies against PDL records by domain/name/LinkedIn, backfill industry/size/location/founded.', p: 6 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 2.5 — Anti-detection
@@ -486,11 +489,11 @@ const features = [
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 9 },
 
   // ── Greenhouse (ACTIVE) ──
-  { s: 'progress', n: '[GH] Board discovery — recover 1,900 slugs', d: 'Original prefix scan done. Data wiped by CASCADE truncate on Feb 14. Recovery: re-import from local greenhouse_slugs.json or re-run prefix scan.', p: 9 },
-  { s: 'progress', n: '[GH] Re-scrape all jobs', d: 'Original 110K+ jobs wiped by CASCADE truncate. Re-run scraper across all recovered slugs (~2-3 hrs). Code and Edge Function intact.', p: 9 },
-  { s: 'progress', n: '[GH] Re-run location normalization', d: 'normalize_job_locations() function intact. Needs re-execution after job re-scrape to repopulate loc_city/state/country/type/display.', p: 9 },
-  { s: 'progress', n: '[GH] Re-enable daily refresh cron', d: 'pg_net orchestrator and Edge Function intact. Needs ats_companies repopulated before cron has anything to refresh. Re-verify JWT and schedule after recovery.', p: 9 },
-  { s: 'progress', n: '[GH] Re-enable closed job detection', d: 'Edge Function logic intact. Will resume detecting closures once job data is re-scraped and cron is running again.', p: 9 },
+  { s: 'done', n: '[GH] Board discovery — recover 1,900 slugs', d: 'Recovered 1,787 companies from Greenhouse API via CSV scrape + psql bulk load. FK constraints dropped to prevent future CASCADE.', p: 9 },
+  { s: 'done', n: '[GH] Re-scrape all jobs', d: 'Recovered 116,206 jobs via Greenhouse API CSV scrape + psql COPY bulk load in 25 min. Core fields restored (title, company, location, url, department). Content HTML, salary, historical timestamps not recovered.', p: 9 },
+  { s: 'done', n: '[GH] Re-run location normalization', d: 'Ran normalize_job_locations() on all 116K rows + manual cleanup SQL for state abbreviations, NYC→New York, bare Portland→OR. lat/lng populated for 20K jobs from ref_city_radius. find_jobs_within_radius function fixed (job_lat→lat).', p: 9 },
+  { s: 'done', n: '[GH] Re-enable daily refresh cron', d: 'ats_companies repopulated with 1,787 slugs. pg_net orchestrator and Edge Function intact. Cron scheduled for 4AM UTC — will resume automatically.', p: 9 },
+  { s: 'done', n: '[GH] Re-enable closed job detection', d: 'Will resume with next cron run. All recovered jobs marked status=open; first cron pass will detect actual closures.', p: 9 },
   { s: 'todo', n: '[GH] New board discovery via TheirStack', d: 'Import 24K+ Greenhouse slugs, diff against existing 1,900', p: 9 },
   { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', p: 9 },
 
@@ -608,6 +611,18 @@ const features = [
   { s: 'todo', n: 'Passive match notifications', d: 'Email/push when job matching ALL criteria posted or salary trends show market value increase. Frequency-aware delivery.', p: 15 },
   { s: 'todo', n: 'Auto-profile from existing data', d: 'Bootstrap passive profile from LinkedIn scan + resume + behavioral data. User reviews and confirms — minimal effort to go passive.', p: 15 },
   { s: 'todo', n: 'Hired auto-pause', d: 'Confirm new role → auto-pause passive profile, remove from active matching, invite post-hire review.', p: 15 },
+
+  // Phase 16 — Data Hardening & Operations
+  { s: 'done', n: 'Drop CASCADE-capable FK constraints', d: 'Removed ats_jobs_company_slug_fkey, job_locations_greenhouse_id_fkey, ats_companies_ref_company_id_fkey. Use soft references instead.', p: 16 },
+  { s: 'done', n: 'Dashboard v2.27 UI fixes', d: 'Killed NEW badge (subtle row bg instead), level badge contrast fix, saved filter lowercase, 1D/7D/30D sticky headers, US-only skip location nag on save.', p: 16 },
+  { s: 'todo', n: 'Automated daily pg_dump', d: 'Scheduled backup of ats_jobs, ats_companies, connections, profiles to local or S3. Verify Supabase Pro daily backups.', p: 16 },
+  { s: 'todo', n: 'Pre-migration backup script', d: 'Mandatory backup before any schema change — dump affected tables, verify row counts, create restore point.', p: 16 },
+  { s: 'todo', n: 'TRUNCATE protection triggers', d: 'Add _protected flag on core tables that blocks TRUNCATE via event trigger. Require explicit override.', p: 16 },
+  { s: 'todo', n: 'FK dependency graph documentation', d: 'Document all table relationships, cascade paths, and soft references. Review before any migration.', p: 16 },
+  { s: 'todo', n: 'Geocode remaining 95K jobs', d: '~95K jobs missing lat/lng — only 20K covered by ref_city_radius. Need broader geocoding (Google/Nominatim) or expanded ref table.', p: 16 },
+  { s: 'todo', n: 'Location normalization v2', d: 'Fix remaining edge cases: state abbreviation inconsistencies, Usa- prefixes, bare city names without state. Rewrite normalizer for better coverage.', p: 16 },
+  { s: 'todo', n: 'Salary re-enrichment', d: 'All salary data lost in recovery. Background re-fetch job content and parse salary_min/max/currency/rate for all 116K jobs.', p: 16 },
+  { s: 'todo', n: 'Dashboard code audit', d: 'Consolidate 9K-line single-file dashboard into modules. Profile dead code, memory leaks, unnecessary re-renders. Audit Supabase queries for payload size and timeout risk.', p: 16 },
 ];
 
 function phaseLabel(p) {
