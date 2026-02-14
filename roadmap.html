@@ -362,7 +362,7 @@ const features = [
   { s: 'done', n: 'Location filter searches normalized fields', d: 'Where pills now search location, loc_display, loc_state, and loc_country — US-only filter uses loc_country=US', p: 2 },
   { s: 'done', n: 'Hidden jobs excluded at query level', d: 'Supabase queries use .not(greenhouse_id, in, ...) so count and rows both exclude hidden — no more count mismatches', p: 2 },
   { s: 'done', n: 'Version stamp in nav and console', d: 'Dashboard shows version in nav bar and logs to console for cache verification', p: 2 },
-  { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users', p: 2 },
+  { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 9 },
   { s: 'done', n: 'Location disambiguation', d: 'Portland OR vs Portland ME, Springfield — dropdown picks from matching cities when ambiguous, Enter/Tab/comma select from dropdown', p: 2 },
   { s: 'done', n: 'NOT input typeahead (Where + Who)', d: 'Full autocomplete on NOT WHERE and NOT WHO — searches ref_city_radius, location_cache, states, ats_companies, connections with badge dropdowns and keyboard nav', p: 2 },
   { s: 'done', n: 'Visual pills for filter toggles', d: 'Dashed green "incl. no salary" and dashed amber "incl. remote" pills appear on saved filter rows when toggles are active', p: 2 },
@@ -378,9 +378,9 @@ const features = [
   { s: 'done', n: 'Fix: double currency symbol display', d: 'Replaced prefix+$ concatenation with unified symbol map (CA$, AU$, £, €, $) — no more €$43k or CA $120k', p: 2 },
   { s: 'done', n: 'Removed loc_state from generic ilike fallback', d: 'State filtering only goes through proper state pill resolution — prevents loc_state.ilike.%DE% matching Berlin, DE', p: 2 },
   { s: 'done', n: 'Location radius search', d: 'Geocode jobs + filter terms, default radius with adjustable slider per pill, bounding box fallback for >200 match IDs', p: 2 },
-  { s: 'todo', n: 'Migrate filters to full-text search', d: 'Replace ilike queries with tsquery against search_vector — handles millions of rows in milliseconds', p: 2 },
+  { s: 'done', n: 'Migrate filters to full-text search', d: 'Hybrid approach: wfts(english) on search_vector runs alongside ilike for title, location, and company queries — GIN-indexed tsvector column on all 115K+ rows', p: 2 },
   { s: 'todo', n: 'Industry filter row', d: 'Filter by department/function from Greenhouse data', p: 2 },
-  { s: 'todo', n: 'Quick job description preview', d: 'Preview job content without clicking into modal — approach TBD (hover tooltip, expandable row, keyword highlights, etc.)', p: 2 },
+  { s: 'done', n: 'Quick job description preview', d: 'Expandable preview row shows job content snippet, salary, and location without opening modal — fetches from Greenhouse API or cached content', p: 2 },
 
   // Phase 2 — Poor Match Intelligence
   { s: 'done', n: 'Unhide jobs from Tuning page', d: 'Poor Matches card shows recently hidden jobs with unhide button to restore to feed', p: 2 },
