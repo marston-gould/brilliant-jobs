@@ -527,6 +527,26 @@
         <h3>Smart Exclusions</h3>
         <p>Tune out the noise permanently. Exclude companies, locations, title keywords, and industries you never want to see again. Your feed gets smarter every session.</p>
       </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(16,185,129,0.12);color:#10b981;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 14l2 2 4-4"/></svg></div>
+        <h3>Application Tracking</h3>
+        <p>Track every application from click to offer. Manual logging, auto-detection from LinkedIn Easy Apply, or email notifications — your choice. Never lose track of where you stand.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(99,102,241,0.12);color:#6366f1;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+        <h3>Resume Management</h3>
+        <p>Upload multiple resumes and associate each one with specific saved filters. SEO resume for SEO searches. Marketing resume for marketing. The right version goes with the right job.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(244,114,182,0.12);color:#f472b6;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div>
+        <h3>Visual Pipeline</h3>
+        <p>Kanban-style board showing every active application by stage: Applied → Screening → Interview → Offer. Drag to update. Spot bottlenecks at a glance.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:rgba(251,146,60,0.12);color:#fb923c;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5-3a9 9 0 11-6.22-2.18"/></svg></div>
+        <h3>Resume vs. Job Spec Match</h3>
+        <p>Side-by-side comparison showing how your resume stacks up against a specific job description. See what's missing, what's strong, and what to tweak before you apply.</p>
+      </div>
     </div>
 
     <!-- FILTER DEMO -->
@@ -610,8 +630,8 @@
   <!-- HOW IT WORKS -->
   <section class="section fade-up" id="how-it-works">
     <div class="section-label">How It Works</div>
-    <h2>Three minutes to better job search.</h2>
-    <p class="section-desc">No complicated onboarding. Sign up, install the extension, and your job search command center is ready.</p>
+    <h2>Set up once. Search smarter forever.</h2>
+    <p class="section-desc">Sign up, install the Chrome extension, and your entire job search levels up.</p>
     <div class="steps">
       <div class="step"><div class="step-num">01</div><h4>Create your account</h4><p>Sign up with your email and LinkedIn profile. We verify you're a real person, not a bot.</p></div>
       <div class="step"><div class="step-num">02</div><h4>Install the extension</h4><p>Our Chrome extension scans your LinkedIn connections and maps them to 1,787 company job boards. Takes about 30 seconds.</p></div>
@@ -631,7 +651,7 @@
         <div class="price-name">Free</div>
         <div class="price-desc">Core search and filtering</div>
         <div class="price-amount">$0</div>
-        <div class="price-period">forever</div>
+        <div class="price-period">forever — or upgrade to pay-when-hired</div>
         <ul class="price-features">
           <li>Multi-source job aggregation</li>
           <li>Basic filters (title, location, remote)</li>
@@ -686,7 +706,7 @@
       <a href="/help">Help</a>
       <a href="/terms">Terms</a>
       <a href="/privacy">Privacy</a>
-      <a href="mailto:support@brilliantjobs.app">Contact</a>
+      <a href="/help">Contact</a>
     </div>
     <p class="footer-copy">&copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs. All rights reserved.</p>
   </footer>
@@ -735,6 +755,18 @@
             <input type="url" id="signup-linkedin" placeholder="https://www.linkedin.com/in/your-profile" value="https://www.linkedin.com/in/">
             <div class="hint">Used for account verification only.</div>
           </div>
+          <script>
+            // Position cursor after /in/ when LinkedIn field gets focus
+            document.getElementById('signup-linkedin').addEventListener('focus', function() {
+              var v = this.value;
+              if (v === 'https://www.linkedin.com/in/') {
+                setTimeout(function() {
+                  var el = document.getElementById('signup-linkedin');
+                  el.setSelectionRange(v.length, v.length);
+                }, 0);
+              }
+            });
+          </script>
           <div class="optin-row">
             <input type="checkbox" id="signup-optin">
             <label for="signup-optin">Send me product updates and job search tips.</label>
@@ -759,7 +791,7 @@
     </div>
   </div>
 
-  <script data-cfasync="false">
+  <script>
     // ============================================================
     // SUPABASE
     // ============================================================
@@ -886,59 +918,71 @@
     // SIGNUP
     // ============================================================
     $('#signup-btn').addEventListener('click', async () => {
-      const fullName = $('#signup-name').value.trim();
-      const email = $('#signup-email').value.trim();
-      const password = $('#signup-password').value;
-      const linkedin = $('#signup-linkedin').value.trim();
-      const optin = $('#signup-optin').checked;
-      const msgEl = $('#signup-msg');
+      var msgEl = $('#signup-msg');
       msgEl.className = 'msg'; msgEl.style.display = 'none';
 
-      if (!fullName) { showMsg('signup-msg', 'Please enter your full name.', 'error'); return; }
-      if (!email || !password) { showMsg('signup-msg', 'Fill in all fields.', 'error'); return; }
-      if (password.length < 6) { showMsg('signup-msg', 'Password must be at least 6 characters.', 'error'); return; }
+      try {
+        var fullName = $('#signup-name').value.trim();
+        var email = $('#signup-email').value.trim();
+        var password = $('#signup-password').value;
+        var linkedin = $('#signup-linkedin').value.trim();
+        var optin = $('#signup-optin').checked;
 
-      // Calculate elapsed time since signup tab opened
-      const elapsedSeconds = signupStartedAt ? Math.round((Date.now() - signupStartedAt) / 1000) : 0;
+        if (!fullName) { showMsg('signup-msg', 'Please enter your full name.', 'error'); return; }
+        if (!email || !password) { showMsg('signup-msg', 'Fill in all fields.', 'error'); return; }
+        if (password.length < 6) { showMsg('signup-msg', 'Password must be at least 6 characters.', 'error'); return; }
 
-      $('#signup-btn').disabled = true;
-      $('#signup-btn').textContent = 'Creating account...';
+        // Calculate elapsed time since signup tab opened
+        var elapsedSeconds = signupStartedAt ? Math.round((Date.now() - signupStartedAt) / 1000) : 0;
 
-      const { data, error } = await sb.auth.signUp({
-        email, password,
-        options: {
-          data: {
-            full_name: fullName,
-            linkedin_url: linkedin,
-            marketing_optin: optin,
-            signup_elapsed_seconds: elapsedSeconds
+        $('#signup-btn').disabled = true;
+        $('#signup-btn').textContent = 'Creating account...';
+
+        var result = await sb.auth.signUp({
+          email: email, password: password,
+          options: {
+            data: {
+              full_name: fullName,
+              linkedin_url: linkedin,
+              marketing_optin: optin,
+              signup_elapsed_seconds: elapsedSeconds
+            }
           }
+        });
+
+        var data = result.data;
+        var error = result.error;
+
+        if (error) {
+          $('#signup-btn').disabled = false;
+          $('#signup-btn').textContent = 'Create Account';
+          showMsg('signup-msg', error.message, 'error');
+          return;
         }
-      });
 
-      if (error) {
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          $('#signup-btn').disabled = false;
+          $('#signup-btn').textContent = 'Create Account';
+          showMsg('signup-msg', 'An account with this email already exists. Try logging in.', 'error');
+          return;
+        }
+
+        // Trigger validation in background
+        if (data.user && data.user.id) {
+          triggerValidation(data.user.id);
+        }
+
         $('#signup-btn').disabled = false;
         $('#signup-btn').textContent = 'Create Account';
-        showMsg('signup-msg', error.message, 'error');
-        return;
-      }
+        showMsg('signup-msg', 'Account created! Check your email to confirm, then log in.', 'success');
+        signupStartedAt = null;
 
-      if (data.user?.identities?.length === 0) {
+      } catch (e) {
+        console.error('[BJ] Signup error:', e);
         $('#signup-btn').disabled = false;
         $('#signup-btn').textContent = 'Create Account';
-        showMsg('signup-msg', 'An account with this email already exists. Try logging in.', 'error');
-        return;
+        showMsg('signup-msg', 'Something went wrong: ' + e.message, 'error');
       }
-
-      // Trigger validation in background (don't block signup confirmation)
-      if (data.user?.id) {
-        triggerValidation(data.user.id);
-      }
-
-      $('#signup-btn').disabled = false;
-      $('#signup-btn').textContent = 'Create Account';
-      showMsg('signup-msg', 'Account created! Check your email to confirm, then log in.', 'success');
-      signupStartedAt = null; // Reset timer
     });
 
     // ============================================================
