@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>We'll Miss You — Brilliant Jobs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e13;
+      --bg-card: #13151c;
+      --bg-card-hover: #181b24;
+      --border: #1e2130;
+      --border-hover: #2a2e42;
+      --text: #e2e4ea;
+      --text-dim: #9ba1b4;
+      --text-faint: #5c6278;
+      --accent: #4d8eff;
+      --accent-glow: rgba(77,142,255,0.15);
+      --green: #34d399;
+      --green-dim: rgba(52,211,153,0.1);
+      --amber: #f59e0b;
+      --amber-dim: rgba(245,158,11,0.1);
+      --red: #f87171;
+      --red-dim: rgba(248,113,113,0.1);
+      --sans: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+
+    .top-bar {
+      position: sticky; top: 0; z-index: 100; width: 100%;
+      background: rgba(12,14,19,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .top-bar-mark {
+      width: 28px; height: 28px; background: #fff; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: var(--bg);
+      text-decoration: none;
+    }
+    .top-bar a.brand-link {
+      font-size: 15px; font-weight: 700; color: #fff; text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+    .top-bar a.brand-link:hover { color: var(--accent); }
+
+    .container {
+      max-width: 580px;
+      width: 100%;
+      padding: 64px 32px 120px;
+      animation: fadeUp 0.5s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Lightbulb icon — dimming */
+    .hero-icon {
+      width: 72px; height: 72px;
+      margin-bottom: 28px;
+      opacity: 0.4;
+      animation: dimFlicker 3s ease-in-out infinite;
+    }
+    @keyframes dimFlicker {
+      0%, 100% { opacity: 0.35; }
+      30% { opacity: 0.5; }
+      50% { opacity: 0.25; }
+      70% { opacity: 0.45; }
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-dim);
+      margin-bottom: 40px;
+      max-width: 460px;
+    }
+
+    /* Reason selection */
+    .section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-faint);
+      margin-bottom: 14px;
+    }
+
+    .reasons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .reason-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: var(--text-dim);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .reason-btn:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+      color: var(--text);
+    }
+    .reason-btn.selected {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      color: #fff;
+    }
+    .reason-btn .reason-icon {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border-hover);
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .reason-btn.selected .reason-icon {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .reason-btn.selected .reason-icon::after {
+      content: '';
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    /* Comment box */
+    .comment-wrap {
+      margin-bottom: 32px;
+      display: none;
+    }
+    .comment-wrap.visible { display: block; }
+
+    .comment-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 100px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--text-faint); }
+
+    /* Win-back offer */
+    .offer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      display: none;
+    }
+    .offer-card.visible { display: block; }
+    .offer-card .offer-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+    .offer-card p {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .offer-card p:last-of-type { margin-bottom: 0; }
+    .offer-card strong { color: var(--text); }
+
+    .offer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: var(--green-dim);
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 8px;
+      color: var(--green);
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .offer-btn:hover {
+      background: rgba(52,211,153,0.15);
+      border-color: var(--green);
+    }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .submit-btn.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .submit-btn.active:hover {
+      background: #6aa3ff;
+      transform: translateY(-1px);
+    }
+
+    /* Thank you state */
+    .thank-you {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+    }
+    .thank-you.visible { display: block; }
+    .thank-you h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .thank-you p {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .thank-you a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .thank-you a:hover { text-decoration: underline; }
+
+    /* Got hired state */
+    .hired-celebration {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+    }
+    .hired-celebration.visible { display: block; }
+    .hired-celebration .confetti {
+      font-size: 48px;
+      margin-bottom: 16px;
+      animation: pop 0.4s ease-out;
+    }
+    @keyframes pop {
+      0% { transform: scale(0); }
+      80% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    .hired-celebration h2 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .hired-celebration p {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .hired-celebration a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .hired-celebration a:hover { text-decoration: underline; }
+
+    .form-section { /* wraps the form so we can hide it */ }
+    .form-section.hidden { display: none; }
+
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-faint);
+      text-align: center;
+    }
+    .footer a { color: var(--text-faint); text-decoration: none; }
+    .footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .container { padding: 40px 20px 80px; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="top-bar-mark">B</a>
+  <a href="/" class="brand-link">Brilliant Jobs</a>
+</div>
+
+<div class="container">
+
+  <!-- Dim lightbulb -->
+  <svg class="hero-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M32 6C21.5 6 13 14.5 13 25c0 6.5 3.2 12.2 8 15.7V46a3 3 0 003 3h16a3 3 0 003-3v-5.3c4.8-3.5 8-9.2 8-15.7 0-10.5-8.5-19-19-19z" stroke="#5c6278" stroke-width="2.5" fill="rgba(92,98,120,0.06)"/>
+    <rect x="24" y="49" width="16" height="3" rx="1.5" fill="#5c6278" opacity="0.4"/>
+    <rect x="26" y="54" width="12" height="3" rx="1.5" fill="#5c6278" opacity="0.3"/>
+    <path d="M28 37v-4a4 4 0 014-4v0a4 4 0 014 4v4" stroke="#5c6278" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+  </svg>
+
+  <h1>Well, this is awkward.</h1>
+  <p class="subtitle">You just uninstalled Brilliant Jobs. We're not going to pretend we're not a little hurt — but we'd genuinely like to know why, so we can do better.</p>
+
+  <div class="form-section" id="formSection">
+
+    <div class="section-label">What happened?</div>
+    <div class="reasons" id="reasons">
+      <button class="reason-btn" data-reason="got-hired" data-hired="true">
+        <span class="reason-icon"></span>
+        I got hired! (nice)
+      </button>
+      <button class="reason-btn" data-reason="not-useful">
+        <span class="reason-icon"></span>
+        It wasn't useful for my job search
+      </button>
+      <button class="reason-btn" data-reason="too-complicated">
+        <span class="reason-icon"></span>
+        Too complicated to set up or use
+      </button>
+      <button class="reason-btn" data-reason="performance">
+        <span class="reason-icon"></span>
+        It slowed down my browser
+      </button>
+      <button class="reason-btn" data-reason="privacy">
+        <span class="reason-icon"></span>
+        Privacy concerns
+      </button>
+      <button class="reason-btn" data-reason="cost">
+        <span class="reason-icon"></span>
+        Too expensive
+      </button>
+      <button class="reason-btn" data-reason="bugs">
+        <span class="reason-icon"></span>
+        Too many bugs or things not working
+      </button>
+      <button class="reason-btn" data-reason="pausing">
+        <span class="reason-icon"></span>
+        Taking a break from job searching
+      </button>
+      <button class="reason-btn" data-reason="other">
+        <span class="reason-icon"></span>
+        Something else
+      </button>
+    </div>
+
+    <div class="comment-wrap" id="commentWrap">
+      <div class="comment-label" id="commentLabel">Anything else you want us to know?</div>
+      <textarea id="comment" placeholder="Be honest — we can take it."></textarea>
+    </div>
+
+    <!-- Win-back offer — shown for cost, not-useful, bugs -->
+    <div class="offer-card" id="offerCard">
+      <div class="offer-tag">Before you go</div>
+      <p>We're still building and shipping fast. If the timing or value wasn't right, we get it — but we'd love a second chance.</p>
+      <p><strong>Reinstall within 7 days and get a free month of Pro</strong> — no card required. Just log back in and it'll be waiting.</p>
+      <a href="/" class="offer-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 019-9 9 9 0 010 18 9 9 0 01-9-9z"/><path d="M12 8v4l3 3"/></svg>
+        Maybe I'll come back
+      </a>
+    </div>
+
+    <button class="submit-btn" id="submitBtn" disabled>Send feedback</button>
+
+  </div>
+
+  <!-- Thank you state -->
+  <div class="thank-you" id="thankYou">
+    <h2>Thanks for the honesty.</h2>
+    <p>Every piece of feedback makes the product better for the next person.</p>
+    <p style="margin-top: 16px;">If you ever want to come back, your account and data will be here — we don't delete anything until you ask us to.</p>
+    <p style="margin-top: 24px; font-size: 13px;">
+      <a href="/">Back to Brilliant Jobs</a>
+    </p>
+  </div>
+
+  <!-- Got hired celebration -->
+  <div class="hired-celebration" id="hiredCelebration">
+    <div class="confetti">🎉</div>
+    <h2>That's the best reason to uninstall.</h2>
+    <p>Congratulations on the new role — that's what all of this was for.</p>
+    <p>If you know anyone still stuck in the job search grind, send them our way. And if the new gig doesn't work out (it happens), we'll be here.</p>
+    <p style="margin-top: 24px; font-size: 13px;">
+      <a href="/">Back to Brilliant Jobs</a>
+    </p>
+  </div>
+
+  <div class="footer">
+    &copy; 2026 Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg2MzE2MDksImV4cCI6MjA1NDIwNzYwOX0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+
+  let selectedReason = null;
+  let isHired = false;
+
+  const reasons = document.getElementById('reasons');
+  const commentWrap = document.getElementById('commentWrap');
+  const commentLabel = document.getElementById('commentLabel');
+  const comment = document.getElementById('comment');
+  const offerCard = document.getElementById('offerCard');
+  const submitBtn = document.getElementById('submitBtn');
+  const formSection = document.getElementById('formSection');
+  const thankYou = document.getElementById('thankYou');
+  const hiredCelebration = document.getElementById('hiredCelebration');
+
+  // Dynamic comment prompts per reason
+  const prompts = {
+    'got-hired': "Where'd you land? (Totally optional — we're just happy for you.)",
+    'not-useful': "What were you hoping to find that we didn't deliver?",
+    'too-complicated': "What tripped you up? We'd like to make it easier.",
+    'performance': "Which browser were you using? Any specific pages that were slow?",
+    'privacy': "We take this seriously — what concerned you?",
+    'cost': "What price point would have felt right?",
+    'bugs': "Which features were broken? Specifics help us fix things faster.",
+    'pausing': "Totally fair. Anything we could do to make the break-and-return experience smoother?",
+    'other': "We're all ears."
+  };
+
+  // Reasons that show the win-back offer
+  const offerReasons = ['not-useful', 'cost', 'bugs', 'too-complicated'];
+
+  reasons.addEventListener('click', (e) => {
+    const btn = e.target.closest('.reason-btn');
+    if (!btn) return;
+
+    // Deselect all
+    document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+
+    selectedReason = btn.dataset.reason;
+    isHired = btn.dataset.hired === 'true';
+
+    // Show comment box with contextual prompt
+    commentWrap.classList.add('visible');
+    commentLabel.textContent = prompts[selectedReason] || 'Anything else?';
+    comment.placeholder = selectedReason === 'got-hired'
+      ? "Company name, role... or just a victory lap."
+      : "Be honest — we can take it.";
+
+    // Show/hide offer
+    if (offerReasons.includes(selectedReason)) {
+      offerCard.classList.add('visible');
+    } else {
+      offerCard.classList.remove('visible');
+    }
+
+    // Enable submit
+    submitBtn.classList.add('active');
+    submitBtn.disabled = false;
+  });
+
+  submitBtn.addEventListener('click', async () => {
+    if (!selectedReason) return;
+
+    submitBtn.textContent = 'Sending…';
+    submitBtn.classList.remove('active');
+    submitBtn.disabled = true;
+
+    const payload = {
+      reason: selectedReason,
+      comment: comment.value.trim() || null,
+      created_at: new Date().toISOString(),
+      source: 'uninstall_page'
+    };
+
+    // Fire and forget to Supabase
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/uninstall_feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      // Don't block the UX on a failed insert
+      console.warn('Feedback submission failed:', e);
+    }
+
+    // Transition to end state
+    formSection.classList.add('hidden');
+    if (isHired) {
+      hiredCelebration.classList.add('visible');
+    } else {
+      thankYou.classList.add('visible');
+    }
+  });
+</script>
+
+</body>
+</html>
