@@ -972,6 +972,13 @@
           triggerValidation(data.user.id);
         }
 
+        // If session exists (email confirm disabled), show logged-in view
+        var sessionCheck = await sb.auth.getSession();
+        if (sessionCheck.data && sessionCheck.data.session) {
+          showLoggedIn(data.user);
+          return;
+        }
+
         $('#signup-btn').disabled = false;
         $('#signup-btn').textContent = 'Create Account';
         showMsg('signup-msg', 'Account created! Check your email to confirm, then log in.', 'success');
@@ -1015,8 +1022,8 @@
       $('#li-email').textContent = user.email;
 
       try {
-        const { data: profile } = await sb.from('profiles').select('status').eq('id', user.id).single();
-        if (profile?.status === 'approved') {
+        var profileResult = await sb.from('profiles').select('approved').eq('id', user.id).single();
+        if (profileResult.data && profileResult.data.approved === true) {
           $('#li-pending').style.display = 'none';
           $('#li-approved').style.display = 'block';
         }
