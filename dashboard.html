@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.10 - 2026-02-13 - Fix: contextual stat cards + hidden job count -->
+<!-- Brilliant Jobs Dashboard v2.22 - 2026-02-13 - Fix: stat cards use location IDs, CA$ salary parsing, Vancouver CA/WA disambiguation -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1162,7 +1162,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21g</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.22</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2254,7 +2254,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.21g loaded');
+    console.log('[BJ] Dashboard v2.22 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2709,9 +2709,41 @@
         return null;
       }
 
+      // Compute bounding box from radius pills for fallback
+      let boundingBox = null;
+      if (radiusPills.length > 0) {
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+        for (const pill of radiusPills) {
+          const latDelta = pill.radius_mi / 69.0;
+          const lngDelta = pill.radius_mi / (69.0 * Math.cos(pill.lat * Math.PI / 180));
+          minLat = Math.min(minLat, pill.lat - latDelta);
+          maxLat = Math.max(maxLat, pill.lat + latDelta);
+          minLng = Math.min(minLng, pill.lng - lngDelta);
+          maxLng = Math.max(maxLng, pill.lng + lngDelta);
+        }
+        boundingBox = { minLat, maxLat, minLng, maxLng };
+      }
+
+      // Determine if this is a US-targeted search (for country disambiguation)
+      // US lat range is roughly 24-49, lng -125 to -66
+      let isUSSearch = false;
+      for (const pill of radiusPills) {
+        if (pill.lat >= 24 && pill.lat <= 49 && pill.lng >= -130 && pill.lng <= -66) {
+          isUSSearch = true;
+          break;
+        }
+      }
+      for (const pill of statePills) {
+        // State pills are always US states
+        isUSSearch = true;
+        break;
+      }
+
       return {
         includeIds: [...allIds],
         excludeIds: new Set(),
+        boundingBox,
+        isUSSearch,
       };
     }
 
@@ -2765,13 +2797,34 @@
         }
       }
 
-      // WHERE — use pre-fetched location IDs
+      // WHERE — use pre-fetched location IDs or bounding box
       if (locationIds && locationIds.includeIds !== null) {
         if (locationIds.includeIds.length === 0) {
           // No matches — force empty result
           query = query.in('greenhouse_id', ['__NO_MATCH__']);
-        } else {
+        } else if (locationIds.includeIds.length <= 200) {
+          // Small enough for URL-based .in() query
           query = query.in('greenhouse_id', locationIds.includeIds);
+        } else if (locationIds.boundingBox) {
+          // Too many IDs — use bounding box filter instead
+          const bb = locationIds.boundingBox;
+          query = query
+            .gte('job_lat', bb.minLat)
+            .lte('job_lat', bb.maxLat)
+            .gte('job_lng', bb.minLng)
+            .lte('job_lng', bb.maxLng);
+        } else {
+          // Fallback: chunk IDs into batches (use first 200 as approximation)
+          query = query.in('greenhouse_id', locationIds.includeIds.slice(0, 200));
+        }
+
+        // Country disambiguation: if searching US locations, exclude clearly non-US jobs
+        // This catches cases like Vancouver, BC being confused with Vancouver, WA
+        if (locationIds.isUSSearch) {
+          query = query.not('loc_country', 'eq', 'CA');
+          query = query.not('location', 'ilike', '%Canada%');
+          query = query.not('location', 'ilike', '%, BC%');
+          query = query.not('location', 'ilike', '%British Columbia%');
         }
       }
       // WHERE NOT — exclude IDs
@@ -3145,7 +3198,6 @@
         // Helper: apply hidden exclusion to a query
         function excludeHidden(query) {
           if (hiddenIds.length > 0) {
-            // Supabase .not + .in for exclusion
             query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
           }
           return query;
@@ -3160,17 +3212,37 @@
         // so buildFilterQuery still applies global tuning (usOnly, exclusions)
         const effectiveFilters = (filters && filters.length > 0) ? filters : [{}];
 
+        // Pre-fetch location IDs for each filter (same as searchJobs does)
+        const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+        const locationIdCache = new Map();
         for (const sf of effectiveFilters) {
+          const wh = sf.wherePills || [];
+          const whnot = sf.whereNotPills || [];
+          if (wh.length > 0 || whnot.length > 0 || tuningForLoc.usOnly) {
+            const cacheKey = JSON.stringify({ wh, whnot, usOnly: tuningForLoc.usOnly, locExcl: tuningForLoc.locationExcludes });
+            if (!locationIdCache.has(cacheKey)) {
+              const locIds = await getLocationMatchIds(wh, whnot, tuningForLoc);
+              locationIdCache.set(cacheKey, locIds);
+            }
+            sf._statsLocationIds = locationIdCache.get(cacheKey);
+          } else {
+            sf._statsLocationIds = null;
+          }
+        }
+
+        for (const sf of effectiveFilters) {
+          const locIds = sf._statsLocationIds || null;
+
           // Total count
           let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q = buildFilterQuery(sf, q, null);
+          q = buildFilterQuery(sf, q, locIds);
           q = excludeHidden(q);
           const { count: c1 } = await q;
           total += (c1 || 0);
 
           // Last 24h count
           let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-          q2 = buildFilterQuery(sf, q2, null);
+          q2 = buildFilterQuery(sf, q2, locIds);
           q2 = excludeHidden(q2);
           q2 = q2.gte('updated_at', last24h.toISOString());
           const { count: c2 } = await q2;
@@ -3179,7 +3251,7 @@
           // New since last login
           if (lastViewDate) {
             let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-            qLogin = buildFilterQuery(sf, qLogin, null);
+            qLogin = buildFilterQuery(sf, qLogin, locIds);
             qLogin = excludeHidden(qLogin);
             qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
             const { count: cLogin } = await qLogin;
@@ -3188,8 +3260,9 @@
         }
 
         // Company count — distinct company_slugs from matching jobs
+        const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
         let cq = sb.from('ats_jobs').select('company_slug');
-        cq = buildFilterQuery(effectiveFilters[0], cq, null);
+        cq = buildFilterQuery(effectiveFilters[0], cq, firstLocIds);
         cq = excludeHidden(cq);
         cq = cq.limit(2000);
         const { data: coRows } = await cq;
@@ -3209,6 +3282,18 @@
       $('#j-new-login').textContent = newSinceLogin.toLocaleString();
       $('#j-new').textContent = newToday.toLocaleString();
       $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+    }
+
+    // Format salary for display — shows currency prefix for non-USD
+    function formatSalaryCell(job) {
+      if (!job.salary_min) return '—';
+      const currency = job.salary_currency || '';
+      const prefix = (currency && currency !== 'USD') ? currency.replace('D','') + ' ' : '';
+      const min = `${prefix}$${Math.round(job.salary_min/1000)}k`;
+      if (job.salary_max && job.salary_max !== job.salary_min) {
+        return `${min}-${prefix}$${Math.round(job.salary_max/1000)}k`;
+      }
+      return min;
     }
 
     function truncate(str, max) {
@@ -3409,7 +3494,7 @@
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
           <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
           <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
-          <td class="jt-salary">${job.salary_min ? `$${Math.round(job.salary_min/1000)}k` + (job.salary_max && job.salary_max !== job.salary_min ? `-$${Math.round(job.salary_max/1000)}k` : '') : '—'}</td>
+          <td class="jt-salary">${formatSalaryCell(job)}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
           <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
@@ -3468,10 +3553,11 @@
           if (salary) {
             job.salary_min = salary.min;
             job.salary_max = salary.max;
+            job.salary_currency = salary.currency || 'USD';
             const cell = document.querySelector(`tr[data-jobid="${job.greenhouse_id}"] .jt-salary`);
-            if (cell) cell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
-            console.log(`[BJ] Parsed cached: ${job.title} → $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
-            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw })
+            if (cell) cell.textContent = formatSalaryCell(job);
+            console.log(`[BJ] Parsed cached: ${job.title} → ${salary.currency || 'USD'} $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
+            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD' })
               .eq('greenhouse_id', job.greenhouse_id).then(() => {});
           }
         }
@@ -3509,12 +3595,14 @@
               updateData.salary_min = salary.min;
               updateData.salary_max = salary.max;
               updateData.salary_raw = salary.raw;
+              updateData.salary_currency = salary.currency || 'USD';
               job.salary_min = salary.min;
               job.salary_max = salary.max;
+              job.salary_currency = salary.currency || 'USD';
               // Update feed cell live
               const cell = document.querySelector(`tr[data-jobid="${job.greenhouse_id}"] .jt-salary`);
-              if (cell) cell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
-              console.log(`[BJ] Enriched: ${job.title} → $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
+              if (cell) cell.textContent = formatSalaryCell(job);
+              console.log(`[BJ] Enriched: ${job.title} → ${salary.currency || 'USD'} $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
             }
             sb.from('ats_jobs').update(updateData).eq('greenhouse_id', job.greenhouse_id).then(() => {});
 
@@ -3634,10 +3722,11 @@
                     if (salary) {
                       job.salary_min = salary.min;
                       job.salary_max = salary.max;
-                      sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw })
+                      job.salary_currency = salary.currency || 'USD';
+                      sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD' })
                         .eq('greenhouse_id', jobId).then(() => {});
                       const cell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
-                      if (cell) cell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+                      if (cell) cell.textContent = formatSalaryCell(job);
                     }
                   }
                 }
@@ -3732,12 +3821,13 @@
           if (salary) {
             job.salary_min = salary.min;
             job.salary_max = salary.max;
-            console.log(`[BJ] Salary extracted (cached): $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
-            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw })
+            job.salary_currency = salary.currency || 'USD';
+            console.log(`[BJ] Salary extracted (cached): ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
+            sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD' })
               .eq('greenhouse_id', jobId).then(() => {});
             // Update salary cell in feed
             const row = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
-            if (row) row.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+            if (row) row.textContent = formatSalaryCell(job);
           }
         }
       } else {
@@ -3868,13 +3958,23 @@
 
       const allRanges = [];
 
+      // Currency symbol pattern: matches $, CA$, C$, A$, AU$, NZ$, HK$, £, €
+      const currSym = '(?:CA\\$|C\\$|A\\$|AU\\$|NZ\\$|HK\\$|US\\$|£|€|\\$)';
+
       // Patterns to match salary ranges
       const rangePatterns = [
-        // "$120,000 - $150,000" or "$120,000 to $150,000" or "$120,000—$150,000"
-        /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:[-–—]|to)\s*\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per\s+year|annually|annual|\/\s*(?:yr|year)|USD)?/gi,
-        // "$120k - $150k" or "$120K-$150K"
-        /\$\s*(\d+(?:\.\d+)?)\s*[kK]\s*(?:[-–—]|to)\s*\$?\s*(\d+(?:\.\d+)?)\s*[kK]/gi,
+        // "CA$125,000 to CA$150,000" or "$120,000 - $150,000" or "$120,000—$150,000"
+        new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+year|annually|annual|\\/\\s*(?:yr|year)|USD|CAD|GBP|EUR)?', 'gi'),
+        // "$120k - $150k" or "CA$120K-CA$150K"
+        new RegExp(currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
       ];
+
+      // Also detect currency for metadata
+      let detectedCurrency = 'USD'; // default
+      if (/CA\$|C\$|CAD/i.test(text)) detectedCurrency = 'CAD';
+      else if (/£|GBP/i.test(text)) detectedCurrency = 'GBP';
+      else if (/€|EUR/i.test(text)) detectedCurrency = 'EUR';
+      else if (/A\$|AU\$|AUD/i.test(text)) detectedCurrency = 'AUD';
 
       for (const pattern of rangePatterns) {
         pattern.lastIndex = 0;
@@ -3887,7 +3987,7 @@
           if (max < 1000) max *= 1000;
           // Sanity check — annual salary between $20k and $2M
           if (min >= 20000 && min <= 2000000 && max >= min && max <= 2000000) {
-            allRanges.push({ min: Math.round(min), max: Math.round(max), raw: match[0].trim() });
+            allRanges.push({ min: Math.round(min), max: Math.round(max), raw: match[0].trim(), currency: detectedCurrency });
           }
         }
       }
@@ -3896,17 +3996,19 @@
       if (allRanges.length > 0) {
         const lowestMin = Math.min(...allRanges.map(r => r.min));
         const highestMax = Math.max(...allRanges.map(r => r.max));
+        const currency = allRanges[0].currency;
+        const prefix = currency !== 'USD' ? currency + ' ' : '';
         const raw = allRanges.length > 1
-          ? `${allRanges.length} zones: $${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
+          ? `${allRanges.length} zones: ${prefix}$${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
           : allRanges[0].raw;
-        return { min: lowestMin, max: highestMax, raw };
+        return { min: lowestMin, max: highestMax, raw, currency };
       }
 
-      // Single value patterns: "$150,000" or "$150k"
+      // Single value patterns: "$150,000" or "$150k" or "CA$150,000"
       const singlePatterns = [
-        /(?:base\s+(?:salary|pay|compensation)[:\s]*)\$\s*([\d,]+(?:\.\d{2})?)\s*(?:per\s+year|annually|annual)?/gi,
-        /(?:salary|compensation|pay)[:\s]*\$\s*([\d,]+(?:\.\d{2})?)/gi,
-        /(?:salary|compensation|pay)[:\s]*\$\s*(\d+(?:\.\d+)?)\s*[kK]/gi,
+        new RegExp('(?:base\\s+(?:salary|pay|compensation)[:\\s]*)' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+year|annually|annual)?', 'gi'),
+        new RegExp('(?:salary|compensation|pay)[:\\s]*' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)', 'gi'),
+        new RegExp('(?:salary|compensation|pay)[:\\s]*' + currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
       ];
       for (const pattern of singlePatterns) {
         pattern.lastIndex = 0;
@@ -3915,7 +4017,7 @@
           let val = parseFloat(match[1].replace(/,/g, ''));
           if (val < 1000) val *= 1000;
           if (val >= 20000 && val <= 2000000) {
-            return { min: Math.round(val), max: Math.round(val), raw: match[0].trim() };
+            return { min: Math.round(val), max: Math.round(val), raw: match[0].trim(), currency: detectedCurrency };
           }
         }
       }
@@ -3956,11 +4058,12 @@
                 updateData.salary_min = salary.min;
                 updateData.salary_max = salary.max;
                 updateData.salary_raw = salary.raw;
-                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; }
-                console.log(`[BJ] Salary extracted: $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
+                updateData.salary_currency = salary.currency || 'USD';
+                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; cachedJob.salary_currency = salary.currency || 'USD'; }
+                console.log(`[BJ] Salary extracted: ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
                 // Update salary cell in feed
                 const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
-                if (salaryCell) salaryCell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+                if (salaryCell && cachedJob) salaryCell.textContent = formatSalaryCell(cachedJob);
               }
               sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
               return;
@@ -3999,10 +4102,11 @@
                 updateData.salary_min = salary.min;
                 updateData.salary_max = salary.max;
                 updateData.salary_raw = salary.raw;
-                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; }
-                console.log(`[BJ] Salary extracted (slug fallback): $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k`);
+                updateData.salary_currency = salary.currency || 'USD';
+                if (cachedJob) { cachedJob.salary_min = salary.min; cachedJob.salary_max = salary.max; cachedJob.salary_currency = salary.currency || 'USD'; }
+                console.log(`[BJ] Salary extracted (slug fallback): ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k`);
                 const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
-                if (salaryCell) salaryCell.textContent = `$${Math.round(salary.min/1000)}k${salary.max !== salary.min ? `-$${Math.round(salary.max/1000)}k` : ''}`;
+                if (salaryCell && cachedJob) salaryCell.textContent = formatSalaryCell(cachedJob);
               }
               sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
               return;
