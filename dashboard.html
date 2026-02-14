@@ -1162,7 +1162,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21c</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2254,7 +2254,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.21 loaded');
+    console.log('[BJ] Dashboard v2.21c loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2485,7 +2485,16 @@
           const joined = pill.values.length > 1
             ? textParts.join(`<span class="or-sep">${orLabel}</span>`)
             : textParts[0];
-          display = joined;
+          // Show badge for geo-enabled pills
+          let badge = '';
+          if (pill.locType === 'state') {
+            badge = `<span class="pill-radius" style="color:#8b5cf6;">state</span>`;
+          } else if (pill.locType === 'metro') {
+            badge = `<span class="pill-radius" style="color:#f59e0b;">${Math.round(pill.radius_mi)}mi</span>`;
+          } else if (pill.radius_mi) {
+            badge = `<span class="pill-radius">${Math.round(pill.radius_mi)}mi</span>`;
+          }
+          display = `${joined}${badge}`;
         } else {
           const textParts = pill.values.map(v => `<span>${v}</span>`);
           display = pill.values.length > 1
@@ -2611,8 +2620,99 @@
     // Location filtering now handled directly in buildFilterQuery via ilike on ats_jobs.location
     // No more pre-fetching IDs from job_locations (was causing connection overload)
     async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning) {
-      // Return null so buildFilterQuery uses the direct ilike fallback path
-      return null;
+      if (!wherePillsArr || wherePillsArr.length === 0) return null;
+
+      // Separate pills by type
+      const radiusPills = wherePillsArr.filter(p => p.lat && p.lng && p.radius_mi);
+      const statePills = wherePillsArr.filter(p => p.locType === 'state');
+      const remotePills = wherePillsArr.filter(p => p.locType === 'remote');
+      const textPills = wherePillsArr.filter(p => !p.lat && !p.stateCode && p.locType !== 'remote');
+
+      // If no radius or state pills, fall through to ilike
+      if (radiusPills.length === 0 && statePills.length === 0 && remotePills.length === 0) return null;
+
+      const allIds = new Set();
+
+      // Radius search via RPC
+      for (const pill of radiusPills) {
+        try {
+          const { data, error } = await sb.rpc('find_jobs_within_radius', {
+            p_lat: pill.lat,
+            p_lng: pill.lng,
+            p_radius_mi: pill.radius_mi,
+          });
+          if (!error && data) {
+            data.forEach(r => allIds.add(r.greenhouse_id));
+          }
+          console.log(`[BJ] Radius search: ${pill.values[0]} (${pill.radius_mi}mi) → ${data?.length || 0} jobs`);
+        } catch (e) {
+          console.warn('[BJ] Radius search failed for', pill.values[0], e);
+        }
+      }
+
+      // State search
+      for (const pill of statePills) {
+        try {
+          const { data, error } = await sb
+            .from('ats_jobs')
+            .select('greenhouse_id')
+            .eq('status', 'open')
+            .eq('loc_state', pill.stateCode);
+          if (!error && data) {
+            data.forEach(r => allIds.add(r.greenhouse_id));
+          }
+          console.log(`[BJ] State search: ${pill.stateCode} → ${data?.length || 0} jobs`);
+        } catch (e) {
+          console.warn('[BJ] State search failed for', pill.stateCode, e);
+        }
+      }
+
+      // Remote search
+      if (remotePills.length > 0) {
+        try {
+          const { data, error } = await sb
+            .from('ats_jobs')
+            .select('greenhouse_id')
+            .eq('status', 'open')
+            .or('loc_type.eq.remote,location.ilike.%remote%');
+          if (!error && data) {
+            data.forEach(r => allIds.add(r.greenhouse_id));
+          }
+          console.log(`[BJ] Remote search → ${data?.length || 0} jobs`);
+        } catch (e) {
+          console.warn('[BJ] Remote search failed', e);
+        }
+      }
+
+      // For text-only pills, return null to trigger ilike fallback
+      // But if we have mixed pills, we need to also include text matches
+      if (textPills.length > 0 && allIds.size > 0) {
+        // Run ilike queries for text pills and merge
+        for (const pill of textPills) {
+          for (const v of pill.values) {
+            try {
+              const { data, error } = await sb
+                .from('ats_jobs')
+                .select('greenhouse_id')
+                .eq('status', 'open')
+                .or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_state.ilike.%${v}%`);
+              if (!error && data) {
+                data.forEach(r => allIds.add(r.greenhouse_id));
+              }
+            } catch (e) {
+              console.warn('[BJ] Text location search failed for', v, e);
+            }
+          }
+        }
+      } else if (textPills.length > 0 && allIds.size === 0) {
+        // Only text pills, no radius/state — return null for ilike fallback
+        return null;
+      }
+
+      return {
+        includeIds: [...allIds],
+        excludeIds: new Set(),
+      };
     }
 
     function buildFilterQuery(sf, baseQuery, locationIds) {
@@ -4901,7 +5001,7 @@
           const first = locationDropdown.querySelector('.company-opt');
           if (first) {
             e.preventDefault();
-            selectLocation(first.dataset.name, first.dataset.raw);
+            selectLocationFromDropdown(first);
             return;
           }
         }
@@ -4927,44 +5027,111 @@
 
     async function searchLocations(query) {
       try {
-        // Search location_cache for matches
-        const { data, error } = await sb
+        const ql = query.toLowerCase().trim();
+        const results = [];
+        const seenKeys = new Set();
+
+        // US state codes for state-pill detection
+        const US_STATES = {
+          'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
+          'CO':'Colorado','CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia',
+          'HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas',
+          'KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts',
+          'MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana',
+          'NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico',
+          'NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma',
+          'OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota',
+          'TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington',
+          'WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming','DC':'District of Columbia',
+        };
+
+        // Check if query matches a state name or code
+        const stateMatches = Object.entries(US_STATES).filter(([code, name]) =>
+          code.toLowerCase() === ql || name.toLowerCase().startsWith(ql)
+        );
+        for (const [code, name] of stateMatches) {
+          const key = `state:${code}`;
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            results.push({
+              display: `${name} (${code})`,
+              type: 'state',
+              stateCode: code,
+              badge: 'state',
+            });
+          }
+        }
+
+        // Search ref_city_radius for cities and metros
+        const { data: refData } = await sb
+          .from('ref_city_radius')
+          .select('city, state, lat, lng, radius_mi, type, aliases')
+          .or(`city.ilike.%${query}%,aliases.cs.{${query}}`)
+          .limit(15);
+
+        if (refData) {
+          for (const r of refData) {
+            const key = `${r.city.toLowerCase()},${r.state.toLowerCase()},${r.type}`;
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              results.push({
+                display: r.type === 'metro' ? r.city : `${r.city}, ${r.state}`,
+                type: r.type,
+                lat: r.lat,
+                lng: r.lng,
+                radius_mi: r.radius_mi,
+                city: r.city,
+                state: r.state,
+                badge: r.type === 'metro' ? 'metro' : 'radius',
+              });
+            }
+          }
+        }
+
+        // Also check "remote"
+        if ('remote'.startsWith(ql)) {
+          if (!seenKeys.has('remote')) {
+            seenKeys.add('remote');
+            results.push({ display: 'Remote', type: 'remote', badge: 'remote' });
+          }
+        }
+
+        // Search location_cache as fallback for unlisted locations
+        const { data: cacheData } = await sb
           .from('location_cache')
           .select('raw_input, normalized, lat, lng, is_remote')
           .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`)
-          .limit(20);
+          .limit(10);
 
-        if (error) { console.warn('[BJ] Location search error:', error.message); return; }
-        if (!data || data.length === 0) { locationDropdown.classList.remove('open'); return; }
-
-        // Dedupe by normalized name and group
-        const seen = new Map();
-        data.forEach(loc => {
-          const key = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
-          // Merge "remote" variants (e.g. "remote" and "remote, united states")
-          const mergeKey = key.startsWith('remote') ? 'remote' : key;
-          if (!seen.has(mergeKey)) {
-            // For remote variants, prefer the simpler "Remote" entry
-            if (mergeKey === 'remote') {
-              loc.normalized = 'Remote';
-              loc.is_remote = true;
-            }
-            seen.set(mergeKey, loc);
+        if (cacheData) {
+          for (const loc of cacheData) {
+            const norm = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
+            // Skip remote variants (already handled above)
+            if (norm.startsWith('remote')) continue;
+            // Skip if already covered by ref table
+            if (seenKeys.has(norm)) continue;
+            seenKeys.add(norm);
+            results.push({
+              display: loc.normalized || loc.raw_input,
+              type: 'cache',
+              badge: loc.lat && loc.lng ? 'pin' : '',
+            });
           }
-        });
+        }
 
-        const results = [...seen.values()].slice(0, 10);
-
-        // Sort: exact prefix matches first, then alphabetical
-        const ql = query.toLowerCase();
+        // Sort: exact prefix matches first, states first, then metros, then cities
         results.sort((a, b) => {
-          const aStart = (a.normalized || a.raw_input).toLowerCase().startsWith(ql) ? 0 : 1;
-          const bStart = (b.normalized || b.raw_input).toLowerCase().startsWith(ql) ? 0 : 1;
-          if (aStart !== bStart) return aStart - bStart;
-          return (a.normalized || '').localeCompare(b.normalized || '');
+          const aPrefix = a.display.toLowerCase().startsWith(ql) ? 0 : 1;
+          const bPrefix = b.display.toLowerCase().startsWith(ql) ? 0 : 1;
+          if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+          const typeOrder = { state: 0, metro: 1, city: 2, radius: 2, remote: 3, cache: 4 };
+          const aType = typeOrder[a.type] ?? 5;
+          const bType = typeOrder[b.type] ?? 5;
+          if (aType !== bType) return aType - bType;
+          return a.display.localeCompare(b.display);
         });
 
-        renderLocationDropdown(results, query);
+        renderLocationDropdown(results.slice(0, 10), query);
       } catch (e) {
         console.warn('[BJ] Location search failed:', e);
       }
@@ -4974,14 +5141,21 @@
       if (results.length === 0) { locationDropdown.classList.remove('open'); return; }
 
       locationDropdown.innerHTML = results.map(r => {
-        const display = r.normalized || r.raw_input;
-        const badge = r.is_remote
-          ? '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>'
-          : r.lat && r.lng
-            ? '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>'
-            : '';
-        const hl = highlightCompanyMatch(display, query);
-        return `<div class="company-opt" tabindex="0" data-name="${display.replace(/"/g,'&quot;')}" data-raw="${(r.raw_input||'').replace(/"/g,'&quot;')}">
+        const badgeMap = {
+          state: '<span style="font-size:9px;background:rgba(139,92,246,0.1);color:#8b5cf6;padding:1px 6px;border-radius:4px;font-weight:600;">state</span>',
+          metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
+          radius: `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.radius_mi}mi</span>`,
+          remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
+          pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+        };
+        const badge = badgeMap[r.badge] || '';
+        const hl = highlightCompanyMatch(r.display, query);
+        const data = JSON.stringify({
+          type: r.type, display: r.display,
+          lat: r.lat, lng: r.lng, radius_mi: r.radius_mi,
+          city: r.city, state: r.state, stateCode: r.stateCode,
+        }).replace(/"/g, '&quot;');
+        return `<div class="company-opt" tabindex="0" data-locdata="${data}" data-name="${r.display.replace(/"/g,'&quot;')}">
           <span style="font-weight:500;">${hl}</span>${badge}</div>`;
       }).join('');
 
@@ -4990,10 +5164,10 @@
       locationDropdown.querySelectorAll('.company-opt').forEach(opt => {
         opt.addEventListener('mousedown', e => {
           e.preventDefault();
-          selectLocation(opt.dataset.name, opt.dataset.raw);
+          selectLocationFromDropdown(opt);
         });
         opt.addEventListener('keydown', e => {
-          if (e.key === 'Enter') { e.preventDefault(); selectLocation(opt.dataset.name, opt.dataset.raw); }
+          if (e.key === 'Enter') { e.preventDefault(); selectLocationFromDropdown(opt); }
           if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
           if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhere.focus(); }
           if (e.key === 'Escape') { locationDropdown.classList.remove('open'); qbInputWhere.focus(); }
@@ -5001,12 +5175,28 @@
       });
     }
 
-    function selectLocation(normalized, raw) {
-      qbInputWhere.value = normalized;
-      commitPill(qbInputWhere, wherePills, r => ({ values: [r], type: 'where' }));
+    function selectLocationFromDropdown(opt) {
+      const locData = JSON.parse(opt.dataset.locdata);
+      const pill = { values: [locData.display], type: 'where' };
+
+      // Attach geo data for radius search
+      if (locData.type === 'state') {
+        pill.locType = 'state';
+        pill.stateCode = locData.stateCode;
+      } else if (locData.lat && locData.lng) {
+        pill.locType = locData.type; // 'city' or 'metro'
+        pill.lat = locData.lat;
+        pill.lng = locData.lng;
+        pill.radius_mi = locData.radius_mi;
+      } else if (locData.type === 'remote') {
+        pill.locType = 'remote';
+      }
+
+      wherePills.push(pill);
       renderAllPills();
       locationDropdown.classList.remove('open');
       qbInputWhere.value = '';
+      triggerSearch();
     }
 
     // Input handling — What Not row
