@@ -1163,7 +1163,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.24</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.24b</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2260,7 +2260,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.24 loaded');
+    console.log('[BJ] Dashboard v2.24b loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2656,9 +2656,24 @@
         }
       }
 
-      // State search — require US country to avoid DE=Germany, GA=Georgia(country) confusion
-      // Ambiguous 2-letter codes that are both US states and country/region codes
-      const ambiguousCodes = new Set(['DE','GA','IN','ME','MD','LA','AL','CO','ID','MA','NE','PA']);
+      // State search — disambiguate codes that overlap with ISO country codes
+      // Map of ambiguous US state codes → foreign cities/indicators to EXCLUDE
+      const ambiguousExclusions = {
+        'DE': ['munich','berlin','hamburg','frankfurt','cologne','düsseldorf','dusseldorf','stuttgart','germany','deutschland'],
+        'GA': ['tbilisi','batumi','kutaisi'],
+        'IN': ['mumbai','delhi','bangalore','bengaluru','hyderabad','chennai','pune','kolkata','india','noida','gurgaon','gurugram'],
+        'CO': ['bogota','bogotá','medellin','medellín','cali','barranquilla','colombia'],
+        'AL': ['tirana','tiranë','albania'],
+        'PA': ['panama city, panama','panamá'],
+        'MA': ['casablanca','rabat','marrakech','morocco'],
+        'MD': ['chisinau','moldova'],
+        'ME': ['podgorica','montenegro'],
+        'ID': ['jakarta','bali','surabaya','indonesia'],
+        'LA': ['vientiane','laos'],
+        'NE': ['niamey','niger'],
+        'MN': ['ulaanbaatar','mongolia'],
+        'MT': ['valletta','malta'],
+      };
 
       for (const pill of statePills) {
         try {
@@ -2668,9 +2683,14 @@
             .eq('status', 'open')
             .eq('loc_state', pill.stateCode);
 
-          // For ambiguous codes, also require US country or exclude known non-US indicators
-          if (ambiguousCodes.has(pill.stateCode)) {
-            query = query.or('loc_country.eq.US,loc_country.is.null');
+          // For ambiguous codes, exclude jobs with known foreign city/country names in location
+          const exclusions = ambiguousExclusions[pill.stateCode];
+          if (exclusions) {
+            for (const excl of exclusions) {
+              query = query.not('location', 'ilike', `%${excl}%`);
+            }
+            // Also exclude if loc_country is set to the state code itself (means the country, not the state)
+            query = query.not('loc_country', 'eq', pill.stateCode);
             query = query.not('location', 'ilike', 'Remote -%');
           }
 
@@ -3327,7 +3347,8 @@
       if (!job.salary_min) return '—';
       const currency = job.salary_currency || '';
       const rate = job.salary_rate || 'yr';
-      const prefix = (currency && currency !== 'USD') ? currency.replace('D','') + ' ' : '';
+      const prefixMap = { CAD: 'CA ', GBP: '£', EUR: '€', AUD: 'AU ' };
+      const prefix = prefixMap[currency] || '';
 
       // Rate suffix map
       const rateSuffix = { yr: '', hr: '/hr', wk: '/wk', mo: '/mo', day: '/day', session: '/session', visit: '/visit' };
@@ -4053,10 +4074,10 @@
 
       // Also detect currency for metadata
       let detectedCurrency = 'USD'; // default
-      if (/CA\$|C\$|CAD/i.test(text)) detectedCurrency = 'CAD';
-      else if (/£|GBP/i.test(text)) detectedCurrency = 'GBP';
-      else if (/€|EUR/i.test(text)) detectedCurrency = 'EUR';
-      else if (/A\$|AU\$|AUD/i.test(text)) detectedCurrency = 'AUD';
+      if (/CA\$|C\$|\bCAD\b/i.test(text)) detectedCurrency = 'CAD';
+      else if (/£|\bGBP\b/i.test(text)) detectedCurrency = 'GBP';
+      else if (/€|\bEUR\b/i.test(text)) detectedCurrency = 'EUR';
+      else if (/A\$|AU\$|\bAUD\b/i.test(text)) detectedCurrency = 'AUD';
 
       // Patterns to match salary/rate ranges
       const rangePatterns = [
@@ -4116,7 +4137,8 @@
         const lowestMin = Math.min(...sameRate.map(r => r.min));
         const highestMax = Math.max(...sameRate.map(r => r.max));
         const currency = sameRate[0].currency;
-        const prefix = currency !== 'USD' ? currency + ' ' : '';
+        const prefMap = { CAD: 'CA', GBP: '£', EUR: '€', AUD: 'AU' };
+        const prefix = prefMap[currency] || '';
         const raw = sameRate.length > 1
           ? `${sameRate.length} zones: ${prefix}$${(lowestMin/1000).toFixed(0)}k-$${(highestMax/1000).toFixed(0)}k`
           : sameRate[0].raw;
@@ -7617,4 +7639,3 @@
   </script>
 </body>
 </html>
-    
