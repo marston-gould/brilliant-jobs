@@ -1163,7 +1163,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.24c</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.25</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1743,6 +1743,18 @@
             </div>
           </div>
 
+          <!-- Global Industry Exclusions -->
+          <div class="card">
+            <div class="card-title">Industry Exclusions</div>
+            <div class="card-sub">Jobs from companies in these industries will be hidden from all filters</div>
+            <div style="margin-top:12px;">
+              <div class="query-builder" id="tuning-industry-exclude" style="min-height:40px;position:relative;">
+                <input type="text" class="qb-input" id="tuning-ind-excl-input" placeholder="Type to search industries… e.g. staffing, insurance, military" autocomplete="off">
+              </div>
+              <div id="industry-dropdown" class="loc-dropdown" style="display:none;max-height:240px;"></div>
+            </div>
+          </div>
+
           <!-- Title Rules — Hierarchy + Exclusions -->
           <div class="card">
             <div class="card-title">Title Rules</div>
@@ -2260,7 +2272,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.24c loaded');
+    console.log('[BJ] Dashboard v2.25 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2956,6 +2968,14 @@
       for (const pill of (tuning.companyExcludes || [])) {
         for (const v of (pill.values || [])) {
           query = query.not('company_name', 'ilike', `%${v}%`);
+        }
+      }
+
+      // Global industry exclusions
+      const indExcludes = (tuning.industryExcludes || []).map(p => typeof p === 'string' ? p : (p.values ? p.values[0] : p)).filter(Boolean);
+      if (indExcludes.length > 0) {
+        for (const ind of indExcludes) {
+          query = query.not('industry', 'ilike', `%${ind}%`);
         }
       }
 
@@ -6600,12 +6620,14 @@
     let tuningLocExclPills = tuningSettings.locationExcludes || [];
     let tuningTitleExclPills = tuningSettings.titleExcludes || [];
     let tuningCoExclPills = tuningSettings.companyExcludes || [];
+    let tuningIndExclPills = tuningSettings.industryExcludes || [];
 
     function saveTuning() {
       tuningSettings.usOnly = $('#tuning-us-only').checked;
       tuningSettings.locationExcludes = tuningLocExclPills;
       tuningSettings.titleExcludes = tuningTitleExclPills;
       tuningSettings.companyExcludes = tuningCoExclPills;
+      tuningSettings.industryExcludes = tuningIndExclPills;
       localStorage.setItem('bj_tuning', JSON.stringify(tuningSettings));
     }
 
@@ -6825,8 +6847,164 @@
       renderPillsFor(tuningLocExclPills, '#tuning-location-exclude', '#tuning-loc-excl-input', false, 'not-pill');
       renderPillsFor(tuningTitleExclPills, '#tuning-title-exclude', '#tuning-title-excl-input', false, 'not-pill');
       renderPillsFor(tuningCoExclPills, '#tuning-company-exclude', '#tuning-co-excl-input', false, 'not-pill');
+      // Industry pills — render as not-pills with remove buttons
+      const indBuilder = $('#tuning-industry-exclude');
+      const indInput = $('#tuning-ind-excl-input');
+      if (indBuilder) {
+        indBuilder.querySelectorAll('.qb-pill').forEach(p => p.remove());
+        tuningIndExclPills.forEach((pill, i) => {
+          const name = typeof pill === 'string' ? pill : (pill.values ? pill.values[0] : pill);
+          const span = document.createElement('span');
+          span.className = 'qb-pill not-pill';
+          span.innerHTML = `${name} <span class="qb-pill-x" data-idx="${i}">✕</span>`;
+          indBuilder.insertBefore(span, indInput);
+        });
+        // Attach remove handlers
+        indBuilder.querySelectorAll('.qb-pill-x').forEach(x => {
+          x.addEventListener('click', e => {
+            const idx = parseInt(e.target.dataset.idx);
+            tuningIndExclPills.splice(idx, 1);
+            saveTuning(); renderTuningPills();
+          });
+        });
+      }
     }
     renderTuningPills();
+
+    // ---- Industry typeahead ----
+    let industryCache = null; // { industries: [{name, category}], loaded: bool }
+    let industryDropdownIdx = -1;
+
+    async function loadIndustryCache() {
+      if (industryCache) return industryCache;
+      try {
+        const { data } = await sb.from('ref_industries').select('name, category').order('name');
+        industryCache = data || [];
+      } catch (e) {
+        console.warn('[BJ] Failed to load industries:', e);
+        industryCache = [];
+      }
+      return industryCache;
+    }
+
+    async function searchIndustries(query) {
+      const industries = await loadIndustryCache();
+      const q = query.toLowerCase().trim();
+      if (!q) return industries.slice(0, 20);
+      return industries.filter(ind =>
+        ind.name.includes(q) || (ind.category || '').toLowerCase().includes(q)
+      ).slice(0, 15);
+    }
+
+    function renderIndustryDropdown(results) {
+      const dd = $('#industry-dropdown');
+      if (!results || results.length === 0) { dd.style.display = 'none'; return; }
+      industryDropdownIdx = -1;
+
+      // Category badge colors
+      const catColors = {
+        'Technology': '#3b82f6', 'Healthcare': '#ef4444', 'Finance': '#f59e0b',
+        'Education': '#8b5cf6', 'Marketing': '#ec4899', 'Engineering': '#06b6d4',
+        'Manufacturing': '#6b7280', 'Energy': '#f97316', 'Real Estate': '#84cc16',
+        'Retail & Consumer': '#14b8a6', 'Government': '#6366f1', 'Legal': '#a855f7',
+        'Media & Entertainment': '#e879f9', 'Nonprofit': '#22c55e', 'Professional Services': '#64748b',
+        'Logistics': '#0ea5e9', 'Other': '#9ca3af',
+      };
+
+      // Filter out already-selected industries
+      const existing = new Set(tuningIndExclPills.map(p => typeof p === 'string' ? p : (p.values ? p.values[0] : p)));
+      const filtered = results.filter(r => !existing.has(r.name));
+      if (filtered.length === 0) { dd.style.display = 'none'; return; }
+
+      dd.innerHTML = filtered.map((ind, i) => {
+        const cat = ind.category || 'Other';
+        const color = catColors[cat] || '#9ca3af';
+        return `<div class="loc-option" data-idx="${i}" data-name="${ind.name}" data-category="${cat}">
+          <span style="flex:1;">${ind.name}</span>
+          <span style="font-size:9px;padding:1px 6px;border-radius:3px;background:${color}22;color:${color};font-weight:600;">${cat}</span>
+        </div>`;
+      }).join('');
+      dd.style.display = 'block';
+    }
+
+    function selectIndustryFromDropdown(name) {
+      if (!name) return;
+      const existing = tuningIndExclPills.map(p => typeof p === 'string' ? p : (p.values ? p.values[0] : p));
+      if (!existing.includes(name)) {
+        tuningIndExclPills.push(name);
+        saveTuning();
+        renderTuningPills();
+      }
+      const input = $('#tuning-ind-excl-input');
+      input.value = '';
+      $('#industry-dropdown').style.display = 'none';
+      industryDropdownIdx = -1;
+    }
+
+    // Wire up industry input
+    (function() {
+      const input = $('#tuning-ind-excl-input');
+      const dd = $('#industry-dropdown');
+      if (!input) return;
+
+      let debounceTimer;
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          const results = await searchIndustries(input.value);
+          renderIndustryDropdown(results);
+        }, 150);
+      });
+
+      input.addEventListener('focus', async () => {
+        if (input.value.length === 0) {
+          const results = await searchIndustries('');
+          renderIndustryDropdown(results);
+        }
+      });
+
+      input.addEventListener('keydown', e => {
+        const options = dd.querySelectorAll('.loc-option');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          industryDropdownIdx = Math.min(industryDropdownIdx + 1, options.length - 1);
+          options.forEach((o, i) => o.style.background = i === industryDropdownIdx ? 'var(--bg-hover)' : '');
+          if (options[industryDropdownIdx]) options[industryDropdownIdx].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          industryDropdownIdx = Math.max(industryDropdownIdx - 1, 0);
+          options.forEach((o, i) => o.style.background = i === industryDropdownIdx ? 'var(--bg-hover)' : '');
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (industryDropdownIdx >= 0 && options[industryDropdownIdx]) {
+            selectIndustryFromDropdown(options[industryDropdownIdx].dataset.name);
+          }
+        } else if (e.key === 'Escape') {
+          dd.style.display = 'none';
+          industryDropdownIdx = -1;
+        } else if (e.key === 'Backspace' && input.value === '' && tuningIndExclPills.length > 0) {
+          tuningIndExclPills.pop();
+          saveTuning(); renderTuningPills();
+        }
+      });
+
+      dd.addEventListener('click', e => {
+        const opt = e.target.closest('.loc-option');
+        if (opt) selectIndustryFromDropdown(opt.dataset.name);
+      });
+
+      // Close dropdown on outside click
+      document.addEventListener('click', e => {
+        if (!e.target.closest('#tuning-industry-exclude') && !e.target.closest('#industry-dropdown')) {
+          dd.style.display = 'none';
+        }
+      });
+
+      // Click on builder area focuses input
+      $('#tuning-industry-exclude').addEventListener('click', e => {
+        if (!e.target.closest('.qb-pill')) input.focus();
+      });
+    })();
 
     // Tuning input handlers
     const tuningInputs = [
