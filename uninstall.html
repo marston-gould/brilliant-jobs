@@ -445,6 +445,7 @@
     <h2>Thanks for the honesty.</h2>
     <p>Every piece of feedback makes the product better for the next person.</p>
     <p style="margin-top: 16px;">If you ever want to come back, your account and data will be here — we don't delete anything until you ask us to.</p>
+    <p style="margin-top: 16px;">Got 90 more seconds? <a id="surveyLink" href="/survey?context=churn">Take our quick exit survey</a> — it helps more than you'd think.</p>
     <p style="margin-top: 24px; font-size: 13px;">
       <a href="/">Back to Brilliant Jobs</a>
     </p>
@@ -566,6 +567,9 @@
     if (isHired) {
       hiredCelebration.classList.add('visible');
     } else {
+      // Set survey link with reason context
+      const link = document.getElementById('surveyLink');
+      if (link) link.href = `/survey?context=churn&reason=${encodeURIComponent(selectedReason)}`;
       thankYou.classList.add('visible');
     }
   });

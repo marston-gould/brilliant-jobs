@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quick Survey — Brilliant Jobs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e13;
+      --bg-card: #13151c;
+      --bg-card-hover: #181b24;
+      --border: #1e2130;
+      --border-hover: #2a2e42;
+      --text: #e2e4ea;
+      --text-dim: #9ba1b4;
+      --text-faint: #5c6278;
+      --accent: #4d8eff;
+      --accent-glow: rgba(77,142,255,0.15);
+      --green: #34d399;
+      --green-dim: rgba(52,211,153,0.1);
+      --amber: #f59e0b;
+      --amber-dim: rgba(245,158,11,0.1);
+      --red: #f87171;
+      --red-dim: rgba(248,113,113,0.1);
+      --purple: #a78bfa;
+      --purple-dim: rgba(167,139,250,0.1);
+      --sans: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+
+    .top-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(12,14,19,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .top-bar-mark {
+      width: 28px; height: 28px; background: #fff; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: var(--bg);
+      text-decoration: none;
+    }
+    .top-bar a.brand-link {
+      font-size: 15px; font-weight: 700; color: #fff; text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+    .top-bar a.brand-link:hover { color: var(--accent); }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 56px 32px 120px;
+      animation: fadeUp 0.5s ease-out;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .survey-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+    }
+    .badge-churn { color: var(--amber); background: var(--amber-dim); }
+    .badge-periodic { color: var(--purple); background: var(--purple-dim); }
+
+    h1 {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      max-width: 520px;
+    }
+
+    .reward-callout {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin: 20px 0 36px;
+      font-size: 13.5px;
+      color: var(--text-dim);
+    }
+    .reward-callout strong { color: var(--green); }
+
+    .meta-line {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-family: var(--mono);
+      margin-bottom: 36px;
+    }
+
+    /* Progress */
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .progress-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--purple));
+      border-radius: 2px;
+      transition: width 0.4s ease;
+      width: 0%;
+    }
+    .progress-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-faint);
+      white-space: nowrap;
+    }
+
+    /* Steps — one question at a time */
+    .step {
+      display: none;
+      animation: fadeUp 0.35s ease-out;
+    }
+    .step.active { display: block; }
+
+    .q-number {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .q-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+      line-height: 1.35;
+    }
+
+    .q-subtext {
+      font-size: 13px;
+      color: var(--text-faint);
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+
+    /* Option buttons */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .opt-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: var(--text-dim);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .opt-btn:hover {
+      border-color: var(--border-hover);
+      background: var(--bg-card-hover);
+      color: var(--text);
+    }
+    .opt-btn.selected {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      color: #fff;
+    }
+    .opt-btn .opt-key {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-faint);
+      background: rgba(92,98,120,0.15);
+      width: 22px; height: 22px;
+      border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .opt-btn.selected .opt-key {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* Rating scale */
+    .rating-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .rating-btn {
+      flex: 1;
+      aspect-ratio: 1;
+      max-width: 52px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-faint);
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rating-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+    .rating-btn.selected {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      color: #fff;
+    }
+    .rating-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-faint);
+      padding: 0 4px;
+    }
+
+    /* Free text */
+    .free-text-input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+      min-height: 80px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .free-text-input:focus { border-color: var(--accent); }
+    .free-text-input::placeholder { color: var(--text-faint); }
+
+    /* Nav buttons */
+    .step-nav {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .nav-btn {
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+    }
+    .nav-btn.next {
+      background: var(--accent);
+      color: #fff;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+    .nav-btn.next.ready {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .nav-btn.next.ready:hover {
+      background: #6aa3ff;
+    }
+    .nav-btn.skip {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-faint);
+    }
+    .nav-btn.skip:hover {
+      border-color: var(--border-hover);
+      color: var(--text-dim);
+    }
+    .nav-btn.submit {
+      background: var(--green);
+      color: #fff;
+    }
+    .nav-btn.submit:hover {
+      background: #4ee6b0;
+    }
+
+    /* Save offer (churn only) */
+    .save-offer {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-top: 24px;
+      animation: fadeUp 0.4s ease-out;
+    }
+    .save-offer.visible { display: block; }
+    .save-offer .offer-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+    .save-offer p {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    .save-offer strong { color: var(--text); }
+
+    .save-btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .save-btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+    .save-btn.primary {
+      background: var(--green-dim);
+      border-color: rgba(52,211,153,0.25);
+      color: var(--green);
+    }
+    .save-btn.primary:hover {
+      background: rgba(52,211,153,0.15);
+      border-color: var(--green);
+    }
+    .save-btn.secondary {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text-dim);
+    }
+    .save-btn.secondary:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    /* Thank you */
+    .thank-you {
+      display: none;
+      text-align: center;
+      padding: 48px 0;
+      animation: fadeUp 0.5s ease-out;
+    }
+    .thank-you.visible { display: block; }
+    .thank-you h2 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .thank-you p {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      max-width: 440px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .thank-you a { color: var(--accent); text-decoration: none; }
+    .thank-you a:hover { text-decoration: underline; }
+
+    .reward-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green-dim);
+      border: 1px solid rgba(52,211,153,0.2);
+      border-radius: 10px;
+      padding: 12px 24px;
+      margin: 20px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .form-section.hidden { display: none; }
+
+    .footer {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-faint);
+      text-align: center;
+    }
+    .footer a { color: var(--text-faint); text-decoration: none; }
+    .footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .container { padding: 40px 20px 80px; }
+      h1 { font-size: 24px; }
+      .rating-btn { max-width: 44px; font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="top-bar-mark">B</a>
+  <a href="/" class="brand-link">Brilliant Jobs</a>
+</div>
+
+<div class="container">
+
+  <div class="survey-badge" id="surveyBadge">Survey</div>
+  <h1 id="surveyTitle">Quick Survey</h1>
+  <p class="subtitle" id="surveySubtitle">Loading…</p>
+  <div class="reward-callout" id="rewardCallout" style="display:none;">
+    <strong>🎁 Complete this survey</strong> and unlock 7 days of Pro features — extra saved filters, salary data, and priority job matching. No card required.
+  </div>
+  <div class="meta-line" id="metaLine"></div>
+
+  <div class="form-section" id="formSection">
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">0 / 0</div>
+    </div>
+
+    <div id="stepsContainer"></div>
+  </div>
+
+  <!-- Churn save offer -->
+  <div class="save-offer" id="saveOffer">
+    <div class="offer-tag">Wait — hear us out</div>
+    <p id="saveOfferText">We're shipping improvements fast. Before you go…</p>
+    <div class="save-btns">
+      <a href="/dashboard" class="save-btn primary" id="saveBtn1">Downgrade to Free</a>
+      <a href="/dashboard" class="save-btn primary" id="saveBtn2">Give me 2 weeks of Pro free</a>
+      <button class="save-btn secondary" id="saveDismiss">No thanks, I'm out</button>
+    </div>
+  </div>
+
+  <!-- Thank you — periodic -->
+  <div class="thank-you" id="thankYouPeriodic">
+    <h2>You're a legend.</h2>
+    <p>That took 90 seconds and it genuinely helps us build a better product. Every answer shapes what we work on next.</p>
+    <div class="reward-badge">✓ Pro features unlocked for 7 days</div>
+    <p>Your upgrade is active now — go check out the good stuff.</p>
+    <p style="margin-top:24px;font-size:13px;">
+      <a href="/dashboard">Back to dashboard →</a>
+    </p>
+  </div>
+
+  <!-- Thank you — churn -->
+  <div class="thank-you" id="thankYouChurn">
+    <h2>Thanks for the honesty.</h2>
+    <p>Every piece of feedback shapes what we build next. If you ever come back, your data will be here — we don't delete anything until you ask us to.</p>
+    <p style="margin-top:24px;font-size:13px;">
+      <a href="/">Back to Brilliant Jobs</a>
+    </p>
+  </div>
+
+  <div class="footer">
+    &copy; 2026 Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg2MzE2MDksImV4cCI6MjA1NDIwNzYwOX0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+
+// ─── QUESTION BANKS ───
+
+const churnQuestions = [
+  {
+    id: 'outcome',
+    q: "First things first — did you land a job?",
+    sub: "No judgment either way. We're just rooting for you.",
+    type: 'choice',
+    opts: [
+      "Yes! I'm employed now 🎉",
+      "No — still searching",
+      "I'm taking a break from searching",
+      "I'm switching to a different approach"
+    ]
+  },
+  {
+    id: 'overall_rating',
+    q: "How would you rate your overall Brilliant Jobs experience?",
+    sub: "1 = I want those hours of my life back. 5 = Actually pretty great.",
+    type: 'rating'
+  },
+  {
+    id: 'biggest_disappointment',
+    q: "What was the biggest letdown?",
+    sub: "Pick the one that hurt the most.",
+    type: 'choice',
+    opts: [
+      "Search results weren't relevant enough",
+      "Too complicated to set up or figure out",
+      "Not enough jobs in my field or location",
+      "Features I wanted were behind a paywall",
+      "It was buggy or things didn't work right",
+      "I just didn't use it enough to justify it",
+      "Honestly? Nothing major — just not for me"
+    ]
+  },
+  {
+    id: 'missing_feature',
+    q: "Was there something you wished Brilliant Jobs could do but couldn't?",
+    sub: "This is the kind of feedback that actually changes what we build next.",
+    type: 'text',
+    placeholder: "Auto-apply, better filtering, more job sources, resume help…"
+  },
+  {
+    id: 'compared_to',
+    q: "What are you using instead? (or planning to)",
+    sub: "No ego here — we genuinely want to know what's working for people.",
+    type: 'choice',
+    opts: [
+      "LinkedIn — it's the devil I know",
+      "Indeed / Glassdoor / ZipRecruiter",
+      "Going direct to company career pages",
+      "Recruiters and staffing agencies",
+      "Networking and referrals only",
+      "Nothing — I'm tapping out for a while",
+      "Something else"
+    ]
+  },
+  {
+    id: 'price_sensitivity',
+    q: "Real talk: was cost a factor?",
+    sub: "We're trying to figure out if the pricing is wrong or if the value isn't there yet.",
+    type: 'choice',
+    opts: [
+      "Free tier was enough — I never needed paid",
+      "I'd pay, but not at the current price",
+      "I'd pay if there were more features",
+      "Job searching shouldn't cost money, period",
+      "I was paying and it was fine — cost wasn't the issue"
+    ]
+  },
+  {
+    id: 'come_back',
+    q: "Under what circumstances would you come back?",
+    sub: "Pick all that apply (in your head). Or just pick the biggest one.",
+    type: 'choice',
+    opts: [
+      "If it had more jobs in my field",
+      "If the interface were simpler",
+      "If it were cheaper or free",
+      "If you fixed the bugs I ran into",
+      "If I start searching again",
+      "Never — I've moved on",
+      "I'd come back right now if you gave me a reason"
+    ],
+    triggerSave: true
+  },
+  {
+    id: 'parting_shot',
+    q: "Any parting words?",
+    sub: "Compliments, complaints, profanity — we read every single one.",
+    type: 'text',
+    placeholder: "Don't hold back.",
+    optional: true
+  }
+];
+
+const periodicQuestions = [
+  {
+    id: 'search_quality',
+    q: "How relevant are the jobs showing up in your feed?",
+    sub: "Be brutal. We'd rather know now than lose you later.",
+    type: 'rating'
+  },
+  {
+    id: 'ease_of_use',
+    q: "How easy is Brilliant Jobs to use?",
+    sub: "1 = I need a PhD in filter management. 5 = My grandma could do it.",
+    type: 'rating'
+  },
+  {
+    id: 'most_valuable',
+    q: "What's the most valuable thing about Brilliant Jobs for you?",
+    sub: "This tells us what to protect and double down on.",
+    type: 'choice',
+    opts: [
+      "Finding jobs I wouldn't see on LinkedIn or Indeed",
+      "The filtering — I can actually narrow things down",
+      "Seeing which companies are actually hiring vs posting ghost jobs",
+      "Knowing I have connections at companies with openings",
+      "Salary data and transparency",
+      "Honestly, I haven't found the killer feature yet"
+    ]
+  },
+  {
+    id: 'biggest_frustration',
+    q: "What's your biggest frustration right now?",
+    sub: "Pick the one that makes you mutter under your breath.",
+    type: 'choice',
+    opts: [
+      "Not enough jobs matching my criteria",
+      "Too many irrelevant results slipping through",
+      "The interface is confusing or cluttered",
+      "Features I want are locked behind a paywall",
+      "Things are buggy or slow",
+      "I don't really have complaints (seriously)"
+    ]
+  },
+  {
+    id: 'missing_feature',
+    q: "What's the ONE feature you wish existed?",
+    sub: "The thing that would make you say 'okay NOW this tool is worth it.'",
+    type: 'text',
+    placeholder: "Auto-apply, interview prep, resume scoring, better mobile…"
+  },
+  {
+    id: 'recommend',
+    q: "Would you recommend Brilliant Jobs to a friend who's job searching?",
+    sub: "The classic question. We promise not to cry if you say no.",
+    type: 'choice',
+    opts: [
+      "Absolutely — already have",
+      "Probably, with some caveats",
+      "Maybe once it has more features",
+      "Not yet — it's not ready",
+      "No — it's not for me"
+    ]
+  },
+  {
+    id: 'compared_to_others',
+    q: "How does Brilliant Jobs compare to whatever else you're using?",
+    sub: "LinkedIn, Indeed, going direct — how do we stack up?",
+    type: 'choice',
+    opts: [
+      "Better — this is my primary tool now",
+      "About the same — I use it alongside other things",
+      "Worse for finding jobs, better for filtering/data",
+      "Worse overall — but it has potential",
+      "This is the only thing I'm using"
+    ]
+  },
+  {
+    id: 'open_feedback',
+    q: "Anything else on your mind?",
+    sub: "Feature ideas, rants, compliments, memes — all welcome.",
+    type: 'text',
+    placeholder: "We read every single one of these.",
+    optional: true
+  }
+];
+
+// ─── STATE ───
+
+const params = new URLSearchParams(window.location.search);
+const context = params.get('context') || 'periodic';
+const reason = params.get('reason') || null;  // from uninstall page
+const questions = context === 'churn' ? churnQuestions : periodicQuestions;
+const answers = {};
+let currentStep = 0;
+
+// ─── INIT ───
+
+function init() {
+  const badge = document.getElementById('surveyBadge');
+  const title = document.getElementById('surveyTitle');
+  const subtitle = document.getElementById('surveySubtitle');
+  const meta = document.getElementById('metaLine');
+  const reward = document.getElementById('rewardCallout');
+
+  if (context === 'churn') {
+    badge.textContent = '👋 Exit Survey';
+    badge.className = 'survey-badge badge-churn';
+    title.textContent = "One more thing before you go.";
+    subtitle.textContent = "We know you just uninstalled. This takes about 90 seconds and it genuinely helps us figure out where we went wrong. No guilt trip — just honesty.";
+    meta.textContent = `${questions.length} questions · anonymous · ~90 seconds`;
+  } else {
+    badge.textContent = '🎁 Quick Survey';
+    badge.className = 'survey-badge badge-periodic';
+    title.textContent = "Got 90 seconds? We'll make it worth your time.";
+    subtitle.textContent = "Tell us what's working, what's not, and what you wish existed. Your answers directly shape what we build next.";
+    meta.textContent = `${questions.length} questions · anonymous · ~90 seconds`;
+    reward.style.display = 'block';
+  }
+
+  renderSteps();
+  showStep(0);
+  updateProgress();
+}
+
+function renderSteps() {
+  const container = document.getElementById('stepsContainer');
+  container.innerHTML = questions.map((q, i) => {
+    let inner = '';
+
+    inner += `<div class="q-number">Q${String(i+1).padStart(2,'0')} of ${String(questions.length).padStart(2,'0')}</div>`;
+    inner += `<div class="q-text">${q.q}</div>`;
+    if (q.sub) inner += `<div class="q-subtext">${q.sub}</div>`;
+
+    if (q.type === 'choice') {
+      const keys = 'ABCDEFGHIJ'.split('');
+      inner += '<div class="options">';
+      q.opts.forEach((opt, j) => {
+        inner += `<button class="opt-btn" data-qid="${q.id}" data-val="${j}">
+          <span class="opt-key">${keys[j]}</span>${opt}
+        </button>`;
+      });
+      inner += '</div>';
+    } else if (q.type === 'rating') {
+      inner += '<div class="rating-row">';
+      for (let r = 1; r <= 5; r++) {
+        inner += `<button class="rating-btn" data-qid="${q.id}" data-val="${r}">${r}</button>`;
+      }
+      inner += '</div>';
+      inner += '<div class="rating-labels"><span>Terrible</span><span>Great</span></div>';
+    } else if (q.type === 'text') {
+      inner += `<textarea class="free-text-input" data-qid="${q.id}" placeholder="${q.placeholder || 'Type here…'}"></textarea>`;
+    }
+
+    // Nav buttons
+    const isLast = i === questions.length - 1;
+    inner += '<div class="step-nav">';
+    if (q.optional) {
+      inner += `<button class="nav-btn skip" data-action="skip" data-step="${i}">Skip</button>`;
+    }
+    if (isLast) {
+      inner += `<button class="nav-btn submit" data-action="submit">Submit</button>`;
+    } else {
+      const cls = q.type === 'text' ? 'nav-btn next' : 'nav-btn next';
+      inner += `<button class="${cls}" data-action="next" data-step="${i}" id="next-${i}">Next →</button>`;
+    }
+    inner += '</div>';
+
+    return `<div class="step" id="step-${i}" data-idx="${i}">${inner}</div>`;
+  }).join('');
+}
+
+function showStep(idx) {
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  const step = document.getElementById('step-' + idx);
+  if (step) {
+    step.classList.add('active');
+    currentStep = idx;
+    updateNextBtn(idx);
+  }
+}
+
+function updateProgress() {
+  const answered = Object.keys(answers).length;
+  const total = questions.length;
+  const pct = (answered / total) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = `${answered} / ${total}`;
+}
+
+function updateNextBtn(idx) {
+  const q = questions[idx];
+  const btn = document.getElementById('next-' + idx);
+  if (!btn) return;
+  if (q.type === 'text') {
+    // Text fields: always allow next (user can skip or type)
+    btn.classList.add('ready');
+  } else if (answers[q.id] !== undefined) {
+    btn.classList.add('ready');
+  } else {
+    btn.classList.remove('ready');
+  }
+}
+
+// ─── EVENT HANDLERS ───
+
+// Choice buttons
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.opt-btn');
+  if (!btn) return;
+  const qid = btn.dataset.qid;
+  const val = parseInt(btn.dataset.val);
+  const q = questions.find(x => x.id === qid);
+
+  btn.closest('.options').querySelectorAll('.opt-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  answers[qid] = { index: val, text: q.opts[val] };
+  updateProgress();
+  updateNextBtn(currentStep);
+
+  // Auto-advance after short delay
+  setTimeout(() => {
+    if (currentStep < questions.length - 1) {
+      showStep(currentStep + 1);
+    }
+  }, 350);
+});
+
+// Rating buttons
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.rating-btn');
+  if (!btn) return;
+  const qid = btn.dataset.qid;
+  const val = parseInt(btn.dataset.val);
+
+  btn.closest('.rating-row').querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  answers[qid] = { rating: val };
+  updateProgress();
+  updateNextBtn(currentStep);
+
+  setTimeout(() => {
+    if (currentStep < questions.length - 1) {
+      showStep(currentStep + 1);
+    }
+  }, 350);
+});
+
+// Text inputs
+document.addEventListener('input', (e) => {
+  if (!e.target.matches('.free-text-input')) return;
+  const qid = e.target.dataset.qid;
+  const val = e.target.value.trim();
+  if (val) {
+    answers[qid] = { text: val };
+  } else {
+    delete answers[qid];
+  }
+  updateProgress();
+});
+
+// Nav buttons
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.nav-btn');
+  if (!btn) return;
+  const action = btn.dataset.action;
+
+  if (action === 'next' && btn.classList.contains('ready')) {
+    // For text fields, capture value before advancing
+    const q = questions[currentStep];
+    if (q.type === 'text') {
+      const textarea = document.querySelector(`#step-${currentStep} .free-text-input`);
+      const val = textarea?.value.trim();
+      if (val) answers[q.id] = { text: val };
+    }
+    showStep(currentStep + 1);
+  } else if (action === 'skip') {
+    showStep(currentStep + 1);
+  } else if (action === 'submit') {
+    // Capture final text field if present
+    const q = questions[currentStep];
+    if (q.type === 'text') {
+      const textarea = document.querySelector(`#step-${currentStep} .free-text-input`);
+      const val = textarea?.value.trim();
+      if (val) answers[q.id] = { text: val };
+    }
+    submitSurvey();
+  }
+});
+
+// ─── SUBMIT ───
+
+async function submitSurvey() {
+  const payload = {
+    survey_id: context === 'churn' ? 'exit_survey_v1' : 'product_survey_v1',
+    context: context,
+    uninstall_reason: reason,
+    answers: JSON.stringify(answers),
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/survey_responses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.warn('Survey submit failed:', e);
+  }
+
+  document.getElementById('formSection').classList.add('hidden');
+
+  if (context === 'churn') {
+    // Check if they said "I'd come back right now" — show save offer
+    const comeBack = answers['come_back'];
+    if (comeBack && comeBack.index === 6) {
+      document.getElementById('saveOffer').classList.add('visible');
+      document.getElementById('saveDismiss').addEventListener('click', () => {
+        document.getElementById('saveOffer').classList.remove('visible');
+        document.getElementById('thankYouChurn').classList.add('visible');
+      });
+    } else {
+      // Show generic save offer for cost/value reasons
+      const disappointment = answers['biggest_disappointment'];
+      const priceSens = answers['price_sensitivity'];
+      const showSave = (disappointment && [3,4].includes(disappointment.index)) ||
+                       (priceSens && [1,2,3].includes(priceSens.index));
+      if (showSave) {
+        document.getElementById('saveOfferText').textContent = "Looks like pricing or value was a factor. We get it — here are two options:";
+        document.getElementById('saveOffer').classList.add('visible');
+        document.getElementById('saveDismiss').addEventListener('click', () => {
+          document.getElementById('saveOffer').classList.remove('visible');
+          document.getElementById('thankYouChurn').classList.add('visible');
+        });
+      } else {
+        document.getElementById('thankYouChurn').classList.add('visible');
+      }
+    }
+  } else {
+    document.getElementById('thankYouPeriodic').classList.add('visible');
+    // TODO: API call to unlock Pro features for 7 days
+  }
+}
+
+init();
+</script>
+
+</body>
+</html>
