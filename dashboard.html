@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <!-- Brilliant Jobs Dashboard v2.10 - 2026-02-13 - Fix: contextual stat cards + hidden job count -->
 <html lang="en">
 <head>
@@ -1162,7 +1162,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21e</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21g</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2254,7 +2254,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.21e loaded');
+    console.log('[BJ] Dashboard v2.21g loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2754,7 +2754,6 @@
         for (const v of pill.values) {
           const term = v.trim().replace(/^nor\s+/i, '');
           if (term) {
-            console.log('[BJ] NOT filter excluding title:', term);
             query = query.not('title', 'ilike', `%${term}%`);
           }
         }
@@ -3354,11 +3353,7 @@
           if (!activeNegLocs.includes(v)) activeNegLocs.push(v);
         }
       }
-      console.log('[BJ] Active negative locations for display:', activeNegLocs);
-      // Debug: show first few jobs' raw locations
-      if (jobs.length > 0) {
-        console.log('[BJ] First 3 job locations (raw):', jobs.slice(0, 3).map(j => ({ id: j.greenhouse_id, loc: j.location, loc_display: j.loc_display })));
-      }
+      if (activeNegLocs.length > 0) console.log('[BJ] Active neg locs:', activeNegLocs);
 
       // Get last feed view timestamp for NEW badge
       const lastFeedView = localStorage.getItem('bj_last_feed_view');
@@ -5201,7 +5196,7 @@
       renderAllPills();
       locationDropdown.classList.remove('open');
       qbInputWhere.value = '';
-      triggerSearch();
+      debouncedSearchJobs();
     }
 
     // Input handling — What Not row
