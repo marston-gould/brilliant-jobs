@@ -778,15 +778,15 @@
       <div class="logged-in-view" id="logged-in-view">
         <div class="user-badge" id="li-email"></div>
         <div id="li-pending">
-          <div class="status-pill pill-pending">Pending Approval</div>
-          <p style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">Your account is pending review. We'll email you once approved.</p>
-          <p style="font-size:12px;color:var(--text-faint);">This usually takes less than 24 hours.</p>
+          <div class="status-pill pill-pending">Verifying</div>
+          <p style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">We're verifying your account. This usually takes a few seconds — refresh to check.</p>
         </div>
         <div id="li-approved" style="display:none;">
           <div class="status-pill pill-approved">✓ Active</div>
-          <p style="font-size:14px;color:var(--text-dim);margin:12px 0;">You're all set. Go to your <a href="/dashboard" style="font-weight:600;">Dashboard</a> to get started.</p>
+          <p style="font-size:14px;color:var(--text-dim);margin:12px 0;">You're all set!</p>
+          <a href="/dashboard" class="btn-auth" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">Go to Dashboard →</a>
         </div>
-        <button class="btn-logout" id="logout-btn">Log Out</button>
+        <button class="btn-logout" id="logout-btn" style="margin-top:12px;">Log Out</button>
       </div>
     </div>
   </div>
@@ -1024,8 +1024,8 @@
       try {
         var profileResult = await sb.from('profiles').select('approved').eq('id', user.id).single();
         if (profileResult.data && profileResult.data.approved === true) {
-          $('#li-pending').style.display = 'none';
-          $('#li-approved').style.display = 'block';
+          window.location.href = '/dashboard';
+          return;
         }
       } catch (e) {
         console.error('Profile check error:', e);
