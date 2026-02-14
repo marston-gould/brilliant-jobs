@@ -721,6 +721,7 @@
           </div>
         </div>
         <div class="auth-form" id="form-signup">
+          <div class="field"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your full name (as it appears on LinkedIn)"></div>
           <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com"></div>
           <div class="field">
             <label>Password</label>
@@ -780,6 +781,11 @@
       $('#auth-modal').classList.remove('active');
     }
 
+    // ============================================================
+    // SIGNUP TIMING
+    // ============================================================
+    let signupStartedAt = null;
+
     function switchTab(form) {
       $$('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.form === form));
       $$('.auth-form').forEach(f => f.classList.remove('active'));
@@ -790,6 +796,8 @@
       } else {
         $('#modal-title').textContent = 'Get early access';
         $('#modal-sub').textContent = 'Create your free account';
+        // Start timing when signup tab opens
+        if (!signupStartedAt) signupStartedAt = Date.now();
       }
     }
 
@@ -878,6 +886,7 @@
     // SIGNUP
     // ============================================================
     $('#signup-btn').addEventListener('click', async () => {
+      const fullName = $('#signup-name').value.trim();
       const email = $('#signup-email').value.trim();
       const password = $('#signup-password').value;
       const linkedin = $('#signup-linkedin').value.trim();
@@ -885,8 +894,12 @@
       const msgEl = $('#signup-msg');
       msgEl.className = 'msg'; msgEl.style.display = 'none';
 
+      if (!fullName) { showMsg('signup-msg', 'Please enter your full name.', 'error'); return; }
       if (!email || !password) { showMsg('signup-msg', 'Fill in all fields.', 'error'); return; }
       if (password.length < 6) { showMsg('signup-msg', 'Password must be at least 6 characters.', 'error'); return; }
+
+      // Calculate elapsed time since signup tab opened
+      const elapsedSeconds = signupStartedAt ? Math.round((Date.now() - signupStartedAt) / 1000) : 0;
 
       $('#signup-btn').disabled = true;
       $('#signup-btn').textContent = 'Creating account...';
@@ -894,22 +907,59 @@
       const { data, error } = await sb.auth.signUp({
         email, password,
         options: {
-          data: { linkedin_url: linkedin, marketing_optin: optin }
+          data: {
+            full_name: fullName,
+            linkedin_url: linkedin,
+            marketing_optin: optin,
+            signup_elapsed_seconds: elapsedSeconds
+          }
         }
       });
 
-      $('#signup-btn').disabled = false;
-      $('#signup-btn').textContent = 'Create Account';
-
-      if (error) { showMsg('signup-msg', error.message, 'error'); return; }
+      if (error) {
+        $('#signup-btn').disabled = false;
+        $('#signup-btn').textContent = 'Create Account';
+        showMsg('signup-msg', error.message, 'error');
+        return;
+      }
 
       if (data.user?.identities?.length === 0) {
+        $('#signup-btn').disabled = false;
+        $('#signup-btn').textContent = 'Create Account';
         showMsg('signup-msg', 'An account with this email already exists. Try logging in.', 'error');
         return;
       }
 
+      // Trigger validation in background (don't block signup confirmation)
+      if (data.user?.id) {
+        triggerValidation(data.user.id);
+      }
+
+      $('#signup-btn').disabled = false;
+      $('#signup-btn').textContent = 'Create Account';
       showMsg('signup-msg', 'Account created! Check your email to confirm, then log in.', 'success');
+      signupStartedAt = null; // Reset timer
     });
+
+    // ============================================================
+    // VALIDATION (runs silently in background)
+    // ============================================================
+    async function triggerValidation(profileId) {
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/validate-signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+          },
+          body: JSON.stringify({ profile_id: profileId }),
+        });
+        const result = await res.json();
+        console.log('[BJ] Signup validation:', result.approved ? 'approved' : 'provisional', result.reason);
+      } catch (e) {
+        console.log('[BJ] Validation call failed (will default to manual review):', e.message);
+      }
+    }
 
     // ============================================================
     // LOGGED IN VIEW
