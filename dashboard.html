@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <!-- Brilliant Jobs Dashboard v2.10 - 2026-02-13 - Fix: contextual stat cards + hidden job count -->
 <html lang="en">
 <head>
@@ -1162,7 +1162,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21c</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.21e</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1680,7 +1680,7 @@
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
                   <th style="width:140px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
-                      <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview
+                      <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
                     </label>
                   </th>
                 </tr>
@@ -2254,7 +2254,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.21c loaded');
+    console.log('[BJ] Dashboard v2.21e loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -5108,7 +5108,12 @@
             const norm = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
             // Skip remote variants (already handled above)
             if (norm.startsWith('remote')) continue;
-            // Skip if already covered by ref table
+            // Skip if already covered by ref table (check if any ref result city name is in this cache entry)
+            const coveredByRef = results.some(r =>
+              (r.type === 'city' || r.type === 'metro') && r.city &&
+              norm.includes(r.city.toLowerCase())
+            );
+            if (coveredByRef) continue;
             if (seenKeys.has(norm)) continue;
             seenKeys.add(norm);
             results.push({
