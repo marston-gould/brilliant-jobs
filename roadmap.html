@@ -275,7 +275,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 14, 2026 · Dashboard v2.25
+    Brilliant Jobs · Internal Roadmap · Updated February 14, 2026 · Dashboard v2.25d · ⚠️ Data recovery in progress (CASCADE truncate wiped ats_companies, ats_jobs, ref_companies)
   </div>
 
 </div>
@@ -397,7 +397,7 @@ const features = [
   { s: 'done', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
   { s: 'done', n: 'Hidden job cards with title and link', d: 'Poor match cards show job title linking to Greenhouse spec — backfills missing titles from Supabase', p: 2 },
   { s: 'done', n: 'Visible delete buttons on level hierarchy', d: 'Level rule ✕ buttons always visible instead of hover-only', p: 2 },
-  { s: 'done', n: 'PDL company dataset integration', d: 'ref_companies table (7M+ rows from PDL free dataset), ref_industries table (147 industries, 16 categories). CSV conversion from 10GB JSONL, psql COPY pipeline. Migration SQL with indexes and RLS.', p: 2 },
+  { s: 'progress', n: 'PDL company dataset integration', d: 'ref_companies + ref_industries tables created, indexes and RLS in place. Data wiped by CASCADE truncate — re-import PDL CSV via psql COPY. Schema intact, data recovery needed.', p: 2 },
   { s: 'done', n: 'Company exclusion typeahead on Tuning', d: 'Searches ats_companies + connections with ATS/network badges, match highlighting, keyboard nav. Browse button opens Company Browser in exclude-only mode.', p: 2 },
   { s: 'done', n: 'Location exclusion typeahead on Tuning', d: 'Searches US states, ref_city_radius (cities/metros), location_cache, and Remote with state/metro/city/remote badges. Browse button opens Location Browser.', p: 2 },
   { s: 'done', n: 'Industry exclusion typeahead on Tuning', d: 'Searches ref_industries with category-colored badges, dropdown positioning. Browse button opens Industry Browser with category-level toggles.', p: 2 },
@@ -409,10 +409,10 @@ const features = [
   { s: 'done', n: 'Consistent Browse buttons on Tuning', d: 'Browse buttons on Location, Company, and Industry exclusion inputs matching WHO filter Browse button pattern from Jobs Feed.', p: 2 },
   { s: 'done', n: 'Collapse state persistence', d: 'Jobs Feed filter builder + saved filters open/closed state, and all 5 Tuning cards open/closed state persisted in localStorage. Restored on page load.', p: 2 },
   { s: 'done', n: 'Nav reorder: Resumes → Applications → Pipeline', d: 'Apply-track section reordered to match workflow — resumes first, then applications, then pipeline.', p: 2 },
-  { s: 'done', n: 'Feedback form', d: 'Fixed-position Feedback button. Modal with Bug Report / Feature Request toggle, auto-detected page, Mac/Windows screenshot + console instructions, drag-drop image upload (3 files, 5MB each) to Supabase Storage. feedback table with image_urls JSONB, RLS, storage bucket.', p: 2 },
+  { s: 'done', n: 'Feedback form', d: 'Fixed-position Feedback button. Modal with Bug Report / Feature Request toggle, auto-detected page, Mac/Windows screenshot + console instructions, drag-drop image upload (3 files, 5MB each) to Supabase Storage. Unified feedback table handles bugs, feature_requests, exit_surveys, user_surveys with user_id association, survey_version tracking, status workflow (new→reviewed→resolved), admin_notes. RLS: auth inserts own, anon inserts exit_survey only.', p: 2 },
 
   // ═══════════════ IN PROGRESS ═══════════════
-  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Match 1,900 Greenhouse companies against 7M PDL records by domain/name/LinkedIn. Backfill industry, size, location, founded. ref_companies loading, enrichment matching pending.', p: 6 },
+  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Blocked on data recovery. ref_companies needs PDL CSV re-import, ats_companies needs slug re-import + re-scrape. Then: match 1,900 Greenhouse companies against PDL records by domain/name/LinkedIn, backfill industry/size/location/founded.', p: 6 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 2.5 — Anti-detection
@@ -428,9 +428,9 @@ const features = [
   { s: 'done', n: '404 page', d: 'Branded not-found page with flickering lightbulb, glitch animation, and navigation back to dashboard', p: 3 },
   { s: 'done', n: 'Service unavailable fallback', d: '503 page with coffee break theme, auto-retry countdown, rotating jokes, Supabase status link', p: 3 },
   { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', p: 3 },
-  { s: 'todo', n: 'Terms of service and privacy policy', d: 'Legal pages covering data usage, LinkedIn interaction, and user rights', p: 3 },
-  { s: 'todo', n: 'Email setup (support@brilliantjobs.app)', d: 'Transactional email for password resets, notifications, and support', p: 3 },
-  { s: 'todo', n: 'Uninstall win-back page', d: 'Capture churn reason + offer discount via uninstall_url in manifest', p: 3 },
+  { s: 'done', n: 'Terms of service and privacy policy', d: 'Legal pages at /terms and /privacy with brand-consistent dark theme, humor throughout, no LinkedIn references, Savannah/GA governing law. Deployed via cleanUrls on Vercel.', p: 3 },
+  { s: 'progress', n: 'Email setup (support@brilliantjobs.app)', d: 'Resend for transactional sending (domain added, DNS records set). Cloudflare for inbound routing to Gmail. Nameserver propagation pending. Branded HTML email templates built (welcome, resume received, application confirmed, survey nudge) stored in email_templates table with versioning and merge fields.', p: 3 },
+  { s: 'done', n: 'Uninstall win-back page', d: 'Chrome uninstall_url opens /uninstall — 9 reason buttons with contextual prompts, "I got hired" confetti celebration, win-back offer for cost/value/bug churners (downgrade or free Pro). Links to exit survey. Stores to unified feedback table.', p: 3 },
   { s: 'todo', n: 'Landing page survey data integration', d: 'Surface key survey stats on marketing page as social proof — "73% report being ghosted", "Avg 47 apps before first interview". Auto-updates from latest published survey results. Replaces vanity metrics with credible, original data.', p: 3 },
 
   // Phase 4 — User Management
@@ -486,11 +486,11 @@ const features = [
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 9 },
 
   // ── Greenhouse (ACTIVE) ──
-  { s: 'done', n: '[GH] Board discovery — 1,900 slugs via prefix brute-force', d: 'Two-letter prefix scan across boards-api.greenhouse.io', p: 9 },
-  { s: 'done', n: '[GH] Initial scrape — 110K+ jobs', d: 'Full metadata: title, location, department, URL, updated_at', p: 9 },
-  { s: 'done', n: '[GH] Location normalization', d: 'Postgres function parses raw → loc_city/state/country/type/display', p: 9 },
-  { s: 'done', n: '[GH] Daily refresh cron', d: 'pg_net fire-and-forget: 184 batches × 10 boards, 97K+ jobs in ~5 min. JWT baked into SQL function.', p: 9 },
-  { s: 'done', n: '[GH] Closed job detection', d: '3,596 jobs marked closed — Edge Function compares live API response to DB and sets status=closed + closed_at', p: 9 },
+  { s: 'progress', n: '[GH] Board discovery — recover 1,900 slugs', d: 'Original prefix scan done. Data wiped by CASCADE truncate on Feb 14. Recovery: re-import from local greenhouse_slugs.json or re-run prefix scan.', p: 9 },
+  { s: 'progress', n: '[GH] Re-scrape all jobs', d: 'Original 110K+ jobs wiped by CASCADE truncate. Re-run scraper across all recovered slugs (~2-3 hrs). Code and Edge Function intact.', p: 9 },
+  { s: 'progress', n: '[GH] Re-run location normalization', d: 'normalize_job_locations() function intact. Needs re-execution after job re-scrape to repopulate loc_city/state/country/type/display.', p: 9 },
+  { s: 'progress', n: '[GH] Re-enable daily refresh cron', d: 'pg_net orchestrator and Edge Function intact. Needs ats_companies repopulated before cron has anything to refresh. Re-verify JWT and schedule after recovery.', p: 9 },
+  { s: 'progress', n: '[GH] Re-enable closed job detection', d: 'Edge Function logic intact. Will resume detecting closures once job data is re-scraped and cron is running again.', p: 9 },
   { s: 'todo', n: '[GH] New board discovery via TheirStack', d: 'Import 24K+ Greenhouse slugs, diff against existing 1,900', p: 9 },
   { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', p: 9 },
 
@@ -558,7 +558,7 @@ const features = [
   { s: 'todo', n: 'Performance testing at scale', d: 'Verify dashboard and queries handle 100K+ jobs with multiple concurrent users', p: 11 },
 
   // Phase 12 — Surveys & User Intelligence
-  { s: 'todo', n: 'Survey infrastructure', d: 'Survey engine with question types (rating, multi-select, ranking, free text), trigger rules, response storage, and analytics', p: 12 },
+  { s: 'done', n: 'Survey infrastructure', d: 'Adaptive survey page at /survey with two modes: exit (churn) and periodic. Cohort versioning via ?v= param (exit_v1, periodic_v1, extensible to new_user_v1, power_user_v1, etc.). One-question-at-a-time UX with auto-advance, progress bar. Churn mode: 8 Qs + save offer. Periodic mode: 8 Qs + 7-day Pro reward. Version stored in feedback table survey_version column. User association via localStorage session check.', p: 12 },
   { s: 'todo', n: 'Post-search micro-surveys', d: 'Every 10th search or after 5-min session: "How relevant were these results?" [1-5 stars] + "What was missing?" quick-select', p: 12 },
   { s: 'todo', n: 'Post-application confidence survey', d: '"How confident are you this job is real?" [1-5] + "Was the application process clear?" — triggers after each apply', p: 12 },
   { s: 'todo', n: 'Data value assessment surveys', d: '"Did this data help your decision?" after viewing salary/accountability data — tracks perceived value per feature by tier', p: 12 },
