@@ -766,7 +766,7 @@
       color: #fff; margin-right: 5px; vertical-align: middle; flex-shrink: 0;
     }
     .job-table .jt-company { font-weight: 500; color: var(--text); }
-    .jt-new-badge { font-size: 9px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 5px; border-radius: 3px; margin-left: 5px; letter-spacing: 0.3px; vertical-align: middle; animation: newBadgePulse 2s ease-in-out; }
+    .job-data-row.is-new-row > td { background: rgba(77, 163, 255, 0.04); }
     @keyframes newBadgePulse { 0% { opacity: 0; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.05); } 100% { transform: scale(1); } }
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
@@ -1244,7 +1244,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.26b</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.27</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2527,7 +2527,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.26b loaded');
+    console.log('[BJ] Dashboard v2.27 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3832,19 +3832,19 @@
 
           const levelInfo = getJobLevel(job.title, window._activeLevelHierarchy);
           const levelCell = levelInfo
-            ? `<span class="level-badge" style="background:${levelInfo.color}20;color:${levelInfo.color};">${levelInfo.label}</span>`
-            : '—';
+            ? `<span class="level-badge" style="background:${levelInfo.color}25;color:${levelInfo.color};border:1px solid ${levelInfo.color}30;">${levelInfo.label}</span>`
+            : '<span style="color:var(--border);">—</span>';
 
-        // NEW badge — job first seen after last feed view
+        // NEW indicator — job first seen after last feed view (subtle row highlight)
         const isNew = lastViewDate && job.first_seen_at && new Date(job.first_seen_at) > lastViewDate;
         if (isNew) newCount++;
-        const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
+        const newRowClass = isNew ? ' is-new-row' : '';
 
-        html += `<tr class="job-data-row" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+        html += `<tr class="job-data-row${newRowClass}" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
-          <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
+          <td class="jt-loc" title="${((job.loc_display || job.location||'').replace(/"/g,'&quot;'))}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
           <td class="jt-salary">${formatSalaryCell(job)}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
@@ -6546,8 +6546,9 @@
       const name = $('#save-filter-name').value.trim().toLowerCase();
       if (!name || allPills() === 0) return;
 
-      // Warn if no WHERE filter set
-      if (wherePills.length === 0) {
+      // Warn if no WHERE filter set — unless US-only is on in Tuning (acts as implicit location)
+      const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+      if (wherePills.length === 0 && !tuning.usOnly) {
         alert(
           'Please add a location filter.\n\n' +
           'Without a location, this filter will match jobs worldwide.\n\n' +
@@ -6736,7 +6737,7 @@
       }
 
       // Column headers
-      list.innerHTML = `<div style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:6px;">
+      list.innerHTML = `<div class="sf-col-header" style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:6px;position:sticky;top:0;background:var(--bg-card);z-index:2;">
         <div style="width:20px;"></div>
         <div style="width:14px;"></div>
         <div style="width:16px;"></div>
@@ -6810,7 +6811,7 @@
             else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
             // else default blue for keyword/what
             const sep = cls === 'not-pill' ? ' nor ' : ' | ';
-            const label = p.values ? p.values.join(sep) : '';
+            const label = p.values ? p.values.map(v => v.toLowerCase()).join(sep) : '';
             return `<span class="sf-mini-pill ${cls}">${label}</span>`;
           }).join('') + '</div>';
         }
@@ -6824,7 +6825,7 @@
           <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
           <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
           <div class="sf-item-info">
-            <div class="sf-item-name">${sf.name}</div>
+            <div class="sf-item-name">${(sf.name || '').toLowerCase()}</div>
             ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
           </div>
           ${miniPills}
@@ -7397,7 +7398,7 @@
       { label: 'Manager', keywords: 'manager', color: '#14b8a6' },
       { label: 'Lead', keywords: 'lead, principal, head of', color: '#06b6d4' },
       { label: 'Senior', keywords: 'senior, sr, sr.', color: '#3b82f6' },
-      { label: 'Mid', keywords: 'associate, coordinator', color: '#8b5cf6' },
+      { label: 'Mid', keywords: 'associate, coordinator, analyst', color: '#8b5cf6' },
       { label: 'Entry', keywords: 'junior, jr, intern, entry', color: '#a855f7' },
     ];
     let levelHierarchy = tuningSettings.levelHierarchy || JSON.parse(JSON.stringify(DEFAULT_LEVELS));
