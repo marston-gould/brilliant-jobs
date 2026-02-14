@@ -427,7 +427,9 @@
       .stat-num { font-size: 24px; }
       .filter-demo { gap: 6px; }
       .cs-features { flex-direction: column; align-items: center; }
+      .pulse-grid { grid-template-columns: 1fr !important; }
     }
+    #pulse-chart { display: none; }
   </style>
 </head>
 <body>
@@ -436,6 +438,7 @@
     <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
     <div class="nav-links">
       <a href="#features">Features</a>
+      <a href="#pulse">Pulse</a>
       <a href="#how-it-works">How It Works</a>
       <a href="#pricing">Pricing</a>
       <a href="/help">Help</a>
@@ -539,6 +542,49 @@
       </div>
       <div class="filter-result">
         Showing <strong>47 jobs</strong> matching your criteria · 12 new in the last 7 days · Salary data available for 31 of 47
+      </div>
+    </div>
+  </section>
+
+  <!-- COMMUNITY PULSE -->
+  <section class="section fade-up" id="pulse">
+    <div class="section-label">Community Pulse</div>
+    <h2>How job seekers are feeling right now.</h2>
+    <p class="section-desc">Real sentiment from real users. Updated weekly from anonymous surveys across the Brilliant Jobs community.</p>
+
+      <div class="pulse-grid" style="display:grid;grid-template-columns:1fr 1.8fr;gap:24px;align-items:start;">
+      <!-- Current Score -->
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:32px;text-align:center;">
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Brilliance Index</div>
+        <div id="pulse-score" style="font-family:var(--mono);font-size:64px;font-weight:600;line-height:1;margin-bottom:4px;color:var(--text);">—</div>
+        <div id="pulse-label" style="font-size:14px;color:var(--text-faint);margin-bottom:20px;">Awaiting first survey data</div>
+        <div style="height:8px;border-radius:4px;background:var(--bg-input);overflow:hidden;margin-bottom:16px;">
+          <div id="pulse-bar" style="height:100%;border-radius:4px;width:0%;transition:width 1s ease;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);">
+          <span>Frustrated</span>
+          <span>Hopeful</span>
+          <span>Brilliant</span>
+        </div>
+        <div id="pulse-respondents" style="font-size:12px;color:var(--text-faint);margin-top:16px;font-family:var(--mono);">0 responses</div>
+      </div>
+
+      <!-- Historical Chart -->
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:32px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div>
+            <div style="font-size:16px;font-weight:600;">Brilliance Over Time</div>
+            <div style="font-size:13px;color:var(--text-faint);">Weekly community sentiment trend</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <span class="pulse-legend" style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);"><span style="width:8px;height:8px;border-radius:2px;background:var(--accent);"></span> Score</span>
+            <span class="pulse-legend" style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);opacity:0.5;"></span> Responses</span>
+          </div>
+        </div>
+        <canvas id="pulse-chart" height="180"></canvas>
+        <div id="pulse-chart-empty" style="display:flex;align-items:center;justify-content:center;height:180px;color:var(--text-faint);font-size:14px;">
+          Chart populates after first survey cycle
+        </div>
       </div>
     </div>
   </section>
@@ -940,6 +986,155 @@
     }, { threshold: 0.1 });
 
     $$('.fade-up').forEach(el => observer.observe(el));
+
+    // ============================================================
+    // COMMUNITY PULSE — pulls from survey data when available
+    // ============================================================
+    (async () => {
+      const chartEl = document.getElementById('pulse-chart');
+      const emptyEl = document.getElementById('pulse-chart-empty');
+
+      try {
+        // Query aggregated weekly survey scores
+        // Expects: feedback table with type='user_survey', rating 1-10, created_at
+        const { data: surveys, error } = await sb
+          .from('feedback')
+          .select('created_at, rating')
+          .in('type', ['user_survey', 'exit_survey'])
+          .not('rating', 'is', null)
+          .order('created_at', { ascending: true });
+
+        if (error || !surveys || surveys.length === 0) {
+          // No data yet — keep placeholder state
+          return;
+        }
+
+        // Group by ISO week
+        const weeks = {};
+        surveys.forEach(s => {
+          const d = new Date(s.created_at);
+          const weekStart = new Date(d);
+          weekStart.setDate(d.getDate() - d.getDay());
+          const key = weekStart.toISOString().slice(0, 10);
+          if (!weeks[key]) weeks[key] = [];
+          weeks[key].push(s.rating);
+        });
+
+        const weekKeys = Object.keys(weeks).sort();
+        const labels = weekKeys.map(k => {
+          const d = new Date(k);
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        const scores = weekKeys.map(k => {
+          const ratings = weeks[k];
+          return Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+        });
+        const counts = weekKeys.map(k => weeks[k].length);
+
+        // Update current score (latest week)
+        const currentScore = scores[scores.length - 1];
+        const totalResponses = surveys.length;
+        const scoreEl = document.getElementById('pulse-score');
+        const labelEl = document.getElementById('pulse-label');
+        const barEl = document.getElementById('pulse-bar');
+        const respEl = document.getElementById('pulse-respondents');
+
+        scoreEl.textContent = currentScore.toFixed(1);
+        respEl.textContent = totalResponses.toLocaleString() + ' responses';
+
+        // Color + label based on score (1-10 scale)
+        let color, label;
+        if (currentScore >= 7.5) { color = 'var(--green)'; label = 'Feeling Brilliant'; }
+        else if (currentScore >= 5) { color = 'var(--accent)'; label = 'Cautiously Hopeful'; }
+        else if (currentScore >= 3) { color = 'var(--warm)'; label = 'Grinding Through It'; }
+        else { color = 'var(--red)'; label = 'Frustrated'; }
+
+        scoreEl.style.color = color;
+        labelEl.textContent = label;
+        labelEl.style.color = color;
+        barEl.style.width = (currentScore * 10) + '%';
+        barEl.style.background = color;
+
+        // Draw chart if we have 2+ weeks
+        if (weekKeys.length >= 2) {
+          emptyEl.style.display = 'none';
+          chartEl.style.display = 'block';
+
+          // Minimal canvas chart (no external lib needed)
+          const ctx = chartEl.getContext('2d');
+          const W = chartEl.offsetWidth;
+          const H = 180;
+          chartEl.width = W * 2; chartEl.height = H * 2;
+          ctx.scale(2, 2);
+
+          const pad = { top: 10, right: 12, bottom: 30, left: 36 };
+          const cw = W - pad.left - pad.right;
+          const ch = H - pad.top - pad.bottom;
+
+          const maxScore = 10;
+          const maxCount = Math.max(...counts, 1);
+
+          // Grid lines
+          ctx.strokeStyle = '#e2e4ed';
+          ctx.lineWidth = 0.5;
+          for (let i = 0; i <= 4; i++) {
+            const y = pad.top + (ch / 4) * i;
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+          }
+
+          // Y-axis labels
+          ctx.fillStyle = '#9298ae';
+          ctx.font = '10px JetBrains Mono';
+          ctx.textAlign = 'right';
+          for (let i = 0; i <= 4; i++) {
+            const val = maxScore - (maxScore / 4) * i;
+            const y = pad.top + (ch / 4) * i;
+            ctx.fillText(val.toFixed(0), pad.left - 6, y + 3);
+          }
+
+          // X-axis labels
+          ctx.textAlign = 'center';
+          const step = cw / (labels.length - 1 || 1);
+          labels.forEach((l, i) => {
+            ctx.fillText(l, pad.left + step * i, H - 6);
+          });
+
+          // Response count bars (background)
+          const barW = Math.max(6, step * 0.4);
+          ctx.fillStyle = 'rgba(34,197,94,0.12)';
+          counts.forEach((c, i) => {
+            const x = pad.left + step * i;
+            const barH = (c / maxCount) * ch;
+            ctx.fillRect(x - barW / 2, pad.top + ch - barH, barW, barH);
+          });
+
+          // Score line
+          ctx.strokeStyle = '#3d7eff';
+          ctx.lineWidth = 2;
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          scores.forEach((s, i) => {
+            const x = pad.left + step * i;
+            const y = pad.top + ch - (s / maxScore) * ch;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          });
+          ctx.stroke();
+
+          // Score dots
+          scores.forEach((s, i) => {
+            const x = pad.left + step * i;
+            const y = pad.top + ch - (s / maxScore) * ch;
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.strokeStyle = '#3d7eff'; ctx.lineWidth = 2; ctx.stroke();
+          });
+        }
+
+      } catch (e) {
+        console.log('[BJ] Pulse data not available yet:', e.message);
+      }
+    })();
 
     // ============================================================
     // SMOOTH SCROLL
