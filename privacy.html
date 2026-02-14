@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Brilliant Jobs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e13;
+      --bg-card: #13151c;
+      --bg-card-hover: #181b24;
+      --border: #1e2130;
+      --border-hover: #2a2e42;
+      --text: #e2e4ea;
+      --text-dim: #9ba1b4;
+      --text-faint: #5c6278;
+      --accent: #4d8eff;
+      --accent-glow: rgba(77,142,255,0.08);
+      --green: #34d399;
+      --green-dim: rgba(52,211,153,0.1);
+      --amber: #f59e0b;
+      --sans: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+
+    .top-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(12,14,19,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .top-bar-mark {
+      width: 28px; height: 28px; background: #fff; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: var(--bg);
+      text-decoration: none;
+    }
+    .top-bar a.brand-link {
+      font-size: 15px; font-weight: 700; color: #fff; text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+    .top-bar a.brand-link:hover { color: var(--accent); }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 56px 32px 120px;
+    }
+
+    .page-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .effective-date {
+      font-size: 13px;
+      color: var(--text-faint);
+      font-family: var(--mono);
+      margin-bottom: 24px;
+    }
+
+    .tldr {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 48px;
+    }
+    .tldr-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--green);
+      margin-bottom: 10px;
+    }
+    .tldr p {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .tldr p:last-child { margin-bottom: 0; }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 48px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 .section-num {
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 24px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    strong { color: var(--text); font-weight: 600; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .legal-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px 0;
+    }
+    .legal-list li {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      padding: 6px 0 6px 20px;
+      position: relative;
+    }
+    .legal-list li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 14px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border-hover);
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+    .data-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .data-table td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      vertical-align: top;
+    }
+    .data-table tr:hover td {
+      background: rgba(77,142,255,0.02);
+    }
+
+    .callout {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 24px 0;
+    }
+    .callout p { margin-bottom: 0; font-size: 13.5px; }
+
+    .callout-green {
+      border-left-color: var(--green);
+    }
+
+    .callout-amber {
+      border-left-color: var(--amber);
+    }
+
+    .footer {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer span {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .footer a {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .container { padding: 40px 20px 80px; }
+      h1 { font-size: 26px; }
+      h2 { font-size: 16px; }
+      .data-table { font-size: 12px; }
+      .data-table th, .data-table td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="top-bar-mark">B</a>
+  <a href="/" class="brand-link">Brilliant Jobs</a>
+</div>
+
+<div class="container">
+
+  <div class="page-label">Legal</div>
+  <h1>Privacy Policy</h1>
+  <div class="effective-date">Effective: February 14, 2026</div>
+
+  <div class="tldr">
+    <div class="tldr-label">The short version (you're welcome)</div>
+    <p>We collect the minimum data needed to run the Service. Your personal data is never sold — not to advertisers, not to recruiters, not to that company that ghosted you. Aggregated, anonymized data may be published in reports and trend content. You can export or delete your data at any time. That's it. That's the policy.</p>
+  </div>
+
+  <h2><span class="section-num">01</span>Who We Are</h2>
+  <p>Brilliant Jobs ("we," "us," "our") operates the website at brilliantjobs.app, the Brilliant Jobs Chrome extension, and related services (the "Service"). We're a small team that got tired of the job market being a black box, so we built a flashlight.</p>
+  <p>This Privacy Policy explains what data we collect, how we use it, and your rights. For questions, contact us at <a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a>.</p>
+
+  <h2><span class="section-num">02</span>Data We Collect</h2>
+
+  <h3>Data you provide directly</h3>
+  <table class="data-table">
+    <thead>
+      <tr><th>Data</th><th>Purpose</th><th>Stored Where</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Email address and password</td><td>Account authentication</td><td>Encrypted auth service</td></tr>
+      <tr><td>Professional profile URL</td><td>Account verification and network features</td><td>Database</td></tr>
+      <tr><td>Resumes</td><td>Application submission and keyword matching</td><td>Encrypted storage</td></tr>
+      <tr><td>Application tracking data</td><td>Pipeline management</td><td>Database</td></tr>
+      <tr><td>Employer reviews and survey responses</td><td>Community accountability data and product improvement</td><td>Database</td></tr>
+      <tr><td>Feedback and bug reports</td><td>Product improvement</td><td>Database + encrypted storage</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Data collected by the Chrome extension</h3>
+  <table class="data-table">
+    <thead>
+      <tr><th>Data</th><th>Purpose</th><th>How</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Professional connection names and profile URLs</td><td>Network mapping</td><td>Reading publicly visible data on pages you visit</td></tr>
+      <tr><td>Connection employer names and job titles</td><td>Company discovery and network intelligence</td><td>Extracted from public profile data during scanning</td></tr>
+      <tr><td>Company names and URLs</td><td>Employer database enrichment</td><td>Extracted from connection profiles</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-green">
+    <p><strong>What we don't collect:</strong> We never access your passwords, private messages, search history, browsing activity outside professional platforms, or any data not already visible to you. The extension cannot read your email, files, or data from unrelated websites. We're nosy about hiring data, not your personal life.</p>
+  </div>
+
+  <h3>Data collected automatically</h3>
+  <table class="data-table">
+    <thead>
+      <tr><th>Data</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Dashboard usage patterns (pages visited, features used, filter configurations)</td><td>Product analytics and improvement</td></tr>
+      <tr><td>Extension version and browser type</td><td>Compatibility and debugging</td></tr>
+      <tr><td>IP address</td><td>Security, rate limiting, and fraud prevention</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="section-num">03</span>How We Use Your Data</h2>
+  <p>Here's the deal — we use your data to make the product work and to hold employers accountable. That's it. No dark patterns, no hidden agendas.</p>
+  <ul class="legal-list">
+    <li><strong>Operate the Service</strong> — authenticate your account, display your network data, power job discovery and filtering, manage your application pipeline</li>
+    <li><strong>Network intelligence</strong> — match your connections to companies with active job listings so you can find warm introduction paths instead of screaming into the void</li>
+    <li><strong>Employer accountability</strong> — aggregate anonymized application outcomes across users to calculate company response rates, ghost scores, and hiring velocity (someone had to do it)</li>
+    <li><strong>Product improvement</strong> — analyze usage patterns, survey responses, and feedback to prioritize features and fix bugs</li>
+    <li><strong>Communications</strong> — send transactional emails (password resets, application notifications) and, if you opt in, job match alerts. We won't spam you. We hate spam too.</li>
+    <li><strong>Aggregated reporting</strong> — publish anonymized data in public trend reports, SEO content, and market analyses that make the job market more transparent for everyone</li>
+  </ul>
+
+  <div class="callout callout-amber">
+    <p><strong>We never sell your personal data.</strong> Not to advertisers. Not to data brokers. Not to recruiters. Not even if they ask nicely. Your email, name, resume, and individual activity stay between us.</p>
+  </div>
+
+  <h2><span class="section-num">04</span>Third-Party Services</h2>
+  <p>We use a handful of reputable third-party services to keep the lights on. Here's who they are and what they see:</p>
+  <table class="data-table">
+    <thead>
+      <tr><th>Service</th><th>Purpose</th><th>Data Shared</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Supabase</strong></td><td>Database, authentication, and file storage</td><td>User data stored with row-level security — each user can only access their own records</td></tr>
+      <tr><td><strong>Vercel</strong></td><td>Website hosting</td><td>IP address and browser information (standard web server logs)</td></tr>
+      <tr><td><strong>Stripe</strong></td><td>Payment processing</td><td>Payment method and billing information (we never see or store your full card number)</td></tr>
+      <tr><td><strong>Google OAuth</strong> (future)</td><td>Email integration for application tracking</td><td>Email metadata only — we never read message body content</td></tr>
+    </tbody>
+  </table>
+  <p>Each of these services has its own privacy policy and maintains industry-standard security practices. We chose them because they're good at what they do, not because they were cheap.</p>
+
+  <h2><span class="section-num">05</span>Aggregated and Anonymized Data</h2>
+  <p>We aggregate user-contributed data — application outcomes, employer response rates, salary information, survey responses — to produce community statistics, trend reports, and public content. Think of it as a collective bargaining agreement, but for information.</p>
+  <p>This aggregated data is always anonymized before publication. It is not possible to identify individual users from our published reports. Nobody will know it was you who reported that MegaCorp took 93 days to send a rejection email. Aggregated data may appear in:</p>
+  <ul class="legal-list">
+    <li>Public employer accountability pages on brilliantjobs.app</li>
+    <li>Job market trend reports and analyses</li>
+    <li>Blog posts, social media content, and press materials</li>
+    <li>Embeddable charts and data visualizations (with Brilliant Jobs attribution)</li>
+  </ul>
+
+  <h2><span class="section-num">06</span>Data Retention</h2>
+  <p>We retain your data for as long as your account is active. If you delete your account, here's exactly what happens — no mysteries:</p>
+  <ul class="legal-list">
+    <li>Your personal data (email, profile URL, resumes, application history) is deleted within 30 days</li>
+    <li>Connection and company data you contributed is anonymized and retained as part of the aggregate dataset — your fingerprints are wiped clean</li>
+    <li>Survey responses and employer reviews are retained in anonymized form (the truth lives on)</li>
+    <li>Backups containing your data are rotated and purged within 90 days</li>
+  </ul>
+
+  <h2><span class="section-num">07</span>Data Security</h2>
+  <p>We take security seriously. Not "we take security seriously" in the way a company says it right after a breach — we mean it proactively.</p>
+  <ul class="legal-list">
+    <li>Row-Level Security (RLS) policies on all database tables — users can only query their own data, period</li>
+    <li>Encrypted connections (HTTPS/TLS) for all data transmission</li>
+    <li>Passwords hashed via industry-standard algorithms (bcrypt)</li>
+    <li>Authentication tokens with automatic refresh and expiration</li>
+    <li>Extension-to-server communication secured with user-specific JWT tokens</li>
+  </ul>
+  <p>No system is 100% secure — anyone who tells you otherwise is selling something. If we become aware of a data breach affecting your personal information, we will notify you via email within 72 hours of discovery. No 6-month delays, no "we recently became aware" doublespeak.</p>
+
+  <h2><span class="section-num">08</span>Your Rights</h2>
+  <p>Regardless of where you live, you have actual, real rights over your data. Not theoretical rights buried in a 47-page document — real ones you can exercise today:</p>
+  <ul class="legal-list">
+    <li><strong>Access</strong> — request a copy of all personal data we hold about you (we'll send it promptly, not in 90 business days)</li>
+    <li><strong>Correction</strong> — update or correct inaccurate data</li>
+    <li><strong>Deletion</strong> — request deletion of your account and personal data</li>
+    <li><strong>Export</strong> — receive your data in a portable, machine-readable format</li>
+    <li><strong>Withdraw consent</strong> — uninstall the extension at any time to stop data collection, no questions asked</li>
+  </ul>
+  <p>To exercise any of these rights, contact <a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a>. We will respond within 30 days. Usually faster.</p>
+
+  <h3>California residents (CCPA)</h3>
+  <p>If you're in California, you have additional rights under the CCPA, including the right to know what personal information we collect, the right to request deletion, and the right to opt out of the sale of personal information. To be clear: <strong>we do not sell personal information.</strong> Not even a little.</p>
+
+  <h3>European residents (GDPR)</h3>
+  <p>If you're in the EEA, our legal basis for processing your data is your consent (provided at account creation and extension installation) and our legitimate interest in operating and improving the Service. You have the right to lodge a complaint with your local data protection authority. We'd prefer you talk to us first, but you do you.</p>
+
+  <h2><span class="section-num">09</span>Cookies and Local Storage</h2>
+  <p>The Brilliant Jobs dashboard uses browser localStorage to persist your filter configurations, collapse states, and UI preferences. That's it. We do not use third-party tracking cookies, advertising pixels, or any of the surveillance infrastructure that makes the modern internet feel like it's watching you. Because it is. But not us.</p>
+  <p>Our auth provider stores a session token in localStorage to maintain your login state. This token is automatically refreshed and does not contain personal information beyond your user ID.</p>
+
+  <h2><span class="section-num">10</span>Children's Privacy</h2>
+  <p>Brilliant Jobs is not intended for use by anyone under 18. The job market is stressful enough for adults — we wouldn't wish it on a kid. If we learn that a user is under 18, we will delete their account and data promptly.</p>
+
+  <h2><span class="section-num">11</span>Changes to This Policy</h2>
+  <p>We may update this Privacy Policy from time to time. Material changes will be communicated via email or a notice on the Service. We won't pull the classic move of changing everything and hoping nobody notices. The "Effective" date at the top always reflects the most recent revision.</p>
+
+  <h2><span class="section-num">12</span>Contact</h2>
+  <p>Privacy questions? Data requests? Just want to tell us you actually read this whole thing? (We're impressed.)</p>
+  <p><strong>Email:</strong> <a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a></p>
+
+  <div class="footer">
+    <span>&copy; 2026 Brilliant Jobs</span>
+    <div>
+      <a href="/terms">Terms of Service</a>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service — Brilliant Jobs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e13;
+      --bg-card: #13151c;
+      --bg-card-hover: #181b24;
+      --border: #1e2130;
+      --border-hover: #2a2e42;
+      --text: #e2e4ea;
+      --text-dim: #9ba1b4;
+      --text-faint: #5c6278;
+      --accent: #4d8eff;
+      --accent-glow: rgba(77,142,255,0.08);
+      --green: #34d399;
+      --sans: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+
+    .top-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(12,14,19,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .top-bar-mark {
+      width: 28px; height: 28px; background: #fff; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800; color: var(--bg);
+      text-decoration: none;
+    }
+    .top-bar a.brand-link {
+      font-size: 15px; font-weight: 700; color: #fff; text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+    .top-bar a.brand-link:hover { color: var(--accent); }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 56px 32px 120px;
+    }
+
+    .page-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .effective-date {
+      font-size: 13px;
+      color: var(--text-faint);
+      font-family: var(--mono);
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 48px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 .section-num {
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+
+    p {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      margin-bottom: 16px;
+    }
+
+    strong { color: var(--text); font-weight: 600; }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .legal-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 16px 0;
+    }
+    .legal-list li {
+      font-size: 14.5px;
+      color: var(--text-dim);
+      padding: 6px 0 6px 20px;
+      position: relative;
+    }
+    .legal-list li::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 14px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border-hover);
+    }
+
+    .callout {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 24px 0;
+    }
+    .callout p { margin-bottom: 0; font-size: 13.5px; }
+
+    .footer {
+      margin-top: 64px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .footer span {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .footer a {
+      font-size: 12px;
+      color: var(--text-faint);
+    }
+    .footer a:hover { color: var(--accent); }
+
+    @media (max-width: 640px) {
+      .container { padding: 40px 20px 80px; }
+      h1 { font-size: 26px; }
+      h2 { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="top-bar-mark">B</a>
+  <a href="/" class="brand-link">Brilliant Jobs</a>
+</div>
+
+<div class="container">
+
+  <div class="page-label">Legal</div>
+  <h1>Terms of Service</h1>
+  <div class="effective-date">Effective: February 14, 2026</div>
+
+  <p>Welcome to Brilliant Jobs. You're here because either (a) you're thorough, (b) something went wrong, or (c) you're a lawyer. Regardless, we respect you for reading this.</p>
+
+  <p>These Terms of Service ("Terms") govern your use of the Brilliant Jobs website at brilliantjobs.app, the Brilliant Jobs Chrome extension, and all related services (collectively, the "Service"). By creating an account or using the Service, you agree to these Terms. Brilliant Jobs is operated by Brilliant Jobs ("we," "us," "our"). If you don't agree, we'll be sad but we'll understand.</p>
+
+  <h2><span class="section-num">01</span>Eligibility</h2>
+  <p>You must be at least 18 years old to use the Service. If you're younger than that, we admire your hustle, but please come back later.</p>
+  <p>By creating an account, you represent that you are at least 18 and that the information you provide during registration is accurate and complete. We also reserve the right to deny or revoke access to any user at our sole discretion — including, hypothetically, people who work at companies that would very much like to know how we do what we do.</p>
+
+  <h2><span class="section-num">02</span>Account Registration</h2>
+  <p>To access the Service, you must create an account using a valid email address, password, and professional profile URL. Accounts are subject to approval before full access is granted. Yes, we actually review these. No, we're not screening for vibes (mostly).</p>
+  <p>You are responsible for maintaining the confidentiality of your login credentials and for all activity under your account. If someone else gets in, that's on you — but please tell us immediately at <a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a> so we can help.</p>
+
+  <h2><span class="section-num">03</span>The Service</h2>
+  <p>Brilliant Jobs is a job search aggregation platform. We pull job listings from publicly accessible ATS APIs, cross-reference them with your professional network, and layer on employer accountability data that the hiring industry would really prefer didn't exist. You're welcome.</p>
+  <p>The Service includes:</p>
+  <ul class="legal-list">
+    <li>A Chrome browser extension that builds a personal network map from your professional connections</li>
+    <li>A web dashboard for discovering job listings, managing applications, and tracking your job search pipeline</li>
+    <li>Employer behavior data including response rates, listing patterns, and community-sourced accountability metrics</li>
+    <li>Resume management and application submission tools</li>
+  </ul>
+
+  <h2><span class="section-num">04</span>Third-Party Platform Data</h2>
+  <p>The Chrome extension interacts with third-party platforms you are already logged into to enhance your job search experience. We only access information that is visible to you as an authenticated user of those platforms — we never access private messages, credentials, or hidden data.</p>
+  <p>By installing the extension, you acknowledge that:</p>
+  <ul class="legal-list">
+    <li>The extension reads publicly visible data from pages you visit to power network intelligence features</li>
+    <li>This data is transmitted to and stored in our database</li>
+    <li>Your use of the extension is subject to the terms of service of any third-party platforms you use, and you accept responsibility for compliance with those terms</li>
+    <li>We implement rate limiting and behavioral safeguards, but cannot guarantee that third-party platforms will not restrict your account based on your usage patterns</li>
+  </ul>
+
+  <div class="callout">
+    <p><strong>Important:</strong> Brilliant Jobs is not affiliated with, endorsed by, or sponsored by any third-party platform. Use of the extension is at your own risk with respect to third-party platform policies. But honestly, you were already using those platforms — we just make them more useful.</p>
+  </div>
+
+  <h2><span class="section-num">05</span>Acceptable Use</h2>
+  <p>We built this for job seekers, not data pirates. You agree not to:</p>
+  <ul class="legal-list">
+    <li>Share, resell, or redistribute data obtained through the Service (seriously, get your own)</li>
+    <li>Use the Service to scrape, harvest, or collect data for purposes unrelated to your personal job search</li>
+    <li>Attempt to reverse-engineer, decompile, or extract source code from the extension or web application</li>
+    <li>Create multiple accounts or circumvent account restrictions — we will notice</li>
+    <li>Submit false, misleading, or fraudulent information including fabricated employer reviews or application outcomes (the whole point is honest data)</li>
+    <li>Use the Service to harass, stalk, or contact individuals in ways that violate their privacy</li>
+    <li>Interfere with or disrupt the Service or its infrastructure — we have enough problems without your help</li>
+  </ul>
+
+  <h2><span class="section-num">06</span>Subscription and Payment</h2>
+  <p>Brilliant Jobs offers both free and paid tiers. Paid subscriptions are billed on a recurring basis through Stripe. By subscribing, you authorize us to charge your payment method at the applicable rate. We promise it's less than what you'd spend on coffee during a 6-month job search.</p>
+  <p>We also offer a pay-on-hire success fee model for certain tiers — because we think it's fair to only charge you real money when you get a real job. Details of each pricing model are displayed at the time of purchase.</p>
+  <p>Refund requests are evaluated on a case-by-case basis. Contact <a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a> within 14 days of a charge and we'll work it out like adults.</p>
+
+  <h2><span class="section-num">07</span>User-Generated Content</h2>
+  <p>You may submit data through the Service, including employer reviews, application outcomes, ghost reports, survey responses, and feedback. The unvarnished truth is encouraged — that's the whole point.</p>
+  <p>By submitting this content, you grant Brilliant Jobs a non-exclusive, worldwide, royalty-free license to use, aggregate, anonymize, and publish this data for the purpose of operating and improving the Service. Translation: we'll use your anonymized data to help other job seekers and occasionally shame employers into behaving better.</p>
+  <p>Individual submissions are never attributed to you by name unless you explicitly opt in. Your ghost report about MegaCorp's 87-day silence is safe with us.</p>
+
+  <h2><span class="section-num">08</span>Intellectual Property</h2>
+  <p>The Service, including its design, code, branding, data models, and aggregated datasets, is the property of Brilliant Jobs and is protected by applicable intellectual property laws. You may not copy, modify, or create derivative works from any part of the Service without prior written consent.</p>
+  <p>Job listing data displayed through the Service originates from third-party ATS platforms and employer websites. Brilliant Jobs does not claim ownership of individual job postings.</p>
+
+  <h2><span class="section-num">09</span>Disclaimers</h2>
+  <p>The Service is provided "as is" and "as available" without warranties of any kind, express or implied. We work hard to make it great, but we're a small team and things break sometimes.</p>
+  <p>Specifically, we do not guarantee that:</p>
+  <ul class="legal-list">
+    <li>Job listings are accurate, current, or complete — employers post weird stuff and we can't fix that</li>
+    <li>Employer accountability data reflects actual hiring practices in every case — it's community-sourced and directional</li>
+    <li>The extension will operate without interruption or survive every platform UI change</li>
+    <li>Use of the Service will result in employment — though we're doing our best to improve your odds</li>
+  </ul>
+
+  <h2><span class="section-num">10</span>Limitation of Liability</h2>
+  <p>This is the part where lawyers earn their keep. To the fullest extent permitted by law, Brilliant Jobs and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Service. This includes but is not limited to loss of employment opportunities, third-party account restrictions, data loss, or business interruption.</p>
+  <p>Our total liability for any claim arising from the Service shall not exceed the amount you paid us in the twelve (12) months preceding the claim, or $100, whichever is greater. We know — not exactly a lottery payout.</p>
+
+  <h2><span class="section-num">11</span>Indemnification</h2>
+  <p>You agree to indemnify and hold harmless Brilliant Jobs, its operators, and affiliates from any claims, damages, losses, or expenses (including legal fees) arising from your use of the Service, violation of these Terms, or infringement of any third-party rights.</p>
+
+  <h2><span class="section-num">12</span>Account Termination</h2>
+  <p>You may delete your account at any time by contacting <a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a>. No guilt trips, no 47-step cancellation flow, no "are you sure?" modals. Upon deletion, your personal data will be removed in accordance with our <a href="/privacy">Privacy Policy</a>.</p>
+  <p>We may suspend or terminate your account for violation of these Terms, suspected fraud, or any reason at our sole discretion. If we terminate your account and you have an active subscription, we'll prorate and refund the unused portion. We're not monsters.</p>
+
+  <h2><span class="section-num">13</span>Changes to Terms</h2>
+  <p>We may update these Terms at any time. If we make material changes, we'll let you know via email or a notice on the Service. We won't bury important changes in footnotes — we've seen enough shady employer behavior to know better.</p>
+
+  <h2><span class="section-num">14</span>Governing Law</h2>
+  <p>These Terms are governed by the laws of the State of Georgia, without regard to conflict of law principles. Any disputes shall be resolved in the courts located in Chatham County, Georgia. If you've never been to Savannah, it's lovely — bring comfortable shoes and a tolerance for humidity.</p>
+
+  <h2><span class="section-num">15</span>Contact</h2>
+  <p>Questions about these Terms? Existential dread about the job market? We can help with the first one, and we're working on the second.</p>
+  <p><a href="mailto:support@brilliantjobs.app">support@brilliantjobs.app</a></p>
+
+  <div class="footer">
+    <span>&copy; 2026 Brilliant Jobs</span>
+    <div>
+      <a href="/privacy">Privacy Policy</a>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
