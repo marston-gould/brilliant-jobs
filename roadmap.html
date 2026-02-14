@@ -327,7 +327,7 @@ const features = [
 
   // Phase 2 — Pipeline
   { s: 'done', n: 'Pipeline page with Saved and Applied columns', d: 'Kanban-style layout rendering from localStorage with relative date badges', p: 2 },
-  { s: 'todo', n: 'Pipeline — Closed column for applied jobs', d: 'Auto-detect when applied jobs close in ATS. Aging badges: Closed ≤7d (green — may still hear back), 8-14d (amber), 15-30d (orange — likely ghosted), 30d+ (red — ghosted). Shows "Closed Xd after you applied" context.', p: 2 },
+  { s: 'done', n: 'Pipeline — Closed column for applied jobs', d: 'Auto-detect when applied jobs close in ATS. Aging badges: Closed ≤7d (green — may still hear back), 8-14d (amber), 15-30d (orange — likely ghosted), 30d+ (red — ghosted). Shows "Closed Xd after you applied" context.', p: 2 },
 
   // Phase 2.5 — Anti-detection
   { s: 'done', n: 'Business hours enforcement', d: 'Scanner only runs 7 AM – 7 PM local time, pauses outside hours', p: 2.5 },
@@ -362,7 +362,6 @@ const features = [
   { s: 'done', n: 'Location filter searches normalized fields', d: 'Where pills now search location, loc_display, loc_state, and loc_country — US-only filter uses loc_country=US', p: 2 },
   { s: 'done', n: 'Hidden jobs excluded at query level', d: 'Supabase queries use .not(greenhouse_id, in, ...) so count and rows both exclude hidden — no more count mismatches', p: 2 },
   { s: 'done', n: 'Version stamp in nav and console', d: 'Dashboard shows version in nav bar and logs to console for cache verification', p: 2 },
-  { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 9 },
   { s: 'done', n: 'Location disambiguation', d: 'Portland OR vs Portland ME, Springfield — dropdown picks from matching cities when ambiguous, Enter/Tab/comma select from dropdown', p: 2 },
   { s: 'done', n: 'NOT input typeahead (Where + Who)', d: 'Full autocomplete on NOT WHERE and NOT WHO — searches ref_city_radius, location_cache, states, ats_companies, connections with badge dropdowns and keyboard nav', p: 2 },
   { s: 'done', n: 'Visual pills for filter toggles', d: 'Dashed green "incl. no salary" and dashed amber "incl. remote" pills appear on saved filter rows when toggles are active', p: 2 },
@@ -379,7 +378,7 @@ const features = [
   { s: 'done', n: 'Removed loc_state from generic ilike fallback', d: 'State filtering only goes through proper state pill resolution — prevents loc_state.ilike.%DE% matching Berlin, DE', p: 2 },
   { s: 'done', n: 'Location radius search', d: 'Geocode jobs + filter terms, default radius with adjustable slider per pill, bounding box fallback for >200 match IDs', p: 2 },
   { s: 'done', n: 'Migrate filters to full-text search', d: 'Hybrid approach: wfts(english) on search_vector runs alongside ilike for title, location, and company queries — GIN-indexed tsvector column on all 115K+ rows', p: 2 },
-  { s: 'todo', n: 'Industry filter row', d: 'Filter by department/function from Greenhouse data', p: 2 },
+  { s: 'done', n: 'Industry filter row', d: 'Industry exclusions on Tuning page with typeahead + Browse page. 147 industries across 16 categories from ref_industries. Category-level and individual exclude toggles. Query filters via ilike on ats_jobs.industry.', p: 2 },
   { s: 'done', n: 'Quick job description preview', d: 'Expandable preview row shows job content snippet, salary, and location without opening modal — fetches from Greenhouse API or cached content', p: 2 },
 
   // Phase 2 — Poor Match Intelligence
@@ -388,6 +387,19 @@ const features = [
   { s: 'done', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
   { s: 'done', n: 'Hidden job cards with title and link', d: 'Poor match cards show job title linking to Greenhouse spec — backfills missing titles from Supabase', p: 2 },
   { s: 'done', n: 'Visible delete buttons on level hierarchy', d: 'Level rule ✕ buttons always visible instead of hover-only', p: 2 },
+  { s: 'done', n: 'PDL company dataset integration', d: 'ref_companies table (7M+ rows from PDL free dataset), ref_industries table (147 industries, 16 categories). CSV conversion from 10GB JSONL, psql COPY pipeline. Migration SQL with indexes and RLS.', p: 2 },
+  { s: 'done', n: 'Company exclusion typeahead on Tuning', d: 'Searches ats_companies + connections with ATS/network badges, match highlighting, keyboard nav. Browse button opens Company Browser in exclude-only mode.', p: 2 },
+  { s: 'done', n: 'Location exclusion typeahead on Tuning', d: 'Searches US states, ref_city_radius (cities/metros), location_cache, and Remote with state/metro/city/remote badges. Browse button opens Location Browser.', p: 2 },
+  { s: 'done', n: 'Industry exclusion typeahead on Tuning', d: 'Searches ref_industries with category-colored badges, dropdown positioning. Browse button opens Industry Browser with category-level toggles.', p: 2 },
+  { s: 'done', n: 'Location Browser page', d: 'Full browse page for excluding locations — two-tier alpha nav (A-Z → second letter), All/States/Metros/Excluded mode tabs, state/metro/city/remote badges, click-to-exclude toggles.', p: 2 },
+  { s: 'done', n: 'Industry Browser page', d: 'Full browse page for excluding industries — grouped by 16 categories with colored headers, category-level exclude toggle (exclude entire category at once), individual industry toggles, search, All/Excluded modes.', p: 2 },
+  { s: 'done', n: 'Company Browser — Tuning exclude mode', d: 'Browse button on Tuning opens Company Browser in exclude-only mode — hides collections bar and Included tab, pre-checks existing exclusions, Back returns to Tuning with updated exclusions.', p: 2 },
+  { s: 'done', n: 'Two-tier alpha nav on all browser pages', d: 'Company, Location, and Industry browsers all have two-tier navigation — click first letter to expand second-letter row for precise jumping.', p: 2 },
+  { s: 'done', n: 'Consistent SVG chevrons', d: 'All Tuning card collapse chevrons switched from filled triangles (▼) to SVG caret polylines matching Jobs Feed pattern. Rotate -90deg when collapsed.', p: 2 },
+  { s: 'done', n: 'Consistent Browse buttons on Tuning', d: 'Browse buttons on Location, Company, and Industry exclusion inputs matching WHO filter Browse button pattern from Jobs Feed.', p: 2 },
+  { s: 'done', n: 'Collapse state persistence', d: 'Jobs Feed filter builder + saved filters open/closed state, and all 5 Tuning cards open/closed state persisted in localStorage. Restored on page load.', p: 2 },
+  { s: 'done', n: 'Nav reorder: Resumes → Applications → Pipeline', d: 'Apply-track section reordered to match workflow — resumes first, then applications, then pipeline.', p: 2 },
+  { s: 'done', n: 'Feedback form', d: 'Fixed-position Feedback button. Modal with Bug Report / Feature Request toggle, auto-detected page, Mac/Windows screenshot + console instructions, drag-drop image upload (3 files, 5MB each) to Supabase Storage. feedback table with image_urls JSONB, RLS, storage bucket.', p: 2 },
 
   // Phase 2.5 — Anti-detection
   { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 2.5 },
@@ -428,7 +440,7 @@ const features = [
   { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns', p: 6 },
   { s: 'todo', n: 'Application auto-detect from extension', d: 'Detect LinkedIn Easy Apply and external ATS redirects, prompt to track', p: 6 },
   { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters', p: 6 },
-  { s: 'todo', n: 'Company enrichment during job scraping', d: 'Grab employee count, industry, HQ from company pages in same visit', p: 6 },
+  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Match 1,900 Greenhouse companies against 7M PDL records by domain/name/LinkedIn. Backfill industry, size, location, founded. ref_companies loading, enrichment matching pending.', p: 6 },
 
   // Phase 7 — Ghost Monitor
   { s: 'todo', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates', p: 7 },
@@ -446,6 +458,7 @@ const features = [
   { s: 'todo', n: 'Hiring velocity detection and alerts', d: 'Company posting 10x more jobs than usual → alert subscribed users', p: 8 },
 
   // Phase 9 — Multi-ATS: Per-Source Roadmaps
+  { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 9 },
   // Each data source follows: Discovery → Scrape → Normalize → Refresh → Dedup
 
   // ── Greenhouse (ACTIVE) ──
