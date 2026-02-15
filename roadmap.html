@@ -345,16 +345,6 @@ const features = [
   { s: 'done', n: 'Pipeline page with Saved and Applied columns', d: 'Kanban-style layout rendering from localStorage with relative date badges', p: 2 },
   { s: 'done', n: 'Pipeline — Closed column for applied jobs', d: 'Auto-detect when applied jobs close in ATS. Aging badges: Closed ≤7d (green — may still hear back), 8-14d (amber), 15-30d (orange — likely ghosted), 30d+ (red — ghosted). Shows "Closed Xd after you applied" context.', p: 2 },
 
-  // Phase 7 — Anti-detection
-  { s: 'done', n: 'Business hours enforcement', d: 'Scanner only runs 7 AM – 7 PM local time, pauses outside hours', p: 7 },
-  { s: 'done', n: 'Randomized morning start', d: 'Scanner resumes between 7:45 and 10:30 AM each day', p: 7 },
-  { s: 'done', n: 'Randomized daily cap, delays, and session breaks', d: 'Variable profiles per day, random pause lengths between visits', p: 7 },
-  { s: 'done', n: 'Stuck scanner recovery', d: 'onInstalled + service worker wakeup restarts scanning loop after reload', p: 7 },
-  { s: 'done', n: 'Auth token refresh auto-resume', d: 'keepAlive alarm now checks if scanner was paused due to auth failure and auto-resumes after successful token refresh. Max ~4 min delay vs manual intervention.', p: 7 },
-  { s: 'done', n: 'Interceptor crash fix', d: 'Wrapped originalFetch.apply() in try/catch — LinkedIn fetch aborts during navigation no longer crash content script.', p: 7 },
-  { s: 'done', n: 'Data tab timeout fix', d: 'Replaced unbounded SELECT queries with paginated batch processing and count operations to prevent Supabase statement timeouts.', p: 7 },
-  { s: 'done', n: 'Activity log with timestamps and scan routing', d: 'Unified feed with dates, countdown timers, stale time fix', p: 7 },
-
   // Phase 2 — Extension
   { s: 'done', n: 'Extension webRequest listener for Greenhouse', d: 'background.js monitors POST requests to boards.greenhouse.io for submission detection', p: 2 },
   { s: 'done', n: 'Chrome notification on application submit', d: 'Extension fires desktop notification when ATS form submission is detected', p: 2 },
@@ -439,15 +429,6 @@ const features = [
   { s: 'done', n: 'Company enrichment via PDL dataset', d: '1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url. Remaining ~555 unmatched — backlogged for API enrichment.', p: 4 },
 
   // ═══════════════ PLANNED ═══════════════
-  // Phase 7 — Anti-detection
-  { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 7 },
-  { s: 'todo', n: 'Randomized scroll patterns', d: 'Variable scroll speeds and pause points to mimic human behavior', p: 7 },
-  { s: 'todo', n: 'Shuffled visit order', d: 'Randomize the sequence of profile visits instead of alphabetical', p: 7 },
-  { s: 'todo', n: 'Random lightweight interactions', d: 'Expand About sections, click posts occasionally during scanning', p: 7 },
-  { s: 'todo', n: 'Mouse movement simulation', d: 'Generate realistic cursor paths between click targets', p: 7 },
-  { s: 'todo', n: 'CAPTCHA auto-stop', d: 'Detect warning signals and halt scanning immediately', p: 7 },
-  { s: 'todo', n: 'Extension build fingerprint obfuscation', d: 'Each downloaded extension build gets: randomized file names (content.js → [hash].js, background.js → [hash].js), randomized manifest metadata (short_name, description variations), shuffled CSS class names in injected styles, variable whitespace/comments in source, randomized internal message channel names. Goal: no two downloaded builds share the same file fingerprint, making pattern-based detection by LinkedIn infeasible.', p: 7 },
-
   // Phase 3 — Go-to-Market
   { s: 'done', n: 'Landing / marketing page', d: 'Full landing page at brilliantjobs.app: navy blue hero, feature cards (Application Tracking, Resume Management, Visual Pipeline, Resume vs JD Match), How It Works, pricing (free forever or upgrade to pay-when-hired), signup modal with LinkedIn validation. Safari compatible.', p: 3 },
   { s: 'done', n: '404 page', d: 'Branded not-found page with flickering lightbulb, glitch animation, and navigation back to dashboard', p: 3 },
@@ -457,6 +438,21 @@ const features = [
   { s: 'done', n: 'Uninstall win-back page', d: 'Chrome uninstall_url opens /uninstall — 9 reason buttons with contextual prompts, "I got hired" confetti celebration, win-back offer for cost/value/bug churners (downgrade or free Pro). Links to exit survey. Stores to unified feedback table.', p: 3 },
   { s: 'done', n: 'Landing page live stats from database', d: 'Stats bar (Active Jobs, Companies, Metro Areas) wired to live Supabase counts from ats_jobs (status=open), ats_companies, and ref_city_radius. Hero subtitle and step descriptions also auto-populate. Dashboard "data advantage" card also live. Fallback defaults on error. No more hardcoded numbers.', p: 3 },
   { s: 'todo', n: 'Landing page design polish', d: 'Visual refinement pass: improve hero section layout, tighten spacing, refine feature card design, mobile responsiveness audit, CTA button hierarchy, testimonial/social proof placeholder area, favicon and OG meta tags, loading states for live stats.', p: 3 },
+
+  // Phase 4 — Resumes & Applications
+  { s: 'done', n: 'Resume Supabase persistence', d: 'Supabase Storage bucket + resumes table + resume_filter_assignments table. Real file upload/download. Level selector per card. Filter assignment pills. Nav status dot (red/yellow/green). Paper-proportional card UI.', p: 4 },
+  { s: 'todo', n: 'Resume vs JD side-by-side comparison', d: 'Split view: resume content left, job description right. Highlight matching keywords, missing skills, salary alignment.', p: 4 },
+  { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 4 },
+  { s: 'todo', n: 'Resume-to-job match scoring', d: 'Keyword overlap analysis → High/Med/Low match badge per job', p: 4 },
+  { s: 'todo', n: 'Auto-apply mode', d: 'Jobs matching saved filters + resume → auto-submit via ATS form fill', p: 4 },
+  { s: 'todo', n: 'Notification-based apply (email/SMS)', d: 'Match found → send notification → user replies apply/skip → resume sent', p: 4 },
+  { s: 'todo', n: 'Application queue and status tracking', d: 'Table with job, company, mode, status (Queued → Pending → Submitted)', p: 4 },
+  { s: 'todo', n: 'ATS filter reverse-engineering', d: 'Aggregate user outcomes to decode what filters companies use to screen applicants', p: 4 },
+  { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns', p: 4 },
+  { s: 'todo', n: 'Application auto-detect from extension', d: 'Detect LinkedIn Easy Apply and external ATS redirects, prompt to track', p: 4 },
+  { s: 'todo', n: 'Referral outreach templates', d: 'Pre-written LinkedIn/email templates for requesting real referrals from connections. Personalized with job title, company, and connection context. One-click send from job modal.', p: 4 },
+  { s: 'todo', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates.', p: 4 },
+  { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters', p: 4 },
 
   // Phase 5 — User Management
   { s: 'done', n: 'Automated user approval', d: 'Edge Function validate-signup: LinkedIn URL validation with test profile bypass (testprofile1-3), uniqueness check, JSONB audit trail. Auto-approves valid signups, sets approved=true + approved_at.', p: 5 },
@@ -478,20 +474,22 @@ const features = [
   { s: 'todo', n: 'Application source branding', d: 'Ensure Brilliant Jobs attribution visible to hiring teams — UTM params on ATS links, "How did you hear about us?" auto-fill. Organic employer awareness as candidates apply.', p: 6 },
   { s: 'todo', n: 'Archive status for inactive users', d: 'When user stops actively searching: 90-day grace period to maintain data. After that, quarterly sustenance fee to keep account, data, and history alive. Auto-transition to archive if no login/activity. Reactivation restores full access.', p: 6 },
 
-  // Phase 4 — Resumes & Applications
-  { s: 'done', n: 'Resume Supabase persistence', d: 'Supabase Storage bucket + resumes table + resume_filter_assignments table. Real file upload/download. Level selector per card. Filter assignment pills. Nav status dot (red/yellow/green). Paper-proportional card UI.', p: 4 },
-  { s: 'todo', n: 'Resume vs JD side-by-side comparison', d: 'Split view: resume content left, job description right. Highlight matching keywords, missing skills, salary alignment.', p: 4 },
-  { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 4 },
-  { s: 'todo', n: 'Resume-to-job match scoring', d: 'Keyword overlap analysis → High/Med/Low match badge per job', p: 4 },
-  { s: 'todo', n: 'Auto-apply mode', d: 'Jobs matching saved filters + resume → auto-submit via ATS form fill', p: 4 },
-  { s: 'todo', n: 'Notification-based apply (email/SMS)', d: 'Match found → send notification → user replies apply/skip → resume sent', p: 4 },
-  { s: 'todo', n: 'Application queue and status tracking', d: 'Table with job, company, mode, status (Queued → Pending → Submitted)', p: 4 },
-  { s: 'todo', n: 'ATS filter reverse-engineering', d: 'Aggregate user outcomes to decode what filters companies use to screen applicants', p: 4 },
-  { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns', p: 4 },
-  { s: 'todo', n: 'Application auto-detect from extension', d: 'Detect LinkedIn Easy Apply and external ATS redirects, prompt to track', p: 4 },
-  { s: 'todo', n: 'Referral outreach templates', d: 'Pre-written LinkedIn/email templates for requesting real referrals from connections. Personalized with job title, company, and connection context. One-click send from job modal.', p: 4 },
-  { s: 'todo', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates.', p: 4 },
-  { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters', p: 4 },
+  // Phase 7 — Anti-detection
+  { s: 'done', n: 'Business hours enforcement', d: 'Scanner only runs 7 AM – 7 PM local time, pauses outside hours', p: 7 },
+  { s: 'done', n: 'Randomized morning start', d: 'Scanner resumes between 7:45 and 10:30 AM each day', p: 7 },
+  { s: 'done', n: 'Randomized daily cap, delays, and session breaks', d: 'Variable profiles per day, random pause lengths between visits', p: 7 },
+  { s: 'done', n: 'Stuck scanner recovery', d: 'onInstalled + service worker wakeup restarts scanning loop after reload', p: 7 },
+  { s: 'done', n: 'Auth token refresh auto-resume', d: 'keepAlive alarm now checks if scanner was paused due to auth failure and auto-resumes after successful token refresh. Max ~4 min delay vs manual intervention.', p: 7 },
+  { s: 'done', n: 'Interceptor crash fix', d: 'Wrapped originalFetch.apply() in try/catch — LinkedIn fetch aborts during navigation no longer crash content script.', p: 7 },
+  { s: 'done', n: 'Data tab timeout fix', d: 'Replaced unbounded SELECT queries with paginated batch processing and count operations to prevent Supabase statement timeouts.', p: 7 },
+  { s: 'done', n: 'Activity log with timestamps and scan routing', d: 'Unified feed with dates, countdown timers, stale time fix', p: 7 },
+  { s: 'todo', n: 'Network request interception (Voyager API)', d: 'Intercept LinkedIn API calls for richer data extraction without page parsing', p: 7 },
+  { s: 'todo', n: 'Randomized scroll patterns', d: 'Variable scroll speeds and pause points to mimic human behavior', p: 7 },
+  { s: 'todo', n: 'Shuffled visit order', d: 'Randomize the sequence of profile visits instead of alphabetical', p: 7 },
+  { s: 'todo', n: 'Random lightweight interactions', d: 'Expand About sections, click posts occasionally during scanning', p: 7 },
+  { s: 'todo', n: 'Mouse movement simulation', d: 'Generate realistic cursor paths between click targets', p: 7 },
+  { s: 'todo', n: 'CAPTCHA auto-stop', d: 'Detect warning signals and halt scanning immediately', p: 7 },
+  { s: 'todo', n: 'Extension build fingerprint obfuscation', d: 'Each downloaded extension build gets: randomized file names (content.js → [hash].js, background.js → [hash].js), randomized manifest metadata (short_name, description variations), shuffled CSS class names in injected styles, variable whitespace/comments in source, randomized internal message channel names. Goal: no two downloaded builds share the same file fingerprint, making pattern-based detection by LinkedIn infeasible.', p: 7 },
 
   // Phase 8 — Ghost Monitor
   { s: 'todo', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates', p: 8 },
