@@ -1131,7 +1131,7 @@
     .resume-card .rc-filter-pill.active { opacity: 1; }
     .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
     .resume-card .rc-filter-pill:hover { opacity: 0.8; }
-    .resume-card .rc-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .resume-card .rc-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
     .rc-actions .rc-btn {
       font-size: 10px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
       border: none; cursor: pointer; color: #fff; text-decoration: none; white-space: nowrap;
