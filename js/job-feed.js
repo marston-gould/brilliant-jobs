@@ -645,8 +645,10 @@ async function searchJobs(page = 0) {
     const matchSort = jobSortStack.find(s => s.field === 'match');
     if (matchSort) {
       currentJobs.sort((a, b) => {
-        const sa = jobMatchScores[a.greenhouse_id] ?? -1;
-        const sb2 = jobMatchScores[b.greenhouse_id] ?? -1;
+        const ra = jobMatchScores[a.greenhouse_id];
+        const rb = jobMatchScores[b.greenhouse_id];
+        const sa = ra ? (typeof ra === 'number' ? ra : ra.score) : -1;
+        const sb2 = rb ? (typeof rb === 'number' ? rb : rb.score) : -1;
         return matchSort.asc ? sa - sb2 : sb2 - sa;
       });
     }
