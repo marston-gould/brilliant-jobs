@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.34 - 2026-02-15 - Lowercase names+pills, inline rename, filter+level uniqueness, brilliant help -->
+<!-- Brilliant Jobs Dashboard v2.35 - 2026-02-15 - Collapsible setup sections, Drive+Gmail status dots, chrome://extensions link -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -293,6 +293,18 @@
 
     .instance-info { font-family: var(--mono); font-size: 12px; color: var(--text-dim); line-height: 1.8; }
     .instance-info span { color: var(--accent); }
+
+    .setup-section-toggle {
+      display: flex; align-items: center; gap: 8px; padding: 12px 16px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      cursor: pointer; user-select: none; margin-bottom: 4px; transition: background 0.15s;
+      font-size: 13px; font-weight: 600; color: var(--text-dim);
+    }
+    .setup-section-toggle:hover { background: var(--bg-hover); color: var(--text); }
+    .setup-section-toggle .setup-chevron { transition: transform 0.2s; flex-shrink: 0; }
+    .setup-section-toggle.collapsed .setup-chevron { transform: rotate(-90deg); }
+    .setup-section-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s; max-height: 2000px; opacity: 1; margin-bottom: 16px; }
+    .setup-section-body.collapsed { max-height: 0; opacity: 0; margin-bottom: 0; }
 
     /* ======================== JOBS ======================== */
     /* Tag-based query builder — two rows */
@@ -1281,7 +1293,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.34</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.35</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1614,58 +1626,75 @@
 
           <div class="ext-status" id="ext-status-bar">
             <div class="ext-dot off" id="ext-dot"></div>
-            <div>
+            <div style="flex:1;">
               <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
               <div style="font-size:11px;color:var(--text-faint);" id="ext-status-detail">Download and install below</div>
             </div>
-          </div>
-
-          <div class="download-box" id="download-box">
-            <h3>Download Your Extension</h3>
-            <p>Your extension is personalized to your account with unique security parameters and behavioral profile.</p>
-            <button class="btn btn-primary btn-lg" id="download-btn">Download Extension</button>
-            <div class="download-status" id="download-status"></div>
-          </div>
-
-          <div class="card" id="instance-card" style="display:none;">
-            <div class="card-title">Your Extension Instance</div>
-            <div class="card-sub">Unique parameters for this build</div>
-            <div class="instance-info">
-              <div>Instance ID: <span id="ext-instance-id">—</span></div>
-              <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
+            <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
+              <div style="display:flex;align-items:center;gap:5px;" title="Google Drive">
+                <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background 0.3s;" id="setup-gdrive-dot" class="ext-status-dot"></div>
+                <span style="font-size:10px;color:var(--text-faint);">Drive</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;" title="Gmail">
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="setup-gmail-dot"></div>
+                <span style="font-size:10px;color:var(--text-faint);">Gmail</span>
+              </div>
             </div>
           </div>
 
-          <div class="card">
-            <div class="card-title">Installation Guide</div>
-            <div class="card-sub">Follow these steps after downloading</div>
-            <div class="install-steps">
-              <div class="install-step">
-                <div class="step-num-circle">1</div>
-                <div class="step-content">
-                  <h4>Unzip the download</h4>
-                  <p>Extract the file to a permanent folder on your computer. Don't delete this folder — Chrome needs it.</p>
-                </div>
+          <!-- Collapsible: Download + Installation (hidden when extension connected) -->
+          <div class="setup-section-toggle" id="ext-download-toggle" onclick="toggleSetupSection('ext-download-content', this)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="setup-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <span>Download & Install Extension</span>
+          </div>
+          <div class="setup-section-body" id="ext-download-content">
+            <div class="download-box" id="download-box">
+              <h3>Download Your Extension</h3>
+              <p>Your extension is personalized to your account with unique security parameters and behavioral profile.</p>
+              <button class="btn btn-primary btn-lg" id="download-btn">Download Extension</button>
+              <div class="download-status" id="download-status"></div>
+            </div>
+
+            <div class="card" id="instance-card" style="display:none;">
+              <div class="card-title">Your Extension Instance</div>
+              <div class="card-sub">Unique parameters for this build</div>
+              <div class="instance-info">
+                <div>Instance ID: <span id="ext-instance-id">—</span></div>
+                <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
               </div>
-              <div class="install-step">
-                <div class="step-num-circle">2</div>
-                <div class="step-content">
-                  <h4>Open Chrome Extensions</h4>
-                  <p>Navigate to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> using the toggle in the top right.</p>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Installation Guide</div>
+              <div class="card-sub">Follow these steps after downloading</div>
+              <div class="install-steps">
+                <div class="install-step">
+                  <div class="step-num-circle">1</div>
+                  <div class="step-content">
+                    <h4>Unzip the download</h4>
+                    <p>Extract the file to a permanent folder on your computer. Don't delete this folder — Chrome needs it.</p>
+                  </div>
                 </div>
-              </div>
-              <div class="install-step">
-                <div class="step-num-circle">3</div>
-                <div class="step-content">
-                  <h4>Load the extension</h4>
-                  <p>Click <strong>Load unpacked</strong> and select the unzipped folder. The extension will appear in your toolbar.</p>
+                <div class="install-step">
+                  <div class="step-num-circle">2</div>
+                  <div class="step-content">
+                    <h4>Open Chrome Extensions</h4>
+                    <p>Navigate to <a href="chrome://extensions" id="chrome-ext-link" style="color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:12px;">chrome://extensions</a> and enable <strong>Developer mode</strong> using the toggle in the top right.</p>
+                  </div>
                 </div>
-              </div>
-              <div class="install-step">
-                <div class="step-num-circle">4</div>
-                <div class="step-content">
-                  <h4>Pin and open</h4>
-                  <p>Click the puzzle piece icon in Chrome's toolbar and pin the extension for easy access. Then open it to get started.</p>
+                <div class="install-step">
+                  <div class="step-num-circle">3</div>
+                  <div class="step-content">
+                    <h4>Load the extension</h4>
+                    <p>Click <strong>Load unpacked</strong> and select the unzipped folder. The extension will appear in your toolbar.</p>
+                  </div>
+                </div>
+                <div class="install-step">
+                  <div class="step-num-circle">4</div>
+                  <div class="step-content">
+                    <h4>Pin and open</h4>
+                    <p>Click the puzzle piece icon in Chrome's toolbar and pin the extension for easy access. Then open it to get started.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1676,54 +1705,51 @@
             <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">Integrations</div>
             <div style="font-size:12px;color:var(--text-faint);margin-bottom:16px;">Connect external services to enhance your workflow</div>
 
-            <!-- Google Drive -->
-            <div class="card">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
+            <!-- Google Drive — collapsible -->
+            <div class="setup-section-toggle" id="gdrive-section-toggle" onclick="toggleSetupSection('gdrive-section-content', this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="setup-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
+              <span>Google Drive</span>
+              <span style="font-size:10px;color:var(--text-faint);margin-left:auto;" id="gdrive-toggle-status">Not connected</span>
+            </div>
+            <div class="setup-section-body" id="gdrive-section-content">
+              <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
+                <div style="margin-top:0;padding:16px;background:var(--bg-main);border-radius:8px;border:1px solid var(--border);">
+                  <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="gdrive-dot"></div>
+                    <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
+                  </div>
+                  <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
+                    <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
+                  </div>
+                  <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+                    <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
+                    <div id="gdrive-file-list"></div>
+                    <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
+                  </div>
                 </div>
-                <div>
-                  <div class="card-title" style="margin:0;">Google Drive</div>
-                  <div class="card-sub" style="margin:0;">Store and sync resumes from Google Docs or Drive files</div>
+                <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
+                  Connect your Google Drive to import resumes directly from Google Docs. Linked docs stay in sync — edit in Drive, and Brilliant Jobs always has the latest version when applying.
                 </div>
-              </div>
-              <div style="margin-top:12px;padding:16px;background:var(--bg-main);border-radius:8px;border:1px solid var(--border);">
-                <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;">
-                  <div style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="gdrive-dot"></div>
-                  <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
-                </div>
-                <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                  <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
-                  <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
-                </div>
-                <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-                  <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
-                  <div id="gdrive-file-list"></div>
-                  <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
-                </div>
-              </div>
-              <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
-                Connect your Google Drive to import resumes directly from Google Docs. Linked docs stay in sync — edit in Drive, and Brilliant Jobs always has the latest version when applying.
               </div>
             </div>
 
-            <!-- Gmail / Ghost Monitor -->
-            <div class="card" style="margin-top:16px;">
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-                <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
-                  <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+            <!-- Gmail — collapsible -->
+            <div class="setup-section-toggle" id="gmail-section-toggle" onclick="toggleSetupSection('gmail-section-content', this)" style="margin-top:8px;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="setup-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg width="16" height="13" viewBox="0 0 24 18" fill="none" style="flex-shrink:0;"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+              <span>Gmail — Ghost Monitor</span>
+              <span style="font-size:11px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:2px 8px;border-radius:8px;margin-left:auto;white-space:nowrap;">Coming Soon</span>
+            </div>
+            <div class="setup-section-body" id="gmail-section-content">
+              <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
+                <div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
+                  <button class="btn btn-sm" style="opacity:0.5;cursor:not-allowed;" disabled>Connect Gmail</button>
                 </div>
-                <div>
-                  <div class="card-title" style="margin:0;">Gmail — Ghost Monitor</div>
-                  <div class="card-sub" style="margin:0;">Track which companies respond and which ghost you after applying</div>
+                <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
+                  When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
                 </div>
-                <span style="font-size:11px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:3px 10px;border-radius:10px;margin-left:auto;white-space:nowrap;">Coming Soon</span>
-              </div>
-              <div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
-                <button class="btn btn-sm" style="opacity:0.5;cursor:not-allowed;" disabled>Connect Gmail</button>
-              </div>
-              <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
-                When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
               </div>
             </div>
           </div>
@@ -2535,7 +2561,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.34 loaded');
+    console.log('[BJ] Dashboard v2.35 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2805,6 +2831,8 @@
               detail.textContent = profile.scanner_running
                 ? `Scanning · ${profile.scanner_today_visited || 0}/${profile.scanner_today_limit || '—'} today`
                 : `Last active ${todayStr} at ${timeStr}`;
+              // Auto-collapse download section when connected
+              autoCollapseSetupSection('ext-download-toggle', 'ext-download-content');
             } else {
               dot.className = 'ext-dot off';
               text.textContent = 'Extension inactive';
@@ -2816,6 +2844,46 @@
     }
     checkExtensionStatus();
     setInterval(checkExtensionStatus, 60000);
+
+    // Setup section collapsible toggle
+    function toggleSetupSection(contentId, toggleEl) {
+      const content = document.getElementById(contentId);
+      if (!content) return;
+      const isCollapsed = content.classList.contains('collapsed');
+      if (isCollapsed) {
+        content.classList.remove('collapsed');
+        toggleEl.classList.remove('collapsed');
+      } else {
+        content.classList.add('collapsed');
+        toggleEl.classList.add('collapsed');
+      }
+    }
+
+    function autoCollapseSetupSection(toggleId, contentId) {
+      const toggle = document.getElementById(toggleId);
+      const content = document.getElementById(contentId);
+      if (toggle && content && !content.classList.contains('collapsed')) {
+        content.classList.add('collapsed');
+        toggle.classList.add('collapsed');
+      }
+    }
+
+    // chrome://extensions link — can't be a normal link, use clipboard fallback
+    const chromeExtLink = document.getElementById('chrome-ext-link');
+    if (chromeExtLink) {
+      chromeExtLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        try {
+          window.open('chrome://extensions', '_blank');
+        } catch (err) {
+          // Chrome blocks chrome:// URLs from web pages — copy to clipboard instead
+          navigator.clipboard.writeText('chrome://extensions').then(() => {
+            chromeExtLink.textContent = 'chrome://extensions (copied!)';
+            setTimeout(() => { chromeExtLink.textContent = 'chrome://extensions'; }, 2000);
+          });
+        }
+      });
+    }
 
     // Saved Jobs card → navigate to Pipeline
     $('#j-saved-card').addEventListener('click', () => {
@@ -8981,6 +9049,14 @@
         disconnectBtn.style.display = '';
         filesSection.style.display = '';
 
+        // Sync setup header dot + toggle status
+        const setupDot = $('#setup-gdrive-dot');
+        if (setupDot) { setupDot.className = 'ext-status-dot connected'; }
+        const toggleStatus = $('#gdrive-toggle-status');
+        if (toggleStatus) { toggleStatus.textContent = 'Connected'; toggleStatus.style.color = 'var(--green)'; }
+        // Auto-collapse when connected
+        autoCollapseSetupSection('gdrive-section-toggle', 'gdrive-section-content');
+
         if (gdriveState.files.length === 0) {
           fileList.innerHTML = '<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No files linked yet. Click below to link a Google Doc as a resume.</div>';
         } else {
@@ -9003,6 +9079,11 @@
         connectBtn.style.display = '';
         disconnectBtn.style.display = 'none';
         filesSection.style.display = 'none';
+        // Reset setup header dot + toggle status
+        const setupDot2 = $('#setup-gdrive-dot');
+        if (setupDot2) { setupDot2.className = 'ext-status-dot'; }
+        const toggleStatus2 = $('#gdrive-toggle-status');
+        if (toggleStatus2) { toggleStatus2.textContent = 'Not connected'; toggleStatus2.style.color = 'var(--text-faint)'; }
       }
     }
 
