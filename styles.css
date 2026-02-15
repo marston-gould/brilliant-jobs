@@ -1131,10 +1131,10 @@
     .resume-card .rc-filter-pill.active { opacity: 1; }
     .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
     .resume-card .rc-filter-pill:hover { opacity: 0.8; }
-    .resume-card .rc-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .resume-card .rc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
     .rc-actions .rc-btn {
-      font-size: 10px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
-      border: none; cursor: pointer; color: #fff; text-decoration: none; white-space: nowrap;
+      font-size: 10px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
+      border: none; cursor: pointer; color: #fff; text-decoration: none; white-space: nowrap; text-align: center;
     }
     .rc-btn.rc-rename { background: var(--text-dim); }
     .rc-btn.rc-rename:hover { background: var(--text); }

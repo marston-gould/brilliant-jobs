@@ -1,4 +1,4 @@
-console.log('[BJ] Dashboard v2.51 loaded');
+console.log('[BJ] Dashboard v2.52 loaded');
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -257,4 +257,17 @@ $('#download-btn').addEventListener('click', async () => {
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
+// ============================================================
+// SHARED STATE — declared early so all modules can access
+// ============================================================
+// Tuning state (refined by tuning.js when it loads)
+var tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+var tuningLocExclPills = tuningSettings.locationExcludes || [];
+var tuningTitleExclPills = tuningSettings.titleExcludes || [];
+var tuningCoExclPills = tuningSettings.companyExcludes || [];
+var tuningIndExclPills = tuningSettings.industryExcludes || [];
+var levelHierarchy = tuningSettings.levelHierarchy || [];
+// Stub — overridden by tuning.js with full implementation
+var getJobLevel = function(title, hierarchy) { return null; };
 

@@ -134,7 +134,6 @@ function renderResumes() {
         <div style="display:flex;gap:4px;align-items:center;">${filterNumBadges}${levelBadge}${gdriveIcon}</div>
       </div>
       <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
-      <div class="rc-meta">${isPlaceholder ? r.fileName : `${r.fileName} \u00b7 ${r.size} \u00b7 ${r.uploadedAt}`}</div>
       ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
       ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:8px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
       ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
@@ -142,6 +141,7 @@ function renderResumes() {
       <div class="rc-filters-label">Assigned Filters</div>
       <div class="rc-filter-list">${filterPills}</div>
       ${statsLine}
+      ${!isPlaceholder ? `<div class="rc-meta">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
       <div class="rc-actions">
         <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
         <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
