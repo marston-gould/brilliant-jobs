@@ -2290,8 +2290,8 @@
           </div>
 
           <!-- Coverage Alert -->
-          <div id="resume-coverage-alert" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--warm);">
-            <strong>⚠ Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
+          <div id="resume-coverage-alert" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
+            <strong>Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
             <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">These filters have no resume assigned. Jobs from unassigned filters cannot be auto-applied.</div>
           </div>
 
@@ -9249,14 +9249,19 @@
       if (sf.length > 0) {
         const covered = sf.length - unassignedFilters.length;
         coverageEl.textContent = `${covered}/${sf.length}`;
-        coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--warm)' : 'var(--green)';
+        coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--text-dim)' : 'var(--green)';
       } else {
         coverageEl.textContent = '—';
       }
 
       if (unassignedFilters.length > 0 && activeResumes.length > 0) {
         coverageAlert.style.display = '';
-        $('#resume-unassigned-list').textContent = unassignedFilters.map(f => f.name).join(', ');
+        const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+        $('#resume-unassigned-list').innerHTML = unassignedFilters.map(f => {
+          const fi = sf.indexOf(f);
+          const color = filterColors[fi % filterColors.length];
+          return `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:${color}15;color:${color};border:1px solid ${color}30;margin:0 2px;">${f.name}</span>`;
+        }).join(' ');
       } else {
         coverageAlert.style.display = 'none';
       }
@@ -9273,17 +9278,15 @@
         return;
       }
 
-      // Get saved filters and tuning levels
-      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
-      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
-
-      grid.innerHTML = activeResumes.map((r, _ai) => {
+      // --- Build single resume card ---
+      function buildResumeCard(r, sf, filterColors) {
         const i = resumes.indexOf(r);
         const icon = getFileIcon(r.fileName);
         const assignedIds = r.filterIds || [];
         const isPlaceholder = r.needsUpload;
 
         // Level selector
+        const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
         const levelOpts = levels.map(l => {
           const sel = r.levelLabel === l.label ? ' selected' : '';
           return `<option value="${l.label}" data-color="${l.color || '#94a3b8'}"${sel}>${l.label}</option>`;
@@ -9293,7 +9296,7 @@
           ${levelOpts}
         </select>`;
 
-        // Level badge (if already set)
+        // Level badge
         const levelBadge = r.levelLabel
           ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.levelColor || '#94a3b8'}20;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
           : '';
@@ -9301,6 +9304,14 @@
         const gdriveIcon = r.source === 'gdrive'
           ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
           : '';
+
+        // Filter number badges (colored circles)
+        const filterNumBadges = assignedIds.map(fname => {
+          const fi = sf.findIndex(f => f.name === fname);
+          if (fi < 0) return '';
+          const color = filterColors[fi % filterColors.length];
+          return `<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${color};color:#fff;font-size:10px;font-weight:700;flex-shrink:0;" title="${fname}">${fi + 1}</span>`;
+        }).filter(Boolean).join('');
 
         // Filter pills
         const filterPills = sf.length > 0
@@ -9320,19 +9331,19 @@
         const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
         const responseRate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) : 0;
         const statsLine = jobsApplied > 0
-          ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">${jobsApplied} applied · ${responded} responded · ${responseRate}% rate</div>`
+          ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">${jobsApplied} applied \u00b7 ${responded} responded \u00b7 ${responseRate}% rate</div>`
           : '';
 
         return `
         <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''}">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-            <div style="display:flex;gap:4px;align-items:center;">${levelBadge}${gdriveIcon}</div>
+            <div style="display:flex;gap:4px;align-items:center;">${filterNumBadges}${levelBadge}${gdriveIcon}</div>
           </div>
           <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
-          <div class="rc-meta">${isPlaceholder ? r.fileName : `${r.fileName} · ${r.size} · ${r.uploadedAt}`}</div>
-          ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords…</div>' : ''}
-          ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">▸</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:8px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+          <div class="rc-meta">${isPlaceholder ? r.fileName : `${r.fileName} \u00b7 ${r.size} \u00b7 ${r.uploadedAt}`}</div>
+          ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
+          ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:8px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
           ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
           <div style="margin:8px 0;">${levelSelect}</div>
           <div class="rc-filters-label">Assigned Filters</div>
@@ -9344,7 +9355,55 @@
             <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Delete</button>
           </div>
         </div>`;
-      }).join('');
+      }
+
+      // --- Group resumes by filter ---
+      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+      let gridHtml = '';
+
+      // Track which resumes have been placed
+      const placed = new Set();
+
+      // One section per saved filter (in order)
+      sf.forEach((f, fi) => {
+        const color = filterColors[fi % filterColors.length];
+        const filterResumes = activeResumes
+          .filter(r => (r.filterIds || []).includes(f.name) && !placed.has(resumes.indexOf(r)))
+          .sort((a, b) => {
+            if (a.archived !== b.archived) return a.archived ? 1 : -1;
+            const da = new Date(b.uploadedAt || 0);
+            const db = new Date(a.uploadedAt || 0);
+            return da - db;
+          });
+
+        if (filterResumes.length === 0) return;
+
+        gridHtml += `<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:${fi > 0 ? '12' : '0'}px;margin-bottom:4px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${color};color:#fff;font-size:11px;font-weight:700;">${fi + 1}</span>
+          <span style="font-size:13px;font-weight:600;color:${color};">${f.name}</span>
+          <span style="font-size:10px;color:var(--text-faint);font-family:var(--mono);">${filterResumes.length} resume${filterResumes.length > 1 ? 's' : ''}</span>
+        </div>`;
+
+        filterResumes.forEach(r => {
+          gridHtml += buildResumeCard(r, sf, filterColors);
+          placed.add(resumes.indexOf(r));
+        });
+      });
+
+      // Unassigned resumes (no filter assigned)
+      const unassignedResumes = activeResumes.filter(r => !placed.has(resumes.indexOf(r)));
+      if (unassignedResumes.length > 0) {
+        gridHtml += `<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:${sf.length > 0 ? '12' : '0'}px;margin-bottom:4px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--text-faint);font-size:11px;font-weight:700;">—</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text-faint);">Unassigned</span>
+          <span style="font-size:10px;color:var(--text-faint);font-family:var(--mono);">${unassignedResumes.length}</span>
+        </div>`;
+        unassignedResumes.forEach(r => {
+          gridHtml += buildResumeCard(r, sf, filterColors);
+        });
+      }
+
+      grid.innerHTML = gridHtml;
 
       renderResumeArchive(archivedResumes);
     }
@@ -9363,6 +9422,9 @@
       section.style.display = '';
       labelEl.textContent = archivedResumes.length + ' archived';
 
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+
       listEl.innerHTML = archivedResumes.map(r => {
         const i = resumes.indexOf(r);
         const meta = getPipelineMeta();
@@ -9372,12 +9434,17 @@
         const levelBadge = r.levelLabel
           ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:${r.levelColor || '#94a3b8'}15;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
           : '';
-        const filters = (r.filterIds || []).join(', ') || 'None';
+        const filterBadges = (r.filterIds || []).map(fname => {
+          const fi = sf.findIndex(f => f.name === fname);
+          if (fi < 0) return '';
+          const color = filterColors[fi % filterColors.length];
+          return `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:${color};color:#fff;font-size:8px;font-weight:700;" title="${fname}">${fi + 1}</span>`;
+        }).filter(Boolean).join(' ') || '';
 
         return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-input);">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:var(--text-dim);">${r.name} ${levelBadge}</div>
-            <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'} · Filters: ${filters}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-dim);display:flex;align-items:center;gap:6px;">${filterBadges} ${r.name} ${levelBadge}</div>
+            <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
           </div>
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
           <button class="btn btn-secondary btn-sm" onclick="unarchiveResume(${i})" style="font-size:9px;padding:2px 8px;">Restore</button>
