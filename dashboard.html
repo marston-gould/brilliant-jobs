@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.31 - 2026-02-15 - Resume fixes: nav dot, no default, coverage pills, ghost col reorder -->
+<!-- Brilliant Jobs Dashboard v2.32 - 2026-02-15 - Resume nav dot aligned with ext-status-dot pattern -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1081,9 +1081,6 @@
     }
     .resume-card.is-placeholder .rc-name { color: var(--text-dim); }
     .resume-card.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
-    .nav-resume-dot {
-      width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-left: 6px; flex-shrink: 0;
-    }
     .company-dropdown {
       display:none; position:absolute; z-index:100;
       background:var(--bg-card); border:1px solid var(--border);
@@ -1251,7 +1248,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.31</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.32</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1292,7 +1289,7 @@
         <div class="nav-item" data-page="resumes">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <span>Resumes</span>
-          <span class="nav-resume-dot" id="nav-resume-dot" style="display:none;"></span>
+          <div class="ext-status-dot" id="nav-resume-dot" title="No resumes uploaded"></div>
           <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
         </div>
         <div class="nav-item" data-page="applications">
@@ -2509,7 +2506,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.31 loaded');
+    console.log('[BJ] Dashboard v2.32 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -8375,19 +8372,16 @@
       const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
 
       if (resumes.length === 0) {
-        dot.style.display = 'inline-block';
-        dot.style.background = '#ef4444'; // red — no resumes
+        dot.className = 'ext-status-dot';
         dot.title = 'No resumes uploaded';
       } else if (unassignedFilters.length > 0 && sf.length > 0) {
-        dot.style.display = 'inline-block';
-        dot.style.background = '#f59e0b'; // yellow — incomplete coverage
+        dot.className = 'ext-status-dot warning';
         dot.title = `${unassignedFilters.length} filter${unassignedFilters.length > 1 ? 's' : ''} without a resume`;
       } else if (resumes.length > 0) {
-        dot.style.display = 'inline-block';
-        dot.style.background = '#34d399'; // green — all good
+        dot.className = 'ext-status-dot connected';
         dot.title = 'All filters have resumes';
       } else {
-        dot.style.display = 'none';
+        dot.className = 'ext-status-dot';
       }
     }
 

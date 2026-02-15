@@ -458,9 +458,10 @@ const features = [
   { s: 'todo', n: 'Referral leaderboard and milestones', d: 'Opt-in leaderboard for top referrers. Milestone badges: "Connector" (3), "Evangelist" (10), "Ambassador" (25). Public recognition drives competitive sharing.', p: 5 },
   { s: 'todo', n: 'Referral fraud prevention', d: 'Detect fake signups from same IP/device, accounts that never activate, self-referral attempts. Require referred user to complete profile + first search before reward triggers.', p: 5 },
   { s: 'todo', n: 'Application source branding', d: 'Ensure Brilliant Jobs attribution visible to hiring teams — UTM params on ATS links, "How did you hear about us?" auto-fill. Organic employer awareness as candidates apply.', p: 5 },
+  { s: 'todo', n: 'Archive status for inactive users', d: 'When user stops actively searching: 90-day grace period to maintain data. After that, quarterly sustenance fee to keep account, data, and history alive. Auto-transition to archive if no login/activity. Reactivation restores full access.', p: 5 },
 
   // Phase 6 — Resumes & Applications
-  { s: 'todo', n: 'Resume Supabase persistence', d: 'Migrate from localStorage to Supabase. Storage bucket for PDF/DOCX files. resumes table (id, user_id, name, file_path, size, is_default). resume_filter_assignments table. Real upload/download/preview.', p: 6 },
+  { s: 'done', n: 'Resume Supabase persistence', d: 'Supabase Storage bucket + resumes table + resume_filter_assignments table. Real file upload/download. Level selector per card. Filter assignment pills. Nav status dot (red/yellow/green). Paper-proportional card UI.', p: 6 },
   { s: 'todo', n: 'Resume vs JD side-by-side comparison', d: 'Split view: resume content left, job description right. Highlight matching keywords, missing skills, salary alignment.', p: 6 },
   { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 6 },
   { s: 'todo', n: 'Resume-to-job match scoring', d: 'Keyword overlap analysis → High/Med/Low match badge per job', p: 6 },
