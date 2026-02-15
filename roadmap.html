@@ -430,6 +430,7 @@ const features = [
   { s: 'todo', n: 'Random lightweight interactions', d: 'Expand About sections, click posts occasionally during scanning', p: 2.5 },
   { s: 'todo', n: 'Mouse movement simulation', d: 'Generate realistic cursor paths between click targets', p: 2.5 },
   { s: 'todo', n: 'CAPTCHA auto-stop', d: 'Detect warning signals and halt scanning immediately', p: 2.5 },
+  { s: 'todo', n: 'Extension build fingerprint obfuscation', d: 'Each downloaded extension build gets: randomized file names (content.js → [hash].js, background.js → [hash].js), randomized manifest metadata (short_name, description variations), shuffled CSS class names in injected styles, variable whitespace/comments in source, randomized internal message channel names. Goal: no two downloaded builds share the same file fingerprint, making pattern-based detection by LinkedIn infeasible.', p: 2.5 },
 
   // Phase 3 — Go-to-Market
   { s: 'done', n: 'Landing / marketing page', d: 'Full landing page at brilliantjobs.app: navy blue hero, feature cards (Application Tracking, Resume Management, Visual Pipeline, Resume vs JD Match), How It Works, pricing (free forever or upgrade to pay-when-hired), signup modal with LinkedIn validation. Safari compatible.', p: 3 },
