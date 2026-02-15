@@ -442,6 +442,10 @@ const features = [
   { s: 'done', n: '3-column Setup status bar', d: 'Extension/Drive/Gmail as equal grid columns with dividers. Each: colored dot + bold label + detail text. Green=connected, red=not connected. Removed scanning count. Gmail shows red dot + "Coming soon".', p: 2 },
   { s: 'done', n: 'Phase renumbering', d: 'P6→P4 (Resumes), P4→P5 (User Mgmt), P5→P6 (Monetization), P2.5→P7 (Anti-detection), P7+→P8+. All items and section comments updated.', p: 2 },
   { s: 'done', n: 'Company enrichment via PDL dataset', d: '1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url. Remaining ~555 unmatched — backlogged for API enrichment.', p: 2 },
+  { s: 'done', n: 'v2.47 — US-only filter fix + version display', d: 'Fixed US-only checkbox: now uses .or(loc_country.eq.US,loc_country.is.null) to include US + unparsed jobs, exclude explicitly non-US. Removed wh.length guard. Fixed nav version stuck at v2.26b.', p: 2 },
+  { s: 'done', n: 'v2.48 — Seven UI fixes', d: 'Gmail dot alignment, remove scan counter from Setup, reorder job columns (Title/Level/Company/Ghost Rate/Location/Salary/Days/Source), normalize state names in locations, fix tuning dropdown overflow, lowercase unassigned filters, fix filter numbering across pages.', p: 2 },
+  { s: 'done', n: 'v2.49 — Tuning exclusion pill removal fix', d: 'Added onRemove callback to renderPillsFor. Tuning pills now call saveTuning+renderTuningPills instead of renderAllPills on remove.', p: 2 },
+  { s: 'done', n: 'v2.52 — TDZ fix for modular split', d: 'Shared tuning state (tuningSettings, levelHierarchy, exclusion pill arrays) declared in app.js with var so all modules can access before tuning.js loads. getJobLevel stub overridden by tuning.js. Resume card: removed duplicate filename, size/date to bottom, 2x2 button grid.', p: 2 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 3 — Go-to-Market
@@ -677,17 +681,17 @@ const features = [
   { s: 'todo', n: 'TRUNCATE protection triggers', d: 'Add _protected flag on core tables that blocks TRUNCATE via event trigger. Require explicit override.', p: 17 },
   { s: 'todo', n: 'FK dependency graph documentation', d: 'Document all table relationships, cascade paths, and soft references. Review before any migration.', p: 17 },
   { s: 'todo', n: 'Geocode remaining 95K jobs', d: '~95K jobs missing lat/lng — only 20K covered by ref_city_radius. Need broader geocoding (Google/Nominatim) or expanded ref table.', p: 17 },
-  { s: 'todo', n: 'Location normalization v2', d: 'Standardize to "City, ST" format. Fix: "new york new york" → "New York, NY", "palo alto + 3" → "Palo Alto, CA +3". State abbreviation inconsistencies, Usa- prefixes, bare city names. Build ref_locations mapping table.', p: 17 },
+  { s: 'progress', n: 'Location normalization v2', d: 'Client-side: cleanLocationPart() now converts full state names to abbreviations. Still todo: server-side UPDATE to normalize loc_display in ats_jobs, fix bare city names, build ref_locations mapping table.', p: 17 },
   { s: 'done', n: 'Salary re-enrichment', d: 'Server-side SQL re-parse: HTML-encoded pay-range spans (10,922), plain text ranges with hyphens/em dashes/and/to (540), rate detection (hr/day/wk/mo/yr). 23,042 jobs now have salary (was 12,120). 72.4% of salary-mentioning jobs parsed.', p: 17 },
-  { s: 'todo', n: 'Dashboard code audit', d: 'Consolidate 9K-line single-file dashboard into modules. Profile dead code, memory leaks, unnecessary re-renders. Audit Supabase queries for payload size and timeout risk.', p: 17 },
+  { s: 'progress', n: 'Dashboard modular split', d: 'Splitting 10.5K-line monolith into modules. Phase A: CSS → styles.css (1,355L). Phase B: app shell → js/app.js (260L). Phase C: leaf modules → pipeline.js, resumes.js, integrations.js, applications.js, settings.js (1,522L). Phase D: heavyweight modules → keywords.js, browsers.js, location.js, tuning.js (4,347L). Phase E remaining: core feed (query-builder, job-search, sort-bar, company-dropdown ~1,630L). Dashboard now 3,026 lines (HTML + core JS).', p: 17 },
   { s: 'done', n: 'Per-page help button with contextual explainer', d: 'Fixed ? button bottom-right of every page. Click opens panel with numbered steps specific to the active page (Feed, Tuning, Resumes, Applications, Pipeline, Ghost Monitor, Stats, Settings, Subscription). Closes on outside click or page switch. Content scrolls below it.', p: 17 },
   { s: 'todo', n: 'Enrich remaining ~555 unmatched companies', d: 'Companies not in PDL free dataset — try Greenhouse API board metadata, LinkedIn scrape, or paid PDL API', p: 17 },
   { s: 'todo', n: 'Catch remaining unparsed salary formats', d: '~8K jobs mention salary but not yet captured. Edge cases: missing $ on max, K notation, single salary values, non-standard separators.', p: 17 },
 
 
   // Phase 18 — Security & Hardening
-  { s: 'todo', n: 'RLS policy audit', d: 'Review all Supabase RLS policies across every table. Verify user isolation, ensure no cross-user data leakage. Test with multiple accounts.', p: 18 },
-  { s: 'todo', n: 'API key scoping', d: 'Audit Supabase anon key exposure in client HTML. Minimize permissions on anon role. Consider service role key for server-side operations only.', p: 18 },
+  { s: 'done', n: 'RLS policy audit', d: 'Audited all Supabase RLS policies. Fixed: removed dangerous anon UPDATE on ats_jobs, enabled RLS on ref_city_radius, added missing policies on ref_companies and ref_us_states. Verified user isolation on profiles, connections, companies, resumes, feedback. Repo made public.', p: 18 },
+  { s: 'done', n: 'API key scoping', d: 'Confirmed Supabase anon key is client-side by design and safe for public repos. Security enforced via RLS policies, not key secrecy. No service role key exposed.', p: 18 },
   { s: 'todo', n: 'CORS lockdown', d: 'Restrict Supabase CORS to brilliantjobs.ai domain only. Block unauthorized origins from making API calls.', p: 18 },
   { s: 'todo', n: 'CSP headers', d: 'Content Security Policy headers on all pages. Restrict script-src, style-src, connect-src to known domains. Prevent XSS injection.', p: 18 },
   { s: 'todo', n: 'Extension permissions minimization', d: 'Audit Chrome extension manifest permissions. Remove any overly broad host permissions. Request only what is needed for LinkedIn harvesting and ATS form detection.', p: 18 },
