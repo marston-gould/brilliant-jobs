@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.29 - 2026-02-15 - Resume paper cards, level selector, nav status dot, Supabase persistence -->
+<!-- Brilliant Jobs Dashboard v2.30 - 2026-02-15 - Ghost Rate next to Company, header alignment fix, resume paper cards -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -720,7 +720,7 @@
       text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
       padding: 10px 12px; border-bottom: 2px solid var(--border);
       cursor: pointer; user-select: none; white-space: nowrap;
-      transition: color 0.15s;
+      transition: color 0.15s; vertical-align: middle;
     }
     .job-table th:hover { color: var(--accent); }
     .job-table th .sort-arrow {
@@ -1258,7 +1258,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.29 📄</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.30</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1869,11 +1869,11 @@
                   <th style="width:36px;cursor:default;"></th>
                   <th data-sort="title" style="width:22%;">Title <span class="sort-arrow">↕</span></th>
                   <th data-sort="company" style="width:12%;">Company <span class="sort-arrow">↕</span></th>
+                  <th data-sort="ghost" style="width:6%;">Ghost <span class="sort-arrow">↕</span></th>
                   <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
                   <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
-                  <th style="width:5%;">Sources</th>
-                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
-                  <th data-sort="ghost" style="width:7%;">Ghost Rate <span class="sort-arrow">↕</span></th>
+                  <th style="width:5%;vertical-align:middle;">Sources</th>
+                  <th data-sort="level" style="width:7%;vertical-align:middle;">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
                   <th style="width:140px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
@@ -2528,7 +2528,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.29 loaded');
+    console.log('[BJ] Dashboard v2.30 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3845,11 +3845,11 @@
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
           <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
+          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-loc" title="${((job.loc_display || job.location||'').replace(/"/g,'&quot;'))}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
           <td class="jt-salary">${formatSalaryCell(job)}</td>
           <td>${sourcePill('greenhouse')}</td>
           <td class="jt-level">${levelCell}</td>
-          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
           <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
             ${saveBtn}${applyBtn}
