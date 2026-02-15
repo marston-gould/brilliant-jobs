@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.39 - 2026-02-15 - Column reorder, sortable salary+source, polished toggles -->
+<!-- Brilliant Jobs Dashboard v2.40 - 2026-02-15 - 3-col status bar, help icon with label, column reorder -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -283,13 +283,21 @@
     }
 
     .ext-status {
-      display: flex; align-items: center; gap: 12px;
-      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 10px; margin-bottom: 20px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 20px; overflow: hidden;
     }
-    .ext-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .ext-dot.on { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
-    .ext-dot.off { background: var(--text-faint); }
+    .ext-status-cell {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 18px;
+    }
+    .ext-status-cell:not(:last-child) { border-right: 1px solid var(--border); }
+    .ext-status-cell .ext-cell-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--text-faint); transition: background 0.3s; }
+    .ext-status-cell .ext-cell-dot.on { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+    .ext-status-cell .ext-cell-dot.off { background: var(--red); }
+    .ext-status-cell .ext-cell-dot.pending { background: var(--text-faint); }
+    .ext-status-cell .ext-cell-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .ext-status-cell .ext-cell-detail { font-size: 11px; color: var(--text-faint); }
 
     .instance-info { font-family: var(--mono); font-size: 12px; color: var(--text-dim); line-height: 1.8; }
     .instance-info span { color: var(--accent); }
@@ -1136,13 +1144,15 @@
 
     /* ======================== HELP BUTTON (inline in page header) ======================== */
     .page-help-icon {
-      width: 22px; height: 22px; border-radius: 50%;
-      background: transparent; border: 1.5px solid var(--text-faint);
-      color: var(--text-faint); font-size: 12px; font-weight: 700;
-      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-      transition: all 0.15s; vertical-align: middle; margin-left: 8px; flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 10px 2px 6px; border-radius: 12px;
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--text-faint); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; vertical-align: middle;
+      margin-left: 10px; flex-shrink: 0; letter-spacing: 0.3px;
     }
-    .page-help-icon:hover { border-color: var(--accent); color: var(--accent); }
+    .page-help-icon:hover { border-color: var(--accent); color: var(--accent); background: rgba(61,126,255,0.04); }
+    .page-help-icon svg { flex-shrink: 0; }
     .page-help-panel {
       position: absolute; top: 100%; right: 0; z-index: 91;
       width: 320px; max-height: 400px; overflow-y: auto;
@@ -1324,7 +1334,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.39</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.40</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1652,19 +1662,25 @@
           </div>
 
           <div class="ext-status" id="ext-status-bar">
-            <div class="ext-dot off" id="ext-dot"></div>
-            <div style="flex:1;">
-              <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
-              <div style="font-size:11px;color:var(--text-faint);" id="ext-status-detail">Download and install below</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
-              <div style="display:flex;align-items:center;gap:5px;" title="Google Drive">
-                <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background 0.3s;" id="setup-gdrive-dot" class="ext-status-dot"></div>
-                <span style="font-size:10px;color:var(--text-faint);">Drive</span>
+            <div class="ext-status-cell" id="ext-cell-extension">
+              <div class="ext-cell-dot pending" id="ext-dot"></div>
+              <div>
+                <div class="ext-cell-label" id="ext-status-text">Extension</div>
+                <div class="ext-cell-detail" id="ext-status-detail">Not detected</div>
               </div>
-              <div style="display:flex;align-items:center;gap:5px;" title="Gmail">
-                <div style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="setup-gmail-dot"></div>
-                <span style="font-size:10px;color:var(--text-faint);">Gmail</span>
+            </div>
+            <div class="ext-status-cell" id="ext-cell-drive">
+              <div class="ext-cell-dot off" id="setup-gdrive-dot"></div>
+              <div>
+                <div class="ext-cell-label">Google Drive</div>
+                <div class="ext-cell-detail" id="gdrive-status-detail">Not connected</div>
+              </div>
+            </div>
+            <div class="ext-status-cell" id="ext-cell-gmail">
+              <div class="ext-cell-dot off" id="setup-gmail-dot"></div>
+              <div>
+                <div class="ext-cell-label">Gmail</div>
+                <div class="ext-cell-detail" id="gmail-status-detail">Coming soon</div>
               </div>
             </div>
           </div>
@@ -2590,7 +2606,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.39 loaded');
+    console.log('[BJ] Dashboard v2.40 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2806,11 +2822,11 @@
       const h2 = header.querySelector('h2');
       if (!h2) return;
 
-      // Create the ? icon
+      // Create the help icon with SVG + text
       const icon = document.createElement('span');
       icon.className = 'page-help-icon';
-      icon.textContent = '?';
       icon.title = 'How to use this page';
+      icon.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help';
       icon.onclick = (e) => { e.stopPropagation(); toggleHelpPanel(header); };
       h2.insertAdjacentElement('afterend', icon);
 
@@ -2885,19 +2901,19 @@
           // Setup page status
           if (dot && text && detail) {
             if (isActive) {
-              dot.className = 'ext-dot on';
-              text.textContent = 'Extension connected';
+              dot.className = 'ext-cell-dot on';
+              text.textContent = 'Extension';
               const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
               const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
               detail.textContent = profile.scanner_running
-                ? `Scanning · ${profile.scanner_today_visited || 0}/${profile.scanner_today_limit || '—'} today`
+                ? 'Connected · scanning'
                 : `Last active ${todayStr} at ${timeStr}`;
               // Auto-collapse download section when connected
               autoCollapseSetupSection('ext-download-toggle', 'ext-download-content');
             } else {
-              dot.className = 'ext-dot off';
-              text.textContent = 'Extension inactive';
-              detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
+              dot.className = 'ext-cell-dot off';
+              text.textContent = 'Extension';
+              detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome`;
             }
           }
         }
@@ -9207,9 +9223,11 @@
         disconnectBtn.style.display = '';
         filesSection.style.display = '';
 
-        // Sync setup header dot + toggle status
+        // Sync setup header dot + toggle status + status detail
         const setupDot = $('#setup-gdrive-dot');
-        if (setupDot) { setupDot.className = 'ext-status-dot connected'; }
+        if (setupDot) { setupDot.className = 'ext-cell-dot on'; }
+        const driveDetail = $('#gdrive-status-detail');
+        if (driveDetail) { driveDetail.textContent = gdriveState.email || 'Connected'; }
         const toggleStatus = $('#gdrive-toggle-status');
         if (toggleStatus) { toggleStatus.textContent = 'Connected'; toggleStatus.style.color = 'var(--green)'; }
         // Auto-collapse when connected
@@ -9237,9 +9255,11 @@
         connectBtn.style.display = '';
         disconnectBtn.style.display = 'none';
         filesSection.style.display = 'none';
-        // Reset setup header dot + toggle status
+        // Reset setup header dot + toggle status + detail
         const setupDot2 = $('#setup-gdrive-dot');
-        if (setupDot2) { setupDot2.className = 'ext-status-dot'; }
+        if (setupDot2) { setupDot2.className = 'ext-cell-dot off'; }
+        const driveDetail2 = $('#gdrive-status-detail');
+        if (driveDetail2) { driveDetail2.textContent = 'Not connected'; }
         const toggleStatus2 = $('#gdrive-toggle-status');
         if (toggleStatus2) { toggleStatus2.textContent = 'Not connected'; toggleStatus2.style.color = 'var(--text-faint)'; }
       }
