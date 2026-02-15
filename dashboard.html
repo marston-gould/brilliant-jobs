@@ -8349,12 +8349,34 @@
     updatePoorMatchSuggestions();
 
     // ============================================================
-    // RESUMES
+    // RESUMES — Supabase-persisted
     // ============================================================
-    let resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+    let resumes = [];
+    let resumesLoaded = false;
 
-    function saveResumes() {
-      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+    async function loadResumes() {
+      if (!currentUser) return;
+      const { data: rows, error } = await sb.from('resumes')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: true });
+      if (error) { console.error('[BJ] Load resumes error:', error); return; }
+
+      const resumeIds = rows.map(r => r.id);
+      let assignments = [];
+      if (resumeIds.length > 0) {
+        const { data: aRows } = await sb.from('resume_filter_assignments')
+          .select('resume_id, filter_name')
+          .in('resume_id', resumeIds);
+        assignments = aRows || [];
+      }
+
+      resumes = rows.map(r => ({
+        ...r,
+        filterIds: assignments.filter(a => a.resume_id === r.id).map(a => a.filter_name)
+      }));
+      resumesLoaded = true;
+      renderResumes();
     }
 
     function getFileIcon(fileName) {
@@ -8370,14 +8392,12 @@
 
       countEl.textContent = resumes.length;
 
-      const defaultResume = resumes.find(r => r.isDefault);
-      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 20) : '—';
+      const defaultResume = resumes.find(r => r.is_default);
+      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 20) : '\u2014';
 
-      // Count filters assigned
       const totalAssigned = resumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
       assignedEl.textContent = totalAssigned;
 
-      // Coverage check — which saved filters have at least one resume assigned?
       const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
       const allAssignedFilterNames = new Set(resumes.flatMap(r => r.filterIds || []));
       const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
@@ -8389,7 +8409,7 @@
         coverageEl.textContent = `${covered}/${sf.length}`;
         coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--warm)' : 'var(--green)';
       } else {
-        coverageEl.textContent = '—';
+        coverageEl.textContent = '\u2014';
       }
 
       if (unassignedFilters.length > 0 && resumes.length > 0) {
@@ -8407,14 +8427,12 @@
         return;
       }
 
-      // Get saved filters for assignment
       const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
       grid.innerHTML = resumes.map((r, i) => {
-        const icon = getFileIcon(r.fileName);
+        const icon = getFileIcon(r.file_name);
         const assignedIds = r.filterIds || [];
 
-        // Build filter pills — each saved filter as a toggleable pill
         const filterPills = sf.length > 0
           ? sf.map((f, fi) => {
               const color = filterColors[fi % filterColors.length];
@@ -8426,28 +8444,31 @@
             }).join('')
           : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
 
-        const isPlaceholder = r.needsUpload;
-        const levelBadge = r.levelLabel
-          ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.levelColor || '#94a3b8'}20;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
+        const isPlaceholder = r.needs_upload;
+        const levelBadge = r.level_label
+          ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.level_color || '#94a3b8'}20;color:${r.level_color || '#94a3b8'};">${r.level_label}</span>`
           : '';
         const gdriveIcon = r.source === 'gdrive'
           ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
           : '';
 
+        const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+
         return `
-        <div class="resume-card ${r.isDefault ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''}">
-          ${r.isDefault ? '<div class="rc-default-badge">★ Default</div>' : ''}
+        <div class="resume-card ${r.is_default ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''}">
+          ${r.is_default ? '<div class="rc-default-badge">\u2605 Default</div>' : ''}
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
             <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
             <div style="display:flex;gap:4px;">${levelBadge}${gdriveIcon}</div>
           </div>
           <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
-          <div class="rc-meta">${isPlaceholder ? r.fileName : `${r.fileName} · ${r.size} · ${r.uploadedAt}`}</div>
-          ${isPlaceholder ? `<div style="margin:10px 0;padding:10px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">⬆ Upload File</div><div style="font-size:10px;color:var(--text-faint);">Click to replace placeholder with actual resume</div></div>` : ''}
+          <div class="rc-meta">${isPlaceholder ? r.file_name : `${r.file_name} \u00b7 ${r.file_size || ''} \u00b7 ${created}`}</div>
+          ${isPlaceholder ? `<div style="margin:10px 0;padding:10px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">\u2B06 Upload File</div><div style="font-size:10px;color:var(--text-faint);">Click to replace placeholder with actual resume</div></div>` : ''}
+          ${!isPlaceholder && r.file_path ? `<div style="margin:8px 0;"><a href="#" onclick="downloadResume(${i});return false;" style="font-size:11px;color:var(--accent);">\u2B07 Download</a></div>` : ''}
           <div class="rc-filters-label">Assigned Filters</div>
           <div class="rc-filter-list">${filterPills}</div>
           <div class="rc-actions">
-            ${!r.isDefault ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:10px;padding:3px 10px;">Set Default</button>` : '<button class="btn btn-sm" style="font-size:10px;padding:3px 10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>★ Default</button>'}
+            ${!r.is_default ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:10px;padding:3px 10px;">Set Default</button>` : '<button class="btn btn-sm" style="font-size:10px;padding:3px 10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>\u2605 Default</button>'}
             <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:10px;padding:3px 10px;">Rename</button>
             <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Remove</button>
           </div>
@@ -8455,79 +8476,178 @@
       }).join('');
     }
 
-    window.toggleResumeFilter = function(resumeIdx, filterName) {
+    window.toggleResumeFilter = async function(resumeIdx, filterName) {
       const r = resumes[resumeIdx];
       if (!r.filterIds) r.filterIds = [];
       const idx = r.filterIds.indexOf(filterName);
+
       if (idx >= 0) {
         r.filterIds.splice(idx, 1);
+        await sb.from('resume_filter_assignments')
+          .delete()
+          .eq('resume_id', r.id)
+          .eq('filter_name', filterName);
       } else {
         r.filterIds.push(filterName);
+        await sb.from('resume_filter_assignments')
+          .insert({ resume_id: r.id, filter_name: filterName });
       }
-      saveResumes();
       renderResumes();
     };
 
-    function addResume(file) {
-      const id = 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-      const sizeStr = file.size < 1024 * 1024
-        ? (file.size / 1024).toFixed(0) + ' KB'
-        : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-      const resume = {
-        id,
-        name: file.name.replace(/\.(pdf|docx?|doc)$/i, ''),
-        fileName: file.name,
-        size: sizeStr,
-        isDefault: resumes.length === 0,
-        filterIds: [],
-        uploadedAt: new Date().toLocaleDateString()
-      };
-      resumes.push(resume);
-      saveResumes();
-      renderResumes();
+    function formatFileSize(bytes) {
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     }
 
-    window.setDefaultResume = function(idx) {
-      resumes.forEach((r, i) => r.isDefault = (i === idx));
-      saveResumes();
+    async function addResume(file) {
+      if (!currentUser) return;
+
+      const sizeStr = formatFileSize(file.size);
+      const ts = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `${currentUser.id}/${ts}_${safeName}`;
+
+      const { error: uploadError } = await sb.storage
+        .from('resumes')
+        .upload(filePath, file, { contentType: file.type, upsert: false });
+
+      if (uploadError) {
+        console.error('[BJ] Upload error:', uploadError);
+        alert('Upload failed: ' + uploadError.message);
+        return;
+      }
+
+      const isFirst = resumes.length === 0;
+      const { data: row, error: dbError } = await sb.from('resumes')
+        .insert({
+          user_id: currentUser.id,
+          name: file.name.replace(/\.(pdf|docx?|doc)$/i, ''),
+          file_name: file.name,
+          file_path: filePath,
+          file_size: sizeStr,
+          is_default: isFirst,
+          source: 'upload'
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error('[BJ] DB insert error:', dbError);
+        return;
+      }
+
+      row.filterIds = [];
+      resumes.push(row);
+      renderResumes();
+      console.log(`[BJ] Resume uploaded: ${file.name} -> ${filePath}`);
+    }
+
+    window.downloadResume = async function(idx) {
+      const r = resumes[idx];
+      if (!r.file_path) return;
+
+      const { data, error } = await sb.storage
+        .from('resumes')
+        .download(r.file_path);
+
+      if (error) {
+        console.error('[BJ] Download error:', error);
+        alert('Download failed');
+        return;
+      }
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = r.file_name;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    window.setDefaultResume = async function(idx) {
+      if (!currentUser) return;
+      await sb.from('resumes')
+        .update({ is_default: false })
+        .eq('user_id', currentUser.id);
+      await sb.from('resumes')
+        .update({ is_default: true })
+        .eq('id', resumes[idx].id);
+
+      resumes.forEach((r, i) => r.is_default = (i === idx));
       renderResumes();
     };
 
-    window.renameResume = function(idx) {
+    window.renameResume = async function(idx) {
       const current = resumes[idx].name;
       const input = prompt('Resume name:', current);
       if (input === null || !input.trim()) return;
-      resumes[idx].name = input.trim();
-      saveResumes();
+      const newName = input.trim();
+
+      await sb.from('resumes')
+        .update({ name: newName })
+        .eq('id', resumes[idx].id);
+
+      resumes[idx].name = newName;
       renderResumes();
     };
 
-    window.removeResume = function(idx) {
+    window.removeResume = async function(idx) {
       if (!confirm(`Remove "${resumes[idx].name}"?`)) return;
-      const wasDefault = resumes[idx].isDefault;
+      const r = resumes[idx];
+      const wasDefault = r.is_default;
+
+      if (r.file_path) {
+        await sb.storage.from('resumes').remove([r.file_path]);
+      }
+
+      await sb.from('resumes').delete().eq('id', r.id);
+
       resumes.splice(idx, 1);
-      if (wasDefault && resumes.length > 0) resumes[0].isDefault = true;
-      saveResumes();
+      if (wasDefault && resumes.length > 0) {
+        resumes[0].is_default = true;
+        await sb.from('resumes')
+          .update({ is_default: true })
+          .eq('id', resumes[0].id);
+      }
       renderResumes();
     };
 
     window.replaceResumePlaceholder = function(idx) {
-      // Create a temporary file input to replace the placeholder
       const tmpInput = document.createElement('input');
       tmpInput.type = 'file';
       tmpInput.accept = '.pdf,.doc,.docx';
-      tmpInput.addEventListener('change', () => {
+      tmpInput.addEventListener('change', async () => {
         const file = tmpInput.files[0];
         if (!file) return;
-        const sizeStr = file.size < 1024 * 1024
-          ? (file.size / 1024).toFixed(0) + ' KB'
-          : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-        // Keep existing metadata but replace file info
-        resumes[idx].fileName = file.name;
-        resumes[idx].size = sizeStr;
-        resumes[idx].needsUpload = false;
-        resumes[idx].uploadedAt = new Date().toLocaleDateString();
-        saveResumes();
+
+        const sizeStr = formatFileSize(file.size);
+        const ts = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const filePath = `${currentUser.id}/${ts}_${safeName}`;
+
+        const { error: uploadError } = await sb.storage
+          .from('resumes')
+          .upload(filePath, file, { contentType: file.type, upsert: false });
+
+        if (uploadError) {
+          alert('Upload failed: ' + uploadError.message);
+          return;
+        }
+
+        await sb.from('resumes')
+          .update({
+            file_name: file.name,
+            file_path: filePath,
+            file_size: sizeStr,
+            needs_upload: false
+          })
+          .eq('id', resumes[idx].id);
+
+        resumes[idx].file_name = file.name;
+        resumes[idx].file_path = filePath;
+        resumes[idx].file_size = sizeStr;
+        resumes[idx].needs_upload = false;
         renderResumes();
       });
       tmpInput.click();
@@ -8551,13 +8671,14 @@
       fileInput.value = '';
     });
 
-    renderResumes();
+    // Load resumes from Supabase on init
+    loadResumes();
 
-    // Create by Level — scaffold resume placeholders for each level in the hierarchy
-    $('#resume-from-level-btn').addEventListener('click', () => {
+    // Create by Level — scaffold resume placeholders
+    $('#resume-from-level-btn').addEventListener('click', async () => {
       const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
       if (levels.length === 0) {
-        alert('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.');
+        alert('No title levels configured. Go to Search Tuning -> Title Level Hierarchy to set up your levels first.');
         return;
       }
 
@@ -8571,24 +8692,30 @@
 
       if (!confirm(`Create ${newLevels.length} resume placeholder${newLevels.length > 1 ? 's' : ''} for:\n\n${newLevels.map((l, i) => `${i+1}. ${l.label}`).join('\n')}\n\nUpload the actual files to each card after.`)) return;
 
-      newLevels.forEach((lvl, i) => {
-        resumes.push({
-          id: 'res_lvl_' + Date.now() + '_' + i,
-          name: lvl.label + ' Resume',
-          fileName: 'Upload your ' + lvl.label.toLowerCase() + '-level resume',
-          size: '—',
-          isDefault: resumes.length === 0 && i === 0,
-          filterIds: [],
-          uploadedAt: new Date().toLocaleDateString(),
-          source: 'level-placeholder',
-          levelLabel: lvl.label,
-          levelColor: lvl.color || '#94a3b8',
-          needsUpload: true,
-        });
-      });
-      saveResumes();
+      for (const lvl of newLevels) {
+        const { data: row, error } = await sb.from('resumes')
+          .insert({
+            user_id: currentUser.id,
+            name: lvl.label + ' Resume',
+            file_name: 'Upload your ' + lvl.label.toLowerCase() + '-level resume',
+            file_size: '\u2014',
+            is_default: resumes.length === 0,
+            source: 'level-placeholder',
+            level_label: lvl.label,
+            level_color: lvl.color || '#94a3b8',
+            needs_upload: true
+          })
+          .select()
+          .single();
+
+        if (!error && row) {
+          row.filterIds = [];
+          resumes.push(row);
+        }
+      }
       renderResumes();
     });
+
 
     // ============================================================
     // GOOGLE DRIVE INTEGRATION
@@ -8676,22 +8803,25 @@
       renderGdriveState();
     };
 
-    window.importGdriveAsResume = function(idx) {
+    window.importGdriveAsResume = async function(idx) {
+      if (!currentUser) return;
       const f = gdriveState.files[idx];
-      const resume = {
-        id: 'res_gd_' + Date.now(),
-        name: f.name.replace(/\.(gdoc|pdf|docx?)$/i, ''),
-        fileName: f.name,
-        size: 'Google Doc',
-        isDefault: resumes.length === 0,
-        filterIds: [],
-        uploadedAt: new Date().toLocaleDateString(),
-        source: 'gdrive',
-        gdriveUrl: f.url,
-        gdriveId: f.id
-      };
-      resumes.push(resume);
-      saveResumes();
+      const isFirst = resumes.length === 0;
+      const { data: row, error } = await sb.from('resumes')
+        .insert({
+          user_id: currentUser.id,
+          name: f.name.replace(/\.(gdoc|pdf|docx?)$/i, ''),
+          file_name: f.name,
+          file_size: 'Google Doc',
+          is_default: isFirst,
+          source: 'gdrive'
+        })
+        .select()
+        .single();
+
+      if (error) { console.error('[BJ] GDrive import error:', error); return; }
+      row.filterIds = [];
+      resumes.push(row);
       renderResumes();
       alert(`"${f.name}" imported as a resume. Go to the Resumes page to assign it to filters.`);
     };
@@ -8837,7 +8967,7 @@
       if (!company) return;
       const url = prompt('Application URL (optional):') || '';
 
-      const defaultResume = resumes.find(r => r.isDefault);
+      const defaultResume = resumes.find(r => r.is_default);
       appQueue.push({
         id: 'app_' + Date.now(),
         jobTitle: title,
