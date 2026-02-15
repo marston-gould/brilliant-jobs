@@ -405,7 +405,7 @@ const features = [
   { s: 'done', n: 'Auto-suggest exclusions from hides', d: 'Detect patterns in hidden jobs and suggest adding terms to global exclusions', p: 2 },
   { s: 'done', n: 'Hidden job cards with title and link', d: 'Poor match cards show job title linking to Greenhouse spec — backfills missing titles from Supabase', p: 2 },
   { s: 'done', n: 'Visible delete buttons on level hierarchy', d: 'Level rule ✕ buttons always visible instead of hover-only', p: 2 },
-  { s: 'progress', n: 'PDL company dataset integration', d: 'ref_companies + ref_industries tables created, indexes and RLS in place. ref_companies data wiped — needs PDL CSV re-import via psql COPY. ats_companies restored (1,787 slugs).', p: 2 },
+  { s: 'done', n: 'PDL company dataset integration', d: 'ref_companies table loaded with 13,629 companies from free_company_dataset.json. Matched to ats_companies by name and domain.', p: 2 },
   { s: 'done', n: 'Company exclusion typeahead on Tuning', d: 'Searches ats_companies + connections with ATS/network badges, match highlighting, keyboard nav. Browse button opens Company Browser in exclude-only mode.', p: 2 },
   { s: 'done', n: 'Location exclusion typeahead on Tuning', d: 'Searches US states, ref_city_radius (cities/metros), location_cache, and Remote with state/metro/city/remote badges. Browse button opens Location Browser.', p: 2 },
   { s: 'done', n: 'Industry exclusion typeahead on Tuning', d: 'Searches ref_industries with category-colored badges, dropdown positioning. Browse button opens Industry Browser with category-level toggles.', p: 2 },
@@ -420,7 +420,7 @@ const features = [
   { s: 'done', n: 'Feedback form', d: 'Fixed-position Feedback button. Modal with Bug Report / Feature Request toggle, auto-detected page, Mac/Windows screenshot + console instructions, drag-drop image upload (3 files, 5MB each) to Supabase Storage. Unified feedback table handles bugs, feature_requests, exit_surveys, user_surveys with user_id association, survey_version tracking, status workflow (new→reviewed→resolved), admin_notes. RLS: auth inserts own, anon inserts exit_survey only.', p: 2 },
 
   // ═══════════════ IN PROGRESS ═══════════════
-  { s: 'progress', n: 'Company enrichment via PDL dataset', d: 'Blocked on ref_companies re-import. Once PDL CSV reloaded: match 1,787 Greenhouse companies against PDL records by domain/name/LinkedIn, backfill industry/size/location/founded.', p: 6 },
+  { s: 'done', n: 'Company enrichment via PDL dataset', d: '1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url. Remaining ~555 unmatched — backlogged for API enrichment.', p: 6 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 2.5 — Anti-detection
@@ -435,11 +435,10 @@ const features = [
   { s: 'done', n: 'Landing / marketing page', d: 'Full landing page at brilliantjobs.app: navy blue hero, feature cards (Application Tracking, Resume Management, Visual Pipeline, Resume vs JD Match), How It Works, pricing (free forever or upgrade to pay-when-hired), signup modal with LinkedIn validation. Safari compatible.', p: 3 },
   { s: 'done', n: '404 page', d: 'Branded not-found page with flickering lightbulb, glitch animation, and navigation back to dashboard', p: 3 },
   { s: 'done', n: 'Service unavailable fallback', d: '503 page with coffee break theme, auto-retry countdown, rotating jokes, Supabase status link', p: 3 },
-  { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', p: 3 },
   { s: 'done', n: 'Terms of service and privacy policy', d: 'Legal pages at /terms and /privacy with navy blue (#1a3a6e) theme matching dashboard sidebar. Humor throughout, no LinkedIn references, Savannah/GA governing law. All secondary pages (survey, uninstall) also rebranded to navy blue.', p: 3 },
   { s: 'done', n: 'Email setup (support@brilliantjobs.app)', d: 'Resend SMTP configured (port 587, DKIM verified, 30/hr rate limit). Sender: noreply@brilliantjobs.app. Cloudflare inbound routing to Gmail. Branded HTML email templates built (welcome, resume received, application confirmed, survey nudge) stored in email_templates table.', p: 3 },
   { s: 'done', n: 'Uninstall win-back page', d: 'Chrome uninstall_url opens /uninstall — 9 reason buttons with contextual prompts, "I got hired" confetti celebration, win-back offer for cost/value/bug churners (downgrade or free Pro). Links to exit survey. Stores to unified feedback table.', p: 3 },
-  { s: 'todo', n: 'Landing page survey data integration', d: 'Surface key survey stats on marketing page as social proof — "73% report being ghosted", "Avg 47 apps before first interview". Auto-updates from latest published survey results. Replaces vanity metrics with credible, original data.', p: 3 },
+  { s: 'progress', n: 'Landing page survey data integration', d: 'Stats bar placeholder exists on landing page. Next: wire to live Community Pulse survey results as social proof — user satisfaction, NPS, feature ratings. Auto-updates from latest published survey results.', p: 3 },
 
   // Phase 4 — User Management
   { s: 'done', n: 'Automated user approval', d: 'Edge Function validate-signup: LinkedIn URL validation with test profile bypass (testprofile1-3), uniqueness check, JSONB audit trail. Auto-approves valid signups, sets approved=true + approved_at.', p: 4 },
@@ -564,6 +563,7 @@ const features = [
   { s: 'todo', n: 'Referral impact reports', d: 'SEO pages: "Referral vs Cold Application Success Rates by Industry", "Companies Where Referrals Matter Most", "How Many Connections You Need for a Referral" — original data from Brilliant Jobs user outcomes', p: 10 },
 
   // Phase 11 — Beta
+  { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', p: 11 },
   { s: 'todo', n: 'Beta user onboarding (5-10 users)', d: 'Guided setup, feedback collection, bug reporting workflow', p: 11 },
   { s: 'todo', n: 'UX feedback and bug triage', d: 'Prioritize fixes based on real usage patterns', p: 11 },
   { s: 'todo', n: 'Performance testing at scale', d: 'Verify dashboard and queries handle 100K+ jobs with multiple concurrent users', p: 11 },
