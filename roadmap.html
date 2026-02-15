@@ -636,6 +636,7 @@ const features = [
   { s: 'todo', n: 'Location normalization v2', d: 'Standardize to "City, ST" format. Fix: "new york new york" → "New York, NY", "palo alto + 3" → "Palo Alto, CA +3". State abbreviation inconsistencies, Usa- prefixes, bare city names. Build ref_locations mapping table.', p: 16 },
   { s: 'done', n: 'Salary re-enrichment', d: 'Server-side SQL re-parse: HTML-encoded pay-range spans (10,922), plain text ranges with hyphens/em dashes/and/to (540), rate detection (hr/day/wk/mo/yr). 23,042 jobs now have salary (was 12,120). 72.4% of salary-mentioning jobs parsed.', p: 16 },
   { s: 'todo', n: 'Dashboard code audit', d: 'Consolidate 9K-line single-file dashboard into modules. Profile dead code, memory leaks, unnecessary re-renders. Audit Supabase queries for payload size and timeout risk.', p: 16 },
+  { s: 'todo', n: 'Per-page help footer with explainer icon', d: 'Thin sticky footer on every page (Feed, Tuning, Resumes, Applications, Pipeline, Ghost Monitor, Stats, Settings, Subscription) with a ? icon that opens contextual help/explainer. Content scrolls above it. Feed pagination always visible above the footer.', p: 16 },
   { s: 'todo', n: 'Enrich remaining ~555 unmatched companies', d: 'Companies not in PDL free dataset — try Greenhouse API board metadata, LinkedIn scrape, or paid PDL API', p: 16 },
   { s: 'todo', n: 'Catch remaining unparsed salary formats', d: '~8K jobs mention salary but not yet captured. Edge cases: missing $ on max, K notation, single salary values, non-standard separators.', p: 16 },
 ];
