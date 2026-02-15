@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.42 - 2026-02-15 - How-this-works CTAs, text-link resume actions, pipeline color cleanup, version alignment -->
+<!-- Brilliant Jobs Dashboard v2.43 - 2026-02-15 - Remove Create by Level, pipeline staleness dots, Day Applied column, Days In Stage -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2285,25 +2285,17 @@
           </div>
 
           <!-- Upload Zone -->
-          <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-            <div class="resume-upload-zone" id="resume-upload-zone" style="flex:1;min-width:280px;margin-bottom:0;">
+          <div class="resume-upload-zone" id="resume-upload-zone" style="margin-bottom:20px;">
               <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
               <h4>Drop resumes here or click to upload</h4>
               <p>PDF, DOC, or DOCX — up to 5MB each</p>
-            </div>
-            <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:8px;justify-content:center;">
-              <button class="btn btn-sm" id="resume-from-level-btn" style="padding:10px 18px;font-size:12px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:10px;cursor:pointer;white-space:nowrap;">
-                + Create by Level
-              </button>
-              <div style="font-size:10px;color:var(--text-faint);text-align:center;max-width:130px;">Auto-generate resume placeholders for each title level</div>
-            </div>
           </div>
 
           <!-- Resume Cards Grid -->
           <div class="resume-grid" id="resume-grid">
             <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
               <h3>No resumes uploaded</h3>
-              <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level you're targeting.</p>
+              <p>Upload your first resume to get started.</p>
             </div>
           </div>
 
@@ -2732,7 +2724,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.42 loaded');
+    console.log('[BJ] Dashboard v2.43 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -7951,8 +7943,8 @@
         }
 
         let html = '<table class="pl-table"><thead><tr>';
-        html += '<th>Title</th><th>Company</th><th>Resume</th><th>Filters</th>';
-        html += '<th>Discovered</th><th>Days to Apply</th><th>Days Since</th>';
+        html += '<th></th><th>Title</th><th>Company</th><th>Resume</th><th>Filters</th>';
+        html += '<th>Discovered</th><th>Day Applied</th><th>Days In Stage</th>';
         html += '<th>Match</th><th>Move</th><th></th>';
         html += '</tr></thead><tbody>';
 
@@ -7962,12 +7954,34 @@
           const title = j ? (j.title || 'Untitled') : 'Unknown job';
           const company = j ? (j.company_name || '') : '';
           const discovered = j?.first_seen_at ? new Date(j.first_seen_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
-          const discoveredDate = j?.first_seen_at ? new Date(j.first_seen_at) : null;
           const appliedDate = m.appliedAt ? new Date(m.appliedAt) : null;
-          const daysToApply = discoveredDate && appliedDate ? Math.max(0, Math.floor((appliedDate - discoveredDate) / 86400000)) : '—';
-          const daysSince = appliedDate ? Math.floor((now - appliedDate) / 86400000) : (m.savedAt ? Math.floor((now - new Date(m.savedAt)) / 86400000) : '—');
-          const daysSinceColor = typeof daysSince === 'number' && daysSince > 14 ? 'color:var(--warm);' : typeof daysSince === 'number' && daysSince > 30 ? 'color:var(--red);' : '';
+          const dayApplied = appliedDate ? appliedDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
           const resumeName = m.resumeUsed || '—';
+
+          // Days in current stage — use the most recent stage timestamp
+          const stageDate = m.respondedAt ? new Date(m.respondedAt) :
+                            m.appliedAt ? new Date(m.appliedAt) :
+                            m.savedAt ? new Date(m.savedAt) : null;
+          const daysInStage = stageDate ? Math.floor((now - stageDate) / 86400000) : '—';
+
+          // Staleness dot — stage-specific thresholds
+          let staleDot = '';
+          if (typeof daysInStage === 'number') {
+            const staleRules = {
+              saved:     { yellow: 5, red: 7 },
+              applied:   { yellow: 7, red: 14 },
+              responded: { yellow: 7, red: 14 },
+              interview: { yellow: 7, red: 14 },
+            };
+            const rule = staleRules[stage];
+            if (rule) {
+              if (daysInStage >= rule.red) {
+                staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);" title="' + daysInStage + 'd — needs attention"></span>';
+              } else if (daysInStage >= rule.yellow) {
+                staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;" title="' + daysInStage + 'd in stage"></span>';
+              }
+            }
+          }
 
           // Filter tag badges
           const filterBadges = (m.filterTags || []).map(tag => {
@@ -7987,13 +8001,14 @@
           }).join('');
 
           html += '<tr data-jobid="' + item.id + '">';
+          html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
           html += '<td class="pl-title" onclick="openJobModal(\'' + item.id + '\')" title="' + title.replace(/"/g, '&quot;') + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</td>';
           html += '<td class="pl-company" title="' + company.replace(/"/g, '&quot;') + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
           html += '<td>' + (resumeName !== '—' ? '<span class="pl-resume-badge" title="' + resumeName + '">' + resumeName + '</span>' : '<span style="color:var(--text-faint);font-size:11px;">—</span>') + '</td>';
           html += '<td>' + (filterBadges || '<span style="color:var(--text-faint);font-size:10px;">—</span>') + '</td>';
           html += '<td class="pl-date">' + discovered + '</td>';
-          html += '<td class="pl-days">' + daysToApply + (typeof daysToApply === 'number' ? 'd' : '') + '</td>';
-          html += '<td class="pl-days" style="' + daysSinceColor + '">' + daysSince + (typeof daysSince === 'number' ? 'd' : '') + '</td>';
+          html += '<td class="pl-date">' + dayApplied + '</td>';
+          html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
           html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
           html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
           html += '<td><button class="job-action-btn hide-btn" onclick="unsaveFromPipeline(\'' + item.id + '\')" style="padding:2px 6px;font-size:9px;" title="Remove from pipeline">✕</button></td>';
@@ -9352,7 +9367,7 @@
       if (activeResumes.length === 0) {
         grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
           <h3>No resumes uploaded</h3>
-          <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level.</p>
+          <p>Upload your first resume to get started.</p>
         </div>`;
         renderResumeArchive(archivedResumes);
         return;
@@ -9782,7 +9797,7 @@
     renderResumes();
 
     // Create by Level — scaffold resume placeholders for each level in the hierarchy
-    $('#resume-from-level-btn').addEventListener('click', () => {
+    $('#resume-from-level-btn')?.addEventListener('click', () => {
       const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
       if (levels.length === 0) {
         alert('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.');
@@ -10339,7 +10354,7 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.42',
+        dashboard_version: 'v2.43',
       };
 
       try {
