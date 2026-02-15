@@ -1,4 +1,4 @@
-console.log('[BJ] Dashboard v2.57 loaded');
+console.log('[BJ] Dashboard v2.58 loaded');
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -113,9 +113,13 @@ const _helpContent = {
     'Keyword extraction shows how well each resume matches job descriptions.',
   ]},
   applications: { title: 'Applications', steps: [
-    'View detailed history of every job you applied to.',
-    'Track which resume was used for each application.',
-    'Monitor response timelines and follow-up reminders.',
+    'Queue tab: manage pending applications (manual add, batch process).',
+    'Rules tab: set default application mode (Manual, Notify, Auto) and auto-apply rules.',
+    'Notifications tab: configure email/SMS preferences for every alert type.',
+    'Verify your phone to unlock SMS notifications and escalation.',
+    'Set escalation rules: unanswered emails auto-escalate to SMS after your timeout.',
+    'Override notification settings per saved filter for targeted control.',
+    'History tab: full audit trail of applications and notification delivery log.',
   ]},
   ghost: { title: 'Ghost Monitor', steps: [
     'Coming soon: Track which companies view your profile after applying.',
