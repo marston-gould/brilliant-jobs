@@ -3,16 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Brilliant Jobs — 116,000+ Jobs. Power Filters. Zero Noise.</title>
-  <meta name="description" content="The job search command center that aggregates thousands of openings from top companies, gives you Ahrefs-level filters, and surfaces salary data buried in job specs.">
-  <meta property="og:title" content="Brilliant Jobs — Stop Checking Twelve Tabs">
-  <meta property="og:description" content="116,000+ jobs from 1,900+ companies. Power filters, salary extraction, and your LinkedIn network mapped to every listing.">
+  <title>Brilliant Jobs — The Job Search for People Who Hate Job Boards</title>
+  <meta name="description" content="We pull jobs directly from company career pages, extract hidden salary data, and track which companies actually respond. Built for the person applying, not the company posting.">
+  <meta property="og:title" content="Brilliant Jobs — The Job Search for People Who Hate Job Boards">
+  <meta property="og:description" content="Jobs from 1,900+ company career pages. Salary extraction. Ghost rate tracking. Built for you, not employers.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://brilliantjobs.app">
   <meta property="og:image" content="https://brilliantjobs.app/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Brilliant Jobs — Stop Checking Twelve Tabs">
-  <meta name="twitter:description" content="116,000+ jobs. Power filters. Salary extraction. Your network mapped.">
+  <meta name="twitter:title" content="Brilliant Jobs — The Job Search for People Who Hate Job Boards">
+  <meta name="twitter:description" content="Jobs from 1,900+ company career pages. Salary extraction. Ghost rate tracking.">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a3a6e'/><text x='50%25' y='55%25' dominant-baseline='central' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='18' fill='white'>B</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,9 +82,8 @@
 
     /* ======================== HERO ======================== */
     .hero {
-      padding: 140px 32px 80px; text-align: center; position: relative; overflow: hidden;
-      background: var(--nav-bg);
-      color: #fff;
+      padding: 140px 32px 88px; text-align: center; position: relative; overflow: hidden;
+      background: var(--nav-bg); color: #fff;
     }
     .hero::after {
       content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -96,7 +95,7 @@
     .hero::before {
       content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
       background: linear-gradient(to bottom, transparent, var(--bg-main));
-      pointer-events: none;
+      pointer-events: none; z-index: 2;
     }
     .hero-label {
       display: inline-flex; align-items: center; gap: 8px;
@@ -111,19 +110,21 @@
     }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
     .hero h1 {
-      font-size: clamp(36px, 5.5vw, 64px);
-      font-weight: 800; line-height: 1.1; margin-bottom: 20px;
-      max-width: 780px; margin-left: auto; margin-right: auto;
-      letter-spacing: -0.02em; position: relative; z-index: 1;
+      font-size: clamp(36px, 5.5vw, 62px);
+      font-weight: 800; line-height: 1.08; margin-bottom: 24px;
+      max-width: 800px; margin-left: auto; margin-right: auto;
+      letter-spacing: -0.025em; position: relative; z-index: 1;
     }
     .hero h1 .accent { color: var(--accent); }
     .hero-sub {
-      font-size: 18px; color: rgba(255,255,255,0.65); max-width: 560px;
-      margin: 0 auto 40px; line-height: 1.6; font-weight: 300;
+      font-size: 18px; color: rgba(255,255,255,0.6); max-width: 580px;
+      margin: 0 auto 40px; line-height: 1.65; font-weight: 300;
       position: relative; z-index: 1;
     }
-    .hero-ctas { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; z-index: 1; }
-
+    .hero-ctas {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+      position: relative; z-index: 1;
+    }
     .btn {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 14px 28px; border: none; border-radius: 10px;
@@ -139,15 +140,9 @@
     .btn-ghost:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
 
     /* ======================== LIVE STATS BAR ======================== */
-    .stats-bar {
-      padding: 48px 32px 0; text-align: center; position: relative; z-index: 1;
-    }
-    .stats-row {
-      display: flex; justify-content: center; gap: 48px; flex-wrap: wrap;
-    }
-    .stat-item {
-      text-align: center;
-    }
+    .stats-bar { padding: 48px 32px 0; text-align: center; position: relative; z-index: 1; }
+    .stats-row { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+    .stat-item { text-align: center; }
     .stat-num {
       font-family: var(--mono); font-size: 32px; font-weight: 600;
       color: var(--text); line-height: 1;
@@ -158,29 +153,6 @@
     .stat-label {
       font-size: 13px; color: var(--text-faint); margin-top: 6px;
       text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
-    }
-
-    /* ======================== SOURCE BAR ======================== */
-    .source-bar {
-      padding: 40px 32px 0; text-align: center;
-    }
-    .source-bar p {
-      font-size: 12px; text-transform: uppercase; letter-spacing: 2px;
-      color: var(--text-faint); margin-bottom: 16px; font-weight: 600;
-    }
-    .source-logos {
-      display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;
-      align-items: center;
-    }
-    .source-logos .src-active {
-      font-family: var(--mono); font-size: 13px; color: var(--text-dim);
-      padding: 6px 14px; border: 1px solid var(--border); border-radius: 6px;
-      background: var(--bg-card);
-    }
-    .source-logos .src-soon {
-      font-family: var(--mono); font-size: 13px; color: var(--text-faint);
-      padding: 6px 14px; border: 1px dashed var(--border); border-radius: 6px;
-      opacity: 0.6;
     }
 
     /* ======================== SECTIONS ======================== */
@@ -195,44 +167,83 @@
       letter-spacing: -0.01em;
     }
     .section-desc {
-      font-size: 16px; color: var(--text-dim); max-width: 560px;
+      font-size: 16px; color: var(--text-dim); max-width: 580px;
       line-height: 1.6; margin-bottom: 48px; font-weight: 300;
     }
 
-    /* ======================== FEATURES ======================== */
-    .feature-grid {
+    /* ======================== RIGGED GAME ======================== */
+    .rigged-section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 40px 32px; margin-bottom: 32px;
+      position: relative; overflow: hidden;
+    }
+    .rigged-section::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--red), var(--warm), var(--red));
+      background-size: 200% 100%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .rigged-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 24px;
+    }
+    .rigged-item { text-align: center; padding: 20px 16px; }
+    .rigged-icon { font-size: 28px; margin-bottom: 12px; opacity: 0.7; }
+    .rigged-item h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .rigged-item p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+    /* ======================== COMPARISON TABLE ======================== */
+    .compare-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .compare-table th {
+      padding: 16px 20px; text-align: left;
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-faint);
+      background: var(--bg-input);
+    }
+    .compare-table th:nth-child(3) { color: var(--accent); }
+    .compare-table td {
+      padding: 14px 20px; font-size: 14px; color: var(--text-dim);
+      border-top: 1px solid var(--border); line-height: 1.5;
+    }
+    .compare-table td:first-child {
+      font-weight: 600; color: var(--text); font-size: 13px; width: 140px;
+    }
+    .compare-table td:nth-child(3) { color: var(--text); font-weight: 500; }
+
+    /* ======================== BENEFITS ======================== */
+    .benefit-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
     }
-    .feature-card {
+    .benefit-card {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 14px; padding: 28px;
       transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
       border-top: 2px solid transparent;
     }
-    .feature-card:hover { border-color: var(--border-hover); border-top-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-    .feature-icon {
+    .benefit-card:hover {
+      border-color: var(--border-hover); transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06); border-top-color: var(--accent);
+    }
+    .benefit-icon {
       width: 44px; height: 44px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       font-size: 20px; margin-bottom: 16px;
     }
-    .feature-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
-    .feature-card p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+    .benefit-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .benefit-card p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
 
     /* ======================== FILTER PREVIEW ======================== */
     .filter-preview {
       background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 14px; padding: 32px; margin-top: 48px;
-      overflow: hidden;
+      border-radius: 14px; padding: 32px; margin-top: 48px; overflow: hidden;
     }
-    .filter-preview h3 {
-      font-size: 18px; font-weight: 600; margin-bottom: 4px;
-    }
-    .filter-preview .sub {
-      font-size: 13px; color: var(--text-faint); margin-bottom: 24px;
-    }
-    .filter-demo {
-      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
-    }
+    .filter-preview h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .filter-preview .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 24px; }
+    .filter-demo { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
     .filter-pill {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
@@ -248,34 +259,39 @@
     }
     .filter-result strong { color: var(--accent); font-weight: 600; }
 
-    /* ======================== COMING SOON ======================== */
-    .coming-soon-section {
+    /* ======================== GHOST SECTION ======================== */
+    .ghost-section {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-      padding: 48px 32px; text-align: center; position: relative; overflow: hidden;
+      padding: 48px 32px; position: relative; overflow: hidden;
     }
-    .coming-soon-section::before {
+    .ghost-section::before {
       content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+      background: linear-gradient(90deg, var(--accent), var(--green), var(--accent));
       background-size: 200% 100%;
       animation: shimmer 3s linear infinite;
     }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-    .cs-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 14px; background: var(--purple-dim);
-      border: 1px solid rgba(139,92,246,0.2); border-radius: 20px;
-      font-size: 12px; font-weight: 600; color: var(--purple); margin-bottom: 16px;
+    .ghost-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 32px; align-items: start;
     }
-    .coming-soon-section h3 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-    .coming-soon-section .cs-desc { font-size: 15px; color: var(--text-dim); max-width: 520px; margin: 0 auto 24px; line-height: 1.6; }
-    .cs-features {
-      display: flex; justify-content: center; gap: 24px; flex-wrap: wrap;
+    .ghost-stat-card {
+      background: var(--bg-input); border-radius: 10px; padding: 20px 24px;
     }
-    .cs-feature {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 14px; color: var(--text-dim);
+    .ghost-stat-card h4 {
+      font-size: 13px; color: var(--text-faint); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
     }
-    .cs-feature .cs-icon { color: var(--purple); font-size: 16px; }
+    .ghost-stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    .ghost-stat-row:last-child { border-bottom: none; }
+    .ghost-stat-row .val { font-family: var(--mono); font-weight: 600; }
+    .ghost-stat-row .val.good { color: var(--green); }
+    .ghost-stat-row .val.bad { color: var(--red); }
+    .ghost-stat-row .val.mid { color: var(--warm); }
+
+    /* ======================== PULSE ======================== */
+    .pulse-grid { display: grid; grid-template-columns: 1fr 1.8fr; gap: 24px; align-items: start; }
 
     /* ======================== STEPS ======================== */
     .steps {
@@ -310,9 +326,7 @@
     }
     .price-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
     .price-desc { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
-    .price-amount {
-      font-family: var(--mono); font-size: 36px; font-weight: 600; margin-bottom: 4px;
-    }
+    .price-amount { font-family: var(--mono); font-size: 36px; font-weight: 600; margin-bottom: 4px; }
     .price-period { font-size: 13px; color: var(--text-faint); margin-bottom: 24px; }
     .price-features { list-style: none; margin-bottom: 24px; }
     .price-features li {
@@ -354,8 +368,7 @@
     }
     .modal-close {
       position: absolute; top: 12px; right: 16px; background: none;
-      border: none; font-size: 24px; color: var(--text-faint); cursor: pointer;
-      line-height: 1;
+      border: none; font-size: 24px; color: var(--text-faint); cursor: pointer; line-height: 1;
     }
     .modal-close:hover { color: var(--text); }
     .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
@@ -437,6 +450,7 @@
 
     .fade-up { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .fade-up.visible { opacity: 1; transform: translateY(0); }
+    #pulse-chart { display: none; }
 
     @media (max-width: 768px) {
       .site-nav { padding: 0 16px; }
@@ -445,26 +459,27 @@
       .hero h1 { font-size: 32px; }
       .hero-sub { font-size: 16px; }
       .section { padding: 48px 20px; }
-      .feature-grid, .pricing-grid { grid-template-columns: 1fr; }
+      .benefit-grid, .pricing-grid { grid-template-columns: 1fr; }
       .modal { margin: 16px; }
       .stats-row { gap: 20px; }
       .stat-num { font-size: 24px; }
       .stat-label { font-size: 11px; letter-spacing: 0.5px; }
       .filter-demo { gap: 6px; }
       .filter-pill { font-size: 12px; padding: 5px 10px; }
-      .cs-features { flex-direction: column; align-items: center; }
+      .rigged-grid { grid-template-columns: 1fr; gap: 12px; }
+      .ghost-grid { grid-template-columns: 1fr; }
       .pulse-grid { grid-template-columns: 1fr !important; }
       .steps { grid-template-columns: 1fr 1fr; gap: 20px; }
-      .source-logos { gap: 8px; }
       .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
       .hero-ctas .btn { width: 100%; max-width: 280px; justify-content: center; }
+      .compare-table th, .compare-table td { padding: 10px 12px; font-size: 12px; }
+      .compare-table td:first-child { width: 100px; }
     }
     @media (max-width: 480px) {
       .steps { grid-template-columns: 1fr; }
       .stats-row { flex-direction: column; gap: 16px; }
       .pricing-grid { gap: 16px; }
     }
-    #pulse-chart { display: none; }
   </style>
 </head>
 <body>
@@ -472,27 +487,26 @@
   <nav class="site-nav">
     <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#pulse">Pulse</a>
+      <a href="#why">Why</a>
+      <a href="#benefits">Benefits</a>
       <a href="#how-it-works">How It Works</a>
       <a href="#pricing">Pricing</a>
-      <a href="/help">Help</a>
       <a href="javascript:void(0)" class="nav-cta" id="nav-login-btn">Log In</a>
     </div>
   </nav>
 
-  <!-- HERO -->
+  <!-- ==================== HERO ==================== -->
   <section class="hero">
     <div class="hero-label"><span class="dot"></span> Now in private beta</div>
-    <h1>Stop checking<br>twelve tabs.<br><span class="accent">Check one.</span></h1>
-    <p class="hero-sub">Brilliant Jobs aggregates <span id="lp-hero-jobs">110,000+</span> openings from <span id="lp-hero-companies">1,900+</span> companies into one command center with power filters, salary data, and your LinkedIn network mapped to every listing.</p>
+    <h1>The job search for people who are <span class="accent">done with job boards.</span></h1>
+    <p class="hero-sub">Job boards work for employers. We work for you. Real jobs from <span id="lp-hero-jobs">1,900+</span> company career pages, salary data they don't want you to see, and the first public record of which companies actually respond.</p>
     <div class="hero-ctas">
-      <button class="btn btn-primary" id="hero-signup-btn">Get Early Access — Free</button>
-      <a href="#features" class="btn btn-ghost">See Features</a>
+      <button class="btn btn-primary" id="hero-signup-btn">Get Started — It's Free</button>
+      <a href="#why" class="btn btn-ghost">See Why It's Different</a>
     </div>
   </section>
 
-  <!-- LIVE STATS -->
+  <!-- ==================== STATS BAR ==================== -->
   <div class="stats-bar fade-up">
     <div class="stats-row">
       <div class="stat-item">
@@ -501,93 +515,143 @@
       </div>
       <div class="stat-item">
         <div class="stat-num" id="lp-companies">—</div>
-        <div class="stat-label">Companies</div>
+        <div class="stat-label">Company Career Pages</div>
       </div>
       <div class="stat-item">
         <div class="stat-num" id="lp-metros">—</div>
         <div class="stat-label">Metro Areas</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">24hr</div>
+        <div class="stat-num">Daily</div>
         <div class="stat-label">Refresh Cycle</div>
       </div>
     </div>
   </div>
 
-  <!-- SOURCE BAR -->
-  <div class="source-bar fade-up">
-    <p>Aggregating jobs from</p>
-    <div class="source-logos">
-      <span class="src-active">Greenhouse</span>
-      <span class="src-soon">Lever — soon</span>
-      <span class="src-soon">Ashby — soon</span>
-      <span class="src-soon">Workable — soon</span>
+  <!-- ==================== THE RIGGED GAME ==================== -->
+  <section class="section fade-up" id="why">
+    <div class="section-label">The Problem</div>
+    <h2>The job search is rigged.<br>Not against you specifically — against everyone who isn't paying.</h2>
+    <p class="section-desc">The biggest job sites are designed to maximize your time on their platform, not minimize your time searching. You already know this. You feel it every time you see "Easy Apply" on a role that was filled six weeks ago.</p>
+
+    <div class="rigged-section">
+      <div class="rigged-grid">
+        <div class="rigged-item">
+          <div class="rigged-icon">💰</div>
+          <h4>They show you what employers pay to promote</h4>
+          <p>Sponsored listings get priority. Organic postings get buried. You're not seeing the best jobs — you're seeing the ones with the biggest ad budgets.</p>
+        </div>
+        <div class="rigged-item">
+          <div class="rigged-icon">👻</div>
+          <h4>Ghost listings stay up because engagement is the product</h4>
+          <p>"Actively Hiring" badges on 90-day-old posts. Roles that were filled weeks ago. They stay up because every click is revenue.</p>
+        </div>
+        <div class="rigged-item">
+          <div class="rigged-icon">🕳️</div>
+          <h4>You apply into a black hole with no feedback</h4>
+          <p>No match score. No response tracking. No way to know if your resume was even read. Just silence, and a notification to keep applying.</p>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- FEATURES -->
-  <section class="section fade-up" id="features">
-    <div class="section-label">Features</div>
-    <h2>Job search tools built for people<br>who are tired of the bullshit</h2>
-    <p class="section-desc">Job boards show you listings. We give you a command center with filters, intelligence, and your network — so you can find the right job, not just any job.</p>
+    <!-- COMPARISON TABLE -->
+    <table class="compare-table fade-up">
+      <thead>
+        <tr><th></th><th>Job Boards</th><th>Brilliant Jobs</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>What you see</td>
+          <td>What employers pay to promote</td>
+          <td>Every opening from 1,900+ career pages — no boosted listings</td>
+        </tr>
+        <tr>
+          <td>Salary info</td>
+          <td>"Competitive compensation"</td>
+          <td>Extracted salary ranges, including multi-city breakdowns</td>
+        </tr>
+        <tr>
+          <td>Stale listings</td>
+          <td>"Actively hiring" badges on 90-day-old posts</td>
+          <td>Closed jobs removed daily. Ghost listings flagged.</td>
+        </tr>
+        <tr>
+          <td>Ghosting</td>
+          <td>A black hole</td>
+          <td>Published ghost rates and average response times</td>
+        </tr>
+        <tr>
+          <td>Your resume</td>
+          <td>One file for every application</td>
+          <td>Multiple versions, each mapped to specific searches</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td>None</td>
+          <td>Match scoring before you apply — see what's missing</td>
+        </tr>
+        <tr>
+          <td>Who pays</td>
+          <td>Employers. You're the product.</td>
+          <td>You — or nobody. We win when you get hired.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
 
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="feature-icon" style="background:var(--accent-glow);color:var(--accent);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
-        <h3>Power Filters</h3>
-        <p>Five filter dimensions — WHAT (title, level, department), WHERE (city radius, state, remote), WHO (company, size), WHEN (posted date), HOW MUCH (salary). Combine them like a pro.</p>
+  <!-- ==================== BENEFITS ==================== -->
+  <section class="section fade-up" id="benefits">
+    <div class="section-label">What You Get</div>
+    <h2>Built for the person applying,<br>not the company posting.</h2>
+    <p class="section-desc">Every feature exists to save you time, show you the truth, or help you land the right job — not to sell your attention to recruiters.</p>
+
+    <div class="benefit-grid">
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--warm-dim);color:var(--warm);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m12.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"/></svg></div>
+        <h3>See what they're actually paying</h3>
+        <p>We extract salary ranges buried in job descriptions — including companies that list different pay for different cities. Set a floor. Never waste time on a role that's $40K below your range.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:var(--green-dim);color:var(--green);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m12.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"/></svg></div>
-        <h3>Salary Extraction</h3>
-        <p>We parse salary ranges buried in job descriptions — including multi-zone postings where companies list different ranges for different regions. See the full pay picture before you apply.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--accent-glow);color:var(--accent);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+        <h3>Stop seeing jobs you'd never take</h3>
+        <p>Title, location radius, salary, company size, remote, industry — combined in one search. Exclude companies and keywords permanently. Your feed gets cleaner every session.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:var(--purple-dim);color:var(--purple);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M16 8a6 6 0 01-8 5.66V14a2 2 0 01-2 2H4m0 0v2m0-2h2m10-6a6 6 0 00-4-5.66"/><circle cx="12" cy="8" r="2"/></svg></div>
-        <h3>Network Intelligence</h3>
-        <p>Your LinkedIn connections are mapped to every company in our database. See which openings are at companies where you already have an inside connection.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--red-dim);color:var(--red);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <h3>Know who ghosts and who doesn't</h3>
+        <p>Community-powered data on which companies respond and how long it takes. Ghost rates published publicly. For the first time, employers have a reason to actually get back to you.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:var(--warm-dim);color:var(--warm);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
-        <h3>Saved Filters with Counts</h3>
-        <p>Save your searches. See how many new jobs matched in the last 1 day, 7 days, and 30 days. Never miss a new posting in your target search.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--green-dim);color:var(--green);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Your search runs while you sleep</h3>
+        <p>Save your filters once. We check for new matches every day and show you what's new in the last 1, 7, or 30 days. Email and SMS alerts when something hits. Stop refreshing.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(6,182,212,0.12);color:#06b6d4;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-        <h3>Location Radius Search</h3>
-        <p>Search by city with intelligent radius matching — not just text matching. "Portland, OR (12.6 mi)" finds jobs in the metro area, not every mention of Portland worldwide.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--purple-dim);color:var(--purple);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+        <h3>Send the right resume every time</h3>
+        <p>Upload different versions for different types of roles. Your leadership resume goes with director searches. Your technical resume goes with IC roles. Automatically matched.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(236,72,153,0.12);color:#ec4899;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg></div>
-        <h3>Smart Exclusions</h3>
-        <p>Tune out the noise permanently. Exclude companies, locations, title keywords, and industries you never want to see again. Your feed gets smarter every session.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(251,146,60,0.12);color:#fb923c;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5-3a9 9 0 11-6.22-2.18"/></svg></div>
+        <h3>See what's missing before you apply</h3>
+        <p>We compare your resume against the actual language in the job posting. Real keyword frequency from real postings. You see exactly what to add and what's already strong.</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(16,185,129,0.12);color:#10b981;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 14l2 2 4-4"/></svg></div>
-        <h3>Application Tracking</h3>
-        <p>Track every application from click to offer. Manual logging, auto-detection from LinkedIn Easy Apply, or email notifications — your choice. Never lose track of where you stand.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(244,114,182,0.12);color:#f472b6;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div>
+        <h3>Track everything without a spreadsheet</h3>
+        <p>A visual pipeline from "interested" through "applied" to "heard back." Aging badges tell you when silence crosses from "they're busy" into "you got ghosted."</p>
       </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(99,102,241,0.12);color:#6366f1;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
-        <h3>Resume Management</h3>
-        <p>Upload multiple resumes and associate each one with specific saved filters. SEO resume for SEO searches. Marketing resume for marketing. The right version goes with the right job.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(244,114,182,0.12);color:#f472b6;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div>
-        <h3>Visual Pipeline</h3>
-        <p>Kanban-style board showing every active application by stage: Applied → Screening → Interview → Offer. Drag to update. Spot bottlenecks at a glance.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon" style="background:rgba(251,146,60,0.12);color:#fb923c;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5-3a9 9 0 11-6.22-2.18"/></svg></div>
-        <h3>Resume vs. Job Spec Match</h3>
-        <p>Side-by-side comparison showing how your resume stacks up against a specific job description. See what's missing, what's strong, and what to tweak before you apply.</p>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(6,182,212,0.12);color:#06b6d4;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3>Search by where you actually live</h3>
+        <p>Location radius search — not text matching. "Portland, OR (12.6 mi)" finds jobs in the metro without pulling every Portland on Earth. Multiple cities and remote in one search.</p>
       </div>
     </div>
 
     <!-- FILTER DEMO -->
     <div class="filter-preview fade-up">
       <h3>See it in action</h3>
-      <div class="sub">Build complex searches in seconds — like a Bloomberg terminal for jobs.</div>
+      <div class="sub">Combine any filter in seconds. Save it. It runs every day.</div>
       <div class="filter-demo">
         <span class="filter-pill pill-what"><span class="pill-label">what</span> SEO, growth, organic</span>
         <span class="filter-pill pill-where"><span class="pill-label">where</span> Portland, OR (12.6mi)</span>
@@ -601,14 +665,40 @@
     </div>
   </section>
 
-  <!-- COMMUNITY PULSE -->
+  <!-- ==================== GHOST TRANSPARENCY ==================== -->
+  <section class="section fade-up">
+    <div class="ghost-section">
+      <div class="section-label" style="color:var(--green);">Employer Accountability</div>
+      <h2 style="margin-bottom:8px;">The first public record of who responds<br>and who ghosts.</h2>
+      <p style="font-size:15px;color:var(--text-dim);max-width:560px;line-height:1.6;">No job board publishes this data — because employers are their paying customers. We publish it because you deserve to know before you invest your time applying.</p>
+
+      <div class="ghost-grid">
+        <div class="ghost-stat-card">
+          <h4>What you'll see per company</h4>
+          <div class="ghost-stat-row"><span>Ghost rate</span><span class="val bad">71%</span></div>
+          <div class="ghost-stat-row"><span>Avg. days to first response</span><span class="val mid">18 days</span></div>
+          <div class="ghost-stat-row"><span>Applications tracked</span><span class="val">142</span></div>
+          <div class="ghost-stat-row"><span>Community rating</span><span class="val good">3.2 / 5</span></div>
+        </div>
+        <div class="ghost-stat-card">
+          <h4>How it works</h4>
+          <div style="font-size:14px;color:var(--text-dim);line-height:1.7;padding:4px 0;">
+            <p style="margin-bottom:12px;">When you apply through Brilliant Jobs, we track the outcome. Did you hear back? How long did it take? Did the role close without any response?</p>
+            <p style="margin-bottom:12px;">Aggregate that across our community and every company gets a public accountability score — visible to you before you apply, and visible to them when they search for themselves.</p>
+            <p>Companies that respond promptly get recognized. Companies that ghost get a public track record. <strong>That's never existed before.</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== COMMUNITY PULSE ==================== -->
   <section class="section fade-up" id="pulse">
     <div class="section-label">Community Pulse</div>
     <h2>How job seekers are feeling right now.</h2>
     <p class="section-desc">Real sentiment from real users. Updated weekly from anonymous surveys across the Brilliant Jobs community.</p>
 
-      <div class="pulse-grid" style="display:grid;grid-template-columns:1fr 1.8fr;gap:24px;align-items:start;">
-      <!-- Current Score -->
+    <div class="pulse-grid">
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:32px;text-align:center;">
         <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Brilliance Index</div>
         <div id="pulse-score" style="font-family:var(--mono);font-size:64px;font-weight:600;line-height:1;margin-bottom:4px;color:var(--text);">—</div>
@@ -617,14 +707,10 @@
           <div id="pulse-bar" style="height:100%;border-radius:4px;width:0%;transition:width 1s ease;"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);">
-          <span>Frustrated</span>
-          <span>Hopeful</span>
-          <span>Brilliant</span>
+          <span>Frustrated</span><span>Hopeful</span><span>Brilliant</span>
         </div>
         <div id="pulse-respondents" style="font-size:12px;color:var(--text-faint);margin-top:16px;font-family:var(--mono);">0 responses</div>
       </div>
-
-      <!-- Historical Chart -->
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:32px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
           <div>
@@ -632,8 +718,8 @@
             <div style="font-size:13px;color:var(--text-faint);">Weekly community sentiment trend</div>
           </div>
           <div style="display:flex;gap:8px;">
-            <span class="pulse-legend" style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);"><span style="width:8px;height:8px;border-radius:2px;background:var(--accent);"></span> Score</span>
-            <span class="pulse-legend" style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);opacity:0.5;"></span> Responses</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);"><span style="width:8px;height:8px;border-radius:2px;background:var(--accent);"></span> Score</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-faint);"><span style="width:8px;height:8px;border-radius:2px;background:var(--green);opacity:0.5;"></span> Responses</span>
           </div>
         </div>
         <canvas id="pulse-chart" height="180"></canvas>
@@ -644,54 +730,36 @@
     </div>
   </section>
 
-  <!-- COMING SOON: GHOST MONITORING -->
-  <section class="section fade-up">
-    <div class="coming-soon-section">
-      <div class="cs-badge">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-        Coming Soon
-      </div>
-      <h3>Ghost Rate Transparency</h3>
-      <p class="cs-desc">Community-powered data on which companies respond and which ghost you. Average response times, ghost rates, and hiring reputation — all published publicly.</p>
-      <div class="cs-features">
-        <div class="cs-feature"><span class="cs-icon">✦</span> Gmail integration for auto-detection</div>
-        <div class="cs-feature"><span class="cs-icon">✦</span> Company response time tracking</div>
-        <div class="cs-feature"><span class="cs-icon">✦</span> Public accountability scores</div>
-        <div class="cs-feature"><span class="cs-icon">✦</span> Application pipeline tracking</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- HOW IT WORKS -->
+  <!-- ==================== HOW IT WORKS ==================== -->
   <section class="section fade-up" id="how-it-works">
     <div class="section-label">How It Works</div>
-    <h2>Set up once. Search smarter forever.</h2>
-    <p class="section-desc">Sign up, install the Chrome extension, and your entire job search levels up.</p>
+    <h2>Set up once. Your search gets<br>smarter from there.</h2>
+    <p class="section-desc">Three minutes of setup. Then your job search runs itself.</p>
     <div class="steps">
-      <div class="step"><div class="step-num">01</div><h4>Create your account</h4><p>Sign up with your email and LinkedIn profile. We verify you're a real person, not a bot.</p></div>
-      <div class="step"><div class="step-num">02</div><h4>Install the extension</h4><p>Our Chrome extension scans your LinkedIn connections and maps them to <span id="lp-step-companies">1,900+</span> company job boards. Takes about 30 seconds.</p></div>
-      <div class="step"><div class="step-num">03</div><h4>Build your first filter</h4><p>Tell us your target titles, locations, and salary range. We surface matching jobs from 116,000+ openings instantly.</p></div>
-      <div class="step"><div class="step-num">04</div><h4>Save and track</h4><p>Save your filters. Get daily counts of new matches. Apply directly from the dashboard with one click.</p></div>
+      <div class="step"><div class="step-num">01</div><h4>Create your account</h4><p>Sign up with your email. We verify you're a real person, not a bot or a recruiter.</p></div>
+      <div class="step"><div class="step-num">02</div><h4>Install the Chrome extension</h4><p>It connects your dashboard to <span id="lp-step-companies">1,900+</span> company career pages. Takes about 30 seconds.</p></div>
+      <div class="step"><div class="step-num">03</div><h4>Build your first search</h4><p>Tell us your target titles, locations, and salary floor. We surface matching jobs instantly — and check for new ones every day.</p></div>
+      <div class="step"><div class="step-num">04</div><h4>Upload your resumes</h4><p>Different versions for different types of roles. We match the right resume to the right search automatically.</p></div>
     </div>
   </section>
 
-  <!-- PRICING -->
+  <!-- ==================== PRICING ==================== -->
   <section class="section fade-up" id="pricing">
     <div class="section-label">Pricing</div>
-    <h2>Start free. Upgrade when it makes sense.</h2>
-    <p class="section-desc">Full access during beta. We'll keep early adopters rewarded when paid plans launch.</p>
+    <h2>We make money when you get hired.<br>That's it.</h2>
+    <p class="section-desc">No ads. No sponsored listings. No selling your data to recruiters. Full access during beta — early adopters keep upgraded access.</p>
 
     <div class="pricing-grid">
       <div class="price-card">
         <div class="price-name">Free</div>
         <div class="price-desc">Core search and filtering</div>
         <div class="price-amount">$0</div>
-        <div class="price-period">forever — or upgrade to pay-when-hired</div>
+        <div class="price-period">forever</div>
         <ul class="price-features">
-          <li>Multi-source job aggregation</li>
+          <li>Jobs from all company career pages</li>
           <li>Basic filters (title, location, remote)</li>
           <li>5 saved searches</li>
-          <li>Community ghost rate data (when available)</li>
+          <li>Community ghost rate data</li>
         </ul>
         <button class="price-btn price-btn-outline" onclick="openModal('signup')">Sign Up Free</button>
       </div>
@@ -703,10 +771,10 @@
         <div class="price-period">per month</div>
         <ul class="price-features">
           <li>Everything in Free</li>
-          <li>Advanced filters (salary, company size, velocity)</li>
+          <li>Advanced filters (salary, company size, industry)</li>
           <li>Unlimited saved searches</li>
-          <li>Network intelligence (LinkedIn mapping)</li>
-          <li>Salary extraction from job specs</li>
+          <li>Salary extraction from job descriptions</li>
+          <li>Resume-to-job match scoring</li>
           <li>Priority access to new features</li>
         </ul>
         <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Pro</button>
@@ -719,20 +787,20 @@
         <div class="price-period">until hired, then $149 one-time</div>
         <ul class="price-features">
           <li>Everything in Pro</li>
-          <li>No upfront cost</li>
-          <li>Full access during your search</li>
+          <li>No upfront cost — full access during your search</li>
           <li>One-time fee after confirmed hire</li>
           <li>Cancel anytime — owe nothing</li>
+          <li>We trade on your results, not your attention</li>
         </ul>
         <button class="price-btn price-btn-outline" onclick="openModal('signup')">Get Started</button>
       </div>
     </div>
   </section>
 
-  <!-- SOCIAL PROOF -->
+  <!-- ==================== SOCIAL PROOF ==================== -->
   <section class="section fade-up" style="padding-bottom:0;">
     <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
-      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by job seekers</div>
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by a job seeker</div>
       <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;color:var(--text-dim);font-size:14px;">
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> beta users</div>
         <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> applications tracked</div>
@@ -742,11 +810,11 @@
     </div>
   </section>
 
-  <!-- BOTTOM CTA -->
+  <!-- ==================== BOTTOM CTA ==================== -->
   <section class="section fade-up" style="text-align:center;padding-bottom:120px;">
-    <h2 style="margin-bottom:16px;">Your job search deserves<br>better tools.</h2>
-    <p class="section-desc" style="margin:0 auto 32px;">Beta access is limited. Sign up now and get power-user job search from day one.</p>
-    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Get Early Access — Free</button>
+    <h2 style="margin-bottom:16px;">You've been searching their way.<br>Try yours.</h2>
+    <p class="section-desc" style="margin:0 auto 32px;">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
+    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Get Started — It's Free</button>
   </section>
 
   <footer class="site-footer">
@@ -804,7 +872,6 @@
             <div class="hint">Used for account verification only.</div>
           </div>
           <script>
-            // Position cursor after /in/ when LinkedIn field gets focus
             document.getElementById('signup-linkedin').addEventListener('focus', function() {
               var v = this.value;
               if (v === 'https://www.linkedin.com/in/') {
@@ -876,7 +943,6 @@
       } else {
         $('#modal-title').textContent = 'Get early access';
         $('#modal-sub').textContent = 'Create your free account';
-        // Start timing when signup tab opens
         if (!signupStartedAt) signupStartedAt = Date.now();
       }
     }
@@ -891,12 +957,10 @@
     $('#hero-signup-btn').addEventListener('click', () => openModal('signup'));
     $('#bottom-signup-btn').addEventListener('click', () => openModal('signup'));
 
-    // Price buttons
     $$('.price-btn').forEach(btn => {
       btn.addEventListener('click', () => openModal('signup'));
     });
 
-    // Password toggle
     $$('.pw-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
         const input = $(`#${btn.dataset.target}`);
@@ -980,7 +1044,6 @@
         if (!email || !password) { showMsg('signup-msg', 'Fill in all fields.', 'error'); return; }
         if (password.length < 6) { showMsg('signup-msg', 'Password must be at least 6 characters.', 'error'); return; }
 
-        // Calculate elapsed time since signup tab opened
         var elapsedSeconds = signupStartedAt ? Math.round((Date.now() - signupStartedAt) / 1000) : 0;
 
         $('#signup-btn').disabled = true;
@@ -1015,12 +1078,10 @@
           return;
         }
 
-        // Trigger validation in background
         if (data.user && data.user.id) {
           triggerValidation(data.user.id);
         }
 
-        // If session exists (email confirm disabled), show logged-in view
         var sessionCheck = await sb.auth.getSession();
         if (sessionCheck.data && sessionCheck.data.session) {
           showLoggedIn(data.user);
@@ -1041,16 +1102,13 @@
     });
 
     // ============================================================
-    // VALIDATION (runs silently in background)
+    // VALIDATION
     // ============================================================
     async function triggerValidation(profileId) {
       try {
         const res = await fetch(SUPABASE_URL + '/functions/v1/validate-signup', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_KEY,
-          },
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
           body: JSON.stringify({ profile_id: profileId }),
         });
         const result = await res.json();
@@ -1079,7 +1137,6 @@
         console.error('Profile check error:', e);
       }
 
-      // Broadcast session for extension
       try {
         const { data: { session } } = await sb.auth.getSession();
         if (session) {
@@ -1113,11 +1170,9 @@
         openModal('login');
         showLoggedIn(session.user);
       }
-
       if (new URLSearchParams(window.location.search).get('pending') === '1') {
         openModal('login');
       }
-
       if (window.location.hash === '#signup') {
         openModal('signup');
       }
@@ -1128,9 +1183,7 @@
     // ============================================================
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
+        if (entry.isIntersecting) entry.target.classList.add('visible');
       });
     }, { threshold: 0.1 });
 
@@ -1143,11 +1196,10 @@
       const chartEl = document.getElementById('pulse-chart');
       const emptyEl = document.getElementById('pulse-chart-empty');
       const PULSE_KEY = 'bj_lp_pulse';
-      const PULSE_TTL = 4 * 60 * 60 * 1000; // 4 hours
+      const PULSE_TTL = 4 * 60 * 60 * 1000;
 
       function renderPulse(surveys) {
         if (!surveys || surveys.length === 0) return;
-
         const weeks = {};
         surveys.forEach(s => {
           const d = new Date(s.created_at);
@@ -1157,7 +1209,6 @@
           if (!weeks[key]) weeks[key] = [];
           weeks[key].push(s.rating);
         });
-
         const weekKeys = Object.keys(weeks).sort();
         const labels = weekKeys.map(k => new Date(k).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
         const scores = weekKeys.map(k => {
@@ -1165,44 +1216,36 @@
           return Math.round((r.reduce((a, b) => a + b, 0) / r.length) * 10) / 10;
         });
         const counts = weekKeys.map(k => weeks[k].length);
-
         const currentScore = scores[scores.length - 1];
         const scoreEl = document.getElementById('pulse-score');
         const labelEl = document.getElementById('pulse-label');
         const barEl = document.getElementById('pulse-bar');
         const respEl = document.getElementById('pulse-respondents');
-
         scoreEl.textContent = currentScore.toFixed(1);
         respEl.textContent = surveys.length.toLocaleString() + ' responses';
-
         let color, label;
         if (currentScore >= 7.5) { color = 'var(--green)'; label = 'Feeling Brilliant'; }
         else if (currentScore >= 5) { color = 'var(--accent)'; label = 'Cautiously Hopeful'; }
         else if (currentScore >= 3) { color = 'var(--warm)'; label = 'Grinding Through It'; }
         else { color = 'var(--red)'; label = 'Frustrated'; }
-
         scoreEl.style.color = color;
         labelEl.textContent = label;
         labelEl.style.color = color;
         barEl.style.width = (currentScore * 10) + '%';
         barEl.style.background = color;
-
         if (weekKeys.length >= 2) {
           emptyEl.style.display = 'none';
           chartEl.style.display = 'block';
-
           const ctx = chartEl.getContext('2d');
           const W = chartEl.offsetWidth;
           const H = 180;
           chartEl.width = W * 2; chartEl.height = H * 2;
           ctx.scale(2, 2);
-
           const pad = { top: 10, right: 12, bottom: 30, left: 36 };
           const cw = W - pad.left - pad.right;
           const ch = H - pad.top - pad.bottom;
           const maxScore = 10;
           const maxCount = Math.max(...counts, 1);
-
           ctx.strokeStyle = '#e2e4ed'; ctx.lineWidth = 0.5;
           for (let i = 0; i <= 4; i++) {
             const y = pad.top + (ch / 4) * i;
@@ -1215,7 +1258,6 @@
           ctx.textAlign = 'center';
           const step = cw / (labels.length - 1 || 1);
           labels.forEach((l, i) => ctx.fillText(l, pad.left + step * i, H - 6));
-
           const barW = Math.max(6, step * 0.4);
           ctx.fillStyle = 'rgba(34,197,94,0.12)';
           counts.forEach((c, i) => {
@@ -1223,7 +1265,6 @@
             const barH = (c / maxCount) * ch;
             ctx.fillRect(x - barW / 2, pad.top + ch - barH, barW, barH);
           });
-
           ctx.strokeStyle = '#3d7eff'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
           ctx.beginPath();
           scores.forEach((s, i) => {
@@ -1232,7 +1273,6 @@
             if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
           });
           ctx.stroke();
-
           scores.forEach((s, i) => {
             const x = pad.left + step * i;
             const y = pad.top + ch - (s / maxScore) * ch;
@@ -1242,32 +1282,21 @@
           });
         }
       }
-
-      // Check cache
       try {
         const cached = JSON.parse(localStorage.getItem(PULSE_KEY));
-        if (cached && Date.now() - cached.ts < PULSE_TTL) {
-          renderPulse(cached.data);
-          return;
-        }
+        if (cached && Date.now() - cached.ts < PULSE_TTL) { renderPulse(cached.data); return; }
       } catch (e) {}
-
-      // Fetch fresh
       try {
         const { data: surveys, error } = await sb
-          .from('feedback')
-          .select('created_at, rating')
+          .from('feedback').select('created_at, rating')
           .in('type', ['user_survey', 'exit_survey'])
           .not('rating', 'is', null)
           .order('created_at', { ascending: true });
-
         if (!error && surveys && surveys.length > 0) {
           localStorage.setItem(PULSE_KEY, JSON.stringify({ data: surveys, ts: Date.now() }));
           renderPulse(surveys);
         }
-      } catch (e) {
-        console.log('[BJ] Pulse data not available yet:', e.message);
-      }
+      } catch (e) { console.log('[BJ] Pulse data not available yet:', e.message); }
     })();
 
     // ============================================================
@@ -1275,8 +1304,7 @@
     // ============================================================
     (async function loadLiveStats() {
       const CACHE_KEY = 'bj_lp_stats';
-      const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-
+      const CACHE_TTL = 60 * 60 * 1000;
       function applyStats(stats) {
         if (stats.jobs != null) {
           document.getElementById('lp-active-jobs').textContent = stats.jobs.toLocaleString();
@@ -1293,40 +1321,22 @@
         if (stats.metros != null) {
           document.getElementById('lp-metros').textContent = stats.metros.toLocaleString();
         }
-        // Animate in
         document.querySelectorAll('.stat-num').forEach(el => {
-          el.classList.remove('loading');
-          el.classList.add('loaded');
+          el.classList.remove('loading'); el.classList.add('loaded');
         });
       }
-
-      // Mark loading
       document.querySelectorAll('.stat-num').forEach(el => el.classList.add('loading'));
-
-      // Check cache first
       try {
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
-        if (cached && Date.now() - cached.ts < CACHE_TTL) {
-          applyStats(cached);
-          return; // Cache is fresh, done
-        }
+        if (cached && Date.now() - cached.ts < CACHE_TTL) { applyStats(cached); return; }
       } catch (e) {}
-
-      // Cache miss or stale — fetch in parallel
       try {
         const [jobsRes, companiesRes, metrosRes] = await Promise.all([
           sb.from('ats_jobs').select('*', { count: 'exact', head: true }).eq('status', 'open'),
           sb.from('ats_companies').select('*', { count: 'exact', head: true }),
           sb.from('ref_city_radius').select('*', { count: 'exact', head: true })
         ]);
-
-        const stats = {
-          jobs: jobsRes.count,
-          companies: companiesRes.count,
-          metros: metrosRes.count,
-          ts: Date.now()
-        };
-
+        const stats = { jobs: jobsRes.count, companies: companiesRes.count, metros: metrosRes.count, ts: Date.now() };
         localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
         applyStats(stats);
       } catch (e) {
@@ -1335,8 +1345,7 @@
         document.getElementById('lp-companies').textContent = '1,900+';
         document.getElementById('lp-metros').textContent = '199';
         document.querySelectorAll('.stat-num').forEach(el => {
-          el.classList.remove('loading');
-          el.classList.add('loaded');
+          el.classList.remove('loading'); el.classList.add('loaded');
         });
       }
     })();
