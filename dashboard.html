@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.36 - 2026-02-15 - Resume grouped by filter with collapsible chevrons, P2.5 fingerprint obfuscation -->
+<!-- Brilliant Jobs Dashboard v2.37 - 2026-02-15 - Scalable filter dropdown, live stats wiring, roadmap cleanup -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1074,14 +1074,6 @@
       font-size: 9px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
       letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 6px;
     }
-    .resume-card .rc-filter-list { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; flex: 1; }
-    .resume-card .rc-filter-pill {
-      font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 3px;
-      cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
-    }
-    .resume-card .rc-filter-pill.active { opacity: 1; }
-    .resume-card .rc-filter-pill.inactive { opacity: 0.25; }
-    .resume-card .rc-filter-pill:hover { opacity: 0.8; }
     .resume-card .rc-level-select {
       font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border);
       background: var(--bg); color: var(--text); cursor: pointer; width: 100%; margin-bottom: 4px;
@@ -1120,6 +1112,26 @@
     .rc-group-header .rc-group-count { font-size: 11px; color: var(--text-faint); margin-left: auto; }
     .rc-group-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s; max-height: 2000px; opacity: 1; padding-top: 8px; }
     .rc-group-body.collapsed { max-height: 0; opacity: 0; padding-top: 0; }
+
+    /* Filter assignment dropdown */
+    .rc-assign-wrapper { position: relative; }
+    .rc-assign-btn {
+      font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 4px;
+      background: rgba(99,102,241,0.06); color: var(--accent); border: 1px solid rgba(99,102,241,0.15);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .rc-assign-btn:hover { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3); }
+    .rc-assign-dropdown {
+      display: none; position: absolute; top: 100%; left: 0; z-index: 50;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25); padding: 6px 0; min-width: 180px; margin-top: 4px;
+    }
+    .rc-assign-dropdown.open { display: block; }
+    .rc-assign-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+      transition: background 0.1s;
+    }
+    .rc-assign-item:hover { background: var(--bg-hover); }
 
     /* ======================== HELP BUTTON ======================== */
     .page-help-btn {
@@ -1312,7 +1324,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.36</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.37</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1617,7 +1629,7 @@
           <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:14px;padding:24px;margin-top:8px;">
             <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Your data advantage</div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Brilliant Jobs currently indexes <strong>110,000+ open positions</strong> across <strong>1,900+ companies</strong> using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
+              Brilliant Jobs indexes <strong id="da-jobs">110,000+</strong> open positions across <strong id="da-companies">1,900+</strong> companies using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
             </div>
           </div>
 
@@ -2580,7 +2592,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.36 loaded');
+    console.log('[BJ] Dashboard v2.37 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2863,6 +2875,18 @@
     }
     checkExtensionStatus();
     setInterval(checkExtensionStatus, 60000);
+
+    // Populate data advantage stats from DB
+    (async function loadDataAdvantageStats() {
+      try {
+        const { count: jobCount } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true }).eq('status', 'open');
+        const { count: companyCount } = await sb.from('ats_companies').select('*', { count: 'exact', head: true });
+        const daJobs = document.getElementById('da-jobs');
+        const daCompanies = document.getElementById('da-companies');
+        if (daJobs && jobCount != null) daJobs.textContent = jobCount.toLocaleString() + '+ open positions';
+        if (daCompanies && companyCount != null) daCompanies.textContent = companyCount.toLocaleString() + '+ companies';
+      } catch (e) { /* keep defaults */ }
+    })();
 
     // Setup section collapsible toggle
     function toggleSetupSection(contentId, toggleEl) {
@@ -8786,16 +8810,28 @@
             </select>`
           : (r.level_label ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${levelColor}20;color:${levelColor};">${r.level_label}</span>` : '');
 
-        const filterPills = sf.length > 0
-          ? sf.map((f, fi) => {
-              const color = fColors[fi % fColors.length];
-              const isActive = assignedIds.includes(f.name);
-              return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
-                style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
-                onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
-                title="Click to ${isActive ? 'unassign from' : 'assign to'} ${f.name}">${(f.name || '').toLowerCase()}</span>`;
-            }).join('')
-          : '<span style="font-size:10px;color:var(--text-faint);font-style:italic;">Save a filter first</span>';
+        // Compact filter assignment — checklist dropdown
+        let filterAssignHtml = '';
+        if (sf.length > 0) {
+          const assignedCount = assignedIds.length;
+          const checkItems = sf.map((f, fi) => {
+            const color = fColors[fi % fColors.length];
+            const num = fi + 1;
+            const checked = assignedIds.includes(f.name);
+            return `<label class="rc-assign-item" onclick="event.stopPropagation(); toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')" style="cursor:pointer;">
+              <span class="rc-filter-num" style="background:${color};width:16px;height:16px;font-size:8px;">${num}</span>
+              <span style="flex:1;font-size:11px;color:var(--text-dim);text-transform:lowercase;">${(f.name||'').toLowerCase()}</span>
+              <span style="font-size:12px;">${checked ? '✓' : ''}</span>
+            </label>`;
+          }).join('');
+          filterAssignHtml = `<div class="rc-assign-wrapper">
+            <button class="rc-assign-btn" onclick="this.nextElementSibling.classList.toggle('open'); event.stopPropagation();"
+              title="Assign to filters">${assignedCount > 0 ? assignedCount + ' filter' + (assignedCount > 1 ? 's' : '') : '+ filter'}</button>
+            <div class="rc-assign-dropdown">${checkItems}</div>
+          </div>`;
+        } else {
+          filterAssignHtml = '<span style="font-size:10px;color:var(--text-faint);font-style:italic;">Save a filter first</span>';
+        }
 
         const statusDot = hasAssignment
           ? '<span class="rc-status-dot" style="background:#34d399;" title="Assigned to filters"></span>'
@@ -8816,7 +8852,7 @@
           <div class="rc-section-label">Level</div>
           ${levelHtml || '<span style="font-size:10px;color:var(--text-faint);">\u2014</span>'}
           <div class="rc-section-label">Filters</div>
-          <div class="rc-filter-list">${filterPills}</div>
+          ${filterAssignHtml}
           <div class="rc-meta" style="margin-top:auto;padding-top:6px;border-top:1px solid var(--border);">${isPlaceholder ? 'Needs file upload' : `${r.file_size || ''} \u00b7 ${created}`}</div>
           <div class="rc-actions">
             <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:9px;padding:2px 8px;">Rename</button>
@@ -8863,6 +8899,13 @@
       state[key] = !isCollapsed;
       localStorage.setItem('bj_resume_groups_collapsed', JSON.stringify(state));
     };
+
+    // Close filter assignment dropdowns on click outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.rc-assign-wrapper')) {
+        document.querySelectorAll('.rc-assign-dropdown.open').forEach(d => d.classList.remove('open'));
+      }
+    });
 
     window.toggleResumeFilter = async function(resumeIdx, filterName) {
       const r = resumes[resumeIdx];
