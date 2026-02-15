@@ -424,9 +424,7 @@ const features = [
   { s: 'done', n: 'Toggle switch polish', d: 'Toggles resized to 44×24px with green/gray states, glow on active, shadow on dot. Fixed flex:1 inheritance bug that stretched toggles across full row width on Applications page.', p: 2 },
   { s: 'done', n: '3-column Setup status bar', d: 'Extension/Drive/Gmail as equal grid columns with dividers. Each: colored dot + bold label + detail text. Green=connected, red=not connected. Removed scanning count. Gmail shows red dot + "Coming soon".', p: 2 },
   { s: 'done', n: 'Phase renumbering', d: 'P6→P4 (Resumes), P4→P5 (User Mgmt), P5→P6 (Monetization), P2.5→P7 (Anti-detection), P7+→P8+. All items and section comments updated.', p: 2 },
-
-  // ═══════════════ IN PROGRESS ═══════════════
-  { s: 'done', n: 'Company enrichment via PDL dataset', d: '1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url. Remaining ~555 unmatched — backlogged for API enrichment.', p: 4 },
+  { s: 'done', n: 'Company enrichment via PDL dataset', d: '1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url. Remaining ~555 unmatched — backlogged for API enrichment.', p: 2 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 3 — Go-to-Market
@@ -444,15 +442,19 @@ const features = [
   { s: 'todo', n: 'Resume vs JD side-by-side comparison', d: 'Split view: resume content left, job description right. Highlight matching keywords, missing skills, salary alignment.', p: 4 },
   { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 4 },
   { s: 'todo', n: 'Resume-to-job match scoring', d: 'Keyword overlap analysis → High/Med/Low match badge per job', p: 4 },
-  { s: 'todo', n: 'Auto-apply mode', d: 'Jobs matching saved filters + resume → auto-submit via ATS form fill', p: 4 },
+  { s: 'todo', n: 'Auto-apply decision engine', d: 'ATS-agnostic matching logic: saved filter match + resume score + user rules → decision (auto-approve, notify, skip). Queue management, resume selection, rule evaluation. No form-fill — that moves to P10 after ATS connectors exist.', p: 4 },
+  { s: 'todo', n: 'Manual apply redirect', d: 'From job modal or queue: "Apply Now" opens ATS page in new tab with correct resume pre-selected for download. Gets users 80% of the value without form-fill automation. Tracks click as application-in-progress.', p: 4 },
   { s: 'todo', n: 'Notification-based apply (email/SMS)', d: 'Match found → send notification → user replies apply/skip → resume sent', p: 4 },
   { s: 'todo', n: 'Application queue and status tracking', d: 'Table with job, company, mode, status (Queued → Pending → Submitted)', p: 4 },
-  { s: 'todo', n: 'ATS filter reverse-engineering', d: 'Aggregate user outcomes to decode what filters companies use to screen applicants', p: 4 },
-  { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns', p: 4 },
+  { s: 'todo', n: 'ATS filter reverse-engineering', d: 'Aggregate user outcomes (applied → response vs ghosted) to decode what filters companies use to screen applicants. Needs application volume from P10 form-fill before patterns emerge. Start collecting outcome data now, analysis later.', p: 4 },
+  { s: 'todo', n: 'Predictive acceptance likelihood', d: 'Score per job based on resume fit + historical company screening patterns. Depends on ATS reverse-engineering data. Start with simple match score, refine with outcome data over time.', p: 4 },
   { s: 'todo', n: 'Application auto-detect from extension', d: 'Detect LinkedIn Easy Apply and external ATS redirects, prompt to track', p: 4 },
   { s: 'todo', n: 'Referral outreach templates', d: 'Pre-written LinkedIn/email templates for requesting real referrals from connections. Personalized with job title, company, and connection context. One-click send from job modal.', p: 4 },
   { s: 'todo', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates.', p: 4 },
   { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters', p: 4 },
+  { s: 'todo', n: 'Per-filter ngram extraction', d: 'Sample 10 top-matching job specs per saved filter. Extract bigrams and trigrams, strip stopwords, count frequencies, surface top 15-20 terms. Cache per filter (recompute on filter change or weekly). Lightweight synonym map (~50-100 clusters) for common equivalents (e.g. team leadership / people management / direct reports). Display as ranked term cloud on filter detail or resume comparison view.', p: 4 },
+  { s: 'todo', n: 'Resume vs filter term comparison', d: 'Parse resume text, extract same ngrams, set-intersection against filter ngram profile. Show "12 of 18 top terms matched" with green (present) / red (missing) highlighting. Per-filter per-resume matrix. No AI — pure string matching with normalization (lowercase, basic stemming). Actionable gap list: "Add these terms to improve match."', p: 4 },
+  { s: 'todo', n: 'Rejection gap analysis', d: 'When user is ghosted or rejected, diff the job spec ngrams against the resume that was sent. Aggregate over time: "Jobs you didn\'t advance on frequently mention X, Y, Z — your resume doesn\'t include these." Needs application volume before useful but start collecting data now. Surface patterns on Resumes page as improvement suggestions.', p: 4 },
 
   // Phase 5 — User Management
   { s: 'done', n: 'Automated user approval', d: 'Edge Function validate-signup: LinkedIn URL validation with test profile bypass (testprofile1-3), uniqueness check, JSONB audit trail. Auto-approves valid signups, sets approved=true + approved_at.', p: 5 },
@@ -552,6 +554,7 @@ const features = [
 
   // ── Cross-source ──
   { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across all sources', p: 10 },
+  { s: 'todo', n: 'Auto-apply form-fill automation', d: 'Per-ATS form fill adapters: Greenhouse, Lever, Workable, Ashby. Extension detects ATS form fields, maps resume data + cover letter, submits. Each ATS needs its own adapter due to different field structures, auth, and anti-bot measures. Depends on P4 decision engine + P10 ATS connectors being in place.', p: 10 },
   { s: 'todo', n: 'ATS endpoint probing', d: 'When company names discovered from non-ATS sources, probe GH/LV/WK/ASH to discover which ATS they use', p: 10 },
   { s: 'todo', n: 'Multi-ATS board validation script', d: 'Test all ats_companies slugs against Greenhouse, Lever, Ashby, and Workable APIs. 200=active, 404=skip. Tag each company with confirmed ATS source.', p: 10 },
   { s: 'todo', n: 'DataForSEO outbound link harvesting', d: 'Mine LinkedIn/Indeed company pages for ATS board URLs at scale', p: 10 },
