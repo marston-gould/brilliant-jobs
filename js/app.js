@@ -1,4 +1,4 @@
-console.log('[BJ] Dashboard v2.50 loaded');
+console.log('[BJ] Dashboard v2.51 loaded');
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);

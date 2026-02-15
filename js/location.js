@@ -1,0 +1,1167 @@
+// ---- Location autocomplete / disambiguation ----
+const qbInputWhere = $('#qb-input-where');
+const locationDropdown = $('#location-dropdown');
+let locationSearchTimeout;
+
+qbInputWhere.addEventListener('input', () => {
+  const q = qbInputWhere.value.trim();
+  if (q.length < 2) { locationDropdown.classList.remove('open'); return; }
+  clearTimeout(locationSearchTimeout);
+  locationSearchTimeout = setTimeout(() => searchLocations(q), 200);
+});
+
+qbInputWhere.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+    // If dropdown is open and has results, force selection from dropdown
+    if (locationDropdown.classList.contains('open')) {
+      const first = locationDropdown.querySelector('.company-opt');
+      if (first) {
+        e.preventDefault();
+        selectLocationFromDropdown(first);
+        return;
+      }
+    }
+    if (e.key === ',' || e.key === 'Enter') e.preventDefault();
+    // Fall through to normal pill commit only if no dropdown
+    commitPill(qbInputWhere, wherePills, raw => ({ values: [raw], type: 'where' }));
+    renderAllPills();
+    locationDropdown.classList.remove('open');
+  } else if (e.key === 'Backspace' && qbInputWhere.value === '' && wherePills.length > 0) {
+    wherePills.pop(); renderAllPills();
+  } else if (e.key === 'Escape') {
+    locationDropdown.classList.remove('open');
+  } else if (e.key === 'ArrowDown' && locationDropdown.classList.contains('open')) {
+    e.preventDefault();
+    const first = locationDropdown.querySelector('.company-opt');
+    if (first) first.focus();
+  }
+});
+
+qbInputWhere.addEventListener('blur', () => {
+  setTimeout(() => { locationDropdown.classList.remove('open'); }, 200);
+});
+
+async function searchLocations(query) {
+  try {
+    const ql = query.toLowerCase().trim();
+    const results = [];
+    const seenKeys = new Set();
+
+    // US state codes for state-pill detection
+    const US_STATES = {
+      'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
+      'CO':'Colorado','CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia',
+      'HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas',
+      'KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts',
+      'MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana',
+      'NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico',
+      'NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma',
+      'OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota',
+      'TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington',
+      'WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming','DC':'District of Columbia',
+    };
+
+    // Check if query matches a state name or code
+    const stateMatches = Object.entries(US_STATES).filter(([code, name]) =>
+      code.toLowerCase() === ql || name.toLowerCase().startsWith(ql)
+    );
+    for (const [code, name] of stateMatches) {
+      const key = `state:${code}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        results.push({
+          display: `${name} (${code})`,
+          type: 'state',
+          stateCode: code,
+          badge: 'state',
+        });
+      }
+    }
+
+    // Search ref_city_radius for cities and metros
+    const { data: refData } = await sb
+      .from('ref_city_radius')
+      .select('city, state, lat, lng, radius_mi, type, aliases')
+      .or(`city.ilike.%${query}%,aliases.cs.{${query}}`)
+      .limit(15);
+
+    if (refData) {
+      for (const r of refData) {
+        const key = `${r.city.toLowerCase()},${r.state.toLowerCase()},${r.type}`;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          results.push({
+            display: r.type === 'metro' ? r.city : `${r.city}, ${r.state}`,
+            type: r.type,
+            lat: r.lat,
+            lng: r.lng,
+            radius_mi: r.radius_mi,
+            city: r.city,
+            state: r.state,
+            badge: r.type === 'metro' ? 'metro' : 'radius',
+          });
+        }
+      }
+    }
+
+    // Also check "remote"
+    if ('remote'.startsWith(ql)) {
+      if (!seenKeys.has('remote')) {
+        seenKeys.add('remote');
+        results.push({ display: 'Remote', type: 'remote', badge: 'remote' });
+      }
+    }
+
+    // Search location_cache as fallback for unlisted locations
+    const { data: cacheData } = await sb
+      .from('location_cache')
+      .select('raw_input, normalized, lat, lng, is_remote')
+      .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`)
+      .limit(10);
+
+    if (cacheData) {
+      for (const loc of cacheData) {
+        const norm = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
+        // Skip remote variants (already handled above)
+        if (norm.startsWith('remote')) continue;
+        // Skip if already covered by ref table (check if any ref result city name is in this cache entry)
+        const coveredByRef = results.some(r =>
+          (r.type === 'city' || r.type === 'metro') && r.city &&
+          norm.includes(r.city.toLowerCase())
+        );
+        if (coveredByRef) continue;
+        if (seenKeys.has(norm)) continue;
+        seenKeys.add(norm);
+        results.push({
+          display: loc.normalized || loc.raw_input,
+          type: 'cache',
+          badge: loc.lat && loc.lng ? 'pin' : '',
+        });
+      }
+    }
+
+    // Sort: exact prefix matches first, states first, then metros, then cities
+    results.sort((a, b) => {
+      const aPrefix = a.display.toLowerCase().startsWith(ql) ? 0 : 1;
+      const bPrefix = b.display.toLowerCase().startsWith(ql) ? 0 : 1;
+      if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+      const typeOrder = { state: 0, metro: 1, city: 2, radius: 2, remote: 3, cache: 4 };
+      const aType = typeOrder[a.type] ?? 5;
+      const bType = typeOrder[b.type] ?? 5;
+      if (aType !== bType) return aType - bType;
+      return a.display.localeCompare(b.display);
+    });
+
+    renderLocationDropdown(results.slice(0, 10), query);
+  } catch (e) {
+    console.warn('[BJ] Location search failed:', e);
+  }
+}
+
+function renderLocationDropdown(results, query) {
+  if (results.length === 0) { locationDropdown.classList.remove('open'); return; }
+
+  locationDropdown.innerHTML = results.map(r => {
+    const badgeMap = {
+      state: '<span style="font-size:9px;background:rgba(139,92,246,0.1);color:#8b5cf6;padding:1px 6px;border-radius:4px;font-weight:600;">state</span>',
+      metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
+      radius: `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.radius_mi}mi</span>`,
+      remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
+      pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+    };
+    const badge = badgeMap[r.badge] || '';
+    const hl = highlightCompanyMatch(r.display, query);
+    const data = JSON.stringify({
+      type: r.type, display: r.display,
+      lat: r.lat, lng: r.lng, radius_mi: r.radius_mi,
+      city: r.city, state: r.state, stateCode: r.stateCode,
+    }).replace(/"/g, '&quot;');
+    return `<div class="company-opt" tabindex="0" data-locdata="${data}" data-name="${r.display.replace(/"/g,'&quot;')}">
+      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+  }).join('');
+
+  locationDropdown.classList.add('open');
+
+  locationDropdown.querySelectorAll('.company-opt').forEach(opt => {
+    opt.addEventListener('mousedown', e => {
+      e.preventDefault();
+      selectLocationFromDropdown(opt);
+    });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); selectLocationFromDropdown(opt); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhere.focus(); }
+      if (e.key === 'Escape') { locationDropdown.classList.remove('open'); qbInputWhere.focus(); }
+    });
+  });
+}
+
+function selectLocationFromDropdown(opt) {
+  const locData = JSON.parse(opt.dataset.locdata);
+  const pill = { values: [locData.display.toLowerCase()], type: 'where' };
+
+  // Attach geo data for radius search
+  if (locData.type === 'state') {
+    pill.locType = 'state';
+    pill.stateCode = locData.stateCode;
+  } else if (locData.lat && locData.lng) {
+    pill.locType = locData.type; // 'city' or 'metro'
+    pill.lat = locData.lat;
+    pill.lng = locData.lng;
+    pill.radius_mi = locData.radius_mi;
+  } else if (locData.type === 'remote') {
+    pill.locType = 'remote';
+    // Auto-check the include remote toggle
+    const remoteCb = $('#save-filter-include-remote');
+    if (remoteCb) remoteCb.checked = true;
+  }
+
+  wherePills.push(pill);
+  renderAllPills();
+  locationDropdown.classList.remove('open');
+  qbInputWhere.value = '';
+  debouncedSearchJobs();
+}
+
+// Input handling — What Not row
+const qbInputWhatNot = $('#qb-input-what-not');
+qbInputWhatNot.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }));
+  } else if (e.key === 'Backspace' && qbInputWhatNot.value === '' && whatNotPills.length > 0) {
+    whatNotPills.pop(); renderAllPills();
+  }
+});
+qbInputWhatNot.addEventListener('blur', () => {
+  commitPill(qbInputWhatNot, whatNotPills, raw => ({ values: [raw], type: 'not' }));
+});
+$('#query-builder-what-not').addEventListener('click', e => {
+  if (!e.target.closest('.qb-pill')) qbInputWhatNot.focus();
+});
+
+// Input handling — Where Not row
+const qbInputWhereNot = $('#qb-input-where-not');
+const locationNotDropdown = $('#location-not-dropdown');
+let locationNotSearchTimeout;
+
+qbInputWhereNot.addEventListener('input', () => {
+  const q = qbInputWhereNot.value.trim();
+  if (q.length < 2) { locationNotDropdown.classList.remove('open'); return; }
+  clearTimeout(locationNotSearchTimeout);
+  locationNotSearchTimeout = setTimeout(() => searchLocationsForNot(q), 200);
+});
+
+qbInputWhereNot.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    if (locationNotDropdown.classList.contains('open')) {
+      const first = locationNotDropdown.querySelector('.company-opt');
+      if (first) {
+        selectLocationNotFromDropdown(first);
+        return;
+      }
+    }
+    commitPill(qbInputWhereNot, whereNotPills, raw => ({ values: [raw], type: 'not' }));
+    locationNotDropdown.classList.remove('open');
+  } else if (e.key === 'Backspace' && qbInputWhereNot.value === '' && whereNotPills.length > 0) {
+    whereNotPills.pop(); renderAllPills();
+  } else if (e.key === 'Escape') {
+    locationNotDropdown.classList.remove('open');
+  } else if (e.key === 'ArrowDown' && locationNotDropdown.classList.contains('open')) {
+    e.preventDefault();
+    const first = locationNotDropdown.querySelector('.company-opt');
+    if (first) first.focus();
+  }
+});
+qbInputWhereNot.addEventListener('blur', () => {
+  setTimeout(() => { locationNotDropdown.classList.remove('open'); }, 200);
+  commitPill(qbInputWhereNot, whereNotPills, raw => ({ values: [raw], type: 'not' }));
+});
+$('#query-builder-where-not').addEventListener('click', e => {
+  if (!e.target.closest('.qb-pill')) qbInputWhereNot.focus();
+});
+
+// NOT WHERE search — same sources but simplified (no geo data needed)
+async function searchLocationsForNot(query) {
+  try {
+    const ql = query.toLowerCase().trim();
+    const results = [];
+    const seenKeys = new Set();
+
+    // US state codes
+    const US_STATES = {
+      'AL':'Alabama','AK':'Alaska','AZ':'Arizona','AR':'Arkansas','CA':'California',
+      'CO':'Colorado','CT':'Connecticut','DE':'Delaware','FL':'Florida','GA':'Georgia',
+      'HI':'Hawaii','ID':'Idaho','IL':'Illinois','IN':'Indiana','IA':'Iowa','KS':'Kansas',
+      'KY':'Kentucky','LA':'Louisiana','ME':'Maine','MD':'Maryland','MA':'Massachusetts',
+      'MI':'Michigan','MN':'Minnesota','MS':'Mississippi','MO':'Missouri','MT':'Montana',
+      'NE':'Nebraska','NV':'Nevada','NH':'New Hampshire','NJ':'New Jersey','NM':'New Mexico',
+      'NY':'New York','NC':'North Carolina','ND':'North Dakota','OH':'Ohio','OK':'Oklahoma',
+      'OR':'Oregon','PA':'Pennsylvania','RI':'Rhode Island','SC':'South Carolina','SD':'South Dakota',
+      'TN':'Tennessee','TX':'Texas','UT':'Utah','VT':'Vermont','VA':'Virginia','WA':'Washington',
+      'WV':'West Virginia','WI':'Wisconsin','WY':'Wyoming','DC':'District of Columbia',
+    };
+
+    const stateMatches = Object.entries(US_STATES).filter(([code, name]) =>
+      code.toLowerCase() === ql || name.toLowerCase().startsWith(ql)
+    );
+    for (const [code, name] of stateMatches) {
+      const key = `state:${code}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        results.push({ display: `${name} (${code})`, badge: 'state' });
+      }
+    }
+
+    // Search ref_city_radius
+    const { data: refData } = await sb
+      .from('ref_city_radius')
+      .select('city, state, type')
+      .or(`city.ilike.%${query}%,aliases.cs.{${query}}`)
+      .limit(10);
+    if (refData) {
+      for (const r of refData) {
+        const display = r.type === 'metro' ? r.city : `${r.city}, ${r.state}`;
+        const key = display.toLowerCase();
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          results.push({ display, badge: r.type === 'metro' ? 'metro' : 'city' });
+        }
+      }
+    }
+
+    // Search location_cache
+    const { data: cacheData } = await sb
+      .from('location_cache')
+      .select('raw_input, normalized')
+      .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`)
+      .limit(8);
+    if (cacheData) {
+      for (const loc of cacheData) {
+        const display = loc.normalized || loc.raw_input;
+        const key = display.toLowerCase();
+        if (!seenKeys.has(key) && !key.startsWith('remote')) {
+          seenKeys.add(key);
+          results.push({ display, badge: 'pin' });
+        }
+      }
+    }
+
+    // Also offer "Remote" exclusion
+    if ('remote'.startsWith(ql)) {
+      if (!seenKeys.has('remote')) {
+        seenKeys.add('remote');
+        results.push({ display: 'Remote', badge: 'remote' });
+      }
+    }
+
+    renderLocationNotDropdown(results.slice(0, 10), query);
+  } catch (e) {
+    console.warn('[BJ] NOT location search failed:', e);
+  }
+}
+
+function renderLocationNotDropdown(results, query) {
+  if (results.length === 0) { locationNotDropdown.classList.remove('open'); return; }
+  const badgeMap = {
+    state: '<span style="font-size:9px;background:rgba(139,92,246,0.1);color:#8b5cf6;padding:1px 6px;border-radius:4px;font-weight:600;">state</span>',
+    metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
+    city: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">city</span>',
+    remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
+    pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
+  };
+  locationNotDropdown.innerHTML = results.map(r => {
+    const badge = badgeMap[r.badge] || '';
+    const hl = highlightCompanyMatch(r.display, query);
+    return `<div class="company-opt" tabindex="0" data-name="${r.display.replace(/"/g,'&quot;')}">
+      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+  }).join('');
+  locationNotDropdown.classList.add('open');
+
+  locationNotDropdown.querySelectorAll('.company-opt').forEach(opt => {
+    opt.addEventListener('mousedown', e => { e.preventDefault(); selectLocationNotFromDropdown(opt); });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); selectLocationNotFromDropdown(opt); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhereNot.focus(); }
+      if (e.key === 'Escape') { locationNotDropdown.classList.remove('open'); qbInputWhereNot.focus(); }
+    });
+  });
+}
+
+function selectLocationNotFromDropdown(opt) {
+  const name = opt.dataset.name.toLowerCase();
+  if (!whereNotPills.find(p => p.values[0]?.toLowerCase() === name)) {
+    whereNotPills.push({ values: [name], type: 'not' });
+  }
+  // Auto-uncheck include remote when explicitly excluding Remote
+  if (name.toLowerCase() === 'remote') {
+    const remoteCb = $('#save-filter-include-remote');
+    if (remoteCb) remoteCb.checked = false;
+  }
+  renderAllPills();
+  locationNotDropdown.classList.remove('open');
+  qbInputWhereNot.value = '';
+  debouncedSearchJobs();
+}
+
+// Input handling — Who Not row (with typeahead)
+const qbInputWhoNot = $('#qb-input-who-not');
+const companyNotDropdown = $('#company-not-dropdown');
+let companyNotSearchTimeout;
+
+qbInputWhoNot.addEventListener('input', () => {
+  const q = qbInputWhoNot.value.trim();
+  if (q.length < 2) { companyNotDropdown.classList.remove('open'); return; }
+  clearTimeout(companyNotSearchTimeout);
+  companyNotSearchTimeout = setTimeout(() => searchCompaniesForNot(q), 200);
+});
+
+qbInputWhoNot.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    if (companyNotDropdown.classList.contains('open')) {
+      const first = companyNotDropdown.querySelector('.company-opt');
+      if (first) {
+        selectCompanyNotFromDropdown(first);
+        return;
+      }
+    }
+    commitPill(qbInputWhoNot, whoNotPills, raw => ({ values: [raw], type: 'not' }));
+    companyNotDropdown.classList.remove('open');
+  } else if (e.key === 'Backspace' && qbInputWhoNot.value === '' && whoNotPills.length > 0) {
+    whoNotPills.pop(); renderAllPills();
+  } else if (e.key === 'Escape') {
+    companyNotDropdown.classList.remove('open');
+  } else if (e.key === 'ArrowDown' && companyNotDropdown.classList.contains('open')) {
+    e.preventDefault();
+    const first = companyNotDropdown.querySelector('.company-opt');
+    if (first) first.focus();
+  }
+});
+qbInputWhoNot.addEventListener('blur', () => {
+  setTimeout(() => { companyNotDropdown.classList.remove('open'); }, 200);
+  commitPill(qbInputWhoNot, whoNotPills, raw => ({ values: [raw], type: 'not' }));
+});
+$('#query-builder-who-not').addEventListener('click', e => {
+  if (!e.target.closest('.qb-pill')) qbInputWhoNot.focus();
+});
+
+// NOT WHO search — reuse same search logic as WHO
+async function searchCompaniesForNot(query) {
+  const results = [];
+  try {
+    const { data: atsData } = await sb
+      .from('ats_companies')
+      .select('slug, name, source')
+      .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+      .limit(6);
+    if (atsData) {
+      atsData.forEach(c => results.push({
+        name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
+      }));
+    }
+  } catch (e) { console.warn('[BJ] ATS company search (not) failed:', e); }
+
+  try {
+    const { data: connData } = await sb
+      .from('connections')
+      .select('parsed_company')
+      .ilike('parsed_company', `%${query}%`)
+      .not('parsed_company', 'is', null)
+      .limit(30);
+    if (connData) {
+      const counts = {};
+      connData.forEach(p => {
+        const n = (p.parsed_company || '').trim();
+        if (n) counts[n] = (counts[n] || 0) + 1;
+      });
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .forEach(([name, count]) => {
+          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+            results.push({ name, source: 'network', connections: count });
+          }
+        });
+    }
+  } catch (e) { console.warn('[BJ] Connection company search (not) failed:', e); }
+
+  renderCompanyNotDropdown(results, query);
+}
+
+function renderCompanyNotDropdown(results, query) {
+  if (results.length === 0) { companyNotDropdown.classList.remove('open'); return; }
+  companyNotDropdown.innerHTML = results.map(r => {
+    const badge = r.source === 'network'
+      ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
+      : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
+    const hl = highlightCompanyMatch(r.name, query);
+    return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
+      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+  }).join('');
+  companyNotDropdown.classList.add('open');
+
+  companyNotDropdown.querySelectorAll('.company-opt').forEach(opt => {
+    opt.addEventListener('mousedown', e => { e.preventDefault(); selectCompanyNotFromDropdown(opt); });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); selectCompanyNotFromDropdown(opt); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWhoNot.focus(); }
+      if (e.key === 'Escape') { companyNotDropdown.classList.remove('open'); qbInputWhoNot.focus(); }
+    });
+  });
+}
+
+function selectCompanyNotFromDropdown(opt) {
+  const name = opt.dataset.name.toLowerCase();
+  if (!whoNotPills.find(p => p.values[0]?.toLowerCase() === name)) {
+    whoNotPills.push({ values: [name], type: 'not' });
+  }
+  renderAllPills();
+  companyNotDropdown.classList.remove('open');
+  qbInputWhoNot.value = '';
+  debouncedSearchJobs();
+}
+
+// Collapse toggle
+// Restore Jobs Feed collapse states from localStorage
+const collapseStates = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+if (collapseStates.qb) {
+  $('#qb-toggle').classList.add('collapsed');
+  $('#qb-collapse-body').classList.add('collapsed');
+}
+if (collapseStates.sf) {
+  $('#sf-toggle').classList.add('collapsed');
+  $('#sf-collapse-body').classList.add('collapsed');
+}
+
+function saveCollapseStates() {
+  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  states.qb = $('#qb-toggle').classList.contains('collapsed');
+  states.sf = $('#sf-toggle').classList.contains('collapsed');
+  localStorage.setItem('bj_collapse', JSON.stringify(states));
+}
+
+$('#qb-toggle').addEventListener('click', (e) => {
+  if (e.target.id === 'clear-filters-btn' || e.target.closest('#clear-filters-btn')) return;
+  const header = $('#qb-toggle');
+  const body = $('#qb-collapse-body');
+  header.classList.toggle('collapsed');
+  body.classList.toggle('collapsed');
+  saveCollapseStates();
+});
+
+// Saved filters collapse toggle
+$('#sf-toggle').addEventListener('click', () => {
+  $('#sf-toggle').classList.toggle('collapsed');
+  $('#sf-collapse-body').classList.toggle('collapsed');
+  saveCollapseStates();
+});
+
+// Update active filter count badge
+function updateSfActiveCount() {
+  const checked = $$('.sf-item-check:checked').length;
+  const total = savedFilters.length;
+  const badge = $('#sf-active-count');
+  if (total > 0) {
+    badge.textContent = `${checked} of ${total} active`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+  updateSfStatusDot();
+}
+
+function updateSfStatusDot() {
+  const dot = $('#sf-status-dot');
+  if (!dot) return;
+  const total = savedFilters.length;
+  const checked = $$('.sf-item-check:checked').length;
+  if (total > 0 && checked > 0) {
+    dot.className = 'ext-status-dot connected';
+    dot.title = checked + ' of ' + total + ' filters active';
+  } else if (total > 0 && checked === 0) {
+    dot.className = 'ext-status-dot warning';
+    dot.title = total + ' filters saved but none active';
+  } else {
+    dot.className = 'ext-status-dot';
+    dot.title = 'No saved filters';
+  }
+}
+
+// Clear all
+$('#clear-filters-btn').addEventListener('click', () => {
+  whatPills = [];
+  wherePills = [];
+  whenPills = [];
+  whoPills = [];
+  payPills = [];
+  whatNotPills = [];
+  whereNotPills = [];
+  whoNotPills = [];
+  renderAllPills();
+});
+
+// Save filter — always-visible inline input
+function commitSaveFilter() {
+  const name = $('#save-filter-name').value.trim().toLowerCase();
+  if (!name || allPills() === 0) return;
+
+  // Warn if no WHERE filter set
+  if (wherePills.length === 0) {
+    alert(
+      'Please add a location filter.\n\n' +
+      'Without a location, this filter will match jobs worldwide.\n\n' +
+      'Add a location like "United States", "Remote", or a specific city in the Where row, then save again.'
+    );
+    $('#qb-input-where').focus();
+    // Open the filter builder if collapsed
+    const body = $('#qb-collapse-body');
+    if (body && !body.classList.contains('open')) {
+      body.classList.add('open');
+      $('#qb-chevron')?.classList.add('open');
+    }
+    return;
+  }
+
+  const filterData = {
+    name,
+    whatPills: JSON.parse(JSON.stringify(whatPills)),
+    wherePills: JSON.parse(JSON.stringify(wherePills)),
+    whenPills: JSON.parse(JSON.stringify(whenPills)),
+    whoPills: JSON.parse(JSON.stringify(whoPills)),
+    payPills: JSON.parse(JSON.stringify(payPills)),
+    whatNotPills: JSON.parse(JSON.stringify(whatNotPills)),
+    whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
+    whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
+    includeNoSalary: $('#save-filter-include-no-salary').checked,
+    includeRemote: $('#save-filter-include-remote').checked,
+    createdAt: Date.now(),
+    lastUsed: Date.now(),
+    useCount: 1
+  };
+  // Preserve existing per-filter level hierarchy if updating, otherwise inherit global default
+  const existingIdx = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+  if (existingIdx >= 0 && savedFilters[existingIdx].levelHierarchy) {
+    filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
+  }
+  if (existingIdx >= 0) {
+    filterData.createdAt = savedFilters[existingIdx].createdAt || Date.now();
+    // Preserve per-filter level hierarchy if it exists
+    if (savedFilters[existingIdx].levelHierarchy) {
+      filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
+    }
+    // Preserve level assignments
+    if (savedFilters[existingIdx].assignedLevels) {
+      filterData.assignedLevels = savedFilters[existingIdx].assignedLevels;
+    }
+    if (savedFilters[existingIdx].includeOtherLevels !== undefined) {
+      filterData.includeOtherLevels = savedFilters[existingIdx].includeOtherLevels;
+    }
+    filterData.useCount = (savedFilters[existingIdx].useCount || 0) + 1;
+    savedFilters[existingIdx] = filterData;
+  } else {
+    savedFilters.push(filterData);
+  }
+  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  // Only clear the name if it was a new filter
+  if (existingIdx < 0) {
+    $('#save-filter-name').value = '';
+  }
+  window._editingFilterIdx = null;
+  renderSavedFilters();
+  // Re-run search with updated filters
+  debouncedSearchJobs();
+}
+
+$('#save-filter-go').addEventListener('click', commitSaveFilter);
+$('#save-filter-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); commitSaveFilter(); }
+});
+
+// Search within saved filters
+// Input handling — Pay row (min/max auto-pill)
+function parseSalaryVal(val) {
+  if (!val) return '';
+  let clean = val.replace(/[\$\s,]/g, '').trim();
+  const kMatch = clean.match(/^(\d+)k$/i);
+  if (kMatch) return String(parseInt(kMatch[1]) * 1000);
+  const num = parseInt(clean.replace(/[^0-9]/g, ''));
+  if (isNaN(num)) return '';
+  // 2-3 digit numbers interpreted as thousands (e.g. 80 → 80000, 150 → 150000)
+  if (num >= 10 && num <= 999) return String(num * 1000);
+  return String(num);
+}
+function fmtSalary(v) {
+  if (!v) return '';
+  const n = parseInt(v);
+  if (isNaN(n)) return v;
+  return n >= 1000 ? '$' + Math.round(n / 1000) + 'k' : '$' + n;
+}
+function applyPayFilter() {
+  const minRaw = parseSalaryVal($('#qb-input-pay-min').value);
+  const maxRaw = parseSalaryVal($('#qb-input-pay-max').value);
+  if (!minRaw && !maxRaw) return;
+  const label = minRaw && maxRaw ? `${fmtSalary(minRaw)} – ${fmtSalary(maxRaw)}`
+    : minRaw ? `${fmtSalary(minRaw)}+` : `Up to ${fmtSalary(maxRaw)}`;
+  payPills = [{ values: [label], type: 'pay', min: minRaw, max: maxRaw }];
+  $('#qb-input-pay-min').value = '';
+  $('#qb-input-pay-max').value = '';
+  renderAllPills();
+}
+function renderPayPills() {
+  const container = $('#qb-pay-pill-inline');
+  container.innerHTML = '';
+  if (payPills.length === 0) return;
+  payPills.forEach((pill, i) => {
+    const el = document.createElement('span');
+    el.className = 'qb-pill pay-pill';
+    el.style.margin = '0';
+    el.innerHTML = `<span class="qb-pill-text">${pill.values[0]}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
+    el.querySelector('.qb-pill-remove').addEventListener('click', () => {
+      payPills.splice(i, 1);
+      renderAllPills();
+    });
+    container.appendChild(el);
+  });
+}
+$('#qb-input-pay-min').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if ($('#qb-input-pay-max').value || $('#qb-input-pay-min').value) {
+      if (!$('#qb-input-pay-max').value && $('#qb-input-pay-min').value) {
+        applyPayFilter();
+      } else {
+        applyPayFilter();
+      }
+    }
+  }
+});
+$('#qb-input-pay-max').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); applyPayFilter(); }
+});
+$('#qb-input-pay-min').addEventListener('blur', () => {
+  setTimeout(() => {
+    if (document.activeElement !== $('#qb-input-pay-max')) applyPayFilter();
+  }, 100);
+});
+$('#qb-input-pay-max').addEventListener('blur', () => {
+  setTimeout(() => {
+    if (document.activeElement !== $('#qb-input-pay-min')) applyPayFilter();
+  }, 100);
+});
+
+$('#sf-search').addEventListener('input', () => renderSavedFilters());
+
+// Select all checkbox
+$('#sf-select-all').addEventListener('change', e => {
+  $$('.sf-item-check').forEach(cb => cb.checked = e.target.checked);
+  // Persist
+  const state = {};
+  $$('.sf-item-check').forEach(c => {
+    const n = savedFilters[parseInt(c.dataset.idx)]?.name;
+    if (n) state[n] = c.checked;
+  });
+  localStorage.setItem('bj_sf_checked', JSON.stringify(state));
+  $('#sf-delete-selected').style.display = e.target.checked && $$('.sf-item-check').length > 0 ? '' : 'none';
+  updateSfActiveCount();
+  debouncedSearchJobs();
+});
+
+// Delete selected filters
+$('#sf-delete-selected').addEventListener('click', () => {
+  const checked = [...$$('.sf-item-check:checked')].map(cb => parseInt(cb.dataset.idx));
+  if (checked.length === 0) return;
+  if (!confirm(`Delete ${checked.length} saved filter${checked.length > 1 ? 's' : ''}?`)) return;
+  // Delete in reverse order to preserve indices
+  checked.sort((a, b) => b - a).forEach(idx => savedFilters.splice(idx, 1));
+  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  $('#sf-select-all').checked = false;
+  $('#sf-delete-selected').style.display = 'none';
+  renderSavedFilters();
+});
+
+function renderSavedFilters() {
+  const list = $('#sf-list');
+  const section = $('#saved-filters-section');
+  const query = ($('#sf-search')?.value || '').toLowerCase();
+
+  if (savedFilters.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+
+  // Sort by last used (most recent first)
+  const sorted = [...savedFilters]
+    .map((sf, i) => ({ ...sf, _idx: i }))
+    .filter(sf => !query || sf.name.toLowerCase().includes(query))
+    .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+
+  if (sorted.length === 0) {
+    list.innerHTML = `<div class="sf-empty">${query ? 'No matches' : 'No saved filters yet'}</div>`;
+    return;
+  }
+
+  // Column headers
+  list.innerHTML = `<div style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:6px;">
+    <div style="width:20px;"></div>
+    <div style="width:14px;"></div>
+    <div style="width:16px;"></div>
+    <div style="flex:1;font-size:10px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
+      <div class="sf-item-counts">
+        <span class="sf-count" style="font-size:9px;font-weight:700;color:var(--text-faint);">1D</span>
+        <span class="sf-count" style="font-size:9px;font-weight:700;color:var(--text-faint);">7D</span>
+        <span class="sf-count" style="font-size:9px;font-weight:700;color:var(--text-faint);">30D</span>
+      </div>
+      <div style="width:48px;"></div>
+    </div>
+  </div>` + sorted.map(sf => {
+    const ago = sf.createdAt ? timeAgo(sf.createdAt) : '';
+    const meta = ago ? `created ${ago}` : '';
+    const jToday = sf.jobsToday || '—';
+    const jWeek = sf.jobsWeek || '—';
+    const jMonth = sf.jobsMonth || '—';
+
+    // Build mini pill HTML from saved filter criteria
+    let miniPills = '';
+    const allSfPills = [
+      ...(sf.whatPills || sf.pills || []).map(p => ({ ...p, row: 'what' })),
+      ...(sf.wherePills || []).map(p => ({ ...p, row: 'where' })),
+      ...(sf.whenPills || []).map(p => ({ ...p, row: 'when' })),
+      ...(sf.whoPills || []).map(p => ({ ...p, row: 'who' })),
+      ...(sf.payPills || []).map(p => ({ ...p, row: 'pay' })),
+      ...(sf.whatNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'what' })),
+      ...(sf.whereNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'where' })),
+      ...(sf.whoNotPills || []).map(p => ({ ...p, row: 'not', notSource: 'who' })),
+    ];
+    // Show "incl. no salary" pill when pay filter exists and includeNoSalary is on
+    if ((sf.payPills || []).length > 0 && sf.includeNoSalary !== false) {
+      allSfPills.push({ values: ['incl. no salary'], row: 'pay', _isNoSalary: true });
+    }
+    // Show "incl. remote" pill when location filter exists and includeRemote is on
+    const hasLocPills = (sf.wherePills || []).length > 0;
+    const hasExplicitRemotePill = (sf.wherePills || []).some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
+    if (hasLocPills && !hasExplicitRemotePill && sf.includeRemote === true) {
+      allSfPills.push({ values: ['incl. remote'], row: 'where', _isRemoteToggle: true });
+    }
+    // Legacy: convert old salaryMin/Max to pay pill
+    if (!sf.payPills && (sf.salaryMin || sf.salaryMax)) {
+      function fmtSalary(v) {
+        if (!v) return '';
+        const n = parseInt(v.toString().replace(/[^0-9]/g, ''));
+        if (isNaN(n)) return v;
+        return n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
+      }
+      const fMin = fmtSalary(sf.salaryMin);
+      const fMax = fmtSalary(sf.salaryMax);
+      const salaryLabel = fMin && fMax ? `$${fMin} – $${fMax}`
+        : fMin ? `$${fMin}+` : `Up to $${fMax}`;
+      allSfPills.push({ values: [salaryLabel], row: 'pay' });
+    }
+    if (allSfPills.length > 0) {
+      // Detect pill color: use row if set explicitly, otherwise infer from type/value
+      const locationWords = /^(remote|hybrid|onsite|on-site|in-office)$/i;
+      const cityLike = /^[a-z\s]+(,\s*[a-z]{2})?$/i;
+      const salaryLike = /\$|k\+?$|\d{3,}/i;
+
+      miniPills = '<div class="sf-item-pills">' + allSfPills.map(p => {
+        let cls = '';
+        const val = (p.values ? p.values[0] : '').toLowerCase();
+        if (p.row === 'where') cls = 'location-pill' + (p._isRemoteToggle ? ' no-salary-pill' : '');
+        else if (p.row === 'when') cls = 'when-pill';
+        else if (p.row === 'who') cls = 'who-pill';
+        else if (p.row === 'pay') cls = 'pay-pill' + (p._isNoSalary ? ' no-salary-pill' : '');
+        else if (p.row === 'not') cls = 'not-pill' + (p.notSource ? ' not-' + p.notSource : '');
+        else if (p.type === 'type' || locationWords.test(val)) cls = 'location-pill';
+        else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
+        // else default blue for keyword/what
+        const sep = cls === 'not-pill' ? ' nor ' : ' | ';
+        const label = p.values ? p.values.join(sep) : '';
+        return `<span class="sf-mini-pill ${cls}">${label}</span>`;
+      }).join('') + '</div>';
+    }
+
+    const filterNum = sf._idx + 1;
+    const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+    const filterColor = filterColors[(filterNum - 1) % filterColors.length];
+
+    return `<div class="sf-item" data-idx="${sf._idx}" data-filternum="${filterNum}">
+      <span class="sf-del" data-delidx="${sf._idx}" title="Delete filter">✕</span>
+      <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
+      <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
+      <div class="sf-item-info">
+        <div class="sf-item-name">${sf.name}</div>
+        ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
+      </div>
+      ${miniPills}
+      ${(() => {
+        if (!sf.assignedLevels || sf.assignedLevels.length === 0) return '';
+        const h = sf.levelHierarchy || levelHierarchy;
+        const badges = sf.assignedLevels.map(lbl => {
+          const lvl = h.find(l => l.label === lbl);
+          const c = lvl ? lvl.color : '#94a3b8';
+          return `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:${c}15;color:${c};border:1px solid ${c}30;white-space:nowrap;">${lbl}</span>`;
+        }).join(' ');
+        const otherLabel = sf.includeOtherLevels ? ' <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg-input);color:var(--text-faint);border:1px solid var(--border);">+Other</span>' : '';
+        return `<div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${badges}${otherLabel}</div>`;
+      })()}
+      <div class="sf-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
+        <div class="sf-item-counts">
+          <span class="sf-count sf-count-today">${jToday}</span>
+          <span class="sf-count sf-count-week">${jWeek}</span>
+          <span class="sf-count sf-count-month">${jMonth}</span>
+        </div>
+        <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
+        <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.assignedLevels?.length ? sf.assignedLevels.length + ' levels assigned — click to edit' : sf.levelHierarchy ? 'Custom levels — click to edit' : 'Assign levels to this filter'}" style="font-size:10px;color:${sf.assignedLevels?.length ? 'var(--green)' : sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.assignedLevels?.length || sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Bind load (skip if clicking checkbox)
+  list.querySelectorAll('.sf-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.classList.contains('sf-del')) return;
+      if (e.target.classList.contains('sf-item-check')) return;
+      const idx = parseInt(el.dataset.idx);
+      const sf = savedFilters[idx];
+      // Populate the save name input with this filter's name
+      $('#save-filter-name').value = sf.name || '';
+      // Store which filter index we're editing
+      window._editingFilterIdx = idx;
+      // Support both old format (pills) and new format (whatPills/wherePills)
+      if (sf.whatPills) {
+        whatPills = JSON.parse(JSON.stringify(sf.whatPills));
+        wherePills = JSON.parse(JSON.stringify(sf.wherePills || []));
+      } else if (sf.pills) {
+        whatPills = JSON.parse(JSON.stringify(sf.pills));
+        wherePills = [];
+      }
+      whenPills = JSON.parse(JSON.stringify(sf.whenPills || []));
+      whoPills = JSON.parse(JSON.stringify(sf.whoPills || []));
+      payPills = JSON.parse(JSON.stringify(sf.payPills || []));
+      whatNotPills = JSON.parse(JSON.stringify(sf.whatNotPills || []));
+      whereNotPills = JSON.parse(JSON.stringify(sf.whereNotPills || []));
+      whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
+      // Restore includeNoSalary checkbox
+      const noSalaryCb = $('#save-filter-include-no-salary');
+      if (noSalaryCb) noSalaryCb.checked = sf.includeNoSalary !== false;
+      // Restore includeRemote checkbox
+      const remoteCb = $('#save-filter-include-remote');
+      if (remoteCb) remoteCb.checked = sf.includeRemote === true;
+      renderPayPills();
+      savedFilters[idx].lastUsed = Date.now();
+      savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
+      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      renderAllPills();
+      // Expand the filter builder if collapsed
+      const body = $('#qb-collapse-body');
+      if (body) {
+        body.classList.remove('collapsed');
+        body.classList.add('open');
+      }
+      const toggle = $('#qb-toggle');
+      if (toggle) toggle.classList.remove('collapsed');
+    });
+  });
+
+  // Bind delete
+  list.querySelectorAll('.sf-del').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      savedFilters.splice(parseInt(el.dataset.delidx), 1);
+      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      renderSavedFilters();
+    });
+  });
+
+  // Bind duplicate
+  list.querySelectorAll('.sf-dup').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(el.dataset.dupidx);
+      const original = savedFilters[idx];
+      if (!original) return;
+      const copy = JSON.parse(JSON.stringify(original));
+      copy.name = original.name + ' (copy)';
+      copy.createdAt = Date.now();
+      copy.lastUsed = null;
+      copy.useCount = 0;
+      copy.jobsToday = null;
+      copy.jobsWeek = null;
+      copy.jobsMonth = null;
+      savedFilters.push(copy);
+      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      renderSavedFilters();
+    });
+  });
+
+  // Bind levels button
+  list.querySelectorAll('.sf-levels-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const idx = parseInt(el.dataset.idx);
+      editFilterLevelHierarchy(idx);
+    });
+  });
+
+  // Restore checkbox state from localStorage
+  const checkedState = JSON.parse(localStorage.getItem('bj_sf_checked') || '{}');
+  list.querySelectorAll('.sf-item-check').forEach(cb => {
+    const sf = savedFilters[parseInt(cb.dataset.idx)];
+    const name = sf?.name;
+    cb.checked = name && name in checkedState ? checkedState[name] : true;
+    cb.addEventListener('change', () => {
+      const state = {};
+      list.querySelectorAll('.sf-item-check').forEach(c => {
+        const n = savedFilters[parseInt(c.dataset.idx)]?.name;
+        if (n) state[n] = c.checked;
+      });
+      localStorage.setItem('bj_sf_checked', JSON.stringify(state));
+      const anyChecked = list.querySelectorAll('.sf-item-check:checked').length > 0;
+      $('#sf-delete-selected').style.display = anyChecked ? '' : 'none';
+      updateSfActiveCount();
+      debouncedSearchJobs();
+    });
+  });
+  updateSfActiveCount();
+
+  // Auto-run search on initial render if filters exist
+  if (savedFilters.length > 0 && !window._initialSearchDone) {
+    window._initialSearchDone = true;
+    setTimeout(() => searchJobs(), 500);
+  }
+}
+
+function timeAgo(ts) {
+  const now = new Date();
+  const date = new Date(ts);
+  const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+  const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  if (date >= todayStart) return 'today';
+  if (date >= yesterdayStart) return 'yesterday';
+  const days = Math.floor((todayStart - date) / 86400000);
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+renderSavedFilters();
+renderAllPills();
+updateSfStatusDot();
+
+// Auto-collapse filter builder and saved filters if saved filters exist
+if (savedFilters.length > 0) {
+  $('#qb-toggle').classList.add('collapsed');
+  $('#qb-collapse-body').classList.add('collapsed');
+  $('#sf-toggle').classList.add('collapsed');
+  $('#sf-collapse-body').classList.add('collapsed');
+}
+
+// Compute real job counts for each saved filter (async, fills in after render)
+async function updateSavedFilterCounts() {
+  const now = new Date();
+  const last24h = new Date(now.getTime() - 86400000);
+  const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+  const monthAgo = new Date(now); monthAgo.setDate(monthAgo.getDate() - 30);
+
+  for (let i = 0; i < savedFilters.length; i++) {
+    const sf = savedFilters[i];
+
+    // Skip filters with no real criteria
+    const w = sf.whatPills || sf.pills || [];
+    const wh = sf.wherePills || [];
+    const wo = sf.whoPills || [];
+    const wnot = sf.whatNotPills || [];
+    const whnot = sf.whereNotPills || [];
+    const wonot = sf.whoNotPills || [];
+    if (w.length === 0 && wh.length === 0 && wo.length === 0 && wnot.length === 0 && whnot.length === 0 && wonot.length === 0) {
+      console.log(`Filter ${i} "${sf.name}" has no searchable criteria, skipping counts`);
+      continue;
+    }
+
+    try {
+      // Pre-fetch location IDs for this filter
+      const tuningLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+      let locIds = null;
+      if (wh.length > 0 || whnot.length > 0 || tuningLoc.usOnly) {
+        locIds = await getLocationMatchIds(wh, whnot, tuningLoc, sf.includeRemote === true);
+      }
+
+      // Today (last 24h)
+      let q1 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+      q1 = buildFilterQuery(sf, q1, locIds);
+      q1 = q1.gte('updated_at', last24h.toISOString());
+      const r1 = await q1;
+      const c1 = r1.error ? 0 : (r1.count || 0);
+
+      // 7 days
+      let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+      q2 = buildFilterQuery(sf, q2, locIds);
+      q2 = q2.gte('updated_at', weekAgo.toISOString());
+      const r2 = await q2;
+      const c2 = r2.error ? 0 : (r2.count || 0);
+
+      // 30 days
+      let q3 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+      q3 = buildFilterQuery(sf, q3, locIds);
+      q3 = q3.gte('updated_at', monthAgo.toISOString());
+      const r3 = await q3;
+      const c3 = r3.error ? 0 : (r3.count || 0);
+
+      console.log(`Filter "${sf.name}": today=${c1}, 7d=${c2}, 30d=${c3}`);
+
+      // Update the DOM — find by data-idx which matches original array index
+      const rows = $$('.sf-item');
+      rows.forEach(row => {
+        if (parseInt(row.dataset.idx) === i) {
+          const counts = row.querySelectorAll('.sf-count');
+          if (counts[0]) counts[0].textContent = c1.toLocaleString();
+          if (counts[1]) counts[1].textContent = c2.toLocaleString();
+          if (counts[2]) counts[2].textContent = c3.toLocaleString();
+        }
+      });
+
+      // Persist
+      savedFilters[i].jobsToday = c1;
+      savedFilters[i].jobsWeek = c2;
+      savedFilters[i].jobsMonth = c3;
+    } catch (e) {
+      console.error(`Count error for filter ${i} "${sf.name}":`, e);
+    }
+  }
+  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+}
+
+// Run counts after a short delay to not block initial render
+setTimeout(() => updateSavedFilterCounts(), 1000);
+
+// Source pill helper (for table rows)
+function sourcePill(source) {
+  const map = {
+    greenhouse: 'pill-greenhouse', lever: 'pill-lever', workday: 'pill-workday',
+    linkedin: 'pill-linkedin', indeed: 'pill-indeed', ashby: 'pill-ashby', career_page: 'pill-career'
+  };
+  const labels = {
+    greenhouse: 'GH', lever: 'Lever', workday: 'WD',
+    linkedin: 'LI', indeed: 'Indeed', ashby: 'Ashby', career_page: 'Direct'
+  };
+  return `<span class="source-pill ${map[source] || 'pill-career'}">${labels[source] || source}</span>`;
+}
+
+// Apply button — picks best non-LI source, falls back to LI
+function applyButton(sources, urls, jobId) {
+  const priority = ['greenhouse','lever','workday','ashby','career_page','indeed','linkedin'];
+  let bestSource = 'linkedin';
+  let bestUrl = '#';
+  for (const p of priority) {
+    if (urls[p]) { bestSource = p; bestUrl = urls[p]; break; }
+  }
+  const isLI = bestSource === 'linkedin';
+  const cls = isLI ? 'apply-btn apply-btn-linkedin' : 'apply-btn apply-btn-default';
+  const label = isLI ? 'Apply on LI' : 'Apply →';
+  return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); markApplied('${jobId}', this)">${label}</a>`;
+}
+
