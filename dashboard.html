@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.40 - 2026-02-15 - 3-col status bar, help icon with label, column reorder -->
+<!-- Brilliant Jobs Dashboard v2.40 - 2026-02-15 - 3-col status bar, help icon with label, column reorder, sort arrow fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -751,7 +751,7 @@
       transition: all 0.15s;
     }
     .job-table th:hover .sort-arrow { background: rgba(255,255,255,0.12); color: var(--text-dim); }
-    .job-table th.sorted .sort-arrow { background: var(--text); color: var(--bg-card); }
+    .job-table th.sorted .sort-arrow { background: transparent; color: inherit; opacity: 1; }
     /* Column header text colors match pill colors when sorted */
     .job-table th[data-sort="title"].sorted { color: var(--accent); }
     .job-table th[data-sort="company"].sorted { color: #ec4899; }
