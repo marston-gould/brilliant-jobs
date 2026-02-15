@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.37 - 2026-02-15 - Scalable filter dropdown, live stats wiring, roadmap cleanup -->
+<!-- Brilliant Jobs Dashboard v2.38 - 2026-02-15 - Filter numbering sync, inline help icon, phase renumbering -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -203,9 +203,9 @@
     .main { flex: 1; margin-left: var(--nav-w); min-height: 100vh; }
     .page-header {
       padding: 28px 40px 20px; border-bottom: 1px solid var(--border);
-      background: var(--bg-white);
+      background: var(--bg-white); position: relative;
     }
-    .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+    .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 2px; display: inline; }
     .page-header p { font-size: 13px; color: var(--text-dim); }
     .page-body { padding: 28px 40px; }
     .page { display: none; }
@@ -1133,25 +1133,22 @@
     }
     .rc-assign-item:hover { background: var(--bg-hover); }
 
-    /* ======================== HELP BUTTON ======================== */
-    .page-help-btn {
-      position: fixed; bottom: 24px; right: 24px; z-index: 90;
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--bg-card); border: 1px solid var(--border);
-      color: var(--text-faint); font-size: 18px;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.15s;
-      padding: 0; line-height: 1;
+    /* ======================== HELP BUTTON (inline in page header) ======================== */
+    .page-help-icon {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: transparent; border: 1.5px solid var(--text-faint);
+      color: var(--text-faint); font-size: 12px; font-weight: 700;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      transition: all 0.15s; vertical-align: middle; margin-left: 8px; flex-shrink: 0;
     }
-    .page-help-btn:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.3); transform: scale(1.1); }
+    .page-help-icon:hover { border-color: var(--accent); color: var(--accent); }
     .page-help-panel {
-      position: fixed; bottom: 72px; right: 24px; z-index: 91;
+      position: absolute; top: 100%; right: 0; z-index: 91;
       width: 320px; max-height: 400px; overflow-y: auto;
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 20px;
       display: none; animation: fadeIn 0.15s ease;
     }
-    .page-help-panel.open { display: block; }
     .page-help-panel h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
     .page-help-panel p { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
     .page-help-panel .help-step { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -1324,7 +1321,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.37</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.38</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1412,10 +1409,6 @@
     </nav>
 
     <div class="main">
-
-      <!-- Help Button + Panel (global, contextual per page) -->
-      <button class="page-help-btn" id="page-help-btn" title="How to be brilliant on this page" onclick="toggleHelpPanel()">💡</button>
-      <div class="page-help-panel" id="page-help-panel"></div>
 
       <!-- Feedback button -->
       <div class="feedback-btn" id="feedback-btn" title="Squash a bug or pitch an idea!">
@@ -2592,7 +2585,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.37 loaded');
+    console.log('[BJ] Dashboard v2.38 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2662,8 +2655,9 @@
         $(`#page-${item.dataset.page}`).classList.add('active');
         // Persist active tab
         localStorage.setItem('bj_active_tab', item.dataset.page);
-        // Close help panel on page switch
+        // Close help panel and re-inject on page switch
         closeHelpPanel();
+        setTimeout(injectHelpIcon, 50);
       });
     });
 
@@ -2795,10 +2789,39 @@
       return active ? active.id.replace('page-', '') : 'brilliant';
     }
 
-    function toggleHelpPanel() {
-      const panel = $('#page-help-panel');
-      if (panel.classList.contains('open')) {
-        closeHelpPanel();
+    // Inject help icon into active page header
+    function injectHelpIcon() {
+      // Remove any existing help icons and panels
+      document.querySelectorAll('.page-help-icon, .page-help-panel').forEach(el => el.remove());
+
+      const active = document.querySelector('.page.active');
+      if (!active) return;
+      const header = active.querySelector('.page-header');
+      if (!header) return;
+      const h2 = header.querySelector('h2');
+      if (!h2) return;
+
+      // Create the ? icon
+      const icon = document.createElement('span');
+      icon.className = 'page-help-icon';
+      icon.textContent = '?';
+      icon.title = 'How to use this page';
+      icon.onclick = (e) => { e.stopPropagation(); toggleHelpPanel(header); };
+      h2.insertAdjacentElement('afterend', icon);
+
+      // Create the panel (hidden)
+      const panel = document.createElement('div');
+      panel.className = 'page-help-panel';
+      panel.id = 'page-help-panel';
+      header.appendChild(panel);
+    }
+
+    function toggleHelpPanel(header) {
+      const panel = header ? header.querySelector('.page-help-panel') : document.getElementById('page-help-panel');
+      if (!panel) return;
+
+      if (panel.style.display === 'block') {
+        panel.style.display = 'none';
       } else {
         const page = getActivePage();
         const help = pageHelpContent[page] || pageHelpContent.brilliant;
@@ -2812,22 +2835,24 @@
             </div>
           `).join('')}
         `;
-        panel.classList.add('open');
+        panel.style.display = 'block';
       }
     }
 
     function closeHelpPanel() {
-      $('#page-help-panel').classList.remove('open');
+      const panel = document.getElementById('page-help-panel');
+      if (panel) panel.style.display = 'none';
     }
 
     // Close help when clicking outside
     document.addEventListener('click', (e) => {
-      const panel = $('#page-help-panel');
-      const btn = $('#page-help-btn');
-      if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+      if (!e.target.closest('.page-help-icon') && !e.target.closest('.page-help-panel')) {
         closeHelpPanel();
       }
     });
+
+    // Inject on load (after page restore)
+    setTimeout(injectHelpIcon, 100);
 
     // Extension detection — check if extension has updated the profile recently
     async function checkExtensionStatus() {
@@ -8689,7 +8714,9 @@
       const totalAssigned = resumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
       assignedEl.textContent = totalAssigned;
 
-      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+      // Sort by lastUsed descending — same order as the Jobs Feed saved filter panel
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]')
+        .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
       const allAssignedFilterNames = new Set(resumes.flatMap(r => r.filterIds || []));
       const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
       const coverageEl = $('#r-coverage');
