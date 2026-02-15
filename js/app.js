@@ -1,4 +1,4 @@
-console.log('[BJ] Dashboard v2.52 loaded');
+console.log('[BJ] Dashboard v2.53 loaded');
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -270,4 +270,29 @@ var tuningIndExclPills = tuningSettings.industryExcludes || [];
 var levelHierarchy = tuningSettings.levelHierarchy || [];
 // Stub — overridden by tuning.js with full implementation
 var getJobLevel = function(title, hierarchy) { return null; };
+
+// Pill arrays (used by query-builder.js, location.js, browsers.js)
+var whatPills = [];
+var wherePills = [];
+var whenPills = [];
+var whoPills = [];
+var payPills = [];
+var whatNotPills = [];
+var whereNotPills = [];
+var whoNotPills = [];
+var savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
+var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
+var DEFAULT_RADIUS = 30;
+
+// Job feed state (used by job-feed.js, keywords.js, pipeline.js)
+var searchTimeout = null;
+var currentJobPage = 0;
+var JOBS_PER_PAGE = 50;
+var allJobs = [];
+var currentJobs = [];
+var jobSortStack = [{ field: 'updated_at', asc: false }];
+var hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
+var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
+var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
 

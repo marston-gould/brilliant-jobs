@@ -1,0 +1,332 @@
+// ============================================================
+// SORT BAR — Visible multi-sort with numbered pills
+// ============================================================
+
+function renderSortPills() {
+  const container = $('#sort-pills');
+  container.innerHTML = '';
+  // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
+  const sortColorMap = {
+    title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
+    company_name: { bg: 'rgba(236,72,153,0.1)', text: '#ec4899', dot: '#ec4899' },
+    location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
+    updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
+    level: { bg: 'rgba(6,182,212,0.1)', text: '#06b6d4', dot: '#06b6d4' },
+  };
+  jobSortStack.forEach((s, i) => {
+    const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level' };
+    const label = labelMap[s.field] || s.field;
+    const dirLabel = s.asc ? '↑' : '↓';
+    const dirTitle = s.asc
+      ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+      : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
+    const colors = sortColorMap[s.field] || sortColorMap.title;
+
+    const pill = document.createElement('span');
+    pill.className = 'sort-pill';
+    pill.style.background = colors.bg;
+    pill.style.color = colors.text;
+    pill.innerHTML = `
+      <span class="sort-num" style="background:${colors.dot};">${i + 1}</span>
+      ${label}
+      <span class="sort-dir" title="${dirTitle}" data-idx="${i}">${dirLabel}</span>
+      <span class="sort-remove" title="Remove" data-idx="${i}">✕</span>
+    `;
+    container.appendChild(pill);
+  });
+
+  // Bind direction toggle
+  container.querySelectorAll('.sort-dir').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      jobSortStack[idx].asc = !jobSortStack[idx].asc;
+      renderSortPills();
+      searchJobs(0);
+    });
+  });
+
+  // Bind remove
+  container.querySelectorAll('.sort-remove').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      jobSortStack.splice(idx, 1);
+      if (jobSortStack.length === 0) jobSortStack.push({ field: 'updated_at', asc: false });
+      renderSortPills();
+      searchJobs(0);
+    });
+  });
+
+  // Update dropdown — disable already-used fields
+  $$('#sort-dropdown .sort-opt').forEach(opt => {
+    const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
+    opt.classList.toggle('disabled', inUse);
+  });
+}
+
+// Sort add button + dropdown
+$('#sort-add-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const dd = $('#sort-dropdown');
+  dd.style.display = dd.style.display === 'none' ? '' : 'none';
+});
+
+$$('#sort-dropdown .sort-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    const field = opt.dataset.field;
+    if (jobSortStack.some(s => s.field === field)) return;
+    const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
+    jobSortStack.push({ field, asc: field === 'level' ? false : defaultAsc });
+    $('#sort-dropdown').style.display = 'none';
+    renderSortPills();
+    searchJobs(0);
+  });
+});
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.sort-add-wrap')) {
+    $('#sort-dropdown').style.display = 'none';
+  }
+});
+
+// Also allow clicking table headers as a quick single-sort shortcut
+$$('.job-table th[data-sort]').forEach(th => {
+  th.style.cursor = 'pointer';
+  th.addEventListener('click', () => {
+    const field = th.dataset.sort;
+    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level' };
+    const dbField = fieldMap[field] || 'updated_at';
+
+    // If already primary sort, toggle direction
+    if (jobSortStack.length > 0 && jobSortStack[0].field === dbField) {
+      jobSortStack[0].asc = !jobSortStack[0].asc;
+    } else {
+      // Make it the primary sort (keep others)
+      jobSortStack = jobSortStack.filter(s => s.field !== dbField);
+      jobSortStack.unshift({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' });
+    }
+    renderSortPills();
+    searchJobs(0);
+  });
+});
+
+// Initial render of sort pills
+renderSortPills();
+
+// Input handling — What row
+const qbInputWhat = $('#qb-input-what');
+function commitPill(input, pillArray, makePill) {
+  const raw = input.value.trim().toLowerCase();
+  if (!raw) return false;
+  // Support both "or term" and "nor term" as OR-into-last-pill
+  const orMatch = raw.match(/^(?:or|nor)\s+(.+)/i);
+  if (orMatch && pillArray.length > 0) {
+    pillArray[pillArray.length - 1].values.push(orMatch[1].trim());
+  } else {
+    pillArray.push(makePill(raw));
+  }
+  input.value = '';
+  renderAllPills();
+  return true;
+}
+
+const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
+
+function focusNextInput(currentId) {
+  const idx = qbInputOrder.indexOf(currentId);
+  if (idx >= 0 && idx < qbInputOrder.length - 1) {
+    const next = $('#' + qbInputOrder[idx + 1]);
+    if (next) setTimeout(() => next.focus(), 10);
+  }
+}
+
+qbInputWhat.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+  } else if (e.key === 'Tab') {
+    if (qbInputWhat.value.trim()) {
+      e.preventDefault();
+      commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+      focusNextInput('qb-input-what');
+    }
+  } else if (e.key === 'Backspace' && qbInputWhat.value === '' && whatPills.length > 0) {
+    whatPills.pop();
+    renderAllPills();
+  }
+});
+qbInputWhat.addEventListener('blur', () => {
+  commitPill(qbInputWhat, whatPills, raw => ({ values: [raw], type: classifyTerm(raw) }));
+});
+
+// Input handling — Where row (handled by location autocomplete section below)
+
+// Click builders to focus respective inputs
+$('#query-builder-what').addEventListener('click', e => {
+  if (e.target.closest('.qb-pill')) return;
+  qbInputWhat.focus();
+});
+$('#query-builder-where').addEventListener('click', e => {
+  if (e.target.closest('.qb-pill')) return;
+  qbInputWhere.focus();
+});
+$('#query-builder-when').addEventListener('click', e => {
+  if (e.target.closest('.qb-pill')) return;
+  $('#qb-input-when').focus();
+});
+$('#query-builder-who').addEventListener('click', e => {
+  if (e.target.closest('.qb-pill')) return;
+  $('#qb-input-who').focus();
+});
+
+// Input handling — When row
+const qbInputWhen = $('#qb-input-when');
+qbInputWhen.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+  } else if (e.key === 'Tab') {
+    if (qbInputWhen.value.trim()) {
+      e.preventDefault();
+      commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+      focusNextInput('qb-input-when');
+    }
+  } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
+    whenPills.pop();
+    renderAllPills();
+  }
+});
+qbInputWhen.addEventListener('blur', () => {
+  commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+});
+
+// Input handling — Who row
+const qbInputWho = $('#qb-input-who');
+qbInputWho.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+    // If dropdown is open, force selection from it
+    if (companyDropdown.classList.contains('open')) {
+      const first = companyDropdown.querySelector('.company-opt');
+      if (first) {
+        e.preventDefault();
+        qbInputWho.value = first.dataset.name;
+        commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+        renderAllPills();
+        companyDropdown.classList.remove('open');
+        return;
+      }
+    }
+    if (e.key === 'Enter' || e.key === ',') e.preventDefault();
+    commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+    companyDropdown.classList.remove('open');
+  } else if (e.key === 'Backspace' && qbInputWho.value === '' && whoPills.length > 0) {
+    whoPills.pop();
+    renderAllPills();
+  } else if (e.key === 'Escape') {
+    companyDropdown.classList.remove('open');
+  } else if (e.key === 'ArrowDown' && companyDropdown.classList.contains('open')) {
+    e.preventDefault();
+    const first = companyDropdown.querySelector('.company-opt');
+    if (first) first.focus();
+  }
+});
+qbInputWho.addEventListener('blur', () => {
+  commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+  setTimeout(() => { $('#company-dropdown').classList.remove('open'); }, 200);
+});
+
+// Company autocomplete
+let companySearchTimeout = null;
+const companyDropdown = $('#company-dropdown');
+
+qbInputWho.addEventListener('input', () => {
+  const q = qbInputWho.value.trim();
+  if (q.length < 2) { companyDropdown.classList.remove('open'); return; }
+  clearTimeout(companySearchTimeout);
+  companySearchTimeout = setTimeout(() => searchCompanies(q), 200);
+});
+
+
+async function searchCompanies(query) {
+  const results = [];
+  try {
+    // Search ats_companies by slug or name
+    const { data: atsData, error: atsErr } = await sb
+      .from('ats_companies')
+      .select('slug, name, source')
+      .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+      .limit(6);
+    if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
+    if (atsData) {
+      atsData.forEach(c => results.push({
+        name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
+      }));
+    }
+  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+
+  try {
+    // Search user's connections by parsed_company
+    const { data: connData, error: connErr } = await sb
+      .from('connections')
+      .select('parsed_company')
+      .ilike('parsed_company', `%${query}%`)
+      .not('parsed_company', 'is', null)
+      .limit(30);
+    if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
+    if (connData) {
+      const counts = {};
+      connData.forEach(p => {
+        const n = (p.parsed_company || '').trim();
+        if (n) counts[n] = (counts[n] || 0) + 1;
+      });
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .forEach(([name, count]) => {
+          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+            results.push({ name, source: 'network', connections: count });
+          }
+        });
+    }
+  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
+
+  renderCompanyDropdown(results, query);
+}
+
+function renderCompanyDropdown(results, query) {
+  if (results.length === 0) { companyDropdown.classList.remove('open'); return; }
+  companyDropdown.innerHTML = results.map(r => {
+    const badge = r.source === 'network'
+      ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
+      : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
+    const hl = highlightCompanyMatch(r.name, query);
+    return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
+      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+  }).join('');
+  companyDropdown.classList.add('open');
+
+  companyDropdown.querySelectorAll('.company-opt').forEach(opt => {
+    opt.addEventListener('mousedown', e => {
+      e.preventDefault(); // prevent blur from firing first
+      qbInputWho.value = opt.dataset.name;
+      commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+      renderAllPills();
+      companyDropdown.classList.remove('open');
+    });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); opt.dispatchEvent(new Event('mousedown')); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWho.focus(); }
+      if (e.key === 'Escape') { companyDropdown.classList.remove('open'); qbInputWho.focus(); }
+    });
+  });
+}
+
+function highlightCompanyMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0) return text;
+  return text.slice(0, idx) +
+    '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
+    text.slice(idx + query.length);
+}
+
