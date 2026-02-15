@@ -283,7 +283,8 @@ function computeJobMatchScore(job) {
   for (var t = 0; t < jdTerms.length; t++) {
     if (resumeTerms.has(jdTerms[t]) || resumeText.includes(jdTerms[t])) matched++;
   }
-  return jdTerms.length > 0 ? Math.round((matched / jdTerms.length) * 100) : null;
+  var score = jdTerms.length > 0 ? Math.round((matched / jdTerms.length) * 100) : null;
+  return score !== null ? { score: score, resumeName: resume.name } : null;
 }
 
 // Batch-compute match scores for visible jobs
@@ -291,19 +292,23 @@ function computeVisibleJobScores() {
   for (var i = 0; i < currentJobs.length; i++) {
     var job = currentJobs[i];
     if (!job.content || jobMatchScores[job.greenhouse_id] !== undefined) continue;
-    var score = computeJobMatchScore(job);
-    if (score !== null) {
-      jobMatchScores[job.greenhouse_id] = score;
+    var result = computeJobMatchScore(job);
+    if (result !== null) {
+      jobMatchScores[job.greenhouse_id] = result;
       var cell = document.querySelector('tr[data-jobid="' + job.greenhouse_id + '"] .jt-match');
-      if (cell) cell.innerHTML = matchBadge(score);
+      if (cell) cell.innerHTML = matchBadge(result);
     }
   }
 }
 
-function matchBadge(score) {
-  if (score === null || score === undefined) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
+function matchBadge(result) {
+  if (!result) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
+  // Support both old (number) and new ({score, resumeName}) formats
+  var score = typeof result === 'number' ? result : result.score;
+  var rName = typeof result === 'object' ? (result.resumeName || '') : '';
   var color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--warm)' : 'var(--red)';
-  return '<span style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';">' + score + '%</span>';
+  var tooltip = rName ? rName.replace(/"/g, '&quot;') : 'Match score';
+  return '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:help;">' + score + '%</span>';
 }
 
 // Main readiness analysis — called from Resumes page button
@@ -564,6 +569,23 @@ function toggleKeywordPanel() {}
 function refreshKeywordsIfOpen() {
   // After job rows render, compute match scores for visible jobs
   computeVisibleJobScores();
+}
+
+// Scroll to readiness panel and expand the detail for a given resume
+function scrollToReadinessDetail(resumeIdx) {
+  var panel = document.getElementById('readiness-panel');
+  if (!panel) return;
+  panel.style.display = '';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Expand all detail sections for this resume
+  if (readinessCache && readinessCache.scores && readinessCache.scores[resumeIdx]) {
+    var filterCount = Object.keys(readinessCache.scores[resumeIdx].filters).length;
+    for (var fi = 0; fi < filterCount; fi++) {
+      var detailEl = document.getElementById('rd-detail-' + resumeIdx + '-' + fi);
+      if (detailEl) detailEl.style.display = '';
+    }
+  }
 }
 
 // Event delegation for job title clicks — opens full modal

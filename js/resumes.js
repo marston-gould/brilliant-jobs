@@ -88,22 +88,27 @@ function renderResumes() {
       ${levelOpts}
     </select>`;
 
-    // Level badge
-    const levelBadge = r.levelLabel
-      ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.levelColor || '#94a3b8'}20;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
-      : '';
-
     const gdriveIcon = r.source === 'gdrive'
       ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
       : '';
 
-    // Filter number badges (colored circles)
-    const filterNumBadges = assignedIds.map(fname => {
-      const fi = sf.findIndex(f => f.name === fname);
-      if (fi < 0) return '';
-      const color = filterColors[fi % filterColors.length];
-      return `<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${color};color:#fff;font-size:10px;font-weight:700;flex-shrink:0;" title="${fname}">${fi + 1}</span>`;
-    }).filter(Boolean).join('');
+    // Readiness grade from cache
+    let gradeHtml = '';
+    if (!isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]) {
+      const rd = readinessCache.scores[i];
+      const score = rd.overallScore;
+      const gc = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--warm)' : 'var(--red)';
+      const gl = score >= 70 ? 'Ready' : score >= 40 ? 'Gaps' : 'Weak';
+      gradeHtml = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 8px;border-radius:8px;background:var(--bg-main);border:1px solid var(--border);">
+        <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${gc};">${score}%</span>
+        <span style="font-size:10px;font-weight:500;color:${gc};">${gl}</span>
+        <a href="#" onclick="event.preventDefault();scrollToReadinessDetail(${i})" style="font-size:9px;color:var(--accent);margin-left:auto;text-decoration:none;font-weight:500;">What's missing \u2192</a>
+      </div>`;
+    } else if (!isPlaceholder && r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
+      gradeHtml = `<div style="font-size:10px;color:var(--text-faint);margin-bottom:6px;font-style:italic;">
+        <a href="#" onclick="event.preventDefault();runReadinessAnalysis()" style="color:var(--accent);text-decoration:none;">Analyze readiness \u2192</a>
+      </div>`;
+    }
 
     // Filter pills
     const filterPills = sf.length > 0
@@ -130,11 +135,12 @@ function renderResumes() {
     <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''}">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
         <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-        <div style="display:flex;gap:4px;align-items:center;">${filterNumBadges}${levelBadge}${gdriveIcon}</div>
+        <div style="display:flex;gap:4px;align-items:center;">${gdriveIcon}</div>
       </div>
       <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+      ${gradeHtml}
       ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-      ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+      ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 && !gradeHtml ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
       ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
       <div style="margin:8px 0;">${levelSelect}</div>
       <div class="rc-filters-label">Assigned Filters</div>
