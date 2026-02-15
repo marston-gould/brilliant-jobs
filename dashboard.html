@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.28 - 2026-02-15 - Resumes persisted to Supabase Storage + DB, salary re-enrichment -->
+<!-- Brilliant Jobs Dashboard v2.29 - 2026-02-15 - Resume paper cards, level selector, nav status dot, Supabase persistence -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1033,50 +1033,64 @@
     .top-co-count { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
     /* ======================== RESUMES ======================== */
-    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 16px; }
     .resume-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-      padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
-      display: flex; flex-direction: column; min-height: 200px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
+      padding: 16px 14px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
+      display: flex; flex-direction: column; aspect-ratio: 8.5 / 11;
+      box-shadow: 2px 3px 8px rgba(0,0,0,0.15);
     }
-    .resume-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .resume-card:hover { border-color: var(--border-hover); box-shadow: 2px 3px 12px rgba(0,0,0,0.25); }
     .resume-card.is-default { border-color: var(--accent); border-width: 2px; }
-    .resume-card .rc-icon {
-      width: 44px; height: 56px; border-radius: 6px; margin-bottom: 12px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px; font-weight: 700; flex-shrink: 0;
+    .resume-card.rc-assigned { border-left: 3px solid var(--green); }
+    .resume-card.rc-unassigned { border-left: 3px solid var(--warm); }
+    .resume-card .rc-type-badge {
+      display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; padding: 2px 6px; border-radius: 3px; margin-right: 6px;
     }
-    .resume-card .rc-icon.pdf { background: rgba(239,68,68,0.1); color: #ef4444; }
-    .resume-card .rc-icon.doc { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .resume-card .rc-type-badge.pdf { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .resume-card .rc-type-badge.doc { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .resume-card .rc-type-badge.gdrive { background: rgba(66,133,244,0.12); color: #4285F4; }
     .resume-card .rc-name {
-      font-size: 14px; font-weight: 600; margin-bottom: 2px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 13px; font-weight: 600; margin-bottom: 2px; margin-top: 8px;
+      overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     }
-    .resume-card .rc-meta { font-size: 11px; color: var(--text-faint); margin-bottom: 12px; }
-    .resume-card .rc-filters-label {
-      font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 6px;
+    .resume-card .rc-meta { font-size: 10px; color: var(--text-faint); margin-bottom: 8px; }
+    .resume-card .rc-section-label {
+      font-size: 9px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 6px;
     }
-    .resume-card .rc-filter-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; flex: 1; }
+    .resume-card .rc-filter-list { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; flex: 1; }
     .resume-card .rc-filter-pill {
-      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+      font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 3px;
       cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
     }
     .resume-card .rc-filter-pill.active { opacity: 1; }
-    .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
+    .resume-card .rc-filter-pill.inactive { opacity: 0.25; }
     .resume-card .rc-filter-pill:hover { opacity: 0.8; }
-    .resume-card .rc-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .resume-card .rc-level-select {
+      font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); cursor: pointer; width: 100%; margin-bottom: 4px;
+    }
+    .resume-card .rc-actions { display: flex; gap: 4px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
     .resume-card .rc-default-badge {
-      position: absolute; top: 12px; right: 14px;
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      position: absolute; top: 8px; right: 8px;
+      font-size: 8px; font-weight: 700; text-transform: uppercase;
       color: var(--accent); letter-spacing: 0.5px;
-      background: var(--accent-glow); padding: 2px 8px; border-radius: 4px;
+      background: var(--accent-glow); padding: 2px 6px; border-radius: 3px;
+    }
+    .resume-card .rc-status-dot {
+      width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0;
     }
     .resume-card.is-placeholder {
-      border-style: dashed; border-color: var(--border);
+      border-style: dashed; border-color: var(--border); opacity: 0.7;
     }
     .resume-card.is-placeholder .rc-name { color: var(--text-dim); }
     .resume-card.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
+    .nav-resume-dot {
+      width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-left: 6px; flex-shrink: 0;
+    }
     .company-dropdown {
       display:none; position:absolute; z-index:100;
       background:var(--bg-card); border:1px solid var(--border);
@@ -1244,7 +1258,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.28</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.29 📄</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1285,6 +1299,7 @@
         <div class="nav-item" data-page="resumes">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <span>Resumes</span>
+          <span class="nav-resume-dot" id="nav-resume-dot" style="display:none;"></span>
           <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
         </div>
         <div class="nav-item" data-page="applications">
@@ -2058,32 +2073,15 @@
       <div class="page" id="page-resumes">
         <div class="page-header">
           <h2>Resumes</h2>
-          <p>Every filter needs a resume. Match the right version to the right search.</p>
+          <p>Each saved filter gets a resume. When you apply, the right one is sent automatically.</p>
         </div>
         <div class="page-body">
 
-          <!-- The Story -->
-          <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);border-radius:14px;padding:24px;margin-bottom:20px;">
-            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;">How Resumes Work in Brilliant Jobs</div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              When you apply to jobs — manually or via auto-apply — Brilliant Jobs submits the resume assigned to that filter. Different filters target different roles, and different roles need different resumes. A "Director of SEO" filter should send your leadership-focused resume, while a "Growth Marketing" filter might use one that emphasizes acquisition metrics.
-            </div>
-            <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(99,102,241,0.1);">
-              <div style="flex:1;text-align:center;">
-                <div style="font-size:22px;margin-bottom:4px;">📄</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">1. Upload</div>
-                <div style="font-size:10px;color:var(--text-faint);">Upload a resume for each role type or seniority level you're targeting</div>
-              </div>
-              <div style="flex:1;text-align:center;">
-                <div style="font-size:22px;margin-bottom:4px;">🔗</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">2. Assign</div>
-                <div style="font-size:10px;color:var(--text-faint);">Click the filter pills on each card to assign resumes to your saved filters</div>
-              </div>
-              <div style="flex:1;text-align:center;">
-                <div style="font-size:22px;margin-bottom:4px;">🚀</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">3. Apply</div>
-                <div style="font-size:10px;color:var(--text-faint);">The right resume is automatically selected when you apply to jobs from that filter</div>
-              </div>
+          <!-- How It Works — compact -->
+          <div style="background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.1);border-radius:10px;padding:16px 20px;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">How it works</div>
+            <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
+              Upload one resume per role type you're targeting. Assign each to the filters it fits — a "Director" resume goes to your director-level filter, a "Growth" resume to your growth filter. One resume can cover multiple filters. When you apply from a filter, the assigned resume is submitted. Filters without a resume fall back to your default.
             </div>
           </div>
 
@@ -2098,30 +2096,33 @@
           <!-- Coverage Alert -->
           <div id="resume-coverage-alert" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--warm);">
             <strong>⚠ Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
-            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Jobs from unassigned filters will use your default resume. Assign specific resumes for better results.</div>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Jobs from these filters will use your default resume.</div>
           </div>
 
           <!-- Upload Zone -->
-          <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-            <div class="resume-upload-zone" id="resume-upload-zone" style="flex:1;min-width:280px;margin-bottom:0;">
-              <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
-              <h4>Drop resumes here or click to upload</h4>
-              <p>PDF, DOC, or DOCX — up to 5MB each</p>
-            </div>
-            <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:8px;justify-content:center;">
-              <button class="btn btn-sm" id="resume-from-level-btn" style="padding:10px 18px;font-size:12px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:10px;cursor:pointer;white-space:nowrap;">
-                + Create by Level
-              </button>
-              <div style="font-size:10px;color:var(--text-faint);text-align:center;max-width:130px;">Auto-generate resume placeholders for each title level</div>
-            </div>
+          <div class="resume-upload-zone" id="resume-upload-zone" style="margin-bottom:20px;">
+            <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
+            <h4>Drop resumes here or click to upload</h4>
+            <p>PDF, DOC, or DOCX — up to 10MB each</p>
           </div>
 
           <!-- Resume Cards Grid -->
           <div class="resume-grid" id="resume-grid">
             <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
               <h3>No resumes uploaded</h3>
-              <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level you're targeting.</p>
+              <p>Upload your first resume to get started.</p>
             </div>
+          </div>
+
+          <!-- Create by Level — secondary action below grid -->
+          <div style="margin-top:16px;padding:14px 18px;background:var(--bg-card);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text-dim);">Need resumes for each seniority level?</div>
+              <div style="font-size:11px;color:var(--text-faint);">Creates placeholder cards from your title hierarchy. Upload the actual files after.</div>
+            </div>
+            <button class="btn btn-sm" id="resume-from-level-btn" style="padding:8px 16px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:8px;cursor:pointer;white-space:nowrap;">
+              + Create by Level
+            </button>
           </div>
         </div>
       </div>
@@ -2527,7 +2528,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.28 loaded');
+    console.log('[BJ] Dashboard v2.29 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -8384,6 +8385,30 @@
       return { cls: 'doc', text: 'DOC' };
     }
 
+    function updateResumeNavDot() {
+      const dot = $('#nav-resume-dot');
+      if (!dot) return;
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+      const allAssignedFilterNames = new Set(resumes.flatMap(r => r.filterIds || []));
+      const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
+
+      if (resumes.length === 0) {
+        dot.style.display = 'inline-block';
+        dot.style.background = '#ef4444'; // red — no resumes
+        dot.title = 'No resumes uploaded';
+      } else if (unassignedFilters.length > 0 && sf.length > 0) {
+        dot.style.display = 'inline-block';
+        dot.style.background = '#f59e0b'; // yellow — incomplete coverage
+        dot.title = `${unassignedFilters.length} filter${unassignedFilters.length > 1 ? 's' : ''} without a resume`;
+      } else if (resumes.length > 0) {
+        dot.style.display = 'inline-block';
+        dot.style.background = '#34d399'; // green — all good
+        dot.title = 'All filters have resumes';
+      } else {
+        dot.style.display = 'none';
+      }
+    }
+
     function renderResumes() {
       const grid = $('#resume-grid');
       const countEl = $('#r-total');
@@ -8419,58 +8444,77 @@
         coverageAlert.style.display = 'none';
       }
 
+      updateResumeNavDot();
+
       if (resumes.length === 0) {
         grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
           <h3>No resumes uploaded</h3>
-          <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level.</p>
+          <p>Upload your first resume to get started.</p>
         </div>`;
         return;
       }
 
+      // Get level hierarchy for dropdown
+      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
       const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
       grid.innerHTML = resumes.map((r, i) => {
         const icon = getFileIcon(r.file_name);
         const assignedIds = r.filterIds || [];
+        const hasAssignment = assignedIds.length > 0;
+        const isPlaceholder = r.needs_upload;
 
+        // Type badge
+        const sourceBadge = r.source === 'gdrive'
+          ? '<span class="rc-type-badge gdrive">Drive</span>'
+          : `<span class="rc-type-badge ${icon.cls}">${icon.text}</span>`;
+
+        // Level badge + dropdown
+        const levelColor = r.level_color || '#94a3b8';
+        const levelHtml = levels.length > 0
+          ? `<select class="rc-level-select" onchange="changeResumeLevel(${i}, this.value)" style="border-color:${r.level_label ? levelColor + '44' : 'var(--border)'};">
+              <option value="">No level</option>
+              ${levels.map(l => `<option value="${l.label}" ${r.level_label === l.label ? 'selected' : ''}>${l.label}</option>`).join('')}
+            </select>`
+          : (r.level_label ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${levelColor}20;color:${levelColor};">${r.level_label}</span>` : '');
+
+        // Filter pills
         const filterPills = sf.length > 0
           ? sf.map((f, fi) => {
               const color = filterColors[fi % filterColors.length];
               const isActive = assignedIds.includes(f.name);
               return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
                 style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
-                data-resume="${i}" data-filter="${f.name}" onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
-                title="Click to ${isActive ? 'unassign' : 'assign'}">${f.name}</span>`;
+                onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
+                title="Click to ${isActive ? 'unassign from' : 'assign to'} ${f.name}">${f.name}</span>`;
             }).join('')
-          : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
+          : '<span style="font-size:10px;color:var(--text-faint);font-style:italic;">Save a filter first</span>';
 
-        const isPlaceholder = r.needs_upload;
-        const levelBadge = r.level_label
-          ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.level_color || '#94a3b8'}20;color:${r.level_color || '#94a3b8'};">${r.level_label}</span>`
-          : '';
-        const gdriveIcon = r.source === 'gdrive'
-          ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
-          : '';
+        // Status dot: green = assigned, yellow = unassigned
+        const statusDot = hasAssignment
+          ? '<span class="rc-status-dot" style="background:#34d399;" title="Assigned to filters"></span>'
+          : '<span class="rc-status-dot" style="background:#f59e0b;" title="Not assigned to any filter"></span>';
 
         const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
 
         return `
-        <div class="resume-card ${r.is_default ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''}">
+        <div class="resume-card ${r.is_default ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''} ${hasAssignment ? 'rc-assigned' : 'rc-unassigned'}">
           ${r.is_default ? '<div class="rc-default-badge">\u2605 Default</div>' : ''}
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-            <div style="display:flex;gap:4px;">${levelBadge}${gdriveIcon}</div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            ${statusDot}${sourceBadge}
           </div>
           <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
-          <div class="rc-meta">${isPlaceholder ? r.file_name : `${r.file_name} \u00b7 ${r.file_size || ''} \u00b7 ${created}`}</div>
-          ${isPlaceholder ? `<div style="margin:10px 0;padding:10px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">\u2B06 Upload File</div><div style="font-size:10px;color:var(--text-faint);">Click to replace placeholder with actual resume</div></div>` : ''}
-          ${!isPlaceholder && r.file_path ? `<div style="margin:8px 0;"><a href="#" onclick="downloadResume(${i});return false;" style="font-size:11px;color:var(--accent);">\u2B07 Download</a></div>` : ''}
-          <div class="rc-filters-label">Assigned Filters</div>
+          <div class="rc-meta">${isPlaceholder ? 'Needs file upload' : `${r.file_size || ''} \u00b7 ${created}`}</div>
+          ${isPlaceholder ? `<div style="margin:6px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:6px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:10px;color:var(--warm);font-weight:600;">\u2191 Upload File</div></div>` : ''}
+          ${!isPlaceholder && r.file_path ? `<div style="margin:4px 0;"><a href="#" onclick="downloadResume(${i});return false;" style="font-size:10px;color:var(--accent);">\u2193 Download</a></div>` : ''}
+          <div class="rc-section-label">Level</div>
+          ${levelHtml || '<span style="font-size:10px;color:var(--text-faint);">—</span>'}
+          <div class="rc-section-label">Filters</div>
           <div class="rc-filter-list">${filterPills}</div>
           <div class="rc-actions">
-            ${!r.is_default ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:10px;padding:3px 10px;">Set Default</button>` : '<button class="btn btn-sm" style="font-size:10px;padding:3px 10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>\u2605 Default</button>'}
-            <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:10px;padding:3px 10px;">Rename</button>
-            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Remove</button>
+            ${!r.is_default ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:9px;padding:2px 8px;">Default</button>` : '<button class="btn btn-sm" style="font-size:9px;padding:2px 8px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>\u2605</button>'}
+            <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:9px;padding:2px 8px;">Rename</button>
+            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:9px;padding:2px 8px;color:var(--red);">Remove</button>
           </div>
         </div>`;
       }).join('');
@@ -8492,6 +8536,20 @@
         await sb.from('resume_filter_assignments')
           .insert({ resume_id: r.id, filter_name: filterName });
       }
+      renderResumes();
+    };
+
+    window.changeResumeLevel = async function(idx, levelLabel) {
+      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
+      const level = levels.find(l => l.label === levelLabel);
+      const color = level ? (level.color || '#94a3b8') : null;
+
+      await sb.from('resumes')
+        .update({ level_label: levelLabel || null, level_color: color })
+        .eq('id', resumes[idx].id);
+
+      resumes[idx].level_label = levelLabel || null;
+      resumes[idx].level_color = color;
       renderResumes();
     };
 

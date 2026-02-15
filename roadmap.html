@@ -570,6 +570,10 @@ const features = [
 
   // Phase 12 — Surveys & User Intelligence
   { s: 'done', n: 'Survey infrastructure', d: 'Adaptive survey page at /survey with two modes: exit (churn) and periodic. Cohort versioning via ?v= param (exit_v1, periodic_v1, extensible to new_user_v1, power_user_v1, etc.). One-question-at-a-time UX with auto-advance, progress bar. Churn mode: 8 Qs + save offer. Periodic mode: 8 Qs + 7-day Pro reward. Version stored in feedback table survey_version column. User association via localStorage session check.', p: 12 },
+  { s: 'todo', n: 'Community Pulse: job anxiety & timeline questions', d: 'Add to periodic survey: "How worried are you about getting a job?" (1-5 scale), "How long do you think it will take?" (dropdown: <1mo, 1-3mo, 3-6mo, 6-12mo, 12mo+). Also capture on registration for baseline.', p: 12 },
+  { s: 'todo', n: 'Community Pulse: time-looking tracker', d: 'User-reported start date on registration ("When did you start looking?"). Active time calculated from BJ usage. Dashboard shows days searching. Survey asks "How long have you been looking?" for self-reported cross-reference.', p: 12 },
+  { s: 'todo', n: 'Community Pulse: BJ appreciation score', d: 'Periodic survey question: "How much do you appreciate Brilliant Jobs?" (1-5 stars + optional freetext). Track trend over time per user. Surface as internal metric + testimonial pipeline.', p: 12 },
+  { s: 'todo', n: 'Survey completion rate dashboard', d: 'Track number of people completing each survey version. Completion rate by cohort. Drop-off analysis per question. Admin view of aggregate results.', p: 12 },
   { s: 'todo', n: 'Post-search micro-surveys', d: 'Every 10th search or after 5-min session: "How relevant were these results?" [1-5 stars] + "What was missing?" quick-select', p: 12 },
   { s: 'todo', n: 'Post-application confidence survey', d: '"How confident are you this job is real?" [1-5] + "Was the application process clear?" — triggers after each apply', p: 12 },
   { s: 'todo', n: 'Data value assessment surveys', d: '"Did this data help your decision?" after viewing salary/accountability data — tracks perceived value per feature by tier', p: 12 },
