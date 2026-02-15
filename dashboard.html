@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.47 - 2026-02-15 - Fix nav version display, fix US-only filter excluding non-US instead of including US -->
+<!-- Brilliant Jobs Dashboard v2.48 - 2026-02-15 - Fix Gmail dot alignment, remove scan counter from Setup, reorder job columns, normalize state names in locations, fix tuning dropdown overflow, lowercase unassigned filters, fix filter numbering -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,7 +29,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.47</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.48</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -468,8 +468,8 @@
                 <div style="font-size:15px;font-weight:700;color:var(--text);">Gmail — Ghost Monitor</div>
                 <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
               </div>
-              <div class="setup-dot" id="gmail-dot"></div>
               <span style="font-size:10px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:2px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;">Coming Soon</span>
+              <div class="setup-dot" id="gmail-dot"></div>
             </div>
             <div style="padding:20px 24px;">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -681,13 +681,13 @@
                 <tr>
                   <th style="width:36px;cursor:default;"></th>
                   <th data-sort="title" style="width:22%;">Title <span class="sort-arrow">↕</span></th>
+                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="company" style="width:12%;">Company <span class="sort-arrow">↕</span></th>
+                  <th data-sort="ghost" style="width:7%;">Ghost Rate <span class="sort-arrow">↕</span></th>
                   <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
                   <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
-                  <th style="width:5%;">Sources</th>
-                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
-                  <th data-sort="ghost" style="width:7%;">Ghost Rate <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
+                  <th style="width:5%;">Source</th>
                   <th style="width:140px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
                       <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
@@ -2359,6 +2359,20 @@
       return CITY_ALIASES[lower] || lower;
     }
 
+    const STATE_ABBREVS = {
+      'alabama':'AL','alaska':'AK','arizona':'AZ','arkansas':'AR','california':'CA',
+      'colorado':'CO','connecticut':'CT','delaware':'DE','florida':'FL','georgia':'GA',
+      'hawaii':'HI','idaho':'ID','illinois':'IL','indiana':'IN','iowa':'IA',
+      'kansas':'KS','kentucky':'KY','louisiana':'LA','maine':'ME','maryland':'MD',
+      'massachusetts':'MA','michigan':'MI','minnesota':'MN','mississippi':'MS','missouri':'MO',
+      'montana':'MT','nebraska':'NE','nevada':'NV','new hampshire':'NH','new jersey':'NJ',
+      'new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND','ohio':'OH',
+      'oklahoma':'OK','oregon':'OR','pennsylvania':'PA','rhode island':'RI','south carolina':'SC',
+      'south dakota':'SD','tennessee':'TN','texas':'TX','utah':'UT','vermont':'VT',
+      'virginia':'VA','washington':'WA','west virginia':'WV','wisconsin':'WI','wyoming':'WY',
+      'district of columbia':'DC'
+    };
+
     function cleanLocationPart(part) {
       let s = part.trim();
       // "United States of America - Pasadena, CA" → "Pasadena, CA"
@@ -2373,6 +2387,14 @@
       s = s.replace(/^[,\s]+|[,\s]+$/g, '');
       // If just country code left, normalize
       if (/^us$/i.test(s)) s = 'us';
+      // Convert full state names to abbreviations: "Pasadena, California" → "Pasadena, CA"
+      const commaIdx = s.lastIndexOf(',');
+      if (commaIdx > 0) {
+        const beforeComma = s.substring(0, commaIdx).trim();
+        const afterComma = s.substring(commaIdx + 1).trim();
+        const abbrev = STATE_ABBREVS[afterComma.toLowerCase()];
+        if (abbrev) s = beforeComma + ', ' + abbrev;
+      }
       return s;
     }
 
@@ -2380,7 +2402,7 @@
       const hasNegs = negativeLocations && negativeLocations.length > 0;
 
       // If no negative filters and we have a clean display, use it
-      if (!hasNegs && locDisplay) return locDisplay;
+      if (!hasNegs && locDisplay) return cleanLocationPart(locDisplay);
       if (!raw && !locDisplay) return '—';
 
       // Try to parse multi-location — prefer raw with semicolons, fallback to loc_display with +N pattern
@@ -2534,13 +2556,13 @@
         html += `<tr class="job-data-row" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+          <td class="jt-level">${levelCell}</td>
           <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
+          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
           <td class="jt-salary">${formatSalaryCell(job)}</td>
-          <td>${sourcePill('greenhouse')}</td>
-          <td class="jt-level">${levelCell}</td>
-          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
+          <td>${sourcePill('greenhouse')}</td>
           <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
             ${saveBtn}${applyBtn}
           </div></td>
@@ -5811,7 +5833,7 @@
           }).join('') + '</div>';
         }
 
-        const filterNum = sorted.indexOf(sf) + 1;
+        const filterNum = sf._idx + 1;
         const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
         const filterColor = filterColors[(filterNum - 1) % filterColors.length];
 
@@ -7762,7 +7784,7 @@
         $('#resume-unassigned-list').innerHTML = unassignedFilters.map(f => {
           const fi = sf.indexOf(f);
           const color = filterColors[fi % filterColors.length];
-          return `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:${color}15;color:${color};border:1px solid ${color}30;margin:0 2px;">${f.name}</span>`;
+          return `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:${color}15;color:${color};border:1px solid ${color}30;margin:0 2px;">${f.name.toLowerCase()}</span>`;
         }).join(' ');
       } else {
         coverageAlert.style.display = 'none';
@@ -8829,7 +8851,7 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.47',
+        dashboard_version: 'v2.48',
       };
 
       try {
