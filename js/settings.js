@@ -186,7 +186,7 @@ async function submitFeedback() {
     image_urls: imageUrls.length > 0 ? imageUrls : null,
     user_agent: navigator.userAgent,
     screen_size: window.innerWidth + 'x' + window.innerHeight,
-    dashboard_version: 'v2.58',
+    dashboard_version: 'v2.59',
   };
 
   try {
