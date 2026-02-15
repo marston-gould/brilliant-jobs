@@ -199,7 +199,6 @@ async function renderPipeline() {
 
   const now = new Date();
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
   // Restore collapse states
   const collapseStates = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');

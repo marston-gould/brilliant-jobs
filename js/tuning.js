@@ -292,10 +292,10 @@ window.editFilterLevelHierarchy = function(filterIdx) {
     const hasAnyAssigned = assignedLevels.length > 0;
 
     overlay.innerHTML = `
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:580px;width:90%;max-height:85vh;overflow-y:auto;">
+    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:580px;width:90%;max-height:85vh;overflow-y:auto;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--text);">Levels — ${sf.name}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);">Levels — ${sf.name}</div>
           <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">
             Select which seniority levels this filter targets
           </div>
@@ -308,12 +308,12 @@ window.editFilterLevelHierarchy = function(filterIdx) {
         <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-faint);margin-bottom:8px;">Assigned Levels</div>
         <div id="fl-level-checks" style="display:flex;flex-direction:column;gap:4px;"></div>
         ${hasAnyAssigned ? `
-        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:var(--bg-input);border-radius:6px;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:var(--bg-input);border-radius:8px;cursor:pointer;">
           <input type="checkbox" id="fl-include-other" ${includeOther ? 'checked' : ''} style="accent-color:var(--accent);">
           <span style="font-size:12px;color:var(--text-dim);">Include Other Levels</span>
           <span style="font-size:10px;color:var(--text-faint);margin-left:auto;">Levels not assigned to any filter</span>
         </label>` : `
-        <div style="padding:8px 12px;background:var(--bg-input);border-radius:6px;margin-top:8px;font-size:11px;color:var(--text-faint);">
+        <div style="padding:8px 12px;background:var(--bg-input);border-radius:8px;margin-top:8px;font-size:11px;color:var(--text-faint);">
           No levels selected — this filter matches <strong>all levels</strong>
         </div>`}
       </div>
@@ -352,7 +352,7 @@ window.editFilterLevelHierarchy = function(filterIdx) {
       const isAssigned = assignedLevels.includes(lvl.label);
       const otherFilter = otherAssignments[lvl.label];
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:6px;border:1px solid var(--border);' + (isAssigned ? 'background:var(--accent-glow);border-color:rgba(61,126,255,0.3);' : '');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:8px;border:1px solid var(--border);' + (isAssigned ? 'background:var(--accent-glow);border-color:rgba(61,126,255,0.3);' : '');
       row.innerHTML = `
         <input type="checkbox" class="fl-level-cb" data-label="${(lvl.label||'').replace(/"/g,'&quot;')}" ${isAssigned ? 'checked' : ''} style="accent-color:var(--accent);">
         <span style="width:10px;height:10px;border-radius:50%;background:${lvl.color || '#94a3b8'};flex-shrink:0;"></span>

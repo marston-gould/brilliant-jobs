@@ -49,7 +49,6 @@ function renderResumes() {
 
   if (unassignedFilters.length > 0 && activeResumes.length > 0) {
     coverageAlert.style.display = '';
-    const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
     $('#resume-unassigned-list').innerHTML = unassignedFilters.map(f => {
       const fi = sf.indexOf(f);
       const color = filterColors[fi % filterColors.length];
@@ -135,7 +134,7 @@ function renderResumes() {
       </div>
       <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
       ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-      ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:8px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+      ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
       ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
       <div style="margin:8px 0;">${levelSelect}</div>
       <div class="rc-filters-label">Assigned Filters</div>
@@ -152,7 +151,6 @@ function renderResumes() {
   }
 
   // --- Group resumes by filter ---
-  const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
   let gridHtml = '';
 
   // Track which resumes have been placed
@@ -217,7 +215,6 @@ function renderResumeArchive(archivedResumes) {
   labelEl.textContent = archivedResumes.length + ' archived';
 
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
   listEl.innerHTML = archivedResumes.map(r => {
     const i = resumes.indexOf(r);
@@ -226,13 +223,13 @@ function renderResumeArchive(archivedResumes) {
     const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
     const rate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) + '%' : '—';
     const levelBadge = r.levelLabel
-      ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:${r.levelColor || '#94a3b8'}15;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
+      ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:${r.levelColor || '#94a3b8'}15;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
       : '';
     const filterBadges = (r.filterIds || []).map(fname => {
       const fi = sf.findIndex(f => f.name === fname);
       if (fi < 0) return '';
       const color = filterColors[fi % filterColors.length];
-      return `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:${color};color:#fff;font-size:8px;font-weight:700;" title="${fname}">${fi + 1}</span>`;
+      return `<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:${color};color:#fff;font-size:9px;font-weight:700;" title="${fname}">${fi + 1}</span>`;
     }).filter(Boolean).join(' ') || '';
 
     return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-input);">

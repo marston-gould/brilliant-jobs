@@ -984,7 +984,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       .map(f => `<span class="job-filter-badge" style="background:${f.color};">${f.num}</span>`)
       .join('');
     if (allBadges.length > maxBadges) {
-      filterBadges += `<span class="job-filter-badge" style="background:var(--text-faint);font-size:8px;">+${allBadges.length - maxBadges}</span>`;
+      filterBadges += `<span class="job-filter-badge" style="background:var(--text-faint);font-size:9px;">+${allBadges.length - maxBadges}</span>`;
     }
 
       const levelInfo = getJobLevel(job.title, window._activeLevelHierarchy);
