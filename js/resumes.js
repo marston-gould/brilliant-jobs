@@ -92,22 +92,20 @@ function renderResumes() {
       ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
       : '';
 
-    // Readiness grade from cache
+    // Readiness grade from cache — shown inline on card
     let gradeHtml = '';
-    if (!isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]) {
-      const rd = readinessCache.scores[i];
-      const score = rd.overallScore;
-      const gc = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--warm)' : 'var(--red)';
-      const gl = score >= 70 ? 'Ready' : score >= 40 ? 'Gaps' : 'Weak';
-      gradeHtml = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:6px 8px;border-radius:8px;background:var(--bg-main);border:1px solid var(--border);">
-        <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${gc};">${score}%</span>
-        <span style="font-size:10px;font-weight:500;color:${gc};">${gl}</span>
-        <a href="#" onclick="event.preventDefault();scrollToReadinessDetail(${i})" style="font-size:9px;color:var(--accent);margin-left:auto;text-decoration:none;font-weight:500;">What's missing \u2192</a>
-      </div>`;
-    } else if (!isPlaceholder && r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
-      gradeHtml = `<div style="font-size:10px;color:var(--text-faint);margin-bottom:6px;font-style:italic;">
-        <a href="#" onclick="event.preventDefault();runReadinessAnalysis()" style="color:var(--accent);text-decoration:none;">Analyze readiness \u2192</a>
-      </div>`;
+    if (!isPlaceholder) {
+      // Always render the slot div so auto-analysis can populate it
+      const hasCache = readinessCache && readinessCache.scores && readinessCache.scores[i];
+      if (hasCache) {
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
+      } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:10px;color:var(--text-faint);font-style:italic;">Analyzing\u2026</div></div>`;
+      } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length === 0) {
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:10px;color:var(--text-faint);">Assign a filter to see readiness grade</div></div>`;
+      } else {
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"></div>`;
+      }
     }
 
     // Filter pills
