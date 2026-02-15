@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.32 - 2026-02-15 - Resume nav dot aligned with ext-status-dot pattern -->
+<!-- Brilliant Jobs Dashboard v2.33 - 2026-02-15 - Resume sort by filter+level, filter badges, contextual help button -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1081,6 +1081,37 @@
     }
     .resume-card.is-placeholder .rc-name { color: var(--text-dim); }
     .resume-card.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
+    .resume-card .rc-filter-badges {
+      position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; max-width: 80px;
+    }
+    .resume-card .rc-filter-num {
+      width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+
+    /* ======================== HELP BUTTON ======================== */
+    .page-help-btn {
+      position: fixed; bottom: 24px; right: 24px; z-index: 90;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-faint); font-size: 16px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.15s;
+    }
+    .page-help-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+    .page-help-panel {
+      position: fixed; bottom: 72px; right: 24px; z-index: 91;
+      width: 320px; max-height: 400px; overflow-y: auto;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 20px;
+      display: none; animation: fadeIn 0.15s ease;
+    }
+    .page-help-panel.open { display: block; }
+    .page-help-panel h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .page-help-panel p { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
+    .page-help-panel .help-step { display: flex; gap: 8px; margin-bottom: 10px; }
+    .page-help-panel .help-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .page-help-panel .help-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
     .company-dropdown {
       display:none; position:absolute; z-index:100;
       background:var(--bg-card); border:1px solid var(--border);
@@ -1248,7 +1279,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.32</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.33</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1336,6 +1367,10 @@
     </nav>
 
     <div class="main">
+
+      <!-- Help Button + Panel (global, contextual per page) -->
+      <button class="page-help-btn" id="page-help-btn" title="How to use this page" onclick="toggleHelpPanel()">?</button>
+      <div class="page-help-panel" id="page-help-panel"></div>
 
       <!-- Feedback button -->
       <div class="feedback-btn" id="feedback-btn" title="Squash a bug or pitch an idea!">
@@ -2067,14 +2102,6 @@
         </div>
         <div class="page-body">
 
-          <!-- How It Works — compact -->
-          <div style="background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.1);border-radius:10px;padding:16px 20px;margin-bottom:16px;">
-            <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;">How it works</div>
-            <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
-              Upload one resume per role type you're targeting. Assign each to the filters it fits — a "Director" resume goes to your director-level filter, a "Growth" resume to your growth filter. One resume can cover multiple filters. When you apply from a filter, the assigned resume is submitted. Filters without a resume fall back to your default.
-            </div>
-          </div>
-
           <!-- Stats -->
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Resumes</div></div>
@@ -2506,7 +2533,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.32 loaded');
+    console.log('[BJ] Dashboard v2.33 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2576,6 +2603,8 @@
         $(`#page-${item.dataset.page}`).classList.add('active');
         // Persist active tab
         localStorage.setItem('bj_active_tab', item.dataset.page);
+        // Close help panel on page switch
+        closeHelpPanel();
       });
     });
 
@@ -2588,6 +2617,149 @@
         n.classList.toggle('active', n.dataset.page === lastTab);
       });
     }
+
+    // ============================================================
+    // CONTEXTUAL HELP SYSTEM
+    // ============================================================
+    const pageHelpContent = {
+      brilliant: {
+        title: 'Getting Started',
+        steps: [
+          'Install the Chrome extension to connect your LinkedIn data and discover jobs.',
+          'Set up your saved filters in the Jobs Feed — each filter targets a different role or keyword combo.',
+          'Configure Title Level Hierarchy in Tuning to rank jobs by seniority.',
+          'Upload resumes and assign them to filters so the right version goes with each application.'
+        ]
+      },
+      setup: {
+        title: 'Setup',
+        steps: [
+          'Download and install the Brilliant Jobs Chrome extension from the link above.',
+          'Once installed, the extension scans your LinkedIn for network data and job boards.',
+          'The status dot in the nav turns green when the extension is connected and actively scanning.',
+          'If the dot is red, try refreshing the extension or re-installing it.'
+        ]
+      },
+      jobs: {
+        title: 'Jobs Feed',
+        steps: [
+          'Check one or more saved filters to search for matching jobs across all connected sources.',
+          'Filter badges (numbered circles) show which filter each job matched.',
+          'Click a job title to view the full description, company info, and apply links.',
+          'Use Hide (✕) to remove irrelevant jobs. Save jobs to track them in Pipeline.',
+          'Sort by any column header. Ghost Rate (coming soon) will flag likely ghost postings.'
+        ]
+      },
+      tuning: {
+        title: 'Search Tuning',
+        steps: [
+          'Build filters using What (titles/keywords), Where (locations), When (date range), and Who (companies).',
+          'Save filters to reuse them — each gets a number and color that appears in the feed.',
+          'Set up Title Level Hierarchy to rank jobs from senior to junior (e.g., VP → Director → Manager).',
+          'Negative locations and companies let you exclude results you never want to see.',
+          'Tuning dot turns green when you have saved filters configured.'
+        ]
+      },
+      resumes: {
+        title: 'Resumes',
+        steps: [
+          'Upload one resume per role type you\'re targeting (PDF, DOC, or DOCX).',
+          'Assign each resume to the filters it fits — click the filter pills on each card.',
+          'Set a level (from your title hierarchy) so resumes sort by seniority.',
+          'Filter number badges appear on assigned cards, matching the numbers in the Jobs Feed.',
+          'Nav dot: red = no resumes, yellow = some filters uncovered, green = all filters have a resume.'
+        ]
+      },
+      applications: {
+        title: 'Applications',
+        steps: [
+          'Choose an application mode: Manual (you apply), Auto (Brilliant applies), or Notify (get alerts).',
+          'When you apply from a filter, the resume assigned to that filter is submitted.',
+          'Track application status: Queued → Pending → Submitted or Failed.',
+          'Manual applications can be logged here to keep everything in one place.'
+        ]
+      },
+      pipeline: {
+        title: 'Pipeline',
+        steps: [
+          'Saved jobs land in the Saved column. Applied jobs move to Applied.',
+          'Drag or update status: Saved → Applied → Responded → Interview → Offer (or Rejected/Ghosted).',
+          'Response rate and average days to response are calculated from your pipeline data.',
+          'Use this to track your full job search funnel in one view.'
+        ]
+      },
+      ghost: {
+        title: 'Ghost Job Monitor',
+        steps: [
+          'Ghost jobs are postings that companies never intend to fill — they waste your time.',
+          'This page will track posting age, repost frequency, and company response patterns.',
+          'Ghost Rate scores will appear in the feed so you can skip likely ghost postings.',
+          'Community data from all Brilliant Jobs users will improve ghost detection over time.'
+        ]
+      },
+      stats: {
+        title: 'Stats & Analytics',
+        steps: [
+          'View your search activity, application volume, and response rates over time.',
+          'Filter-level stats show which saved searches are producing the best results.',
+          'Use these insights to refine your filters and focus on what\'s working.'
+        ]
+      },
+      settings: {
+        title: 'Settings',
+        steps: [
+          'Manage your account, notification preferences, and connected integrations.',
+          'Google Drive integration lets you import resumes directly from your Drive.',
+          'Export your data at any time from this page.'
+        ]
+      },
+      subscription: {
+        title: 'Subscription',
+        steps: [
+          'View your current plan and usage limits.',
+          'Upgrade to Pro for unlimited saved filters, auto-apply, and priority support.',
+          'Manage billing and payment methods here.'
+        ]
+      }
+    };
+
+    function getActivePage() {
+      const active = document.querySelector('.page.active');
+      return active ? active.id.replace('page-', '') : 'brilliant';
+    }
+
+    function toggleHelpPanel() {
+      const panel = $('#page-help-panel');
+      if (panel.classList.contains('open')) {
+        closeHelpPanel();
+      } else {
+        const page = getActivePage();
+        const help = pageHelpContent[page] || pageHelpContent.brilliant;
+        panel.innerHTML = `
+          <h4>${help.title}</h4>
+          ${help.steps.map((s, i) => `
+            <div class="help-step">
+              <span class="help-num">${i + 1}</span>
+              <span class="help-text">${s}</span>
+            </div>
+          `).join('')}
+        `;
+        panel.classList.add('open');
+      }
+    }
+
+    function closeHelpPanel() {
+      $('#page-help-panel').classList.remove('open');
+    }
+
+    // Close help when clicking outside
+    document.addEventListener('click', (e) => {
+      const panel = $('#page-help-panel');
+      const btn = $('#page-help-btn');
+      if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+        closeHelpPanel();
+      }
+    });
 
     // Extension detection — check if extension has updated the profile recently
     async function checkExtensionStatus() {
@@ -8400,6 +8572,7 @@
       const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
       const coverageEl = $('#r-coverage');
       const coverageAlert = $('#resume-coverage-alert');
+      const fColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
       if (sf.length > 0) {
         const covered = sf.length - unassignedFilters.length;
@@ -8411,10 +8584,9 @@
 
       if (unassignedFilters.length > 0 && resumes.length > 0) {
         coverageAlert.style.display = '';
-        const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
         $('#resume-unassigned-list').innerHTML = unassignedFilters.map(f => {
           const fi = sf.findIndex(s => s.name === f.name);
-          const color = filterColors[fi % filterColors.length];
+          const color = fColors[fi % fColors.length];
           return `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;">${f.name}</span>`;
         }).join('');
       } else {
@@ -8432,9 +8604,31 @@
       }
 
       const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
-      const fColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
-      grid.innerHTML = resumes.map((r, i) => {
+      // Build filter name -> {num, color} map (same order as feed)
+      const filterMap = {};
+      sf.forEach((f, fi) => {
+        filterMap[f.name] = { num: fi + 1, color: fColors[fi % fColors.length] };
+      });
+
+      // Sort: by first assigned filter position (feed order), then level rank (senior first), unassigned last
+      const sorted = resumes.map((r, i) => ({ r, origIdx: i })).sort((a, b) => {
+        const aIds = a.r.filterIds || [];
+        const bIds = b.r.filterIds || [];
+        // Lowest filter number among assigned filters (feed order)
+        const aMinFilter = aIds.length > 0 ? Math.min(...aIds.map(n => (filterMap[n] || {}).num || 999)) : 1000;
+        const bMinFilter = bIds.length > 0 ? Math.min(...bIds.map(n => (filterMap[n] || {}).num || 999)) : 1000;
+        if (aMinFilter !== bMinFilter) return aMinFilter - bMinFilter;
+        // Then by level rank (senior = lower index in hierarchy)
+        const aLevel = levels.findIndex(l => l.label === a.r.level_label);
+        const bLevel = levels.findIndex(l => l.label === b.r.level_label);
+        const aRank = aLevel >= 0 ? aLevel : 999;
+        const bRank = bLevel >= 0 ? bLevel : 999;
+        return aRank - bRank;
+      });
+
+      grid.innerHTML = sorted.map(({ r, origIdx }) => {
+        const i = origIdx;
         const icon = getFileIcon(r.file_name);
         const assignedIds = r.filterIds || [];
         const hasAssignment = assignedIds.length > 0;
@@ -8443,6 +8637,14 @@
         const sourceBadge = r.source === 'gdrive'
           ? '<span class="rc-type-badge gdrive">Drive</span>'
           : `<span class="rc-type-badge ${icon.cls}">${icon.text}</span>`;
+
+        // Filter number badges in upper-right (matching feed circles)
+        const filterBadges = assignedIds
+          .map(n => filterMap[n])
+          .filter(Boolean)
+          .sort((a, b) => a.num - b.num)
+          .map(f => `<span class="rc-filter-num" style="background:${f.color};">${f.num}</span>`)
+          .join('');
 
         const levelColor = r.level_color || '#94a3b8';
         const levelHtml = levels.length > 0
@@ -8458,7 +8660,7 @@
               const isActive = assignedIds.includes(f.name);
               return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
                 style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
-                onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\\\'")}')"
+                onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
                 title="Click to ${isActive ? 'unassign from' : 'assign to'} ${f.name}">${f.name}</span>`;
             }).join('')
           : '<span style="font-size:10px;color:var(--text-faint);font-style:italic;">Save a filter first</span>';
@@ -8471,6 +8673,7 @@
 
         return `
         <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''} ${hasAssignment ? 'rc-assigned' : 'rc-unassigned'}">
+          ${filterBadges ? `<div class="rc-filter-badges">${filterBadges}</div>` : ''}
           <div style="display:flex;align-items:center;gap:4px;">
             ${statusDot}${sourceBadge}
           </div>
