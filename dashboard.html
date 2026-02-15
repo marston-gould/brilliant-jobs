@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.53 - 2026-02-15 - Phase E: extract query-builder, job-feed, sort-bar. Dashboard is now pure HTML (1,403 lines). Zero inline JS. -->
+<!-- Brilliant Jobs Dashboard v2.54 - 2026-02-15 - Design audit: standardize border-radius (4/8/12px tiers), font-sizes, table styles, capitalization, color variables, card classes -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,7 +29,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.53</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.54</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -120,9 +120,9 @@
     <div class="main">
 
       <!-- Help Panel -->
-      <div id="page-help-panel" style="display:none;position:fixed;bottom:80px;right:24px;width:340px;max-height:60vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.25);z-index:9998;padding:20px;">
+      <div id="page-help-panel" style="display:none;position:fixed;bottom:80px;right:24px;width:340px;max-height:60vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);z-index:9998;padding:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div id="help-panel-title" style="font-size:14px;font-weight:700;color:var(--text);"></div>
+          <div id="help-panel-title" class="card-title" style="margin-bottom:0;"></div>
           <button onclick="togglePageHelp(null)" style="background:none;border:none;font-size:16px;color:var(--text-faint);cursor:pointer;padding:2px 6px;">✕</button>
         </div>
         <div id="help-panel-body" style="font-size:12px;color:var(--text-dim);line-height:1.7;"></div>
@@ -230,7 +230,7 @@
         <div class="page-body" style="max-width:800px;">
 
           <!-- Hero -->
-          <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%); border:1px solid rgba(99,102,241,0.12); border-radius:14px; padding:32px; margin-bottom:24px;">
+          <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%); border:1px solid rgba(99,102,241,0.12); border-radius:12px; padding:32px; margin-bottom:24px;">
             <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">Brilliant Jobs is not another job board.</div>
             <div style="font-size:14px;color:var(--text-dim);line-height:1.7;">
               It's an intelligence platform that scans company hiring pages directly, bypasses job board noise, and gives you a real-time feed of exactly what matches your criteria — before most applicants even know the role exists.
@@ -249,9 +249,9 @@
           </div>
 
           <!-- Step 2 -->
-          <div class="card" style="border-left:3px solid #f59e0b;">
+          <div class="card" style="border-left:3px solid var(--warm);">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:#f59e0b;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
+              <span style="background:var(--warm);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
               <div class="card-title" style="margin:0;">Build Your Filters</div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
@@ -267,23 +267,23 @@
                 <div style="font-size:12px;color:var(--text-dim);">Exclude noise. "intern", "assistant", "part-time"</div>
               </div>
               <div style="background:rgba(245,158,11,0.06);border-radius:8px;padding:10px 14px;">
-                <div style="font-size:11px;font-weight:700;color:#f59e0b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Where</div>
+                <div style="font-size:11px;font-weight:700;color:var(--warm);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Where</div>
                 <div style="font-size:12px;color:var(--text-dim);">Locations and work styles. "United States", "remote", "Seattle"</div>
               </div>
               <div style="background:rgba(236,72,153,0.06);border-radius:8px;padding:10px 14px;">
-                <div style="font-size:11px;font-weight:700;color:#ec4899;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Who</div>
+                <div style="font-size:11px;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Who</div>
                 <div style="font-size:12px;color:var(--text-dim);">Target or exclude companies. "Stripe", "Google"</div>
               </div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
-              <strong>Pro tip:</strong> Type <kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:3px;font-size:11px;">or</kbd> before a term to OR it with the previous pill. "director" then "or VP" matches either. Save each search as a named filter — they run in parallel.
+              <strong>Pro tip:</strong> Type <kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">or</kbd> before a term to OR it with the previous pill. "director" then "or VP" matches either. Save each search as a named filter — they run in parallel.
             </div>
           </div>
 
           <!-- Step 3 -->
-          <div class="card" style="border-left:3px solid #a855f7;">
+          <div class="card" style="border-left:3px solid var(--purple);">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:#a855f7;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">3</span>
+              <span style="background:var(--purple);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">3</span>
               <div class="card-title" style="margin:0;">Tune Your Results</div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
@@ -321,14 +321,14 @@
               </div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
-              Colored number badges next to titles show which saved filter matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:3px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
+              Colored number badges next to titles show which saved filter matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
             </div>
           </div>
 
           <!-- Step 5 -->
-          <div class="card" style="border-left:3px solid #ec4899;">
+          <div class="card" style="border-left:3px solid var(--pink);">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:#ec4899;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">5</span>
+              <span style="background:var(--pink);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">5</span>
               <div class="card-title" style="margin:0;">Track Everything in Pipeline</div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
@@ -337,8 +337,8 @@
           </div>
 
           <!-- Data advantage -->
-          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:14px;padding:24px;margin-top:8px;">
-            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Your data advantage</div>
+          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:12px;padding:24px;margin-top:8px;">
+            <div class="card-title" style="margin-bottom:6px;">Your data advantage</div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
               Brilliant Jobs currently indexes <strong>110,000+ open positions</strong> across <strong>1,900+ companies</strong> using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
             </div>
@@ -356,13 +356,13 @@
         <div class="page-body">
 
           <!-- ============ SECTION 1: Chrome Extension ============ -->
-          <div class="card" style="margin-bottom:20px;padding:0;overflow:hidden;">
+          <div class="card card-flush">
             <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
               <div style="width:36px;height:36px;border-radius:8px;background:rgba(99,102,241,0.08);display:flex;align-items:center;justify-content:center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
               </div>
               <div style="flex:1;">
-                <div style="font-size:15px;font-weight:700;color:var(--text);">Chrome Extension</div>
+                <div class="card-title" style="margin-bottom:0;">Chrome Extension</div>
                 <div style="font-size:11px;color:var(--text-faint);">Scans your LinkedIn network to find jobs at companies where you have connections</div>
               </div>
               <div class="ext-dot off" id="ext-dot"></div>
@@ -428,13 +428,13 @@
           </div>
 
           <!-- ============ SECTION 2: Google Drive ============ -->
-          <div class="card" style="margin-bottom:20px;padding:0;overflow:hidden;">
+          <div class="card card-flush">
             <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
               <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
               </div>
               <div style="flex:1;">
-                <div style="font-size:15px;font-weight:700;color:var(--text);">Google Drive</div>
+                <div class="card-title" style="margin-bottom:0;">Google Drive</div>
                 <div style="font-size:11px;color:var(--text-faint);">Store and sync resumes from Google Docs or Drive files</div>
               </div>
               <div class="setup-dot" id="gdrive-dot"></div>
@@ -459,16 +459,16 @@
           </div>
 
           <!-- ============ SECTION 3: Gmail ============ -->
-          <div class="card" style="margin-bottom:20px;padding:0;overflow:hidden;">
+          <div class="card card-flush">
             <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
               <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
                 <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
               </div>
               <div style="flex:1;">
-                <div style="font-size:15px;font-weight:700;color:var(--text);">Gmail — Ghost Monitor</div>
+                <div class="card-title" style="margin-bottom:0;">Gmail — Ghost Monitor</div>
                 <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
               </div>
-              <span style="font-size:10px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:2px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;">Coming Soon</span>
+              <span class="badge-soon">Coming Soon</span>
               <div class="setup-dot" id="gmail-dot"></div>
             </div>
             <div style="padding:20px 24px;">
@@ -617,7 +617,7 @@
                 <span class="sf-title">Select / Deselect All</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
-                <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:5px;cursor:pointer;">Delete Selected</button>
+                <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:4px;cursor:pointer;">Delete Selected</button>
                 <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
               </div>
             </div>
@@ -664,7 +664,7 @@
               <div style="width:100%;">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
                   <label style="font-size:12px;font-weight:600;color:var(--text-dim);white-space:nowrap;">Compare against:</label>
-                  <select id="kw-resume-select" onchange="runResumeMatch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;flex:1;max-width:300px;">
+                  <select id="kw-resume-select" onchange="runResumeMatch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;flex:1;max-width:300px;">
                     <option value="">Select a resume…</option>
                   </select>
                 </div>
@@ -715,7 +715,7 @@
       <div class="page" id="page-tuning">
         <div class="page-header">
           <h2>Search Tuning</h2>
-          <p>global filters, title matching, and exclusion rules that apply across all saved filters <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
+          <p>Global filters, title matching, and exclusion rules that apply across all saved filters <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
         </div>
         <div class="page-body">
 
@@ -723,7 +723,7 @@
           <div class="tuning-card" id="tc-location">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <span class="tuning-card-title">location rules</span>
+              <span class="tuning-card-title">Location Rules</span>
               <span class="tuning-card-badge empty" id="tc-loc-badge"></span>
             </div>
             <div class="tuning-card-sub">applied globally to every search</div>
@@ -744,7 +744,7 @@
           <div class="tuning-card" id="tc-company">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <span class="tuning-card-title">company exclusions</span>
+              <span class="tuning-card-title">Company Exclusions</span>
               <span class="tuning-card-badge empty" id="tc-co-badge"></span>
             </div>
             <div class="tuning-card-sub">jobs from these companies will be hidden from all filters</div>
@@ -761,7 +761,7 @@
           <div class="tuning-card" id="tc-industry">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <span class="tuning-card-title">industry exclusions</span>
+              <span class="tuning-card-title">Industry Exclusions</span>
               <span class="tuning-card-badge empty" id="tc-ind-badge"></span>
             </div>
             <div class="tuning-card-sub">jobs from companies in these industries will be hidden from all filters</div>
@@ -778,7 +778,7 @@
           <div class="tuning-card" id="tc-title">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <span class="tuning-card-title">title rules</span>
+              <span class="tuning-card-title">Title Rules</span>
               <span class="tuning-card-badge empty" id="tc-title-badge"></span>
             </div>
             <div class="tuning-card-sub">default seniority levels (each saved filter can override via the ⚙ icon) and global title exclusions</div>
@@ -819,7 +819,7 @@
           <div class="tuning-card" id="tc-poor">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <span class="tuning-card-title">recent poor matches</span>
+              <span class="tuning-card-title">Recent Poor Matches</span>
               <span class="tuning-card-badge empty" id="tc-poor-badge"></span>
             </div>
             <div class="tuning-card-sub">jobs you've hidden from the feed — unhide or use patterns to refine exclusions</div>
@@ -932,7 +932,7 @@
         <div class="page-body">
 
           <!-- Stats -->
-          <div class="stat-grid" style="position:sticky;top:0;z-index:10;background:var(--bg-white);padding-bottom:12px;margin:-28px -40px 16px;padding:16px 40px;border-bottom:1px solid var(--border);">
+          <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
             <div class="stat-card"><div class="stat-val" id="r-levels">0</div><div class="stat-label">Levels Covered</div></div>
             <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
@@ -941,7 +941,7 @@
           </div>
 
           <!-- Coverage Alert -->
-          <div id="resume-coverage-alert" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
+          <div id="resume-coverage-alert" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
             <strong>Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
             <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">These filters have no resume assigned. Jobs from unassigned filters cannot be auto-applied.</div>
           </div>
@@ -964,7 +964,7 @@
           <!-- Resume Archive -->
           <div id="resume-archive-section" style="display:none;margin-top:24px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div style="font-size:14px;font-weight:700;color:var(--text);">Archived Resumes</div>
+              <div class="card-title">Archived Resumes</div>
               <span style="font-size:11px;color:var(--text-faint);" id="archive-count-label">0 archived</span>
             </div>
             <div id="resume-archive-list"></div>
@@ -1033,7 +1033,7 @@
 
           <!-- RULES PANEL -->
           <div class="app-flow-panel" id="panel-rules">
-            <div class="card" style="margin-bottom:20px;">
+            <div class="card">
               <div class="card-title">Default Application Mode</div>
               <div class="card-sub">Controls how saved/matched jobs get processed</div>
               <div style="display:flex;gap:12px;flex-wrap:wrap;">
@@ -1077,7 +1077,7 @@
                 </div>
                 <div class="notify-config-row">
                   <label>Batch digest (group notifications)</label>
-                  <select id="notify-batch" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                  <select id="notify-batch" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
                     <option value="instant">Instant — each job immediately</option>
                     <option value="hourly">Hourly digest</option>
                     <option value="daily" selected>Daily digest</option>
@@ -1130,7 +1130,7 @@
               <div class="notify-config">
                 <div class="notify-config-row">
                   <label>Default resume for all applications</label>
-                  <select id="resume-assign-default" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                  <select id="resume-assign-default" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
                     <option value="">— Upload a resume first —</option>
                   </select>
                 </div>

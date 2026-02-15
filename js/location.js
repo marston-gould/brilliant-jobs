@@ -886,7 +886,6 @@ function renderSavedFilters() {
     }
 
     const filterNum = sf._idx + 1;
-    const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
     const filterColor = filterColors[(filterNum - 1) % filterColors.length];
 
     return `<div class="sf-item" data-idx="${sf._idx}" data-filternum="${filterNum}">
@@ -906,7 +905,7 @@ function renderSavedFilters() {
           const c = lvl ? lvl.color : '#94a3b8';
           return `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:${c}15;color:${c};border:1px solid ${c}30;white-space:nowrap;">${lbl}</span>`;
         }).join(' ');
-        const otherLabel = sf.includeOtherLevels ? ' <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg-input);color:var(--text-faint);border:1px solid var(--border);">+Other</span>' : '';
+        const otherLabel = sf.includeOtherLevels ? ' <span style="font-size:9px;padding:1px 5px;border-radius:4px;background:var(--bg-input);color:var(--text-faint);border:1px solid var(--border);">+Other</span>' : '';
         return `<div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${badges}${otherLabel}</div>`;
       })()}
       <div class="sf-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">

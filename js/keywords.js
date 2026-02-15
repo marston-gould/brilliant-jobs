@@ -932,7 +932,7 @@ function markAppliedFromModal(jobId) {
     bodyEl.innerHTML = `
       <div style="text-align:center;padding:60px 20px;">
         <div style="font-size:48px;margin-bottom:16px;">✓</div>
-        <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Application Submitted</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">Application Submitted</div>
         <div style="font-size:13px;color:var(--text-dim);">Tracked in your Pipeline under Applied</div>
         ${resumeName ? '<div style="font-size:12px;color:var(--purple);margin-top:8px;">Resume: ' + resumeName + '</div>' : ''}
       </div>`;
