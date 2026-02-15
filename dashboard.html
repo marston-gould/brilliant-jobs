@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.38 - 2026-02-15 - Filter numbering sync, inline help icon, phase renumbering -->
+<!-- Brilliant Jobs Dashboard v2.39 - 2026-02-15 - Column reorder, sortable salary+source, polished toggles -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -752,6 +752,7 @@
     .job-table th[data-sort="days"].sorted { color: #a855f7; }
     .job-table th[data-sort="level"].sorted { color: #06b6d4; }
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
+    .job-table th[data-sort="source"].sorted { color: #f97316; }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .job-table tr:hover td { background: var(--bg-hover); }
     .job-table tr.job-snippet-row { display: none; }
@@ -1248,24 +1249,26 @@
     .notify-config-row:last-child { border-bottom: none; }
     .notify-config-row label { flex: 1; color: var(--text-dim); }
     .toggle-switch {
-      position: relative; width: 40px; height: 22px; cursor: pointer;
+      position: relative; width: 44px; height: 24px; cursor: pointer; flex-shrink: 0;
     }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
       position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background: var(--bg-input); border: 1px solid var(--border);
-      border-radius: 11px; transition: all 0.2s;
+      background: rgba(148,163,184,0.2); border: 1.5px solid rgba(148,163,184,0.3);
+      border-radius: 12px; transition: all 0.25s ease;
     }
     .toggle-slider:before {
-      content: ''; position: absolute; width: 16px; height: 16px;
-      left: 2px; top: 2px; background: var(--text-faint);
-      border-radius: 50%; transition: all 0.2s;
+      content: ''; position: absolute; width: 18px; height: 18px;
+      left: 2px; top: 1.5px; background: #94a3b8;
+      border-radius: 50%; transition: all 0.25s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
     .toggle-switch input:checked + .toggle-slider {
-      background: var(--accent-glow); border-color: var(--accent);
+      background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4);
     }
     .toggle-switch input:checked + .toggle-slider:before {
-      transform: translateX(18px); background: var(--accent);
+      transform: translateX(20px); background: #22c55e;
+      box-shadow: 0 0 8px rgba(34,197,94,0.4);
     }
 
     .app-rule-card {
@@ -1321,7 +1324,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.38</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.39</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1934,6 +1937,8 @@
                 <div class="sort-opt" data-field="title" data-label="Title">Title (A→Z)</div>
                 <div class="sort-opt" data-field="company_name" data-label="Company">Company (A→Z)</div>
                 <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
+                <div class="sort-opt" data-field="salary_min" data-label="Salary">Salary (highest)</div>
+                <div class="sort-opt" data-field="source" data-label="Source">Source (A→Z)</div>
               </div>
             </div>
           </div>
@@ -1945,14 +1950,14 @@
                 <tr>
                   <th style="width:36px;cursor:default;"></th>
                   <th data-sort="title" style="width:22%;">Title <span class="sort-arrow">↕</span></th>
-                  <th data-sort="company" style="width:12%;">Company <span class="sort-arrow">↕</span></th>
+                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
+                  <th data-sort="company" style="width:13%;">Company <span class="sort-arrow">↕</span></th>
                   <th data-sort="ghost" style="width:6%;">Ghost <span class="sort-arrow">↕</span></th>
                   <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
                   <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
-                  <th style="width:5%;vertical-align:middle;">Sources</th>
-                  <th data-sort="level" style="width:7%;vertical-align:middle;">Level <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
-                  <th style="width:140px;cursor:default;">
+                  <th data-sort="source" style="width:5%;">Source <span class="sort-arrow">↕</span></th>
+                  <th style="width:120px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
                       <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
                     </label>
@@ -2585,7 +2590,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.38 loaded');
+    console.log('[BJ] Dashboard v2.39 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -3701,7 +3706,7 @@
 
           // Multi-sort (skip 'level' — client-side only)
           for (const s of jobSortStack) {
-            if (s.field === 'level') continue;
+            if (s.field === 'level' || s.field === 'source') continue;
             query = query.order(s.field, { ascending: s.asc });
           }
 
@@ -3722,7 +3727,7 @@
               q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
             }
             for (const s of jobSortStack) {
-              if (s.field === 'level') continue;
+              if (s.field === 'level' || s.field === 'source') continue;
               q = q.order(s.field, { ascending: s.asc });
             }
             q = q.range(0, perFilter - 1);
@@ -4142,13 +4147,13 @@
         html += `<tr class="job-data-row${newRowClass}" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
           <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
+          <td class="jt-level">${levelCell}</td>
           <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
           <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
           <td class="jt-loc" title="${((job.loc_display || job.location||'').replace(/"/g,'&quot;'))}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
           <td class="jt-salary">${formatSalaryCell(job)}</td>
-          <td>${sourcePill('greenhouse')}</td>
-          <td class="jt-level">${levelCell}</td>
           <td class="jt-days" style="${daysClass}">${daysStr}</td>
+          <td>${sourcePill('greenhouse')}</td>
           <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
             ${saveBtn}${applyBtn}
           </div></td>
@@ -5064,14 +5069,16 @@
         location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
         updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
         level: { bg: 'rgba(6,182,212,0.1)', text: '#06b6d4', dot: '#06b6d4' },
+        salary_min: { bg: 'rgba(34,197,94,0.1)', text: 'var(--green)', dot: 'var(--green)' },
+        source: { bg: 'rgba(249,115,22,0.1)', text: '#f97316', dot: '#f97316' },
       };
       jobSortStack.forEach((s, i) => {
-        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level' };
+        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level', salary_min: 'Salary', source: 'Source' };
         const label = labelMap[s.field] || s.field;
         const dirLabel = s.asc ? '↑' : '↓';
         const dirTitle = s.asc
-          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
-          : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
+          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : s.field === 'salary_min' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+          : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : s.field === 'salary_min' ? 'Highest first — click to flip' : 'Z→A — click to flip');
         const colors = sortColorMap[s.field] || sortColorMap.title;
 
         const pill = document.createElement('span');
@@ -5108,6 +5115,17 @@
         });
       });
 
+      // Highlight sorted column headers
+      const reverseFieldMap = { title: 'title', company_name: 'company', location: 'location', updated_at: 'days', level: 'level', salary_min: 'salary', source: 'source' };
+      $$('.job-table th[data-sort]').forEach(th => th.classList.remove('sorted'));
+      jobSortStack.forEach(s => {
+        const colName = reverseFieldMap[s.field];
+        if (colName) {
+          const th = document.querySelector(`.job-table th[data-sort="${colName}"]`);
+          if (th) th.classList.add('sorted');
+        }
+      });
+
       // Update dropdown — disable already-used fields
       $$('#sort-dropdown .sort-opt').forEach(opt => {
         const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
@@ -5126,7 +5144,7 @@
       opt.addEventListener('click', () => {
         const field = opt.dataset.field;
         if (jobSortStack.some(s => s.field === field)) return;
-        const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
+        const defaultAsc = field === 'title' || field === 'company_name' || field === 'location' || field === 'source';
         jobSortStack.push({ field, asc: field === 'level' ? false : defaultAsc });
         $('#sort-dropdown').style.display = 'none';
         renderSortPills();
@@ -5146,7 +5164,7 @@
       th.style.cursor = 'pointer';
       th.addEventListener('click', () => {
         const field = th.dataset.sort;
-        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level' };
+        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level', salary: 'salary_min', source: 'source' };
         const dbField = fieldMap[field] || 'updated_at';
 
         // If already primary sort, toggle direction
@@ -5155,7 +5173,7 @@
         } else {
           // Make it the primary sort (keep others)
           jobSortStack = jobSortStack.filter(s => s.field !== dbField);
-          jobSortStack.unshift({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' });
+          jobSortStack.unshift({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' || field === 'source' });
         }
         renderSortPills();
         searchJobs(0);
