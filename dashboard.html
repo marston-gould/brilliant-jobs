@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.58 - 2026-02-15 - Notification system UI: preference matrix, phone verification, escalation rules, filter overrides, notification log. -->
+<!-- Brilliant Jobs Dashboard v2.59 - 2026-02-15 - Resume readiness overhaul: auto-analysis on page load, letter grades (A+ through F), inline insights on resume cards, fixed feed match scoring. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,7 +29,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.58</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.59</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -919,12 +919,12 @@
           <div class="card" id="readiness-panel" style="display:none;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div>
-                <div class="card-title" style="margin-bottom:2px;">Resume Readiness</div>
-                <div style="font-size:11px;color:var(--text-faint);">How well each resume covers the keywords found in matching job descriptions</div>
+                <div class="card-title" style="margin-bottom:2px;">Resume Readiness — Detailed Breakdown</div>
+                <div style="font-size:11px;color:var(--text-faint);">Expand "View insights" on any resume card above for a quick summary, or see full analysis here</div>
               </div>
               <div style="display:flex;gap:8px;align-items:center;">
                 <span id="readiness-status" style="font-size:10px;color:var(--text-faint);"></span>
-                <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()">Analyze</button>
+                <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()">Re-analyze</button>
               </div>
             </div>
             <div id="readiness-results"></div>
