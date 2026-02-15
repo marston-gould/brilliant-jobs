@@ -94,7 +94,7 @@ $$('.job-table th[data-sort]').forEach(th => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
     const field = th.dataset.sort;
-    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level' };
+    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
     const dbField = fieldMap[field] || 'updated_at';
 
     // If already primary sort, toggle direction

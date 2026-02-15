@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.54 - 2026-02-15 - Design audit: standardize border-radius (4/8/12px tiers), font-sizes, table styles, capitalization, color variables, card classes -->
+<!-- Brilliant Jobs Dashboard v2.55 - 2026-02-15 - Resume readiness: filter-aware JD scoring on Resumes page, per-job match % on Jobs Feed, level-fit analysis. Keywords panel removed from feed. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,7 +29,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.54</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.55</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -639,39 +639,6 @@
                 <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
               </div>
             </div>
-            <button class="kw-toggle-btn" id="kw-toggle-btn" onclick="toggleKeywordPanel()" title="Analyze top keywords across matching jobs">Keywords</button>
-          </div>
-
-          <!-- Keyword insights panel -->
-          <div class="kw-panel" id="kw-panel">
-            <div class="kw-panel-header">
-              <div>
-                <div class="kw-panel-title">Top Keywords <span id="kw-job-count" style="color:var(--text-faint);font-weight:400;"></span></div>
-                <div class="kw-panel-sub">Most common terms across matching job descriptions — use these on your resume</div>
-              </div>
-              <button class="kw-panel-close" onclick="toggleKeywordPanel()">&times;</button>
-            </div>
-            <div class="kw-tabs">
-              <div class="kw-tab active" data-kw-tab="skills">Skills &amp; Tools</div>
-              <div class="kw-tab" data-kw-tab="bigrams">2-Word Phrases</div>
-              <div class="kw-tab" data-kw-tab="trigrams">3-Word Phrases</div>
-              <div class="kw-tab" data-kw-tab="match" style="margin-left:auto;color:var(--green);">Resume Match</div>
-            </div>
-            <div class="kw-grid active" id="kw-grid-skills"></div>
-            <div class="kw-grid" id="kw-grid-bigrams"></div>
-            <div class="kw-grid" id="kw-grid-trigrams"></div>
-            <div class="kw-grid" id="kw-grid-match">
-              <div style="width:100%;">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                  <label style="font-size:12px;font-weight:600;color:var(--text-dim);white-space:nowrap;">Compare against:</label>
-                  <select id="kw-resume-select" onchange="runResumeMatch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;flex:1;max-width:300px;">
-                    <option value="">Select a resume…</option>
-                  </select>
-                </div>
-                <div id="kw-match-summary" style="margin-bottom:12px;"></div>
-                <div id="kw-match-chips" style="display:flex;flex-wrap:wrap;gap:6px;max-height:200px;overflow-y:auto;"></div>
-              </div>
-            </div>
           </div>
 
           <!-- Job results table -->
@@ -687,6 +654,7 @@
                   <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
                   <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
+                  <th data-sort="match" style="width:5%;">Match <span class="sort-arrow">↕</span></th>
                   <th style="width:5%;">Source</th>
                   <th style="width:140px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
@@ -697,7 +665,7 @@
               </thead>
               <tbody id="job-table-body">
                 <tr>
-                  <td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                  <td colspan="11" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
                     <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">💼</div>
                     <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
                     <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
@@ -944,6 +912,21 @@
           <div id="resume-coverage-alert" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
             <strong>Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
             <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">These filters have no resume assigned. Jobs from unassigned filters cannot be auto-applied.</div>
+          </div>
+
+          <!-- Readiness Analysis Panel -->
+          <div class="card" id="readiness-panel" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div>
+                <div class="card-title" style="margin-bottom:2px;">Resume Readiness</div>
+                <div style="font-size:11px;color:var(--text-faint);">How well each resume covers the keywords found in matching job descriptions</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span id="readiness-status" style="font-size:10px;color:var(--text-faint);"></span>
+                <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()">Analyze</button>
+              </div>
+            </div>
+            <div id="readiness-results"></div>
           </div>
 
           <!-- Upload Zone -->
