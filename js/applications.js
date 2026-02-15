@@ -81,7 +81,7 @@ function renderAppQueue() {
 
   if (appQueue.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-      <div style="font-size:28px;margin-bottom:12px;opacity:0.3;">📬</div>
+      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
         Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
