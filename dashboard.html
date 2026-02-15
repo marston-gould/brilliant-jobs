@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.40 - 2026-02-15 - 3-col status bar, help icon with label, column reorder, sort arrow fix -->
+<!-- Brilliant Jobs Dashboard v2.22 - 2026-02-13 - Fix: stat cards use location IDs, CA$ salary parsing, Vancouver CA/WA disambiguation -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -8,6 +8,8 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
@@ -203,9 +205,9 @@
     .main { flex: 1; margin-left: var(--nav-w); min-height: 100vh; }
     .page-header {
       padding: 28px 40px 20px; border-bottom: 1px solid var(--border);
-      background: var(--bg-white); position: relative;
+      background: var(--bg-white);
     }
-    .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 2px; display: inline; }
+    .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
     .page-header p { font-size: 13px; color: var(--text-dim); }
     .page-body { padding: 28px 40px; }
     .page { display: none; }
@@ -283,36 +285,16 @@
     }
 
     .ext-status {
-      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
-      background: var(--bg-card); border: 1px solid var(--border);
-      border-radius: 10px; margin-bottom: 20px; overflow: hidden;
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 20px;
     }
-    .ext-status-cell {
-      display: flex; align-items: center; gap: 10px;
-      padding: 14px 18px;
-    }
-    .ext-status-cell:not(:last-child) { border-right: 1px solid var(--border); }
-    .ext-status-cell .ext-cell-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--text-faint); transition: background 0.3s; }
-    .ext-status-cell .ext-cell-dot.on { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
-    .ext-status-cell .ext-cell-dot.off { background: var(--red); }
-    .ext-status-cell .ext-cell-dot.pending { background: var(--text-faint); }
-    .ext-status-cell .ext-cell-label { font-size: 13px; font-weight: 600; color: var(--text); }
-    .ext-status-cell .ext-cell-detail { font-size: 11px; color: var(--text-faint); }
+    .ext-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .ext-dot.on { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
+    .ext-dot.off { background: var(--text-faint); }
 
     .instance-info { font-family: var(--mono); font-size: 12px; color: var(--text-dim); line-height: 1.8; }
     .instance-info span { color: var(--accent); }
-
-    .setup-section-toggle {
-      display: flex; align-items: center; gap: 8px; padding: 12px 16px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
-      cursor: pointer; user-select: none; margin-bottom: 4px; transition: background 0.15s;
-      font-size: 13px; font-weight: 600; color: var(--text-dim);
-    }
-    .setup-section-toggle:hover { background: var(--bg-hover); color: var(--text); }
-    .setup-section-toggle .setup-chevron { transition: transform 0.2s; flex-shrink: 0; }
-    .setup-section-toggle.collapsed .setup-chevron { transform: rotate(-90deg); }
-    .setup-section-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s; max-height: 2000px; opacity: 1; margin-bottom: 16px; }
-    .setup-section-body.collapsed { max-height: 0; opacity: 0; margin-bottom: 0; }
 
     /* ======================== JOBS ======================== */
     /* Tag-based query builder — two rows */
@@ -740,7 +722,7 @@
       text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
       padding: 10px 12px; border-bottom: 2px solid var(--border);
       cursor: pointer; user-select: none; white-space: nowrap;
-      transition: color 0.15s; vertical-align: middle;
+      transition: color 0.15s;
     }
     .job-table th:hover { color: var(--accent); }
     .job-table th .sort-arrow {
@@ -751,7 +733,7 @@
       transition: all 0.15s;
     }
     .job-table th:hover .sort-arrow { background: rgba(255,255,255,0.12); color: var(--text-dim); }
-    .job-table th.sorted .sort-arrow { background: transparent; color: inherit; opacity: 1; }
+    .job-table th.sorted .sort-arrow { background: var(--text); color: var(--bg-card); }
     /* Column header text colors match pill colors when sorted */
     .job-table th[data-sort="title"].sorted { color: var(--accent); }
     .job-table th[data-sort="company"].sorted { color: #ec4899; }
@@ -760,7 +742,6 @@
     .job-table th[data-sort="days"].sorted { color: #a855f7; }
     .job-table th[data-sort="level"].sorted { color: #06b6d4; }
     .job-table th[data-sort="ghost"].sorted { color: var(--red); }
-    .job-table th[data-sort="source"].sorted { color: #f97316; }
     .job-table td { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text-dim); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .job-table tr:hover td { background: var(--bg-hover); }
     .job-table tr.job-snippet-row { display: none; }
@@ -787,7 +768,7 @@
       color: #fff; margin-right: 5px; vertical-align: middle; flex-shrink: 0;
     }
     .job-table .jt-company { font-weight: 500; color: var(--text); }
-    .job-data-row.is-new-row > td { background: rgba(77, 163, 255, 0.04); }
+    .jt-new-badge { font-size: 9px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 5px; border-radius: 3px; margin-left: 5px; letter-spacing: 0.3px; vertical-align: middle; animation: newBadgePulse 2s ease-in-out; }
     @keyframes newBadgePulse { 0% { opacity: 0; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.05); } 100% { transform: scale(1); } }
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
@@ -1054,117 +1035,50 @@
     .top-co-count { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
     /* ======================== RESUMES ======================== */
-    .resume-grid { }
-    .rc-group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 16px; }
+    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
     .resume-card {
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
-      padding: 16px 14px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
-      display: flex; flex-direction: column; aspect-ratio: 8.5 / 11;
-      box-shadow: 2px 3px 8px rgba(0,0,0,0.15);
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
+      display: flex; flex-direction: column; min-height: 200px;
     }
-    .resume-card:hover { border-color: var(--border-hover); box-shadow: 2px 3px 12px rgba(0,0,0,0.25); }
-    .resume-card.rc-assigned { border-left: 3px solid var(--green); }
-    .resume-card.rc-unassigned { border-left: 3px solid var(--warm); }
-    .resume-card .rc-type-badge {
-      display: inline-block; font-size: 9px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.5px; padding: 2px 6px; border-radius: 3px; margin-right: 6px;
+    .resume-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .resume-card.is-default { border-color: var(--accent); border-width: 2px; }
+    .resume-card .rc-icon {
+      width: 44px; height: 56px; border-radius: 6px; margin-bottom: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700; flex-shrink: 0;
     }
-    .resume-card .rc-type-badge.pdf { background: rgba(239,68,68,0.12); color: #ef4444; }
-    .resume-card .rc-type-badge.doc { background: rgba(59,130,246,0.12); color: #3b82f6; }
-    .resume-card .rc-type-badge.gdrive { background: rgba(66,133,244,0.12); color: #4285F4; }
+    .resume-card .rc-icon.pdf { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .resume-card .rc-icon.doc { background: rgba(59,130,246,0.1); color: #3b82f6; }
     .resume-card .rc-name {
-      font-size: 13px; font-weight: 600; margin-bottom: 2px; margin-top: 8px;
-      text-transform: lowercase; word-wrap: break-word; overflow-wrap: break-word;
-      overflow: hidden; display: -webkit-box;
-      -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+      font-size: 14px; font-weight: 600; margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .resume-card .rc-meta { font-size: 10px; color: var(--text-faint); margin-bottom: 4px; }
-    .resume-card .rc-section-label {
-      font-size: 9px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 6px;
+    .resume-card .rc-meta { font-size: 11px; color: var(--text-faint); margin-bottom: 12px; }
+    .resume-card .rc-filters-label {
+      font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 6px;
     }
-    .resume-card .rc-level-select {
-      font-size: 10px; padding: 2px 4px; border-radius: 4px; border: 1px solid var(--border);
-      background: var(--bg); color: var(--text); cursor: pointer; width: 100%; margin-bottom: 4px;
+    .resume-card .rc-filter-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; flex: 1; }
+    .resume-card .rc-filter-pill {
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px;
+      cursor: pointer; transition: opacity 0.1s; white-space: nowrap;
     }
-    .resume-card .rc-actions { display: flex; gap: 4px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
-    .resume-card .rc-status-dot {
-      width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0;
+    .resume-card .rc-filter-pill.active { opacity: 1; }
+    .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
+    .resume-card .rc-filter-pill:hover { opacity: 0.8; }
+    .resume-card .rc-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .resume-card .rc-default-badge {
+      position: absolute; top: 12px; right: 14px;
+      font-size: 9px; font-weight: 700; text-transform: uppercase;
+      color: var(--accent); letter-spacing: 0.5px;
+      background: var(--accent-glow); padding: 2px 8px; border-radius: 4px;
     }
     .resume-card.is-placeholder {
-      border-style: dashed; border-color: var(--border); opacity: 0.7;
+      border-style: dashed; border-color: var(--border);
     }
     .resume-card.is-placeholder .rc-name { color: var(--text-dim); }
     .resume-card.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
-    .resume-card .rc-filter-badges {
-      position: absolute; top: 8px; right: 8px; display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; max-width: 80px;
-    }
-    .resume-card .rc-filter-num {
-      width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0;
-    }
-
-    .rc-group { margin-bottom: 12px; }
-    .rc-group-header {
-      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
-      cursor: pointer; user-select: none; transition: background 0.15s;
-    }
-    .rc-group-header:hover { background: var(--bg-hover); }
-    .rc-group-header .rc-group-chevron { transition: transform 0.2s; flex-shrink: 0; }
-    .rc-group-header.collapsed .rc-group-chevron { transform: rotate(-90deg); }
-    .rc-group-header .rc-group-badge {
-      width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
-    }
-    .rc-group-header .rc-group-name { font-size: 13px; font-weight: 600; color: var(--text); text-transform: lowercase; }
-    .rc-group-header .rc-group-count { font-size: 11px; color: var(--text-faint); margin-left: auto; }
-    .rc-group-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s; max-height: 2000px; opacity: 1; padding-top: 8px; }
-    .rc-group-body.collapsed { max-height: 0; opacity: 0; padding-top: 0; }
-
-    /* Filter assignment dropdown */
-    .rc-assign-wrapper { position: relative; }
-    .rc-assign-btn {
-      font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 4px;
-      background: rgba(99,102,241,0.06); color: var(--accent); border: 1px solid rgba(99,102,241,0.15);
-      cursor: pointer; transition: all 0.15s; white-space: nowrap;
-    }
-    .rc-assign-btn:hover { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3); }
-    .rc-assign-dropdown {
-      display: none; position: absolute; top: 100%; left: 0; z-index: 50;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.25); padding: 6px 0; min-width: 180px; margin-top: 4px;
-    }
-    .rc-assign-dropdown.open { display: block; }
-    .rc-assign-item {
-      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
-      transition: background 0.1s;
-    }
-    .rc-assign-item:hover { background: var(--bg-hover); }
-
-    /* ======================== HELP BUTTON (inline in page header) ======================== */
-    .page-help-icon {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 2px 10px 2px 6px; border-radius: 12px;
-      background: transparent; border: 1.5px solid var(--border);
-      color: var(--text-faint); font-size: 11px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s; vertical-align: middle;
-      margin-left: 10px; flex-shrink: 0; letter-spacing: 0.3px;
-    }
-    .page-help-icon:hover { border-color: var(--accent); color: var(--accent); background: rgba(61,126,255,0.04); }
-    .page-help-icon svg { flex-shrink: 0; }
-    .page-help-panel {
-      position: absolute; top: 100%; right: 0; z-index: 91;
-      width: 320px; max-height: 400px; overflow-y: auto;
-      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3); padding: 20px;
-      display: none; animation: fadeIn 0.15s ease;
-    }
-    .page-help-panel h4 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-    .page-help-panel p { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-bottom: 8px; }
-    .page-help-panel .help-step { display: flex; gap: 8px; margin-bottom: 10px; }
-    .page-help-panel .help-num { width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
-    .page-help-panel .help-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
     .company-dropdown {
       display:none; position:absolute; z-index:100;
       background:var(--bg-card); border:1px solid var(--border);
@@ -1258,29 +1172,25 @@
     }
     .notify-config-row:last-child { border-bottom: none; }
     .notify-config-row label { flex: 1; color: var(--text-dim); }
-    .notify-config-row label.toggle-switch { flex: none; }
-    .app-rule-header label.toggle-switch { flex: none; }
     .toggle-switch {
-      position: relative; width: 44px; min-width: 44px; max-width: 44px; height: 24px; cursor: pointer; flex-shrink: 0;
+      position: relative; width: 40px; height: 22px; cursor: pointer;
     }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
       position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(148,163,184,0.2); border: 1.5px solid rgba(148,163,184,0.3);
-      border-radius: 12px; transition: all 0.25s ease;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 11px; transition: all 0.2s;
     }
     .toggle-slider:before {
-      content: ''; position: absolute; width: 18px; height: 18px;
-      left: 2px; top: 1.5px; background: #94a3b8;
-      border-radius: 50%; transition: all 0.25s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      content: ''; position: absolute; width: 16px; height: 16px;
+      left: 2px; top: 2px; background: var(--text-faint);
+      border-radius: 50%; transition: all 0.2s;
     }
     .toggle-switch input:checked + .toggle-slider {
-      background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.4);
+      background: var(--accent-glow); border-color: var(--accent);
     }
     .toggle-switch input:checked + .toggle-slider:before {
-      transform: translateX(20px); background: #22c55e;
-      box-shadow: 0 0 8px rgba(34,197,94,0.4);
+      transform: translateX(18px); background: var(--accent);
     }
 
     .app-rule-card {
@@ -1320,6 +1230,57 @@
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
       .pipeline-cols { grid-template-columns: 1fr 1fr; }
     }
+
+    /* ======================== KEYWORD INSIGHTS PANEL ======================== */
+    .kw-panel {
+      display: none; margin: 12px 0;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px 24px; transition: all 0.2s;
+    }
+    .kw-panel.open { display: block; }
+    .kw-panel-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+    }
+    .kw-panel-title { font-size: 14px; font-weight: 600; }
+    .kw-panel-sub { font-size: 11px; color: var(--text-faint); }
+    .kw-panel-close {
+      background: none; border: none; font-size: 18px; color: var(--text-faint);
+      cursor: pointer; padding: 2px 6px; line-height: 1;
+    }
+    .kw-panel-close:hover { color: var(--text); }
+    .kw-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .kw-tab {
+      padding: 6px 16px; font-size: 12px; font-weight: 500; color: var(--text-faint);
+      cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+    }
+    .kw-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .kw-tab:hover { color: var(--text-dim); }
+    .kw-grid { display: none; }
+    .kw-grid.active { display: flex; flex-wrap: wrap; gap: 6px; max-height: 200px; overflow-y: auto; }
+    .kw-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 6px; font-size: 12px;
+      background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim);
+      transition: all 0.15s; cursor: default;
+    }
+    .kw-chip .kw-count {
+      font-family: var(--mono); font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 4px; background: var(--accent-glow); color: var(--accent);
+    }
+    .kw-chip.tier-1 { background: rgba(61,126,255,0.08); border-color: rgba(61,126,255,0.2); color: var(--accent); font-weight: 600; }
+    .kw-chip.tier-1 .kw-count { background: var(--accent); color: #fff; }
+    .kw-chip.tier-2 { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.15); color: var(--green); font-weight: 500; }
+    .kw-chip.tier-2 .kw-count { background: var(--green-dim); color: var(--green); }
+    .kw-empty { font-size: 13px; color: var(--text-faint); padding: 12px 0; }
+    .kw-toggle-btn {
+      padding: 4px 12px; font-size: 11px; font-weight: 600;
+      background: var(--accent-glow); color: var(--accent);
+      border: 1px solid rgba(61,126,255,0.2); border-radius: 6px;
+      cursor: pointer; transition: all 0.15s; font-family: var(--sans);
+      margin-left: auto;
+    }
+    .kw-toggle-btn:hover { background: rgba(61,126,255,0.15); }
+    .kw-toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -1336,7 +1297,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.40</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.26b</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1377,7 +1338,6 @@
         <div class="nav-item" data-page="resumes">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <span>Resumes</span>
-          <div class="ext-status-dot" id="nav-resume-dot" title="No resumes uploaded"></div>
           <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
         </div>
         <div class="nav-item" data-page="applications">
@@ -1637,7 +1597,7 @@
           <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:14px;padding:24px;margin-top:8px;">
             <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">Your data advantage</div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Brilliant Jobs indexes <strong id="da-jobs">110,000+</strong> open positions across <strong id="da-companies">1,900+</strong> companies using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
+              Brilliant Jobs currently indexes <strong>110,000+ open positions</strong> across <strong>1,900+ companies</strong> using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
             </div>
           </div>
 
@@ -1664,82 +1624,59 @@
           </div>
 
           <div class="ext-status" id="ext-status-bar">
-            <div class="ext-status-cell" id="ext-cell-extension">
-              <div class="ext-cell-dot pending" id="ext-dot"></div>
-              <div>
-                <div class="ext-cell-label" id="ext-status-text">Extension</div>
-                <div class="ext-cell-detail" id="ext-status-detail">Not detected</div>
-              </div>
-            </div>
-            <div class="ext-status-cell" id="ext-cell-drive">
-              <div class="ext-cell-dot off" id="setup-gdrive-dot"></div>
-              <div>
-                <div class="ext-cell-label">Google Drive</div>
-                <div class="ext-cell-detail" id="gdrive-status-detail">Not connected</div>
-              </div>
-            </div>
-            <div class="ext-status-cell" id="ext-cell-gmail">
-              <div class="ext-cell-dot off" id="setup-gmail-dot"></div>
-              <div>
-                <div class="ext-cell-label">Gmail</div>
-                <div class="ext-cell-detail" id="gmail-status-detail">Coming soon</div>
-              </div>
+            <div class="ext-dot off" id="ext-dot"></div>
+            <div>
+              <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
+              <div style="font-size:11px;color:var(--text-faint);" id="ext-status-detail">Download and install below</div>
             </div>
           </div>
 
-          <!-- Collapsible: Download + Installation (hidden when extension connected) -->
-          <div class="setup-section-toggle" id="ext-download-toggle" onclick="toggleSetupSection('ext-download-content', this)">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="setup-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-            <span>Download & Install Extension</span>
+          <div class="download-box" id="download-box">
+            <h3>Download Your Extension</h3>
+            <p>Your extension is personalized to your account with unique security parameters and behavioral profile.</p>
+            <button class="btn btn-primary btn-lg" id="download-btn">Download Extension</button>
+            <div class="download-status" id="download-status"></div>
           </div>
-          <div class="setup-section-body" id="ext-download-content">
-            <div class="download-box" id="download-box">
-              <h3>Download Your Extension</h3>
-              <p>Your extension is personalized to your account with unique security parameters and behavioral profile.</p>
-              <button class="btn btn-primary btn-lg" id="download-btn">Download Extension</button>
-              <div class="download-status" id="download-status"></div>
-            </div>
 
-            <div class="card" id="instance-card" style="display:none;">
-              <div class="card-title">Your Extension Instance</div>
-              <div class="card-sub">Unique parameters for this build</div>
-              <div class="instance-info">
-                <div>Instance ID: <span id="ext-instance-id">—</span></div>
-                <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
+          <div class="card" id="instance-card" style="display:none;">
+            <div class="card-title">Your Extension Instance</div>
+            <div class="card-sub">Unique parameters for this build</div>
+            <div class="instance-info">
+              <div>Instance ID: <span id="ext-instance-id">—</span></div>
+              <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Installation Guide</div>
+            <div class="card-sub">Follow these steps after downloading</div>
+            <div class="install-steps">
+              <div class="install-step">
+                <div class="step-num-circle">1</div>
+                <div class="step-content">
+                  <h4>Unzip the download</h4>
+                  <p>Extract the file to a permanent folder on your computer. Don't delete this folder — Chrome needs it.</p>
+                </div>
               </div>
-            </div>
-
-            <div class="card">
-              <div class="card-title">Installation Guide</div>
-              <div class="card-sub">Follow these steps after downloading</div>
-              <div class="install-steps">
-                <div class="install-step">
-                  <div class="step-num-circle">1</div>
-                  <div class="step-content">
-                    <h4>Unzip the download</h4>
-                    <p>Extract the file to a permanent folder on your computer. Don't delete this folder — Chrome needs it.</p>
-                  </div>
+              <div class="install-step">
+                <div class="step-num-circle">2</div>
+                <div class="step-content">
+                  <h4>Open Chrome Extensions</h4>
+                  <p>Navigate to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> using the toggle in the top right.</p>
                 </div>
-                <div class="install-step">
-                  <div class="step-num-circle">2</div>
-                  <div class="step-content">
-                    <h4>Open Chrome Extensions</h4>
-                    <p>Navigate to <a href="chrome://extensions" id="chrome-ext-link" style="color:var(--accent);text-decoration:none;font-family:var(--mono);font-size:12px;">chrome://extensions</a> and enable <strong>Developer mode</strong> using the toggle in the top right.</p>
-                  </div>
+              </div>
+              <div class="install-step">
+                <div class="step-num-circle">3</div>
+                <div class="step-content">
+                  <h4>Load the extension</h4>
+                  <p>Click <strong>Load unpacked</strong> and select the unzipped folder. The extension will appear in your toolbar.</p>
                 </div>
-                <div class="install-step">
-                  <div class="step-num-circle">3</div>
-                  <div class="step-content">
-                    <h4>Load the extension</h4>
-                    <p>Click <strong>Load unpacked</strong> and select the unzipped folder. The extension will appear in your toolbar.</p>
-                  </div>
-                </div>
-                <div class="install-step">
-                  <div class="step-num-circle">4</div>
-                  <div class="step-content">
-                    <h4>Pin and open</h4>
-                    <p>Click the puzzle piece icon in Chrome's toolbar and pin the extension for easy access. Then open it to get started.</p>
-                  </div>
+              </div>
+              <div class="install-step">
+                <div class="step-num-circle">4</div>
+                <div class="step-content">
+                  <h4>Pin and open</h4>
+                  <p>Click the puzzle piece icon in Chrome's toolbar and pin the extension for easy access. Then open it to get started.</p>
                 </div>
               </div>
             </div>
@@ -1750,51 +1687,54 @@
             <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">Integrations</div>
             <div style="font-size:12px;color:var(--text-faint);margin-bottom:16px;">Connect external services to enhance your workflow</div>
 
-            <!-- Google Drive — collapsible -->
-            <div class="setup-section-toggle" id="gdrive-section-toggle" onclick="toggleSetupSection('gdrive-section-content', this)">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="setup-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
-              <span>Google Drive</span>
-              <span style="font-size:10px;color:var(--text-faint);margin-left:auto;" id="gdrive-toggle-status">Not connected</span>
-            </div>
-            <div class="setup-section-body" id="gdrive-section-content">
-              <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
-                <div style="margin-top:0;padding:16px;background:var(--bg-main);border-radius:8px;border:1px solid var(--border);">
-                  <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="gdrive-dot"></div>
-                    <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
-                  </div>
-                  <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                    <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
-                    <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
-                  </div>
-                  <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-                    <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
-                    <div id="gdrive-file-list"></div>
-                    <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
-                  </div>
+            <!-- Google Drive -->
+            <div class="card">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
                 </div>
-                <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
-                  Connect your Google Drive to import resumes directly from Google Docs. Linked docs stay in sync — edit in Drive, and Brilliant Jobs always has the latest version when applying.
+                <div>
+                  <div class="card-title" style="margin:0;">Google Drive</div>
+                  <div class="card-sub" style="margin:0;">Store and sync resumes from Google Docs or Drive files</div>
                 </div>
+              </div>
+              <div style="margin-top:12px;padding:16px;background:var(--bg-main);border-radius:8px;border:1px solid var(--border);">
+                <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="gdrive-dot"></div>
+                  <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
+                </div>
+                <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
+                  <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
+                </div>
+                <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+                  <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
+                  <div id="gdrive-file-list"></div>
+                  <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
+                </div>
+              </div>
+              <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
+                Connect your Google Drive to import resumes directly from Google Docs. Linked docs stay in sync — edit in Drive, and Brilliant Jobs always has the latest version when applying.
               </div>
             </div>
 
-            <!-- Gmail — collapsible -->
-            <div class="setup-section-toggle" id="gmail-section-toggle" onclick="toggleSetupSection('gmail-section-content', this)" style="margin-top:8px;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="setup-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-              <svg width="16" height="13" viewBox="0 0 24 18" fill="none" style="flex-shrink:0;"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
-              <span>Gmail — Ghost Monitor</span>
-              <span style="font-size:11px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:2px 8px;border-radius:8px;margin-left:auto;white-space:nowrap;">Coming Soon</span>
-            </div>
-            <div class="setup-section-body" id="gmail-section-content">
-              <div class="card" style="margin-top:0;border-top:none;border-top-left-radius:0;border-top-right-radius:0;">
-                <div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
-                  <button class="btn btn-sm" style="opacity:0.5;cursor:not-allowed;" disabled>Connect Gmail</button>
+            <!-- Gmail / Ghost Monitor -->
+            <div class="card" style="margin-top:16px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
+                  <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
                 </div>
-                <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
-                  When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
+                <div>
+                  <div class="card-title" style="margin:0;">Gmail — Ghost Monitor</div>
+                  <div class="card-sub" style="margin:0;">Track which companies respond and which ghost you after applying</div>
                 </div>
+                <span style="font-size:11px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:3px 10px;border-radius:10px;margin-left:auto;white-space:nowrap;">Coming Soon</span>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
+                <button class="btn btn-sm" style="opacity:0.5;cursor:not-allowed;" disabled>Connect Gmail</button>
+              </div>
+              <div style="margin-top:10px;font-size:12px;color:var(--text-faint);line-height:1.6;">
+                When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
               </div>
             </div>
           </div>
@@ -1955,8 +1895,39 @@
                 <div class="sort-opt" data-field="title" data-label="Title">Title (A→Z)</div>
                 <div class="sort-opt" data-field="company_name" data-label="Company">Company (A→Z)</div>
                 <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
-                <div class="sort-opt" data-field="salary_min" data-label="Salary">Salary (highest)</div>
-                <div class="sort-opt" data-field="source" data-label="Source">Source (A→Z)</div>
+              </div>
+            </div>
+            <button class="kw-toggle-btn" id="kw-toggle-btn" onclick="toggleKeywordPanel()" title="Analyze top keywords across matching jobs">Keywords</button>
+          </div>
+
+          <!-- Keyword insights panel -->
+          <div class="kw-panel" id="kw-panel">
+            <div class="kw-panel-header">
+              <div>
+                <div class="kw-panel-title">Top Keywords <span id="kw-job-count" style="color:var(--text-faint);font-weight:400;"></span></div>
+                <div class="kw-panel-sub">Most common terms across matching job descriptions — use these on your resume</div>
+              </div>
+              <button class="kw-panel-close" onclick="toggleKeywordPanel()">&times;</button>
+            </div>
+            <div class="kw-tabs">
+              <div class="kw-tab active" data-kw-tab="skills">Skills &amp; Tools</div>
+              <div class="kw-tab" data-kw-tab="bigrams">2-Word Phrases</div>
+              <div class="kw-tab" data-kw-tab="trigrams">3-Word Phrases</div>
+              <div class="kw-tab" data-kw-tab="match" style="margin-left:auto;color:var(--green);">Resume Match</div>
+            </div>
+            <div class="kw-grid active" id="kw-grid-skills"></div>
+            <div class="kw-grid" id="kw-grid-bigrams"></div>
+            <div class="kw-grid" id="kw-grid-trigrams"></div>
+            <div class="kw-grid" id="kw-grid-match">
+              <div style="width:100%;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                  <label style="font-size:12px;font-weight:600;color:var(--text-dim);white-space:nowrap;">Compare against:</label>
+                  <select id="kw-resume-select" onchange="runResumeMatch()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;flex:1;max-width:300px;">
+                    <option value="">Select a resume…</option>
+                  </select>
+                </div>
+                <div id="kw-match-summary" style="margin-bottom:12px;"></div>
+                <div id="kw-match-chips" style="display:flex;flex-wrap:wrap;gap:6px;max-height:200px;overflow-y:auto;"></div>
               </div>
             </div>
           </div>
@@ -1968,14 +1939,14 @@
                 <tr>
                   <th style="width:36px;cursor:default;"></th>
                   <th data-sort="title" style="width:22%;">Title <span class="sort-arrow">↕</span></th>
-                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
-                  <th data-sort="company" style="width:13%;">Company <span class="sort-arrow">↕</span></th>
-                  <th data-sort="ghost" style="width:6%;">Ghost <span class="sort-arrow">↕</span></th>
+                  <th data-sort="company" style="width:12%;">Company <span class="sort-arrow">↕</span></th>
                   <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
                   <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
+                  <th style="width:5%;">Sources</th>
+                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
+                  <th data-sort="ghost" style="width:7%;">Ghost Rate <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
-                  <th data-sort="source" style="width:5%;">Source <span class="sort-arrow">↕</span></th>
-                  <th style="width:120px;cursor:default;">
+                  <th style="width:140px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
                       <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
                     </label>
@@ -2173,35 +2144,69 @@
       <div class="page" id="page-resumes">
         <div class="page-header">
           <h2>Resumes</h2>
-          <p>Each saved filter gets a resume. When you apply, the right one is sent automatically.</p>
+          <p>Every filter needs a resume. Match the right version to the right search.</p>
         </div>
         <div class="page-body">
+
+          <!-- The Story -->
+          <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);border-radius:14px;padding:24px;margin-bottom:20px;">
+            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;">How Resumes Work in Brilliant Jobs</div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              When you apply to jobs — manually or via auto-apply — Brilliant Jobs submits the resume assigned to that filter. Different filters target different roles, and different roles need different resumes. A "Director of SEO" filter should send your leadership-focused resume, while a "Growth Marketing" filter might use one that emphasizes acquisition metrics.
+            </div>
+            <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(99,102,241,0.1);">
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:22px;margin-bottom:4px;">📄</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">1. Upload</div>
+                <div style="font-size:10px;color:var(--text-faint);">Upload a resume for each role type or seniority level you're targeting</div>
+              </div>
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:22px;margin-bottom:4px;">🔗</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">2. Assign</div>
+                <div style="font-size:10px;color:var(--text-faint);">Click the filter pills on each card to assign resumes to your saved filters</div>
+              </div>
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:22px;margin-bottom:4px;">🚀</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">3. Apply</div>
+                <div style="font-size:10px;color:var(--text-faint);">The right resume is automatically selected when you apply to jobs from that filter</div>
+              </div>
+            </div>
+          </div>
 
           <!-- Stats -->
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Resumes</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-default">—</div><div class="stat-label">Default Resume</div></div>
             <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
             <div class="stat-card" id="r-coverage-card"><div class="stat-val" id="r-coverage">—</div><div class="stat-label">Filter Coverage</div></div>
           </div>
 
           <!-- Coverage Alert -->
-          <div id="resume-coverage-alert" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Filters without a resume</div>
-            <div id="resume-unassigned-list" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+          <div id="resume-coverage-alert" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--warm);">
+            <strong>⚠ Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Jobs from unassigned filters will use your default resume. Assign specific resumes for better results.</div>
           </div>
 
           <!-- Upload Zone -->
-          <div class="resume-upload-zone" id="resume-upload-zone" style="margin-bottom:20px;">
-            <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
-            <h4>Drop resumes here or click to upload</h4>
-            <p>PDF, DOC, or DOCX — up to 5MB each</p>
+          <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+            <div class="resume-upload-zone" id="resume-upload-zone" style="flex:1;min-width:280px;margin-bottom:0;">
+              <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
+              <h4>Drop resumes here or click to upload</h4>
+              <p>PDF, DOC, or DOCX — up to 5MB each</p>
+            </div>
+            <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:8px;justify-content:center;">
+              <button class="btn btn-sm" id="resume-from-level-btn" style="padding:10px 18px;font-size:12px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:10px;cursor:pointer;white-space:nowrap;">
+                + Create by Level
+              </button>
+              <div style="font-size:10px;color:var(--text-faint);text-align:center;max-width:130px;">Auto-generate resume placeholders for each title level</div>
+            </div>
           </div>
 
           <!-- Resume Cards Grid -->
           <div class="resume-grid" id="resume-grid">
             <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
               <h3>No resumes uploaded</h3>
-              <p>Upload your first resume to get started.</p>
+              <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level you're targeting.</p>
             </div>
           </div>
         </div>
@@ -2608,7 +2613,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.40 loaded');
+    console.log('[BJ] Dashboard v2.26b loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2634,7 +2639,6 @@
       loadStats();
       checkExtensionStatus();
       loadCollections();
-      loadResumes();
     }
     init();
 
@@ -2678,9 +2682,6 @@
         $(`#page-${item.dataset.page}`).classList.add('active');
         // Persist active tab
         localStorage.setItem('bj_active_tab', item.dataset.page);
-        // Close help panel and re-inject on page switch
-        closeHelpPanel();
-        setTimeout(injectHelpIcon, 50);
       });
     });
 
@@ -2693,189 +2694,6 @@
         n.classList.toggle('active', n.dataset.page === lastTab);
       });
     }
-
-    // ============================================================
-    // CONTEXTUAL HELP SYSTEM
-    // ============================================================
-    const pageHelpContent = {
-      brilliant: {
-        title: '✨ Be Brilliant',
-        tagline: 'Your job search command center — here\'s how to shine.',
-        steps: [
-          'Install the Chrome extension to light up your LinkedIn data and discover hidden jobs.',
-          'Build saved filters in the Jobs Feed — each one is a spotlight on a different role.',
-          'Configure Title Levels in Tuning to rank jobs from corner office to starting line.',
-          'Upload resumes and assign them to filters — the right version goes with every application.'
-        ]
-      },
-      setup: {
-        title: '🔌 Setup',
-        tagline: 'Connect the wires so brilliant things can happen.',
-        steps: [
-          'Download and install the Chrome extension from the link above.',
-          'Once installed, it scans LinkedIn for network data and job boards automatically.',
-          'Green dot = connected and scanning. Red dot = needs attention.',
-          'If something\'s off, try refreshing the extension or reinstalling.'
-        ]
-      },
-      jobs: {
-        title: '📋 Jobs Feed',
-        tagline: 'Your daily intelligence briefing — filtered, ranked, ready.',
-        steps: [
-          'Check saved filters to search. Each filter gets a numbered badge that follows jobs through the feed.',
-          'Click any title to open the full description, company intel, and apply links.',
-          'Hide irrelevant jobs with ✕. Save the good ones to track in Pipeline.',
-          'Sort any column. Ghost Rate (coming soon) flags postings that smell like ghost jobs.'
-        ]
-      },
-      tuning: {
-        title: '🎯 Search Tuning',
-        tagline: 'Dial in your signal — less noise, more brilliance.',
-        steps: [
-          'Build filters: What (titles), Where (locations), When (date range), Who (companies).',
-          'Save filters to reuse — each gets a number and color that follows through the whole app.',
-          'Set up Title Levels to rank jobs by seniority (VP → Director → Manager).',
-          'Negative locations and companies block results you never want to see.'
-        ]
-      },
-      resumes: {
-        title: '📄 Resumes',
-        tagline: 'Right resume, right filter, right impression — automatically.',
-        steps: [
-          'Upload one resume per role type. Assign each to the filters where it fits best.',
-          'Click filter pills to assign/unassign. The numbered badges match your Jobs Feed.',
-          'Set a level on each card — two resumes can\'t share the same filter and level.',
-          'Green border = assigned. Yellow = needs a filter. The nav dot tracks your coverage.'
-        ]
-      },
-      applications: {
-        title: '🚀 Applications',
-        tagline: 'From "interested" to "applied" — tracked and ready.',
-        steps: [
-          'Choose a mode: Manual (you apply), Auto (we apply), or Notify (we alert, you decide).',
-          'The resume assigned to each filter gets submitted automatically.',
-          'Track everything: Queued → Pending → Submitted or Failed.',
-          'Log manual applications here to keep your full history in one place.'
-        ]
-      },
-      pipeline: {
-        title: '🏗️ Pipeline',
-        tagline: 'Your funnel from saved to hired — every stage visible.',
-        steps: [
-          'Saved jobs land in the Saved column. Applied jobs move to Applied.',
-          'Track: Saved → Applied → Responded → Interview → Offer (or Rejected/Ghosted).',
-          'Response rate and days-to-response are the numbers that actually matter.',
-          'Use this to see your whole job search in one glance.'
-        ]
-      },
-      ghost: {
-        title: '👻 Ghost Job Monitor',
-        tagline: 'Don\'t waste brilliance on jobs that don\'t exist.',
-        steps: [
-          'Ghost jobs are postings companies never intend to fill — they waste your time.',
-          'This page tracks posting age, repost frequency, and company response patterns.',
-          'Ghost Rate scores will surface in the feed so you can skip the duds.',
-          'Community data from all users makes ghost detection smarter over time.'
-        ]
-      },
-      stats: {
-        title: '📊 Stats',
-        tagline: 'Numbers don\'t lie — see what\'s working and double down.',
-        steps: [
-          'View search activity, application volume, and response rates over time.',
-          'Filter-level stats show which saved searches produce the best results.',
-          'Use these insights to refine your approach and focus on what\'s brilliant.'
-        ]
-      },
-      settings: {
-        title: '⚙️ Settings',
-        tagline: 'Your account, your way.',
-        steps: [
-          'Manage account details, notification preferences, and integrations.',
-          'Google Drive integration lets you import resumes directly.',
-          'Export your data at any time.'
-        ]
-      },
-      subscription: {
-        title: '💎 Subscription',
-        tagline: 'Unlock the full brilliance.',
-        steps: [
-          'View your current plan and usage.',
-          'Upgrade to Pro for unlimited filters, auto-apply, and priority support.',
-          'Manage billing and payment here.'
-        ]
-      }
-    };
-
-    function getActivePage() {
-      const active = document.querySelector('.page.active');
-      return active ? active.id.replace('page-', '') : 'brilliant';
-    }
-
-    // Inject help icon into active page header
-    function injectHelpIcon() {
-      // Remove any existing help icons and panels
-      document.querySelectorAll('.page-help-icon, .page-help-panel').forEach(el => el.remove());
-
-      const active = document.querySelector('.page.active');
-      if (!active) return;
-      const header = active.querySelector('.page-header');
-      if (!header) return;
-      const h2 = header.querySelector('h2');
-      if (!h2) return;
-
-      // Create the help icon with SVG + text
-      const icon = document.createElement('span');
-      icon.className = 'page-help-icon';
-      icon.title = 'How to use this page';
-      icon.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Help';
-      icon.onclick = (e) => { e.stopPropagation(); toggleHelpPanel(header); };
-      h2.insertAdjacentElement('afterend', icon);
-
-      // Create the panel (hidden)
-      const panel = document.createElement('div');
-      panel.className = 'page-help-panel';
-      panel.id = 'page-help-panel';
-      header.appendChild(panel);
-    }
-
-    function toggleHelpPanel(header) {
-      const panel = header ? header.querySelector('.page-help-panel') : document.getElementById('page-help-panel');
-      if (!panel) return;
-
-      if (panel.style.display === 'block') {
-        panel.style.display = 'none';
-      } else {
-        const page = getActivePage();
-        const help = pageHelpContent[page] || pageHelpContent.brilliant;
-        panel.innerHTML = `
-          <h4>${help.title}</h4>
-          <p style="font-size:12px;color:var(--text-dim);font-style:italic;margin-bottom:12px;">${help.tagline}</p>
-          ${help.steps.map((s, i) => `
-            <div class="help-step">
-              <span class="help-num">${i + 1}</span>
-              <span class="help-text">${s}</span>
-            </div>
-          `).join('')}
-        `;
-        panel.style.display = 'block';
-      }
-    }
-
-    function closeHelpPanel() {
-      const panel = document.getElementById('page-help-panel');
-      if (panel) panel.style.display = 'none';
-    }
-
-    // Close help when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.page-help-icon') && !e.target.closest('.page-help-panel')) {
-        closeHelpPanel();
-      }
-    });
-
-    // Inject on load (after page restore)
-    setTimeout(injectHelpIcon, 100);
 
     // Extension detection — check if extension has updated the profile recently
     async function checkExtensionStatus() {
@@ -2903,19 +2721,17 @@
           // Setup page status
           if (dot && text && detail) {
             if (isActive) {
-              dot.className = 'ext-cell-dot on';
-              text.textContent = 'Extension';
+              dot.className = 'ext-dot on';
+              text.textContent = 'Extension connected';
               const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
               const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
               detail.textContent = profile.scanner_running
-                ? 'Connected · scanning'
+                ? `Scanning · ${profile.scanner_today_visited || 0}/${profile.scanner_today_limit || '—'} today`
                 : `Last active ${todayStr} at ${timeStr}`;
-              // Auto-collapse download section when connected
-              autoCollapseSetupSection('ext-download-toggle', 'ext-download-content');
             } else {
-              dot.className = 'ext-cell-dot off';
-              text.textContent = 'Extension';
-              detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome`;
+              dot.className = 'ext-dot off';
+              text.textContent = 'Extension inactive';
+              detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
             }
           }
         }
@@ -2923,58 +2739,6 @@
     }
     checkExtensionStatus();
     setInterval(checkExtensionStatus, 60000);
-
-    // Populate data advantage stats from DB
-    (async function loadDataAdvantageStats() {
-      try {
-        const { count: jobCount } = await sb.from('ats_jobs').select('*', { count: 'exact', head: true }).eq('status', 'open');
-        const { count: companyCount } = await sb.from('ats_companies').select('*', { count: 'exact', head: true });
-        const daJobs = document.getElementById('da-jobs');
-        const daCompanies = document.getElementById('da-companies');
-        if (daJobs && jobCount != null) daJobs.textContent = jobCount.toLocaleString() + '+ open positions';
-        if (daCompanies && companyCount != null) daCompanies.textContent = companyCount.toLocaleString() + '+ companies';
-      } catch (e) { /* keep defaults */ }
-    })();
-
-    // Setup section collapsible toggle
-    function toggleSetupSection(contentId, toggleEl) {
-      const content = document.getElementById(contentId);
-      if (!content) return;
-      const isCollapsed = content.classList.contains('collapsed');
-      if (isCollapsed) {
-        content.classList.remove('collapsed');
-        toggleEl.classList.remove('collapsed');
-      } else {
-        content.classList.add('collapsed');
-        toggleEl.classList.add('collapsed');
-      }
-    }
-
-    function autoCollapseSetupSection(toggleId, contentId) {
-      const toggle = document.getElementById(toggleId);
-      const content = document.getElementById(contentId);
-      if (toggle && content && !content.classList.contains('collapsed')) {
-        content.classList.add('collapsed');
-        toggle.classList.add('collapsed');
-      }
-    }
-
-    // chrome://extensions link — can't be a normal link, use clipboard fallback
-    const chromeExtLink = document.getElementById('chrome-ext-link');
-    if (chromeExtLink) {
-      chromeExtLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        try {
-          window.open('chrome://extensions', '_blank');
-        } catch (err) {
-          // Chrome blocks chrome:// URLs from web pages — copy to clipboard instead
-          navigator.clipboard.writeText('chrome://extensions').then(() => {
-            chromeExtLink.textContent = 'chrome://extensions (copied!)';
-            setTimeout(() => { chromeExtLink.textContent = 'chrome://extensions'; }, 2000);
-          });
-        }
-      });
-    }
 
     // Saved Jobs card → navigate to Pipeline
     $('#j-saved-card').addEventListener('click', () => {
@@ -3724,7 +3488,7 @@
 
           // Multi-sort (skip 'level' — client-side only)
           for (const s of jobSortStack) {
-            if (s.field === 'level' || s.field === 'source') continue;
+            if (s.field === 'level') continue;
             query = query.order(s.field, { ascending: s.asc });
           }
 
@@ -3745,7 +3509,7 @@
               q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
             }
             for (const s of jobSortStack) {
-              if (s.field === 'level' || s.field === 'source') continue;
+              if (s.field === 'level') continue;
               q = q.order(s.field, { ascending: s.asc });
             }
             q = q.range(0, perFilter - 1);
@@ -4154,24 +3918,24 @@
 
           const levelInfo = getJobLevel(job.title, window._activeLevelHierarchy);
           const levelCell = levelInfo
-            ? `<span class="level-badge" style="background:${levelInfo.color}25;color:${levelInfo.color};border:1px solid ${levelInfo.color}30;">${levelInfo.label}</span>`
-            : '<span style="color:var(--border);">—</span>';
+            ? `<span class="level-badge" style="background:${levelInfo.color}20;color:${levelInfo.color};">${levelInfo.label}</span>`
+            : '—';
 
-        // NEW indicator — job first seen after last feed view (subtle row highlight)
+        // NEW badge — job first seen after last feed view
         const isNew = lastViewDate && job.first_seen_at && new Date(job.first_seen_at) > lastViewDate;
         if (isNew) newCount++;
-        const newRowClass = isNew ? ' is-new-row' : '';
+        const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
-        html += `<tr class="job-data-row${newRowClass}" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+        html += `<tr class="job-data-row" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
           <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span></td>
-          <td class="jt-level">${levelCell}</td>
+          <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
           <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
-          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
-          <td class="jt-loc" title="${((job.loc_display || job.location||'').replace(/"/g,'&quot;'))}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
+          <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
           <td class="jt-salary">${formatSalaryCell(job)}</td>
-          <td class="jt-days" style="${daysClass}">${daysStr}</td>
           <td>${sourcePill('greenhouse')}</td>
+          <td class="jt-level">${levelCell}</td>
+          <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
+          <td class="jt-days" style="${daysClass}">${daysStr}</td>
           <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
             ${saveBtn}${applyBtn}
           </div></td>
@@ -4207,6 +3971,9 @@
 
       // Background salary enrichment — fetch specs for jobs without salary
       backgroundEnrichSalary();
+
+      // Refresh keyword panel if it's open
+      refreshKeywordsIfOpen();
 
       // Load preview snippets if toggle is on
       if ($('#preview-toggle')?.checked) {
@@ -4287,6 +4054,274 @@
         _enrichRunning = false;
       }
     }
+
+    // ============================================================
+    // KEYWORD EXTRACTION ENGINE (P4)
+    // ============================================================
+    const KW_STOPWORDS = new Set([
+      'a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','as','is','was','are','were',
+      'be','been','being','have','has','had','do','does','did','will','would','shall','should','may','might','can',
+      'could','must','need','this','that','these','those','it','its','we','our','you','your','they','their','he',
+      'she','his','her','who','which','what','when','where','how','all','each','every','both','few','more','most',
+      'other','some','such','no','not','only','own','same','so','than','too','very','just','about','above','after',
+      'again','also','am','any','because','before','below','between','down','during','further','here','into','out',
+      'over','then','there','through','under','until','up','while','if','or','nor','per','via','etc','ie','eg',
+      'able','across','along','already','among','another','around','away','back','become','behind','best','better',
+      'beyond','come','day','different','done','either','else','end','even','find','first','get','give','go','going',
+      'good','great','help','high','however','including','keep','know','last','least','less','let','like','long',
+      'look','made','make','many','much','new','next','now','number','off','often','old','one','onto','part',
+      'people','place','point','put','right','say','see','set','show','since','small','still','take','tell',
+      'thing','think','three','time','turn','two','us','use','used','using','want','way','well','without','work',
+      'working','works','world','year','years','able','apply','applicants','application','applications',
+      'candidate','candidates','company','companies','description','duties','employment','employer','equal',
+      'experience','include','includes','including','information','job','jobs','location','opportunities',
+      'opportunity','position','positions','qualifications','qualified','required','requirements','responsible',
+      'role','roles','skills','team','teams','employees','status','provide','providing','related','may','within',
+      'based','ensure','must','strong','support','ability','following','current','please','com','www','http','https',
+      'will','nbsp','amp','quot','lt','gt','div','span','class','style','href','src','img','br','ul','ol','li',
+      'strong','em','table','tr','td','th','p','h1','h2','h3','h4','h5','h6','section','header','footer',
+      'width','height','color','background','font','size','margin','padding','border','display','align','text'
+    ]);
+
+    // Industry/role terms that are too generic to be useful
+    const KW_GENERIC = new Set([
+      'full','time','base','level','senior','junior','lead','manager','director','associate','staff','principal',
+      'remote','hybrid','onsite','office','salary','range','bonus','benefits','paid','annual','competitive',
+      'preferred','minimum','bachelor','master','degree','equivalent','plus','knowledge','understanding',
+      'excellent','written','verbal','communication','organizational','proven','track','record','attention',
+      'detail','self','starter','motivated','passion','passionate','fast','paced','environment','collaborative',
+      'cross','functional','hands','ability','demonstrated','proficiency','proficient','familiarity','familiar',
+      'deep','solid','relevant','direct','extensive','developing','developed','build','building','create',
+      'creating','manage','managing','management','drive','driving','driven','deliver','delivering','lead',
+      'leading','leadership','execute','execution','implement','implementing','implementation','define',
+      'defining','establish','establishing','maintain','maintaining','optimize','optimizing','oversee',
+      'overseeing','coordinate','coordinating','collaborate','collaborating','analyze','analyzing','identify',
+      'identifying','develop','growth','report','reporting','reports','responsible','responsibilities',
+      'looking','join','exciting'
+    ]);
+
+    function stripHtmlToText(html) {
+      if (!html) return '';
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function tokenize(text) {
+      return text.toLowerCase()
+        .replace(/[^a-z0-9\s\-\/\+\#\.]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 1 && !/^\d+$/.test(w));
+    }
+
+    function extractNgrams(jobs, maxPerGroup = 40) {
+      const uniCounts = {};
+      const biCounts = {};
+      const triCounts = {};
+      let jobsWithContent = 0;
+
+      for (const job of jobs) {
+        const raw = job.content || job.description || '';
+        if (!raw) continue;
+        jobsWithContent++;
+
+        const text = stripHtmlToText(raw);
+        const words = tokenize(text);
+
+        // Track per-job uniqueness (count each term once per job, not per occurrence)
+        const seenUni = new Set();
+        const seenBi = new Set();
+        const seenTri = new Set();
+
+        for (let i = 0; i < words.length; i++) {
+          const w = words[i];
+          // Unigrams
+          if (!KW_STOPWORDS.has(w) && !KW_GENERIC.has(w) && w.length > 2) {
+            if (!seenUni.has(w)) { uniCounts[w] = (uniCounts[w] || 0) + 1; seenUni.add(w); }
+          }
+          // Bigrams
+          if (i < words.length - 1) {
+            const bi = w + ' ' + words[i+1];
+            if (!KW_STOPWORDS.has(w) && !KW_STOPWORDS.has(words[i+1]) && !seenBi.has(bi)) {
+              biCounts[bi] = (biCounts[bi] || 0) + 1;
+              seenBi.add(bi);
+            }
+          }
+          // Trigrams
+          if (i < words.length - 2) {
+            const tri = w + ' ' + words[i+1] + ' ' + words[i+2];
+            const ws = [w, words[i+1], words[i+2]];
+            const stopCount = ws.filter(x => KW_STOPWORDS.has(x)).length;
+            if (stopCount <= 1 && !seenTri.has(tri)) {
+              triCounts[tri] = (triCounts[tri] || 0) + 1;
+              seenTri.add(tri);
+            }
+          }
+        }
+      }
+
+      // Minimum threshold: must appear in at least 2 JDs (or 10% of jobs, whichever is higher)
+      const minCount = Math.max(2, Math.ceil(jobsWithContent * 0.10));
+
+      const sortAndFilter = (counts) => Object.entries(counts)
+        .filter(([term, count]) => count >= minCount && !KW_GENERIC.has(term))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, maxPerGroup);
+
+      return {
+        skills: sortAndFilter(uniCounts),
+        bigrams: sortAndFilter(biCounts),
+        trigrams: sortAndFilter(triCounts),
+        jobsAnalyzed: jobsWithContent,
+        totalJobs: jobs.length
+      };
+    }
+
+    function renderKeywordChips(entries, containerId, maxCount) {
+      const container = document.getElementById(containerId);
+      if (!entries || entries.length === 0) {
+        container.innerHTML = '<div class="kw-empty">Not enough job descriptions loaded yet. Open a few job details first to cache their content.</div>';
+        return;
+      }
+      const top = entries[0]?.[1] || 1;
+      const tier1Threshold = top * 0.6;
+
+      container.innerHTML = entries.map(([term, count]) => {
+        const tier = count >= tier1Threshold ? 'tier-1' : count >= tier1Threshold * 0.5 ? 'tier-2' : '';
+        const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+        return `<div class="kw-chip ${tier}" title="Found in ${count} job descriptions (${pct}% of analyzed jobs)">
+          ${term} <span class="kw-count">${count}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function runKeywordAnalysis() {
+      const results = extractNgrams(allJobs);
+      $('#kw-job-count').textContent = `across ${results.jobsAnalyzed} of ${results.totalJobs} jobs`;
+      renderKeywordChips(results.skills, 'kw-grid-skills', results.jobsAnalyzed);
+      renderKeywordChips(results.bigrams, 'kw-grid-bigrams', results.jobsAnalyzed);
+      renderKeywordChips(results.trigrams, 'kw-grid-trigrams', results.jobsAnalyzed);
+    }
+
+    function toggleKeywordPanel() {
+      const panel = $('#kw-panel');
+      const btn = $('#kw-toggle-btn');
+      const isOpen = panel.classList.contains('open');
+      if (isOpen) {
+        panel.classList.remove('open');
+        btn.classList.remove('active');
+      } else {
+        panel.classList.add('open');
+        btn.classList.add('active');
+        runKeywordAnalysis();
+      }
+    }
+
+    // Keyword tab switching
+    document.addEventListener('click', e => {
+      const tab = e.target.closest('.kw-tab');
+      if (!tab) return;
+      const tabName = tab.dataset.kwTab;
+      $$('.kw-tab').forEach(t => t.classList.toggle('active', t === tab));
+      $$('.kw-grid').forEach(g => g.classList.toggle('active', g.id === `kw-grid-${tabName}`));
+    });
+
+    // Auto-refresh keywords when panel is open and jobs reload
+    function refreshKeywordsIfOpen() {
+      if ($('#kw-panel')?.classList.contains('open')) {
+        runKeywordAnalysis();
+      }
+    }
+
+    // ============================================================
+    // RESUME VS FILTER MATCH COMPARISON (P4)
+    // ============================================================
+    let _lastNgramResults = null;
+
+    // Override runKeywordAnalysis to cache results for match comparison
+    const _origRunKW = runKeywordAnalysis;
+    runKeywordAnalysis = function() {
+      const results = extractNgrams(allJobs);
+      _lastNgramResults = results;
+      $('#kw-job-count').textContent = `across ${results.jobsAnalyzed} of ${results.totalJobs} jobs`;
+      renderKeywordChips(results.skills, 'kw-grid-skills', results.jobsAnalyzed);
+      renderKeywordChips(results.bigrams, 'kw-grid-bigrams', results.jobsAnalyzed);
+      renderKeywordChips(results.trigrams, 'kw-grid-trigrams', results.jobsAnalyzed);
+
+      // Populate resume dropdown
+      const select = $('#kw-resume-select');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">Select a resume…</option>';
+      resumes.filter(r => r.textStatus === 'ready' && r.keywords?.length > 0).forEach((r, i) => {
+        const realIdx = resumes.indexOf(r);
+        select.innerHTML += `<option value="${realIdx}">${r.name} (${r.keywords.length} keywords)</option>`;
+      });
+      if (currentVal) select.value = currentVal;
+
+      // Refresh match if a resume is selected
+      if (select.value) runResumeMatch();
+    };
+
+    window.runResumeMatch = function() {
+      const select = $('#kw-resume-select');
+      const summaryEl = $('#kw-match-summary');
+      const chipsEl = $('#kw-match-chips');
+
+      if (!select.value || !_lastNgramResults) {
+        summaryEl.innerHTML = '';
+        chipsEl.innerHTML = '<div class="kw-empty">Select a resume to compare against the top JD keywords.</div>';
+        return;
+      }
+
+      const resume = resumes[parseInt(select.value)];
+      if (!resume || !resume.keywords?.length) {
+        summaryEl.innerHTML = '';
+        chipsEl.innerHTML = '<div class="kw-empty">This resume has no extracted keywords.</div>';
+        return;
+      }
+
+      // Build resume keyword set (lowercased)
+      const resumeTerms = new Set(resume.keywords.map(([t]) => t.toLowerCase()));
+      // Also check if resume raw text contains the term (broader match)
+      const resumeText = (resume.extractedText || '').toLowerCase();
+
+      // Compare against top JD unigrams
+      const jdTerms = _lastNgramResults.skills.slice(0, 30);
+      let matched = 0;
+      let missing = 0;
+
+      const chips = jdTerms.map(([term, count]) => {
+        const inResume = resumeTerms.has(term) || resumeText.includes(term);
+        if (inResume) matched++;
+        else missing++;
+        const style = inResume
+          ? 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);color:var(--green);'
+          : 'background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);color:var(--red);';
+        const icon = inResume ? '✓' : '✗';
+        return `<div class="kw-chip" style="${style}" title="${inResume ? 'Found in your resume' : 'MISSING from your resume — consider adding this term'}">
+          <span style="font-size:10px;">${icon}</span> ${term} <span class="kw-count">${count}</span>
+        </div>`;
+      });
+
+      const total = matched + missing;
+      const pct = total > 0 ? Math.round((matched / total) * 100) : 0;
+      const color = pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--warm)' : 'var(--red)';
+      const label = pct >= 70 ? 'Strong match' : pct >= 40 ? 'Partial match — review gaps' : 'Weak match — significant gaps';
+
+      summaryEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--bg-input);border-radius:8px;">
+          <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:${color};">${pct}%</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${matched} of ${total} top JD terms found in your resume</div>
+            <div style="font-size:11px;color:${color};font-weight:500;">${label}</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">
+          <span style="color:var(--green);">✓ green</span> = in your resume &nbsp; <span style="color:var(--red);">✗ red</span> = missing — add these to improve your match
+        </div>
+      `;
+
+      chipsEl.innerHTML = chips.join('');
+    };
 
     // Event delegation for job title clicks — opens full modal
     document.addEventListener('click', e => {
@@ -5087,16 +5122,14 @@
         location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
         updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
         level: { bg: 'rgba(6,182,212,0.1)', text: '#06b6d4', dot: '#06b6d4' },
-        salary_min: { bg: 'rgba(34,197,94,0.1)', text: 'var(--green)', dot: 'var(--green)' },
-        source: { bg: 'rgba(249,115,22,0.1)', text: '#f97316', dot: '#f97316' },
       };
       jobSortStack.forEach((s, i) => {
-        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level', salary_min: 'Salary', source: 'Source' };
+        const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level' };
         const label = labelMap[s.field] || s.field;
         const dirLabel = s.asc ? '↑' : '↓';
         const dirTitle = s.asc
-          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : s.field === 'salary_min' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
-          : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : s.field === 'salary_min' ? 'Highest first — click to flip' : 'Z→A — click to flip');
+          ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+          : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
         const colors = sortColorMap[s.field] || sortColorMap.title;
 
         const pill = document.createElement('span');
@@ -5133,17 +5166,6 @@
         });
       });
 
-      // Highlight sorted column headers
-      const reverseFieldMap = { title: 'title', company_name: 'company', location: 'location', updated_at: 'days', level: 'level', salary_min: 'salary', source: 'source' };
-      $$('.job-table th[data-sort]').forEach(th => th.classList.remove('sorted'));
-      jobSortStack.forEach(s => {
-        const colName = reverseFieldMap[s.field];
-        if (colName) {
-          const th = document.querySelector(`.job-table th[data-sort="${colName}"]`);
-          if (th) th.classList.add('sorted');
-        }
-      });
-
       // Update dropdown — disable already-used fields
       $$('#sort-dropdown .sort-opt').forEach(opt => {
         const inUse = jobSortStack.some(s => s.field === opt.dataset.field);
@@ -5162,7 +5184,7 @@
       opt.addEventListener('click', () => {
         const field = opt.dataset.field;
         if (jobSortStack.some(s => s.field === field)) return;
-        const defaultAsc = field === 'title' || field === 'company_name' || field === 'location' || field === 'source';
+        const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
         jobSortStack.push({ field, asc: field === 'level' ? false : defaultAsc });
         $('#sort-dropdown').style.display = 'none';
         renderSortPills();
@@ -5182,7 +5204,7 @@
       th.style.cursor = 'pointer';
       th.addEventListener('click', () => {
         const field = th.dataset.sort;
-        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level', salary: 'salary_min', source: 'source' };
+        const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level' };
         const dbField = fieldMap[field] || 'updated_at';
 
         // If already primary sort, toggle direction
@@ -5191,7 +5213,7 @@
         } else {
           // Make it the primary sort (keep others)
           jobSortStack = jobSortStack.filter(s => s.field !== dbField);
-          jobSortStack.unshift({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' || field === 'source' });
+          jobSortStack.unshift({ field: dbField, asc: field === 'title' || field === 'company' || field === 'location' });
         }
         renderSortPills();
         searchJobs(0);
@@ -6881,9 +6903,8 @@
       const name = $('#save-filter-name').value.trim().toLowerCase();
       if (!name || allPills() === 0) return;
 
-      // Warn if no WHERE filter set — unless US-only is on in Tuning (acts as implicit location)
-      const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
-      if (wherePills.length === 0 && !tuning.usOnly) {
+      // Warn if no WHERE filter set
+      if (wherePills.length === 0) {
         alert(
           'Please add a location filter.\n\n' +
           'Without a location, this filter will match jobs worldwide.\n\n' +
@@ -7072,7 +7093,7 @@
       }
 
       // Column headers
-      list.innerHTML = `<div class="sf-col-header" style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:6px;position:sticky;top:0;background:var(--bg-card);z-index:2;">
+      list.innerHTML = `<div style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid var(--border);gap:6px;">
         <div style="width:20px;"></div>
         <div style="width:14px;"></div>
         <div style="width:16px;"></div>
@@ -7146,7 +7167,7 @@
             else if (p.type === 'salary' || salaryLike.test(val)) cls = 'pay-pill';
             // else default blue for keyword/what
             const sep = cls === 'not-pill' ? ' nor ' : ' | ';
-            const label = p.values ? p.values.map(v => v.toLowerCase()).join(sep) : '';
+            const label = p.values ? p.values.join(sep) : '';
             return `<span class="sf-mini-pill ${cls}">${label}</span>`;
           }).join('') + '</div>';
         }
@@ -7160,7 +7181,7 @@
           <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
           <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
           <div class="sf-item-info">
-            <div class="sf-item-name">${(sf.name || '').toLowerCase()}</div>
+            <div class="sf-item-name">${sf.name}</div>
             ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
           </div>
           ${miniPills}
@@ -7733,7 +7754,7 @@
       { label: 'Manager', keywords: 'manager', color: '#14b8a6' },
       { label: 'Lead', keywords: 'lead, principal, head of', color: '#06b6d4' },
       { label: 'Senior', keywords: 'senior, sr, sr.', color: '#3b82f6' },
-      { label: 'Mid', keywords: 'associate, coordinator, analyst', color: '#8b5cf6' },
+      { label: 'Mid', keywords: 'associate, coordinator', color: '#8b5cf6' },
       { label: 'Entry', keywords: 'junior, jr, intern, entry', color: '#a855f7' },
     ];
     let levelHierarchy = tuningSettings.levelHierarchy || JSON.parse(JSON.stringify(DEFAULT_LEVELS));
@@ -8684,34 +8705,12 @@
     updatePoorMatchSuggestions();
 
     // ============================================================
-    // RESUMES — Supabase-persisted
+    // RESUMES
     // ============================================================
-    let resumes = [];
-    let resumesLoaded = false;
+    let resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
 
-    async function loadResumes() {
-      if (!currentUser) return;
-      const { data: rows, error } = await sb.from('resumes')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: true });
-      if (error) { console.error('[BJ] Load resumes error:', error); return; }
-
-      const resumeIds = rows.map(r => r.id);
-      let assignments = [];
-      if (resumeIds.length > 0) {
-        const { data: aRows } = await sb.from('resume_filter_assignments')
-          .select('resume_id, filter_name')
-          .in('resume_id', resumeIds);
-        assignments = aRows || [];
-      }
-
-      resumes = rows.map(r => ({
-        ...r,
-        filterIds: assignments.filter(a => a.resume_id === r.id).map(a => a.filter_name)
-      }));
-      resumesLoaded = true;
-      renderResumes();
+    function saveResumes() {
+      localStorage.setItem('bj_resumes', JSON.stringify(resumes));
     }
 
     function getFileIcon(fileName) {
@@ -8719,427 +8718,228 @@
       return { cls: 'doc', text: 'DOC' };
     }
 
-    function updateResumeNavDot() {
-      const dot = $('#nav-resume-dot');
-      if (!dot) return;
-      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-      const allAssignedFilterNames = new Set(resumes.flatMap(r => r.filterIds || []));
-      const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
-
-      if (resumes.length === 0) {
-        dot.className = 'ext-status-dot';
-        dot.title = 'No resumes uploaded';
-      } else if (unassignedFilters.length > 0 && sf.length > 0) {
-        dot.className = 'ext-status-dot warning';
-        dot.title = `${unassignedFilters.length} filter${unassignedFilters.length > 1 ? 's' : ''} without a resume`;
-      } else if (resumes.length > 0) {
-        dot.className = 'ext-status-dot connected';
-        dot.title = 'All filters have resumes';
-      } else {
-        dot.className = 'ext-status-dot';
-      }
-    }
-
     function renderResumes() {
       const grid = $('#resume-grid');
       const countEl = $('#r-total');
+      const defaultEl = $('#r-default');
       const assignedEl = $('#r-assigned');
 
       countEl.textContent = resumes.length;
 
+      const defaultResume = resumes.find(r => r.isDefault);
+      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 20) : '—';
+
+      // Count filters assigned
       const totalAssigned = resumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
       assignedEl.textContent = totalAssigned;
 
-      // Sort by lastUsed descending — same order as the Jobs Feed saved filter panel
-      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]')
-        .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
+      // Coverage check — which saved filters have at least one resume assigned?
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
       const allAssignedFilterNames = new Set(resumes.flatMap(r => r.filterIds || []));
       const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
       const coverageEl = $('#r-coverage');
       const coverageAlert = $('#resume-coverage-alert');
-      const fColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
       if (sf.length > 0) {
         const covered = sf.length - unassignedFilters.length;
         coverageEl.textContent = `${covered}/${sf.length}`;
-        coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--text-dim)' : 'var(--green)';
+        coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--warm)' : 'var(--green)';
       } else {
-        coverageEl.textContent = '\u2014';
+        coverageEl.textContent = '—';
       }
 
       if (unassignedFilters.length > 0 && resumes.length > 0) {
         coverageAlert.style.display = '';
-        $('#resume-unassigned-list').innerHTML = unassignedFilters.map(f => {
-          const fi = sf.findIndex(s => s.name === f.name);
-          const color = fColors[fi % fColors.length];
-          return `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;">${(f.name || '').toLowerCase()}</span>`;
-        }).join('');
+        $('#resume-unassigned-list').textContent = unassignedFilters.map(f => f.name).join(', ');
       } else {
         coverageAlert.style.display = 'none';
       }
 
-      updateResumeNavDot();
-
       if (resumes.length === 0) {
-        grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;">
+        grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
           <h3>No resumes uploaded</h3>
-          <p>Upload your first resume to get started.</p>
+          <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level.</p>
         </div>`;
         return;
       }
 
-      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
+      // Get saved filters for assignment
+      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
-      // Build filter name -> {num, color} map (same order as feed)
-      const filterMap = {};
-      sf.forEach((f, fi) => {
-        filterMap[f.name] = { num: fi + 1, color: fColors[fi % fColors.length] };
-      });
-
-      // Check if any filter has at least one level assigned across all resumes
-      const filtersWithAnyLevel = new Set();
-      resumes.forEach(r => {
-        if (r.level_label) {
-          (r.filterIds || []).forEach(fn => filtersWithAnyLevel.add(fn));
-        }
-      });
-
-      // Group resumes by their primary filter (lowest-numbered), unassigned at end
-      const groups = []; // { key, label, num, color, items: [{r, origIdx}] }
-      const usedInGroup = new Set();
-
-      // Create a group per saved filter (in feed order)
-      sf.forEach((f, fi) => {
-        const color = fColors[fi % fColors.length];
-        const num = fi + 1;
-        const items = [];
-        resumes.forEach((r, ri) => {
-          if ((r.filterIds || []).includes(f.name)) {
-            items.push({ r, origIdx: ri });
-          }
-        });
-        if (items.length > 0) {
-          // Sort within group by level rank (senior first)
-          items.sort((a, b) => {
-            const aLevel = levels.findIndex(l => l.label === a.r.level_label);
-            const bLevel = levels.findIndex(l => l.label === b.r.level_label);
-            return (aLevel >= 0 ? aLevel : 999) - (bLevel >= 0 ? bLevel : 999);
-          });
-          items.forEach(it => usedInGroup.add(it.origIdx));
-          groups.push({ key: f.name, label: (f.name || '').toLowerCase(), num, color, items });
-        }
-      });
-
-      // Unassigned group
-      const unassigned = [];
-      resumes.forEach((r, ri) => {
-        if (!(r.filterIds || []).length) {
-          unassigned.push({ r, origIdx: ri });
-        }
-      });
-      if (unassigned.length > 0) {
-        groups.push({ key: '__unassigned__', label: 'unassigned', num: null, color: '#94a3b8', items: unassigned });
-      }
-
-      // Read collapse state
-      const collapseState = JSON.parse(localStorage.getItem('bj_resume_groups_collapsed') || '{}');
-
-      // Render card helper
-      function renderCard(r, i) {
-        const icon = getFileIcon(r.file_name);
+      grid.innerHTML = resumes.map((r, i) => {
+        const icon = getFileIcon(r.fileName);
         const assignedIds = r.filterIds || [];
-        const hasAssignment = assignedIds.length > 0;
-        const isPlaceholder = r.needs_upload;
 
-        const sourceBadge = r.source === 'gdrive'
-          ? '<span class="rc-type-badge gdrive">Drive</span>'
-          : `<span class="rc-type-badge ${icon.cls}">${icon.text}</span>`;
+        // Build filter pills — each saved filter as a toggleable pill
+        const filterPills = sf.length > 0
+          ? sf.map((f, fi) => {
+              const color = filterColors[fi % filterColors.length];
+              const isActive = assignedIds.includes(f.name);
+              return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
+                style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
+                data-resume="${i}" data-filter="${f.name}" onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
+                title="Click to ${isActive ? 'unassign' : 'assign'}">${f.name}</span>`;
+            }).join('')
+          : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
 
-        // Filter number badges in upper-right
-        const filterBadges = assignedIds
-          .map(n => filterMap[n])
-          .filter(Boolean)
-          .sort((a, b) => a.num - b.num)
-          .map(f => `<span class="rc-filter-num" style="background:${f.color};">${f.num}</span>`)
-          .join('');
-
-        const hasFilterWithLevel = assignedIds.some(fn => filtersWithAnyLevel.has(fn));
-        const noLevelLabel = hasFilterWithLevel ? 'Other levels' : 'No level';
-        const levelColor = r.level_color || '#94a3b8';
-        const levelHtml = levels.length > 0
-          ? `<select class="rc-level-select" onchange="changeResumeLevel(${i}, this.value)" style="border-color:${r.level_label ? levelColor + '44' : 'var(--border)'};">
-              <option value="">${noLevelLabel}</option>
-              ${levels.map(l => `<option value="${l.label}" ${r.level_label === l.label ? 'selected' : ''}>${l.label}</option>`).join('')}
-            </select>`
-          : (r.level_label ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${levelColor}20;color:${levelColor};">${r.level_label}</span>` : '');
-
-        // Compact filter assignment — checklist dropdown
-        let filterAssignHtml = '';
-        if (sf.length > 0) {
-          const assignedCount = assignedIds.length;
-          const checkItems = sf.map((f, fi) => {
-            const color = fColors[fi % fColors.length];
-            const num = fi + 1;
-            const checked = assignedIds.includes(f.name);
-            return `<label class="rc-assign-item" onclick="event.stopPropagation(); toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')" style="cursor:pointer;">
-              <span class="rc-filter-num" style="background:${color};width:16px;height:16px;font-size:8px;">${num}</span>
-              <span style="flex:1;font-size:11px;color:var(--text-dim);text-transform:lowercase;">${(f.name||'').toLowerCase()}</span>
-              <span style="font-size:12px;">${checked ? '✓' : ''}</span>
-            </label>`;
-          }).join('');
-          filterAssignHtml = `<div class="rc-assign-wrapper">
-            <button class="rc-assign-btn" onclick="this.nextElementSibling.classList.toggle('open'); event.stopPropagation();"
-              title="Assign to filters">${assignedCount > 0 ? assignedCount + ' filter' + (assignedCount > 1 ? 's' : '') : '+ filter'}</button>
-            <div class="rc-assign-dropdown">${checkItems}</div>
-          </div>`;
-        } else {
-          filterAssignHtml = '<span style="font-size:10px;color:var(--text-faint);font-style:italic;">Save a filter first</span>';
-        }
-
-        const statusDot = hasAssignment
-          ? '<span class="rc-status-dot" style="background:#34d399;" title="Assigned to filters"></span>'
-          : '<span class="rc-status-dot" style="background:#f59e0b;" title="Not assigned to any filter"></span>';
-
-        const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
-        const displayName = (r.name || '').toLowerCase();
+        const isPlaceholder = r.needsUpload;
+        const levelBadge = r.levelLabel
+          ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.levelColor || '#94a3b8'}20;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
+          : '';
+        const gdriveIcon = r.source === 'gdrive'
+          ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
+          : '';
 
         return `
-        <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''} ${hasAssignment ? 'rc-assigned' : 'rc-unassigned'}">
-          ${filterBadges ? `<div class="rc-filter-badges">${filterBadges}</div>` : ''}
-          <div style="display:flex;align-items:center;gap:4px;">
-            ${statusDot}${sourceBadge}
+        <div class="resume-card ${r.isDefault ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''}">
+          ${r.isDefault ? '<div class="rc-default-badge">★ Default</div>' : ''}
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
+            <div style="display:flex;gap:4px;">${levelBadge}${gdriveIcon}</div>
           </div>
-          <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${displayName}</div>
-          ${isPlaceholder ? `<div style="margin:6px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:6px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:10px;color:var(--warm);font-weight:600;">\u2191 Upload File</div></div>` : ''}
-          ${!isPlaceholder && r.file_path ? `<div style="margin:4px 0;"><a href="#" onclick="downloadResume(${i});return false;" style="font-size:10px;color:var(--accent);">\u2193 Download</a></div>` : ''}
-          <div class="rc-section-label">Level</div>
-          ${levelHtml || '<span style="font-size:10px;color:var(--text-faint);">\u2014</span>'}
-          <div class="rc-section-label">Filters</div>
-          ${filterAssignHtml}
-          <div class="rc-meta" style="margin-top:auto;padding-top:6px;border-top:1px solid var(--border);">${isPlaceholder ? 'Needs file upload' : `${r.file_size || ''} \u00b7 ${created}`}</div>
+          <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+          <div class="rc-meta">${isPlaceholder ? r.fileName : `${r.fileName} · ${r.size} · ${r.uploadedAt}`}</div>
+          ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:8px;">⏳ Extracting keywords…</div>' : ''}
+          ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:8px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view extracted keywords">✓ ${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">▸</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:10px;max-height:100px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${r.keywords.slice(0, 25).map(([t,c]) => `<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+          ${!isPlaceholder && r.textStatus === 'no-text' ? '<div style="font-size:10px;color:var(--text-faint);margin-bottom:8px;">No text extracted — re-upload to retry</div>' : ''}
+          ${isPlaceholder ? `<div style="margin:10px 0;padding:10px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">⬆ Upload File</div><div style="font-size:10px;color:var(--text-faint);">Click to replace placeholder with actual resume</div></div>` : ''}
+          <div class="rc-filters-label">Assigned Filters</div>
+          <div class="rc-filter-list">${filterPills}</div>
           <div class="rc-actions">
-            <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:9px;padding:2px 8px;">Rename</button>
-            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:9px;padding:2px 8px;color:var(--red);">Remove</button>
-          </div>
-        </div>`;
-      }
-
-      // Render groups
-      grid.innerHTML = groups.map(g => {
-        const isCollapsed = collapseState[g.key] === true;
-        const badge = g.num !== null
-          ? `<span class="rc-group-badge" style="background:${g.color};">${g.num}</span>`
-          : `<span class="rc-group-badge" style="background:#94a3b8;">—</span>`;
-
-        return `<div class="rc-group">
-          <div class="rc-group-header ${isCollapsed ? 'collapsed' : ''}" onclick="toggleResumeGroup('${g.key.replace(/'/g, "\\'")}', this)">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="rc-group-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-            ${badge}
-            <span class="rc-group-name">${g.label}</span>
-            <span class="rc-group-count">${g.items.length} resume${g.items.length !== 1 ? 's' : ''}</span>
-          </div>
-          <div class="rc-group-body ${isCollapsed ? 'collapsed' : ''}">
-            <div class="rc-group-grid">
-              ${g.items.map(({ r, origIdx }) => renderCard(r, origIdx)).join('')}
-            </div>
+            ${!r.isDefault ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:10px;padding:3px 10px;">Set Default</button>` : '<button class="btn btn-sm" style="font-size:10px;padding:3px 10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>★ Default</button>'}
+            <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:10px;padding:3px 10px;">Rename</button>
+            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Remove</button>
           </div>
         </div>`;
       }).join('');
     }
 
-    window.toggleResumeGroup = function(key, headerEl) {
-      const body = headerEl.nextElementSibling;
-      const isCollapsed = body.classList.contains('collapsed');
-      if (isCollapsed) {
-        body.classList.remove('collapsed');
-        headerEl.classList.remove('collapsed');
-      } else {
-        body.classList.add('collapsed');
-        headerEl.classList.add('collapsed');
-      }
-      // Persist
-      const state = JSON.parse(localStorage.getItem('bj_resume_groups_collapsed') || '{}');
-      state[key] = !isCollapsed;
-      localStorage.setItem('bj_resume_groups_collapsed', JSON.stringify(state));
-    };
-
-    // Close filter assignment dropdowns on click outside
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.rc-assign-wrapper')) {
-        document.querySelectorAll('.rc-assign-dropdown.open').forEach(d => d.classList.remove('open'));
-      }
-    });
-
-    window.toggleResumeFilter = async function(resumeIdx, filterName) {
+    window.toggleResumeFilter = function(resumeIdx, filterName) {
       const r = resumes[resumeIdx];
       if (!r.filterIds) r.filterIds = [];
       const idx = r.filterIds.indexOf(filterName);
-
       if (idx >= 0) {
         r.filterIds.splice(idx, 1);
-        await sb.from('resume_filter_assignments')
-          .delete()
-          .eq('resume_id', r.id)
-          .eq('filter_name', filterName);
       } else {
         r.filterIds.push(filterName);
-        await sb.from('resume_filter_assignments')
-          .insert({ resume_id: r.id, filter_name: filterName });
       }
+      saveResumes();
       renderResumes();
     };
 
-    window.changeResumeLevel = async function(idx, levelLabel) {
-      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
-      const level = levels.find(l => l.label === levelLabel);
-      const color = level ? (level.color || '#94a3b8') : null;
-      const thisResume = resumes[idx];
-      const thisFilters = thisResume.filterIds || [];
+    // ============================================================
+    // RESUME TEXT EXTRACTION (P4)
+    // ============================================================
+    async function extractTextFromPDF(file) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const pageText = content.items.map(item => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+        return fullText.trim();
+      } catch (e) {
+        console.error('[BJ] PDF text extraction failed:', e);
+        return '';
+      }
+    }
 
-      // Enforce unique filter+level: if another resume shares any filter AND has the same level, strip its level
-      if (levelLabel && thisFilters.length > 0) {
-        for (let i = 0; i < resumes.length; i++) {
-          if (i === idx) continue;
-          const other = resumes[i];
-          if (other.level_label !== levelLabel) continue;
-          const otherFilters = other.filterIds || [];
-          const overlap = otherFilters.some(f => thisFilters.includes(f));
-          if (overlap) {
-            // Strip level from conflicting resume
-            other.level_label = null;
-            other.level_color = null;
-            await sb.from('resumes')
-              .update({ level_label: null, level_color: null })
-              .eq('id', other.id);
-          }
+    async function extractTextFromFile(file) {
+      if (/\.pdf$/i.test(file.name)) {
+        return await extractTextFromPDF(file);
+      }
+      // For .doc/.docx — basic fallback: read as text (won't work for binary .doc, but handles some cases)
+      // Full DOCX parsing would need mammoth.js — defer to future enhancement
+      try {
+        const text = await file.text();
+        // If it looks like XML/binary, skip
+        if (text.startsWith('PK') || text.includes('<?xml')) return '';
+        return text.trim();
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function extractResumeKeywords(text) {
+      if (!text || text.length < 50) return [];
+      const words = tokenize(text);
+      const counts = {};
+      for (const w of words) {
+        if (!KW_STOPWORDS.has(w) && !KW_GENERIC.has(w) && w.length > 2) {
+          counts[w] = (counts[w] || 0) + 1;
         }
       }
+      // Return terms that appear 2+ times, sorted by frequency
+      return Object.entries(counts)
+        .filter(([, c]) => c >= 2)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 50);
+    }
 
-      await sb.from('resumes')
-        .update({ level_label: levelLabel || null, level_color: color })
-        .eq('id', thisResume.id);
+    function addResume(file) {
+      const id = 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      const sizeStr = file.size < 1024 * 1024
+        ? (file.size / 1024).toFixed(0) + ' KB'
+        : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+      const resume = {
+        id,
+        name: file.name.replace(/\.(pdf|docx?|doc)$/i, ''),
+        fileName: file.name,
+        size: sizeStr,
+        isDefault: resumes.length === 0,
+        filterIds: [],
+        uploadedAt: new Date().toLocaleDateString(),
+        extractedText: '',
+        keywords: [],
+        textStatus: 'extracting'
+      };
+      resumes.push(resume);
+      saveResumes();
+      renderResumes();
 
-      thisResume.level_label = levelLabel || null;
-      thisResume.level_color = color;
+      // Extract text in background
+      extractTextFromFile(file).then(text => {
+        const idx = resumes.findIndex(r => r.id === id);
+        if (idx < 0) return;
+        resumes[idx].extractedText = text;
+        resumes[idx].keywords = extractResumeKeywords(text);
+        resumes[idx].textStatus = text ? 'ready' : 'no-text';
+        console.log(`[BJ] Resume text extracted: ${text.length} chars, ${resumes[idx].keywords.length} keywords`);
+        saveResumes();
+        renderResumes();
+      });
+    }
+
+    window.setDefaultResume = function(idx) {
+      resumes.forEach((r, i) => r.isDefault = (i === idx));
+      saveResumes();
       renderResumes();
     };
 
-    function formatFileSize(bytes) {
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-
-    async function addResume(file) {
-      if (!currentUser) return;
-
-      const sizeStr = formatFileSize(file.size);
-      const ts = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const filePath = `${currentUser.id}/${ts}_${safeName}`;
-
-      const { error: uploadError } = await sb.storage
-        .from('resumes')
-        .upload(filePath, file, { contentType: file.type, upsert: false });
-
-      if (uploadError) {
-        console.error('[BJ] Upload error:', uploadError);
-        alert('Upload failed: ' + uploadError.message);
-        return;
-      }
-
-      const { data: row, error: dbError } = await sb.from('resumes')
-        .insert({
-          user_id: currentUser.id,
-          name: file.name.replace(/\.(pdf|docx?|doc)$/i, ''),
-          file_name: file.name,
-          file_path: filePath,
-          file_size: sizeStr,
-          source: 'upload'
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        console.error('[BJ] DB insert error:', dbError);
-        return;
-      }
-
-      row.filterIds = [];
-      resumes.push(row);
-      renderResumes();
-      console.log(`[BJ] Resume uploaded: ${file.name} -> ${filePath}`);
-    }
-
-    window.downloadResume = async function(idx) {
-      const r = resumes[idx];
-      if (!r.file_path) return;
-
-      const { data, error } = await sb.storage
-        .from('resumes')
-        .download(r.file_path);
-
-      if (error) {
-        console.error('[BJ] Download error:', error);
-        alert('Download failed');
-        return;
-      }
-
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = r.file_name;
-      a.click();
-      URL.revokeObjectURL(url);
+    window.toggleResumeKeywords = function(idx) {
+      const el = document.getElementById(`rc-kw-${idx}`);
+      if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
     };
 
     window.renameResume = function(idx) {
-      const card = document.querySelectorAll('.resume-card')[
-        // Find card by matching origIdx data
-        [...document.querySelectorAll('.resume-card')].findIndex(c => {
-          const renameBtn = c.querySelector('[onclick*="renameResume(' + idx + ')"]');
-          return !!renameBtn;
-        })
-      ];
-      if (!card) return;
-      const nameEl = card.querySelector('.rc-name');
-      if (!nameEl || nameEl.querySelector('input')) return; // already editing
-
       const current = resumes[idx].name;
-      nameEl.innerHTML = `<input type="text" class="rc-rename-input" value="${current.replace(/"/g, '&quot;')}"
-        style="width:100%;font-size:13px;font-weight:600;padding:2px 6px;border:1px solid var(--accent);border-radius:4px;background:var(--bg);color:var(--text);text-transform:lowercase;outline:none;">`;
-      const input = nameEl.querySelector('input');
-      input.focus();
-      input.select();
-
-      async function save() {
-        const val = input.value.trim().toLowerCase();
-        if (!val) { renderResumes(); return; }
-        if (val !== current) {
-          await sb.from('resumes')
-            .update({ name: val })
-            .eq('id', resumes[idx].id);
-          resumes[idx].name = val;
-        }
-        renderResumes();
-      }
-      input.addEventListener('blur', save);
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-        if (e.key === 'Escape') { input.value = current; input.blur(); }
-      });
+      const input = prompt('Resume name:', current);
+      if (input === null || !input.trim()) return;
+      resumes[idx].name = input.trim();
+      saveResumes();
+      renderResumes();
     };
 
-    window.removeResume = async function(idx) {
+    window.removeResume = function(idx) {
       if (!confirm(`Remove "${resumes[idx].name}"?`)) return;
-      const r = resumes[idx];
-
-      if (r.file_path) {
-        await sb.storage.from('resumes').remove([r.file_path]);
-      }
-
-      await sb.from('resumes').delete().eq('id', r.id);
-
+      const wasDefault = resumes[idx].isDefault;
       resumes.splice(idx, 1);
+      if (wasDefault && resumes.length > 0) resumes[0].isDefault = true;
+      saveResumes();
       renderResumes();
     };
 
@@ -9147,38 +8947,27 @@
       const tmpInput = document.createElement('input');
       tmpInput.type = 'file';
       tmpInput.accept = '.pdf,.doc,.docx';
-      tmpInput.addEventListener('change', async () => {
+      tmpInput.addEventListener('change', () => {
         const file = tmpInput.files[0];
         if (!file) return;
-
-        const sizeStr = formatFileSize(file.size);
-        const ts = Date.now();
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const filePath = `${currentUser.id}/${ts}_${safeName}`;
-
-        const { error: uploadError } = await sb.storage
-          .from('resumes')
-          .upload(filePath, file, { contentType: file.type, upsert: false });
-
-        if (uploadError) {
-          alert('Upload failed: ' + uploadError.message);
-          return;
-        }
-
-        await sb.from('resumes')
-          .update({
-            file_name: file.name,
-            file_path: filePath,
-            file_size: sizeStr,
-            needs_upload: false
-          })
-          .eq('id', resumes[idx].id);
-
-        resumes[idx].file_name = file.name;
-        resumes[idx].file_path = filePath;
-        resumes[idx].file_size = sizeStr;
-        resumes[idx].needs_upload = false;
+        const sizeStr = file.size < 1024 * 1024
+          ? (file.size / 1024).toFixed(0) + ' KB'
+          : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+        resumes[idx].fileName = file.name;
+        resumes[idx].size = sizeStr;
+        resumes[idx].needsUpload = false;
+        resumes[idx].uploadedAt = new Date().toLocaleDateString();
+        resumes[idx].textStatus = 'extracting';
+        saveResumes();
         renderResumes();
+        // Extract text
+        extractTextFromFile(file).then(text => {
+          resumes[idx].extractedText = text;
+          resumes[idx].keywords = extractResumeKeywords(text);
+          resumes[idx].textStatus = text ? 'ready' : 'no-text';
+          saveResumes();
+          renderResumes();
+        });
       });
       tmpInput.click();
     };
@@ -9201,8 +8990,44 @@
       fileInput.value = '';
     });
 
-    // Resumes loaded from init() after auth resolves
+    renderResumes();
 
+    // Create by Level — scaffold resume placeholders for each level in the hierarchy
+    $('#resume-from-level-btn').addEventListener('click', () => {
+      const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
+      if (levels.length === 0) {
+        alert('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.');
+        return;
+      }
+
+      const existingNames = resumes.map(r => r.name.toLowerCase());
+      const newLevels = levels.filter(l => l.label && !existingNames.includes(l.label.toLowerCase() + ' resume'));
+
+      if (newLevels.length === 0) {
+        alert('You already have resume placeholders for all configured levels.');
+        return;
+      }
+
+      if (!confirm(`Create ${newLevels.length} resume placeholder${newLevels.length > 1 ? 's' : ''} for:\n\n${newLevels.map((l, i) => `${i+1}. ${l.label}`).join('\n')}\n\nUpload the actual files to each card after.`)) return;
+
+      newLevels.forEach((lvl, i) => {
+        resumes.push({
+          id: 'res_lvl_' + Date.now() + '_' + i,
+          name: lvl.label + ' Resume',
+          fileName: 'Upload your ' + lvl.label.toLowerCase() + '-level resume',
+          size: '—',
+          isDefault: resumes.length === 0 && i === 0,
+          filterIds: [],
+          uploadedAt: new Date().toLocaleDateString(),
+          source: 'level-placeholder',
+          levelLabel: lvl.label,
+          levelColor: lvl.color || '#94a3b8',
+          needsUpload: true,
+        });
+      });
+      saveResumes();
+      renderResumes();
+    });
 
     // ============================================================
     // GOOGLE DRIVE INTEGRATION
@@ -9224,16 +9049,6 @@
         connectBtn.style.display = 'none';
         disconnectBtn.style.display = '';
         filesSection.style.display = '';
-
-        // Sync setup header dot + toggle status + status detail
-        const setupDot = $('#setup-gdrive-dot');
-        if (setupDot) { setupDot.className = 'ext-cell-dot on'; }
-        const driveDetail = $('#gdrive-status-detail');
-        if (driveDetail) { driveDetail.textContent = gdriveState.email || 'Connected'; }
-        const toggleStatus = $('#gdrive-toggle-status');
-        if (toggleStatus) { toggleStatus.textContent = 'Connected'; toggleStatus.style.color = 'var(--green)'; }
-        // Auto-collapse when connected
-        autoCollapseSetupSection('gdrive-section-toggle', 'gdrive-section-content');
 
         if (gdriveState.files.length === 0) {
           fileList.innerHTML = '<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No files linked yet. Click below to link a Google Doc as a resume.</div>';
@@ -9257,13 +9072,6 @@
         connectBtn.style.display = '';
         disconnectBtn.style.display = 'none';
         filesSection.style.display = 'none';
-        // Reset setup header dot + toggle status + detail
-        const setupDot2 = $('#setup-gdrive-dot');
-        if (setupDot2) { setupDot2.className = 'ext-cell-dot off'; }
-        const driveDetail2 = $('#gdrive-status-detail');
-        if (driveDetail2) { driveDetail2.textContent = 'Not connected'; }
-        const toggleStatus2 = $('#gdrive-toggle-status');
-        if (toggleStatus2) { toggleStatus2.textContent = 'Not connected'; toggleStatus2.style.color = 'var(--text-faint)'; }
       }
     }
 
@@ -9307,23 +9115,22 @@
       renderGdriveState();
     };
 
-    window.importGdriveAsResume = async function(idx) {
-      if (!currentUser) return;
+    window.importGdriveAsResume = function(idx) {
       const f = gdriveState.files[idx];
-      const { data: row, error } = await sb.from('resumes')
-        .insert({
-          user_id: currentUser.id,
-          name: f.name.replace(/\.(gdoc|pdf|docx?)$/i, ''),
-          file_name: f.name,
-          file_size: 'Google Doc',
-          source: 'gdrive'
-        })
-        .select()
-        .single();
-
-      if (error) { console.error('[BJ] GDrive import error:', error); return; }
-      row.filterIds = [];
-      resumes.push(row);
+      const resume = {
+        id: 'res_gd_' + Date.now(),
+        name: f.name.replace(/\.(gdoc|pdf|docx?)$/i, ''),
+        fileName: f.name,
+        size: 'Google Doc',
+        isDefault: resumes.length === 0,
+        filterIds: [],
+        uploadedAt: new Date().toLocaleDateString(),
+        source: 'gdrive',
+        gdriveUrl: f.url,
+        gdriveId: f.id
+      };
+      resumes.push(resume);
+      saveResumes();
       renderResumes();
       alert(`"${f.name}" imported as a resume. Go to the Resumes page to assign it to filters.`);
     };
@@ -9469,14 +9276,14 @@
       if (!company) return;
       const url = prompt('Application URL (optional):') || '';
 
-      const firstResume = resumes.length > 0 ? resumes[0] : null;
+      const defaultResume = resumes.find(r => r.isDefault);
       appQueue.push({
         id: 'app_' + Date.now(),
         jobTitle: title,
         company: company,
         url: url,
-        resumeName: firstResume ? firstResume.name : '',
-        resumeId: firstResume ? firstResume.id : '',
+        resumeName: defaultResume ? defaultResume.name : '',
+        resumeId: defaultResume ? defaultResume.id : '',
         mode: appMode,
         status: appMode === 'auto' ? 'queued' : (appMode === 'notify' ? 'pending' : 'queued'),
         addedAt: new Date().toLocaleDateString(),
