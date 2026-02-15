@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.35 - 2026-02-15 - Collapsible setup sections, Drive+Gmail status dots, chrome://extensions link -->
+<!-- Brilliant Jobs Dashboard v2.36 - 2026-02-15 - Resume grouped by filter with collapsible chevrons, P2.5 fingerprint obfuscation -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1045,7 +1045,8 @@
     .top-co-count { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
     /* ======================== RESUMES ======================== */
-    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 16px; }
+    .resume-grid { }
+    .rc-group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 16px; }
     .resume-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px;
       padding: 16px 14px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
@@ -1101,6 +1102,24 @@
       width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
       font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0;
     }
+
+    .rc-group { margin-bottom: 12px; }
+    .rc-group-header {
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      cursor: pointer; user-select: none; transition: background 0.15s;
+    }
+    .rc-group-header:hover { background: var(--bg-hover); }
+    .rc-group-header .rc-group-chevron { transition: transform 0.2s; flex-shrink: 0; }
+    .rc-group-header.collapsed .rc-group-chevron { transform: rotate(-90deg); }
+    .rc-group-header .rc-group-badge {
+      width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .rc-group-header .rc-group-name { font-size: 13px; font-weight: 600; color: var(--text); text-transform: lowercase; }
+    .rc-group-header .rc-group-count { font-size: 11px; color: var(--text-faint); margin-left: auto; }
+    .rc-group-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.2s; max-height: 2000px; opacity: 1; padding-top: 8px; }
+    .rc-group-body.collapsed { max-height: 0; opacity: 0; padding-top: 0; }
 
     /* ======================== HELP BUTTON ======================== */
     .page-help-btn {
@@ -1293,7 +1312,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.35</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.36</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2561,7 +2580,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.35 loaded');
+    console.log('[BJ] Dashboard v2.36 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -8675,7 +8694,7 @@
       updateResumeNavDot();
 
       if (resumes.length === 0) {
-        grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
+        grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;">
           <h3>No resumes uploaded</h3>
           <p>Upload your first resume to get started.</p>
         </div>`;
@@ -8690,17 +8709,6 @@
         filterMap[f.name] = { num: fi + 1, color: fColors[fi % fColors.length] };
       });
 
-      // Build map of filter+level combos already taken (for "Other Levels" logic)
-      const takenFilterLevels = {};
-      resumes.forEach((r, ri) => {
-        if (r.level_label) {
-          (r.filterIds || []).forEach(fn => {
-            const key = fn + '::' + r.level_label;
-            takenFilterLevels[key] = ri;
-          });
-        }
-      });
-
       // Check if any filter has at least one level assigned across all resumes
       const filtersWithAnyLevel = new Set();
       resumes.forEach(r => {
@@ -8709,22 +8717,48 @@
         }
       });
 
-      // Sort: by first assigned filter position (feed order), then level rank (senior first), unassigned last
-      const sorted = resumes.map((r, i) => ({ r, origIdx: i })).sort((a, b) => {
-        const aIds = a.r.filterIds || [];
-        const bIds = b.r.filterIds || [];
-        const aMinFilter = aIds.length > 0 ? Math.min(...aIds.map(n => (filterMap[n] || {}).num || 999)) : 1000;
-        const bMinFilter = bIds.length > 0 ? Math.min(...bIds.map(n => (filterMap[n] || {}).num || 999)) : 1000;
-        if (aMinFilter !== bMinFilter) return aMinFilter - bMinFilter;
-        const aLevel = levels.findIndex(l => l.label === a.r.level_label);
-        const bLevel = levels.findIndex(l => l.label === b.r.level_label);
-        const aRank = aLevel >= 0 ? aLevel : 999;
-        const bRank = bLevel >= 0 ? bLevel : 999;
-        return aRank - bRank;
+      // Group resumes by their primary filter (lowest-numbered), unassigned at end
+      const groups = []; // { key, label, num, color, items: [{r, origIdx}] }
+      const usedInGroup = new Set();
+
+      // Create a group per saved filter (in feed order)
+      sf.forEach((f, fi) => {
+        const color = fColors[fi % fColors.length];
+        const num = fi + 1;
+        const items = [];
+        resumes.forEach((r, ri) => {
+          if ((r.filterIds || []).includes(f.name)) {
+            items.push({ r, origIdx: ri });
+          }
+        });
+        if (items.length > 0) {
+          // Sort within group by level rank (senior first)
+          items.sort((a, b) => {
+            const aLevel = levels.findIndex(l => l.label === a.r.level_label);
+            const bLevel = levels.findIndex(l => l.label === b.r.level_label);
+            return (aLevel >= 0 ? aLevel : 999) - (bLevel >= 0 ? bLevel : 999);
+          });
+          items.forEach(it => usedInGroup.add(it.origIdx));
+          groups.push({ key: f.name, label: (f.name || '').toLowerCase(), num, color, items });
+        }
       });
 
-      grid.innerHTML = sorted.map(({ r, origIdx }) => {
-        const i = origIdx;
+      // Unassigned group
+      const unassigned = [];
+      resumes.forEach((r, ri) => {
+        if (!(r.filterIds || []).length) {
+          unassigned.push({ r, origIdx: ri });
+        }
+      });
+      if (unassigned.length > 0) {
+        groups.push({ key: '__unassigned__', label: 'unassigned', num: null, color: '#94a3b8', items: unassigned });
+      }
+
+      // Read collapse state
+      const collapseState = JSON.parse(localStorage.getItem('bj_resume_groups_collapsed') || '{}');
+
+      // Render card helper
+      function renderCard(r, i) {
         const icon = getFileIcon(r.file_name);
         const assignedIds = r.filterIds || [];
         const hasAssignment = assignedIds.length > 0;
@@ -8742,7 +8776,6 @@
           .map(f => `<span class="rc-filter-num" style="background:${f.color};">${f.num}</span>`)
           .join('');
 
-        // Level dropdown — "Other Levels" instead of "No Level" when any assigned filter has a level
         const hasFilterWithLevel = assignedIds.some(fn => filtersWithAnyLevel.has(fn));
         const noLevelLabel = hasFilterWithLevel ? 'Other levels' : 'No level';
         const levelColor = r.level_color || '#94a3b8';
@@ -8753,7 +8786,6 @@
             </select>`
           : (r.level_label ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${levelColor}20;color:${levelColor};">${r.level_label}</span>` : '');
 
-        // Filter pills — lowercase
         const filterPills = sf.length > 0
           ? sf.map((f, fi) => {
               const color = fColors[fi % fColors.length];
@@ -8791,8 +8823,46 @@
             <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:9px;padding:2px 8px;color:var(--red);">Remove</button>
           </div>
         </div>`;
+      }
+
+      // Render groups
+      grid.innerHTML = groups.map(g => {
+        const isCollapsed = collapseState[g.key] === true;
+        const badge = g.num !== null
+          ? `<span class="rc-group-badge" style="background:${g.color};">${g.num}</span>`
+          : `<span class="rc-group-badge" style="background:#94a3b8;">—</span>`;
+
+        return `<div class="rc-group">
+          <div class="rc-group-header ${isCollapsed ? 'collapsed' : ''}" onclick="toggleResumeGroup('${g.key.replace(/'/g, "\\'")}', this)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="rc-group-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            ${badge}
+            <span class="rc-group-name">${g.label}</span>
+            <span class="rc-group-count">${g.items.length} resume${g.items.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="rc-group-body ${isCollapsed ? 'collapsed' : ''}">
+            <div class="rc-group-grid">
+              ${g.items.map(({ r, origIdx }) => renderCard(r, origIdx)).join('')}
+            </div>
+          </div>
+        </div>`;
       }).join('');
     }
+
+    window.toggleResumeGroup = function(key, headerEl) {
+      const body = headerEl.nextElementSibling;
+      const isCollapsed = body.classList.contains('collapsed');
+      if (isCollapsed) {
+        body.classList.remove('collapsed');
+        headerEl.classList.remove('collapsed');
+      } else {
+        body.classList.add('collapsed');
+        headerEl.classList.add('collapsed');
+      }
+      // Persist
+      const state = JSON.parse(localStorage.getItem('bj_resume_groups_collapsed') || '{}');
+      state[key] = !isCollapsed;
+      localStorage.setItem('bj_resume_groups_collapsed', JSON.stringify(state));
+    };
 
     window.toggleResumeFilter = async function(resumeIdx, filterName) {
       const r = resumes[resumeIdx];
