@@ -781,6 +781,11 @@ $('#sf-delete-selected').addEventListener('click', () => {
   $('#sf-select-all').checked = false;
   $('#sf-delete-selected').style.display = 'none';
   renderSavedFilters();
+  updateSfActiveCount();
+  // Clear stale job results if no filters remain active
+  if (savedFilters.length === 0 || $$('.sf-item-check:checked').length === 0) {
+    searchJobs(0);
+  }
 });
 
 function renderSavedFilters() {
@@ -974,6 +979,10 @@ function renderSavedFilters() {
       savedFilters.splice(parseInt(el.dataset.delidx), 1);
       localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
       renderSavedFilters();
+      updateSfActiveCount();
+      if (savedFilters.length === 0 || $$('.sf-item-check:checked').length === 0) {
+        searchJobs(0);
+      }
     });
   });
 
