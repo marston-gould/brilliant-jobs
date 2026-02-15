@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.46 - 2026-02-15 - Extract app shell to js/app.js (Phase B modular split) -->
+<!-- Brilliant Jobs Dashboard v2.47 - 2026-02-15 - Fix nav version display, fix US-only filter excluding non-US instead of including US -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,7 +29,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.26b</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.47</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1853,8 +1853,8 @@
             query = query.or(clauses.join(','));
           }
         }
-        if (tuning.usOnly && wh.length === 0) {
-          query = query.or('location.ilike.%United States%,loc_country.eq.US');
+        if (tuning.usOnly) {
+          query = query.or('loc_country.eq.US,loc_country.is.null');
         }
         for (const pill of whnot) {
           for (const v of pill.values) {
@@ -8829,7 +8829,7 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.46',
+        dashboard_version: 'v2.47',
       };
 
       try {
