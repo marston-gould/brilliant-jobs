@@ -218,3 +218,576 @@ $('#gmail-connect-btn').addEventListener('click', () => {
   alert('Gmail integration coming soon.\n\nThis will use Gmail OAuth to auto-detect responses from companies you\'ve applied to.');
 });
 
+// ============================================================
+// NOTIFICATION SYSTEM — Preferences, Phone, Escalation, Overrides, Log
+// ============================================================
+
+// ---- Notification type catalog (matches NOTIFICATION_SPEC.md) ----
+const NOTIF_TYPES = [
+  { id: 'auto_apply_confirm', label: 'Auto-apply confirmations', tier: 'realtime', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'apply_alert', label: 'Apply-on-notification alerts', tier: 'realtime', defaultFreq: 'realtime', smsDefault: true },
+  { id: 'pipeline_response', label: 'Pipeline changes', tier: 'realtime', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'pipeline_interview', label: 'Interview / Offer alerts', tier: 'realtime', defaultFreq: 'realtime', smsDefault: true },
+  { id: 'listing_closed', label: 'Listing closed', tier: 'realtime', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'pipeline_stale', label: 'Stale application reminders', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
+  { id: 'new_jobs_daily', label: 'New job matches', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
+  { id: 'company_hiring_surge', label: 'Company hiring surge', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
+  { id: 'ghost_alert', label: 'Ghost alerts', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
+  { id: 'salary_change', label: 'Salary range changes', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
+  { id: 'connections_at_company', label: 'Network match alerts', tier: 'network', defaultFreq: 'realtime', smsDefault: true },
+  { id: 'weekly_summary', label: 'Weekly summary', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
+  { id: 'market_stats', label: 'Market stats digest', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
+  { id: 'ghost_report', label: 'Ghost report', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
+];
+
+let notifPrefs = null;   // notification_preferences row
+let notifChannels = {};  // notification_channels keyed by notification_type
+let phoneVerified = false;
+
+// ---- Load notification preferences from Supabase ----
+async function loadNotifPrefs() {
+  if (!currentUser) return;
+  try {
+    // Global prefs
+    const { data: prefs } = await sb.from('notification_preferences')
+      .select('*').eq('user_id', currentUser.id).single();
+    notifPrefs = prefs;
+
+    // Per-type channels
+    const { data: channels } = await sb.from('notification_channels')
+      .select('*').eq('user_id', currentUser.id);
+    notifChannels = {};
+    (channels || []).forEach(c => { notifChannels[c.notification_type] = c; });
+
+    // Apply to UI
+    phoneVerified = prefs?.phone_verified || false;
+    applyPrefsToUI();
+    applyPhoneUI();
+    applyEscalationUI();
+  } catch (e) {
+    console.warn('[Notif] Failed to load preferences:', e);
+  }
+}
+
+function applyPrefsToUI() {
+  // Update matrix toggles from loaded channel data
+  $$('#notif-pref-matrix tr[data-notif]').forEach(row => {
+    const type = row.dataset.notif;
+    const ch = notifChannels[type];
+    const emailToggle = row.querySelector('.nch-email');
+    const smsToggle = row.querySelector('.nch-sms');
+    const freqSelect = row.querySelector('.nch-freq');
+
+    if (emailToggle && ch) emailToggle.checked = ch.email !== false;
+    if (smsToggle) {
+      const smsSwitch = smsToggle.closest('.toggle-switch');
+      if (phoneVerified) {
+        smsSwitch.classList.remove('disabled');
+        smsSwitch.title = '';
+        smsToggle.disabled = false;
+        if (ch) smsToggle.checked = ch.sms === true;
+      } else {
+        smsSwitch.classList.add('disabled');
+        smsSwitch.title = 'Verify phone to enable SMS';
+        smsToggle.disabled = true;
+        smsToggle.checked = false;
+      }
+    }
+    if (freqSelect && ch?.frequency) freqSelect.value = ch.frequency;
+  });
+}
+
+function applyPhoneUI() {
+  if (phoneVerified && notifPrefs?.phone_number) {
+    $('#phone-setup-unverified').style.display = 'none';
+    $('#phone-setup-verified').style.display = '';
+    $('#verified-phone-display').textContent = notifPrefs.phone_number;
+  } else {
+    $('#phone-setup-unverified').style.display = '';
+    $('#phone-setup-verified').style.display = 'none';
+  }
+}
+
+function applyEscalationUI() {
+  if (!notifPrefs) return;
+  const slider = $('#esc-timeout-slider');
+  if (slider && notifPrefs.escalation_timeout_hours) {
+    slider.value = notifPrefs.escalation_timeout_hours;
+    $('#esc-timeout-val').textContent = notifPrefs.escalation_timeout_hours + ' hours';
+    $('#esc-hours-label').textContent = notifPrefs.escalation_timeout_hours;
+  }
+  if (notifPrefs.quiet_start) $('#quiet-start').value = notifPrefs.quiet_start.slice(0, 5);
+  if (notifPrefs.quiet_end) $('#quiet-end').value = notifPrefs.quiet_end.slice(0, 5);
+  if (notifPrefs.timezone) $('#notif-timezone').value = notifPrefs.timezone;
+}
+
+// ---- Save notification preferences ----
+$('#notif-save-prefs')?.addEventListener('click', async () => {
+  if (!currentUser) return;
+  const btn = $('#notif-save-prefs');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    // Upsert global prefs
+    await sb.from('notification_preferences').upsert({
+      user_id: currentUser.id,
+      email_enabled: true,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    // Upsert per-type channels
+    const rows = [];
+    $$('#notif-pref-matrix tr[data-notif]').forEach(row => {
+      const type = row.dataset.notif;
+      const emailOn = row.querySelector('.nch-email')?.checked ?? true;
+      const smsOn = row.querySelector('.nch-sms')?.checked ?? false;
+      const freqEl = row.querySelector('.nch-freq');
+      const freq = freqEl ? freqEl.value : NOTIF_TYPES.find(n => n.id === type)?.defaultFreq || 'realtime';
+      rows.push({
+        user_id: currentUser.id,
+        notification_type: type,
+        email: emailOn,
+        sms: smsOn,
+        frequency: freq
+      });
+    });
+    if (rows.length > 0) {
+      await sb.from('notification_channels').upsert(rows, { onConflict: 'user_id,notification_type' });
+    }
+
+    btn.textContent = 'Saved';
+    setTimeout(() => { btn.textContent = 'Save Preferences'; btn.disabled = false; }, 1500);
+  } catch (e) {
+    console.error('[Notif] Save failed:', e);
+    btn.textContent = 'Error — retry';
+    btn.disabled = false;
+  }
+});
+
+// ---- Phone Verification ----
+let pendingPhone = '';
+
+$('#phone-send-otp')?.addEventListener('click', async () => {
+  const country = $('#phone-country').value;
+  const number = $('#phone-number').value.replace(/\D/g, '');
+  if (!number || number.length < 7) {
+    alert('Please enter a valid phone number.');
+    return;
+  }
+  pendingPhone = country + number;
+  const btn = $('#phone-send-otp');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const { error } = await sb.auth.signInWithOtp({ phone: pendingPhone });
+    if (error) throw error;
+    $('#otp-row').style.display = '';
+    $('#otp-status').textContent = 'Code sent. Check your phone.';
+    $('#otp-status').style.color = 'var(--green)';
+    btn.textContent = 'Resend Code';
+    btn.disabled = false;
+  } catch (e) {
+    console.error('[Phone] OTP send failed:', e);
+    $('#otp-status').textContent = 'Failed to send code: ' + (e.message || e);
+    $('#otp-status').style.color = 'var(--red)';
+    btn.textContent = 'Send Verification Code';
+    btn.disabled = false;
+  }
+});
+
+$('#phone-verify-otp')?.addEventListener('click', async () => {
+  const code = $('#otp-code').value.trim();
+  if (!code || code.length !== 6) {
+    $('#otp-status').textContent = 'Enter the 6-digit code.';
+    $('#otp-status').style.color = 'var(--warm)';
+    return;
+  }
+  const btn = $('#phone-verify-otp');
+  btn.disabled = true;
+  btn.textContent = 'Verifying...';
+
+  try {
+    const { data, error } = await sb.auth.verifyOtp({
+      phone: pendingPhone,
+      token: code,
+      type: 'sms'
+    });
+    if (error) throw error;
+
+    // Update notification_preferences with verified phone
+    await sb.from('notification_preferences').upsert({
+      user_id: currentUser.id,
+      phone_number: pendingPhone,
+      phone_verified: true,
+      sms_enabled: true,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    phoneVerified = true;
+    if (notifPrefs) {
+      notifPrefs.phone_number = pendingPhone;
+      notifPrefs.phone_verified = true;
+    }
+    applyPhoneUI();
+    applyPrefsToUI(); // unlock SMS toggles
+
+    btn.textContent = 'Verify';
+    btn.disabled = false;
+  } catch (e) {
+    console.error('[Phone] Verify failed:', e);
+    $('#otp-status').textContent = 'Invalid code. Try again.';
+    $('#otp-status').style.color = 'var(--red)';
+    btn.textContent = 'Verify';
+    btn.disabled = false;
+  }
+});
+
+$('#phone-change')?.addEventListener('click', () => {
+  phoneVerified = false;
+  applyPhoneUI();
+  $('#phone-number').value = '';
+  $('#otp-row').style.display = 'none';
+  $('#otp-code').value = '';
+  $('#otp-status').textContent = '';
+});
+
+// ---- Escalation Rules ----
+$('#esc-timeout-slider')?.addEventListener('input', e => {
+  const val = e.target.value;
+  $('#esc-timeout-val').textContent = val + ' hour' + (val === '1' ? '' : 's');
+  $('#esc-hours-label').textContent = val;
+});
+
+$('#notif-save-escalation')?.addEventListener('click', async () => {
+  if (!currentUser) return;
+  const btn = $('#notif-save-escalation');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    await sb.from('notification_preferences').upsert({
+      user_id: currentUser.id,
+      escalation_timeout_hours: parseInt($('#esc-timeout-slider').value),
+      quiet_start: $('#quiet-start').value + ':00',
+      quiet_end: $('#quiet-end').value + ':00',
+      timezone: $('#notif-timezone').value,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    btn.textContent = 'Saved';
+    setTimeout(() => { btn.textContent = 'Save Escalation Rules'; btn.disabled = false; }, 1500);
+  } catch (e) {
+    console.error('[Notif] Escalation save failed:', e);
+    btn.textContent = 'Error — retry';
+    btn.disabled = false;
+  }
+});
+
+// Populate timezone dropdown
+(function populateTimezones() {
+  const sel = $('#notif-timezone');
+  if (!sel) return;
+  const zones = [
+    'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+    'America/Anchorage', 'Pacific/Honolulu', 'America/Phoenix',
+    'America/Toronto', 'America/Vancouver',
+    'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+    'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata',
+    'Australia/Sydney', 'Australia/Melbourne',
+    'Pacific/Auckland'
+  ];
+  const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (detected && !zones.includes(detected)) zones.unshift(detected);
+
+  sel.innerHTML = zones.map(tz =>
+    `<option value="${tz}" ${tz === detected ? 'selected' : ''}>${tz.replace(/_/g, ' ')}</option>`
+  ).join('');
+})();
+
+// ---- Filter-Specific Overrides ----
+function populateOverrideFilterSelect() {
+  const sel = $('#override-filter-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select a saved filter...</option>';
+  savedFilters.forEach(f => {
+    sel.innerHTML += `<option value="${f.name}">${f.name}</option>`;
+  });
+}
+populateOverrideFilterSelect();
+
+$('#override-filter-select')?.addEventListener('change', async (e) => {
+  const filterName = e.target.value;
+  if (!filterName) {
+    $('#override-matrix-wrap').style.display = 'none';
+    $('#override-empty').style.display = '';
+    return;
+  }
+  $('#override-empty').style.display = 'none';
+  $('#override-matrix-wrap').style.display = '';
+  $('#override-filter-name').textContent = filterName;
+
+  // Load existing overrides for this filter
+  let overrides = {};
+  if (currentUser) {
+    try {
+      const { data } = await sb.from('notification_filter_overrides')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('filter_name', filterName);
+      (data || []).forEach(o => { overrides[o.notification_type] = o; });
+    } catch (e) { /* ignore */ }
+  }
+
+  // Build override matrix rows
+  const tbody = $('#override-matrix-body');
+  tbody.innerHTML = NOTIF_TYPES.map(nt => {
+    const ov = overrides[nt.id];
+    const emailChecked = ov ? ov.email : true;
+    const smsChecked = ov ? ov.sms : nt.smsDefault;
+    const freq = ov?.frequency || nt.defaultFreq;
+    const smsDisabled = !phoneVerified ? 'disabled' : '';
+    const smsClass = !phoneVerified ? 'disabled' : '';
+    const freqHtml = nt.tier === 'realtime' || nt.tier === 'weekly'
+      ? `<span style="font-size:12px;color:var(--text-faint);">${nt.tier === 'realtime' ? 'Real-time' : 'Weekly'}</span>`
+      : `<select class="freq-select ov-freq" data-type="${nt.id}">
+          <option value="realtime" ${freq==='realtime'?'selected':''}>Real-time</option>
+          <option value="daily" ${freq==='daily'?'selected':''}>Daily</option>
+          <option value="weekly" ${freq==='weekly'?'selected':''}>Weekly</option>
+        </select>`;
+
+    return `<tr data-ov-type="${nt.id}">
+      <td>${nt.label}</td>
+      <td><label class="toggle-switch"><input type="checkbox" class="ov-email" ${emailChecked?'checked':''}><span class="toggle-slider"></span></label></td>
+      <td><label class="toggle-switch ${smsClass}"><input type="checkbox" class="ov-sms" ${smsChecked?'checked':''} ${smsDisabled}><span class="toggle-slider"></span></label></td>
+      <td>${freqHtml}</td>
+    </tr>`;
+  }).join('');
+});
+
+$('#override-save')?.addEventListener('click', async () => {
+  const filterName = $('#override-filter-select').value;
+  if (!filterName || !currentUser) return;
+  const btn = $('#override-save');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const rows = [];
+    $$('#override-matrix-body tr[data-ov-type]').forEach(row => {
+      const type = row.dataset.ovType;
+      rows.push({
+        user_id: currentUser.id,
+        filter_name: filterName,
+        notification_type: type,
+        email: row.querySelector('.ov-email')?.checked ?? true,
+        sms: row.querySelector('.ov-sms')?.checked ?? false,
+        frequency: row.querySelector('.ov-freq')?.value || null
+      });
+    });
+    await sb.from('notification_filter_overrides').upsert(rows, {
+      onConflict: 'user_id,filter_name,notification_type'
+    });
+    btn.textContent = 'Saved';
+    setTimeout(() => { btn.textContent = 'Save Overrides'; btn.disabled = false; }, 1500);
+  } catch (e) {
+    console.error('[Notif] Override save failed:', e);
+    btn.textContent = 'Error — retry';
+    btn.disabled = false;
+  }
+});
+
+$('#override-clear')?.addEventListener('click', async () => {
+  const filterName = $('#override-filter-select').value;
+  if (!filterName || !currentUser) return;
+  if (!confirm(`Clear all notification overrides for "${filterName}"?`)) return;
+
+  try {
+    await sb.from('notification_filter_overrides')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('filter_name', filterName);
+    // Re-trigger the dropdown to reload fresh
+    $('#override-filter-select').dispatchEvent(new Event('change'));
+  } catch (e) { console.error('[Notif] Override clear failed:', e); }
+});
+
+// ---- Notification Log ----
+let notifLogPage = 0;
+const NLOG_PER_PAGE = 20;
+
+const NOTIF_TYPE_LABELS = {};
+NOTIF_TYPES.forEach(n => { NOTIF_TYPE_LABELS[n.id] = n.label; });
+
+function notifStatusBadge(status) {
+  const map = {
+    sent: 'ns-sent', delivered: 'ns-delivered', opened: 'ns-opened',
+    clicked: 'ns-opened', applied: 'ns-applied', passed: 'ns-passed',
+    missed: 'ns-missed', expired: 'ns-expired', failed: 'ns-failed'
+  };
+  const labels = {
+    sent: 'Sent', delivered: 'Delivered', opened: 'Opened',
+    clicked: 'Clicked', applied: 'Applied', passed: 'Passed',
+    missed: 'Missed', expired: 'Expired', failed: 'Failed'
+  };
+  return `<span class="notif-status-badge ${map[status] || 'ns-sent'}">${labels[status] || status}</span>`;
+}
+
+function channelIcon(ch) {
+  if (ch === 'sms') return `<span class="notif-channel-icon" title="SMS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>`;
+  return `<span class="notif-channel-icon" title="Email"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>`;
+}
+
+async function loadNotifLog() {
+  if (!currentUser) return;
+  const tbody = $('#notif-log-body');
+  const typeFilter = $('#nlog-filter-type')?.value || '';
+  const channelFilter = $('#nlog-filter-channel')?.value || '';
+  const statusFilter = $('#nlog-filter-status')?.value || '';
+
+  try {
+    let query = sb.from('notification_log')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .range(notifLogPage * NLOG_PER_PAGE, (notifLogPage + 1) * NLOG_PER_PAGE - 1);
+
+    if (typeFilter) query = query.eq('notification_type', typeFilter);
+    if (channelFilter) query = query.eq('channel', channelFilter);
+    if (statusFilter) query = query.eq('status', statusFilter);
+
+    const { data: logs, error } = await query;
+    if (error) throw error;
+
+    if (!logs || logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+        <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications found</div>
+        <div style="font-size:12px;">Notification history will appear here once the system is active.</div>
+      </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(log => {
+      const ts = new Date(log.created_at);
+      const timeStr = ts.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      const jobInfo = [log.job_title, log.company_name].filter(Boolean).join(' at ') || '—';
+      return `<tr>
+        <td style="font-size:12px;color:var(--text-faint);white-space:nowrap;">${timeStr}</td>
+        <td style="font-size:12px;">${NOTIF_TYPE_LABELS[log.notification_type] || log.notification_type}</td>
+        <td>${channelIcon(log.channel)}</td>
+        <td style="font-size:12px;">${jobInfo}</td>
+        <td>${notifStatusBadge(log.status)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.warn('[Notif] Log load failed:', e);
+  }
+}
+
+// Log filters
+$$('#nlog-filter-type, #nlog-filter-channel, #nlog-filter-status').forEach(el => {
+  el?.addEventListener('change', () => { notifLogPage = 0; loadNotifLog(); });
+});
+
+// CSV export
+$('#notif-export-csv')?.addEventListener('click', async () => {
+  if (!currentUser) return;
+  try {
+    const { data: logs } = await sb.from('notification_log')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+
+    if (!logs || logs.length === 0) { alert('No notifications to export.'); return; }
+
+    const header = 'Timestamp,Type,Channel,Job,Company,Status,Subject\n';
+    const rows = logs.map(l =>
+      `"${l.created_at}","${l.notification_type}","${l.channel}","${l.job_id || ''}","${l.company_name || ''}","${l.status}","${(l.subject || '').replace(/"/g, '""')}"`
+    ).join('\n');
+
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `brilliant-jobs-notifications-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) { console.error('[Notif] CSV export failed:', e); }
+});
+
+// ---- Pulsing Nav Dots ----
+async function checkNavPulses() {
+  if (!currentUser) return;
+  try {
+    // Get last_seen_at
+    const { data: profile } = await sb.from('profiles')
+      .select('last_seen_at')
+      .eq('id', currentUser.id).single();
+    const lastSeen = profile?.last_seen_at || new Date(0).toISOString();
+
+    // Applications: pending notification actions
+    const { count: pendingActions } = await sb
+      .from('notification_actions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('status', 'pending');
+
+    const appDot = document.querySelector('[data-page="applications"] .ext-status-dot');
+    if (pendingActions > 0 && appDot) {
+      appDot.classList.add('pulse');
+    }
+
+    // Jobs: new since last visit (> 25)
+    const { count: newJobs } = await sb
+      .from('ats_jobs')
+      .select('*', { count: 'exact', head: true })
+      .gt('first_seen_at', lastSeen)
+      .eq('status', 'open');
+
+    if (newJobs > 25) {
+      const jobsDot = document.querySelector('[data-page="jobs"] .ext-status-dot');
+      if (jobsDot) jobsDot.classList.add('pulse');
+    }
+
+    // Update last_seen_at
+    await sb.from('profiles')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('id', currentUser.id);
+  } catch (e) {
+    console.warn('[Pulse] Check failed:', e);
+  }
+}
+
+// Clear pulse when navigating to a page
+const _origNavClick = true;
+$$('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const dot = item.querySelector('.ext-status-dot');
+    if (dot) dot.classList.remove('pulse');
+  });
+});
+
+// ---- Init notification system ----
+async function initNotifications() {
+  await loadNotifPrefs();
+  await loadNotifLog();
+  await checkNavPulses();
+}
+if (currentUser) {
+  initNotifications();
+} else {
+  // Retry once auth completes (app.js init is async)
+  const _waitAuth = setInterval(() => {
+    if (currentUser) {
+      clearInterval(_waitAuth);
+      initNotifications();
+    }
+  }, 500);
+  setTimeout(() => clearInterval(_waitAuth), 10000); // give up after 10s
+}
+
