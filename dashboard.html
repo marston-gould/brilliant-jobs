@@ -1258,8 +1258,10 @@
     }
     .notify-config-row:last-child { border-bottom: none; }
     .notify-config-row label { flex: 1; color: var(--text-dim); }
+    .notify-config-row label.toggle-switch { flex: none; }
+    .app-rule-header label.toggle-switch { flex: none; }
     .toggle-switch {
-      position: relative; width: 44px; height: 24px; cursor: pointer; flex-shrink: 0;
+      position: relative; width: 44px; min-width: 44px; max-width: 44px; height: 24px; cursor: pointer; flex-shrink: 0;
     }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
     .toggle-slider {
