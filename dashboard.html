@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.43 - 2026-02-15 - Remove Create by Level, pipeline staleness dots, Day Applied column, Days In Stage -->
+<!-- Brilliant Jobs Dashboard v2.44 - 2026-02-15 - HTML keyword cleanup, tuning dropdown fix, solid resume CTAs with download, toggle switch sizing, setup dot alignment -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -297,6 +297,8 @@
     .ext-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .ext-dot.on { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
     .ext-dot.off { background: var(--text-faint); }
+    .setup-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: var(--text-faint); }
+    .setup-dot.connected { background: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.5); }
 
     .instance-info { font-family: var(--mono); font-size: 12px; color: var(--text-dim); line-height: 1.8; }
     .instance-info span { color: var(--accent); }
@@ -881,7 +883,8 @@
     .hide-reason-btn:hover { background: var(--bg-hover); color: var(--text); }
 
     /* Collapsible tuning cards */
-    .tuning-card { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card); margin-bottom: 10px; overflow: hidden; }
+    .tuning-card { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-card); margin-bottom: 10px; }
+    .tuning-card.collapsed { overflow: hidden; }
     .tuning-card-header {
       display: flex; align-items: center; gap: 10px; padding: 14px 18px;
       cursor: pointer; user-select: none; transition: background 0.1s;
@@ -1143,8 +1146,19 @@
     .resume-card .rc-filter-pill.active { opacity: 1; }
     .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
     .resume-card .rc-filter-pill:hover { opacity: 0.8; }
-    .resume-card .rc-actions { display: flex; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
-    .resume-card .rc-actions a:hover { text-decoration: underline !important; }
+    .resume-card .rc-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .rc-actions .rc-btn {
+      font-size: 10px; font-weight: 600; padding: 4px 12px; border-radius: 6px;
+      border: none; cursor: pointer; color: #fff; text-decoration: none; white-space: nowrap;
+    }
+    .rc-btn.rc-rename { background: var(--text-dim); }
+    .rc-btn.rc-rename:hover { background: var(--text); }
+    .rc-btn.rc-archive { background: var(--warm); }
+    .rc-btn.rc-archive:hover { background: #d97706; }
+    .rc-btn.rc-delete { background: var(--red); }
+    .rc-btn.rc-delete:hover { background: #dc2626; }
+    .rc-btn.rc-download { background: var(--accent); }
+    .rc-btn.rc-download:hover { background: #2563eb; }
     .resume-card.is-placeholder {
       border-style: dashed; border-color: var(--border);
     }
@@ -1242,7 +1256,8 @@
       border-bottom: 1px solid var(--border); font-size: 13px;
     }
     .notify-config-row:last-child { border-bottom: none; }
-    .notify-config-row label { flex: 1; color: var(--text-dim); }
+    .notify-config-row > label:first-child { flex: 1; color: var(--text-dim); }
+    .notify-config-row .toggle-switch { flex: none; }
     .toggle-switch {
       position: relative; width: 40px; height: 22px; cursor: pointer;
     }
@@ -1703,7 +1718,7 @@
                 <div style="font-size:15px;font-weight:700;color:var(--text);">Chrome Extension</div>
                 <div style="font-size:11px;color:var(--text-faint);">Scans your LinkedIn network to find jobs at companies where you have connections</div>
               </div>
-              <div class="ext-dot off" id="ext-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;"></div>
+              <div class="ext-dot off" id="ext-dot"></div>
             </div>
             <div style="padding:20px 24px;">
               <div class="ext-status" id="ext-status-bar" style="margin-bottom:16px;">
@@ -1775,7 +1790,7 @@
                 <div style="font-size:15px;font-weight:700;color:var(--text);">Google Drive</div>
                 <div style="font-size:11px;color:var(--text-faint);">Store and sync resumes from Google Docs or Drive files</div>
               </div>
-              <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:var(--text-faint);" id="gdrive-dot"></div>
+              <div class="setup-dot" id="gdrive-dot"></div>
             </div>
             <div style="padding:20px 24px;">
               <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -1806,8 +1821,8 @@
                 <div style="font-size:15px;font-weight:700;color:var(--text);">Gmail — Ghost Monitor</div>
                 <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
               </div>
-              <div style="width:10px;height:10px;border-radius:50%;background:var(--text-faint);flex-shrink:0;" id="gmail-dot"></div>
-              <span style="font-size:10px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:2px 8px;border-radius:8px;white-space:nowrap;">Coming Soon</span>
+              <div class="setup-dot" id="gmail-dot"></div>
+              <span style="font-size:10px;color:#a855f7;font-weight:600;background:rgba(168,85,247,0.08);padding:2px 8px;border-radius:8px;white-space:nowrap;flex-shrink:0;">Coming Soon</span>
             </div>
             <div style="padding:20px 24px;">
               <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
@@ -2724,7 +2739,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.43 loaded');
+    console.log('[BJ] Dashboard v2.44 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -4304,15 +4319,19 @@
 
     function stripHtmlToText(html) {
       if (!html) return '';
-      const doc = new DOMParser().parseFromString(html, 'text/html');
+      // First pass: decode any double-encoded HTML entities
+      let cleaned = html.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      const doc = new DOMParser().parseFromString(cleaned, 'text/html');
       return (doc.body.textContent || '').replace(/\s+/g, ' ').trim();
     }
 
+    const KW_HTML_JUNK = new Set(['div','span','li','ul','ol','br','hr','td','tr','th','tbody','thead','table','strong','em','p','a','img','svg','path','h1','h2','h3','h4','h5','h6','nbsp','mdash','ndash','amp','quot','lt','gt','href','src','class','style','id','type','data','width','height']);
+
     function tokenize(text) {
       return text.toLowerCase()
-        .replace(/[^a-z0-9\s\-\/\+\#\.]/g, ' ')
+        .replace(/[^a-z0-9\s\-\+\#\.]/g, ' ')
         .split(/\s+/)
-        .filter(w => w.length > 1 && !/^\d+$/.test(w));
+        .filter(w => w.length > 1 && !/^\d+$/.test(w) && !KW_HTML_JUNK.has(w));
     }
 
     function extractNgrams(jobs, maxPerGroup = 40) {
@@ -9445,9 +9464,10 @@
           <div class="rc-filter-list">${filterPills}</div>
           ${statsLine}
           <div class="rc-actions">
-            <a href="#" onclick="event.preventDefault();renameResume(${i})" style="font-size:10px;color:var(--text-faint);text-decoration:none;">Rename</a>
-            <a href="#" onclick="event.preventDefault();archiveResume(${i})" style="font-size:10px;color:var(--text-faint);text-decoration:none;">Archive</a>
-            <a href="#" onclick="event.preventDefault();removeResume(${i})" style="font-size:10px;color:var(--red);text-decoration:none;">Delete</a>
+            <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
+            <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
+            <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
+            <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
           </div>
         </div>`;
       }
@@ -9542,8 +9562,8 @@
             <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
           </div>
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
-          <a href="#" onclick="event.preventDefault();unarchiveResume(${i})" style="font-size:10px;color:var(--accent);text-decoration:none;white-space:nowrap;">Restore</a>
-          <a href="#" onclick="event.preventDefault();removeResume(${i})" style="font-size:10px;color:var(--red);text-decoration:none;white-space:nowrap;">Delete</a>
+          <button class="rc-btn rc-rename" onclick="unarchiveResume(${i})" style="background:var(--accent);">Restore</button>
+          <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
         </div>`;
       }).join('');
     }
@@ -9711,6 +9731,8 @@
       resumes.push(resume);
       saveResumes();
       renderResumes();
+      // Store file blob in IndexedDB for downloads
+      bjFileStore.put(id, file).catch(e => console.warn('[BJ] File store error:', e));
 
       extractTextFromFile(file).then(text => {
         const idx = resumes.findIndex(r => r.id === id);
@@ -9739,9 +9761,74 @@
 
     window.removeResume = function(idx) {
       if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
+      // Clean up stored file
+      bjFileStore.delete(resumes[idx].id).catch(() => {});
       resumes.splice(idx, 1);
       saveResumes();
       renderResumes();
+    };
+
+    // IndexedDB file store for resume downloads
+    const bjFileStore = {
+      _db: null,
+      async open() {
+        if (this._db) return this._db;
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open('bj_resume_files', 1);
+          req.onupgradeneeded = () => req.result.createObjectStore('files');
+          req.onsuccess = () => { this._db = req.result; resolve(this._db); };
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async put(id, file) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('files', 'readwrite');
+          tx.objectStore('files').put(file, id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      },
+      async get(id) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('files', 'readonly');
+          const req = tx.objectStore('files').get(id);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => reject(req.error);
+        });
+      },
+      async delete(id) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('files', 'readwrite');
+          tx.objectStore('files').delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      }
+    };
+
+    window.downloadResume = async function(idx) {
+      const r = resumes[idx];
+      if (!r) return;
+      try {
+        const file = await bjFileStore.get(r.id);
+        if (file) {
+          const url = URL.createObjectURL(file);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = r.fileName || (r.name + '.pdf');
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } else {
+          alert('File data not available. Re-upload this resume to enable downloads.');
+        }
+      } catch(e) {
+        alert('Download failed: ' + e.message);
+      }
     };
 
     window.replaceResumePlaceholder = function(idx) {
@@ -9851,7 +9938,7 @@
       const fileList = $('#gdrive-file-list');
 
       if (gdriveState.connected) {
-        dot.style.background = 'var(--green)';
+        dot.className = 'setup-dot connected';
         statusText.textContent = `Connected as ${gdriveState.email || 'Google Account'}`;
         statusText.style.color = 'var(--green)';
         connectBtn.style.display = 'none';
@@ -9874,7 +9961,7 @@
           `).join('');
         }
       } else {
-        dot.style.background = 'var(--text-faint)';
+        dot.className = 'setup-dot';
         statusText.textContent = 'Not connected';
         statusText.style.color = 'var(--text-dim)';
         connectBtn.style.display = '';
@@ -10354,7 +10441,7 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.43',
+        dashboard_version: 'v2.44',
       };
 
       try {
