@@ -497,7 +497,7 @@ const features = [
   { s: 'todo', n: 'Auto-detect company email responses', d: 'Match incoming emails to companies in pipeline, flag new responses', p: 8 },
   { s: 'todo', n: 'Ghost detection from email', d: 'Applied X days ago + no response = ghosted, auto-update pipeline', p: 8 },
   { s: 'todo', n: 'Interview scheduling detection', d: 'Parse calendar invites and scheduling links from recruiter emails', p: 8 },
-  { s: 'todo', n: 'Pipeline — Responded/Interview/Offer columns', d: 'Extend kanban with full stage tracking and days-in-stage counters. Depends on Gmail integration for auto-detection of responses and interview signals.', p: 8 },
+  { s: 'done', n: 'Pipeline redesign — table-based collapsible stages', d: 'Replaced kanban columns with 7 collapsible table sections: Saved, Applied, Posting Closed, Responded, Interview, Offer, Rejected/Ghosted. Each stage renders a full table with: title, company, resume used, filter tag badges, discovered date, days-to-apply, days-since-apply, match score. Stage headers show count + median match score (min/max range). Filter by saved filter tags (multi-select pill bar). Stage move via dropdown per row. Data migration from legacy savedJobIds/appliedJobIds to unified bj_pipeline_meta localStorage structure with per-job stage, timestamps, resume, and filter tracking. Auto-detects posting_closed from ATS job status. Collapse state persisted. Stats: total tracked, active, response rate, avg days to response.', p: 8 },
 
   // Phase 9 — Intelligence
   { s: 'todo', n: 'Job market trend velocity', d: 'Track job posting volume by title, location, salary, industry over time', p: 9 },
@@ -661,6 +661,19 @@ const features = [
   { s: 'done', n: 'Per-page help button with contextual explainer', d: 'Fixed ? button bottom-right of every page. Click opens panel with numbered steps specific to the active page (Feed, Tuning, Resumes, Applications, Pipeline, Ghost Monitor, Stats, Settings, Subscription). Closes on outside click or page switch. Content scrolls below it.', p: 17 },
   { s: 'todo', n: 'Enrich remaining ~555 unmatched companies', d: 'Companies not in PDL free dataset — try Greenhouse API board metadata, LinkedIn scrape, or paid PDL API', p: 17 },
   { s: 'todo', n: 'Catch remaining unparsed salary formats', d: '~8K jobs mention salary but not yet captured. Edge cases: missing $ on max, K notation, single salary values, non-standard separators.', p: 17 },
+
+
+  // Phase 18 — Security & Hardening
+  { s: 'todo', n: 'RLS policy audit', d: 'Review all Supabase RLS policies across every table. Verify user isolation, ensure no cross-user data leakage. Test with multiple accounts.', p: 18 },
+  { s: 'todo', n: 'API key scoping', d: 'Audit Supabase anon key exposure in client HTML. Minimize permissions on anon role. Consider service role key for server-side operations only.', p: 18 },
+  { s: 'todo', n: 'CORS lockdown', d: 'Restrict Supabase CORS to brilliantjobs.ai domain only. Block unauthorized origins from making API calls.', p: 18 },
+  { s: 'todo', n: 'CSP headers', d: 'Content Security Policy headers on all pages. Restrict script-src, style-src, connect-src to known domains. Prevent XSS injection.', p: 18 },
+  { s: 'todo', n: 'Extension permissions minimization', d: 'Audit Chrome extension manifest permissions. Remove any overly broad host permissions. Request only what is needed for LinkedIn harvesting and ATS form detection.', p: 18 },
+  { s: 'todo', n: 'localStorage encryption for PII', d: 'Resume extracted text and keywords stored in localStorage are PII. Encrypt at rest with user-derived key. Decrypt on read. Prevents data exposure if browser storage is accessed.', p: 18 },
+  { s: 'todo', n: 'Rate limiting on edge functions', d: 'Add rate limiting to any Supabase edge functions or API endpoints. Prevent abuse, scraping, and brute force. Per-user and per-IP limits.', p: 18 },
+  { s: 'todo', n: 'Input sanitization audit', d: 'Review all user inputs (filter names, resume names, feedback, collection names) for XSS vectors. Sanitize before rendering. Escape HTML in dynamic content.', p: 18 },
+  { s: 'todo', n: 'Extension code obfuscation', d: 'Minify and obfuscate Chrome extension JS to protect proprietary logic (LinkedIn harvesting, ATS detection patterns). Not bulletproof but raises the bar.', p: 18 },
+  { s: 'todo', n: 'Session management hardening', d: 'Review Supabase auth session handling. Ensure proper token refresh, expiry enforcement, and logout cleanup. Prevent session fixation.', p: 18 },
 ];
 
 function phaseLabel(p) {
