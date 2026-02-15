@@ -123,152 +123,364 @@ function extractNgrams(jobs, maxPerGroup = 40) {
   };
 }
 
-function renderKeywordChips(entries, containerId, maxCount) {
-  const container = document.getElementById(containerId);
-  if (!entries || entries.length === 0) {
-    container.innerHTML = '<div class="kw-empty">Not enough job descriptions loaded yet. Open a few job details first to cache their content.</div>';
+
+// ============================================================
+// RESUME READINESS ANALYSIS (P4 v2)
+// ============================================================
+// Scores how well a resume covers the keywords in matching JDs
+// for each assigned filter. Runs at the resume level, not the feed.
+
+var jobMatchScores = {}; // greenhouse_id → score (0-100)
+var readinessCache = JSON.parse(localStorage.getItem('bj_readiness') || 'null');
+
+// Fetch up to `limit` JDs for a given saved filter
+async function fetchFilterJDs(sf, limit) {
+  limit = limit || 80;
+  let query = sb.from('ats_jobs').select('greenhouse_id, title, content, company_slug, url');
+  query = buildFilterQuery(sf, query, null);
+  query = query.not('content', 'is', null);
+  query = query.limit(limit);
+  query = query.order('updated_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) { console.log('[BJ] fetchFilterJDs error:', error.message); return []; }
+  return data || [];
+}
+
+// Batch-fetch JD content from Greenhouse API for jobs missing it
+async function batchFetchJDContent(jobs, maxFetch) {
+  maxFetch = maxFetch || 30;
+  var fetched = 0;
+  for (var i = 0; i < jobs.length; i++) {
+    var job = jobs[i];
+    if (job.content || fetched >= maxFetch) continue;
+    try {
+      var urlMatch = (job.url || '').match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
+      if (!urlMatch && job.company_slug) urlMatch = [null, job.company_slug, job.greenhouse_id];
+      if (!urlMatch) continue;
+      var apiUrl = 'https://boards-api.greenhouse.io/v1/boards/' + urlMatch[1] + '/jobs/' + urlMatch[2];
+      var resp = await fetch(apiUrl);
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data.content) {
+          job.content = decodeJobContent(data.content);
+          sb.from('ats_jobs').update({ content: job.content }).eq('greenhouse_id', job.greenhouse_id).then(function(){});
+          fetched++;
+        }
+      }
+      await new Promise(function(r){ setTimeout(r, 200); });
+    } catch (e) { /* skip */ }
+  }
+  return fetched;
+}
+
+// Score a resume against a set of JDs
+// Returns { score, matched, total, topMissing, topMatched, jdsAnalyzed }
+function scoreResumeVsJDs(resume, jds) {
+  if (!resume || !resume.keywords || !resume.keywords.length || !jds || !jds.length) return null;
+
+  var jdsWithContent = jds.filter(function(j){ return j.content; });
+  if (jdsWithContent.length < 3) return null;
+
+  var ngrams = extractNgrams(jdsWithContent, 50);
+  var topTerms = ngrams.skills.slice(0, 40);
+  if (topTerms.length === 0) return null;
+
+  var resumeTerms = new Set(resume.keywords.map(function(k){ return k[0].toLowerCase(); }));
+  var resumeText = (resume.extractedText || '').toLowerCase();
+
+  var matched = 0;
+  var topMissing = [];
+  var topMatched = [];
+
+  for (var i = 0; i < topTerms.length; i++) {
+    var term = topTerms[i][0];
+    var found = resumeTerms.has(term) || resumeText.includes(term);
+    if (found) { matched++; topMatched.push(term); }
+    else { topMissing.push(term); }
+  }
+
+  var total = topTerms.length;
+  var score = total > 0 ? Math.round((matched / total) * 100) : 0;
+
+  return {
+    score: score, matched: matched, total: total,
+    topMissing: topMissing.slice(0, 15), topMatched: topMatched.slice(0, 15),
+    jdsAnalyzed: jdsWithContent.length
+  };
+}
+
+// Score resume against JDs partitioned by level
+function scoreResumeByLevel(resume, jds) {
+  if (!resume || !resume.keywords || !resume.keywords.length || !jds || !jds.length) return {};
+  var hierarchy = levelHierarchy && levelHierarchy.length ? levelHierarchy : [];
+  if (hierarchy.length === 0) return {};
+
+  var buckets = {};
+  for (var i = 0; i < jds.length; i++) {
+    if (!jds[i].content) continue;
+    var lvl = getJobLevel(jds[i].title, hierarchy);
+    var label = lvl ? lvl.label : 'Unclassified';
+    if (!buckets[label]) buckets[label] = [];
+    buckets[label].push(jds[i]);
+  }
+
+  var results = {};
+  var labels = Object.keys(buckets);
+  for (var k = 0; k < labels.length; k++) {
+    var label = labels[k];
+    if (buckets[label].length < 3) continue;
+    var s = scoreResumeVsJDs(resume, buckets[label]);
+    if (s) { s.jobCount = buckets[label].length; results[label] = s; }
+  }
+  return results;
+}
+
+// Score a single job against the best resume for its filter
+function computeJobMatchScore(job) {
+  if (!job.content) return null;
+
+  var filterNums = job._filterNums || [];
+  if (filterNums.length === 0) return null;
+
+  // Find the resume assigned to the first matching filter
+  var resume = null;
+  for (var i = 0; i < savedFilters.length; i++) {
+    if (filterNums.some(function(fn){ return fn.num == (i + 1); })) {
+      var rid = savedFilters[i].resumeId;
+      if (rid !== undefined && rid !== null && resumes[rid]) { resume = resumes[rid]; break; }
+    }
+  }
+  if (!resume || !resume.keywords || !resume.keywords.length) return null;
+
+  var text = stripHtmlToText(job.content);
+  var words = tokenize(text);
+  var seenTerms = new Set();
+  for (var w = 0; w < words.length; w++) {
+    var word = words[w];
+    if (!KW_STOPWORDS.has(word) && !KW_GENERIC.has(word) && word.length > 2) seenTerms.add(word);
+  }
+
+  var resumeTerms = new Set(resume.keywords.map(function(k){ return k[0].toLowerCase(); }));
+  var resumeText = (resume.extractedText || '').toLowerCase();
+
+  var jdTerms = Array.from(seenTerms).slice(0, 40);
+  var matched = 0;
+  for (var t = 0; t < jdTerms.length; t++) {
+    if (resumeTerms.has(jdTerms[t]) || resumeText.includes(jdTerms[t])) matched++;
+  }
+  return jdTerms.length > 0 ? Math.round((matched / jdTerms.length) * 100) : null;
+}
+
+// Batch-compute match scores for visible jobs
+function computeVisibleJobScores() {
+  for (var i = 0; i < currentJobs.length; i++) {
+    var job = currentJobs[i];
+    if (!job.content || jobMatchScores[job.greenhouse_id] !== undefined) continue;
+    var score = computeJobMatchScore(job);
+    if (score !== null) {
+      jobMatchScores[job.greenhouse_id] = score;
+      var cell = document.querySelector('tr[data-jobid="' + job.greenhouse_id + '"] .jt-match');
+      if (cell) cell.innerHTML = matchBadge(score);
+    }
+  }
+}
+
+function matchBadge(score) {
+  if (score === null || score === undefined) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
+  var color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--warm)' : 'var(--red)';
+  return '<span style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';">' + score + '%</span>';
+}
+
+// Main readiness analysis — called from Resumes page button
+async function runReadinessAnalysis() {
+  var btn = document.getElementById('readiness-run-btn');
+  var statusEl = document.getElementById('readiness-status');
+  var resultsEl = document.getElementById('readiness-results');
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyzing\u2026'; }
+
+  var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+
+  var hasEligible = false;
+  for (var i = 0; i < resumes.length; i++) {
+    if (!resumes[i].archived && resumes[i].textStatus === 'ready' && resumes[i].keywords && resumes[i].keywords.length > 0) {
+      hasEligible = true; break;
+    }
+  }
+
+  if (!hasEligible) {
+    resultsEl.innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:16px 0;">Upload a resume and wait for keyword extraction to complete before analyzing readiness.</div>';
+    if (btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
     return;
   }
-  const top = entries[0]?.[1] || 1;
-  const tier1Threshold = top * 0.6;
 
-  container.innerHTML = entries.map(([term, count]) => {
-    const tier = count >= tier1Threshold ? 'tier-1' : count >= tier1Threshold * 0.5 ? 'tier-2' : '';
-    const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
-    return `<div class="kw-chip ${tier}" title="Found in ${count} job descriptions (${pct}% of analyzed jobs)">
-      ${term} <span class="kw-count">${count}</span>
-    </div>`;
-  }).join('');
+  var scores = {};
+  var totalFiltersAnalyzed = 0;
+  var totalJDsFetched = 0;
+
+  for (var ri = 0; ri < resumes.length; ri++) {
+    var r = resumes[ri];
+    if (r.archived || r.textStatus !== 'ready' || !r.keywords || !r.keywords.length) continue;
+
+    var assignedFilters = sf.filter(function(f){ return f.resumeId === ri; });
+    if (assignedFilters.length === 0) continue;
+
+    scores[ri] = { filters: {}, levels: {}, overallScore: 0, resumeName: r.name };
+
+    // Collect all JDs for level analysis
+    var allJDsForLevel = [];
+    var seenIds = new Set();
+
+    for (var fi = 0; fi < assignedFilters.length; fi++) {
+      var filter = assignedFilters[fi];
+      if (statusEl) statusEl.textContent = 'Fetching JDs for "' + filter.name + '"\u2026';
+
+      var jds = await fetchFilterJDs(filter, 80);
+
+      // Batch-fetch content for jobs missing it
+      var withContent = jds.filter(function(j){ return j.content; }).length;
+      if (withContent < 30 && jds.length > withContent) {
+        if (statusEl) statusEl.textContent = 'Fetching specs for "' + filter.name + '" (' + withContent + '/' + jds.length + ')\u2026';
+        var fetched = await batchFetchJDContent(jds, Math.min(30, 50 - withContent));
+        totalJDsFetched += fetched;
+      }
+
+      var filterScore = scoreResumeVsJDs(r, jds);
+      if (filterScore) {
+        scores[ri].filters[filter.name] = filterScore;
+        totalFiltersAnalyzed++;
+      }
+
+      // Collect for level analysis
+      for (var ji = 0; ji < jds.length; ji++) {
+        if (!seenIds.has(jds[ji].greenhouse_id)) {
+          seenIds.add(jds[ji].greenhouse_id);
+          allJDsForLevel.push(jds[ji]);
+        }
+      }
+    }
+
+    // Level analysis across all JDs for this resume
+    scores[ri].levels = scoreResumeByLevel(r, allJDsForLevel);
+
+    // Overall = average of filter scores
+    var filterScoreValues = Object.keys(scores[ri].filters).map(function(k){ return scores[ri].filters[k].score; });
+    scores[ri].overallScore = filterScoreValues.length > 0
+      ? Math.round(filterScoreValues.reduce(function(a, b){ return a + b; }, 0) / filterScoreValues.length)
+      : 0;
+  }
+
+  readinessCache = { lastRun: new Date().toISOString(), scores: scores };
+  localStorage.setItem('bj_readiness', JSON.stringify(readinessCache));
+
+  renderReadinessResults(scores);
+
+  if (statusEl) statusEl.textContent = 'Analyzed ' + totalFiltersAnalyzed + ' filter' + (totalFiltersAnalyzed !== 1 ? 's' : '') + ', fetched ' + totalJDsFetched + ' new JDs';
+  if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
 }
 
-function runKeywordAnalysis() {
-  const results = extractNgrams(allJobs);
-  $('#kw-job-count').textContent = `across ${results.jobsAnalyzed} of ${results.totalJobs} jobs`;
-  renderKeywordChips(results.skills, 'kw-grid-skills', results.jobsAnalyzed);
-  renderKeywordChips(results.bigrams, 'kw-grid-bigrams', results.jobsAnalyzed);
-  renderKeywordChips(results.trigrams, 'kw-grid-trigrams', results.jobsAnalyzed);
+function renderReadinessResults(scores) {
+  var el = document.getElementById('readiness-results');
+  if (!el) return;
+  if (!scores || Object.keys(scores).length === 0) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:12px 0;">No resumes with assigned filters found. Assign resumes to filters in the cards below, then analyze.</div>';
+    return;
+  }
+
+  var html = '';
+  var indices = Object.keys(scores);
+  for (var si = 0; si < indices.length; si++) {
+    var ri = indices[si];
+    var data = scores[ri];
+    var overallColor = data.overallScore >= 70 ? 'var(--green)' : data.overallScore >= 40 ? 'var(--warm)' : 'var(--red)';
+    var overallLabel = data.overallScore >= 70 ? 'Ready' : data.overallScore >= 40 ? 'Gaps' : 'Weak';
+
+    html += '<div style="border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:var(--bg-input);">';
+    html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:28px;font-weight:700;color:' + overallColor + ';">' + data.overallScore + '%</div>';
+    html += '<div><div style="font-size:13px;font-weight:600;color:var(--text);">' + data.resumeName + '</div>';
+    html += '<div style="font-size:11px;color:' + overallColor + ';font-weight:500;">' + overallLabel + '</div></div></div>';
+
+    // Per-filter breakdown
+    var filterNames = Object.keys(data.filters);
+    for (var fi = 0; fi < filterNames.length; fi++) {
+      var fname = filterNames[fi];
+      var fs = data.filters[fname];
+      var fc = fs.score >= 70 ? 'var(--green)' : fs.score >= 40 ? 'var(--warm)' : 'var(--red)';
+      html += '<div style="margin-bottom:10px;">';
+      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+      html += '<span style="font-family:var(--mono);font-size:13px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">' + fname + '</span>';
+      html += '<span style="font-size:10px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+      html += '</div>';
+
+      if (fs.topMissing.length > 0) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        for (var mi = 0; mi < fs.topMissing.length; mi++) {
+          html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + fs.topMissing[mi] + '</span>';
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    // Level analysis
+    var levelLabels = Object.keys(data.levels);
+    if (levelLabels.length > 0) {
+      html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">';
+      html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Level Fit</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+      for (var li = 0; li < levelLabels.length; li++) {
+        var lbl = levelLabels[li];
+        var ls = data.levels[lbl];
+        var lc = ls.score >= 70 ? 'var(--green)' : ls.score >= 40 ? 'var(--warm)' : 'var(--red)';
+        html += '<div style="padding:6px 10px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);text-align:center;min-width:80px;">';
+        html += '<div style="font-family:var(--mono);font-size:14px;font-weight:700;color:' + lc + ';">' + ls.score + '%</div>';
+        html += '<div style="font-size:10px;color:var(--text-dim);">' + lbl + '</div>';
+        html += '<div style="font-size:9px;color:var(--text-faint);">' + ls.jobCount + ' jobs</div>';
+        html += '</div>';
+      }
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
 }
 
-function toggleKeywordPanel() {
-  const panel = $('#kw-panel');
-  const btn = $('#kw-toggle-btn');
-  const isOpen = panel.classList.contains('open');
-  if (isOpen) {
-    panel.classList.remove('open');
-    btn.classList.remove('active');
+// Show readiness panel on Resumes page when there are cached results
+function initReadinessPanel() {
+  var panel = document.getElementById('readiness-panel');
+  if (!panel) return;
+  var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  var hasAssigned = resumes.some(function(r, i){
+    return !r.archived && r.keywords && r.keywords.length > 0 && sf.some(function(f){ return f.resumeId === i; });
+  });
+  if (hasAssigned) {
+    panel.style.display = '';
+    if (readinessCache && readinessCache.scores) {
+      renderReadinessResults(readinessCache.scores);
+      var statusEl = document.getElementById('readiness-status');
+      if (statusEl && readinessCache.lastRun) {
+        var ago = Math.round((Date.now() - new Date(readinessCache.lastRun).getTime()) / 60000);
+        statusEl.textContent = ago < 60 ? ago + 'm ago' : ago < 1440 ? Math.round(ago / 60) + 'h ago' : Math.round(ago / 1440) + 'd ago';
+      }
+      var btn = document.getElementById('readiness-run-btn');
+      if (btn) btn.textContent = 'Re-analyze';
+    }
   } else {
-    panel.classList.add('open');
-    btn.classList.add('active');
-    runKeywordAnalysis();
+    panel.style.display = 'none';
   }
 }
 
-// Keyword tab switching
-document.addEventListener('click', e => {
-  const tab = e.target.closest('.kw-tab');
-  if (!tab) return;
-  const tabName = tab.dataset.kwTab;
-  $$('.kw-tab').forEach(t => t.classList.toggle('active', t === tab));
-  $$('.kw-grid').forEach(g => g.classList.toggle('active', g.id === `kw-grid-${tabName}`));
-});
-
-// Auto-refresh keywords when panel is open and jobs reload
+// Stubs for removed functions
+function toggleKeywordPanel() {}
 function refreshKeywordsIfOpen() {
-  if ($('#kw-panel')?.classList.contains('open')) {
-    runKeywordAnalysis();
-  }
+  // After job rows render, compute match scores for visible jobs
+  computeVisibleJobScores();
 }
-
-// ============================================================
-// RESUME VS FILTER MATCH COMPARISON (P4)
-// ============================================================
-let _lastNgramResults = null;
-
-// Override runKeywordAnalysis to cache results for match comparison
-const _origRunKW = runKeywordAnalysis;
-runKeywordAnalysis = function() {
-  const results = extractNgrams(allJobs);
-  _lastNgramResults = results;
-  $('#kw-job-count').textContent = `across ${results.jobsAnalyzed} of ${results.totalJobs} jobs`;
-  renderKeywordChips(results.skills, 'kw-grid-skills', results.jobsAnalyzed);
-  renderKeywordChips(results.bigrams, 'kw-grid-bigrams', results.jobsAnalyzed);
-  renderKeywordChips(results.trigrams, 'kw-grid-trigrams', results.jobsAnalyzed);
-
-  // Populate resume dropdown
-  const select = $('#kw-resume-select');
-  const currentVal = select.value;
-  select.innerHTML = '<option value="">Select a resume…</option>';
-  resumes.filter(r => r.textStatus === 'ready' && r.keywords?.length > 0).forEach((r, i) => {
-    const realIdx = resumes.indexOf(r);
-    select.innerHTML += `<option value="${realIdx}">${r.name} (${r.keywords.length} keywords)</option>`;
-  });
-  if (currentVal) select.value = currentVal;
-
-  // Refresh match if a resume is selected
-  if (select.value) runResumeMatch();
-};
-
-window.runResumeMatch = function() {
-  const select = $('#kw-resume-select');
-  const summaryEl = $('#kw-match-summary');
-  const chipsEl = $('#kw-match-chips');
-
-  if (!select.value || !_lastNgramResults) {
-    summaryEl.innerHTML = '';
-    chipsEl.innerHTML = '<div class="kw-empty">Select a resume to compare against the top JD keywords.</div>';
-    return;
-  }
-
-  const resume = resumes[parseInt(select.value)];
-  if (!resume || !resume.keywords?.length) {
-    summaryEl.innerHTML = '';
-    chipsEl.innerHTML = '<div class="kw-empty">This resume has no extracted keywords.</div>';
-    return;
-  }
-
-  // Build resume keyword set (lowercased)
-  const resumeTerms = new Set(resume.keywords.map(([t]) => t.toLowerCase()));
-  // Also check if resume raw text contains the term (broader match)
-  const resumeText = (resume.extractedText || '').toLowerCase();
-
-  // Compare against top JD unigrams
-  const jdTerms = _lastNgramResults.skills.slice(0, 30);
-  let matched = 0;
-  let missing = 0;
-
-  const chips = jdTerms.map(([term, count]) => {
-    const inResume = resumeTerms.has(term) || resumeText.includes(term);
-    if (inResume) matched++;
-    else missing++;
-    const style = inResume
-      ? 'background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.25);color:var(--green);'
-      : 'background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);color:var(--red);';
-    const icon = inResume ? '✓' : '✗';
-    return `<div class="kw-chip" style="${style}" title="${inResume ? 'Found in your resume' : 'MISSING from your resume — consider adding this term'}">
-      <span style="font-size:10px;">${icon}</span> ${term} <span class="kw-count">${count}</span>
-    </div>`;
-  });
-
-  const total = matched + missing;
-  const pct = total > 0 ? Math.round((matched / total) * 100) : 0;
-  const color = pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--warm)' : 'var(--red)';
-  const label = pct >= 70 ? 'Strong match' : pct >= 40 ? 'Partial match — review gaps' : 'Weak match — significant gaps';
-
-  summaryEl.innerHTML = `
-    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--bg-input);border-radius:8px;">
-      <div style="font-family:var(--mono);font-size:28px;font-weight:700;color:${color};">${pct}%</div>
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);">${matched} of ${total} top JD terms found in your resume</div>
-        <div style="font-size:11px;color:${color};font-weight:500;">${label}</div>
-      </div>
-    </div>
-    <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">
-      <span style="color:var(--green);">✓ green</span> = in your resume &nbsp; <span style="color:var(--red);">✗ red</span> = missing — add these to improve your match
-    </div>
-  `;
-
-  chipsEl.innerHTML = chips.join('');
-};
 
 // Event delegation for job title clicks — opens full modal
 document.addEventListener('click', e => {

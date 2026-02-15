@@ -1,7 +1,7 @@
 // ============================================================
 // RESUMES
 // ============================================================
-let resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
 
 function saveResumes() {
   localStorage.setItem('bj_resumes', JSON.stringify(resumes));
@@ -198,6 +198,9 @@ function renderResumes() {
   grid.innerHTML = gridHtml;
 
   renderResumeArchive(archivedResumes);
+
+  // Refresh readiness panel visibility
+  if (typeof initReadinessPanel === 'function') initReadinessPanel();
 }
 
 function renderResumeArchive(archivedResumes) {
