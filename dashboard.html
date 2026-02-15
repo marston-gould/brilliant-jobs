@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.30 - 2026-02-15 - Ghost Rate next to Company, header alignment fix, resume paper cards -->
+<!-- Brilliant Jobs Dashboard v2.31 - 2026-02-15 - Resume fixes: nav dot, no default, coverage pills, ghost col reorder -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1041,7 +1041,6 @@
       box-shadow: 2px 3px 8px rgba(0,0,0,0.15);
     }
     .resume-card:hover { border-color: var(--border-hover); box-shadow: 2px 3px 12px rgba(0,0,0,0.25); }
-    .resume-card.is-default { border-color: var(--accent); border-width: 2px; }
     .resume-card.rc-assigned { border-left: 3px solid var(--green); }
     .resume-card.rc-unassigned { border-left: 3px solid var(--warm); }
     .resume-card .rc-type-badge {
@@ -1074,12 +1073,6 @@
       background: var(--bg); color: var(--text); cursor: pointer; width: 100%; margin-bottom: 4px;
     }
     .resume-card .rc-actions { display: flex; gap: 4px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
-    .resume-card .rc-default-badge {
-      position: absolute; top: 8px; right: 8px;
-      font-size: 8px; font-weight: 700; text-transform: uppercase;
-      color: var(--accent); letter-spacing: 0.5px;
-      background: var(--accent-glow); padding: 2px 6px; border-radius: 3px;
-    }
     .resume-card .rc-status-dot {
       width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0;
     }
@@ -1258,7 +1251,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.30</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.31</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2088,15 +2081,14 @@
           <!-- Stats -->
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Resumes</div></div>
-            <div class="stat-card"><div class="stat-val" id="r-default">—</div><div class="stat-label">Default Resume</div></div>
             <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
             <div class="stat-card" id="r-coverage-card"><div class="stat-val" id="r-coverage">—</div><div class="stat-label">Filter Coverage</div></div>
           </div>
 
           <!-- Coverage Alert -->
-          <div id="resume-coverage-alert" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--warm);">
-            <strong>⚠ Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
-            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Jobs from these filters will use your default resume.</div>
+          <div id="resume-coverage-alert" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+            <div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:8px;">Filters without a resume</div>
+            <div id="resume-unassigned-list" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
           </div>
 
           <!-- Upload Zone -->
@@ -2112,17 +2104,6 @@
               <h3>No resumes uploaded</h3>
               <p>Upload your first resume to get started.</p>
             </div>
-          </div>
-
-          <!-- Create by Level — secondary action below grid -->
-          <div style="margin-top:16px;padding:14px 18px;background:var(--bg-card);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <div>
-              <div style="font-size:12px;font-weight:600;color:var(--text-dim);">Need resumes for each seniority level?</div>
-              <div style="font-size:11px;color:var(--text-faint);">Creates placeholder cards from your title hierarchy. Upload the actual files after.</div>
-            </div>
-            <button class="btn btn-sm" id="resume-from-level-btn" style="padding:8px 16px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:8px;cursor:pointer;white-space:nowrap;">
-              + Create by Level
-            </button>
           </div>
         </div>
       </div>
@@ -2528,7 +2509,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.30 loaded');
+    console.log('[BJ] Dashboard v2.31 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2554,6 +2535,7 @@
       loadStats();
       checkExtensionStatus();
       loadCollections();
+      loadResumes();
     }
     init();
 
@@ -8412,13 +8394,9 @@
     function renderResumes() {
       const grid = $('#resume-grid');
       const countEl = $('#r-total');
-      const defaultEl = $('#r-default');
       const assignedEl = $('#r-assigned');
 
       countEl.textContent = resumes.length;
-
-      const defaultResume = resumes.find(r => r.is_default);
-      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 20) : '\u2014';
 
       const totalAssigned = resumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
       assignedEl.textContent = totalAssigned;
@@ -8432,14 +8410,19 @@
       if (sf.length > 0) {
         const covered = sf.length - unassignedFilters.length;
         coverageEl.textContent = `${covered}/${sf.length}`;
-        coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--warm)' : 'var(--green)';
+        coverageEl.style.color = unassignedFilters.length > 0 ? 'var(--text-dim)' : 'var(--green)';
       } else {
         coverageEl.textContent = '\u2014';
       }
 
       if (unassignedFilters.length > 0 && resumes.length > 0) {
         coverageAlert.style.display = '';
-        $('#resume-unassigned-list').textContent = unassignedFilters.map(f => f.name).join(', ');
+        const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+        $('#resume-unassigned-list').innerHTML = unassignedFilters.map(f => {
+          const fi = sf.findIndex(s => s.name === f.name);
+          const color = filterColors[fi % filterColors.length];
+          return `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:${color}18;color:${color};border:1px solid ${color}30;">${f.name}</span>`;
+        }).join('');
       } else {
         coverageAlert.style.display = 'none';
       }
@@ -8454,9 +8437,8 @@
         return;
       }
 
-      // Get level hierarchy for dropdown
       const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
-      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+      const fColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
       grid.innerHTML = resumes.map((r, i) => {
         const icon = getFileIcon(r.file_name);
@@ -8464,12 +8446,10 @@
         const hasAssignment = assignedIds.length > 0;
         const isPlaceholder = r.needs_upload;
 
-        // Type badge
         const sourceBadge = r.source === 'gdrive'
           ? '<span class="rc-type-badge gdrive">Drive</span>'
           : `<span class="rc-type-badge ${icon.cls}">${icon.text}</span>`;
 
-        // Level badge + dropdown
         const levelColor = r.level_color || '#94a3b8';
         const levelHtml = levels.length > 0
           ? `<select class="rc-level-select" onchange="changeResumeLevel(${i}, this.value)" style="border-color:${r.level_label ? levelColor + '44' : 'var(--border)'};">
@@ -8478,19 +8458,17 @@
             </select>`
           : (r.level_label ? `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${levelColor}20;color:${levelColor};">${r.level_label}</span>` : '');
 
-        // Filter pills
         const filterPills = sf.length > 0
           ? sf.map((f, fi) => {
-              const color = filterColors[fi % filterColors.length];
+              const color = fColors[fi % fColors.length];
               const isActive = assignedIds.includes(f.name);
               return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
                 style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
-                onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
+                onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\\\'")}')"
                 title="Click to ${isActive ? 'unassign from' : 'assign to'} ${f.name}">${f.name}</span>`;
             }).join('')
           : '<span style="font-size:10px;color:var(--text-faint);font-style:italic;">Save a filter first</span>';
 
-        // Status dot: green = assigned, yellow = unassigned
         const statusDot = hasAssignment
           ? '<span class="rc-status-dot" style="background:#34d399;" title="Assigned to filters"></span>'
           : '<span class="rc-status-dot" style="background:#f59e0b;" title="Not assigned to any filter"></span>';
@@ -8498,8 +8476,7 @@
         const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
 
         return `
-        <div class="resume-card ${r.is_default ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''} ${hasAssignment ? 'rc-assigned' : 'rc-unassigned'}">
-          ${r.is_default ? '<div class="rc-default-badge">\u2605 Default</div>' : ''}
+        <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''} ${hasAssignment ? 'rc-assigned' : 'rc-unassigned'}">
           <div style="display:flex;align-items:center;gap:4px;">
             ${statusDot}${sourceBadge}
           </div>
@@ -8508,11 +8485,10 @@
           ${isPlaceholder ? `<div style="margin:6px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:6px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:10px;color:var(--warm);font-weight:600;">\u2191 Upload File</div></div>` : ''}
           ${!isPlaceholder && r.file_path ? `<div style="margin:4px 0;"><a href="#" onclick="downloadResume(${i});return false;" style="font-size:10px;color:var(--accent);">\u2193 Download</a></div>` : ''}
           <div class="rc-section-label">Level</div>
-          ${levelHtml || '<span style="font-size:10px;color:var(--text-faint);">—</span>'}
+          ${levelHtml || '<span style="font-size:10px;color:var(--text-faint);">\u2014</span>'}
           <div class="rc-section-label">Filters</div>
           <div class="rc-filter-list">${filterPills}</div>
           <div class="rc-actions">
-            ${!r.is_default ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:9px;padding:2px 8px;">Default</button>` : '<button class="btn btn-sm" style="font-size:9px;padding:2px 8px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>\u2605</button>'}
             <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:9px;padding:2px 8px;">Rename</button>
             <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:9px;padding:2px 8px;color:var(--red);">Remove</button>
           </div>
@@ -8576,7 +8552,6 @@
         return;
       }
 
-      const isFirst = resumes.length === 0;
       const { data: row, error: dbError } = await sb.from('resumes')
         .insert({
           user_id: currentUser.id,
@@ -8584,7 +8559,6 @@
           file_name: file.name,
           file_path: filePath,
           file_size: sizeStr,
-          is_default: isFirst,
           source: 'upload'
         })
         .select()
@@ -8623,19 +8597,6 @@
       URL.revokeObjectURL(url);
     };
 
-    window.setDefaultResume = async function(idx) {
-      if (!currentUser) return;
-      await sb.from('resumes')
-        .update({ is_default: false })
-        .eq('user_id', currentUser.id);
-      await sb.from('resumes')
-        .update({ is_default: true })
-        .eq('id', resumes[idx].id);
-
-      resumes.forEach((r, i) => r.is_default = (i === idx));
-      renderResumes();
-    };
-
     window.renameResume = async function(idx) {
       const current = resumes[idx].name;
       const input = prompt('Resume name:', current);
@@ -8653,7 +8614,6 @@
     window.removeResume = async function(idx) {
       if (!confirm(`Remove "${resumes[idx].name}"?`)) return;
       const r = resumes[idx];
-      const wasDefault = r.is_default;
 
       if (r.file_path) {
         await sb.storage.from('resumes').remove([r.file_path]);
@@ -8662,12 +8622,6 @@
       await sb.from('resumes').delete().eq('id', r.id);
 
       resumes.splice(idx, 1);
-      if (wasDefault && resumes.length > 0) {
-        resumes[0].is_default = true;
-        await sb.from('resumes')
-          .update({ is_default: true })
-          .eq('id', resumes[0].id);
-      }
       renderResumes();
     };
 
@@ -8729,50 +8683,7 @@
       fileInput.value = '';
     });
 
-    // Load resumes from Supabase on init
-    loadResumes();
-
-    // Create by Level — scaffold resume placeholders
-    $('#resume-from-level-btn').addEventListener('click', async () => {
-      const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
-      if (levels.length === 0) {
-        alert('No title levels configured. Go to Search Tuning -> Title Level Hierarchy to set up your levels first.');
-        return;
-      }
-
-      const existingNames = resumes.map(r => r.name.toLowerCase());
-      const newLevels = levels.filter(l => l.label && !existingNames.includes(l.label.toLowerCase() + ' resume'));
-
-      if (newLevels.length === 0) {
-        alert('You already have resume placeholders for all configured levels.');
-        return;
-      }
-
-      if (!confirm(`Create ${newLevels.length} resume placeholder${newLevels.length > 1 ? 's' : ''} for:\n\n${newLevels.map((l, i) => `${i+1}. ${l.label}`).join('\n')}\n\nUpload the actual files to each card after.`)) return;
-
-      for (const lvl of newLevels) {
-        const { data: row, error } = await sb.from('resumes')
-          .insert({
-            user_id: currentUser.id,
-            name: lvl.label + ' Resume',
-            file_name: 'Upload your ' + lvl.label.toLowerCase() + '-level resume',
-            file_size: '\u2014',
-            is_default: resumes.length === 0,
-            source: 'level-placeholder',
-            level_label: lvl.label,
-            level_color: lvl.color || '#94a3b8',
-            needs_upload: true
-          })
-          .select()
-          .single();
-
-        if (!error && row) {
-          row.filterIds = [];
-          resumes.push(row);
-        }
-      }
-      renderResumes();
-    });
+    // Resumes loaded from init() after auth resolves
 
 
     // ============================================================
@@ -8864,14 +8775,12 @@
     window.importGdriveAsResume = async function(idx) {
       if (!currentUser) return;
       const f = gdriveState.files[idx];
-      const isFirst = resumes.length === 0;
       const { data: row, error } = await sb.from('resumes')
         .insert({
           user_id: currentUser.id,
           name: f.name.replace(/\.(gdoc|pdf|docx?)$/i, ''),
           file_name: f.name,
           file_size: 'Google Doc',
-          is_default: isFirst,
           source: 'gdrive'
         })
         .select()
@@ -9025,14 +8934,14 @@
       if (!company) return;
       const url = prompt('Application URL (optional):') || '';
 
-      const defaultResume = resumes.find(r => r.is_default);
+      const firstResume = resumes.length > 0 ? resumes[0] : null;
       appQueue.push({
         id: 'app_' + Date.now(),
         jobTitle: title,
         company: company,
         url: url,
-        resumeName: defaultResume ? defaultResume.name : '',
-        resumeId: defaultResume ? defaultResume.id : '',
+        resumeName: firstResume ? firstResume.name : '',
+        resumeId: firstResume ? firstResume.id : '',
         mode: appMode,
         status: appMode === 'auto' ? 'queued' : (appMode === 'notify' ? 'pending' : 'queued'),
         addedAt: new Date().toLocaleDateString(),
