@@ -132,6 +132,19 @@ function extractNgrams(jobs, maxPerGroup = 40) {
 
 var jobMatchScores = {}; // greenhouse_id → score (0-100)
 var readinessCache = JSON.parse(localStorage.getItem('bj_readiness') || 'null');
+var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigrams: [...] }
+var readinessRunning = false;
+
+function scoreToGrade(score) {
+  if (score >= 90) return { grade: 'A+', color: 'var(--green)' };
+  if (score >= 80) return { grade: 'A', color: 'var(--green)' };
+  if (score >= 70) return { grade: 'B+', color: '#22c55e' };
+  if (score >= 60) return { grade: 'B', color: 'var(--warm)' };
+  if (score >= 50) return { grade: 'C+', color: 'var(--warm)' };
+  if (score >= 40) return { grade: 'C', color: '#f97316' };
+  if (score >= 30) return { grade: 'D', color: 'var(--red)' };
+  return { grade: 'F', color: 'var(--red)' };
+}
 
 // Fetch up to `limit` JDs for a given saved filter
 async function fetchFilterJDs(sf, limit) {
@@ -259,26 +272,42 @@ function computeJobMatchScore(job) {
 
   // Find the resume assigned to the first matching filter
   var resume = null;
+  var matchedFilterName = null;
   for (var i = 0; i < savedFilters.length; i++) {
     if (filterNums.some(function(fn){ return fn.num == (i + 1); })) {
       var rid = savedFilters[i].resumeId;
-      if (rid !== undefined && rid !== null && resumes[rid]) { resume = resumes[rid]; break; }
+      if (rid !== undefined && rid !== null && resumes[rid]) {
+        resume = resumes[rid];
+        matchedFilterName = savedFilters[i].name;
+        break;
+      }
     }
   }
   if (!resume || !resume.keywords || !resume.keywords.length) return null;
 
   var text = stripHtmlToText(job.content);
   var words = tokenize(text);
-  var seenTerms = new Set();
+
+  // Count term frequency within this job (not arbitrary Set order)
+  var termCounts = {};
   for (var w = 0; w < words.length; w++) {
     var word = words[w];
-    if (!KW_STOPWORDS.has(word) && !KW_GENERIC.has(word) && word.length > 2) seenTerms.add(word);
+    if (!KW_STOPWORDS.has(word) && !KW_GENERIC.has(word) && word.length > 2) {
+      termCounts[word] = (termCounts[word] || 0) + 1;
+    }
   }
+
+  // Rank by frequency — top repeated terms are the real requirements
+  var jdTerms = Object.entries(termCounts)
+    .sort(function(a, b) { return b[1] - a[1]; })
+    .slice(0, 40)
+    .map(function(e) { return e[0]; });
+
+  if (jdTerms.length === 0) return null;
 
   var resumeTerms = new Set(resume.keywords.map(function(k){ return k[0].toLowerCase(); }));
   var resumeText = (resume.extractedText || '').toLowerCase();
 
-  var jdTerms = Array.from(seenTerms).slice(0, 40);
   var matched = 0;
   for (var t = 0; t < jdTerms.length; t++) {
     if (resumeTerms.has(jdTerms[t]) || resumeText.includes(jdTerms[t])) matched++;
@@ -303,21 +332,25 @@ function computeVisibleJobScores() {
 
 function matchBadge(result) {
   if (!result) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
-  // Support both old (number) and new ({score, resumeName}) formats
   var score = typeof result === 'number' ? result : result.score;
   var rName = typeof result === 'object' ? (result.resumeName || '') : '';
-  var color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--warm)' : 'var(--red)';
-  var tooltip = rName ? rName.replace(/"/g, '&quot;') : 'Match score';
-  return '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + color + ';cursor:help;">' + score + '%</span>';
+  var g = scoreToGrade(score);
+  var tooltip = score + '% match' + (rName ? ' · ' + rName.replace(/"/g, '&quot;') : '');
+  return '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + g.color + ';cursor:help;">' + g.grade + '</span>';
 }
 
-// Main readiness analysis — called from Resumes page button
-async function runReadinessAnalysis() {
+// Main readiness analysis — runs automatically on Resumes page load, or manually via button
+async function runReadinessAnalysis(opts) {
+  opts = opts || {};
+  var silent = opts.silent || false; // true = background run, no button state changes
   var btn = document.getElementById('readiness-run-btn');
   var statusEl = document.getElementById('readiness-status');
   var resultsEl = document.getElementById('readiness-results');
 
-  if (btn) { btn.disabled = true; btn.textContent = 'Analyzing\u2026'; }
+  if (readinessRunning) return;
+  readinessRunning = true;
+
+  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Analyzing\u2026'; }
 
   var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
@@ -329,10 +362,16 @@ async function runReadinessAnalysis() {
   }
 
   if (!hasEligible) {
-    resultsEl.innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:16px 0;">Upload a resume and wait for keyword extraction to complete before analyzing readiness.</div>';
-    if (btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
+    if (resultsEl) resultsEl.innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:16px 0;">Upload a resume and wait for keyword extraction to complete before analyzing readiness.</div>';
+    if (!silent && btn) { btn.disabled = false; btn.textContent = 'Analyze'; }
+    readinessRunning = false;
     return;
   }
+
+  // Show loading state on resume cards
+  document.querySelectorAll('.rc-grade-slot').forEach(function(el) {
+    el.innerHTML = '<div style="font-size:10px;color:var(--text-faint);font-style:italic;">Analyzing\u2026</div>';
+  });
 
   var scores = {};
   var totalFiltersAnalyzed = 0;
@@ -347,7 +386,6 @@ async function runReadinessAnalysis() {
 
     scores[ri] = { filters: {}, levels: {}, overallScore: 0, resumeName: r.name };
 
-    // Collect all JDs for level analysis
     var allJDsForLevel = [];
     var seenIds = new Set();
 
@@ -357,7 +395,6 @@ async function runReadinessAnalysis() {
 
       var jds = await fetchFilterJDs(filter, 80);
 
-      // Batch-fetch content for jobs missing it
       var withContent = jds.filter(function(j){ return j.content; }).length;
       if (withContent < 30 && jds.length > withContent) {
         if (statusEl) statusEl.textContent = 'Fetching specs for "' + filter.name + '" (' + withContent + '/' + jds.length + ')\u2026';
@@ -369,9 +406,19 @@ async function runReadinessAnalysis() {
       if (filterScore) {
         scores[ri].filters[filter.name] = filterScore;
         totalFiltersAnalyzed++;
+
+        // Cache the corpus ngrams for this filter (used by feed scoring)
+        var jdsWithContent = jds.filter(function(j){ return j.content; });
+        if (jdsWithContent.length >= 3) {
+          var corpus = extractNgrams(jdsWithContent, 50);
+          filterCorpusCache[filter.name] = {
+            skills: corpus.skills,
+            bigrams: corpus.bigrams,
+            jobCount: jdsWithContent.length
+          };
+        }
       }
 
-      // Collect for level analysis
       for (var ji = 0; ji < jds.length; ji++) {
         if (!seenIds.has(jds[ji].greenhouse_id)) {
           seenIds.add(jds[ji].greenhouse_id);
@@ -380,10 +427,8 @@ async function runReadinessAnalysis() {
       }
     }
 
-    // Level analysis across all JDs for this resume
     scores[ri].levels = scoreResumeByLevel(r, allJDsForLevel);
 
-    // Overall = average of filter scores
     var filterScoreValues = Object.keys(scores[ri].filters).map(function(k){ return scores[ri].filters[k].score; });
     scores[ri].overallScore = filterScoreValues.length > 0
       ? Math.round(filterScoreValues.reduce(function(a, b){ return a + b; }, 0) / filterScoreValues.length)
@@ -393,10 +438,151 @@ async function runReadinessAnalysis() {
   readinessCache = { lastRun: new Date().toISOString(), scores: scores };
   localStorage.setItem('bj_readiness', JSON.stringify(readinessCache));
 
+  // Update resume cards with grades
+  updateResumeCardGrades(scores);
+
+  // Update readiness panel (detailed breakdown)
   renderReadinessResults(scores);
+
+  // Clear feed match cache so scores recompute with new corpus
+  jobMatchScores = {};
 
   if (statusEl) statusEl.textContent = 'Analyzed ' + totalFiltersAnalyzed + ' filter' + (totalFiltersAnalyzed !== 1 ? 's' : '') + ', fetched ' + totalJDsFetched + ' new JDs';
   if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
+  readinessRunning = false;
+}
+
+// Update grade display on each resume card in-place
+function updateResumeCardGrades(scores) {
+  if (!scores) return;
+  var indices = Object.keys(scores);
+  for (var si = 0; si < indices.length; si++) {
+    var ri = indices[si];
+    var data = scores[ri];
+    var slot = document.getElementById('rc-grade-' + ri);
+    if (!slot) continue;
+    slot.innerHTML = buildInlineGrade(ri, data);
+  }
+}
+
+// Build the inline grade + insights HTML for a resume card
+function buildInlineGrade(ri, data) {
+  if (!data) return '';
+  var g = scoreToGrade(data.overallScore);
+  var filterNames = Object.keys(data.filters);
+  var detailId = 'rc-insights-' + ri;
+
+  var html = '<div style="padding:8px 10px;border-radius:8px;background:var(--bg-main);border:1px solid var(--border);margin-bottom:6px;">';
+
+  // Top row: letter grade + score + CTA
+  html += '<div style="display:flex;align-items:center;gap:8px;">';
+  html += '<span style="font-family:var(--mono);font-size:22px;font-weight:800;color:' + g.color + ';line-height:1;">' + g.grade + '</span>';
+  html += '<span style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">' + data.overallScore + '%</span>';
+
+  // Per-filter mini scores
+  if (filterNames.length > 0) {
+    html += '<div style="display:flex;gap:4px;margin-left:4px;">';
+    for (var fi = 0; fi < filterNames.length; fi++) {
+      var fname = filterNames[fi];
+      var fs = data.filters[fname];
+      var fg = scoreToGrade(fs.score);
+      html += '<span title="' + fname + ': ' + fs.score + '% (' + fs.matched + '/' + fs.total + ' terms)" style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + fg.color + '15;color:' + fg.color + ';font-weight:600;font-family:var(--mono);cursor:help;">' + fg.grade + '</span>';
+    }
+    html += '</div>';
+  }
+
+  html += '<span onclick="toggleInlineInsights(\'' + detailId + '\',this)" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:auto;font-weight:500;white-space:nowrap;">View insights \u25b8</span>';
+  html += '</div>';
+
+  // Expandable insights section
+  html += '<div id="' + detailId + '" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">';
+
+  // Per-filter breakdown
+  for (var fi2 = 0; fi2 < filterNames.length; fi2++) {
+    var fname2 = filterNames[fi2];
+    var fs2 = data.filters[fname2];
+    var fg2 = scoreToGrade(fs2.score);
+
+    html += '<div style="margin-bottom:10px;">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
+    html += '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + fg2.color + ';">' + fg2.grade + ' ' + fs2.score + '%</span>';
+    html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname2 + '</span>';
+    html += '<span style="font-size:9px;color:var(--text-faint);">' + fs2.matched + '/' + fs2.total + ' terms \u00b7 ' + fs2.jdsAnalyzed + ' JDs</span>';
+    html += '</div>';
+
+    // Missing terms — the actionable insight
+    if (fs2.topMissing && fs2.topMissing.length > 0) {
+      html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Missing from your resume:</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+      for (var mi = 0; mi < fs2.topMissing.length; mi++) {
+        var mt = typeof fs2.topMissing[mi] === 'object' ? fs2.topMissing[mi].term : fs2.topMissing[mi];
+        var mc = typeof fs2.topMissing[mi] === 'object' ? fs2.topMissing[mi].count : '';
+        html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + mt;
+        if (mc) html += ' <span style="font-family:var(--mono);font-size:8px;opacity:0.7;">' + mc + '</span>';
+        html += '</span>';
+      }
+      html += '</div>';
+    }
+
+    // Matched terms
+    if (fs2.topMatched && fs2.topMatched.length > 0) {
+      html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Covered:</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+      for (var gi = 0; gi < fs2.topMatched.length; gi++) {
+        var gt = typeof fs2.topMatched[gi] === 'object' ? fs2.topMatched[gi].term : fs2.topMatched[gi];
+        html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);color:var(--green);">\u2713 ' + gt + '</span>';
+      }
+      html += '</div>';
+    }
+
+    // Missing bigrams
+    if (fs2.bigramMissing && fs2.bigramMissing.length > 0) {
+      html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Missing phrases:</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;">';
+      for (var bmi = 0; bmi < Math.min(10, fs2.bigramMissing.length); bmi++) {
+        var bmt = typeof fs2.bigramMissing[bmi] === 'object' ? fs2.bigramMissing[bmi].term : fs2.bigramMissing[bmi];
+        html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + bmt + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+  }
+
+  // Level fit
+  var levelLabels = Object.keys(data.levels || {});
+  if (levelLabels.length > 0) {
+    html += '<div style="padding-top:6px;border-top:1px solid var(--border);">';
+    html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">Level Fit</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    for (var li = 0; li < levelLabels.length; li++) {
+      var lbl = levelLabels[li];
+      var ls = data.levels[lbl];
+      var lg = scoreToGrade(ls.score);
+      html += '<div style="padding:4px 8px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);text-align:center;">';
+      html += '<div style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + lg.color + ';">' + lg.grade + ' ' + ls.score + '%</div>';
+      html += '<div style="font-size:9px;color:var(--text-dim);">' + lbl + ' <span style="color:var(--text-faint);">(' + ls.jobCount + ')</span></div>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  html += '</div>'; // close insights
+  html += '</div>'; // close outer container
+
+  return html;
+}
+
+function toggleInlineInsights(detailId, el) {
+  var detail = document.getElementById(detailId);
+  if (!detail) return;
+  if (detail.style.display === 'none') {
+    detail.style.display = '';
+    el.textContent = 'Hide insights \u25be';
+  } else {
+    detail.style.display = 'none';
+    el.textContent = 'View insights \u25b8';
+  }
 }
 
 function renderReadinessResults(scores) {
@@ -550,6 +736,8 @@ function initReadinessPanel() {
   if (hasAssigned) {
     panel.style.display = '';
     if (readinessCache && readinessCache.scores) {
+      // Show cached results immediately
+      updateResumeCardGrades(readinessCache.scores);
       renderReadinessResults(readinessCache.scores);
       var statusEl = document.getElementById('readiness-status');
       if (statusEl && readinessCache.lastRun) {
@@ -558,6 +746,15 @@ function initReadinessPanel() {
       }
       var btn = document.getElementById('readiness-run-btn');
       if (btn) btn.textContent = 'Re-analyze';
+
+      // Auto-refresh if cache is older than 24 hours
+      var cacheAge = readinessCache.lastRun ? Date.now() - new Date(readinessCache.lastRun).getTime() : Infinity;
+      if (cacheAge > 24 * 60 * 60 * 1000) {
+        setTimeout(function(){ runReadinessAnalysis({ silent: true }); }, 500);
+      }
+    } else {
+      // No cache — auto-run in background
+      setTimeout(function(){ runReadinessAnalysis({ silent: false }); }, 500);
     }
   } else {
     panel.style.display = 'none';
