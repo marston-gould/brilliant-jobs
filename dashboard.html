@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.48 - 2026-02-15 - Fix Gmail dot alignment, remove scan counter from Setup, reorder job columns, normalize state names in locations, fix tuning dropdown overflow, lowercase unassigned filters, fix filter numbering -->
+<!-- Brilliant Jobs Dashboard v2.49 - 2026-02-15 - Fix tuning exclusion pill removal (x button now saves and re-renders correctly) -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -29,7 +29,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.48</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.49</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1415,7 +1415,7 @@
 
     function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length; }
 
-    function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass) {
+    function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, onRemove) {
       const builder = $(builderId);
       builder.querySelectorAll('.qb-pill, .qb-and').forEach(el => el.remove());
       const input = $(inputId);
@@ -1513,7 +1513,8 @@
         el.addEventListener('click', e => {
           e.stopPropagation();
           pillArray.splice(parseInt(el.dataset.idx), 1);
-          renderAllPills();
+          if (onRemove) onRemove();
+          else renderAllPills();
         });
       });
     }
@@ -6982,9 +6983,10 @@
 
     // Render tuning pills
     function renderTuningPills() {
-      renderPillsFor(tuningLocExclPills, '#tuning-location-exclude', '#tuning-loc-excl-input', false, 'not-pill');
-      renderPillsFor(tuningTitleExclPills, '#tuning-title-exclude', '#tuning-title-excl-input', false, 'not-pill');
-      renderPillsFor(tuningCoExclPills, '#tuning-company-exclude', '#tuning-co-excl-input', false, 'not-pill');
+      const tuningOnRemove = () => { saveTuning(); renderTuningPills(); updateTuningBadges(); };
+      renderPillsFor(tuningLocExclPills, '#tuning-location-exclude', '#tuning-loc-excl-input', false, 'not-pill', tuningOnRemove);
+      renderPillsFor(tuningTitleExclPills, '#tuning-title-exclude', '#tuning-title-excl-input', false, 'not-pill', tuningOnRemove);
+      renderPillsFor(tuningCoExclPills, '#tuning-company-exclude', '#tuning-co-excl-input', false, 'not-pill', tuningOnRemove);
       // Industry pills — render as not-pills with remove buttons
       const indBuilder = $('#tuning-industry-exclude');
       const indInput = $('#tuning-ind-excl-input');
@@ -8851,7 +8853,7 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.48',
+        dashboard_version: 'v2.49',
       };
 
       try {
