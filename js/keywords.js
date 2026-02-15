@@ -175,7 +175,7 @@ async function batchFetchJDContent(jobs, maxFetch) {
 }
 
 // Score a resume against a set of JDs
-// Returns { score, matched, total, topMissing, topMatched, jdsAnalyzed }
+// Returns { score, matched, total, topMissing, topMatched, bigramMatched, bigramMissing, jdsAnalyzed }
 function scoreResumeVsJDs(resume, jds) {
   if (!resume || !resume.keywords || !resume.keywords.length || !jds || !jds.length) return null;
 
@@ -195,9 +195,22 @@ function scoreResumeVsJDs(resume, jds) {
 
   for (var i = 0; i < topTerms.length; i++) {
     var term = topTerms[i][0];
+    var count = topTerms[i][1];
     var found = resumeTerms.has(term) || resumeText.includes(term);
-    if (found) { matched++; topMatched.push(term); }
-    else { topMissing.push(term); }
+    if (found) { matched++; topMatched.push({ term: term, count: count }); }
+    else { topMissing.push({ term: term, count: count }); }
+  }
+
+  // Bigram scoring
+  var topBigrams = ngrams.bigrams.slice(0, 25);
+  var bigramMatched = [];
+  var bigramMissing = [];
+  for (var b = 0; b < topBigrams.length; b++) {
+    var bi = topBigrams[b][0];
+    var bc = topBigrams[b][1];
+    var biFound = resumeText.includes(bi);
+    if (biFound) { bigramMatched.push({ term: bi, count: bc }); }
+    else { bigramMissing.push({ term: bi, count: bc }); }
   }
 
   var total = topTerms.length;
@@ -205,7 +218,8 @@ function scoreResumeVsJDs(resume, jds) {
 
   return {
     score: score, matched: matched, total: total,
-    topMissing: topMissing.slice(0, 15), topMatched: topMatched.slice(0, 15),
+    topMissing: topMissing, topMatched: topMatched,
+    bigramMatched: bigramMatched, bigramMissing: bigramMissing,
     jdsAnalyzed: jdsWithContent.length
   };
 }
@@ -408,21 +422,91 @@ function renderReadinessResults(scores) {
       var fname = filterNames[fi];
       var fs = data.filters[fname];
       var fc = fs.score >= 70 ? 'var(--green)' : fs.score >= 40 ? 'var(--warm)' : 'var(--red)';
-      html += '<div style="margin-bottom:10px;">';
+      var detailId = 'rd-detail-' + ri + '-' + fi;
+      html += '<div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border);">';
+
+      // Score header row
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
       html += '<span style="font-family:var(--mono);font-size:13px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
       html += '<span style="font-size:12px;font-weight:600;color:var(--text);">' + fname + '</span>';
       html += '<span style="font-size:10px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+      html += '<span onclick="document.getElementById(\'' + detailId + '\').style.display=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'\':\'none\';this.textContent=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'Show keywords \u25b8\':\'Hide keywords \u25be\'" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:auto;font-weight:500;">Show keywords \u25b8</span>';
       html += '</div>';
 
+      // Inline missing preview (top 5 missing, always visible)
       if (fs.topMissing.length > 0) {
-        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
-        for (var mi = 0; mi < fs.topMissing.length; mi++) {
-          html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + fs.topMissing[mi] + '</span>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">';
+        var previewCount = Math.min(5, fs.topMissing.length);
+        for (var mi = 0; mi < previewCount; mi++) {
+          var mt = typeof fs.topMissing[mi] === 'object' ? fs.topMissing[mi].term : fs.topMissing[mi];
+          html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + mt + '</span>';
+        }
+        if (fs.topMissing.length > 5) {
+          html += '<span style="font-size:10px;color:var(--text-faint);">+' + (fs.topMissing.length - 5) + ' more</span>';
         }
         html += '</div>';
       }
+
+      // Expandable keyword detail
+      html += '<div id="' + detailId + '" style="display:none;margin-top:10px;">';
+
+      // Legend
+      html += '<div style="font-size:9px;color:var(--text-faint);margin-bottom:8px;">';
+      html += '<span style="color:var(--green);">\u2713 green</span> = in your resume \u00a0 ';
+      html += '<span style="color:var(--red);">\u2717 red</span> = missing \u2014 add these to improve your match';
       html += '</div>';
+
+      // Skills (unigrams)
+      html += '<div style="font-size:10px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">Skills &amp; Tools</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">';
+      // Matched first
+      for (var gi = 0; gi < fs.topMatched.length; gi++) {
+        var gterm = typeof fs.topMatched[gi] === 'object' ? fs.topMatched[gi].term : fs.topMatched[gi];
+        var gcount = typeof fs.topMatched[gi] === 'object' ? fs.topMatched[gi].count : '';
+        html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);color:var(--green);">';
+        html += '\u2713 ' + gterm;
+        if (gcount) html += ' <span style="font-family:var(--mono);font-size:9px;opacity:0.7;">' + gcount + '</span>';
+        html += '</span>';
+      }
+      // Then missing
+      for (var ri2 = 0; ri2 < fs.topMissing.length; ri2++) {
+        var rterm = typeof fs.topMissing[ri2] === 'object' ? fs.topMissing[ri2].term : fs.topMissing[ri2];
+        var rcount = typeof fs.topMissing[ri2] === 'object' ? fs.topMissing[ri2].count : '';
+        html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">';
+        html += '\u2717 ' + rterm;
+        if (rcount) html += ' <span style="font-family:var(--mono);font-size:9px;opacity:0.7;">' + rcount + '</span>';
+        html += '</span>';
+      }
+      html += '</div>';
+
+      // Bigrams (2-word phrases)
+      var hasBigrams = (fs.bigramMatched && fs.bigramMatched.length > 0) || (fs.bigramMissing && fs.bigramMissing.length > 0);
+      if (hasBigrams) {
+        html += '<div style="font-size:10px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">2-Word Phrases</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        var bm = fs.bigramMatched || [];
+        for (var bi = 0; bi < bm.length; bi++) {
+          var bt = typeof bm[bi] === 'object' ? bm[bi].term : bm[bi];
+          var bcc = typeof bm[bi] === 'object' ? bm[bi].count : '';
+          html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);color:var(--green);">';
+          html += '\u2713 ' + bt;
+          if (bcc) html += ' <span style="font-family:var(--mono);font-size:9px;opacity:0.7;">' + bcc + '</span>';
+          html += '</span>';
+        }
+        var bmiss = fs.bigramMissing || [];
+        for (var bmi = 0; bmi < bmiss.length; bmi++) {
+          var bmt = typeof bmiss[bmi] === 'object' ? bmiss[bmi].term : bmiss[bmi];
+          var bmcc = typeof bmiss[bmi] === 'object' ? bmiss[bmi].count : '';
+          html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">';
+          html += '\u2717 ' + bmt;
+          if (bmcc) html += ' <span style="font-family:var(--mono);font-size:9px;opacity:0.7;">' + bmcc + '</span>';
+          html += '</span>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div>'; // close detail
+      html += '</div>'; // close filter block
     }
 
     // Level analysis
