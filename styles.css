@@ -1280,6 +1280,166 @@
     .app-rule-header h4 { font-size: 13px; font-weight: 600; }
     .app-rule-desc { font-size: 12px; color: var(--text-faint); line-height: 1.5; }
 
+    /* ======================== PULSING NAV DOTS ======================== */
+    @keyframes nav-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(59,130,246,0); }
+    }
+    .ext-status-dot.pulse {
+      animation: nav-pulse 2s ease-in-out infinite;
+      background: var(--accent) !important;
+    }
+
+    /* ======================== NOTIFICATION PREFS MATRIX ======================== */
+    .notif-matrix { width: 100%; border-collapse: collapse; }
+    .notif-matrix th {
+      text-align: center; font-size: 11px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+      padding: 10px 8px; border-bottom: 2px solid var(--border);
+    }
+    .notif-matrix th:first-child { text-align: left; }
+    .notif-matrix td {
+      padding: 10px 8px; font-size: 13px; border-bottom: 1px solid var(--border);
+      color: var(--text-dim); vertical-align: middle;
+    }
+    .notif-matrix td:not(:first-child) { text-align: center; }
+    .notif-matrix tr:hover td { background: var(--bg-hover); }
+    .notif-matrix .toggle-switch { margin: 0 auto; }
+    .notif-matrix .freq-select {
+      padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 11px; cursor: pointer;
+    }
+    .notif-matrix .toggle-switch.disabled { opacity: 0.3; pointer-events: none; }
+    .notif-section-label td {
+      font-size: 11px; font-weight: 700; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 8px 6px;
+      border-bottom: 1px solid var(--border); background: none !important;
+    }
+
+    /* ======================== PHONE SETUP ======================== */
+    .phone-setup-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .phone-country-select {
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 13px; width: 90px;
+    }
+    .phone-input {
+      padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 13px; width: 180px;
+    }
+    .otp-input {
+      padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-input); color: var(--text); font-family: var(--mono);
+      font-size: 16px; width: 120px; letter-spacing: 4px; text-align: center;
+    }
+    .phone-verified-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--green); font-size: 12px; font-weight: 600;
+    }
+    .phone-verified-badge svg { width: 14px; height: 14px; }
+
+    /* ======================== ESCALATION TIMELINE ======================== */
+    .escalation-timeline {
+      display: flex; align-items: center; gap: 0; padding: 16px 0;
+      overflow-x: auto;
+    }
+    .esc-node {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      min-width: 80px; text-align: center;
+    }
+    .esc-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .esc-icon.email { background: var(--accent-glow); color: var(--accent); }
+    .esc-icon.wait { background: var(--bg-input); color: var(--text-faint); }
+    .esc-icon.sms { background: var(--green-dim); color: var(--green); }
+    .esc-icon.skip { background: var(--red-dim); color: var(--red); }
+    .esc-label { font-size: 11px; color: var(--text-faint); line-height: 1.3; }
+    .esc-connector {
+      flex: 1; min-width: 24px; height: 2px; background: var(--border);
+    }
+    .escalation-slider-row {
+      display: flex; align-items: center; gap: 16px; margin-top: 12px;
+    }
+    .escalation-slider-row input[type="range"] {
+      flex: 1; max-width: 240px; accent-color: var(--accent);
+    }
+    .escalation-slider-row .esc-val {
+      font-size: 14px; font-weight: 600; color: var(--accent);
+      min-width: 56px;
+    }
+
+    /* ======================== QUIET HOURS ======================== */
+    .quiet-hours-row {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .quiet-hours-row input[type="time"] {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 13px;
+    }
+    .quiet-hours-row span { font-size: 12px; color: var(--text-faint); }
+    .tz-select {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 12px; max-width: 260px;
+    }
+
+    /* ======================== FILTER OVERRIDES ======================== */
+    .override-badge {
+      display: inline-flex; align-items: center; padding: 2px 8px;
+      border-radius: 6px; font-size: 10px; font-weight: 700;
+      background: var(--accent-glow); color: var(--accent);
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+
+    /* ======================== NOTIFICATION LOG ======================== */
+    .notif-log-table { width: 100%; border-collapse: collapse; }
+    .notif-log-table th {
+      text-align: left; font-size: 11px; color: var(--text-faint);
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+      padding: 10px 11px; border-bottom: 2px solid var(--border);
+    }
+    .notif-log-table td {
+      padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border);
+      color: var(--text-dim); vertical-align: middle;
+    }
+    .notif-log-table tr:hover td { background: var(--bg-hover); }
+
+    .notif-status-badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 8px; font-size: 11px; font-weight: 600;
+    }
+    .ns-sent { background: var(--accent-glow); color: var(--accent); }
+    .ns-delivered { background: var(--accent-glow); color: var(--accent); }
+    .ns-opened { background: var(--purple-dim); color: var(--purple); }
+    .ns-applied { background: var(--green-dim); color: var(--green); }
+    .ns-passed { background: var(--bg-input); color: var(--text-faint); }
+    .ns-missed { background: var(--red-dim); color: var(--red); }
+    .ns-expired { background: var(--warm-dim); color: var(--warm); }
+    .ns-failed { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+
+    .notif-channel-icon {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; color: var(--text-faint);
+    }
+    .notif-channel-icon svg { width: 14px; height: 14px; }
+
+    .notif-log-filters {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+    }
+    .notif-log-filters select, .notif-log-filters input {
+      padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 12px;
+    }
+
     /* ======================== AUTH GATE ======================== */
     .auth-gate {
       display: flex; align-items: center; justify-content: center;
