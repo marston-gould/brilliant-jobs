@@ -167,8 +167,8 @@
       transition: background 0.3s;
     }
     .ext-status-dot.connected { background: var(--green); }
-    .ext-status-dot.warning { background: var(--warm); }
     .ext-status-dot.warning { background: #f59e0b; }
+    .ext-status-dot.stale { background: var(--red); }
     .nav-icon { width: 20px; text-align: center; flex-shrink: 0; }
     .nav-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
     .nav-badge {
@@ -982,15 +982,14 @@
 
     /* ======================== PIPELINE ======================== */
     .pl-filter-bar {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
     }
-    .pl-filter-pill {
-      padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 600;
-      cursor: pointer; transition: all 0.15s; border: 1px solid var(--border);
-      background: var(--bg-input); color: var(--text-faint);
+    .pl-filter-select {
+      padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg-input); color: var(--text); font-family: var(--sans);
+      font-size: 12px; cursor: pointer; min-width: 200px;
     }
-    .pl-filter-pill.active { background: var(--accent-glow); color: var(--accent); border-color: rgba(61,126,255,0.3); }
-    .pl-filter-pill:hover { border-color: var(--accent); }
+    .pl-filter-select:focus { outline: none; border-color: var(--accent); }
     .pl-stage-section { margin-bottom: 8px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg-card); }
     .pl-stage-header {
       display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer;
@@ -1039,6 +1038,39 @@
       background: var(--bg-input); color: var(--text-dim); font-family: var(--sans); cursor: pointer;
     }
     .pl-stage-empty { padding: 16px; text-align: center; font-size: 12px; color: var(--text-faint); }
+
+    /* Resume picker popup */
+    .resume-picker-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 9999; align-items: center; justify-content: center;
+    }
+    .resume-picker-overlay.open { display: flex; }
+    .resume-picker {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; width: 380px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
+    }
+    .resume-picker h4 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+    .resume-picker .rp-sub { font-size: 12px; color: var(--text-faint); margin-bottom: 16px; }
+    .resume-picker .rp-option {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .resume-picker .rp-option:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .resume-picker .rp-option.selected { border-color: var(--accent); background: var(--accent-glow); }
+    .resume-picker .rp-radio {
+      width: 16px; height: 16px; border: 2px solid var(--border); border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .resume-picker .rp-option.selected .rp-radio { border-color: var(--accent); }
+    .resume-picker .rp-option.selected .rp-radio::after {
+      content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    }
+    .resume-picker .rp-name { font-size: 13px; font-weight: 500; }
+    .resume-picker .rp-meta { font-size: 10px; color: var(--text-faint); }
+    .resume-picker .rp-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+    .resume-picker .rp-skip { font-size: 11px; color: var(--text-faint); cursor: pointer; padding: 6px 12px; }
+    .resume-picker .rp-skip:hover { color: var(--text-dim); }
     .pl-resume-badge {
       font-size: 10px; padding: 2px 8px; border-radius: 4px;
       background: var(--purple-dim); color: var(--purple); white-space: nowrap;
@@ -1082,7 +1114,6 @@
       display: flex; flex-direction: column; min-height: 200px;
     }
     .resume-card:hover { border-color: var(--border-hover); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-    .resume-card.is-default { border-color: var(--accent); border-width: 2px; }
     .resume-card .rc-icon {
       width: 44px; height: 56px; border-radius: 6px; margin-bottom: 12px;
       display: flex; align-items: center; justify-content: center;
@@ -1108,12 +1139,6 @@
     .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
     .resume-card .rc-filter-pill:hover { opacity: 0.8; }
     .resume-card .rc-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
-    .resume-card .rc-default-badge {
-      position: absolute; top: 12px; right: 14px;
-      font-size: 9px; font-weight: 700; text-transform: uppercase;
-      color: var(--accent); letter-spacing: 0.5px;
-      background: var(--accent-glow); padding: 2px 8px; border-radius: 4px;
-    }
     .resume-card.is-placeholder {
       border-style: dashed; border-color: var(--border);
     }
@@ -1378,6 +1403,7 @@
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <span>Resumes</span>
           <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
+          <div class="ext-status-dot" id="resume-status-dot" title="No resumes"></div>
         </div>
         <div class="nav-item" data-page="applications">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
@@ -1387,6 +1413,7 @@
         <div class="nav-item" data-page="pipeline">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
           <span>Pipeline</span>
+          <div class="ext-status-dot" id="pipeline-status-dot" title="Pipeline status"></div>
         </div>
 
         <div class="nav-section-label">Intelligence</div>
@@ -2145,9 +2172,10 @@
 
           <!-- Filter by saved filter tags -->
           <div class="pl-filter-bar">
-            <span style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</span>
-            <div class="pl-filter-pill active" data-pl-filter="all" onclick="filterPipeline('all')">All</div>
-            <div id="pl-filter-tags"></div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</label>
+            <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
+              <option value="all">All Filters</option>
+            </select>
           </div>
 
           <!-- Stage sections -->
@@ -2235,18 +2263,18 @@
             </div>
             <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(99,102,241,0.1);">
               <div style="flex:1;text-align:center;">
-                <div style="font-size:22px;margin-bottom:4px;">📄</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">1. Upload</div>
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">1</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">Upload</div>
                 <div style="font-size:10px;color:var(--text-faint);">Upload a resume for each role type or seniority level you're targeting</div>
               </div>
               <div style="flex:1;text-align:center;">
-                <div style="font-size:22px;margin-bottom:4px;">🔗</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">2. Assign</div>
-                <div style="font-size:10px;color:var(--text-faint);">Click the filter pills on each card to assign resumes to your saved filters</div>
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">2</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">Assign Level & Filters</div>
+                <div style="font-size:10px;color:var(--text-faint);">Set a seniority level and assign to your saved filters</div>
               </div>
               <div style="flex:1;text-align:center;">
-                <div style="font-size:22px;margin-bottom:4px;">🚀</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">3. Apply</div>
+                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">3</div>
+                <div style="font-size:11px;font-weight:600;color:var(--text);">Apply</div>
                 <div style="font-size:10px;color:var(--text-faint);">The right resume is automatically selected when you apply to jobs from that filter</div>
               </div>
             </div>
@@ -2254,16 +2282,17 @@
 
           <!-- Stats -->
           <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Resumes</div></div>
-            <div class="stat-card"><div class="stat-val" id="r-default">—</div><div class="stat-label">Default Resume</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-levels">0</div><div class="stat-label">Levels Covered</div></div>
             <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
             <div class="stat-card" id="r-coverage-card"><div class="stat-val" id="r-coverage">—</div><div class="stat-label">Filter Coverage</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-archived">0</div><div class="stat-label">Archived</div></div>
           </div>
 
           <!-- Coverage Alert -->
           <div id="resume-coverage-alert" style="display:none;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.15);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--warm);">
             <strong>⚠ Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
-            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">Jobs from unassigned filters will use your default resume. Assign specific resumes for better results.</div>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">These filters have no resume assigned. Jobs from unassigned filters cannot be auto-applied.</div>
           </div>
 
           <!-- Upload Zone -->
@@ -2287,6 +2316,15 @@
               <h3>No resumes uploaded</h3>
               <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level you're targeting.</p>
             </div>
+          </div>
+
+          <!-- Resume Archive -->
+          <div id="resume-archive-section" style="display:none;margin-top:24px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-size:14px;font-weight:700;color:var(--text);">Archived Resumes</div>
+              <span style="font-size:11px;color:var(--text-faint);" id="archive-count-label">0 archived</span>
+            </div>
+            <div id="resume-archive-list"></div>
           </div>
         </div>
       </div>
@@ -2672,6 +2710,19 @@
 
     </div>
   </div>
+  <!-- Resume picker popup -->
+  <div class="resume-picker-overlay" id="resume-picker-overlay" onclick="if(event.target===this)closeResumePicker()">
+    <div class="resume-picker">
+      <h4>Which resume did you use?</h4>
+      <div class="rp-sub">Select the resume you submitted for this application</div>
+      <div id="rp-options"></div>
+      <div class="rp-actions">
+        <span class="rp-skip" onclick="closeResumePicker(true)">Skip — I'll add it later</span>
+        <button class="btn btn-primary btn-sm" id="rp-confirm" onclick="confirmResumePick()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <div class="job-modal-overlay" id="job-modal-overlay" style="display:none;" onclick="closeJobModal(event)">
     <div class="job-modal" onclick="event.stopPropagation()">
       <div class="job-modal-header">
@@ -5028,45 +5079,53 @@
 
     // Called when iframe detects a form submission (second load = confirmation page)
     function markAppliedFromModal(jobId) {
-      // Update feed row
-      const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
-      if (row) {
-        const actionCell = row.querySelector('td:last-child');
-        if (actionCell) actionCell.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span>';
-      }
-      // Update state
-      if (!appliedJobIds.includes(jobId)) {
-        appliedJobIds.push(jobId);
-        localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
-      }
-      // Store applied date
-      const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
-      dates[jobId] = new Date().toISOString();
-      localStorage.setItem('bj_applied_dates', JSON.stringify(dates));
+      // Show resume picker first
+      showResumePicker(jobId, function(resumeName) {
+        // Update feed row
+        const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
+        if (row) {
+          const actionCell = row.querySelector('td:last-child');
+          if (actionCell) actionCell.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span>';
+        }
+        // Update state
+        if (!appliedJobIds.includes(jobId)) {
+          appliedJobIds.push(jobId);
+          localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+        }
+        // Store applied date
+        const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+        dates[jobId] = new Date().toISOString();
+        localStorage.setItem('bj_applied_dates', JSON.stringify(dates));
 
-      // Update pipeline meta
-      const meta = getPipelineMeta();
-      if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
-      meta[jobId].stage = 'applied';
-      if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-      savePipelineMeta(meta);
+        // Update pipeline meta
+        const meta = getPipelineMeta();
+        if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
+        meta[jobId].stage = 'applied';
+        if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
+        if (resumeName) meta[jobId].resumeUsed = resumeName;
+        const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+        const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
+        meta[jobId].filterTags = checkedFilters;
+        savePipelineMeta(meta);
 
-      // Update modal UI
-      const footerEl = $('#job-modal-footer');
-      const bodyEl = $('#job-modal-body');
-      
-      bodyEl.innerHTML = `
-        <div style="text-align:center;padding:60px 20px;">
-          <div style="font-size:48px;margin-bottom:16px;">✓</div>
-          <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Application Submitted</div>
-          <div style="font-size:13px;color:var(--text-dim);">Tracked in your Pipeline under Applied</div>
-        </div>`;
-      
-      footerEl.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span><button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
-      
-      // Refresh pipeline in background
-      renderPipelineSaved();
-      updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+        // Update modal UI
+        const footerEl = $('#job-modal-footer');
+        const bodyEl = $('#job-modal-body');
+        
+        bodyEl.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;">
+            <div style="font-size:48px;margin-bottom:16px;">✓</div>
+            <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;">Application Submitted</div>
+            <div style="font-size:13px;color:var(--text-dim);">Tracked in your Pipeline under Applied</div>
+            ${resumeName ? '<div style="font-size:12px;color:var(--purple);margin-top:8px;">Resume: ' + resumeName + '</div>' : ''}
+          </div>`;
+        
+        footerEl.innerHTML = '<span class="job-action-btn applied-btn">Applied ✓</span><button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
+        
+        // Refresh pipeline in background
+        renderPipelineSaved();
+        updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+      });
     }
 
     function modalSave(jobId, btn) {
@@ -7041,6 +7100,13 @@
         if (savedFilters[existingIdx].levelHierarchy) {
           filterData.levelHierarchy = savedFilters[existingIdx].levelHierarchy;
         }
+        // Preserve level assignments
+        if (savedFilters[existingIdx].assignedLevels) {
+          filterData.assignedLevels = savedFilters[existingIdx].assignedLevels;
+        }
+        if (savedFilters[existingIdx].includeOtherLevels !== undefined) {
+          filterData.includeOtherLevels = savedFilters[existingIdx].includeOtherLevels;
+        }
         filterData.useCount = (savedFilters[existingIdx].useCount || 0) + 1;
         savedFilters[existingIdx] = filterData;
       } else {
@@ -7279,6 +7345,17 @@
             ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
           </div>
           ${miniPills}
+          ${(() => {
+            if (!sf.assignedLevels || sf.assignedLevels.length === 0) return '';
+            const h = sf.levelHierarchy || levelHierarchy;
+            const badges = sf.assignedLevels.map(lbl => {
+              const lvl = h.find(l => l.label === lbl);
+              const c = lvl ? lvl.color : '#94a3b8';
+              return `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:${c}15;color:${c};border:1px solid ${c}30;white-space:nowrap;">${lbl}</span>`;
+            }).join(' ');
+            const otherLabel = sf.includeOtherLevels ? ' <span style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--bg-input);color:var(--text-faint);border:1px solid var(--border);">+Other</span>' : '';
+            return `<div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;">${badges}${otherLabel}</div>`;
+          })()}
           <div class="sf-right" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;">
             <div class="sf-item-counts">
               <span class="sf-count sf-count-today">${jToday}</span>
@@ -7286,7 +7363,7 @@
               <span class="sf-count sf-count-month">${jMonth}</span>
             </div>
             <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
-            <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.levelHierarchy ? 'Custom levels — click to edit' : 'Customize level hierarchy'}" style="font-size:10px;color:${sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
+            <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.assignedLevels?.length ? sf.assignedLevels.length + ' levels assigned — click to edit' : sf.levelHierarchy ? 'Custom levels — click to edit' : 'Assign levels to this filter'}" style="font-size:10px;color:${sf.assignedLevels?.length ? 'var(--green)' : sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.assignedLevels?.length || sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
           </div>
         </div>`;
       }).join('');
@@ -7602,16 +7679,25 @@
 
     // Mark applied from feed
     function markApplied(jobId, btn) {
+      // Show resume picker, then complete
+      showResumePicker(jobId, function(resumeName) {
+        _completeMarkApplied(jobId, btn, resumeName);
+      });
+    }
+
+    function _completeMarkApplied(jobId, btn, resumeName) {
       if (!appliedJobIds.includes(jobId)) {
         appliedJobIds.push(jobId);
         localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
-        const row = btn.closest('tr');
-        if (row) {
-          const actionsCell = row.querySelector('td:last-child');
-          if (actionsCell) {
-            const hideBtn = actionsCell.querySelector('.hide-btn');
-            const hideBtnHtml = hideBtn ? hideBtn.outerHTML : '';
-            actionsCell.innerHTML = '<span class="job-action-btn applied-btn">Applied \u2713</span>' + hideBtnHtml;
+        if (btn) {
+          const row = btn.closest('tr');
+          if (row) {
+            const actionsCell = row.querySelector('td:last-child');
+            if (actionsCell) {
+              const hideBtn = actionsCell.querySelector('.hide-btn');
+              const hideBtnHtml = hideBtn ? hideBtn.outerHTML : '';
+              actionsCell.innerHTML = '<span class="job-action-btn applied-btn">Applied \u2713</span>' + hideBtnHtml;
+            }
           }
         }
       }
@@ -7620,13 +7706,13 @@
       if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
       meta[jobId].stage = 'applied';
       if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-      // Detect resume from filter
+      // Store resume
+      if (resumeName) {
+        meta[jobId].resumeUsed = resumeName;
+      }
+      // Detect filter tags
       const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-      const res = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
-      // Try to find which filter matched this job
       const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
-      const matchedResume = res.find(r => r.filterIds?.some(f => checkedFilters.includes(f)));
-      if (matchedResume) meta[jobId].resumeUsed = matchedResume.name;
       meta[jobId].filterTags = checkedFilters;
       savePipelineMeta(meta);
       // Store applied date for legacy compat
@@ -7668,20 +7754,23 @@
     let _plActiveFilter = 'all';
     function filterPipeline(tag) {
       _plActiveFilter = tag;
-      $$('.pl-filter-pill').forEach(p => p.classList.toggle('active', p.dataset.plFilter === tag));
       renderPipeline();
     }
 
-    // Build filter tag pills
+    // Build filter dropdown options
     function buildPipelineFilterTags() {
       const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-      const tagsEl = $('#pl-filter-tags');
-      if (!tagsEl) return;
-      const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
-      tagsEl.innerHTML = sf.map((f, i) => {
-        const color = filterColors[i % filterColors.length];
-        return '<div class="pl-filter-pill" data-pl-filter="' + f.name + '" onclick="filterPipeline(\'' + f.name.replace(/'/g, "\\'") + '\')" style="border-color:' + color + '30;color:' + color + ';">' + f.name + '</div>';
-      }).join('');
+      const select = $('#pl-filter-select');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="all">All Filters</option>';
+      sf.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.name;
+        opt.textContent = f.name;
+        select.appendChild(opt);
+      });
+      select.value = currentVal || 'all';
     }
 
     // Main render
@@ -7843,6 +7932,9 @@
       $('#p-response').textContent = responseRate;
       const avgDays = respondedCount > 0 ? Math.round(totalDaysToResponse / respondedCount) + 'd' : '—';
       $('#p-avg-days').textContent = avgDays;
+
+      // Update nav dot
+      if (typeof updatePipelineNavDot === 'function') updatePipelineNavDot();
     }
 
     // Legacy compat: renderPipelineSaved calls renderPipeline
@@ -7864,6 +7956,75 @@
       if (diffDays === 1) return 'yesterday';
       if (diffDays < 7) return diffDays + 'd ago';
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // ============================================================
+    // RESUME PICKER ON APPLY
+    // ============================================================
+    let _rpCallback = null;
+    let _rpSelected = null;
+    let _rpJobId = null;
+
+    function showResumePicker(jobId, callback) {
+      _rpJobId = jobId;
+      _rpCallback = callback;
+      _rpSelected = null;
+
+      const resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+      const optionsEl = $('#rp-options');
+
+      if (resumes.length === 0) {
+        // No resumes uploaded — skip picker, go straight through
+        callback(null);
+        return;
+      }
+
+      // Try to pre-select: find resume assigned to checked filters
+      const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
+      const autoMatch = resumes.find(r => !r.archived && r.filterIds?.some(f => checkedFilters.includes(f)));
+      if (autoMatch) _rpSelected = autoMatch.name;
+
+      let html = '';
+      resumes.filter(r => !r.needsUpload && !r.archived).forEach(r => {
+        const sel = r.name === _rpSelected ? ' selected' : '';
+        const filterNames = (r.filterIds || []).join(', ');
+        const levelStr = r.levelLabel ? r.levelLabel + ' · ' : '';
+        const meta = [levelStr + r.fileName, r.size, filterNames ? 'Filters: ' + filterNames : ''].filter(Boolean).join(' · ');
+        html += `<div class="rp-option${sel}" data-rp-name="${r.name.replace(/"/g, '&quot;')}" onclick="selectResumePick(this)">
+          <div class="rp-radio"></div>
+          <div>
+            <div class="rp-name">${r.name}${r.levelLabel ? ' <span style="color:' + (r.levelColor || '#94a3b8') + ';font-size:10px;">' + r.levelLabel + '</span>' : ''}</div>
+            <div class="rp-meta">${meta}</div>
+          </div>
+        </div>`;
+      });
+
+      if (html === '') {
+        // All resumes are placeholders
+        callback(null);
+        return;
+      }
+
+      optionsEl.innerHTML = html;
+      $('#resume-picker-overlay').classList.add('open');
+    }
+
+    function selectResumePick(el) {
+      $$('#rp-options .rp-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      _rpSelected = el.dataset.rpName;
+    }
+
+    function confirmResumePick() {
+      closeResumePicker(false);
+      if (_rpCallback) _rpCallback(_rpSelected);
+    }
+
+    function closeResumePicker(skip) {
+      $('#resume-picker-overlay').classList.remove('open');
+      if (skip && _rpCallback) _rpCallback(null);
+      _rpCallback = null;
     }
 
     // Init pipeline
@@ -8065,40 +8226,153 @@
         ? JSON.parse(JSON.stringify(sf.levelHierarchy))
         : JSON.parse(JSON.stringify(levelHierarchy));
 
+      // Level assignments: which levels this filter targets
+      let assignedLevels = sf.assignedLevels ? [...sf.assignedLevels] : [];
+      let includeOther = sf.includeOtherLevels || false;
+
       // Build overlay
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
 
+      function getOtherFilterAssignments() {
+        const map = {};
+        savedFilters.forEach((f, i) => {
+          if (i === filterIdx || !f.assignedLevels) return;
+          f.assignedLevels.forEach(lbl => {
+            if (!map[lbl]) map[lbl] = [];
+            map[lbl].push({ name: f.name, idx: i });
+          });
+        });
+        return map;
+      }
+
       function renderModal() {
         const isCustom = !!sf.levelHierarchy;
+        const otherAssignments = getOtherFilterAssignments();
+        const hasAnyAssigned = assignedLevels.length > 0;
+
         overlay.innerHTML = `
-        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;">
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:580px;width:90%;max-height:85vh;overflow-y:auto;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div>
-              <div style="font-size:15px;font-weight:700;color:var(--text);">Level Hierarchy — ${sf.name}</div>
+              <div style="font-size:15px;font-weight:700;color:var(--text);">Levels — ${sf.name}</div>
               <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">
-                ${isCustom ? '<span style="color:var(--accent);font-weight:600;">Custom hierarchy</span> — different from default' : 'Using default hierarchy — customize to override'}
+                Select which seniority levels this filter targets
               </div>
             </div>
             <button id="fl-close" style="background:none;border:none;font-size:20px;color:var(--text-faint);cursor:pointer;padding:4px 8px;">✕</button>
           </div>
-          <table class="level-table">
-            <thead><tr>
-              <th style="width:36px;">#</th>
-              <th style="width:130px;">Level</th>
-              <th>Match Keywords</th>
-              <th style="width:40px;"></th>
-            </tr></thead>
-            <tbody id="fl-tbody"></tbody>
-          </table>
-          <div style="display:flex;gap:8px;margin-top:12px;">
-            <button id="fl-add" class="btn btn-sm" style="padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;">+ Add Level</button>
-            <button id="fl-reset" class="btn btn-sm" style="padding:4px 14px;font-size:11px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Reset to Default</button>
-            <div style="flex:1;"></div>
+
+          <!-- Level assignment section -->
+          <div style="margin-bottom:20px;">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-faint);margin-bottom:8px;">Assigned Levels</div>
+            <div id="fl-level-checks" style="display:flex;flex-direction:column;gap:4px;"></div>
+            ${hasAnyAssigned ? `
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:var(--bg-input);border-radius:6px;cursor:pointer;">
+              <input type="checkbox" id="fl-include-other" ${includeOther ? 'checked' : ''} style="accent-color:var(--accent);">
+              <span style="font-size:12px;color:var(--text-dim);">Include Other Levels</span>
+              <span style="font-size:10px;color:var(--text-faint);margin-left:auto;">Levels not assigned to any filter</span>
+            </label>` : `
+            <div style="padding:8px 12px;background:var(--bg-input);border-radius:6px;margin-top:8px;font-size:11px;color:var(--text-faint);">
+              No levels selected — this filter matches <strong>all levels</strong>
+            </div>`}
+          </div>
+
+          <!-- Hierarchy editor -->
+          <details style="margin-bottom:16px;">
+            <summary style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-faint);cursor:pointer;padding:4px 0;">
+              ${isCustom ? '⚙ Custom Hierarchy (click to edit)' : '⚙ Level Hierarchy (click to customize)'}
+            </summary>
+            <div style="margin-top:8px;">
+              <table class="level-table">
+                <thead><tr>
+                  <th style="width:36px;">#</th>
+                  <th style="width:130px;">Level</th>
+                  <th>Match Keywords</th>
+                  <th style="width:40px;"></th>
+                </tr></thead>
+                <tbody id="fl-tbody"></tbody>
+              </table>
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button id="fl-add" class="btn btn-sm" style="padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;">+ Add Level</button>
+                <button id="fl-reset" class="btn btn-sm" style="padding:4px 14px;font-size:11px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Reset to Default</button>
+              </div>
+            </div>
+          </details>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button id="fl-cancel" class="btn btn-sm" style="padding:6px 16px;font-size:12px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Cancel</button>
             <button id="fl-save" class="btn btn-sm btn-primary" style="padding:6px 20px;font-size:12px;">Save</button>
           </div>
         </div>`;
 
+        // Render level checkboxes
+        const checksEl = overlay.querySelector('#fl-level-checks');
+        filterLevels.forEach((lvl, i) => {
+          const isAssigned = assignedLevels.includes(lvl.label);
+          const otherFilter = otherAssignments[lvl.label];
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:6px;border:1px solid var(--border);' + (isAssigned ? 'background:var(--accent-glow);border-color:rgba(61,126,255,0.3);' : '');
+          row.innerHTML = `
+            <input type="checkbox" class="fl-level-cb" data-label="${(lvl.label||'').replace(/"/g,'&quot;')}" ${isAssigned ? 'checked' : ''} style="accent-color:var(--accent);">
+            <span style="width:10px;height:10px;border-radius:50%;background:${lvl.color || '#94a3b8'};flex-shrink:0;"></span>
+            <span style="font-size:13px;font-weight:500;color:var(--text);flex:1;">${lvl.label || 'Unnamed'}</span>
+            ${otherFilter ? `<span style="font-size:10px;color:var(--warm);font-weight:500;">${otherFilter.map(f=>f.name).join(', ')}</span>` : ''}
+          `;
+          checksEl.appendChild(row);
+        });
+
+        // Bind checkbox changes with overlap detection
+        checksEl.querySelectorAll('.fl-level-cb').forEach(cb => {
+          cb.addEventListener('change', () => {
+            const label = cb.dataset.label;
+            if (cb.checked) {
+              const otherFilter = otherAssignments[label];
+              if (otherFilter && otherFilter.length > 0) {
+                // Overlap detected — show resolution popup
+                showLevelOverlapPopup(label, otherFilter, (action) => {
+                  if (action === 'take') {
+                    // Remove from other filters
+                    otherFilter.forEach(f => {
+                      const other = savedFilters[f.idx];
+                      if (other && other.assignedLevels) {
+                        other.assignedLevels = other.assignedLevels.filter(l => l !== label);
+                      }
+                    });
+                    localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+                    assignedLevels.push(label);
+                  } else if (action === 'other') {
+                    // Remove from other filters, don't add to this one — it becomes "Other"
+                    otherFilter.forEach(f => {
+                      const other = savedFilters[f.idx];
+                      if (other && other.assignedLevels) {
+                        other.assignedLevels = other.assignedLevels.filter(l => l !== label);
+                      }
+                    });
+                    localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+                    cb.checked = false;
+                  } else {
+                    cb.checked = false; // cancelled
+                  }
+                  renderModal();
+                });
+                return;
+              }
+              assignedLevels.push(label);
+            } else {
+              assignedLevels = assignedLevels.filter(l => l !== label);
+            }
+            renderModal();
+          });
+        });
+
+        // Include Other toggle
+        const otherCb = overlay.querySelector('#fl-include-other');
+        if (otherCb) {
+          otherCb.addEventListener('change', () => { includeOther = otherCb.checked; });
+        }
+
+        // Render hierarchy table
         const tbody = overlay.querySelector('#fl-tbody');
         filterLevels.forEach((lvl, i) => {
           const tr = document.createElement('tr');
@@ -8111,7 +8385,6 @@
           tbody.appendChild(tr);
         });
 
-        // Bind inputs
         tbody.querySelectorAll('input').forEach(inp => {
           inp.addEventListener('change', () => {
             filterLevels[parseInt(inp.dataset.i)][inp.dataset.f] = inp.value.trim();
@@ -8119,12 +8392,15 @@
         });
         tbody.querySelectorAll('.level-del').forEach(btn => {
           btn.addEventListener('click', () => {
+            const lbl = filterLevels[parseInt(btn.dataset.i)].label;
             filterLevels.splice(parseInt(btn.dataset.i), 1);
+            assignedLevels = assignedLevels.filter(l => l !== lbl);
             renderModal();
           });
         });
 
         overlay.querySelector('#fl-close').addEventListener('click', () => overlay.remove());
+        overlay.querySelector('#fl-cancel').addEventListener('click', () => overlay.remove());
         overlay.querySelector('#fl-add').addEventListener('click', () => {
           filterLevels.push({ label: '', keywords: '', color: '#94a3b8' });
           renderModal();
@@ -8137,8 +8413,11 @@
         });
         overlay.querySelector('#fl-save').addEventListener('click', () => {
           savedFilters[filterIdx].levelHierarchy = JSON.parse(JSON.stringify(filterLevels));
+          savedFilters[filterIdx].assignedLevels = assignedLevels.length > 0 ? [...assignedLevels] : undefined;
+          savedFilters[filterIdx].includeOtherLevels = assignedLevels.length > 0 ? includeOther : undefined;
           localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
           overlay.remove();
+          renderSavedFilters();
           debouncedSearchJobs();
         });
       }
@@ -8147,6 +8426,35 @@
       overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
       document.body.appendChild(overlay);
     };
+
+    // Level overlap resolution popup
+    function showLevelOverlapPopup(levelLabel, otherFilters, callback) {
+      const names = otherFilters.map(f => f.name).join(' & ');
+      const popup = document.createElement('div');
+      popup.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;';
+      popup.innerHTML = `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:400px;width:90%;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">Level Overlap</div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;">
+            <strong style="color:var(--warm);">${levelLabel}</strong> is already assigned to <strong>${names}</strong>. What would you like to do?
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button id="lo-take" style="padding:10px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent-glow);color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;text-align:left;">
+              Assign to this filter<br><span style="font-weight:400;font-size:10px;color:var(--text-faint);">Remove from ${names}</span>
+            </button>
+            <button id="lo-other" style="padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;text-align:left;">
+              Move to Other Levels<br><span style="font-weight:400;font-size:10px;color:var(--text-faint);">Unassign from ${names}, available as "Other"</span>
+            </button>
+            <button id="lo-cancel" style="padding:8px 16px;border:none;background:none;color:var(--text-faint);font-size:11px;cursor:pointer;">Cancel</button>
+          </div>
+        </div>`;
+      popup.querySelector('#lo-take').addEventListener('click', () => { popup.remove(); callback('take'); });
+      popup.querySelector('#lo-other').addEventListener('click', () => { popup.remove(); callback('other'); });
+      popup.querySelector('#lo-cancel').addEventListener('click', () => { popup.remove(); callback('cancel'); });
+      popup.addEventListener('click', e => { if (e.target === popup) { popup.remove(); callback('cancel'); } });
+      document.body.appendChild(popup);
+    }
+
 
     // Render tuning pills
     function renderTuningPills() {
@@ -8914,21 +9222,26 @@
     function renderResumes() {
       const grid = $('#resume-grid');
       const countEl = $('#r-total');
-      const defaultEl = $('#r-default');
+      const levelsEl = $('#r-levels');
       const assignedEl = $('#r-assigned');
+      const archivedEl = $('#r-archived');
 
-      countEl.textContent = resumes.length;
+      const activeResumes = resumes.filter(r => !r.archived);
+      const archivedResumes = resumes.filter(r => r.archived);
+      countEl.textContent = activeResumes.length;
+      archivedEl.textContent = archivedResumes.length;
 
-      const defaultResume = resumes.find(r => r.isDefault);
-      defaultEl.textContent = defaultResume ? defaultResume.name.slice(0, 20) : '—';
+      // Level count
+      const uniqueLevels = new Set(activeResumes.map(r => r.levelLabel).filter(Boolean));
+      levelsEl.textContent = uniqueLevels.size;
 
       // Count filters assigned
-      const totalAssigned = resumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
+      const totalAssigned = activeResumes.reduce((sum, r) => sum + (r.filterIds || []).length, 0);
       assignedEl.textContent = totalAssigned;
 
-      // Coverage check — which saved filters have at least one resume assigned?
+      // Coverage check
       const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-      const allAssignedFilterNames = new Set(resumes.flatMap(r => r.filterIds || []));
+      const allAssignedFilterNames = new Set(activeResumes.flatMap(r => r.filterIds || []));
       const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
       const coverageEl = $('#r-coverage');
       const coverageAlert = $('#resume-coverage-alert');
@@ -8941,70 +9254,193 @@
         coverageEl.textContent = '—';
       }
 
-      if (unassignedFilters.length > 0 && resumes.length > 0) {
+      if (unassignedFilters.length > 0 && activeResumes.length > 0) {
         coverageAlert.style.display = '';
         $('#resume-unassigned-list').textContent = unassignedFilters.map(f => f.name).join(', ');
       } else {
         coverageAlert.style.display = 'none';
       }
 
-      if (resumes.length === 0) {
+      // Update nav dots
+      updateResumeNavDot();
+
+      if (activeResumes.length === 0) {
         grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
           <h3>No resumes uploaded</h3>
           <p>Upload your first resume, or click "Create by Level" to scaffold resumes for each seniority level.</p>
         </div>`;
+        renderResumeArchive(archivedResumes);
         return;
       }
 
-      // Get saved filters for assignment
+      // Get saved filters and tuning levels
       const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
 
-      grid.innerHTML = resumes.map((r, i) => {
+      grid.innerHTML = activeResumes.map((r, _ai) => {
+        const i = resumes.indexOf(r);
         const icon = getFileIcon(r.fileName);
         const assignedIds = r.filterIds || [];
+        const isPlaceholder = r.needsUpload;
 
-        // Build filter pills — each saved filter as a toggleable pill
+        // Level selector
+        const levelOpts = levels.map(l => {
+          const sel = r.levelLabel === l.label ? ' selected' : '';
+          return `<option value="${l.label}" data-color="${l.color || '#94a3b8'}"${sel}>${l.label}</option>`;
+        }).join('');
+        const levelSelect = `<select class="pl-move-select" onchange="setResumeLevel(${i}, this)" style="min-width:100px;">
+          <option value="">— Level —</option>
+          ${levelOpts}
+        </select>`;
+
+        // Level badge (if already set)
+        const levelBadge = r.levelLabel
+          ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.levelColor || '#94a3b8'}20;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
+          : '';
+
+        const gdriveIcon = r.source === 'gdrive'
+          ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
+          : '';
+
+        // Filter pills
         const filterPills = sf.length > 0
           ? sf.map((f, fi) => {
               const color = filterColors[fi % filterColors.length];
               const isActive = assignedIds.includes(f.name);
               return `<span class="rc-filter-pill ${isActive ? 'active' : 'inactive'}"
                 style="background:${color}${isActive ? '22' : '10'};color:${color};border:1px solid ${color}${isActive ? '44' : '15'};"
-                data-resume="${i}" data-filter="${f.name}" onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\'")}')"
+                data-resume="${i}" data-filter="${f.name}" onclick="toggleResumeFilter(${i}, '${f.name.replace(/'/g, "\\\\'")}')"
                 title="Click to ${isActive ? 'unassign' : 'assign'}">${f.name}</span>`;
             }).join('')
           : '<span style="font-size:11px;color:var(--text-faint);font-style:italic;">Save a filter first to assign</span>';
 
-        const isPlaceholder = r.needsUpload;
-        const levelBadge = r.levelLabel
-          ? `<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:${r.levelColor || '#94a3b8'}20;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
-          : '';
-        const gdriveIcon = r.source === 'gdrive'
-          ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
+        // Performance stats
+        const meta = getPipelineMeta();
+        const jobsApplied = Object.values(meta).filter(m => m.resumeUsed === r.name && m.stage !== 'saved').length;
+        const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
+        const responseRate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) : 0;
+        const statsLine = jobsApplied > 0
+          ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">${jobsApplied} applied · ${responded} responded · ${responseRate}% rate</div>`
           : '';
 
         return `
-        <div class="resume-card ${r.isDefault ? 'is-default' : ''} ${isPlaceholder ? 'is-placeholder' : ''}">
-          ${r.isDefault ? '<div class="rc-default-badge">★ Default</div>' : ''}
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-            <div style="display:flex;gap:4px;">${levelBadge}${gdriveIcon}</div>
+            <div style="display:flex;gap:4px;align-items:center;">${levelBadge}${gdriveIcon}</div>
           </div>
           <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
           <div class="rc-meta">${isPlaceholder ? r.fileName : `${r.fileName} · ${r.size} · ${r.uploadedAt}`}</div>
-          ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:8px;">⏳ Extracting keywords…</div>' : ''}
-          ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:8px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view extracted keywords">✓ ${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">▸</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:10px;max-height:100px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:4px;">${r.keywords.slice(0, 25).map(([t,c]) => `<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
-          ${!isPlaceholder && r.textStatus === 'no-text' ? '<div style="font-size:10px;color:var(--text-faint);margin-bottom:8px;">No text extracted — re-upload to retry</div>' : ''}
-          ${isPlaceholder ? `<div style="margin:10px 0;padding:10px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">⬆ Upload File</div><div style="font-size:10px;color:var(--text-faint);">Click to replace placeholder with actual resume</div></div>` : ''}
+          ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords…</div>' : ''}
+          ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">▸</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:3px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:8px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+          ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
+          <div style="margin:8px 0;">${levelSelect}</div>
           <div class="rc-filters-label">Assigned Filters</div>
           <div class="rc-filter-list">${filterPills}</div>
+          ${statsLine}
           <div class="rc-actions">
-            ${!r.isDefault ? `<button class="btn btn-secondary btn-sm" onclick="setDefaultResume(${i})" style="font-size:10px;padding:3px 10px;">Set Default</button>` : '<button class="btn btn-sm" style="font-size:10px;padding:3px 10px;background:var(--accent-glow);color:var(--accent);border:1px solid var(--accent);cursor:default;" disabled>★ Default</button>'}
             <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:10px;padding:3px 10px;">Rename</button>
-            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Remove</button>
+            <button class="btn btn-secondary btn-sm" onclick="archiveResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--warm);">Archive</button>
+            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Delete</button>
           </div>
         </div>`;
       }).join('');
+
+      renderResumeArchive(archivedResumes);
+    }
+
+    function renderResumeArchive(archivedResumes) {
+      const section = $('#resume-archive-section');
+      const listEl = $('#resume-archive-list');
+      const labelEl = $('#archive-count-label');
+      if (!section) return;
+
+      if (archivedResumes.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = '';
+      labelEl.textContent = archivedResumes.length + ' archived';
+
+      listEl.innerHTML = archivedResumes.map(r => {
+        const i = resumes.indexOf(r);
+        const meta = getPipelineMeta();
+        const jobsApplied = Object.values(meta).filter(m => m.resumeUsed === r.name).length;
+        const responded = Object.values(meta).filter(m => m.resumeUsed === r.name && ['responded','interview','offer'].includes(m.stage)).length;
+        const rate = jobsApplied > 0 ? Math.round((responded / jobsApplied) * 100) + '%' : '—';
+        const levelBadge = r.levelLabel
+          ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:3px;background:${r.levelColor || '#94a3b8'}15;color:${r.levelColor || '#94a3b8'};">${r.levelLabel}</span>`
+          : '';
+        const filters = (r.filterIds || []).join(', ') || 'None';
+
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--bg-input);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:600;color:var(--text-dim);">${r.name} ${levelBadge}</div>
+            <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'} · Filters: ${filters}</div>
+          </div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
+          <button class="btn btn-secondary btn-sm" onclick="unarchiveResume(${i})" style="font-size:9px;padding:2px 8px;">Restore</button>
+          <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:9px;padding:2px 8px;color:var(--red);">Delete</button>
+        </div>`;
+      }).join('');
+    }
+
+    // Nav dot updates
+    function updateResumeNavDot() {
+      const dot = $('#resume-status-dot');
+      if (!dot) return;
+      const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+      const activeResumes = resumes.filter(r => !r.archived);
+      const allAssignedFilterNames = new Set(activeResumes.flatMap(r => r.filterIds || []));
+
+      if (activeResumes.length === 0 || sf.length === 0 || allAssignedFilterNames.size === 0) {
+        // Red: no resumes or no filters associated
+        dot.className = 'ext-status-dot stale';
+        dot.title = 'No resumes assigned to filters';
+      } else if (sf.every(f => allAssignedFilterNames.has(f.name))) {
+        // Green: every filter has a resume
+        dot.className = 'ext-status-dot connected';
+        dot.title = 'All filters have resumes assigned';
+      } else {
+        // Yellow: some filters without resumes
+        dot.className = 'ext-status-dot warning';
+        dot.title = 'Some filters missing resumes';
+      }
+    }
+
+    function updatePipelineNavDot() {
+      const dot = $('#pipeline-status-dot');
+      if (!dot) return;
+      const meta = getPipelineMeta();
+      const entries = Object.values(meta);
+      if (entries.length === 0) {
+        dot.className = 'ext-status-dot';
+        dot.title = 'No jobs tracked';
+        return;
+      }
+      // Find most recent update (any stage change timestamp)
+      let latestUpdate = 0;
+      for (const m of entries) {
+        for (const key of ['savedAt','appliedAt','respondedAt','interviewAt','offerAt','rejectedAt']) {
+          if (m[key]) {
+            const d = new Date(m[key]).getTime();
+            if (d > latestUpdate) latestUpdate = d;
+          }
+        }
+      }
+      const now = Date.now();
+      const daysSince = latestUpdate ? Math.floor((now - latestUpdate) / 86400000) : 999;
+      if (daysSince <= 7) {
+        dot.className = 'ext-status-dot connected';
+        dot.title = `Pipeline updated ${daysSince === 0 ? 'today' : daysSince + 'd ago'}`;
+      } else if (daysSince <= 14) {
+        dot.className = 'ext-status-dot warning';
+        dot.title = `Pipeline not updated in ${daysSince} days`;
+      } else {
+        dot.className = 'ext-status-dot stale';
+        dot.title = `Pipeline stale — ${daysSince} days since last update`;
+      }
     }
 
     window.toggleResumeFilter = function(resumeIdx, filterName) {
@@ -9016,6 +9452,31 @@
       } else {
         r.filterIds.push(filterName);
       }
+      saveResumes();
+      renderResumes();
+    };
+
+    window.setResumeLevel = function(idx, selectEl) {
+      const val = selectEl.value;
+      const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []);
+      const lvl = levels.find(l => l.label === val);
+      resumes[idx].levelLabel = val || '';
+      resumes[idx].levelColor = lvl?.color || '#94a3b8';
+      saveResumes();
+      renderResumes();
+    };
+
+    window.archiveResume = function(idx) {
+      if (!confirm(`Archive "${resumes[idx].name}"? It will be moved to the archive section.`)) return;
+      resumes[idx].archived = true;
+      resumes[idx].archivedAt = new Date().toLocaleDateString();
+      saveResumes();
+      renderResumes();
+    };
+
+    window.unarchiveResume = function(idx) {
+      resumes[idx].archived = false;
+      delete resumes[idx].archivedAt;
       saveResumes();
       renderResumes();
     };
@@ -9045,11 +9506,8 @@
       if (/\.pdf$/i.test(file.name)) {
         return await extractTextFromPDF(file);
       }
-      // For .doc/.docx — basic fallback: read as text (won't work for binary .doc, but handles some cases)
-      // Full DOCX parsing would need mammoth.js — defer to future enhancement
       try {
         const text = await file.text();
-        // If it looks like XML/binary, skip
         if (text.startsWith('PK') || text.includes('<?xml')) return '';
         return text.trim();
       } catch (e) {
@@ -9066,11 +9524,7 @@
           counts[w] = (counts[w] || 0) + 1;
         }
       }
-      // Return terms that appear 2+ times, sorted by frequency
-      return Object.entries(counts)
-        .filter(([, c]) => c >= 2)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 50);
+      return Object.entries(counts).filter(([_, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 50);
     }
 
     function addResume(file) {
@@ -9083,9 +9537,11 @@
         name: file.name.replace(/\.(pdf|docx?|doc)$/i, ''),
         fileName: file.name,
         size: sizeStr,
-        isDefault: resumes.length === 0,
         filterIds: [],
         uploadedAt: new Date().toLocaleDateString(),
+        levelLabel: '',
+        levelColor: '',
+        archived: false,
         extractedText: '',
         keywords: [],
         textStatus: 'extracting'
@@ -9094,24 +9550,16 @@
       saveResumes();
       renderResumes();
 
-      // Extract text in background
       extractTextFromFile(file).then(text => {
         const idx = resumes.findIndex(r => r.id === id);
         if (idx < 0) return;
         resumes[idx].extractedText = text;
         resumes[idx].keywords = extractResumeKeywords(text);
         resumes[idx].textStatus = text ? 'ready' : 'no-text';
-        console.log(`[BJ] Resume text extracted: ${text.length} chars, ${resumes[idx].keywords.length} keywords`);
         saveResumes();
         renderResumes();
       });
     }
-
-    window.setDefaultResume = function(idx) {
-      resumes.forEach((r, i) => r.isDefault = (i === idx));
-      saveResumes();
-      renderResumes();
-    };
 
     window.toggleResumeKeywords = function(idx) {
       const el = document.getElementById(`rc-kw-${idx}`);
@@ -9128,10 +9576,8 @@
     };
 
     window.removeResume = function(idx) {
-      if (!confirm(`Remove "${resumes[idx].name}"?`)) return;
-      const wasDefault = resumes[idx].isDefault;
+      if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
       resumes.splice(idx, 1);
-      if (wasDefault && resumes.length > 0) resumes[0].isDefault = true;
       saveResumes();
       renderResumes();
     };
@@ -9149,12 +9595,13 @@
         resumes[idx].fileName = file.name;
         resumes[idx].size = sizeStr;
         resumes[idx].needsUpload = false;
-        resumes[idx].uploadedAt = new Date().toLocaleDateString();
+        resumes[idx].source = 'upload';
         resumes[idx].textStatus = 'extracting';
         saveResumes();
         renderResumes();
-        // Extract text
+
         extractTextFromFile(file).then(text => {
+          if (!resumes[idx]) return;
           resumes[idx].extractedText = text;
           resumes[idx].keywords = extractResumeKeywords(text);
           resumes[idx].textStatus = text ? 'ready' : 'no-text';
@@ -9165,23 +9612,25 @@
       tmpInput.click();
     };
 
-    // Upload zone
-    const uploadZone = $('#resume-upload-zone');
-    const fileInput = $('#resume-file-input');
-    uploadZone.addEventListener('click', () => fileInput.click());
-    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.style.borderColor = 'var(--accent)'; });
-    uploadZone.addEventListener('dragleave', () => { uploadZone.style.borderColor = ''; });
-    uploadZone.addEventListener('drop', e => {
-      e.preventDefault();
-      uploadZone.style.borderColor = '';
-      [...e.dataTransfer.files].forEach(f => {
-        if (/\.(pdf|docx?|doc)$/i.test(f.name)) addResume(f);
+    // Resume file input handler
+    const resumeInput = $('#resume-file-input');
+    const resumeZone = $('#resume-upload-zone');
+    if (resumeZone) {
+      resumeZone.addEventListener('click', () => resumeInput.click());
+      resumeZone.addEventListener('dragover', e => { e.preventDefault(); resumeZone.style.borderColor = 'var(--accent)'; });
+      resumeZone.addEventListener('dragleave', () => { resumeZone.style.borderColor = ''; });
+      resumeZone.addEventListener('drop', e => {
+        e.preventDefault();
+        resumeZone.style.borderColor = '';
+        Array.from(e.dataTransfer.files).forEach(f => addResume(f));
       });
-    });
-    fileInput.addEventListener('change', () => {
-      [...fileInput.files].forEach(f => addResume(f));
-      fileInput.value = '';
-    });
+    }
+    if (resumeInput) {
+      resumeInput.addEventListener('change', () => {
+        Array.from(resumeInput.files).forEach(f => addResume(f));
+        resumeInput.value = '';
+      });
+    }
 
     renderResumes();
 
@@ -9193,7 +9642,7 @@
         return;
       }
 
-      const existingNames = resumes.map(r => r.name.toLowerCase());
+      const existingNames = resumes.filter(r => !r.archived).map(r => r.name.toLowerCase());
       const newLevels = levels.filter(l => l.label && !existingNames.includes(l.label.toLowerCase() + ' resume'));
 
       if (newLevels.length === 0) {
@@ -9209,18 +9658,22 @@
           name: lvl.label + ' Resume',
           fileName: 'Upload your ' + lvl.label.toLowerCase() + '-level resume',
           size: '—',
-          isDefault: resumes.length === 0 && i === 0,
           filterIds: [],
           uploadedAt: new Date().toLocaleDateString(),
           source: 'level-placeholder',
           levelLabel: lvl.label,
           levelColor: lvl.color || '#94a3b8',
           needsUpload: true,
+          archived: false,
         });
       });
       saveResumes();
       renderResumes();
     });
+
+    // Init nav dots
+    setTimeout(() => { updatePipelineNavDot(); }, 1200);
+
 
     // ============================================================
     // GOOGLE DRIVE INTEGRATION
@@ -9315,10 +9768,11 @@
         name: f.name.replace(/\.(gdoc|pdf|docx?)$/i, ''),
         fileName: f.name,
         size: 'Google Doc',
-        isDefault: resumes.length === 0,
         filterIds: [],
         uploadedAt: new Date().toLocaleDateString(),
         source: 'gdrive',
+        archived: false,
+        levelLabel: '',
         gdriveUrl: f.url,
         gdriveId: f.id
       };
@@ -9469,14 +9923,14 @@
       if (!company) return;
       const url = prompt('Application URL (optional):') || '';
 
-      const defaultResume = resumes.find(r => r.isDefault);
+      const firstResume = resumes.find(r => !r.archived && !r.needsUpload);
       appQueue.push({
         id: 'app_' + Date.now(),
         jobTitle: title,
         company: company,
         url: url,
-        resumeName: defaultResume ? defaultResume.name : '',
-        resumeId: defaultResume ? defaultResume.id : '',
+        resumeName: firstResume ? firstResume.name : '',
+        resumeId: firstResume ? firstResume.id : '',
         mode: appMode,
         status: appMode === 'auto' ? 'queued' : (appMode === 'notify' ? 'pending' : 'queued'),
         addedAt: new Date().toLocaleDateString(),
