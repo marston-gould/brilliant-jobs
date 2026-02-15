@@ -10,16 +10,16 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0c0e13;
-      --bg-card: #13151c;
-      --bg-card-hover: #181b24;
-      --border: #1e2130;
-      --border-hover: #2a2e42;
+      --bg: #1a3a6e;
+      --bg-card: #1f4580;
+      --bg-card-hover: #254e8f;
+      --border: rgba(255,255,255,0.12);
+      --border-hover: rgba(255,255,255,0.2);
       --text: #e2e4ea;
       --text-dim: #9ba1b4;
       --text-faint: #5c6278;
-      --accent: #4d8eff;
-      --accent-glow: rgba(77,142,255,0.08);
+      --accent: #6da3ff;
+      --accent-glow: rgba(109,163,255,0.15);
       --green: #34d399;
       --green-dim: rgba(52,211,153,0.1);
       --green-bg: rgba(52,211,153,0.06);
@@ -290,6 +290,11 @@ const features = [
   { s: 'done', n: 'Password reset via email', d: 'Supabase resetPasswordForEmail integration', p: 1 },
   { s: 'done', n: 'Row-Level Security on all tables', d: 'Users can only access their own data, temp anon policies removed', p: 1 },
   { s: 'done', n: 'End-to-end auth flow tested', d: 'Signup → approval → login → dashboard verified', p: 1 },
+  { s: 'done', n: 'Supabase key rotation', d: 'Rotated anon key updated across index.html, uninstall.html, survey.html', p: 1 },
+  { s: 'done', n: 'Signup trigger fix (approved boolean)', d: 'handle_new_user() trigger fixed — was referencing non-existent status column, now uses approved boolean', p: 1 },
+  { s: 'done', n: 'Edge Function: validate-signup', d: 'LinkedIn URL validation with test profile bypass (testprofile1-3), uniqueness check with masked email hint, JSONB audit trail in validation_result', p: 1 },
+  { s: 'done', n: 'Resend SMTP configuration', d: 'Custom SMTP via smtp.resend.com port 587, DKIM verified, rate limit 30/hr. Sender: noreply@brilliantjobs.app', p: 1 },
+  { s: 'done', n: 'LinkedIn URL uniqueness constraint', d: 'Unique index on profiles.linkedin_url prevents duplicate registrations', p: 1 },
 
   // Phase 2 — Core Platform
   { s: 'done', n: 'Connection harvesting from LinkedIn', d: 'Infinite scroll + Load More button detection, batch upsert to Supabase', p: 2 },
@@ -427,17 +432,17 @@ const features = [
   { s: 'todo', n: 'CAPTCHA auto-stop', d: 'Detect warning signals and halt scanning immediately', p: 2.5 },
 
   // Phase 3 — Go-to-Market
-  { s: 'todo', n: 'Landing / marketing page', d: 'Public-facing page on brilliantjobs.app explaining the product', p: 3 },
+  { s: 'done', n: 'Landing / marketing page', d: 'Full landing page at brilliantjobs.app: navy blue hero, feature cards (Application Tracking, Resume Management, Visual Pipeline, Resume vs JD Match), How It Works, pricing (free forever or upgrade to pay-when-hired), signup modal with LinkedIn validation. Safari compatible.', p: 3 },
   { s: 'done', n: '404 page', d: 'Branded not-found page with flickering lightbulb, glitch animation, and navigation back to dashboard', p: 3 },
   { s: 'done', n: 'Service unavailable fallback', d: '503 page with coffee break theme, auto-retry countdown, rotating jokes, Supabase status link', p: 3 },
   { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', p: 3 },
-  { s: 'done', n: 'Terms of service and privacy policy', d: 'Legal pages at /terms and /privacy with brand-consistent dark theme, humor throughout, no LinkedIn references, Savannah/GA governing law. Deployed via cleanUrls on Vercel.', p: 3 },
-  { s: 'progress', n: 'Email setup (support@brilliantjobs.app)', d: 'Resend for transactional sending (domain added, DNS records set). Cloudflare for inbound routing to Gmail. Nameserver propagation pending. Branded HTML email templates built (welcome, resume received, application confirmed, survey nudge) stored in email_templates table with versioning and merge fields.', p: 3 },
+  { s: 'done', n: 'Terms of service and privacy policy', d: 'Legal pages at /terms and /privacy with navy blue (#1a3a6e) theme matching dashboard sidebar. Humor throughout, no LinkedIn references, Savannah/GA governing law. All secondary pages (survey, uninstall) also rebranded to navy blue.', p: 3 },
+  { s: 'done', n: 'Email setup (support@brilliantjobs.app)', d: 'Resend SMTP configured (port 587, DKIM verified, 30/hr rate limit). Sender: noreply@brilliantjobs.app. Cloudflare inbound routing to Gmail. Branded HTML email templates built (welcome, resume received, application confirmed, survey nudge) stored in email_templates table.', p: 3 },
   { s: 'done', n: 'Uninstall win-back page', d: 'Chrome uninstall_url opens /uninstall — 9 reason buttons with contextual prompts, "I got hired" confetti celebration, win-back offer for cost/value/bug churners (downgrade or free Pro). Links to exit survey. Stores to unified feedback table.', p: 3 },
   { s: 'todo', n: 'Landing page survey data integration', d: 'Surface key survey stats on marketing page as social proof — "73% report being ghosted", "Avg 47 apps before first interview". Auto-updates from latest published survey results. Replaces vanity metrics with credible, original data.', p: 3 },
 
   // Phase 4 — User Management
-  { s: 'todo', n: 'Automated user approval', d: 'Edge Function validates LinkedIn URL and auto-approves signups', p: 4 },
+  { s: 'done', n: 'Automated user approval', d: 'Edge Function validate-signup: LinkedIn URL validation with test profile bypass (testprofile1-3), uniqueness check, JSONB audit trail. Auto-approves valid signups, sets approved=true + approved_at.', p: 4 },
   { s: 'todo', n: 'Competitor employer blocklist', d: 'Block signups from users currently or previously employed at competitors and adjacent companies: Indeed, ZipRecruiter, LinkedIn, Glassdoor, Greenhouse, Lever, Workable, Ashby, iCIMS, Workday, SmartRecruiters, Jobvite, Handshake, Hired, Wellfound, The Muse, Dice, Monster, CareerBuilder, Ladders, DataForSEO, TheirStack. Cross-reference LinkedIn profile employer history during approval. Maintain admin-editable blocklist.', p: 4 },
   { s: 'todo', n: 'DataForSEO profile verification', d: 'Cross-reference signup LinkedIn URL against DataForSEO for legitimacy', p: 4 },
   { s: 'todo', n: 'Two-factor authentication', d: 'TOTP-based 2FA for account security', p: 4 },
@@ -456,6 +461,8 @@ const features = [
   { s: 'todo', n: 'Application source branding', d: 'Ensure Brilliant Jobs attribution visible to hiring teams — UTM params on ATS links, "How did you hear about us?" auto-fill. Organic employer awareness as candidates apply.', p: 5 },
 
   // Phase 6 — Resumes & Applications
+  { s: 'todo', n: 'Resume Supabase persistence', d: 'Migrate from localStorage to Supabase. Storage bucket for PDF/DOCX files. resumes table (id, user_id, name, file_path, size, is_default). resume_filter_assignments table. Real upload/download/preview.', p: 6 },
+  { s: 'todo', n: 'Resume vs JD side-by-side comparison', d: 'Split view: resume content left, job description right. Highlight matching keywords, missing skills, salary alignment.', p: 6 },
   { s: 'todo', n: 'Resume keyword extraction', d: 'Parse resume + LinkedIn profile for titles, skills, industries → pills', p: 6 },
   { s: 'todo', n: 'Resume-to-job match scoring', d: 'Keyword overlap analysis → High/Med/Low match badge per job', p: 6 },
   { s: 'todo', n: 'Auto-apply mode', d: 'Jobs matching saved filters + resume → auto-submit via ATS form fill', p: 6 },
@@ -530,6 +537,7 @@ const features = [
   // ── Cross-source ──
   { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across all sources', p: 9 },
   { s: 'todo', n: 'ATS endpoint probing', d: 'When company names discovered from non-ATS sources, probe GH/LV/WK/ASH to discover which ATS they use', p: 9 },
+  { s: 'todo', n: 'Multi-ATS board validation script', d: 'Test all ats_companies slugs against Greenhouse, Lever, Ashby, and Workable APIs. 200=active, 404=skip. Tag each company with confirmed ATS source.', p: 9 },
   { s: 'todo', n: 'DataForSEO outbound link harvesting', d: 'Mine LinkedIn/Indeed company pages for ATS board URLs at scale', p: 9 },
   { s: 'todo', n: 'Regional job aggregation', d: 'Group locations into metro areas (NYC, Bay Area, Chicago) using Census CSA/MSA data', p: 9 },
   { s: 'todo', n: 'Source attribution in feed', d: 'Show GH/LV/WK/ASH/IND badge per job row — already have pill CSS ready', p: 9 },
@@ -614,15 +622,18 @@ const features = [
 
   // Phase 16 — Data Hardening & Operations
   { s: 'done', n: 'Drop CASCADE-capable FK constraints', d: 'Removed ats_jobs_company_slug_fkey, job_locations_greenhouse_id_fkey, ats_companies_ref_company_id_fkey. Use soft references instead.', p: 16 },
+  { s: 'done', n: 'PDL company enrichment', d: '13,629 companies matched from free_company_dataset.json. ref_companies table loaded. 1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url.', p: 16 },
   { s: 'done', n: 'Dashboard v2.27 UI fixes', d: 'Killed NEW badge (subtle row bg instead), level badge contrast fix, saved filter lowercase, 1D/7D/30D sticky headers, US-only skip location nag on save.', p: 16 },
   { s: 'todo', n: 'Automated daily pg_dump', d: 'Scheduled backup of ats_jobs, ats_companies, connections, profiles to local or S3. Verify Supabase Pro daily backups.', p: 16 },
   { s: 'todo', n: 'Pre-migration backup script', d: 'Mandatory backup before any schema change — dump affected tables, verify row counts, create restore point.', p: 16 },
   { s: 'todo', n: 'TRUNCATE protection triggers', d: 'Add _protected flag on core tables that blocks TRUNCATE via event trigger. Require explicit override.', p: 16 },
   { s: 'todo', n: 'FK dependency graph documentation', d: 'Document all table relationships, cascade paths, and soft references. Review before any migration.', p: 16 },
   { s: 'todo', n: 'Geocode remaining 95K jobs', d: '~95K jobs missing lat/lng — only 20K covered by ref_city_radius. Need broader geocoding (Google/Nominatim) or expanded ref table.', p: 16 },
-  { s: 'todo', n: 'Location normalization v2', d: 'Fix remaining edge cases: state abbreviation inconsistencies, Usa- prefixes, bare city names without state. Rewrite normalizer for better coverage.', p: 16 },
-  { s: 'todo', n: 'Salary re-enrichment', d: 'All salary data lost in recovery. Background re-fetch job content and parse salary_min/max/currency/rate for all 116K jobs.', p: 16 },
+  { s: 'todo', n: 'Location normalization v2', d: 'Standardize to "City, ST" format. Fix: "new york new york" → "New York, NY", "palo alto + 3" → "Palo Alto, CA +3". State abbreviation inconsistencies, Usa- prefixes, bare city names. Build ref_locations mapping table.', p: 16 },
+  { s: 'done', n: 'Salary re-enrichment', d: 'Server-side SQL re-parse: HTML-encoded pay-range spans (10,922), plain text ranges with hyphens/em dashes/and/to (540), rate detection (hr/day/wk/mo/yr). 23,042 jobs now have salary (was 12,120). 72.4% of salary-mentioning jobs parsed.', p: 16 },
   { s: 'todo', n: 'Dashboard code audit', d: 'Consolidate 9K-line single-file dashboard into modules. Profile dead code, memory leaks, unnecessary re-renders. Audit Supabase queries for payload size and timeout risk.', p: 16 },
+  { s: 'todo', n: 'Enrich remaining ~555 unmatched companies', d: 'Companies not in PDL free dataset — try Greenhouse API board metadata, LinkedIn scrape, or paid PDL API', p: 16 },
+  { s: 'todo', n: 'Catch remaining unparsed salary formats', d: '~8K jobs mention salary but not yet captured. Edge cases: missing $ on max, K notation, single salary values, non-standard separators.', p: 16 },
 ];
 
 function phaseLabel(p) {
