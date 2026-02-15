@@ -231,6 +231,23 @@
       padding-bottom: 0;
     }
 
+    /* Phase groups within sections */
+    .phase-group { margin-bottom: 2px; }
+    .phase-group-header {
+      display: flex; align-items: center; gap: 8px; padding: 6px 12px;
+      cursor: pointer; border-radius: 6px; transition: background 0.15s;
+      user-select: none;
+    }
+    .phase-group-header:hover { background: rgba(255,255,255,0.03); }
+    .phase-group-chevron {
+      font-size: 10px; transition: transform 0.2s; color: var(--text-faint);
+    }
+    .phase-group.pg-collapsed .phase-group-chevron { transform: rotate(-90deg); }
+    .phase-group-label { font-size: 12px; font-weight: 600; }
+    .phase-group-count { font-size: 10px; color: var(--text-faint); font-family: 'JetBrains Mono', monospace; }
+    .phase-group-body { overflow: hidden; }
+    .phase-group.pg-collapsed .phase-group-body { max-height: 0 !important; overflow: hidden; opacity: 0; }
+
     /* Footer */
     .footer {
       margin-top: 60px; padding-top: 32px; border-top: 1px solid var(--border);
@@ -453,6 +470,9 @@ const features = [
   { s: 'todo', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates.', p: 4 },
   { s: 'done', n: 'Per-filter ngram extraction', d: 'Keyword extraction engine: strips HTML from job descriptions, tokenizes, generates 1/2/3-grams with per-job dedup (counts each term once per JD, not per occurrence). Comprehensive stopword list (200+ terms) plus generic role/hiring language filter (100+ terms). Three-tab UI in sort bar: Skills & Tools (unigrams), 2-Word Phrases (bigrams), 3-Word Phrases (trigrams). Frequency-tiered chip styling (tier-1 blue, tier-2 green, default gray). Min threshold: appears in 10%+ of JDs or 2+ JDs. Auto-refreshes when panel is open and jobs reload. Hover shows \"Found in N job descriptions (X% of analyzed jobs)\". Panel shows count of jobs with cached content vs total.', p: 4 },
   { s: 'done', n: 'Resume vs filter term comparison', d: 'Resume Match tab in keyword insights panel. Dropdown selects from resumes with extracted text. Compares top 30 JD unigrams against resume keywords + full-text search. Shows percentage match (green >=70%, amber >=40%, red <40%), matched/total count, and green (found) / red (missing) chips for each term. Missing terms labeled add these to improve your match. Auto-refreshes when jobs reload or resume selection changes.', p: 4 },
+  { s: 'done', n: 'Resume system overhaul — levels, archive, no default', d: 'Removed isDefault concept entirely — every resume must be assigned to specific filters. Added level selector per resume (from tuning level hierarchy). Resume archive system with retired date, filter history, and performance stats (applied count, response rate). Archive/restore/delete actions per card. Active vs archived split in rendering. Stats: active count, levels covered, filters assigned, filter coverage, archived count. Removed 3D emoji icons from How Resumes Work section, replaced with numbered circles.', p: 4 },
+  { s: 'done', n: 'Nav dots — Pipeline health + Resume coverage', d: 'Pipeline dot: green if updated within 7 days, yellow if 8-14 days stale, red if 14+ days. Resume dot: green if every saved filter has a resume assigned, yellow if some filters missing, red if no resumes or no filter associations. Both update reactively on data changes. Added .ext-status-dot.stale CSS class for red state.', p: 4 },
+  { s: 'done', n: 'Resume picker on apply', d: 'Popup when user marks applied from feed, modal, or pipeline. Shows all active non-placeholder resumes with level badge and filter info. Pre-selects resume assigned to current active filter. Skip option for later. Selected resume stored in pipeline meta. No default fallback — user must choose or skip.', p: 4 },
   { s: 'todo', n: 'Rejection gap analysis', d: 'When user is ghosted or rejected, diff the job spec ngrams against the resume that was sent. Aggregate over time: "Jobs you didn\'t advance on frequently mention X, Y, Z — your resume doesn\'t include these." Needs application volume before useful but start collecting data now. Surface patterns on Resumes page as improvement suggestions.', p: 4 },
 
   // Phase 5 — User Management
@@ -497,7 +517,7 @@ const features = [
   { s: 'todo', n: 'Auto-detect company email responses', d: 'Match incoming emails to companies in pipeline, flag new responses', p: 8 },
   { s: 'todo', n: 'Ghost detection from email', d: 'Applied X days ago + no response = ghosted, auto-update pipeline', p: 8 },
   { s: 'todo', n: 'Interview scheduling detection', d: 'Parse calendar invites and scheduling links from recruiter emails', p: 8 },
-  { s: 'done', n: 'Pipeline redesign — table-based collapsible stages', d: 'Replaced kanban columns with 7 collapsible table sections: Saved, Applied, Posting Closed, Responded, Interview, Offer, Rejected/Ghosted. Each stage renders a full table with: title, company, resume used, filter tag badges, discovered date, days-to-apply, days-since-apply, match score. Stage headers show count + median match score (min/max range). Filter by saved filter tags (multi-select pill bar). Stage move via dropdown per row. Data migration from legacy savedJobIds/appliedJobIds to unified bj_pipeline_meta localStorage structure with per-job stage, timestamps, resume, and filter tracking. Auto-detects posting_closed from ATS job status. Collapse state persisted. Stats: total tracked, active, response rate, avg days to response.', p: 8 },
+  { s: 'done', n: 'Pipeline redesign — table-based collapsible stages', d: 'Replaced kanban columns with 7 collapsible table sections: Saved, Applied, Posting Closed, Responded, Interview, Offer, Rejected/Ghosted. Each stage renders a full table with: title, company, resume used, filter tag badges, discovered date, days-to-apply, days-since-apply, match score. Stage headers show count + median match score (min/max range). Filter by saved filter tags (compact dropdown select). Stage move via dropdown per row. Data migration from legacy savedJobIds/appliedJobIds to unified bj_pipeline_meta localStorage structure with per-job stage, timestamps, resume, and filter tracking. Auto-detects posting_closed from ATS job status. Collapse state persisted. Resume picker popup on every apply action — shows existing resumes with pre-selected filter-matched resume, skip option for later. Stats: total tracked, active, response rate, avg days to response.', p: 8 },
 
   // Phase 9 — Intelligence
   { s: 'todo', n: 'Job market trend velocity', d: 'Track job posting volume by title, location, salary, industry over time', p: 9 },
@@ -698,6 +718,17 @@ function render() {
 
   const el = document.getElementById('roadmap');
 
+  // Phase name lookup
+  const phaseNames = {
+    0: 'Foundation', 1: 'Auth', 2: 'Core Platform', 3: 'Go-to-Market',
+    4: 'Resumes & Applications', 5: 'User Management', 6: 'Monetization & Growth',
+    7: 'Anti-detection', 8: 'Advanced Pipeline', 9: 'Data & Analytics',
+    10: 'Real-time & Alerts', 11: 'Employer Intelligence', 12: 'Community & Network',
+    13: 'User Feedback & Surveys', 14: 'Admin & Feature Flags', 15: 'Gamification',
+    16: 'Passive Mode', 17: 'Backlog & Debt', 18: 'Security & Hardening',
+    20: 'Enterprise', 24: 'Platform Expansion'
+  };
+
   function buildSection(items, cls, label, startCollapsed) {
     const colClass = startCollapsed ? ' collapsed' : '';
     let html = `<div class="section-wrap ${cls}${colClass}">`;
@@ -706,21 +737,45 @@ function render() {
       <h3>${label}</h3>
       <span class="section-count">${items.length}</span>
     </div>`;
-    html += '<div class="section-body"><ul class="feature-list">';
-    items.forEach((f, i) => {
-      const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : 'status-todo');
-      const statusIcon = f.s === 'done' ? '✓' : (f.s === 'progress' ? '◐' : '○');
-      const nameCls = f.s === 'done' ? 'feature-name is-done' : 'feature-name';
-      html += `<li class="feature-item" style="animation-delay:${i * 0.03}s">
-        <div class="status-icon ${statusCls}">${statusIcon}</div>
-        <div>
-          <div class="${nameCls}">${f.n}</div>
-          <div class="feature-detail">${f.d}</div>
-        </div>
-        <div class="phase-badge pb-${String(f.p).replace('.','')}">${phaseLabel(f.p)}</div>
-      </li>`;
+    html += '<div class="section-body">';
+
+    // Group by phase
+    const phases = {};
+    items.forEach(f => {
+      const p = f.p;
+      if (!phases[p]) phases[p] = [];
+      phases[p].push(f);
     });
-    html += '</ul></div></div>';
+
+    const sortedPhases = Object.keys(phases).map(Number).sort((a, b) => a - b);
+
+    sortedPhases.forEach(p => {
+      const phaseItems = phases[p];
+      const pLabel = phaseNames[p] || '';
+      const pgCollapsed = cls === 'sec-done' ? ' pg-collapsed' : '';
+      html += `<div class="phase-group${pgCollapsed}">`;
+      html += `<div class="phase-group-header" onclick="this.parentElement.classList.toggle('pg-collapsed')">
+        <span class="phase-group-chevron">▼</span>
+        <span class="phase-group-label" style="color:var(--text-dim);">${phaseLabel(p)}${pLabel ? ' \u2014 ' + pLabel : ''}</span>
+        <span class="phase-group-count">${phaseItems.length}</span>
+      </div>`;
+      html += '<div class="phase-group-body"><ul class="feature-list">';
+      phaseItems.forEach((f, i) => {
+        const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : 'status-todo');
+        const statusIcon = f.s === 'done' ? '\u2713' : (f.s === 'progress' ? '\u25D0' : '\u25CB');
+        const nameCls = f.s === 'done' ? 'feature-name is-done' : 'feature-name';
+        html += `<li class="feature-item" style="animation-delay:${i * 0.03}s">
+          <div class="status-icon ${statusCls}">${statusIcon}</div>
+          <div>
+            <div class="${nameCls}">${f.n}</div>
+            <div class="feature-detail">${f.d}</div>
+          </div>
+        </li>`;
+      });
+      html += '</ul></div></div>';
+    });
+
+    html += '</div></div>';
     return html;
   }
 
