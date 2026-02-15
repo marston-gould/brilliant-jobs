@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Brilliant Jobs — 116,000+ Jobs. Power Filters. Zero Noise.</title>
   <meta name="description" content="The job search command center that aggregates thousands of openings from top companies, gives you Ahrefs-level filters, and surfaces salary data buried in job specs.">
+  <meta property="og:title" content="Brilliant Jobs — Stop Checking Twelve Tabs">
+  <meta property="og:description" content="116,000+ jobs from 1,900+ companies. Power filters, salary extraction, and your LinkedIn network mapped to every listing.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://brilliantjobs.app">
+  <meta property="og:image" content="https://brilliantjobs.app/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Brilliant Jobs — Stop Checking Twelve Tabs">
+  <meta name="twitter:description" content="116,000+ jobs. Power filters. Salary extraction. Your network mapped.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231a3a6e'/><text x='50%25' y='55%25' dominant-baseline='central' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='18' fill='white'>B</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -77,6 +86,13 @@
       background: var(--nav-bg);
       color: #fff;
     }
+    .hero::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        radial-gradient(circle at 20% 50%, rgba(61,126,255,0.12) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(139,92,246,0.08) 0%, transparent 40%);
+      pointer-events: none;
+    }
     .hero::before {
       content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
       background: linear-gradient(to bottom, transparent, var(--bg-main));
@@ -87,6 +103,7 @@
       padding: 6px 16px; background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
       font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); margin-bottom: 28px;
+      position: relative; z-index: 1;
     }
     .hero-label .dot {
       width: 6px; height: 6px; background: var(--green); border-radius: 50%;
@@ -97,12 +114,13 @@
       font-size: clamp(36px, 5.5vw, 64px);
       font-weight: 800; line-height: 1.1; margin-bottom: 20px;
       max-width: 780px; margin-left: auto; margin-right: auto;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.02em; position: relative; z-index: 1;
     }
     .hero h1 .accent { color: var(--accent); }
     .hero-sub {
       font-size: 18px; color: rgba(255,255,255,0.65); max-width: 560px;
       margin: 0 auto 40px; line-height: 1.6; font-weight: 300;
+      position: relative; z-index: 1;
     }
     .hero-ctas { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; z-index: 1; }
 
@@ -133,7 +151,10 @@
     .stat-num {
       font-family: var(--mono); font-size: 32px; font-weight: 600;
       color: var(--text); line-height: 1;
+      transition: opacity 0.4s ease;
     }
+    .stat-num.loading { opacity: 0.3; }
+    .stat-num.loaded { opacity: 1; }
     .stat-label {
       font-size: 13px; color: var(--text-faint); margin-top: 6px;
       text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
@@ -185,9 +206,10 @@
     .feature-card {
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 14px; padding: 28px;
-      transition: border-color 0.2s, transform 0.2s;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      border-top: 2px solid transparent;
     }
-    .feature-card:hover { border-color: var(--border-hover); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .feature-card:hover { border-color: var(--border-hover); border-top-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
     .feature-icon {
       width: 44px; height: 44px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
@@ -420,14 +442,27 @@
       .site-nav { padding: 0 16px; }
       .nav-links a:not(.nav-cta) { display: none; }
       .hero { padding: 120px 20px 60px; }
+      .hero h1 { font-size: 32px; }
+      .hero-sub { font-size: 16px; }
       .section { padding: 48px 20px; }
       .feature-grid, .pricing-grid { grid-template-columns: 1fr; }
       .modal { margin: 16px; }
-      .stats-row { gap: 24px; }
+      .stats-row { gap: 20px; }
       .stat-num { font-size: 24px; }
+      .stat-label { font-size: 11px; letter-spacing: 0.5px; }
       .filter-demo { gap: 6px; }
+      .filter-pill { font-size: 12px; padding: 5px 10px; }
       .cs-features { flex-direction: column; align-items: center; }
       .pulse-grid { grid-template-columns: 1fr !important; }
+      .steps { grid-template-columns: 1fr 1fr; gap: 20px; }
+      .source-logos { gap: 8px; }
+      .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
+      .hero-ctas .btn { width: 100%; max-width: 280px; justify-content: center; }
+    }
+    @media (max-width: 480px) {
+      .steps { grid-template-columns: 1fr; }
+      .stats-row { flex-direction: column; gap: 16px; }
+      .pricing-grid { gap: 16px; }
     }
     #pulse-chart { display: none; }
   </style>
@@ -694,11 +729,24 @@
     </div>
   </section>
 
+  <!-- SOCIAL PROOF -->
+  <section class="section fade-up" style="padding-bottom:0;">
+    <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by job seekers</div>
+      <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;color:var(--text-dim);font-size:14px;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> beta users</div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> applications tracked</div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--green);">$0</span> in ad spend</div>
+      </div>
+      <div style="font-size:12px;color:var(--text-faint);margin-top:12px;">These numbers update as we grow. We don't fake metrics.</div>
+    </div>
+  </section>
+
   <!-- BOTTOM CTA -->
   <section class="section fade-up" style="text-align:center;padding-bottom:120px;">
     <h2 style="margin-bottom:16px;">Your job search deserves<br>better tools.</h2>
     <p class="section-desc" style="margin:0 auto 32px;">Beta access is limited. Sign up now and get power-user job search from day one.</p>
-    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 2px 16px rgba(61,126,255,0.25);">Get Early Access — Free</button>
+    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Get Early Access — Free</button>
   </section>
 
   <footer class="site-footer">
@@ -1089,28 +1137,17 @@
     $$('.fade-up').forEach(el => observer.observe(el));
 
     // ============================================================
-    // COMMUNITY PULSE — pulls from survey data when available
+    // COMMUNITY PULSE — cached (4hr TTL)
     // ============================================================
     (async () => {
       const chartEl = document.getElementById('pulse-chart');
       const emptyEl = document.getElementById('pulse-chart-empty');
+      const PULSE_KEY = 'bj_lp_pulse';
+      const PULSE_TTL = 4 * 60 * 60 * 1000; // 4 hours
 
-      try {
-        // Query aggregated weekly survey scores
-        // Expects: feedback table with type='user_survey', rating 1-10, created_at
-        const { data: surveys, error } = await sb
-          .from('feedback')
-          .select('created_at, rating')
-          .in('type', ['user_survey', 'exit_survey'])
-          .not('rating', 'is', null)
-          .order('created_at', { ascending: true });
+      function renderPulse(surveys) {
+        if (!surveys || surveys.length === 0) return;
 
-        if (error || !surveys || surveys.length === 0) {
-          // No data yet — keep placeholder state
-          return;
-        }
-
-        // Group by ISO week
         const weeks = {};
         surveys.forEach(s => {
           const d = new Date(s.created_at);
@@ -1122,28 +1159,22 @@
         });
 
         const weekKeys = Object.keys(weeks).sort();
-        const labels = weekKeys.map(k => {
-          const d = new Date(k);
-          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        });
+        const labels = weekKeys.map(k => new Date(k).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
         const scores = weekKeys.map(k => {
-          const ratings = weeks[k];
-          return Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10;
+          const r = weeks[k];
+          return Math.round((r.reduce((a, b) => a + b, 0) / r.length) * 10) / 10;
         });
         const counts = weekKeys.map(k => weeks[k].length);
 
-        // Update current score (latest week)
         const currentScore = scores[scores.length - 1];
-        const totalResponses = surveys.length;
         const scoreEl = document.getElementById('pulse-score');
         const labelEl = document.getElementById('pulse-label');
         const barEl = document.getElementById('pulse-bar');
         const respEl = document.getElementById('pulse-respondents');
 
         scoreEl.textContent = currentScore.toFixed(1);
-        respEl.textContent = totalResponses.toLocaleString() + ' responses';
+        respEl.textContent = surveys.length.toLocaleString() + ' responses';
 
-        // Color + label based on score (1-10 scale)
         let color, label;
         if (currentScore >= 7.5) { color = 'var(--green)'; label = 'Feeling Brilliant'; }
         else if (currentScore >= 5) { color = 'var(--accent)'; label = 'Cautiously Hopeful'; }
@@ -1156,12 +1187,10 @@
         barEl.style.width = (currentScore * 10) + '%';
         barEl.style.background = color;
 
-        // Draw chart if we have 2+ weeks
         if (weekKeys.length >= 2) {
           emptyEl.style.display = 'none';
           chartEl.style.display = 'block';
 
-          // Minimal canvas chart (no external lib needed)
           const ctx = chartEl.getContext('2d');
           const W = chartEl.offsetWidth;
           const H = 180;
@@ -1171,36 +1200,22 @@
           const pad = { top: 10, right: 12, bottom: 30, left: 36 };
           const cw = W - pad.left - pad.right;
           const ch = H - pad.top - pad.bottom;
-
           const maxScore = 10;
           const maxCount = Math.max(...counts, 1);
 
-          // Grid lines
-          ctx.strokeStyle = '#e2e4ed';
-          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = '#e2e4ed'; ctx.lineWidth = 0.5;
           for (let i = 0; i <= 4; i++) {
             const y = pad.top + (ch / 4) * i;
             ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
           }
-
-          // Y-axis labels
-          ctx.fillStyle = '#9298ae';
-          ctx.font = '10px JetBrains Mono';
-          ctx.textAlign = 'right';
+          ctx.fillStyle = '#9298ae'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'right';
           for (let i = 0; i <= 4; i++) {
-            const val = maxScore - (maxScore / 4) * i;
-            const y = pad.top + (ch / 4) * i;
-            ctx.fillText(val.toFixed(0), pad.left - 6, y + 3);
+            ctx.fillText((maxScore - (maxScore / 4) * i).toFixed(0), pad.left - 6, pad.top + (ch / 4) * i + 3);
           }
-
-          // X-axis labels
           ctx.textAlign = 'center';
           const step = cw / (labels.length - 1 || 1);
-          labels.forEach((l, i) => {
-            ctx.fillText(l, pad.left + step * i, H - 6);
-          });
+          labels.forEach((l, i) => ctx.fillText(l, pad.left + step * i, H - 6));
 
-          // Response count bars (background)
           const barW = Math.max(6, step * 0.4);
           ctx.fillStyle = 'rgba(34,197,94,0.12)';
           counts.forEach((c, i) => {
@@ -1209,20 +1224,15 @@
             ctx.fillRect(x - barW / 2, pad.top + ch - barH, barW, barH);
           });
 
-          // Score line
-          ctx.strokeStyle = '#3d7eff';
-          ctx.lineWidth = 2;
-          ctx.lineJoin = 'round';
+          ctx.strokeStyle = '#3d7eff'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
           ctx.beginPath();
           scores.forEach((s, i) => {
             const x = pad.left + step * i;
             const y = pad.top + ch - (s / maxScore) * ch;
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
           });
           ctx.stroke();
 
-          // Score dots
           scores.forEach((s, i) => {
             const x = pad.left + step * i;
             const y = pad.top + ch - (s / maxScore) * ch;
@@ -1231,56 +1241,103 @@
             ctx.strokeStyle = '#3d7eff'; ctx.lineWidth = 2; ctx.stroke();
           });
         }
+      }
 
+      // Check cache
+      try {
+        const cached = JSON.parse(localStorage.getItem(PULSE_KEY));
+        if (cached && Date.now() - cached.ts < PULSE_TTL) {
+          renderPulse(cached.data);
+          return;
+        }
+      } catch (e) {}
+
+      // Fetch fresh
+      try {
+        const { data: surveys, error } = await sb
+          .from('feedback')
+          .select('created_at, rating')
+          .in('type', ['user_survey', 'exit_survey'])
+          .not('rating', 'is', null)
+          .order('created_at', { ascending: true });
+
+        if (!error && surveys && surveys.length > 0) {
+          localStorage.setItem(PULSE_KEY, JSON.stringify({ data: surveys, ts: Date.now() }));
+          renderPulse(surveys);
+        }
       } catch (e) {
         console.log('[BJ] Pulse data not available yet:', e.message);
       }
     })();
 
     // ============================================================
-    // LIVE STATS FROM DATABASE
+    // LIVE STATS — cached in localStorage (1hr TTL)
     // ============================================================
     (async function loadLiveStats() {
-      try {
-        // Active jobs count (status = open)
-        const { count: jobCount } = await sb
-          .from('ats_jobs')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'open');
+      const CACHE_KEY = 'bj_lp_stats';
+      const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
-        if (jobCount != null) {
-          document.getElementById('lp-active-jobs').textContent = jobCount.toLocaleString();
+      function applyStats(stats) {
+        if (stats.jobs != null) {
+          document.getElementById('lp-active-jobs').textContent = stats.jobs.toLocaleString();
           const heroJobs = document.getElementById('lp-hero-jobs');
-          if (heroJobs) heroJobs.textContent = jobCount.toLocaleString() + '+';
+          if (heroJobs) heroJobs.textContent = stats.jobs.toLocaleString() + '+';
         }
-
-        // Company count (companies that have at least one open job)
-        const { count: companyCount } = await sb
-          .from('ats_companies')
-          .select('*', { count: 'exact', head: true });
-
-        if (companyCount != null) {
-          document.getElementById('lp-companies').textContent = companyCount.toLocaleString();
+        if (stats.companies != null) {
+          document.getElementById('lp-companies').textContent = stats.companies.toLocaleString();
           const heroComp = document.getElementById('lp-hero-companies');
-          if (heroComp) heroComp.textContent = companyCount.toLocaleString() + '+';
+          if (heroComp) heroComp.textContent = stats.companies.toLocaleString() + '+';
           const stepComp = document.getElementById('lp-step-companies');
-          if (stepComp) stepComp.textContent = companyCount.toLocaleString() + '+';
+          if (stepComp) stepComp.textContent = stats.companies.toLocaleString() + '+';
         }
-
-        // Metro areas — count distinct loc_state where loc_country = US, or count from ref_city_radius
-        const { count: metroCount } = await sb
-          .from('ref_city_radius')
-          .select('*', { count: 'exact', head: true });
-
-        if (metroCount != null) {
-          document.getElementById('lp-metros').textContent = metroCount.toLocaleString();
+        if (stats.metros != null) {
+          document.getElementById('lp-metros').textContent = stats.metros.toLocaleString();
         }
+        // Animate in
+        document.querySelectorAll('.stat-num').forEach(el => {
+          el.classList.remove('loading');
+          el.classList.add('loaded');
+        });
+      }
+
+      // Mark loading
+      document.querySelectorAll('.stat-num').forEach(el => el.classList.add('loading'));
+
+      // Check cache first
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+        if (cached && Date.now() - cached.ts < CACHE_TTL) {
+          applyStats(cached);
+          return; // Cache is fresh, done
+        }
+      } catch (e) {}
+
+      // Cache miss or stale — fetch in parallel
+      try {
+        const [jobsRes, companiesRes, metrosRes] = await Promise.all([
+          sb.from('ats_jobs').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+          sb.from('ats_companies').select('*', { count: 'exact', head: true }),
+          sb.from('ref_city_radius').select('*', { count: 'exact', head: true })
+        ]);
+
+        const stats = {
+          jobs: jobsRes.count,
+          companies: companiesRes.count,
+          metros: metrosRes.count,
+          ts: Date.now()
+        };
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
+        applyStats(stats);
       } catch (e) {
         console.log('[BJ] Stats fetch error:', e.message);
-        // Fallback to reasonable defaults
         document.getElementById('lp-active-jobs').textContent = '110,000+';
         document.getElementById('lp-companies').textContent = '1,900+';
         document.getElementById('lp-metros').textContent = '199';
+        document.querySelectorAll('.stat-num').forEach(el => {
+          el.classList.remove('loading');
+          el.classList.add('loaded');
+        });
       }
     })();
 
