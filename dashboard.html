@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.22 - 2026-02-13 - Fix: stat cards use location IDs, CA$ salary parsing, Vancouver CA/WA disambiguation -->
+<!-- Brilliant Jobs Dashboard v2.41 - 2026-02-15 - How-this-works CTAs, text-link resume actions, pipeline color cleanup, version alignment -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -45,7 +45,7 @@
       --nav-w: 240px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--sans); background: var(--bg-main); color: var(--text); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    body { font-family: var(--sans); background: var(--bg-main); color: var(--text); -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
     .app { display: flex; min-height: 100vh; }
 
     /* ======================== NAV ======================== */
@@ -202,13 +202,18 @@
     .btn-logout:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); }
 
     /* ======================== MAIN ======================== */
-    .main { flex: 1; margin-left: var(--nav-w); min-height: 100vh; }
+    .main { flex: 1; margin-left: var(--nav-w); height: 100vh; overflow-y: auto; }
     .page-header {
       padding: 28px 40px 20px; border-bottom: 1px solid var(--border);
       background: var(--bg-white);
     }
     .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
     .page-header p { font-size: 13px; color: var(--text-dim); }
+    .page-how-link {
+      font-size: 11px; color: var(--accent); text-decoration: none; font-weight: 500;
+      margin-left: 8px; white-space: nowrap;
+    }
+    .page-how-link:hover { text-decoration: underline; }
     .page-body { padding: 28px 40px; }
     .page { display: none; }
     .page.active { display: block; }
@@ -1138,7 +1143,8 @@
     .resume-card .rc-filter-pill.active { opacity: 1; }
     .resume-card .rc-filter-pill.inactive { opacity: 0.3; }
     .resume-card .rc-filter-pill:hover { opacity: 0.8; }
-    .resume-card .rc-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .resume-card .rc-actions { display: flex; gap: 12px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border); }
+    .resume-card .rc-actions a:hover { text-decoration: underline !important; }
     .resume-card.is-placeholder {
       border-style: dashed; border-color: var(--border);
     }
@@ -1289,7 +1295,7 @@
       .nav { width: 60px; }
       .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: none; }
       .nav-item { justify-content: center; padding: 12px; }
-      .main { margin-left: 60px; }
+      .main { margin-left: 60px; height: 100vh; overflow-y: auto; }
       .page-body { padding: 20px; }
       .page-header { padding: 20px; }
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1450,6 +1456,15 @@
     </nav>
 
     <div class="main">
+
+      <!-- Help Panel -->
+      <div id="page-help-panel" style="display:none;position:fixed;bottom:80px;right:24px;width:340px;max-height:60vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.25);z-index:9998;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div id="help-panel-title" style="font-size:14px;font-weight:700;color:var(--text);"></div>
+          <button onclick="togglePageHelp(null)" style="background:none;border:none;font-size:16px;color:var(--text-faint);cursor:pointer;padding:2px 6px;">✕</button>
+        </div>
+        <div id="help-panel-body" style="font-size:12px;color:var(--text-dim);line-height:1.7;"></div>
+      </div>
 
       <!-- Feedback button -->
       <div class="feedback-btn" id="feedback-btn" title="Squash a bug or pitch an idea!">
@@ -1674,7 +1689,7 @@
       <div class="page" id="page-setup">
         <div class="page-header">
           <h2>Setup</h2>
-          <p>Connect your network and integrations</p>
+          <p>Connect your network and integrations <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('setup')">How this works →</a></p>
         </div>
         <div class="page-body">
 
@@ -1812,7 +1827,7 @@
       <div class="page" id="page-jobs">
         <div class="page-header">
           <h2>Jobs Feed</h2>
-          <p>Openings aggregated from multiple sources</p>
+          <p>Openings aggregated from multiple sources <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('feed')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="stat-grid">
@@ -2039,7 +2054,7 @@
       <div class="page" id="page-tuning">
         <div class="page-header">
           <h2>Search Tuning</h2>
-          <p>global filters, title matching, and exclusion rules that apply across all saved filters</p>
+          <p>global filters, title matching, and exclusion rules that apply across all saved filters <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
         </div>
         <div class="page-body">
 
@@ -2160,7 +2175,7 @@
       <div class="page" id="page-pipeline">
         <div class="page-header">
           <h2>Pipeline</h2>
-          <p>Track your applications from saved through offer</p>
+          <p>Track your applications from saved through offer <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('pipeline')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="stat-grid">
@@ -2183,7 +2198,7 @@
             <div class="pl-stage-section" data-stage="saved">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--text-dim);">Saved</span>
+                <span class="pl-stage-name" style="color:var(--text);">Saved</span>
                 <span class="pl-stage-count" id="pc-saved">0</span>
                 <span class="pl-stage-match-summary" id="pm-saved"></span>
               </div>
@@ -2192,7 +2207,7 @@
             <div class="pl-stage-section" data-stage="applied">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--accent);">Applied</span>
+                <span class="pl-stage-name" style="color:var(--text);">Applied</span>
                 <span class="pl-stage-count" id="pc-applied">0</span>
                 <span class="pl-stage-match-summary" id="pm-applied"></span>
               </div>
@@ -2201,7 +2216,7 @@
             <div class="pl-stage-section" data-stage="posting_closed">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--warm);">Posting Closed</span>
+                <span class="pl-stage-name" style="color:var(--text);">Posting Closed</span>
                 <span class="pl-stage-count" id="pc-posting_closed">0</span>
                 <span class="pl-stage-match-summary" id="pm-posting_closed"></span>
               </div>
@@ -2210,7 +2225,7 @@
             <div class="pl-stage-section" data-stage="responded">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--green);">Responded</span>
+                <span class="pl-stage-name" style="color:var(--text);">Responded</span>
                 <span class="pl-stage-count" id="pc-responded">0</span>
                 <span class="pl-stage-match-summary" id="pm-responded"></span>
               </div>
@@ -2219,7 +2234,7 @@
             <div class="pl-stage-section" data-stage="interview">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--purple);">Interview</span>
+                <span class="pl-stage-name" style="color:var(--text);">Interview</span>
                 <span class="pl-stage-count" id="pc-interview">0</span>
                 <span class="pl-stage-match-summary" id="pm-interview"></span>
               </div>
@@ -2228,7 +2243,7 @@
             <div class="pl-stage-section" data-stage="offer">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--green);">Offer</span>
+                <span class="pl-stage-name" style="color:var(--text);">Offer</span>
                 <span class="pl-stage-count" id="pc-offer">0</span>
                 <span class="pl-stage-match-summary" id="pm-offer"></span>
               </div>
@@ -2237,7 +2252,7 @@
             <div class="pl-stage-section" data-stage="rejected">
               <div class="pl-stage-header" onclick="togglePipelineStage(this)">
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                <span class="pl-stage-name" style="color:var(--red);">Rejected / Ghosted</span>
+                <span class="pl-stage-name" style="color:var(--text);">Rejected / Ghosted</span>
                 <span class="pl-stage-count" id="pc-rejected">0</span>
                 <span class="pl-stage-match-summary" id="pm-rejected"></span>
               </div>
@@ -2251,37 +2266,12 @@
       <div class="page" id="page-resumes">
         <div class="page-header">
           <h2>Resumes</h2>
-          <p>Every filter needs a resume. Match the right version to the right search.</p>
+          <p>Every filter needs a resume. Match the right version to the right search. <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('resumes')">How this works →</a></p>
         </div>
         <div class="page-body">
 
-          <!-- The Story -->
-          <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);border-radius:14px;padding:24px;margin-bottom:20px;">
-            <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;">How Resumes Work in Brilliant Jobs</div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              When you apply to jobs — manually or via auto-apply — Brilliant Jobs submits the resume assigned to that filter. Different filters target different roles, and different roles need different resumes. A "Director of SEO" filter should send your leadership-focused resume, while a "Growth Marketing" filter might use one that emphasizes acquisition metrics.
-            </div>
-            <div style="display:flex;gap:24px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(99,102,241,0.1);">
-              <div style="flex:1;text-align:center;">
-                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">1</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">Upload</div>
-                <div style="font-size:10px;color:var(--text-faint);">Upload a resume for each role type or seniority level you're targeting</div>
-              </div>
-              <div style="flex:1;text-align:center;">
-                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">2</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">Assign Level & Filters</div>
-                <div style="font-size:10px;color:var(--text-faint);">Set a seniority level and assign to your saved filters</div>
-              </div>
-              <div style="flex:1;text-align:center;">
-                <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:6px;">3</div>
-                <div style="font-size:11px;font-weight:600;color:var(--text);">Apply</div>
-                <div style="font-size:10px;color:var(--text-faint);">The right resume is automatically selected when you apply to jobs from that filter</div>
-              </div>
-            </div>
-          </div>
-
           <!-- Stats -->
-          <div class="stat-grid">
+          <div class="stat-grid" style="position:sticky;top:0;z-index:10;background:var(--bg-white);padding-bottom:12px;margin:-28px -40px 16px;padding:16px 40px;border-bottom:1px solid var(--border);">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
             <div class="stat-card"><div class="stat-val" id="r-levels">0</div><div class="stat-label">Levels Covered</div></div>
             <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
@@ -2333,7 +2323,7 @@
       <div class="page" id="page-applications">
         <div class="page-header">
           <h2>Applications</h2>
-          <p>Manage how jobs get applied to — manual, automatic, or via notification</p>
+          <p>Manage how jobs get applied to — manual, automatic, or via notification <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('applications')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="stat-grid">
@@ -2535,7 +2525,7 @@
       <div class="page" id="page-ghost">
         <div class="page-header">
           <h2>Ghost Monitor <span class="badge-soon">Coming Soon</span></h2>
-          <p>Track response rates and expose companies that ghost applicants</p>
+          <p>Track response rates and expose companies that ghost applicants <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('ghost')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="stat-grid">
@@ -2572,7 +2562,7 @@
       <div class="page" id="page-stats">
         <div class="page-header">
           <h2>Stats</h2>
-          <p>Your data at a glance</p>
+          <p>Your data at a glance <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('stats')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="stat-grid">
@@ -2597,7 +2587,7 @@
       <div class="page" id="page-settings">
         <div class="page-header">
           <h2>Settings</h2>
-          <p>Account and preferences</p>
+          <p>Account and preferences <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('settings')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="card">
@@ -2615,7 +2605,7 @@
       <div class="page" id="page-subscription">
         <div class="page-header">
           <h2>Subscription</h2>
-          <p>Manage your plan, billing, and referral discounts</p>
+          <p>Manage your plan, billing, and referral discounts <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('subscription')">How this works →</a></p>
         </div>
         <div class="page-body">
           <div class="empty-state">
@@ -2743,7 +2733,7 @@
   </div>
 
   <script>
-    console.log('[BJ] Dashboard v2.26b loaded');
+    console.log('[BJ] Dashboard v2.41 loaded');
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -2812,6 +2802,8 @@
         $(`#page-${item.dataset.page}`).classList.add('active');
         // Persist active tab
         localStorage.setItem('bj_active_tab', item.dataset.page);
+        // Close help panel on page switch
+        const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
       });
     });
 
@@ -2824,6 +2816,95 @@
         n.classList.toggle('active', n.dataset.page === lastTab);
       });
     }
+
+    // Extension detection — check if extension has updated the profile recently
+    const _helpContent = {
+      feed: { title: 'Jobs Feed', steps: [
+        'Check one or more saved filters in the sidebar to search jobs.',
+        'Shift+click column headers for multi-column sorting.',
+        'Click a job title to open the full description and apply.',
+        'Colored number badges show which filter matched each job.',
+        'Use the keyword insights panel to see term frequency and resume match scores.',
+      ]},
+      tuning: { title: 'Search Tuning', steps: [
+        'Set global rules that apply across ALL your saved filters.',
+        'Location rules: US-only toggle and city/country exclusions.',
+        'Title exclusions: remove common false positives (e.g. "intern").',
+        'Company exclusions: block specific employers or industries.',
+        'Level hierarchy: define seniority levels and their keywords for automatic job ranking.',
+      ]},
+      pipeline: { title: 'Pipeline', steps: [
+        'Track every job from saved through offer/rejection.',
+        'Click stage headers to collapse/expand sections.',
+        'Use the Move dropdown on any row to advance jobs through stages.',
+        'Stats at top show response rates and days-to-response.',
+        'Filter by saved filter using the dropdown above the stages.',
+      ]},
+      resumes: { title: 'Resumes', steps: [
+        'Upload a resume for each role type or seniority level you target.',
+        'Assign a level (Director, Manager, etc.) to each resume.',
+        'Click filter pills on each card to assign resumes to your saved filters.',
+        'When you apply, the matching resume is automatically selected.',
+        'Keyword extraction shows how well each resume matches job descriptions.',
+      ]},
+      applications: { title: 'Applications', steps: [
+        'View detailed history of every job you applied to.',
+        'Track which resume was used for each application.',
+        'Monitor response timelines and follow-up reminders.',
+      ]},
+      ghost: { title: 'Ghost Monitor', steps: [
+        'Coming soon: Track which companies view your profile after applying.',
+        'See who\'s ghosting you and who\'s actively reviewing your application.',
+        'Get notified when a company shows interest.',
+      ]},
+      stats: { title: 'Stats', steps: [
+        'View aggregated analytics across all your job search activity.',
+        'Track application volume, response rates, and pipeline velocity.',
+        'Compare performance across different filters and resume versions.',
+      ]},
+      setup: { title: 'Setup', steps: [
+        'Connect the Chrome extension to scan your LinkedIn network.',
+        'Your connections are matched against our job database.',
+        'Jobs where you have an inside contact are flagged for priority.',
+      ]},
+      settings: { title: 'Settings', steps: [
+        'Manage your account, notification preferences, and data.',
+        'Export or delete your data at any time.',
+      ]},
+      subscription: { title: 'Subscription', steps: [
+        'View your current plan and usage.',
+        'Upgrade to Pro for auto-apply, advanced analytics, and more.',
+      ]},
+    };
+
+    window.togglePageHelp = function(helpId) {
+      const panel = $('#page-help-panel');
+      if (!panel) return;
+      if (!helpId || panel.style.display !== 'none' && panel.dataset.active === helpId) {
+        panel.style.display = 'none';
+        panel.dataset.active = '';
+        return;
+      }
+      const content = _helpContent[helpId];
+      if (!content) return;
+      $('#help-panel-title').textContent = content.title;
+      $('#help-panel-body').innerHTML = content.steps.map((s, i) =>
+        `<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;">
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>
+          <span>${s}</span>
+        </div>`
+      ).join('');
+      panel.style.display = '';
+      panel.dataset.active = helpId;
+    };
+
+    // Close help on outside click
+    document.addEventListener('click', e => {
+      const panel = $('#page-help-panel');
+      if (panel && panel.style.display !== 'none' && !panel.contains(e.target) && !e.target.classList.contains('page-how-link')) {
+        panel.style.display = 'none';
+      }
+    });
 
     // Extension detection — check if extension has updated the profile recently
     async function checkExtensionStatus() {
@@ -9350,9 +9431,9 @@
           <div class="rc-filter-list">${filterPills}</div>
           ${statsLine}
           <div class="rc-actions">
-            <button class="btn btn-secondary btn-sm" onclick="renameResume(${i})" style="font-size:10px;padding:3px 10px;">Rename</button>
-            <button class="btn btn-secondary btn-sm" onclick="archiveResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--warm);">Archive</button>
-            <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:10px;padding:3px 10px;color:var(--red);">Delete</button>
+            <a href="#" onclick="event.preventDefault();renameResume(${i})" style="font-size:10px;color:var(--text-faint);text-decoration:none;">Rename</a>
+            <a href="#" onclick="event.preventDefault();archiveResume(${i})" style="font-size:10px;color:var(--text-faint);text-decoration:none;">Archive</a>
+            <a href="#" onclick="event.preventDefault();removeResume(${i})" style="font-size:10px;color:var(--red);text-decoration:none;">Delete</a>
           </div>
         </div>`;
       }
@@ -9447,8 +9528,8 @@
             <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
           </div>
           <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
-          <button class="btn btn-secondary btn-sm" onclick="unarchiveResume(${i})" style="font-size:9px;padding:2px 8px;">Restore</button>
-          <button class="btn btn-secondary btn-sm" onclick="removeResume(${i})" style="font-size:9px;padding:2px 8px;color:var(--red);">Delete</button>
+          <a href="#" onclick="event.preventDefault();unarchiveResume(${i})" style="font-size:10px;color:var(--accent);text-decoration:none;white-space:nowrap;">Restore</a>
+          <a href="#" onclick="event.preventDefault();removeResume(${i})" style="font-size:10px;color:var(--red);text-decoration:none;white-space:nowrap;">Delete</a>
         </div>`;
       }).join('');
     }
@@ -10259,7 +10340,7 @@
         image_urls: imageUrls.length > 0 ? imageUrls : null,
         user_agent: navigator.userAgent,
         screen_size: window.innerWidth + 'x' + window.innerHeight,
-        dashboard_version: 'v2.26',
+        dashboard_version: 'v2.41',
       };
 
       try {
