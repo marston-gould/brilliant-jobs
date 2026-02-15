@@ -102,11 +102,11 @@ function saveTuningCollapseStates() {
   });
 })();
 
-let tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
-let tuningLocExclPills = tuningSettings.locationExcludes || [];
-let tuningTitleExclPills = tuningSettings.titleExcludes || [];
-let tuningCoExclPills = tuningSettings.companyExcludes || [];
-let tuningIndExclPills = tuningSettings.industryExcludes || [];
+tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+tuningLocExclPills = tuningSettings.locationExcludes || [];
+tuningTitleExclPills = tuningSettings.titleExcludes || [];
+tuningCoExclPills = tuningSettings.companyExcludes || [];
+tuningIndExclPills = tuningSettings.industryExcludes || [];
 
 function saveTuning() {
   tuningSettings.usOnly = $('#tuning-us-only').checked;
@@ -151,7 +151,7 @@ const DEFAULT_LEVELS = [
   { label: 'Mid', keywords: 'associate, coordinator', color: '#8b5cf6' },
   { label: 'Entry', keywords: 'junior, jr, intern, entry', color: '#a855f7' },
 ];
-let levelHierarchy = tuningSettings.levelHierarchy || JSON.parse(JSON.stringify(DEFAULT_LEVELS));
+levelHierarchy = tuningSettings.levelHierarchy || JSON.parse(JSON.stringify(DEFAULT_LEVELS));
 
 function saveLevels() {
   tuningSettings.levelHierarchy = levelHierarchy;
