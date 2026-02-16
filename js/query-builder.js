@@ -39,39 +39,68 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
 
     const isNot = extraClass && extraClass.includes('not-pill');
     const orLabel = isNot ? ' nor ' : ' or ';
+    const isMulti = pill.values.length > 1 && pill.type !== 'collection';
 
     let display;
     if (pill.type === 'collection') {
       display = `📂 ${pill.collectionName}<span class="coll-count">(${pill.values.length})</span>`;
+    } else if (isMulti) {
+      // Multi-value: each value gets its own × button
+      const parts = pill.values.map((v, vi) => {
+        let valHtml = `<span class="qb-val-item" data-pill="${i}" data-val="${vi}">`;
+        valHtml += `<span class="qb-val-text">${v}</span>`;
+        valHtml += `<span class="qb-val-remove" data-pill="${i}" data-val="${vi}" title="Remove '${v.replace(/'/g,'&#39;')}'">×</span>`;
+        valHtml += `</span>`;
+        return valHtml;
+      });
+      // Location badge
+      let badge = '';
+      if (isLocation) {
+        if (pill.locType === 'state') badge = `<span class="pill-radius" style="color:#8b5cf6;">state</span>`;
+        else if (pill.locType === 'metro') badge = `<span class="pill-radius" style="color:#f59e0b;">${Math.round(pill.radius_mi)}mi</span>`;
+        else if (pill.radius_mi) badge = `<span class="pill-radius">${Math.round(pill.radius_mi)}mi</span>`;
+      }
+      display = parts.join(`<span class="or-sep">${orLabel}</span>`) + badge;
     } else if (isLocation) {
       const textParts = pill.values.map(v => `<span>${v}</span>`);
-      const joined = pill.values.length > 1
-        ? textParts.join(`<span class="or-sep">${orLabel}</span>`)
-        : textParts[0];
-      // Show badge for geo-enabled pills
+      const joined = textParts[0];
       let badge = '';
-      if (pill.locType === 'state') {
-        badge = `<span class="pill-radius" style="color:#8b5cf6;">state</span>`;
-      } else if (pill.locType === 'metro') {
-        badge = `<span class="pill-radius" style="color:#f59e0b;">${Math.round(pill.radius_mi)}mi</span>`;
-      } else if (pill.radius_mi) {
-        badge = `<span class="pill-radius">${Math.round(pill.radius_mi)}mi</span>`;
-      }
+      if (pill.locType === 'state') badge = `<span class="pill-radius" style="color:#8b5cf6;">state</span>`;
+      else if (pill.locType === 'metro') badge = `<span class="pill-radius" style="color:#f59e0b;">${Math.round(pill.radius_mi)}mi</span>`;
+      else if (pill.radius_mi) badge = `<span class="pill-radius">${Math.round(pill.radius_mi)}mi</span>`;
       display = `${joined}${badge}`;
     } else {
-      const textParts = pill.values.map(v => `<span>${v}</span>`);
-      display = pill.values.length > 1
-        ? textParts.join(`<span class="or-sep">${orLabel}</span>`)
-        : textParts[0];
+      display = `<span>${pill.values[0]}</span>`;
     }
 
     el.innerHTML = `<span class="qb-pill-text" data-idx="${i}">${display}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
     builder.insertBefore(el, input);
   });
 
-  // Bind pill click — add OR term inline (or open collection popup)
+  // Bind per-value remove buttons (for multi-value pills)
+  builder.querySelectorAll('.qb-val-remove').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const pi = parseInt(el.dataset.pill);
+      const vi = parseInt(el.dataset.val);
+      if (pillArray[pi]) {
+        pillArray[pi].values.splice(vi, 1);
+        // If only 0 values left, remove the pill entirely
+        if (pillArray[pi].values.length === 0) {
+          pillArray.splice(pi, 1);
+        }
+        if (onRemove) onRemove();
+        else renderAllPills();
+      }
+    });
+  });
+
+  // Bind pill text click — add OR term inline (or open collection popup)
   builder.querySelectorAll('.qb-pill-text').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', e => {
+      // If they clicked a per-value remove, don't open input
+      if (e.target.classList.contains('qb-val-remove')) return;
+
       const idx = parseInt(el.dataset.idx);
       const pill = pillArray[idx];
 
@@ -107,7 +136,7 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
     });
   });
 
-  // Bind remove
+  // Bind pill-level remove (removes entire pill group)
   builder.querySelectorAll('.qb-pill-remove').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
