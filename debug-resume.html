@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html><head><title>BJ Resume Debug</title></head>
+<body style="background:#0f1117;color:#f0f1f3;font-family:'JetBrains Mono',monospace;padding:20px;font-size:13px;">
+<h2 style="color:#3b82f6;">Resume Scoring Debug — v2.60</h2>
+<pre id="out" style="white-space:pre-wrap;line-height:1.6;"></pre>
+<script>
+const o = document.getElementById('out');
+function log(m) { o.textContent += m + '\n'; }
+
+try {
+  const resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const rc = JSON.parse(localStorage.getItem('bj_readiness') || 'null');
+  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+
+  log('========== RESUMES (' + resumes.length + ') ==========');
+  resumes.forEach((r, i) => {
+    log('[' + i + '] "' + r.name + '"');
+    log('    archived:      ' + !!r.archived);
+    log('    textStatus:    ' + (r.textStatus || 'NOT SET'));
+    log('    keywords:      ' + (r.keywords ? r.keywords.length + ' terms' : 'NONE / EMPTY'));
+    log('    extractedText: ' + (r.extractedText ? r.extractedText.length + ' chars' : 'NONE'));
+    log('    filterIds:     ' + JSON.stringify(r.filterIds || []));
+    log('    levelLabel:    ' + (r.levelLabel || 'NONE'));
+    log('    fileName:      ' + (r.fileName || '?'));
+    if (r.keywords && r.keywords.length > 0) {
+      log('    first 10 kw:   ' + r.keywords.slice(0,10).map(k=>k[0]+'('+k[1]+')').join(', '));
+    }
+    if (r.extractedText) {
+      log('    text preview:  "' + r.extractedText.substring(0, 200).replace(/\n/g,' ') + '..."');
+    }
+    log('');
+  });
+
+  log('========== SAVED FILTERS (' + sf.length + ') ==========');
+  sf.forEach((f, i) => {
+    log('[' + i + '] "' + f.name + '"');
+    log('    resumeId:      ' + JSON.stringify(f.resumeId));
+    log('    what-pills:    ' + JSON.stringify((f.whatPills || f['what-pills'] || []).map(p => p.text || p)));
+    log('    where-pills:   ' + JSON.stringify((f.wherePills || f['where-pills'] || []).map(p => p.text || p)));
+    log('');
+  });
+
+  log('========== CROSS-CHECK ==========');
+  resumes.forEach((r, i) => {
+    if (r.archived) return;
+    const fids = r.filterIds || [];
+    const eligible = !r.archived && r.textStatus === 'ready' && r.keywords && r.keywords.length > 0;
+    const hasFilter = fids.length > 0;
+    const filterExists = fids.every(fn => sf.some(f => f.name === fn));
+    log('Resume[' + i + '] "' + r.name + '":');
+    log('    eligible for scoring: ' + eligible);
+    log('    has filter assigned:  ' + hasFilter + ' → ' + JSON.stringify(fids));
+    log('    filter names exist:   ' + filterExists);
+    if (!eligible) {
+      if (r.textStatus !== 'ready') log('    ❌ BLOCKED: textStatus is "' + r.textStatus + '" (need "ready")');
+      if (!r.keywords || r.keywords.length === 0) log('    ❌ BLOCKED: no keywords extracted');
+    }
+    if (hasFilter && eligible) log('    ✅ SHOULD SCORE');
+    else log('    ⛔ WILL NOT SCORE');
+    log('');
+  });
+
+  log('========== READINESS CACHE ==========');
+  if (rc) {
+    log('lastRun: ' + rc.lastRun);
+    const keys = Object.keys(rc.scores || {});
+    log('scored resumes: ' + JSON.stringify(keys));
+    keys.forEach(ri => {
+      const s = rc.scores[ri];
+      log('  resume[' + ri + ']: overall=' + s.overallScore);
+      log('    filters: ' + JSON.stringify(Object.keys(s.filters)));
+      log('    levels:  ' + JSON.stringify(Object.keys(s.levels)));
+    });
+  } else {
+    log('(null — analysis never completed)');
+  }
+
+  log('\n========== LEVEL HIERARCHY ==========');
+  log(JSON.stringify((tuning.levelHierarchy || []).map(l => l.label), null, 2));
+
+} catch(e) {
+  log('ERROR: ' + e.message + '\n' + e.stack);
+}
+</script>
+</body></html>
