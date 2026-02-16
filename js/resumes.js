@@ -371,16 +371,91 @@ async function extractTextFromPDF(file) {
   }
 }
 
+async function extractTextFromDOCX(fileOrBuffer) {
+  try {
+    if (typeof mammoth === 'undefined') {
+      console.error('[BJ] mammoth.js not loaded');
+      return '';
+    }
+    let arrayBuffer;
+    if (fileOrBuffer instanceof ArrayBuffer) {
+      arrayBuffer = fileOrBuffer;
+    } else if (fileOrBuffer.arrayBuffer) {
+      arrayBuffer = await fileOrBuffer.arrayBuffer();
+    } else {
+      return '';
+    }
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return (result.value || '').trim();
+  } catch (e) {
+    console.error('[BJ] DOCX text extraction failed:', e);
+    return '';
+  }
+}
+
 async function extractTextFromFile(file) {
   if (/\.pdf$/i.test(file.name)) {
     return await extractTextFromPDF(file);
   }
+  if (/\.docx$/i.test(file.name)) {
+    return await extractTextFromDOCX(file);
+  }
+  // Plain text fallback (.txt, .md, etc.)
   try {
     const text = await file.text();
-    if (text.startsWith('PK') || text.includes('<?xml')) return '';
+    // Binary file detection — skip if it looks like a zip or binary
+    if (text.startsWith('PK') || text.charCodeAt(0) > 127) return '';
     return text.trim();
   } catch (e) {
     return '';
+  }
+}
+
+// Auto re-extract resumes stuck at "no-text" — runs on page load
+async function reExtractStuckResumes() {
+  let changed = false;
+
+  // Clean up stale filterIds that reference deleted/renamed filters
+  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const validFilterNames = new Set(sf.map(f => f.name));
+  for (let i = 0; i < resumes.length; i++) {
+    if (!resumes[i].filterIds) continue;
+    const before = resumes[i].filterIds.length;
+    resumes[i].filterIds = resumes[i].filterIds.filter(fn => validFilterNames.has(fn));
+    if (resumes[i].filterIds.length !== before) {
+      changed = true;
+      console.log('[BJ] Cleaned stale filterIds for', resumes[i].name, ': removed', before - resumes[i].filterIds.length, 'orphaned');
+    }
+  }
+
+  for (let i = 0; i < resumes.length; i++) {
+    const r = resumes[i];
+    if (r.archived || r.textStatus !== 'no-text' || !r.id) continue;
+    if (!r.fileName || !/\.docx$/i.test(r.fileName)) continue;
+
+    console.log('[BJ] Re-extracting stuck resume:', r.name);
+    try {
+      const blob = await bjFileStore.get(r.id);
+      if (!blob) { console.log('[BJ] No file in IndexedDB for', r.id); continue; }
+
+      const arrayBuffer = await blob.arrayBuffer();
+      const text = await extractTextFromDOCX(arrayBuffer);
+      if (text && text.length > 50) {
+        resumes[i].extractedText = text;
+        resumes[i].keywords = extractResumeKeywords(text);
+        resumes[i].textStatus = 'ready';
+        changed = true;
+        console.log('[BJ] Re-extracted:', r.name, '→', text.length, 'chars,', resumes[i].keywords.length, 'keywords');
+      } else {
+        console.log('[BJ] Re-extraction got no text for', r.name);
+      }
+    } catch (e) {
+      console.error('[BJ] Re-extraction error for', r.name, e);
+    }
+  }
+  if (changed) {
+    saveResumes();
+    renderResumes();
   }
 }
 
@@ -610,4 +685,18 @@ $('#resume-from-level-btn')?.addEventListener('click', () => {
 // Init nav dots
 setTimeout(() => { updatePipelineNavDot(); }, 1200);
 
-
+// Auto re-extract DOCX resumes stuck at "no-text" once mammoth.js is loaded
+setTimeout(() => {
+  if (typeof mammoth !== 'undefined') {
+    reExtractStuckResumes();
+  } else {
+    // Wait for mammoth to load
+    const waitForMammoth = setInterval(() => {
+      if (typeof mammoth !== 'undefined') {
+        clearInterval(waitForMammoth);
+        reExtractStuckResumes();
+      }
+    }, 500);
+    setTimeout(() => clearInterval(waitForMammoth), 10000); // Give up after 10s
+  }
+}, 1500);
