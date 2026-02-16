@@ -62,7 +62,7 @@ function renderResumes() {
   updateResumeNavDot();
 
   if (activeResumes.length === 0) {
-    grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
+    grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;">
       <h3>No resumes uploaded</h3>
       <p>Upload your first resume to get started.</p>
     </div>`;
@@ -132,27 +132,36 @@ function renderResumes() {
       : '';
 
     return `
-    <div class="resume-card ${isPlaceholder ? 'is-placeholder' : ''}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-        <div style="display:flex;gap:4px;align-items:center;">${gdriveIcon}</div>
+    <div class="resume-row ${isPlaceholder ? 'is-placeholder' : ''}">
+      <div class="resume-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
+          <div style="display:flex;gap:4px;align-items:center;">${gdriveIcon}</div>
+        </div>
+        <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+        ${gradeHtml}
+        ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
+        ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 && !gradeHtml ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+        ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
+        <div style="margin:8px 0;">${levelSelect}</div>
+        <div class="rc-filters-label">Assigned Filters</div>
+        <div class="rc-filter-list">${filterPills}</div>
+        ${statsLine}
+        ${!isPlaceholder ? `<div class="rc-meta">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
+        <div class="rc-actions">
+          <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
+          <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
+          <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
+          <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+        </div>
       </div>
-      <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
-      ${gradeHtml}
-      ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-      ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 && !gradeHtml ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
-      ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
-      <div style="margin:8px 0;">${levelSelect}</div>
-      <div class="rc-filters-label">Assigned Filters</div>
-      <div class="rc-filter-list">${filterPills}</div>
-      ${statsLine}
-      ${!isPlaceholder ? `<div class="rc-meta">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
-      <div class="rc-actions">
-        <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
-        <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
-        <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
-        <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
-      </div>
+      <div class="readiness-side-slot" id="readiness-side-slot-${i}">${
+        !isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]
+          ? buildReadinessSide(i, readinessCache.scores[i])
+          : (assignedIds.length > 0 && !isPlaceholder
+              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;"><div style="font-size:11px;color:var(--text-faint);font-style:italic;">Click Re-analyze to score</div></div>'
+              : '<div class="readiness-side" id="readiness-side-' + i + '"></div>')
+      }</div>
     </div>`;
   }
 
@@ -176,7 +185,7 @@ function renderResumes() {
 
     if (filterResumes.length === 0) return;
 
-    gridHtml += `<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:${fi > 0 ? '12' : '0'}px;margin-bottom:4px;">
+    gridHtml += `<div style="display:flex;align-items:center;gap:8px;margin-top:${fi > 0 ? '12' : '0'}px;margin-bottom:4px;">
       <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:${color};color:#fff;font-size:11px;font-weight:700;">${fi + 1}</span>
       <span style="font-size:13px;font-weight:600;color:${color};">${f.name}</span>
       <span style="font-size:10px;color:var(--text-faint);font-family:var(--mono);">${filterResumes.length} resume${filterResumes.length > 1 ? 's' : ''}</span>
@@ -191,7 +200,7 @@ function renderResumes() {
   // Unassigned resumes (no filter assigned)
   const unassignedResumes = activeResumes.filter(r => !placed.has(resumes.indexOf(r)));
   if (unassignedResumes.length > 0) {
-    gridHtml += `<div style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:${sf.length > 0 ? '12' : '0'}px;margin-bottom:4px;">
+    gridHtml += `<div style="display:flex;align-items:center;gap:8px;margin-top:${sf.length > 0 ? '12' : '0'}px;margin-bottom:4px;">
       <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--border);color:var(--text-faint);font-size:11px;font-weight:700;">—</span>
       <span style="font-size:13px;font-weight:600;color:var(--text-faint);">Unassigned</span>
       <span style="font-size:10px;color:var(--text-faint);font-family:var(--mono);">${unassignedResumes.length}</span>
