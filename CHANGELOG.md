@@ -1,5 +1,27 @@
 # Changelog
 
+## BLOCKERS
+- **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
+
+## v2.60 — 2026-02-16
+- **CRITICAL FIX — Resume scoring data path**: `toggleResumeFilter()` saves assignments to `resume.filterIds[]` (array of filter names on the resume object), but all scoring code checked `filter.resumeId` (a property on the filter object that was **never set**). This meant readiness analysis, feed match scores, and auto-analysis all silently found zero assignments and produced no scores. Fixed all three code paths: `initReadinessPanel`, `runReadinessAnalysis`, and `computeJobMatchScore` now read from `resume.filterIds`.
+- **Feed match scoring fix**: `computeJobMatchScore()` was taking first 40 tokens from a `Set` in insertion order (document order = arbitrary). Now frequency-ranks terms within each JD — most-repeated skill terms score highest. This makes match scores meaningful.
+- **Cache invalidation**: `toggleResumeFilter` now clears readiness cache and feed match scores when filter assignment changes, triggering fresh re-analysis.
+- **Resend API key**: Set as Supabase Edge Function secret (`RESEND_API_KEY`). Confirmed working via test email through sandbox domain (`onboarding@resend.dev`). Blocked on domain verification (see BLOCKERS above).
+
+## v2.59 — 2026-02-15
+- **Resume readiness overhaul**: Auto-run analysis on Resumes page load (24h cache TTL, background refresh when stale)
+- **Letter grades**: A+ through F scale on resume cards and feed Match column (replaces raw percentage). Grade scale: A+(90+), A(80+), B+(70+), B(60+), C+(50+), C(40+), D(30+), F(<30)
+- **Inline insights**: "View insights ▸" expands directly on each resume card showing missing terms, covered terms, missing phrases, and level fit. No more scrolling to separate Readiness panel
+- **Filter corpus caching**: `filterCorpusCache` stores ngram results per filter during analysis for reuse
+
+## v2.58 — 2026-02-15
+- **Notification system (P5)**: Full Applications page UI — notification preference matrix, phone verification section, escalation rules with timeout slider, per-filter overrides, notification history log
+- **8 Edge Functions deployed**: send-notification, apply-on-notification, handle-notification-response, escalation-checker, daily-digest, weekly-summary, account-lifecycle, auth-hook
+- **6 pg_cron schedules**: escalation checker (15min), daily digest (8am ET), weekly summary (Mon 8am ET), ghost scanner (daily), inactivity checker (daily), listing closer (daily)
+- **18 email templates**: Shared template library in `_shared/email-templates.ts`
+- **Pulsing nav dots**: CSS animation + `checkNavPulses()` on dashboard load
+
 ## v2.44 — 2026-02-15
 - **Keyword extraction**: Strip HTML artifacts (e.g., `/li /ul`, `mdash /span`) from bigrams/trigrams via `KW_HTML_JUNK` blocklist and improved tokenizer
 - **Tuning page**: Fix dropdown clipping — removed `overflow:hidden` from `.tuning-card` so company/location typeahead dropdowns render fully
