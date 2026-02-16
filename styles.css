@@ -1105,7 +1105,20 @@
     .top-co-count { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
     /* ======================== RESUMES ======================== */
-    .resume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+    .resume-grid { display: flex; flex-direction: column; gap: 16px; }
+    .resume-row {
+      display: flex; gap: 16px; align-items: stretch;
+    }
+    .resume-row > .resume-card { flex: 0 0 280px; min-width: 240px; }
+    .resume-row > .readiness-side-slot { flex: 1; min-width: 0; }
+    .readiness-side {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px; height: 100%; box-sizing: border-box;
+    }
+    @media (max-width: 720px) {
+      .resume-row { flex-direction: column; }
+      .resume-row > .resume-card { flex: 1 1 auto; }
+    }
     .resume-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
@@ -1149,11 +1162,11 @@
     .rc-btn.rc-delete:hover { background: #dc2626; }
     .rc-btn.rc-download { background: var(--accent); }
     .rc-btn.rc-download:hover { background: #2563eb; }
-    .resume-card.is-placeholder {
+    .resume-row.is-placeholder .resume-card {
       border-style: dashed; border-color: var(--border);
     }
-    .resume-card.is-placeholder .rc-name { color: var(--text-dim); }
-    .resume-card.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
+    .resume-row.is-placeholder .rc-name { color: var(--text-dim); }
+    .resume-row.is-placeholder .rc-meta { color: var(--warm); font-style: italic; }
     .company-dropdown {
       display:none; position:absolute; z-index:100;
       background:var(--bg-card); border:1px solid var(--border);
