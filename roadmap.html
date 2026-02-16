@@ -292,7 +292,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 15, 2026 · Build 1771203306 · Dashboard v2.62 · ✅ Notification system deployed (8 Edge Functions, 6 cron jobs, 18 email templates)
+    Brilliant Jobs · Internal Roadmap · Updated February 16, 2026 · Dashboard v2.64 · ✅ Multi-ATS live: 7,542 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 120K+ jobs · refresh-jobs v10 deployed (200 boards/10min cron cycle)
   </div>
 
 </div>
@@ -555,53 +555,63 @@ const features = [
   // Phase 10 — Multi-ATS: Per-Source Roadmaps
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 10 },
 
-  // ── Greenhouse (ACTIVE) ──
+  // ── Multi-ATS Infrastructure (DONE) ──
+  { s: 'done', n: 'Composite PK migration', d: 'Migrated ats_companies from slug-only PK to composite (slug, source). Allows same company name on different ATS platforms without collision. ats_jobs already had company_slug + ats_source columns.', p: 10 },
+  { s: 'done', n: 'DataForSEO alphabet crawl — 5 ATS platforms', d: 'Systematic a-z + aa-zz site: queries (702 per platform) across Greenhouse, Lever, Ashby, Workable, Recruitee via DataForSEO Standard method. Total cost ~$10. Discovered 6,036 new companies + 1,874 existing Greenhouse = 7,910 total boards imported to ats_companies.', p: 10 },
+  { s: 'done', n: 'Multi-ATS board validation', d: 'Built dfs_validate_boards.js — pings all 7,910 boards against live ATS APIs with concurrency control, rate limit backoff, timeout handling. Results: 7,542 live (95.3%), 238 dead, 130 unknown. Updates job_count + last_checked in Supabase. Top boards: svetness (4,678), jobgether (4,606), mercier-consultancy (3,276).', p: 10 },
+  { s: 'done', n: 'Multi-ATS refresh-jobs Edge Function v10', d: 'Single function handles all 5 ATS platforms. Processes 200 boards per invocation (stalest first via last_checked cursor). Parsers for Greenhouse, Lever, Ashby, Workable, Recruitee normalize to shared ats_jobs schema. Upserts on composite (greenhouse_id, ats_source). Marks disappeared jobs as closed. Wall time safety at 120s. verify_jwt=false for cron access.', p: 10 },
+  { s: 'done', n: 'pg_cron 10-minute refresh cycle', d: 'refresh-jobs-cycle fires every 10 min — full cycle of 7,542 boards in ~6.5 hours. Replaced old daily-job-refresh and refresh-batch-00 cron jobs. Old refresh-orchestrator function deprecated.', p: 10 },
+  { s: 'done', n: 'Scheduled discovery automation', d: 'Built dfs_scheduled_discovery.js for monthly crawl: runs alphabet crawl across all 5 platforms (3,510 queries, ~$10.53/run), compares against Supabase, inserts net-new slugs. Includes --resume flag for crash recovery. Designed for cron (monthly 1st at 3am).', p: 10 },
+  { s: 'done', n: 'Slug import pipeline', d: 'Built dfs_import_existing.js to load *_alpha_slugs.json files into Supabase. Handles object vs array formats, filters master files, validates arrays. Imported 3,588 net-new slugs (Workable + Recruitee) bringing total from 4,322 to 7,910.', p: 10 },
+  { s: 'done', n: 'Competitive analysis toolkit', d: 'Built Manifest V3 Chrome extension (Site Inspector) for LoopCV UX research: network request interception, fetch/XHR response capture, WebSocket logging, localStorage snapshots, form detection, DOM mutation observer, notes with timestamps. JSON + summary export.', p: 10 },
+
+  // ── Greenhouse (ACTIVE — 1,874 boards, 116K+ jobs) ──
   { s: 'done', n: '[GH] Board discovery — recover 1,900 slugs', d: 'Recovered 1,787 companies from Greenhouse API via CSV scrape + psql bulk load. FK constraints dropped to prevent future CASCADE.', p: 10 },
-  { s: 'done', n: '[GH] Re-scrape all jobs', d: 'Recovered 116,206 jobs via Greenhouse API CSV scrape + psql COPY bulk load in 25 min. Core fields restored (title, company, location, url, department). Content HTML, salary, historical timestamps not recovered.', p: 10 },
-  { s: 'done', n: '[GH] Re-run location normalization', d: 'Ran normalize_job_locations() on all 116K rows + manual cleanup SQL for state abbreviations, NYC→New York, bare Portland→OR. lat/lng populated for 20K jobs from ref_city_radius. find_jobs_within_radius function fixed (job_lat→lat).', p: 10 },
-  { s: 'done', n: '[GH] Re-enable daily refresh cron', d: 'ats_companies repopulated with 1,787 slugs. pg_net orchestrator and Edge Function intact. Cron scheduled for 4AM UTC — will resume automatically.', p: 10 },
-  { s: 'done', n: '[GH] Re-enable closed job detection', d: 'Will resume with next cron run. All recovered jobs marked status=open; first cron pass will detect actual closures.', p: 10 },
+  { s: 'done', n: '[GH] Re-scrape all jobs', d: 'Recovered 116,206 jobs via Greenhouse API CSV scrape + psql COPY bulk load in 25 min. Core fields restored.', p: 10 },
+  { s: 'done', n: '[GH] Location normalization', d: 'Ran normalize_job_locations() on all 116K rows + manual cleanup SQL. lat/lng populated for 20K jobs from ref_city_radius.', p: 10 },
+  { s: 'done', n: '[GH] Alphabet crawl expansion', d: 'DataForSEO alphabet crawl for Greenhouse-specific boards. Got through letters a-s before Task Handed errors. 78 new boards discovered.', p: 10 },
   { s: 'todo', n: '[GH] New board discovery via TheirStack', d: 'Import 24K+ Greenhouse slugs, diff against existing 1,900', p: 10 },
   { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', p: 10 },
 
-  // ── Lever ──
-  { s: 'todo', n: '[LV] Board discovery', d: 'TheirStack has 11K+ Lever slugs. Also probe jobs.lever.co/{slug} from company names', p: 10 },
-  { s: 'todo', n: '[LV] Job scraper', d: 'Fetch open roles from jobs.lever.co/{company}?mode=json public API', p: 10 },
-  { s: 'todo', n: '[LV] Location normalization', d: 'Run same normalize_job_locations() — extend for Lever location format quirks', p: 10 },
-  { s: 'todo', n: '[LV] Daily refresh cron', d: 'Add Lever boards to orchestrator batch rotation', p: 10 },
-  { s: 'todo', n: '[LV] Closed job detection', d: 'Same pattern — mark missing jobs inactive on refresh', p: 10 },
+  // ── Lever (ACTIVE — 1,154 boards, scraping live) ──
+  { s: 'done', n: '[LV] Board discovery', d: 'DataForSEO alphabet crawl: 1,154 Lever boards discovered. All imported to ats_companies with source=lever.', p: 10 },
+  { s: 'done', n: '[LV] Job scraper + refresh + closed detection', d: 'Lever parser in refresh-jobs v10: fetches api.lever.co/v0/postings/{slug}?mode=json. Extracts title, location, department, workplace type, description. Included in 10-min cron cycle. Marks disappeared jobs closed.', p: 10 },
+  { s: 'todo', n: '[LV] Location normalization', d: 'Run normalize_job_locations() on Lever jobs — extend for categories.location field format.', p: 10 },
 
-  // ── Workable ──
-  { s: 'todo', n: '[WK] Board discovery', d: 'TheirStack has 35K+ Workable slugs. Probe apply.workable.com/{slug}', p: 10 },
-  { s: 'todo', n: '[WK] Job scraper', d: 'Fetch open roles from apply.workable.com/{company} public API', p: 10 },
-  { s: 'todo', n: '[WK] Location normalization', d: 'Extend normalizer for Workable format', p: 10 },
-  { s: 'todo', n: '[WK] Daily refresh cron', d: 'Add Workable boards to orchestrator', p: 10 },
-  { s: 'todo', n: '[WK] Closed job detection', d: 'Mark missing jobs inactive', p: 10 },
+  // ── Ashby (ACTIVE — 1,294 boards, scraping live) ──
+  { s: 'done', n: '[ASH] Board discovery', d: 'DataForSEO alphabet crawl: 1,294 Ashby boards discovered. All imported to ats_companies with source=ashby.', p: 10 },
+  { s: 'done', n: '[ASH] Job scraper + refresh + closed detection', d: 'Ashby parser in refresh-jobs v10: fetches api.ashbyhq.com/posting-api/job-board/{slug}. Extracts title, location, department, isRemote, jobUrl. Nested address field handling. In 10-min cron cycle.', p: 10 },
+  { s: 'todo', n: '[ASH] Location normalization', d: 'Run normalize_job_locations() on Ashby jobs — has addressRegion/addressLocality in nested address object.', p: 10 },
 
-  // ── Ashby ──
-  { s: 'todo', n: '[ASH] Board discovery', d: 'Probe Ashby public board API from known company names', p: 10 },
-  { s: 'todo', n: '[ASH] Job scraper', d: 'Fetch open roles from Ashby public board API', p: 10 },
-  { s: 'todo', n: '[ASH] Normalize + refresh + dedup', d: 'Full pipeline: normalize, cron, closed detection, cross-source dedup', p: 10 },
+  // ── Workable (ACTIVE — 2,255 boards, scraping live) ──
+  { s: 'done', n: '[WK] Board discovery', d: 'DataForSEO alphabet crawl: 2,255 Workable boards discovered. All imported to ats_companies with source=workable.', p: 10 },
+  { s: 'done', n: '[WK] Job scraper + refresh + closed detection', d: 'Workable parser in refresh-jobs v10: fetches apply.workable.com/api/v1/widget/accounts/{slug}. Extracts title, city/state/country, department, telecommuting flag. In 10-min cron cycle.', p: 10 },
+  { s: 'todo', n: '[WK] Location normalization', d: 'Workable provides structured city/state/country — may normalize cleaner than other platforms.', p: 10 },
 
-  // ── Indeed RSS ──
-  { s: 'todo', n: '[IND] RSS feed integration', d: 'Poll rss.indeed.com for keyword/location job feeds', p: 10 },
-  { s: 'todo', n: '[IND] Normalize + refresh + dedup', d: 'Parse RSS XML, normalize locations, dedup against ATS sources', p: 10 },
+  // ── Recruitee (ACTIVE — 1,333 boards, scraping live) ──
+  { s: 'done', n: '[REC] Board discovery', d: 'DataForSEO alphabet crawl: 1,333 Recruitee boards discovered. All imported to ats_companies with source=recruitee.', p: 10 },
+  { s: 'done', n: '[REC] Job scraper + refresh + closed detection', d: 'Recruitee parser in refresh-jobs v10: fetches {slug}.recruitee.com/api/offers. Extracts title, location, department, remote flag. In 10-min cron cycle.', p: 10 },
+  { s: 'todo', n: '[REC] Location normalization', d: 'Run normalize_job_locations() on Recruitee jobs.', p: 10 },
 
-  // ── USAJobs ──
-  { s: 'todo', n: '[USJ] API integration', d: 'Fetch federal government jobs from developer.usajobs.gov public API', p: 10 },
-  { s: 'todo', n: '[USJ] Normalize + refresh + dedup', d: 'Map USAJobs fields to ats_jobs schema, normalize locations', p: 10 },
+  // ── PDL Company Dataset Discovery ──
+  { s: 'progress', n: 'PDL dataset ATS probing', d: 'Testing 1,500 US companies from PDL 7M dataset against all 5 ATS APIs. Generates slug variants from company names. Early results: ~0.3% hit rate, all Greenhouse so far. May be viable supplementary discovery channel if hit rate justifies full-scale run.', p: 10 },
+  { s: 'todo', n: 'PDL industry enrichment for new ATS boards', d: 'Match 5,668 non-Greenhouse ats_companies against PDL dataset for industry, size, locality, region, country, founded, website, linkedin_url.', p: 10 },
 
-  // ── Google Jobs (fallback) ──
-  { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS)', p: 10 },
+  // ── Maintenance & Cleanup ──
+  { s: 'todo', n: 'Staffing agency detection and flagging', d: 'Top boards by volume include staffing agencies (Jobgether 4,606, Mercier Consultancy 3,276, EramTalent). Flag or exclude to prevent feed flooding.', p: 10 },
+  { s: 'todo', n: 'Dead board purge', d: '238 boards returned 404/410 during validation. Purge or flag as inactive to prevent wasted refresh cycles.', p: 10 },
+  { s: 'todo', n: 'Unknown board retry', d: '130 boards timed out during validation. Queue for retry on next monthly discovery cycle.', p: 10 },
+  { s: 'todo', n: 'Migrate discovery scripts to GitHub Actions', d: 'Move dfs_scheduled_discovery.js and dfs_validate_boards.js from local laptop to GitHub Actions cron. Monthly schedule, secrets in repo settings.', p: 10 },
+  { s: 'todo', n: 'Location normalization for non-GH platforms', d: 'Batch normalize_job_locations() for all Lever, Ashby, Workable, Recruitee jobs after initial full-cycle scrape completes.', p: 10 },
+  { s: 'todo', n: 'Salary parsing for non-GH platforms', d: 'Extend salary extraction to non-Greenhouse job content. Some platforms include structured salary in API responses.', p: 10 },
+  { s: 'todo', n: 'Source attribution in feed', d: 'Show GH/LV/WK/ASH/REC badge per job row — already have pill CSS ready.', p: 10 },
 
-  // ── Cross-source ──
-  { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location → hash for dedup across all sources', p: 10 },
-  { s: 'todo', n: 'Auto-apply form-fill automation', d: 'Per-ATS form fill adapters: Greenhouse, Lever, Workable, Ashby. Extension detects ATS form fields, maps resume data + cover letter, submits. Each ATS needs its own adapter due to different field structures, auth, and anti-bot measures. Depends on P4 decision engine + P10 ATS connectors being in place.', p: 10 },
-  { s: 'todo', n: 'ATS endpoint probing', d: 'When company names discovered from non-ATS sources, probe GH/LV/WK/ASH to discover which ATS they use', p: 10 },
-  { s: 'todo', n: 'Multi-ATS board validation script', d: 'Test all ats_companies slugs against Greenhouse, Lever, Ashby, and Workable APIs. 200=active, 404=skip. Tag each company with confirmed ATS source.', p: 10 },
-  { s: 'todo', n: 'DataForSEO outbound link harvesting', d: 'Mine LinkedIn/Indeed company pages for ATS board URLs at scale', p: 10 },
-  { s: 'todo', n: 'Regional job aggregation', d: 'Group locations into metro areas (NYC, Bay Area, Chicago) using Census CSA/MSA data', p: 10 },
-  { s: 'todo', n: 'Source attribution in feed', d: 'Show GH/LV/WK/ASH/IND badge per job row — already have pill CSS ready', p: 10 },
+  // ── Future Sources ──
+  { s: 'todo', n: '[IND] Indeed RSS feed integration', d: 'Poll rss.indeed.com for keyword/location job feeds. Normalize + dedup against ATS sources.', p: 10 },
+  { s: 'todo', n: '[USJ] USAJobs API integration', d: 'Fetch federal government jobs from developer.usajobs.gov public API. Map to ats_jobs schema.', p: 10 },
+  { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', p: 10 },
+  { s: 'todo', n: 'Cross-source job deduplication', d: 'Normalize title + company + location hash for dedup across all sources.', p: 10 },
+  { s: 'todo', n: 'Auto-apply form-fill automation', d: 'Per-ATS form fill adapters: Greenhouse, Lever, Workable, Ashby, Recruitee. Depends on P4 decision engine.', p: 10 },
 
   // Phase 11 — SEO Trend Content
   { s: 'todo', n: 'Public company ghost rate reports', d: 'SEO-friendly pages showing employer hiring accountability scores', p: 11 },
