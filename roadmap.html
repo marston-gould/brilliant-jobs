@@ -594,7 +594,7 @@ const features = [
   { s: 'todo', n: '[REC] Location normalization', d: 'Run normalize_job_locations() on Recruitee jobs.', p: 10 },
 
   // ── PDL Company Dataset Discovery ──
-  { s: 'progress', n: 'PDL dataset ATS probing', d: 'Testing 1,500 US companies from PDL 7M dataset against all 5 ATS APIs. Generates slug variants from company names. Early results: ~0.3% hit rate, all Greenhouse so far. May be viable supplementary discovery channel if hit rate justifies full-scale run.', p: 10 },
+  { s: 'done', n: 'PDL dataset ATS probing', d: 'Tested 1,500 US companies from PDL 34M dataset against 5 ATS APIs. 3 hits from 400 companies (0.75% hit rate). Non-Greenhouse platforms use unpredictable slugs. Not viable for discovery. PDL remains excellent for enrichment only.', p: 10 },
   { s: 'todo', n: 'PDL industry enrichment for new ATS boards', d: 'Match 5,668 non-Greenhouse ats_companies against PDL dataset for industry, size, locality, region, country, founded, website, linkedin_url.', p: 10 },
 
   // ── Maintenance & Cleanup ──
