@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brilliant Jobs — Parking Lot</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0e13;
+      --bg-card: #13151c;
+      --bg-card-hover: #181b24;
+      --border: #1e2130;
+      --border-hover: #2a2e42;
+      --text: #e2e4ea;
+      --text-dim: #9ba1b4;
+      --text-faint: #5c6278;
+      --accent: #4d8eff;
+      --accent-glow: rgba(77,142,255,0.08);
+      --green: #34d399;
+      --green-dim: rgba(52,211,153,0.1);
+      --amber: #f59e0b;
+      --amber-dim: rgba(245,158,11,0.1);
+      --red: #f87171;
+      --purple: #a78bfa;
+      --purple-dim: rgba(167,139,250,0.1);
+      --cyan: #22d3ee;
+      --orange: #fb923c;
+      --teal: #2dd4bf;
+      --sans: 'Outfit', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    body::after {
+      content: '';
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 60px 32px 120px; }
+
+    /* Header */
+    .header { margin-bottom: 56px; animation: fadeUp 0.6s ease-out; }
+    .header-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .header-mark {
+      width: 36px; height: 36px; background: #fff; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: var(--bg);
+    }
+    .header-brand h1 { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .header h2 {
+      font-size: 38px; font-weight: 800; letter-spacing: -1.5px;
+      background: linear-gradient(135deg, #fff 0%, #fb923c 50%, #f59e0b 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1.15; margin-bottom: 12px;
+    }
+    .header p { font-size: 15px; color: var(--text-dim); max-width: 600px; line-height: 1.7; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Sections */
+    .section-wrap { margin-bottom: 8px; }
+    .section-wrap.collapsed .section-chevron { transform: rotate(-90deg); }
+    .section-wrap.collapsed .section-body {
+      max-height: 0 !important; overflow: hidden; opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.2s ease;
+    }
+
+    .section-divider {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      border-radius: 10px; transition: background 0.15s;
+    }
+    .section-divider:hover { background: var(--bg-card); }
+    .section-chevron {
+      font-size: 11px; color: var(--text-faint);
+      transition: transform 0.2s ease; flex-shrink: 0;
+    }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; }
+    .section-count {
+      font-family: var(--mono); font-size: 11px; color: var(--text-faint);
+      background: var(--bg-card); padding: 2px 8px; border-radius: 6px;
+    }
+
+    .section-body {
+      max-height: 10000px; opacity: 1;
+      transition: max-height 0.4s ease, opacity 0.3s ease;
+      padding: 0 0 16px;
+    }
+
+    /* Items */
+    .item-list { list-style: none; padding: 0 8px; }
+    .item {
+      padding: 14px 16px; border-radius: 10px;
+      border: 1px solid transparent; margin-bottom: 4px;
+      transition: all 0.15s;
+    }
+    .item:hover { background: var(--bg-card); border-color: var(--border); }
+    .item-header { display: flex; align-items: flex-start; gap: 10px; }
+    .item-status {
+      width: 8px; height: 8px; border-radius: 50%; margin-top: 7px; flex-shrink: 0;
+    }
+    .s-tested { background: var(--green); }
+    .s-viable { background: var(--accent); }
+    .s-parked { background: var(--amber); }
+    .s-dead { background: var(--red); }
+    .s-idea { background: var(--purple); }
+
+    .item-name { font-size: 14px; font-weight: 600; color: #fff; }
+    .item-desc { font-size: 13px; color: var(--text-dim); margin-top: 6px; line-height: 1.65; padding-left: 18px; }
+    .item-meta {
+      display: flex; gap: 8px; margin-top: 8px; padding-left: 18px; flex-wrap: wrap;
+    }
+    .tag {
+      font-family: var(--mono); font-size: 10px; padding: 2px 8px;
+      border-radius: 5px; font-weight: 600;
+    }
+    .tag-cost { background: var(--amber-dim); color: var(--amber); }
+    .tag-yield { background: var(--green-dim); color: var(--green); }
+    .tag-channel { background: var(--purple-dim); color: var(--purple); }
+    .tag-platform { background: rgba(77,142,255,0.1); color: var(--accent); }
+    .tag-dead { background: rgba(248,113,113,0.1); color: var(--red); }
+
+    /* Legend */
+    .legend {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      padding: 16px 0; margin-bottom: 24px; border-bottom: 1px solid var(--border);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-brand">
+        <div class="header-mark">BJ</div>
+        <h1>Brilliant Jobs</h1>
+      </div>
+      <h2>Parking Lot</h2>
+      <p>Ideas, experiments, deferred work, and discovery channels. Things we've tested, things we've shelved, and things worth revisiting.</p>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot s-tested"></div> Tested</div>
+      <div class="legend-item"><div class="legend-dot s-viable"></div> Viable</div>
+      <div class="legend-item"><div class="legend-dot s-parked"></div> Parked</div>
+      <div class="legend-item"><div class="legend-dot s-dead"></div> Dead</div>
+      <div class="legend-item"><div class="legend-dot s-idea"></div> Idea</div>
+    </div>
+
+    <div id="content"></div>
+  </div>
+
+<script>
+const sections = [
+  {
+    title: 'Discovery Channels',
+    color: 'var(--accent)',
+    items: [
+      {
+        s: 'tested', n: 'DataForSEO national alphabet crawl',
+        d: 'site: queries for 5 ATS platforms × 26+ letters via SERP API Standard method. Found 6,036 companies at 95.3% live rate. Best cost/yield ratio of any channel. $10 total.',
+        tags: [['cost', '$10'], ['yield', '6,036 boards'], ['channel', 'DataForSEO']]
+      },
+      {
+        s: 'tested', n: 'Greenhouse Seekers Portal scrape',
+        d: 'my.greenhouse.io/jobs — Greenhouse\'s own job seeker portal. Paginated with Chrome scraper extension, extracted slugs from publicUrl. US/CA/Remote filter. Requires login. Yielded 1,856 net-new Greenhouse boards for $0.',
+        tags: [['cost', 'FREE'], ['yield', '1,856 new boards'], ['channel', 'Seekers Portal']]
+      },
+      {
+        s: 'viable', n: 'Greenhouse Seekers — international',
+        d: 'Same portal, different country filters (UK, Germany, France, Australia, etc). Untapped. Could yield hundreds or thousands more EU/APAC boards. 496 EU boards already identified in US scrape.',
+        tags: [['cost', 'FREE'], ['channel', 'Seekers Portal']]
+      },
+      {
+        s: 'parked', n: 'DataForSEO metro-targeted site: queries',
+        d: 'Hypothesis: metro-level searches surface boards not found nationally. Probed Houston × 3 letters × 5 platforms (45 tasks, $0.27). Lever: 139, Ashby: 148, Workable: 97, Greenhouse: 70 (spotty), Recruitee: 0. Unclear if incremental vs national. Example query: "site:jobs.lever.co a" with Houston location_code. Likely low incremental yield since site: queries aren\'t geo-filtered like Google Jobs. Parked until national channels exhausted.',
+        tags: [['cost', '$0.27 probe'], ['channel', 'DataForSEO']]
+      },
+      {
+        s: 'dead', n: 'Google Jobs via DataForSEO',
+        d: 'Searched broad job titles across 30 US cities. DataForSEO returns source_url (single field) not apply_options (array). Most URLs pointed to aggregators (ZipRecruiter, Indeed), not direct ATS links. Zero boards extracted from 3,133 jobs.',
+        tags: [['cost', '~$1.80'], ['yield', '0 boards'], ['channel', 'DataForSEO'], ['dead', 'DEAD']]
+      },
+      {
+        s: 'dead', n: 'PDL dataset slug probing',
+        d: 'Tested 1,500 US companies from PDL 34M company dataset against 5 ATS APIs. 3 hits from 400 companies (0.75% rate). Non-Greenhouse platforms use unpredictable slugs. Not viable for discovery, excellent for enrichment.',
+        tags: [['cost', 'FREE'], ['yield', '0.75% rate'], ['dead', 'DEAD']]
+      },
+      {
+        s: 'viable', n: 'TheirStack import',
+        d: 'Commercial dataset: 24K Greenhouse + 11K Lever + 35K Workable slugs. Planned purchase. Would be the single largest import if pricing works.',
+        tags: [['channel', 'TheirStack']]
+      },
+      {
+        s: 'idea', n: 'GitHub API job board discovery',
+        d: 'GitHub repos often embed Greenhouse/Lever board URLs in README files, job posting repos, and career page code. Could mine GitHub search API for ATS URLs.',
+        tags: [['channel', 'GitHub']]
+      },
+    ]
+  },
+  {
+    title: 'Enrichment & Data Quality',
+    color: 'var(--teal)',
+    items: [
+      {
+        s: 'viable', n: 'PDL enrichment for non-Greenhouse boards',
+        d: '5,668 non-Greenhouse boards need industry, size, locality, region, country, founded, website, linkedin_url. PDL dataset has 34.2M companies (8.7M US, 864K CA). 100% LinkedIn URL coverage, 80% industry. LinkedIn URL matching more reliable than name-based.',
+        tags: [['yield', '5,668 boards'], ['platform', 'PDL']]
+      },
+      {
+        s: 'parked', n: 'EU Greenhouse API endpoint',
+        d: '496 EU-hosted boards discovered (job-boards.eu.greenhouse.io). Need to confirm if API is at boards-api.eu.greenhouse.io or same endpoint with different routing. Edge Function needs update to handle EU boards.',
+        tags: [['platform', 'Greenhouse EU']]
+      },
+      {
+        s: 'parked', n: 'Location normalization — non-Greenhouse',
+        d: 'Lever/Ashby/Workable/Recruitee jobs need per-platform location parsing to match Greenhouse City, ST format.',
+        tags: [['platform', 'Multi-ATS']]
+      },
+      {
+        s: 'parked', n: 'Salary parsing — non-Greenhouse',
+        d: 'Only Greenhouse jobs have salary extraction. Lever/Ashby/Workable descriptions need salary regex applied.',
+        tags: [['platform', 'Multi-ATS']]
+      },
+      {
+        s: 'parked', n: 'Staffing agency detection',
+        d: 'Jobgether: 4,606 jobs, Mercier Consultancy: 3,276 jobs. These are staffing aggregators inflating numbers. Need flagging or filtering.',
+        tags: [['yield', '~8K flagged jobs']]
+      },
+      {
+        s: 'parked', n: 'Dead board purge',
+        d: '238 boards returning 404/410. Should be marked inactive and excluded from refresh cycles.',
+        tags: [['yield', '238 boards']]
+      },
+      {
+        s: 'parked', n: 'Unknown board retry',
+        d: '130 boards timed out during validation. Need retry with longer timeout.',
+        tags: [['yield', '130 boards']]
+      },
+    ]
+  },
+  {
+    title: 'Infrastructure',
+    color: 'var(--orange)',
+    items: [
+      {
+        s: 'parked', n: 'Remove redundant cron jobs',
+        d: 'daily-job-refresh and refresh-batch-00 are superseded by the 10-minute cycling cron. Should be disabled.',
+        tags: [['platform', 'Supabase']]
+      },
+      {
+        s: 'parked', n: 'Resend domain verification',
+        d: 'brilliantjobs.app DNS is correct but Resend dashboard crashes. Need full-access API key or contact support@resend.com. MX record needed in Cloudflare.',
+        tags: [['platform', 'Resend'], ['dead', 'BLOCKER']]
+      },
+      {
+        s: 'parked', n: 'Migrate discovery scripts to GitHub Actions',
+        d: 'DataForSEO crawl scripts currently run locally. Should be cron-triggered via GitHub Actions for repeatability.',
+        tags: [['platform', 'GitHub Actions']]
+      },
+      {
+        s: 'parked', n: 'Add discovery_method column to ats_companies',
+        d: 'Track provenance: dfs_alphabet, seekers_portal, theirstack, manual. Currently using source column.',
+        tags: [['platform', 'Supabase']]
+      },
+      {
+        s: 'idea', n: 'Source attribution badges in feed',
+        d: 'Show GH/LV/WK/ASH/REC pills on job cards so users know which ATS platform each listing came from.',
+        tags: [['platform', 'Dashboard']]
+      },
+    ]
+  },
+  {
+    title: 'Product Ideas',
+    color: 'var(--purple)',
+    items: [
+      {
+        s: 'parked', n: 'Industry filter via PDL enrichment',
+        d: 'Use PDL industry data to let users filter by industry. Requires enrichment pipeline completion.',
+        tags: [['platform', 'Dashboard']]
+      },
+      {
+        s: 'parked', n: 'B2B/B2C/DTC company classification',
+        d: 'Tag companies by business model. Useful for marketing/sales job seekers.',
+        tags: [['platform', 'Dashboard']]
+      },
+      {
+        s: 'parked', n: 'Dashboard marketing stats banner',
+        d: 'Show aggregate platform stats (total jobs, companies, avg salary) on dashboard landing.',
+        tags: [['platform', 'Dashboard']]
+      },
+      {
+        s: 'parked', n: 'AI resume grading (paid feature)',
+        d: 'Two-process approach: seniority audit + gap analysis. Should be a paid feature, not free tier.',
+        tags: [['platform', 'Dashboard']]
+      },
+      {
+        s: 'parked', n: 'LoopCV competitive analysis',
+        d: 'Sign up ($10), use Site Inspector extension to capture UX/architecture, compare features against Brilliant Jobs.',
+        tags: [['cost', '$10']]
+      },
+      {
+        s: 'idea', n: 'Responsive Jobs Feed columns',
+        d: 'Table columns need responsive handling for various viewport sizes — hide/collapse columns at breakpoints.',
+        tags: [['platform', 'Dashboard']]
+      },
+    ]
+  },
+];
+
+// Render
+const container = document.getElementById('content');
+let html = '';
+
+for (const section of sections) {
+  const count = section.items.length;
+  html += `<div class="section-wrap">`;
+  html += `<div class="section-divider" onclick="this.parentElement.classList.toggle('collapsed')" style="color:${section.color}">`;
+  html += `<span class="section-chevron">▼</span>`;
+  html += `<span class="section-title" style="color:${section.color}">${section.title}</span>`;
+  html += `<span class="section-count">${count}</span>`;
+  html += `</div>`;
+  html += `<div class="section-body"><ul class="item-list">`;
+
+  for (const item of section.items) {
+    html += `<li class="item">`;
+    html += `<div class="item-header">`;
+    html += `<div class="item-status s-${item.s}"></div>`;
+    html += `<span class="item-name">${item.n}</span>`;
+    html += `</div>`;
+    html += `<div class="item-desc">${item.d}</div>`;
+    if (item.tags && item.tags.length) {
+      html += `<div class="item-meta">`;
+      for (const [type, label] of item.tags) {
+        html += `<span class="tag tag-${type}">${label}</span>`;
+      }
+      html += `</div>`;
+    }
+    html += `</li>`;
+  }
+
+  html += `</ul></div></div>`;
+}
+
+container.innerHTML = html;
+</script>
+</body>
+</html>
