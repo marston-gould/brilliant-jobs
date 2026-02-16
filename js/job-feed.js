@@ -204,17 +204,17 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Load global tuning settings
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-  // WHAT — title matching via full-text search (with ilike fallback for short terms)
+  // WHAT — title matching via word-boundary regex + full-text search
   for (const pill of w) {
     const allClauses = pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
-      // For single-word terms or short phrases, use FTS on search_vector
-      // FTS handles stemming: "managing" matches "manager", etc.
-      // Also keep ilike as OR fallback for substring matches FTS might miss
+      // Escape regex special characters for PostgreSQL ~ operator
+      const rxSafe = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Word boundary matching: \m = start of word, \M = end of word
+      // This prevents "geo" from matching "geospatial"
       return [
-        `title.ilike.${safe}%`,
-        `title.ilike.% ${safe}%`,
+        `title.imatch.\\m${rxSafe}\\M`,
         `search_vector.wfts(english).${safe}`,
       ];
     });
