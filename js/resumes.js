@@ -99,6 +99,8 @@ function renderResumes() {
       const hasCache = readinessCache && readinessCache.scores && readinessCache.scores[i];
       if (hasCache) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}">${buildInlineGrade(i, readinessCache.scores[i])}</div>`;
+      } else if (r.textStatus === 'no-text' && r.fileName && /\.docx?$/i.test(r.fileName)) {
+        gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:11px;color:var(--red);cursor:pointer;" onclick="reUploadResume(${i})" title="File needs re-upload for text extraction">⚠ Re-upload file to enable scoring <span style="text-decoration:underline;">Click here</span></div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length > 0) {
         gradeHtml = `<div class="rc-grade-slot" id="rc-grade-${i}"><div style="font-size:10px;color:var(--text-faint);font-style:italic;">Analyzing\u2026</div></div>`;
       } else if (r.textStatus === 'ready' && r.keywords && r.keywords.length > 0 && assignedIds.length === 0) {
@@ -618,6 +620,46 @@ window.replaceResumePlaceholder = function(idx) {
       resumes[idx].textStatus = text ? 'ready' : 'no-text';
       saveResumes();
       renderResumes();
+    });
+  });
+  tmpInput.click();
+};
+
+// Re-upload file for existing resume (when IndexedDB file is missing)
+window.reUploadResume = function(idx) {
+  const tmpInput = document.createElement('input');
+  tmpInput.type = 'file';
+  tmpInput.accept = '.pdf,.doc,.docx';
+  tmpInput.addEventListener('change', () => {
+    const file = tmpInput.files[0];
+    if (!file) return;
+    const sizeStr = file.size < 1024 * 1024
+      ? (file.size / 1024).toFixed(0) + ' KB'
+      : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+    resumes[idx].fileName = file.name;
+    resumes[idx].size = sizeStr;
+    resumes[idx].source = 'upload';
+    resumes[idx].textStatus = 'extracting';
+    // Clear stale readiness cache
+    readinessCache = null;
+    localStorage.removeItem('bj_readiness');
+    jobMatchScores = {};
+    saveResumes();
+    renderResumes();
+
+    // Store file blob in IndexedDB
+    bjFileStore.put(resumes[idx].id, file).catch(e => console.warn('[BJ] File store error:', e));
+
+    extractTextFromFile(file).then(text => {
+      if (!resumes[idx]) return;
+      resumes[idx].extractedText = text;
+      resumes[idx].keywords = extractResumeKeywords(text);
+      resumes[idx].textStatus = text ? 'ready' : 'no-text';
+      saveResumes();
+      renderResumes();
+      if (text) {
+        console.log('[BJ] Re-upload extraction:', resumes[idx].name, '→', text.length, 'chars,', resumes[idx].keywords.length, 'keywords');
+      }
     });
   });
   tmpInput.click();
