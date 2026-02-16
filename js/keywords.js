@@ -914,6 +914,8 @@ async function loadPreviewSnippets() {
       if (content) {
         const snippet = extractSnippet(content, 300);
         el.innerHTML = snippet + `<span class="preview-more" data-jobid="${jobId}"> →</span>`;
+        // Content just arrived — compute match score for this job
+        computeVisibleJobScores();
       } else {
         el.innerHTML = '<span style="opacity:0.3;">no description available</span>';
       }
