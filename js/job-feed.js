@@ -1136,6 +1136,8 @@ async function backgroundEnrichSalary() {
     }
   } finally {
     _enrichRunning = false;
+    // Re-compute match scores now that content is available
+    if (typeof computeVisibleJobScores === 'function') computeVisibleJobScores();
   }
 }
 
