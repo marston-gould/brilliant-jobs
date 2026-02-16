@@ -317,6 +317,10 @@ window.toggleResumeFilter = function(resumeIdx, filterName) {
   } else {
     r.filterIds.push(filterName);
   }
+  // Clear readiness cache so it re-analyzes with new assignment
+  readinessCache = null;
+  localStorage.removeItem('bj_readiness');
+  jobMatchScores = {};
   saveResumes();
   renderResumes();
 };
