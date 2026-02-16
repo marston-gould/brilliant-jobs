@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.62 - 2026-02-15 - DOCX re-upload prompt when IndexedDB file missing. Pipeline Calendar View in backlog. -->
+<!-- Brilliant Jobs Dashboard v2.63 - 2026-02-15 - DOCX re-upload prompt when IndexedDB file missing. Pipeline Calendar View in backlog. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -30,7 +30,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.62</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.63</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -916,19 +916,15 @@
             <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">These filters have no resume assigned. Jobs from unassigned filters cannot be auto-applied.</div>
           </div>
 
-          <!-- Readiness Analysis Panel -->
-          <div class="card" id="readiness-panel" style="display:none;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div>
-                <div class="card-title" style="margin-bottom:2px;">Resume Readiness — Detailed Breakdown</div>
-                <div style="font-size:11px;color:var(--text-faint);">Expand "View insights" on any resume card above for a quick summary, or see full analysis here</div>
-              </div>
+          <!-- Readiness Analysis Bar -->
+          <div class="card" id="readiness-panel" style="display:none;padding:12px 18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="font-size:12px;color:var(--text-dim);">Resume readiness scores appear beside each resume card below.</div>
               <div style="display:flex;gap:8px;align-items:center;">
                 <span id="readiness-status" style="font-size:10px;color:var(--text-faint);"></span>
                 <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()">Re-analyze</button>
               </div>
             </div>
-            <div id="readiness-results"></div>
           </div>
 
           <!-- Upload Zone -->
