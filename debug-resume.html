@@ -1,86 +1,124 @@
 <!DOCTYPE html>
-<html><head><title>BJ Resume Debug</title></head>
+<html><head><title>BJ Resume Debug</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+</head>
 <body style="background:#0f1117;color:#f0f1f3;font-family:'JetBrains Mono',monospace;padding:20px;font-size:13px;">
-<h2 style="color:#3b82f6;">Resume Scoring Debug — v2.60</h2>
+<h2 style="color:#3b82f6;">Resume Scoring Debug — v2.61b</h2>
 <pre id="out" style="white-space:pre-wrap;line-height:1.6;"></pre>
 <script>
 const o = document.getElementById('out');
 function log(m) { o.textContent += m + '\n'; }
 
-try {
-  const resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  const rc = JSON.parse(localStorage.getItem('bj_readiness') || 'null');
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
-
-  log('========== RESUMES (' + resumes.length + ') ==========');
-  resumes.forEach((r, i) => {
-    log('[' + i + '] "' + r.name + '"');
-    log('    archived:      ' + !!r.archived);
-    log('    textStatus:    ' + (r.textStatus || 'NOT SET'));
-    log('    keywords:      ' + (r.keywords ? r.keywords.length + ' terms' : 'NONE / EMPTY'));
-    log('    extractedText: ' + (r.extractedText ? r.extractedText.length + ' chars' : 'NONE'));
-    log('    filterIds:     ' + JSON.stringify(r.filterIds || []));
-    log('    levelLabel:    ' + (r.levelLabel || 'NONE'));
-    log('    fileName:      ' + (r.fileName || '?'));
-    if (r.keywords && r.keywords.length > 0) {
-      log('    first 10 kw:   ' + r.keywords.slice(0,10).map(k=>k[0]+'('+k[1]+')').join(', '));
-    }
-    if (r.extractedText) {
-      log('    text preview:  "' + r.extractedText.substring(0, 200).replace(/\n/g,' ') + '..."');
-    }
-    log('');
+// IndexedDB reader
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('bj_resume_files', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('files');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
-
-  log('========== SAVED FILTERS (' + sf.length + ') ==========');
-  sf.forEach((f, i) => {
-    log('[' + i + '] "' + f.name + '"');
-    log('    resumeId:      ' + JSON.stringify(f.resumeId));
-    log('    what-pills:    ' + JSON.stringify((f.whatPills || f['what-pills'] || []).map(p => p.text || p)));
-    log('    where-pills:   ' + JSON.stringify((f.wherePills || f['where-pills'] || []).map(p => p.text || p)));
-    log('');
-  });
-
-  log('========== CROSS-CHECK ==========');
-  resumes.forEach((r, i) => {
-    if (r.archived) return;
-    const fids = r.filterIds || [];
-    const eligible = !r.archived && r.textStatus === 'ready' && r.keywords && r.keywords.length > 0;
-    const hasFilter = fids.length > 0;
-    const filterExists = fids.every(fn => sf.some(f => f.name === fn));
-    log('Resume[' + i + '] "' + r.name + '":');
-    log('    eligible for scoring: ' + eligible);
-    log('    has filter assigned:  ' + hasFilter + ' → ' + JSON.stringify(fids));
-    log('    filter names exist:   ' + filterExists);
-    if (!eligible) {
-      if (r.textStatus !== 'ready') log('    ❌ BLOCKED: textStatus is "' + r.textStatus + '" (need "ready")');
-      if (!r.keywords || r.keywords.length === 0) log('    ❌ BLOCKED: no keywords extracted');
-    }
-    if (hasFilter && eligible) log('    ✅ SHOULD SCORE');
-    else log('    ⛔ WILL NOT SCORE');
-    log('');
-  });
-
-  log('========== READINESS CACHE ==========');
-  if (rc) {
-    log('lastRun: ' + rc.lastRun);
-    const keys = Object.keys(rc.scores || {});
-    log('scored resumes: ' + JSON.stringify(keys));
-    keys.forEach(ri => {
-      const s = rc.scores[ri];
-      log('  resume[' + ri + ']: overall=' + s.overallScore);
-      log('    filters: ' + JSON.stringify(Object.keys(s.filters)));
-      log('    levels:  ' + JSON.stringify(Object.keys(s.levels)));
-    });
-  } else {
-    log('(null — analysis never completed)');
-  }
-
-  log('\n========== LEVEL HIERARCHY ==========');
-  log(JSON.stringify((tuning.levelHierarchy || []).map(l => l.label), null, 2));
-
-} catch(e) {
-  log('ERROR: ' + e.message + '\n' + e.stack);
 }
+
+async function getFile(db, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('files', 'readonly');
+    const store = tx.objectStore('files');
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function run() {
+  try {
+    const resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+    const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+
+    log('========== MAMMOTH CHECK ==========');
+    log('mammoth loaded: ' + (typeof mammoth !== 'undefined'));
+    if (typeof mammoth !== 'undefined') {
+      log('mammoth.extractRawText: ' + (typeof mammoth.extractRawText));
+    }
+
+    log('\n========== RESUMES (' + resumes.length + ') ==========');
+    resumes.forEach((r, i) => {
+      log('[' + i + '] "' + r.name + '"');
+      log('    id:            ' + r.id);
+      log('    textStatus:    ' + (r.textStatus || 'NOT SET'));
+      log('    keywords:      ' + (r.keywords ? r.keywords.length + ' terms' : 'NONE'));
+      log('    extractedText: ' + (r.extractedText ? r.extractedText.length + ' chars' : 'NONE'));
+      log('    filterIds:     ' + JSON.stringify(r.filterIds || []));
+      log('    fileName:      ' + (r.fileName || '?'));
+    });
+
+    log('\n========== INDEXEDDB FILE CHECK ==========');
+    let db;
+    try {
+      db = await openDB();
+      log('IndexedDB opened OK');
+    } catch(e) {
+      log('❌ IndexedDB FAILED: ' + e.message);
+      return;
+    }
+
+    for (let i = 0; i < resumes.length; i++) {
+      const r = resumes[i];
+      if (r.archived) continue;
+      log('\nResume[' + i + '] id=' + r.id);
+      try {
+        const blob = await getFile(db, r.id);
+        if (!blob) {
+          log('  ❌ No file in IndexedDB for this id');
+          continue;
+        }
+        log('  ✅ File found: type=' + (blob.type || 'unknown') + ', size=' + blob.size + ' bytes');
+
+        // Try mammoth extraction right here
+        if (/\.docx$/i.test(r.fileName) && typeof mammoth !== 'undefined') {
+          log('  Attempting mammoth extraction...');
+          try {
+            const arrayBuffer = await blob.arrayBuffer();
+            log('  ArrayBuffer: ' + arrayBuffer.byteLength + ' bytes');
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            const text = (result.value || '').trim();
+            log('  ✅ MAMMOTH SUCCESS: ' + text.length + ' chars extracted');
+            if (text.length > 0) {
+              log('  Preview: "' + text.substring(0, 300).replace(/\n/g, ' ') + '..."');
+              log('');
+              log('  🔧 FIX: Paste this in console to update the resume:');
+              log('  ──────────────────────────────────────────');
+              log('  var r = JSON.parse(localStorage.getItem("bj_resumes")); r[' + i + '].extractedText = ' + JSON.stringify(text.substring(0, 100)) + '...; // truncated for display');
+              log('  ──────────────────────────────────────────');
+            } else {
+              log('  ⚠️ Mammoth returned empty text');
+            }
+            if (result.messages && result.messages.length > 0) {
+              log('  Mammoth messages: ' + JSON.stringify(result.messages));
+            }
+          } catch (me) {
+            log('  ❌ MAMMOTH ERROR: ' + me.message);
+            log('  Stack: ' + me.stack);
+          }
+        }
+
+        // Also check first bytes
+        const slice = await blob.slice(0, 4).arrayBuffer();
+        const bytes = new Uint8Array(slice);
+        const header = String.fromCharCode(...bytes);
+        log('  First 4 bytes: ' + header + ' (hex: ' + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(' ') + ')');
+        if (header.startsWith('PK')) {
+          log('  → ZIP/DOCX format confirmed');
+        }
+      } catch(e) {
+        log('  ❌ Error: ' + e.message);
+      }
+    }
+  } catch(e) {
+    log('FATAL ERROR: ' + e.message + '\n' + e.stack);
+  }
+}
+
+// Wait for mammoth to load
+setTimeout(run, 1000);
 </script>
 </body></html>
