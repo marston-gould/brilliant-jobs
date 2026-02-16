@@ -343,6 +343,20 @@
     .qb-pill.or-group .qb-pill-text { color: var(--purple); }
     .qb-pill.or-group .qb-pill-remove { color: rgba(139,92,246,0.5); border-left-color: rgba(139,92,246,0.15); }
     .qb-pill.or-group .or-sep { color: rgba(139,92,246,0.4); padding: 0 1px; font-size: 10px; font-weight: 700; }
+    .qb-val-item {
+      display: inline-flex; align-items: center; gap: 1px;
+      background: rgba(139,92,246,0.06); border-radius: 3px; padding: 0 1px 0 2px;
+    }
+    .qb-val-item:hover { background: rgba(139,92,246,0.12); }
+    .qb-val-remove {
+      font-size: 11px; cursor: pointer; color: rgba(139,92,246,0.35); padding: 0 2px;
+      line-height: 1; font-weight: 600; border-radius: 2px;
+    }
+    .qb-val-remove:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+    .not-pill .qb-val-item { background: rgba(239,68,68,0.06); }
+    .not-pill .qb-val-remove { color: rgba(239,68,68,0.35); }
+    .location-pill .qb-val-item { background: rgba(245,158,11,0.06); }
+    .location-pill .qb-val-remove { color: rgba(245,158,11,0.35); }
 
     .qb-pill.salary-pill { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.2); }
     .qb-pill.salary-pill .qb-pill-text { color: var(--green); }
