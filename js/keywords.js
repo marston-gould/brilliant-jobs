@@ -275,12 +275,16 @@ function computeJobMatchScore(job) {
   var matchedFilterName = null;
   for (var i = 0; i < savedFilters.length; i++) {
     if (filterNums.some(function(fn){ return fn.num == (i + 1); })) {
-      var rid = savedFilters[i].resumeId;
-      if (rid !== undefined && rid !== null && resumes[rid]) {
-        resume = resumes[rid];
-        matchedFilterName = savedFilters[i].name;
-        break;
+      // Find a resume that has this filter in its filterIds
+      var filterName = savedFilters[i].name;
+      for (var ri = 0; ri < resumes.length; ri++) {
+        if (!resumes[ri].archived && (resumes[ri].filterIds || []).includes(filterName) && resumes[ri].keywords && resumes[ri].keywords.length > 0) {
+          resume = resumes[ri];
+          matchedFilterName = filterName;
+          break;
+        }
       }
+      if (resume) break;
     }
   }
   if (!resume || !resume.keywords || !resume.keywords.length) return null;
@@ -381,8 +385,9 @@ async function runReadinessAnalysis(opts) {
     var r = resumes[ri];
     if (r.archived || r.textStatus !== 'ready' || !r.keywords || !r.keywords.length) continue;
 
-    var assignedFilters = sf.filter(function(f){ return f.resumeId === ri; });
-    if (assignedFilters.length === 0) continue;
+    var assignedFilterNames = r.filterIds || [];
+    if (assignedFilterNames.length === 0) continue;
+    var assignedFilters = sf.filter(function(f){ return assignedFilterNames.includes(f.name); });
 
     scores[ri] = { filters: {}, levels: {}, overallScore: 0, resumeName: r.name };
 
@@ -731,7 +736,7 @@ function initReadinessPanel() {
   if (!panel) return;
   var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   var hasAssigned = resumes.some(function(r, i){
-    return !r.archived && r.keywords && r.keywords.length > 0 && sf.some(function(f){ return f.resumeId === i; });
+    return !r.archived && r.keywords && r.keywords.length > 0 && (r.filterIds || []).length > 0;
   });
   if (hasAssigned) {
     panel.style.display = '';
