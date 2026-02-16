@@ -40,7 +40,22 @@ const KW_GENERIC = new Set([
   'defining','establish','establishing','maintain','maintaining','optimize','optimizing','oversee',
   'overseeing','coordinate','coordinating','collaborate','collaborating','analyze','analyzing','identify',
   'identifying','develop','growth','report','reporting','reports','responsible','responsibilities',
-  'looking','join','exciting'
+  'looking','join','exciting',
+  // EEO / legal boilerplate — appears in nearly every JD, not a real skill
+  'race','color','religion','national','origin','sex','sexual','orientation','gender','identity',
+  'age','disability','veteran','status','marital','citizenship','creed','ancestry','genetic',
+  'pregnancy','ethnicity','expression','protected','discrimination','harassment','accommodation',
+  'equal','opportunity','employer','affirmative','action','comply','compliance','prohibit',
+  'diverse','diversity','inclusive','inclusion','equitable','equity','belonging',
+  'applicant','applicants','qualified','regardless','offer','offers','offered',
+  'mission','vision','values','culture','committed','commitment','believe','believes',
+  'proud','invite','encouraged','welcome','welcomes','apply','consideration',
+  // Generic job posting filler
+  'company','team','work','working','role','position','job','hire','hiring','candidate','candidates',
+  'experience','years','year','strong','great','good','best','new','well','high','key','part',
+  'multiple','various','include','including','includes','required','requirements','qualifications',
+  'also','may','must','shall','please','note','currently','within','across','ensure','support',
+  'provide','help','take','make','use','using','used','need','needs','like','want','day'
 ]);
 
 function stripHtmlToText(html) {
@@ -468,6 +483,8 @@ function updateResumeCardGrades(scores) {
     if (!slot) continue;
     slot.innerHTML = buildInlineGrade(ri, data);
   }
+  // Also update side panels
+  updateReadinessSidePanels(scores);
 }
 
 // Build the inline grade + insights HTML for a resume card
@@ -587,6 +604,109 @@ function toggleInlineInsights(detailId, el) {
   } else {
     detail.style.display = 'none';
     el.textContent = 'View insights \u25b8';
+  }
+}
+
+// Build readiness side panel for a single resume (positioned beside card in row layout)
+function buildReadinessSide(ri, data) {
+  if (!data) return '';
+  var g = scoreToGrade(data.overallScore);
+  var filterNames = Object.keys(data.filters);
+  var overallLabel = data.overallScore >= 70 ? 'Ready' : data.overallScore >= 40 ? 'Gaps' : 'Weak';
+
+  var html = '<div class="readiness-side" id="readiness-side-' + ri + '">';
+
+  // Header
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+  html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+  html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+  html += '</div>';
+
+  // Per-filter breakdown
+  for (var fi = 0; fi < filterNames.length; fi++) {
+    var fname = filterNames[fi];
+    var fs = data.filters[fname];
+    var fc = fs.score >= 70 ? 'var(--green)' : fs.score >= 40 ? 'var(--warm)' : 'var(--red)';
+    var detailId = 'rds-detail-' + ri + '-' + fi;
+
+    html += '<div style="margin-bottom:10px;padding-bottom:10px;' + (fi < filterNames.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
+    html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
+    html += '<span style="font-size:9px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+    html += '<span onclick="document.getElementById(\'' + detailId + '\').style.display=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'\':\'none\';this.textContent=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'Show all \u25b8\':\'Hide \u25be\'" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:auto;font-weight:500;white-space:nowrap;">Show all \u25b8</span>';
+    html += '</div>';
+
+    // Missing terms preview
+    if (fs.topMissing && fs.topMissing.length > 0) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+      var previewCount = Math.min(5, fs.topMissing.length);
+      for (var mi = 0; mi < previewCount; mi++) {
+        var mt = typeof fs.topMissing[mi] === 'object' ? fs.topMissing[mi].term : fs.topMissing[mi];
+        html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + mt + '</span>';
+      }
+      if (fs.topMissing.length > 5) html += '<span style="font-size:9px;color:var(--text-faint);">+' + (fs.topMissing.length - 5) + ' more</span>';
+      html += '</div>';
+    }
+
+    // Expandable: matched + missing bigrams
+    html += '<div id="' + detailId + '" style="display:none;margin-top:6px;">';
+    if (fs.topMatched && fs.topMatched.length > 0) {
+      html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Covered:</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">';
+      for (var gi = 0; gi < fs.topMatched.length; gi++) {
+        var gt = typeof fs.topMatched[gi] === 'object' ? fs.topMatched[gi].term : fs.topMatched[gi];
+        html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.2);color:var(--green);">\u2713 ' + gt + '</span>';
+      }
+      html += '</div>';
+    }
+    if (fs.bigramMissing && fs.bigramMissing.length > 0) {
+      html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Missing phrases:</div>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;">';
+      for (var bmi = 0; bmi < Math.min(10, fs.bigramMissing.length); bmi++) {
+        var bmt = typeof fs.bigramMissing[bmi] === 'object' ? fs.bigramMissing[bmi].term : fs.bigramMissing[bmi];
+        html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + bmt + '</span>';
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  // Level fit
+  var levelLabels = Object.keys(data.levels || {});
+  if (levelLabels.length > 0) {
+    html += '<div style="padding-top:6px;border-top:1px solid var(--border);">';
+    html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">Level Fit</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    for (var li = 0; li < levelLabels.length; li++) {
+      var lbl = levelLabels[li];
+      var ls = data.levels[lbl];
+      var lc = ls.score >= 70 ? 'var(--green)' : ls.score >= 40 ? 'var(--warm)' : 'var(--red)';
+      html += '<div style="text-align:center;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-main);min-width:60px;">';
+      html += '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:' + lc + ';">' + ls.score + '%</div>';
+      html += '<div style="font-size:10px;color:var(--text-dim);">' + lbl + '</div>';
+      html += '<div style="font-size:9px;color:var(--text-faint);">' + ls.jobCount + ' jobs</div>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Update readiness side panels after analysis completes
+function updateReadinessSidePanels(scores) {
+  if (!scores) return;
+  var indices = Object.keys(scores);
+  for (var si = 0; si < indices.length; si++) {
+    var ri = indices[si];
+    var existing = document.getElementById('readiness-side-' + ri);
+    if (existing) {
+      var tmp = document.createElement('div');
+      tmp.innerHTML = buildReadinessSide(ri, scores[ri]);
+      existing.replaceWith(tmp.firstChild);
+    }
   }
 }
 
