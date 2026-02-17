@@ -2,7 +2,8 @@
 // Brilliant Jobs — URL Normalization Middleware
 // Runs on Vercel Edge before routing. Single 301 for any
 // combination of: www · uppercase · trailing slash · .html
-// HTTPS is handled natively by Vercel (not needed here).
+// HTTPS handled natively by Vercel (always upgraded).
+// Order matters: slash off before .html check.
 // ──────────────────────────────────────────────────────
 
 export default function middleware(request) {
@@ -22,15 +23,15 @@ export default function middleware(request) {
     changed = true;
   }
 
-  // 3. Strip .html extension
-  if (url.pathname.endsWith('.html')) {
-    url.pathname = url.pathname.slice(0, -5);
+  // 3. Strip trailing slash (except root /)
+  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    url.pathname = url.pathname.slice(0, -1);
     changed = true;
   }
 
-  // 4. Strip trailing slash (except root /)
-  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
-    url.pathname = url.pathname.slice(0, -1);
+  // 4. Strip .html extension (after slash removal so /PAGE.HTML/ works)
+  if (url.pathname.endsWith('.html')) {
+    url.pathname = url.pathname.slice(0, -5);
     changed = true;
   }
 
@@ -40,7 +41,6 @@ export default function middleware(request) {
 }
 
 export const config = {
-  // Skip static assets, fonts, and Vercel internals
   matcher: [
     '/((?!_next/|fonts/|favicon\\.ico|api/).*)',
   ],
