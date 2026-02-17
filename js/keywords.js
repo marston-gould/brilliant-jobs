@@ -985,7 +985,12 @@ async function loadPreviewSnippets() {
     if (content) {
       // Already cached — render immediately
       const snippet = extractSnippet(content, 300);
-      el.innerHTML = snippet + `<span class="preview-more" data-jobid="${jobId}"> →</span>`;
+      el.textContent = snippet;
+      const arrow = document.createElement('span');
+      arrow.className = 'preview-more';
+      arrow.dataset.jobid = jobId;
+      arrow.textContent = ' →';
+      el.appendChild(arrow);
       el.dataset.loaded = '1';
     } else {
       // Mark as loading, fetch in background
@@ -1033,7 +1038,12 @@ async function loadPreviewSnippets() {
 
       if (content) {
         const snippet = extractSnippet(content, 300);
-        el.innerHTML = snippet + `<span class="preview-more" data-jobid="${jobId}"> →</span>`;
+        el.textContent = snippet;
+        const arrow = document.createElement('span');
+        arrow.className = 'preview-more';
+        arrow.dataset.jobid = jobId;
+        arrow.textContent = ' →';
+        el.appendChild(arrow);
         // Content just arrived — compute match score for this job
         computeVisibleJobScores();
       } else {
