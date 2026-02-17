@@ -742,11 +742,12 @@ async function checkNavPulses() {
       appDot.classList.add('pulse');
     }
 
-    // Jobs: new since last visit (> 25)
+    // Jobs: new since last feed view (not last page load — cron adds jobs constantly)
+    const lastFeedView = localStorage.getItem('bj_last_feed_view') || new Date(0).toISOString();
     const { count: newJobs } = await sb
       .from('ats_jobs')
       .select('*', { count: 'exact', head: true })
-      .gt('first_seen_at', lastSeen)
+      .gt('first_seen_at', lastFeedView)
       .eq('status', 'open');
 
     if (newJobs > 25) {
