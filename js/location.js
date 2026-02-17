@@ -746,12 +746,24 @@ $('#qb-input-pay-max').addEventListener('keydown', e => {
 });
 $('#qb-input-pay-min').addEventListener('blur', () => {
   setTimeout(() => {
-    if (document.activeElement !== $('#qb-input-pay-max')) applyPayFilter();
+    // Only auto-apply on blur if both fields have values and focus left the pay area entirely
+    const movingToMax = document.activeElement === $('#qb-input-pay-max');
+    if (!movingToMax) {
+      const minVal = $('#qb-input-pay-min').value.trim();
+      const maxVal = $('#qb-input-pay-max').value.trim();
+      if (minVal && maxVal) applyPayFilter(); // both set — apply
+      // if only min is set, leave it — user must press Enter
+    }
   }, 100);
 });
 $('#qb-input-pay-max').addEventListener('blur', () => {
   setTimeout(() => {
-    if (document.activeElement !== $('#qb-input-pay-min')) applyPayFilter();
+    const movingToMin = document.activeElement === $('#qb-input-pay-min');
+    if (!movingToMin) {
+      const minVal = $('#qb-input-pay-min').value.trim();
+      const maxVal = $('#qb-input-pay-max').value.trim();
+      if (minVal || maxVal) applyPayFilter(); // either set — apply
+    }
   }, 100);
 });
 
