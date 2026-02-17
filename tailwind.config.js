@@ -25,65 +25,65 @@ module.exports = {
       black: '#000000',
 
       bg: {
-        main:  'hsl(230 25% 97%)',
-        white: 'hsl(0 0% 100%)',
-        card:  'hsl(0 0% 100%)',
-        input: 'hsl(228 14% 95%)',
-        hover: 'hsl(228 20% 95%)',
+        main:  'var(--bg-main)',
+        white: 'var(--bg-white)',
+        card:  'var(--bg-card)',
+        input: 'var(--bg-input)',
+        hover: 'var(--bg-hover)',
       },
 
       border: {
-        DEFAULT: 'hsl(230 16% 91%)',
-        hover:   'hsl(230 14% 84%)',
+        DEFAULT: 'var(--border)',
+        hover:   'var(--border-hover)',
       },
 
       text: {
-        DEFAULT: 'hsl(230 28% 14%)',
-        dim:     'hsl(230 12% 42%)',
-        faint:   'hsl(228 10% 64%)',
+        DEFAULT: 'var(--text)',
+        dim:     'var(--text-dim)',
+        faint:   'var(--text-faint)',
       },
 
       accent: {
-        DEFAULT: 'hsl(220 100% 62%)',
-        hover:   'hsl(220 84% 55%)',
-        glow:    'hsl(220 100% 62% / 0.10)',
-        dim:     'hsl(220 100% 62% / 0.08)',
+        DEFAULT: 'var(--accent)',
+        hover:   'var(--accent-hover)',
+        glow:    'var(--accent-glow)',
+        dim:     'hsla(var(--accent-hsl), 0.08)',
       },
 
       green: {
-        DEFAULT: 'hsl(142 71% 45%)',
-        dim:     'hsl(142 71% 45% / 0.10)',
+        DEFAULT: 'var(--green)',
+        dim:     'var(--green-dim)',
       },
 
       warm: {
-        DEFAULT: 'hsl(38 92% 50%)',
-        dim:     'hsl(38 92% 50% / 0.10)',
+        DEFAULT: 'var(--warm)',
+        dim:     'var(--warm-dim)',
       },
 
       red: {
-        DEFAULT: 'hsl(0 84% 60%)',
-        dim:     'hsl(0 84% 60% / 0.08)',
+        DEFAULT: 'var(--red)',
+        dim:     'var(--red-dim)',
       },
 
       purple: {
-        DEFAULT: 'hsl(258 90% 66%)',
-        dim:     'hsl(258 90% 66% / 0.10)',
+        DEFAULT: 'var(--purple)',
+        dim:     'var(--purple-dim)',
       },
 
       pink: {
-        DEFAULT: 'hsl(330 81% 60%)',
-        dim:     'hsl(330 81% 60% / 0.08)',
+        DEFAULT: 'var(--pink)',
+        dim:     'var(--pink-dim)',
       },
 
       indigo: {
-        DEFAULT: 'hsl(239 84% 67%)',
-        dim:     'hsl(239 84% 67% / 0.08)',
+        DEFAULT: 'var(--indigo)',
+        dim:     'var(--indigo-dim)',
       },
 
       nav: {
-        bg:           'hsl(215 63% 27%)',
-        hover:        'hsl(215 60% 34%)',
-        active:       'hsl(0 0% 100% / 0.12)',
+        bg:           'var(--nav-bg)',
+        hover:        'var(--nav-bg-hover)',
+        active:       'var(--nav-bg-active)',
         text:         'hsl(0 0% 100% / 0.65)',
         'text-active':'hsl(0 0% 100%)',
       },
