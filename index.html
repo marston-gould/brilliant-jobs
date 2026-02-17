@@ -923,7 +923,7 @@
     </div>
   </div>
 
-  <script src="/js/vendor/supabase.min.js"></script>
+  <script src="/js/vendor/supabase.min.js" defer></script>
   <script>
     // ============================================================
     // SUPABASE
@@ -1314,7 +1314,7 @@
           localStorage.setItem(PULSE_KEY, JSON.stringify({ data: surveys, ts: Date.now() }));
           renderPulse(surveys);
         }
-      } catch (e) { console.log('[BJ] Pulse data not available yet:', e.message); }
+      } catch (e) { /* pulse data not available */ }
     })();
 
     // ============================================================
