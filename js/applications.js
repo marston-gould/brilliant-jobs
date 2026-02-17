@@ -248,7 +248,10 @@ let phoneVerified = false;
 async function loadNotifPrefs() {
   if (!currentUser) return;
   try {
-    // Global prefs
+    // Global prefs — upsert defaults if row doesn't exist yet
+    await sb.from('notification_preferences').upsert({
+      user_id: currentUser.id
+    }, { onConflict: 'user_id', ignoreDuplicates: true });
     const { data: prefs } = await sb.from('notification_preferences')
       .select('*').eq('user_id', currentUser.id).single();
     notifPrefs = prefs;
