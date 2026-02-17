@@ -579,6 +579,7 @@ function updateSfStatusDot() {
   if (!dot) return;
   const total = savedFilters.length;
   const checked = $$('.sf-item-check:checked').length;
+  const hadPulse = dot.classList.contains('pulse');
   if (total > 0 && checked > 0) {
     dot.className = 'ext-status-dot connected';
     dot.title = checked + ' of ' + total + ' filters active';
@@ -589,6 +590,7 @@ function updateSfStatusDot() {
     dot.className = 'ext-status-dot';
     dot.title = 'No saved filters';
   }
+  if (hadPulse) dot.classList.add('pulse');
 }
 
 // Clear all
