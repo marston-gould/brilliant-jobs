@@ -737,6 +737,24 @@ const features = [
   { s: 'todo', n: 'Input sanitization audit', d: 'Review all user inputs (filter names, resume names, feedback, collection names) for XSS vectors. Sanitize before rendering. Escape HTML in dynamic content.', p: 18 },
   { s: 'todo', n: 'Extension code obfuscation', d: 'Minify and obfuscate Chrome extension JS to protect proprietary logic (LinkedIn harvesting, ATS detection patterns). Not bulletproof but raises the bar.', p: 18 },
   { s: 'todo', n: 'Session management hardening', d: 'Review Supabase auth session handling. Ensure proper token refresh, expiry enforcement, and logout cleanup. Prevent session fixation.', p: 18 },
+
+  // Tailwind CSS Migration
+  { s: 'done', n: 'Tailwind Phase 1 — Build pipeline', d: 'Tailwind CLI 3.4.19 installed. tailwind.config.js with design tokens (HSL colors, fonts, keyframes, animations). src/input.css wraps existing CSS after @tailwind directives. npm run css:build compiles to styles.css. Zero visual diff, all 395 classes preserved.', p: 2 },
+  { s: 'done', n: 'Tailwind Phase 2 — Logical properties', d: '144 physical directional properties converted to logical equivalents: margin-left→margin-inline-start, padding-top→padding-block-start, border-bottom→border-block-end, left→inset-inline-start, text-align:left→text-align:start. RTL-ready. Exception: border-top-color on spinners preserved.', p: 2 },
+  { s: 'done', n: 'Tailwind Phase 3 — Fluid typography', d: '5 display-level selectors converted to clamp(): page-header h2 (18-22px), stat-val (20-28px), download-box h3, feedback-modal h3, cb-letter (15-18px). Small UI text (9-14px) stays fixed for pixel precision.', p: 2 },
+  { s: 'done', n: 'Tailwind Phase 4 — HSL color system', d: '66 rgba() values converted to hsla(var(--X-hsl), alpha). 10 HSL component vars in :root (accent, green, warm, red, purple, pink, indigo, slate, purple-lt). Existing --X-dim vars also converted. 30 white/black rgba() left as-is (structural, no hue indirection benefit).', p: 2 },
+  { s: 'done', n: 'Tailwind Phase 5 — CSS var bridge', d: 'Tailwind config colors updated from hardcoded HSL strings to var() references (bg-card→var(--bg-card), text-dim→var(--text-dim), accent→var(--accent)). Enables safe utility class usage that respects the CSS variable theming system.', p: 2 },
+  { s: 'done', n: 'Tailwind Phase 6 — JS class audit', d: 'Audited 13 JS modules: 13 unique JS-managed classes (open, active, collapsed, pulse, excluded, etc.), 182 HTML-only classes safe for utility replacement, 300 inline styles in dashboard.html (54 display:flex, 46 color, 24 display:none). Inline style→utility migration blocked by JS .style.display toggles.', p: 2 },
+
+  // Landing Page — Lighthouse Fixes
+  { s: 'done', n: 'Lighthouse: document.write removal', d: 'Replaced document.write(year) with textContent assignment via span#year. Eliminates parser-blocking write call.', p: 3 },
+  { s: 'done', n: 'Lighthouse: render-blocking resources', d: 'Moved Supabase JS from head to bottom of body (before inline script). No longer blocks initial render. Est savings 1,200ms.', p: 3 },
+  { s: 'done', n: 'Lighthouse: preconnect hints', d: 'Added preconnect for fonts.gstatic.com (crossorigin) and qojhagupdnbtomfoxnsf.supabase.co. Est LCP savings 280ms.', p: 3 },
+  { s: 'done', n: 'Lighthouse: heading order', d: 'All h4 elements converted to h3 for sequential descending order (h1→h2→h3). CSS selectors updated to match. No more heading level skips.', p: 3 },
+  { s: 'done', n: 'Lighthouse: main landmark', d: 'Wrapped all content sections between nav and footer in main element. Screen readers can now navigate to primary content.', p: 3 },
+  { s: 'done', n: 'Lighthouse: crawlable links', d: 'Login button changed from href=javascript:void(0) to href=/dashboard.html with preventDefault on click. Crawlers can now discover the link.', p: 3 },
+  { s: 'done', n: 'Lighthouse: contrast ratio', d: 'Updated --text-faint from #9298ae to #64748b (Tailwind slate-500). Passes WCAG AA contrast ratio on #f5f6fa background.', p: 3 },
+  { s: 'done', n: 'Landing page stat updates', d: 'Updated all references from 1,900+ to 7,500+ company career pages and 110,000+ to 135,000+ jobs. Updated OG/meta tags, hero text, comparison table, how-it-works steps, and JS fallback values.', p: 3 },
 ];
 
 function phaseLabel(p) {
