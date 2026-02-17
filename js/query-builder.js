@@ -19,11 +19,14 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
   builder.querySelectorAll('.qb-pill, .qb-and').forEach(el => el.remove());
   const input = $(inputId);
 
+  const isNot = extraClass && extraClass.includes('not-pill');
+  const sepLabel = isNot ? 'AND' : 'or';
+
   pillArray.forEach((pill, i) => {
     if (i > 0) {
       const andEl = document.createElement('span');
       andEl.className = 'qb-and';
-      andEl.textContent = 'AND';
+      andEl.textContent = sepLabel;
       builder.insertBefore(andEl, input);
     }
 
@@ -95,7 +98,7 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
     });
   });
 
-  // Bind pill text click — add OR term inline (or open collection popup)
+  // Bind pill text click — add OR term inline (only for location/collection pills)
   builder.querySelectorAll('.qb-pill-text').forEach(el => {
     el.addEventListener('click', e => {
       // If they clicked a per-value remove, don't open input
@@ -109,6 +112,9 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
         openCollectionPopup(pill, pillArray, idx);
         return;
       }
+
+      // Only location pills get inline OR input
+      if (!isLocation) return;
 
       const existing = builder.querySelector('.qb-or-input');
       if (existing) existing.remove();
