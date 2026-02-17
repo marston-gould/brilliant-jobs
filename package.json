@@ -1,0 +1,11 @@
+{
+  "name": "brilliant-jobs",
+  "private": true,
+  "scripts": {
+    "css:build": "npx tailwindcss -i src/input.css -o styles.css --minify",
+    "css:watch": "npx tailwindcss -i src/input.css -o styles.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
