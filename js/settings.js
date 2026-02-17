@@ -8,7 +8,7 @@ async function loadStats() {
     const comp = await sb.from('companies').select('id', { count: 'exact', head: true });
     $('#st-companies').textContent = (comp.count || 0).toLocaleString();
     const atsJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true }).eq('status', 'open');
-    $('#st-jobs').textContent = (atsJobs.count || 0).toLocaleString();
+    if (!atsJobs.error) $('#st-jobs').textContent = (atsJobs.count || 0).toLocaleString();
 
     // Community stats — backlogged until multiple data sources
 
