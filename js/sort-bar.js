@@ -118,13 +118,7 @@ const qbInputWhat = $('#qb-input-what');
 function commitPill(input, pillArray, makePill) {
   const raw = input.value.trim().toLowerCase();
   if (!raw) return false;
-  // Support both "or term" and "nor term" as OR-into-last-pill
-  const orMatch = raw.match(/^(?:or|nor)\s+(.+)/i);
-  if (orMatch && pillArray.length > 0) {
-    pillArray[pillArray.length - 1].values.push(orMatch[1].trim());
-  } else {
-    pillArray.push(makePill(raw));
-  }
+  pillArray.push(makePill(raw));
   input.value = '';
   renderAllPills();
   return true;
