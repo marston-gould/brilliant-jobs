@@ -256,37 +256,7 @@ $('#download-btn').addEventListener('click', async () => {
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
 
-// ============================================================
-// SHARED STATE — declared early so all modules can access
-// ============================================================
-// Tuning state (refined by tuning.js when it loads)
-var tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
-var tuningLocExclPills = tuningSettings.locationExcludes || [];
-var tuningTitleExclPills = tuningSettings.titleExcludes || [];
-var tuningCoExclPills = tuningSettings.companyExcludes || [];
-var tuningIndExclPills = tuningSettings.industryExcludes || [];
-var levelHierarchy = tuningSettings.levelHierarchy || [];
-// Stub — overridden by tuning.js with full implementation
-var getJobLevel = function(title, hierarchy) { return null; };
 
-// Pill arrays (used by query-builder.js, location.js, browsers.js)
-var whatPills = [];
-var wherePills = [];
-var whenPills = [];
-var whoPills = [];
-var payPills = [];
-var whatNotPills = [];
-var whereNotPills = [];
-var whoNotPills = [];
-var savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
-var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
-var DEFAULT_RADIUS = 30;
-
-// Job feed state (used by job-feed.js, keywords.js, pipeline.js)
-var searchTimeout = null;
-var currentJobPage = 0;
-var JOBS_PER_PAGE = 50;
 
 
 
