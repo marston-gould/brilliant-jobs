@@ -1354,6 +1354,7 @@
           sb.from('ats_companies').select('*', { count: 'exact', head: true }),
           sb.from('ref_city_radius').select('*', { count: 'exact', head: true })
         ]);
+        if (jobsRes.error || companiesRes.error) throw new Error('stats fetch failed');
         const stats = { jobs: jobsRes.count, companies: companiesRes.count, metros: metrosRes.count, ts: Date.now() };
         localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
         applyStats(stats);
