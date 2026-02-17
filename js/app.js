@@ -1,4 +1,4 @@
-console.log('[BJ] Dashboard v2.64 loaded');
+console.log('[BJ] Dashboard v2.65 loaded');
 
 // Auth
 async function init() {
