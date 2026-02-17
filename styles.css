@@ -656,6 +656,36 @@ video {
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 
+/* ── Self-hosted fonts (latin subset, variable) ── */
+
+@font-face {
+  font-family: 'Outfit';
+
+  src: url('/fonts/outfit-latin-var.woff2') format('woff2');
+
+  font-weight: 100 900;
+
+  font-style: normal;
+
+  font-display: swap;
+
+  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+
+  src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+
+  font-weight: 100 800;
+
+  font-style: normal;
+
+  font-display: swap;
+
+  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
+}
+
 /* ── Existing styles (unlayered = never purged) ── */
 
 :root {
