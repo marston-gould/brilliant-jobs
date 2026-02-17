@@ -370,7 +370,7 @@ const features = [
 
   // Phase 2 — Data Infra
   { s: 'done', n: 'Add first_seen_at to ats_jobs schema', d: 'Track when jobs first appeared for trend velocity calculations', p: 2 },
-  { s: 'done', n: 'Daily job refresh cron', d: 'v5 orchestrator queues 184 batches of 10 boards via pg_net in ~1s. 97K+ jobs refreshed in under 5 min. Runs daily at 4AM via pg_cron.', p: 2 },
+  { s: 'done', n: 'Multi-ATS job refresh cron', d: 'pg_cron triggers refresh-jobs Edge Function every 10 minutes, processing 50 boards per invocation across 5 ATS platforms (Greenhouse, Lever, Ashby, Workable, Recruitee). Full cycle ~33 hours for ~10K boards. 135K+ jobs across 7,542 boards.', p: 2 },
   { s: 'done', n: 'Mark closed/inactive jobs', d: 'Jobs not found in ATS feed on refresh get status=closed and closed_at timestamp. 3,596 already marked closed. Dashboard filters to status=open by default.', p: 2 },
   { s: 'done', n: 'NOT filter fix', d: 'Fixed NOR prefix stripping, commitPill recognizes both or/nor, values cleaned before query', p: 2 },
 
@@ -442,7 +442,7 @@ const features = [
   { s: 'done', n: 'Sortable Salary and Source columns', d: 'Both columns now have data-sort, sort arrows, highlight colors (green/orange), sort dropdown entries, and sort pill colors. Salary defaults descending. Column headers highlight with .sorted class when active.', p: 2 },
   { s: 'done', n: 'Toggle switch polish', d: 'Toggles resized to 44×24px with green/gray states, glow on active, shadow on dot. Fixed flex:1 inheritance bug that stretched toggles across full row width on Applications page.', p: 2 },
   { s: 'done', n: '3-column Setup status bar', d: 'Extension/Drive/Gmail as equal grid columns with dividers. Each: colored dot + bold label + detail text. Green=connected, red=not connected. Removed scanning count. Gmail shows red dot + "Coming soon".', p: 2 },
-  { s: 'done', n: 'Phase renumbering', d: 'P6→P4 (Resumes), P4→P5 (User Mgmt), P5→P6 (Monetization), P2.5→P7 (Anti-detection), P7+→P8+. All items and section comments updated.', p: 2 },
+  { s: 'done', n: 'Phase renumbering (×2)', d: 'First pass: P6→P4 (Resumes), P4→P5 (User Mgmt), P5→P6 (Monetization), P2.5→P7 (Anti-detection), P7+→P8+. Second pass: P9 (Data & Analytics) moved to P4, cascading P4→P5→P6→P7→P8→P9.', p: 2 },
   { s: 'done', n: 'Company enrichment via PDL dataset', d: '1,319/1,874 ats_companies enriched (70.4%) with industry, size, locality, region, country, founded, website, linkedin_url. Remaining ~555 unmatched — backlogged for API enrichment.', p: 2 },
   { s: 'done', n: 'v2.47 — US-only filter fix + version display', d: 'Fixed US-only checkbox: now uses .or(loc_country.eq.US,loc_country.is.null) to include US + unparsed jobs, exclude explicitly non-US. Removed wh.length guard. Fixed nav version stuck at v2.26b.', p: 2 },
   { s: 'done', n: 'v2.48 — Seven UI fixes', d: 'Gmail dot alignment, remove scan counter from Setup, reorder job columns (Title/Level/Company/Ghost Rate/Location/Salary/Days/Source), normalize state names in locations, fix tuning dropdown overflow, lowercase unassigned filters, fix filter numbering across pages.', p: 2 },
@@ -451,6 +451,10 @@ const features = [
   { s: 'done', n: 'v2.53 — Phase E modular split', d: 'Extracted query-builder.js (147L), job-feed.js (1,128L), sort-bar.js (332L). Dashboard down to 1,403 lines of pure HTML, zero inline JS. Shared pill arrays and job feed state moved to app.js.', p: 2 },
   { s: 'done', n: 'v2.54 — Design system audit', d: 'Standardized border-radius (4/8/12px tiers), font-sizes (eliminated 8/15/18px), table padding (10px 12px uniform), table borders (1px), capitalized Tuning titles, .badge-soon + .card-flush classes, CSS color vars (--pink, --indigo), shared filterColors in app.js, card-title class everywhere.', p: 2 },
   { s: 'done', n: 'v2.55 — Resume Readiness system', d: 'Replaced keyword panel on Jobs Feed with filter-aware Resume Readiness on Resumes page. Fetches up to 80 JDs per assigned filter, batch-fetches Greenhouse API for missing content. Scores resume keyword coverage per filter with missing-term chips. Level-fit analysis partitions JDs by seniority. Per-job Match % column on Jobs Feed computed against assigned resume. resumes var moved to app.js.', p: 5 },
+  { s: 'done', n: 'Fix: Preview HTML rendering', d: 'Job preview snippets were rendering raw HTML tags (headings, bold text) when content was double-encoded. Switched from innerHTML to textContent + DOM element creation for arrow span.', p: 2 },
+  { s: 'done', n: 'Fix: Nav dot blue→green flash', d: 'Pulse class was being wiped by updateSfStatusDot overwriting className. Now preserves pulse class. Changed pulse trigger from profiles.last_seen_at (updates every page load) to bj_last_feed_view in localStorage (updates only when feed tab viewed).', p: 2 },
+  { s: 'done', n: 'Fix: US-only filter showing GB jobs', d: 'Null loc_country fallback let non-US jobs through. Added ilike exclusions for 28 non-US country codes in feed query. Edge Function v13: parseCountry() extracts ISO country codes from location strings for Greenhouse/Lever/Ashby parsers.', p: 2 },
+  { s: 'done', n: 'What pill refactor — individual pills with OR', d: 'Each keyword gets its own pill with its own × button, matching NOT pill UX. Removed multi-value OR grouping and inline OR input. Separator label changed from AND to \"or\" between What pills. Query logic: all What keywords OR\\'d together in single Supabase .or() call.', p: 2 },
 
   // ═══════════════ PLANNED ═══════════════
   // Phase 3 — Go-to-Market
@@ -833,3 +837,4 @@ render();
 
 </body>
 </html>
+
