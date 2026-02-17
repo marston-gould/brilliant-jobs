@@ -171,6 +171,47 @@
 <script>
 const sections = [
   {
+    title: 'Tailwind Migration — Deferred',
+    color: 'var(--cyan)',
+    items: [
+      {
+        s: 'parked', n: 'Inline style to utility class migration (300 instances)',
+        d: 'dashboard.html has 300 inline style attributes. Top patterns: display:flex (54), color:var(--text-faint) (46), align-items:center (45), font-size:12px (30), display:none (24). Each requires removing the style attr and adding equivalent Tailwind utilities. Config now bridges CSS vars so utilities like bg-bg-card and text-text-dim work. Blocked by display:none coupling — see next item.',
+        tags: [['platform', 'Dashboard'], ['yield', '300 inline styles']]
+      },
+      {
+        s: 'parked', n: 'display:none to hidden class refactor',
+        d: '24 elements use style="display:none" as initial state, toggled by 67 .style.display assignments across 10 JS modules (app, applications, browsers, integrations, keywords, location, query-builder, resumes, settings, sort-bar). Migrating to Tailwind hidden class requires changing every .style.display = "none"/"flex"/"block"/"" to classList.add/remove("hidden"). High-touch, high-risk — needs per-module testing.',
+        tags: [['platform', 'Dashboard'], ['yield', '67 JS operations']]
+      },
+      {
+        s: 'parked', n: 'Small UI text fluid typography (199 declarations)',
+        d: 'Phase 3 converted 5 display-level selectors (page headers, stat values, section titles) to clamp(). Remaining 199 font-size declarations are 9-14px UI elements (badges, labels, table cells, pills, buttons) that need pixel precision. Could selectively apply clamp() to 13-14px body text if viewport testing shows benefit.',
+        tags: [['yield', '199 font-size rules']]
+      },
+      {
+        s: 'parked', n: 'White/black rgba to CSS var conversion',
+        d: 'Phase 4 converted 66 colored rgba() to hsla(var()). 30 remain: rgba(255,255,255,...) and rgba(0,0,0,...) used for overlays, shadows, sparkle effects, nav transparency. These are structural neutrals with no hue component. Could add --white-hsl/--black-hsl vars if dark/light theme switching is ever needed.',
+        tags: [['yield', '30 rgba values']]
+      },
+      {
+        s: 'parked', n: 'JS template literal class extraction',
+        d: 'JS modules generate HTML via template literals with hardcoded class strings (job-action-btn, company-opt, cb-alpha-link, rc-btn, etc.). 187 unique classes across 13 modules. These cannot use Tailwind utilities without either: (a) rewriting templates to use utility classes directly, or (b) adding a safelist to tailwind.config.js. Option (a) is correct long-term but touches every module.',
+        tags: [['platform', 'Dashboard'], ['yield', '187 JS classes']]
+      },
+      {
+        s: 'parked', n: 'Semantic class to utility class replacement',
+        d: '182 HTML-only classes identified as safe for utility replacement (not referenced by JS classList/className). Examples: card, page-header, page-body, stat-grid, stat-val, stat-label, empty-state, nav-*, pl-stage-*, qb-*, tuning-card-*. Each has 1-8 CSS properties. Could be incrementally replaced with Tailwind utilities while removing the CSS rule, but many have child selectors (.card-title, .card-sub) making atomic replacement complex.',
+        tags: [['yield', '182 safe classes']]
+      },
+      {
+        s: 'parked', n: 'Landing page inline styles to Tailwind',
+        d: 'index.html has its own style block (~460 lines) with CSS vars duplicated from dashboard. Not part of Tailwind build pipeline (not in content config). Full migration would mean: adding index.html to content paths, extracting inline styles to external stylesheet, and converting component classes to utilities. Lower priority than dashboard migration.',
+        tags: [['platform', 'Landing Page']]
+      },
+    ]
+  },
+  {
     title: 'Discovery Channels',
     color: 'var(--accent)',
     items: [
