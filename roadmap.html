@@ -769,7 +769,33 @@ const features = [
   { s: 'done', n: 'Lighthouse: crawlable links', d: 'Login button changed from href=javascript:void(0) to href=/dashboard.html with preventDefault on click. Crawlers can now discover the link.', p: 3 },
   { s: 'done', n: 'Lighthouse: contrast ratio', d: 'Updated --text-faint from #9298ae to #64748b (Tailwind slate-500). Passes WCAG AA contrast ratio on #f5f6fa background.', p: 3 },
   { s: 'done', n: 'Landing page stat updates', d: 'Updated all references from 1,900+ to 7,500+ company career pages and 110,000+ to 135,000+ jobs. Updated OG/meta tags, hero text, comparison table, how-it-works steps, and JS fallback values.', p: 3 },
+
+  // URL Normalization & DNS
+  { s: 'done', n: 'URL redirect normalization', d: 'Single-hop redirects for all variants: www→apex (301), trailing slash stripped (trailingSlash:false in vercel.json), .html→clean URLs (cleanUrls). HTTP variants route correctly via Cloudflare A record (216.198.79.1) + www CNAME.', p: 3 },
+  { s: 'done', n: 'Cloudflare DNS setup', d: 'Migrated DNS from old Vercel IPs to current: A @ → 216.198.79.1, CNAME www → Vercel target. Removed conflicting www A records. Authorized Vercel auto-configure for TXT verification record.', p: 3 },
+
+  // Performance — Feb 17 2026
+  { s: 'done', n: 'Lighthouse: self-host supabase-js (dashboard)', d: 'Replaced cdn.jsdelivr.net/npm/@supabase/supabase-js@2 with /js/vendor/supabase.min.js served from Vercel edge. Eliminated 1,050ms render-blocking CDN request on dashboard.', p: 3 },
+  { s: 'done', n: 'Lighthouse: self-host supabase-js (landing page)', d: 'Landing page was still loading supabase from JSDelivr. Replaced with same self-hosted /js/vendor/supabase.min.js. Added defer attribute. Wrapped inline script in DOMContentLoaded to fix load order.', p: 3 },
+  { s: 'done', n: 'Lighthouse: font subsetting', d: 'Subsetted Outfit and JetBrains Mono woff2 files to Basic Latin + Latin-1 Supplement only. Removed unused Latin Extended range (0 glyphs used). Outfit: 31KB→25KB (19%), JetBrains Mono: 24.5KB→17.6KB (28%).', p: 3 },
+  { s: 'done', n: 'Lighthouse: footer contrast WCAG AA', d: 'Footer links and copyright text changed from --text-faint (#64748b, ~4.3:1) to --text-dim (#5c6277, ~5.5:1) on #f5f6fa background. Passes WCAG AA 4.5:1 minimum for small text.', p: 3 },
+  { s: 'done', n: 'Community pulse section removed', d: 'Removed pulse section HTML, JS IIFE (renderPulse, canvas chart, Supabase feedback query), and orphaned CSS. Eliminated 400 console error and network request pre-launch. Will re-add post-launch with real data.', p: 3 },
+  { s: 'done', n: 'Landing page stats — live count fix', d: 'Fixed stale null cache being served (added jobs!=null cache validation). Updated hardcoded fallbacks and hero text to 239,000+/9,800+. Active Jobs stat now populates correctly from live Supabase count.', p: 3 },
+
+  // Dashboard JS Load Order — Feb 17 2026
+  { s: 'done', n: 'globals.js — shared state extraction', d: 'Extracted all shared globals ($, $$, sb, currentUser, savedFilters, hiddenJobIds, appliedJobIds, tuning state, pill arrays, filterColors etc.) into js/globals.js. Loads first before all other modules. Eliminated cascade of ReferenceError crashes on dashboard load.', p: 5 },
+  { s: 'done', n: 'app.js load order fix', d: 'Moved app.js to load last in dashboard.html (was first). init() calls loadStats(), loadCollections(), checkExtensionStatus() which are defined in settings.js, browsers.js etc. — must load after all other modules.', p: 5 },
+
+  // Database Performance — Feb 17 2026
+  { s: 'done', n: 'Supabase: partial index on ats_jobs status', d: 'CREATE INDEX idx_ats_jobs_status ON ats_jobs(status) WHERE status=open. Eliminated 500 timeout on open job count queries. Landing page Active Jobs stat now resolves instantly.', p: 6 },
+  { s: 'done', n: 'Supabase: composite index status+updated_at', d: 'CREATE INDEX idx_ats_jobs_status_updated ON ats_jobs(status, updated_at DESC). Improves job feed query performance with status filter + date ordering.', p: 6 },
+  { s: 'done', n: 'Supabase: first_seen_at index', d: 'CREATE INDEX idx_ats_jobs_first_seen_status ON ats_jobs(first_seen_at, status) WHERE status=open. Powers nav dot pulse check (new jobs since last visit) and new-since-login stat.', p: 6 },
+  { s: 'done', n: 'Supabase: trigram index on title', d: 'CREATE EXTENSION pg_trgm + CREATE INDEX idx_ats_jobs_title_trgm ON ats_jobs USING gin(title gin_trgm_ops). Enables fast imatch regex searches for keyword matching across 135K+ job titles.', p: 6 },
+  { s: 'done', n: 'Supabase: statement timeout increase', d: 'ALTER ROLE authenticator/anon SET statement_timeout=10s. Increased from 3s default to handle complex multi-filter job feed queries with regex matching.', p: 6 },
+  { s: 'done', n: 'Supabase: VACUUM ANALYZE ats_jobs', d: 'Ran VACUUM ANALYZE twice to update visibility map. Heap fetches dropped from 138,351 to 0. Count query execution time dropped from 385ms to 59ms. Autovacuum will maintain going forward.', p: 6 },
+  { s: 'done', n: 'notification_preferences 406 fix', d: 'Fixed 406 Not Acceptable on notification_preferences query. Root cause: no row existed for new users. Fixed by upserting default row before SELECT in loadNotifPrefs(). Added RLS SELECT policy.', p: 5 },
 ];
+
 
 function phaseLabel(p) {
   if (p === 2.5) return 'P2.5';
