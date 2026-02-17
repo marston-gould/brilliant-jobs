@@ -299,6 +299,12 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
     if (tuning.usOnly) {
       query = query.or('loc_country.eq.US,loc_country.is.null');
+      // Exclude jobs where location string clearly indicates non-US country
+      // (needed because many jobs have loc_country=null but location like "remote, gb")
+      const nonUS = ['gb','uk','de','fr','au','ca','in','ie','nl','sg','jp','br','es','it','il','se','dk','no','fi','nz','at','ch','be','pl','cz','pt','hk','kr','mx','ae'];
+      for (const cc of nonUS) {
+        query = query.not('location', 'ilike', `%, ${cc}`);
+      }
     }
     for (const pill of whnot) {
       for (const v of pill.values) {
