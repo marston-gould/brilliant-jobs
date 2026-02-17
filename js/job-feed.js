@@ -205,21 +205,19 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
   // WHAT — title matching via word-boundary regex + full-text search
-  for (const pill of w) {
-    const allClauses = pill.values.flatMap(v => {
+  // All What pills are OR'd together (each pill is one keyword)
+  const allWhatClauses = w.flatMap(pill => {
+    return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
-      // Escape regex special characters for PostgreSQL ~ operator
       const rxSafe = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Word boundary matching: \m = start of word, \M = end of word
-      // This prevents "geo" from matching "geospatial"
       return [
         `title.imatch.\\m${rxSafe}\\M`,
         `search_vector.wfts(english).${safe}`,
       ];
     });
-    if (allClauses.length > 0) query = query.or(allClauses.join(','));
-  }
+  });
+  if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));
 
   // WHAT NOT — title not ilike
   for (const pill of wnot) {
