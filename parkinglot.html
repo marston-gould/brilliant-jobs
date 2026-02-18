@@ -337,6 +337,11 @@ const sections = [
         tags: [['platform', 'Supabase']]
       },
       {
+        s: 'parked', n: 'Migrate to Vite bundler + ES modules',
+        d: 'Post-launch. Replace 13 global-scope script tags with proper import/export ES modules bundled by Vite. Enables tree-shaking (reduce 92KB CSS), TypeScript path, hot reload, eliminates TDZ/load-order bugs. Migrate file-by-file — no framework needed. Current vanilla JS architecture is at its ceiling with 4,500+ lines of shared mutable global state.',
+        tags: [['platform', 'Dashboard'], ['yield', 'DX + perf']]
+      },
+      {
         s: 'idea', n: 'Source attribution badges in feed',
         d: 'Show GH/LV/WK/ASH/REC pills on job cards so users know which ATS platform each listing came from.',
         tags: [['platform', 'Dashboard']]
@@ -419,3 +424,4 @@ container.innerHTML = html;
 </script>
 </body>
 </html>
+
