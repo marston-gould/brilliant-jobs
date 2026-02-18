@@ -493,6 +493,103 @@
       .pricing-grid { gap: 16px; }
     }
   </style>
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://brilliantjobs.app/#organization",
+        "name": "Brilliant Jobs",
+        "url": "https://brilliantjobs.app",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://brilliantjobs.app/og-image.png"
+        },
+        "description": "Job search intelligence platform that scans 9,800+ company career pages directly, bypassing job boards to surface real-time openings with salary data and employer accountability metrics.",
+        "foundingDate": "2026",
+        "sameAs": []
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://brilliantjobs.app/#product",
+        "name": "Brilliant Jobs",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Chrome",
+        "url": "https://brilliantjobs.app",
+        "description": "Aggregates 239,000+ jobs from 9,800+ company ATS systems. Provides salary extraction, keyword-to-resume matching, ghost rate tracking, and automated application management.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Free during private beta"
+        },
+        "featureList": [
+          "Real-time job aggregation from 9,800+ company career pages",
+          "Salary range extraction and display",
+          "Resume-to-job keyword matching and readiness scoring",
+          "Employer ghost rate tracking",
+          "Application pipeline management",
+          "Chrome extension for LinkedIn network intelligence",
+          "Multi-keyword saved filter system",
+          "Auto-apply and notification-based apply modes"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://brilliantjobs.app/#website",
+        "url": "https://brilliantjobs.app",
+        "name": "Brilliant Jobs",
+        "publisher": { "@id": "https://brilliantjobs.app/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://brilliantjobs.app/dashboard",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://brilliantjobs.app/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How is Brilliant Jobs different from job boards like LinkedIn or Indeed?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Brilliant Jobs scans company career pages (ATS systems) directly rather than relying on employer-submitted listings. This means you see jobs that were never posted to job boards, salary data companies don't advertise, and real metrics on which employers actually respond to applicants."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How many jobs does Brilliant Jobs aggregate?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Brilliant Jobs currently aggregates 239,000+ open jobs from 9,800+ company career pages across Greenhouse, Lever, Ashby, Workable, and Recruitee ATS platforms. The database refreshes daily."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Brilliant Jobs free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Brilliant Jobs is free during the private beta period. No credit card required to sign up."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is ghost rate tracking?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ghost rate tracking measures how often employers post jobs but never respond to applicants. Brilliant Jobs tracks average response times per company and flags applications that have exceeded the expected response window, so you know when to follow up or move on."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 
