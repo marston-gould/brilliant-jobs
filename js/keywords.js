@@ -456,7 +456,7 @@ async function runReadinessAnalysis(opts) {
   }
 
   readinessCache = { lastRun: new Date().toISOString(), scores: scores };
-  localStorage.setItem('bj_readiness', JSON.stringify(readinessCache));
+  saveUserData('bj_readiness', JSON.stringify(readinessCache));
 
   // Update resume cards with grades
   updateResumeCardGrades(scores);
@@ -1557,12 +1557,12 @@ function markAppliedFromModal(jobId) {
     // Update state
     if (!appliedJobIds.includes(jobId)) {
       appliedJobIds.push(jobId);
-      localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+      saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
     }
     // Store applied date
     const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
     dates[jobId] = new Date().toISOString();
-    localStorage.setItem('bj_applied_dates', JSON.stringify(dates));
+    saveUserData('bj_applied_dates', JSON.stringify(dates));
 
     // Update pipeline meta
     const meta = getPipelineMeta();
@@ -1610,7 +1610,7 @@ function modalSave(jobId, btn) {
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
   savePipelineMeta(meta);
-  localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
+  saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   // Sync feed row
   const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
   if (row) {
@@ -1692,7 +1692,7 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
         companySlug: companySlug || '',
         hiddenAt: new Date().toISOString()
       });
-      localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+      saveUserData('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
       popup.remove();
       if (afterHide) afterHide();
     });
@@ -1724,7 +1724,7 @@ function toggleSaveJob(jobId, btn) {
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
   savePipelineMeta(meta);
-  localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
+  saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
 }
 
