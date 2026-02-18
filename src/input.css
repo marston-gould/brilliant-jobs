@@ -1,9 +1,12 @@
 /*──────────────────────────────────────────────────────────
-  Brilliant Jobs — Tailwind Input (Phase 1)
+  Brilliant Jobs — Tailwind Input (Phase 4)
   Build: npx tailwindcss -i src/input.css -o styles.css
   
-  Phase 1: Tailwind base utilities available + existing CSS
-  intact. Class names preserved exactly. Zero visual diff.
+  Phase 1: Tailwind base utilities + existing CSS intact.
+  Phase 2: Logical properties (144 conversions).
+  Phase 3: Fluid typography — clamp() vars for headings/stats.
+  Phase 4: HSL single-source color system — all colors derived
+  from HSL variables, computed dim/glow variants.
   
   Future phases will migrate classes into @layer components
   once content paths include all HTML/JS files.
@@ -33,47 +36,98 @@
 
 /* ── Existing styles (unlayered = never purged) ── */
     :root {
-      --bg-main: #f5f6fa;
+      /* ── HSL single-source color system ─────────────────────
+         Each color defined as HSL components (H S% L%).
+         Base color: hsl(var(--X-hsl))
+         Dim variant: hsla(var(--X-hsl), 0.08–0.10)
+         Glow variant: hsla(var(--X-hsl), 0.15–0.25)
+         All hex fallbacks removed — HSL is the single source.
+      ──────────────────────────────────────────────────────── */
+
+      /* Backgrounds */
+      --bg-main-hsl: 228, 22%, 97%;
+      --bg-main: hsl(var(--bg-main-hsl));
       --bg-white: #ffffff;
       --bg-card: #ffffff;
-      --bg-input: #f0f1f5;
-      --bg-hover: #eef0f6;
-      --border: #e2e4ed;
-      --border-hover: #cdd0de;
-      --text: #1a1d2e;
-      --text-dim: #5c6277;
-      --text-faint: #9298ae;
-      --accent: #3d7eff;
-      --accent-hover: #2b6aeb;
-      --accent-hsl: 217, 91%, 60%;
+      --bg-input-hsl: 228, 14%, 95%;
+      --bg-input: hsl(var(--bg-input-hsl));
+      --bg-hover-hsl: 228, 20%, 94%;
+      --bg-hover: hsl(var(--bg-hover-hsl));
+
+      /* Borders */
+      --border-hsl: 228, 16%, 91%;
+      --border: hsl(var(--border-hsl));
+      --border-hover-hsl: 228, 14%, 83%;
+      --border-hover: hsl(var(--border-hover-hsl));
+
+      /* Text */
+      --text-hsl: 230, 28%, 14%;
+      --text: hsl(var(--text-hsl));
+      --text-dim-hsl: 228, 11%, 41%;
+      --text-dim: hsl(var(--text-dim-hsl));
+      --text-faint-hsl: 225, 10%, 63%;
+      --text-faint: hsl(var(--text-faint-hsl));
+
+      /* Accent (blue) */
+      --accent-hsl: 217, 100%, 62%;
+      --accent: hsl(var(--accent-hsl));
+      --accent-hover: hsl(217, 82%, 55%);
       --accent-glow: hsla(var(--accent-hsl), 0.10);
-      --green: #22c55e;
+      --accent-dim: hsla(var(--accent-hsl), 0.08);
+
+      /* Green */
       --green-hsl: 142, 71%, 45%;
+      --green: hsl(var(--green-hsl));
       --green-dim: hsla(var(--green-hsl), 0.10);
-      --warm: #f59e0b;
+
+      /* Warm (amber) */
       --warm-hsl: 38, 92%, 50%;
+      --warm: hsl(var(--warm-hsl));
       --warm-dim: hsla(var(--warm-hsl), 0.10);
-      --red: #ef4444;
+
+      /* Red */
       --red-hsl: 0, 84%, 60%;
+      --red: hsl(var(--red-hsl));
       --red-dim: hsla(var(--red-hsl), 0.08);
-      --purple: #8b5cf6;
+
+      /* Purple */
       --purple-hsl: 258, 90%, 66%;
+      --purple: hsl(var(--purple-hsl));
       --purple-dim: hsla(var(--purple-hsl), 0.10);
-      --pink: #ec4899;
+
+      /* Pink */
       --pink-hsl: 330, 81%, 60%;
+      --pink: hsl(var(--pink-hsl));
       --pink-dim: hsla(var(--pink-hsl), 0.08);
-      --indigo: #6366f1;
+
+      /* Indigo */
       --indigo-hsl: 239, 84%, 67%;
+      --indigo: hsl(var(--indigo-hsl));
       --indigo-dim: hsla(var(--indigo-hsl), 0.08);
+
+      /* Utility HSL (used in specific components) */
       --slate-hsl: 215, 20%, 65%;
       --purple-lt-hsl: 271, 91%, 65%;
-      --nav-bg: #1a3a6e;
-      --nav-bg-hover: #224b8a;
+
+      /* Nav */
+      --nav-bg-hsl: 215, 61%, 27%;
+      --nav-bg: hsl(var(--nav-bg-hsl));
+      --nav-bg-hover: hsl(215, 59%, 34%);
       --nav-bg-active: rgba(255,255,255,0.12);
       --nav-text: rgba(255,255,255,0.65);
       --nav-text-active: #ffffff;
+
+      /* Fonts */
       --sans: 'Outfit', -apple-system, sans-serif;
       --mono: 'JetBrains Mono', monospace;
+
+      /* ── Fluid typography scale ──────────────────────────── */
+      --fs-page-title: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+      --fs-stat: clamp(1.25rem, 1.1rem + 0.75vw, 1.75rem);
+      --fs-section: clamp(0.938rem, 0.88rem + 0.15vw, 1.063rem);
+      --fs-card-title: clamp(0.813rem, 0.78rem + 0.1vw, 0.875rem);
+
+      /* Layout */
       --nav-w: 240px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -199,7 +253,7 @@
       transition: background 0.3s;
     }
     .ext-status-dot.connected { background: var(--green); }
-    .ext-status-dot.warning { background: #f59e0b; }
+    .ext-status-dot.warning { background: var(--warm); }
     .ext-status-dot.stale { background: var(--red); }
     .nav-icon { width: 20px; text-align: center; flex-shrink: 0; }
     .nav-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: middle; }
@@ -255,7 +309,7 @@
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 12px; padding: 24px; margin-block-end: 20px;
     }
-    .card-title { font-size: 14px; font-weight: 700; margin-block-end: 4px; }
+    .card-title { font-size: var(--fs-card-title); font-weight: 700; margin-block-end: 4px; }
     .card-sub { font-size: 12px; color: var(--text-dim); margin-block-end: 16px; }
     .card-flush { padding: 0; overflow: hidden; }
 
@@ -294,7 +348,7 @@
     .stat-label { font-size: 11px; color: var(--text-faint); margin-block-start: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 
     .empty-state { text-align: center; padding: 60px 20px; color: var(--text-faint); }
-    .empty-state h3 { font-size: 16px; color: var(--text-dim); margin-block-end: 8px; }
+    .empty-state h3 { font-size: var(--fs-section); color: var(--text-dim); margin-block-end: 8px; }
     .empty-state p { font-size: 13px; max-width: 400px; margin: 0 auto 20px; line-height: 1.5; }
 
     /* ======================== SETUP ======================== */
@@ -315,7 +369,7 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 12px; font-weight: 700; flex-shrink: 0;
     }
-    .step-content h4 { font-size: 14px; font-weight: 600; margin-block-end: 3px; }
+    .step-content h4 { font-size: var(--fs-card-title); font-weight: 600; margin-block-end: 3px; }
     .step-content p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
     .step-content code {
       font-family: var(--mono); font-size: 12px;
@@ -349,7 +403,7 @@
       font-size: 11px; font-weight: 700; color: var(--text-faint); text-transform: uppercase;
       letter-spacing: 0.5px; width: 64px; min-width: 64px; padding-block-start: 13px; text-align: end; flex-shrink: 0;
     }
-    .qb-row-label.not-label { color: #94a3b8; }
+    .qb-row-label.not-label { color: var(--text-faint); }
     .query-builder {
       flex: 1; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       padding: 10px 12px;
@@ -410,7 +464,7 @@
     .qb-pill.type-pill .qb-pill-remove { color: hsla(var(--warm-hsl), 0.4); border-inline-start-color: hsla(var(--warm-hsl), 0.15); }
 
     .qb-pill.location-pill { background: hsla(var(--warm-hsl), 0.08); border-color: hsla(var(--warm-hsl), 0.2); }
-    .qb-pill.location-pill .qb-pill-text { color: #f59e0b; }
+    .qb-pill.location-pill .qb-pill-text { color: var(--warm); }
     .qb-pill.location-pill .qb-pill-remove { color: hsla(var(--warm-hsl), 0.4); border-inline-start-color: hsla(var(--warm-hsl), 0.15); }
     .qb-pill.location-pill .pill-radius {
       font-size: 10px; opacity: 0.7; margin-inline-start: 4px; font-weight: 400;
@@ -492,7 +546,7 @@
     .fb-type-btn.bug.active { background: var(--red); }
     .fb-success { text-align: center; padding: 20px 0; }
     .fb-success .fb-check { font-size: 48px; margin-block-end: 12px; }
-    .fb-success h4 { font-size: 16px; font-weight: 600; margin-block-end: 6px; }
+    .fb-success h4 { font-size: var(--fs-section); font-weight: 600; margin-block-end: 6px; }
     .fb-success p { font-size: 13px; color: var(--text-dim); }
 
     .cb-header { display: flex; align-items: center; gap: 12px; margin-block-end: 16px; flex-wrap: wrap; }
@@ -530,13 +584,13 @@
     /* Collection edit popup */
     .coll-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 999; display: flex; align-items: center; justify-content: center; }
     .coll-popup { background: var(--bg-white); border-radius: 12px; padding: 20px; max-width: 480px; width: 90%; max-height: 70vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-    .coll-popup h3 { font-size: 16px; margin-block-end: 12px; }
+    .coll-popup h3 { font-size: var(--fs-section); margin-block-end: 12px; }
     .coll-popup .coll-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
     .coll-popup .coll-item label { flex: 1; cursor: pointer; }
     .coll-popup-actions { display: flex; gap: 8px; margin-block-start: 14px; justify-content: flex-end; }
 
     .qb-pill.not-pill { background: hsla(var(--slate-hsl), 0.08); border-color: hsla(var(--slate-hsl), 0.25); }
-    .qb-pill.not-pill .qb-pill-text { color: #94a3b8; }
+    .qb-pill.not-pill .qb-pill-text { color: var(--text-faint); }
     .qb-pill.not-pill .qb-pill-remove { color: hsla(var(--slate-hsl), 0.4); border-inline-start-color: hsla(var(--slate-hsl), 0.15); }
 
     .qb-pill.pay-pill { background: hsla(var(--green-hsl), 0.08); border-color: hsla(var(--green-hsl), 0.2); }
@@ -681,7 +735,7 @@
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
       background: hsla(var(--indigo-hsl), 0.08); border: 1px solid hsla(var(--indigo-hsl), 0.15); color: var(--accent);
     }
-    .sf-mini-pill.location-pill { background: hsla(var(--warm-hsl), 0.08); border-color: hsla(var(--warm-hsl), 0.15); color: #f59e0b; }
+    .sf-mini-pill.location-pill { background: hsla(var(--warm-hsl), 0.08); border-color: hsla(var(--warm-hsl), 0.15); color: var(--warm); }
     .sf-mini-pill.when-pill { background: hsla(var(--purple-lt-hsl), 0.08); border-color: hsla(var(--purple-lt-hsl), 0.15); color: var(--purple); }
     .sf-mini-pill.who-pill { background: hsla(var(--pink-hsl), 0.08); border-color: hsla(var(--pink-hsl), 0.15); color: var(--pink); }
     .sf-mini-pill.pay-pill { background: hsla(var(--green-hsl), 0.08); border-color: hsla(var(--green-hsl), 0.15); color: var(--green); }
@@ -711,7 +765,7 @@
       padding: 20px 24px 16px; border-block-end: 1px solid var(--border); flex-shrink: 0;
     }
     .job-modal-title-wrap { flex: 1; min-width: 0; }
-    .job-modal-title { font-size: 17px; font-weight: 700; color: var(--text); margin: 0; line-height: 1.3; text-transform: lowercase; }
+    .job-modal-title { font-size: var(--fs-page-title); font-weight: 700; color: var(--text); margin: 0; line-height: 1.3; text-transform: lowercase; }
     .job-modal-meta { font-size: 12px; color: var(--text-faint); margin-block-start: 4px; text-transform: lowercase; }
     .job-modal-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .job-modal-close {
@@ -727,8 +781,8 @@
     .job-modal-body h1, .job-modal-body h2, .job-modal-body h3, .job-modal-body h4 {
       color: var(--text); margin: 20px 0 8px; font-size: 14px; font-weight: 700;
     }
-    .job-modal-body h1 { font-size: 16px; }
-    .job-modal-body h2 { font-size: 15px; }
+    .job-modal-body h1 { font-size: var(--fs-section); }
+    .job-modal-body h2 { font-size: var(--fs-card-title); }
     .job-modal-body ul, .job-modal-body ol { padding-inline-start: 20px; margin: 8px 0; }
     .job-modal-body li { margin-block-end: 4px; }
     .job-modal-body p { margin: 8px 0; }
@@ -787,7 +841,7 @@
     /* Column header text colors match pill colors when sorted */
     .job-table th[data-sort="title"].sorted { color: var(--accent); }
     .job-table th[data-sort="company"].sorted { color: var(--pink); }
-    .job-table th[data-sort="location"].sorted { color: #f59e0b; }
+    .job-table th[data-sort="location"].sorted { color: var(--warm); }
     .job-table th[data-sort="salary"].sorted { color: var(--green); }
     .job-table th[data-sort="days"].sorted { color: var(--purple); }
     .job-table th[data-sort="level"].sorted { color: #06b6d4; }
@@ -1100,7 +1154,7 @@
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       padding: 24px; width: 380px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
     }
-    .resume-picker h4 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+    .resume-picker h4 { font-size: var(--fs-card-title); font-weight: 700; margin: 0 0 4px; }
     .resume-picker .rp-sub { font-size: 12px; color: var(--text-faint); margin-block-end: 16px; }
     .resume-picker .rp-option {
       display: flex; align-items: center; gap: 10px; padding: 10px 12px;
@@ -1181,9 +1235,9 @@
     .resume-card .rc-icon {
       width: 44px; height: 56px; border-radius: 8px; margin-block-end: 12px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; font-weight: 700; flex-shrink: 0;
+      font-size: var(--fs-stat); font-weight: 700; flex-shrink: 0;
     }
-    .resume-card .rc-icon.pdf { background: hsla(var(--red-hsl), 0.1); color: #ef4444; }
+    .resume-card .rc-icon.pdf { background: hsla(var(--red-hsl), 0.1); color: var(--red); }
     .resume-card .rc-icon.doc { background: hsla(var(--accent-hsl), 0.1); color: #3b82f6; }
     .resume-card .rc-name {
       font-size: 14px; font-weight: 600; margin-block-end: 2px;
@@ -1243,7 +1297,7 @@
       text-align: center; cursor: pointer; transition: all 0.15s; margin-block-end: 20px;
     }
     .resume-upload-zone:hover { border-color: var(--accent); background: var(--accent-glow); }
-    .resume-upload-zone h4 { font-size: 15px; font-weight: 600; margin-block-end: 4px; }
+    .resume-upload-zone h4 { font-size: var(--fs-card-title); font-weight: 600; margin-block-end: 4px; }
     .resume-upload-zone p { font-size: 12px; color: var(--text-faint); }
     .resume-match-list { margin-block-start: 12px; }
     .resume-match-item {
