@@ -667,7 +667,7 @@ function commitSaveFilter() {
   } else {
     savedFilters.push(filterData);
   }
-  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   // Only clear the name if it was a new filter
   if (existingIdx < 0) {
     $('#save-filter-name').value = '';
@@ -791,7 +791,7 @@ $('#sf-delete-selected').addEventListener('click', () => {
   if (!confirm(`Delete ${checked.length} saved filter${checked.length > 1 ? 's' : ''}?`)) return;
   // Delete in reverse order to preserve indices
   checked.sort((a, b) => b - a).forEach(idx => savedFilters.splice(idx, 1));
-  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   $('#sf-select-all').checked = false;
   $('#sf-delete-selected').style.display = 'none';
   renderSavedFilters();
@@ -973,7 +973,7 @@ function renderSavedFilters() {
       renderPayPills();
       savedFilters[idx].lastUsed = Date.now();
       savedFilters[idx].useCount = (savedFilters[idx].useCount || 0) + 1;
-      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
       renderAllPills();
       // Expand the filter builder if collapsed
       const body = $('#qb-collapse-body');
@@ -991,7 +991,7 @@ function renderSavedFilters() {
     el.addEventListener('click', e => {
       e.stopPropagation();
       savedFilters.splice(parseInt(el.dataset.delidx), 1);
-      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
       renderSavedFilters();
       updateSfActiveCount();
       if (savedFilters.length === 0 || $$('.sf-item-check:checked').length === 0) {
@@ -1016,7 +1016,7 @@ function renderSavedFilters() {
       copy.jobsWeek = null;
       copy.jobsMonth = null;
       savedFilters.push(copy);
-      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
       renderSavedFilters();
     });
   });
@@ -1154,7 +1154,7 @@ async function updateSavedFilterCounts() {
       console.error(`Count error for filter ${i} "${sf.name}":`, e);
     }
   }
-  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
 }
 
 // Run counts after a short delay to not block initial render
