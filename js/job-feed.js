@@ -1085,8 +1085,7 @@ async function backgroundEnrichSalary() {
         const cell = document.querySelector(`tr[data-jobid="${job.greenhouse_id}"] .jt-salary`);
         if (cell) cell.textContent = formatSalaryCell(job);
         console.log(`[BJ] Parsed cached: ${job.title} → ${salary.currency || 'USD'} $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
-        sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD', salary_rate: salary.rate || 'yr' })
-          .eq('greenhouse_id', job.greenhouse_id).then(() => {});
+        enrichJob(job.greenhouse_id, { salary: { min: salary.min, max: salary.max, raw: salary.raw, currency: salary.currency || 'USD', rate: salary.rate || 'yr' } });
       }
     }
 
@@ -1132,7 +1131,7 @@ async function backgroundEnrichSalary() {
           if (cell) cell.textContent = formatSalaryCell(job);
           console.log(`[BJ] Enriched: ${job.title} → ${salary.currency || 'USD'} $${Math.round(salary.min/1000)}k-$${Math.round(salary.max/1000)}k`);
         }
-        sb.from('ats_jobs').update(updateData).eq('greenhouse_id', job.greenhouse_id).then(() => {});
+        enrichJob(job.greenhouse_id, { content: updateData.content, salary: updateData.salary_min ? { min: updateData.salary_min, max: updateData.salary_max, raw: updateData.salary_raw, currency: updateData.salary_currency, rate: updateData.salary_rate } : undefined });
 
         // Polite delay between API calls
         await new Promise(r => setTimeout(r, 300));
