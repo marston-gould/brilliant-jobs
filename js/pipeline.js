@@ -12,7 +12,7 @@ function getPipelineMeta() {
   return JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
 }
 function savePipelineMeta(meta) {
-  localStorage.setItem('bj_pipeline_meta', JSON.stringify(meta));
+  saveUserData('bj_pipeline_meta', JSON.stringify(meta));
 }
 
 // Migrate from old system on first load
@@ -58,7 +58,7 @@ function movePipelineStage(jobId, newStage) {
   // Keep legacy arrays in sync
   if (newStage !== 'saved' && !appliedJobIds.includes(jobId)) {
     appliedJobIds.push(jobId);
-    localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+    saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
   }
   renderPipeline();
 }
@@ -74,7 +74,7 @@ function markApplied(jobId, btn) {
 function _completeMarkApplied(jobId, btn, resumeName) {
   if (!appliedJobIds.includes(jobId)) {
     appliedJobIds.push(jobId);
-    localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+    saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
     if (btn) {
       const row = btn.closest('tr');
       if (row) {
@@ -104,7 +104,7 @@ function _completeMarkApplied(jobId, btn, resumeName) {
   // Store applied date for legacy compat
   const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
   dates[jobId] = new Date().toISOString();
-  localStorage.setItem('bj_applied_dates', JSON.stringify(dates));
+  saveUserData('bj_applied_dates', JSON.stringify(dates));
 }
 
 function markAppliedFromPipeline(jobId, btn) {
@@ -118,10 +118,10 @@ function unsaveFromPipeline(jobId) {
   savePipelineMeta(meta);
   const idx = savedJobIds.indexOf(jobId);
   if (idx >= 0) savedJobIds.splice(idx, 1);
-  localStorage.setItem('bj_saved_jobs', JSON.stringify(savedJobIds));
+  saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   const aidx = appliedJobIds.indexOf(jobId);
   if (aidx >= 0) appliedJobIds.splice(aidx, 1);
-  localStorage.setItem('bj_applied_jobs', JSON.stringify(appliedJobIds));
+  saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
   renderPipeline();
 }
