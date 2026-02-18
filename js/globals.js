@@ -54,3 +54,28 @@ var resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
 
 // Shared filter color palette (10 colors for numbered filter badges)
 var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+
+/**
+ * Enrich a job via Edge Function (service_role writes).
+ * Replaces direct sb.from('ats_jobs').update() calls blocked by RLS.
+ * @param {string} jobId - greenhouse_id
+ * @param {object} data - { content?: string, salary?: { min, max, raw, currency, rate } }
+ */
+async function enrichJob(jobId, data) {
+  try {
+    const session = (await sb.auth.getSession())?.data?.session;
+    const token = session?.access_token || SUPABASE_KEY;
+    const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ job_id: jobId, ...data })
+    });
+    if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
+  } catch (e) {
+    console.warn('[enrich-job] Error:', e.message);
+  }
+}
