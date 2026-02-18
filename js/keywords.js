@@ -192,7 +192,7 @@ async function batchFetchJDContent(jobs, maxFetch) {
         var data = await resp.json();
         if (data.content) {
           job.content = decodeJobContent(data.content);
-          sb.from('ats_jobs').update({ content: job.content }).eq('greenhouse_id', job.greenhouse_id).then(function(){});
+          enrichJob(job.greenhouse_id, { content: job.content });
           fetched++;
         }
       }
@@ -1014,7 +1014,7 @@ async function loadPreviewSnippets() {
             if (data.content) {
               content = decodeJobContent(data.content);
               if (job) job.content = content;
-              sb.from('ats_jobs').update({ content }).eq('greenhouse_id', jobId).then(() => {});
+              enrichJob(jobId, { content });
 
               // Extract salary while we have it
               if (job && !job.salary_min) {
@@ -1023,8 +1023,7 @@ async function loadPreviewSnippets() {
                   job.salary_min = salary.min;
                   job.salary_max = salary.max;
                   job.salary_currency = salary.currency || 'USD'; job.salary_rate = salary.rate || 'yr';
-                  sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD', salary_rate: salary.rate || 'yr' })
-                    .eq('greenhouse_id', jobId).then(() => {});
+                  enrichJob(jobId, { salary: { min: salary.min, max: salary.max, raw: salary.raw, currency: salary.currency || 'USD', rate: salary.rate || 'yr' } });
                   const cell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
                   if (cell) cell.textContent = formatSalaryCell(job);
                 }
@@ -1130,8 +1129,7 @@ async function openJobModal(jobId, e) {
         job.salary_max = salary.max;
         job.salary_currency = salary.currency || 'USD'; job.salary_rate = salary.rate || 'yr';
         console.log(`[BJ] Salary extracted (cached): ${salary.currency || 'USD'} $${(salary.min/1000).toFixed(0)}k-$${(salary.max/1000).toFixed(0)}k from "${salary.raw}"`);
-        sb.from('ats_jobs').update({ salary_min: salary.min, salary_max: salary.max, salary_raw: salary.raw, salary_currency: salary.currency || 'USD', salary_rate: salary.rate || 'yr' })
-          .eq('greenhouse_id', jobId).then(() => {});
+        enrichJob(jobId, { salary: { min: salary.min, max: salary.max, raw: salary.raw, currency: salary.currency || 'USD', rate: salary.rate || 'yr' } });
         // Update salary cell in feed
         const row = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
         if (row) row.textContent = formatSalaryCell(job);
@@ -1460,7 +1458,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
             const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
             if (salaryCell && cachedJob) salaryCell.textContent = formatSalaryCell(cachedJob);
           }
-          sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
+          enrichJob(jobId, { content: updateData.content, salary: updateData.salary_min ? { min: updateData.salary_min, max: updateData.salary_max, raw: updateData.salary_raw, currency: updateData.salary_currency, rate: updateData.salary_rate } : undefined });
           return;
         }
       }
@@ -1503,7 +1501,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
             const salaryCell = document.querySelector(`tr[data-jobid="${jobId}"] .jt-salary`);
             if (salaryCell && cachedJob) salaryCell.textContent = formatSalaryCell(cachedJob);
           }
-          sb.from('ats_jobs').update(updateData).eq('greenhouse_id', jobId).then(() => {});
+          enrichJob(jobId, { content: updateData.content, salary: updateData.salary_min ? { min: updateData.salary_min, max: updateData.salary_max, raw: updateData.salary_raw, currency: updateData.salary_currency, rate: updateData.salary_rate } : undefined });
           return;
         }
       }
