@@ -1299,13 +1299,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cached && cached.jobs != null && Date.now() - cached.ts < CACHE_TTL) { applyStats(cached); return; }
       } catch (e) {}
       try {
-        const [jobsRes, companiesRes, metrosRes] = await Promise.all([
-          sb.from('ats_jobs').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-          sb.from('ats_companies').select('*', { count: 'exact', head: true }),
-          sb.from('ref_city_radius').select('*', { count: 'exact', head: true })
-        ]);
-        if (jobsRes.error || companiesRes.error) throw new Error('stats fetch failed');
-        const stats = { jobs: jobsRes.count, companies: companiesRes.count, metros: metrosRes.count, ts: Date.now() };
+        const { data, error } = await sb.rpc('get_landing_stats');
+        if (error) throw new Error('stats fetch failed');
+        const stats = { jobs: data.jobs, companies: data.companies, metros: data.locations, ts: Date.now() };
         localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
         applyStats(stats);
       } catch (e) {
