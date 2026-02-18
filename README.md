@@ -27,3 +27,4 @@ Version format: `v2.XX` — incremented per meaningful change set. Version appea
 1. HTML comment on line 2
 2. `console.log` on load
 3. Feedback form submission payload
+<!-- deploy trigger 2026-02-18T21:59:24.570379 -->
