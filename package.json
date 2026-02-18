@@ -1,14 +1,13 @@
 {
   "name": "brilliant-jobs",
   "private": true,
-  "type": "module",
+  "description": "Build tools are local-only. Vercel serves static files.",
   "scripts": {
-    "dev": "vite",
     "bundle:js": "node build.js",
     "bundle:css": "npx tailwindcss -i src/input.css -o styles.css --minify",
     "bundle": "npm run bundle:js && npm run bundle:css",
     "css:watch": "npx tailwindcss -i src/input.css -o styles.css --watch",
-    "preview": "vite preview"
+    "dev": "npx vite"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
