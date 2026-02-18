@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Job Market Growth — Brilliant Jobs Data Lab</title>
+  <title>Job Market Intelligence — Brilliant Jobs Data Lab</title>
   <meta name="robots" content="noindex, nofollow">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,702 +18,349 @@
       --text-dim: #7a8299;
       --text-faint: #4a5068;
       --accent: #3b82f6;
-      --accent-dim: rgba(59, 130, 246, 0.15);
       --green: #22c55e;
       --warm: #f59e0b;
       --red: #ef4444;
       --purple: #a855f7;
+      --cyan: #06b6d4;
+      --pink: #ec4899;
+      --indigo: #6366f1;
     }
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Outfit', sans-serif;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* Subtle grain texture */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .page-wrap {
-      position: relative;
-      z-index: 1;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 48px 32px 80px;
-    }
-
-    /* Header */
-    .page-header {
-      margin-block-end: 48px;
-    }
-
-    .page-header .eyebrow {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-block-end: 12px;
-    }
-
-    .page-header h1 {
-      font-size: clamp(28px, 4vw, 42px);
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      line-height: 1.15;
-      margin-block-end: 12px;
-    }
-
-    .page-header h1 span {
-      background: linear-gradient(135deg, var(--accent), var(--purple));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .page-header .subtitle {
-      color: var(--text-dim);
-      font-size: 15px;
-      max-width: 600px;
-      line-height: 1.6;
-    }
-
-    .page-header .subtitle strong {
-      color: var(--text);
-      font-weight: 500;
-    }
-
-    /* Chart grid */
-    .chart-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    @media (max-width: 900px) {
-      .chart-grid { grid-template-columns: 1fr; }
-    }
-
-    .chart-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      position: relative;
-      overflow: hidden;
-      transition: border-color 0.3s;
-    }
-
-    .chart-card:hover {
-      border-color: rgba(59, 130, 246, 0.3);
-    }
-
-    .chart-card .card-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-block-end: 20px;
-    }
-
-    .chart-card .card-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--text-faint);
-      margin-block-end: 6px;
-    }
-
-    .chart-card .card-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .chart-card .card-badge {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      white-space: nowrap;
-    }
-
-    .badge-seo { background: rgba(59, 130, 246, 0.12); color: var(--accent); }
-    .badge-liquid { background: rgba(168, 85, 247, 0.12); color: var(--purple); }
-    .badge-heatmap { background: rgba(245, 158, 11, 0.12); color: var(--warm); }
-    .badge-race { background: rgba(34, 197, 94, 0.12); color: var(--green); }
-
-    .chart-container {
-      width: 100%;
-      height: 340px;
-    }
-
-    /* Stats row below header */
-    .stats-row {
-      display: flex;
-      gap: 32px;
-      margin-block-end: 48px;
-      padding: 20px 24px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .stat-item .stat-value {
-      font-size: 22px;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .stat-item .stat-label {
-      font-size: 11px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .stat-value.blue { color: var(--accent); }
-    .stat-value.green { color: var(--green); }
-    .stat-value.warm { color: var(--warm); }
-    .stat-value.purple { color: var(--purple); }
-
-    /* Footer note */
-    .page-footer {
-      margin-block-start: 40px;
-      text-align: center;
-      color: var(--text-faint);
-      font-size: 12px;
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .page-footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    @media (max-width: 600px) {
-      .page-wrap { padding: 24px 16px 60px; }
-      .stats-row { flex-wrap: wrap; gap: 16px; }
-      .chart-container { height: 280px; }
-    }
+    body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; min-height: 100vh; }
+    body::before { content: ''; position: fixed; inset: 0; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
+    .wrap { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 40px 28px 80px; }
+    .hdr { margin-block-end: 36px; }
+    .hdr .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-block-end: 10px; }
+    .hdr h1 { font-size: clamp(26px, 3.5vw, 38px); font-weight: 700; letter-spacing: -0.5px; line-height: 1.15; margin-block-end: 10px; }
+    .hdr h1 span { background: linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hdr .sub { color: var(--text-dim); font-size: 14px; line-height: 1.6; max-width: 640px; }
+    .hdr .sub strong { color: var(--text); font-weight: 500; }
+    .stats { display: flex; gap: 28px; margin-block-end: 36px; padding: 16px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; flex-wrap: wrap; }
+    .st { display: flex; flex-direction: column; gap: 1px; }
+    .st .v { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .st .l { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+    .v.blue { color: var(--accent); } .v.green { color: var(--green); } .v.warm { color: var(--warm); } .v.purple { color: var(--purple); }
+    .sdiv { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-faint); margin: 48px 0 20px; padding-block-end: 10px; border-block-end: 1px solid var(--border); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid .full { grid-column: 1 / -1; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .grid .full { grid-column: auto; } }
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; position: relative; overflow: hidden; transition: border-color 0.3s; }
+    .card:hover { border-color: rgba(59,130,246,0.25); }
+    .card .ch { display: flex; align-items: flex-start; justify-content: space-between; margin-block-end: 16px; }
+    .card .cl { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-faint); margin-block-end: 4px; }
+    .card .ct { font-size: 15px; font-weight: 600; }
+    .badge { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 3px 9px; border-radius: 16px; white-space: nowrap; }
+    .b-blue { background: rgba(59,130,246,0.12); color: var(--accent); }
+    .b-green { background: rgba(34,197,94,0.12); color: var(--green); }
+    .b-warm { background: rgba(245,158,11,0.12); color: var(--warm); }
+    .b-purple { background: rgba(168,85,247,0.12); color: var(--purple); }
+    .b-cyan { background: rgba(6,182,212,0.12); color: var(--cyan); }
+    .b-pink { background: rgba(236,72,153,0.12); color: var(--pink); }
+    .b-red { background: rgba(239,68,68,0.12); color: var(--red); }
+    .b-indigo { background: rgba(99,102,241,0.12); color: var(--indigo); }
+    .ec { width: 100%; height: 340px; }
+    .ec.tall { height: 420px; }
+    .foot { margin-block-start: 48px; text-align: center; color: var(--text-faint); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+    .foot a { color: var(--accent); text-decoration: none; }
+    @media (max-width: 600px) { .wrap { padding: 20px 14px 60px; } .ec { height: 260px !important; } }
   </style>
 </head>
 <body>
-
-<div class="page-wrap">
-
-  <header class="page-header">
+<div class="wrap">
+  <header class="hdr">
     <div class="eyebrow">Brilliant Jobs · Data Lab</div>
-    <h1>Jobs Indexed <span>by Date</span></h1>
-    <p class="subtitle">Total job listings discovered across <strong>5 ATS platforms</strong> and <strong>9,800+ company career pages</strong>. Data sourced from Greenhouse, Lever, Ashby, Workable, and Recruitee.</p>
+    <h1>Job Market <span>Intelligence</span></h1>
+    <p class="sub">Real-time insights from <strong>280,000+ job listings</strong> across <strong>9,800+ company career pages</strong> on 5 ATS platforms. Updated daily.</p>
   </header>
-
-  <div class="stats-row">
-    <div class="stat-item">
-      <span class="stat-value blue" id="stat-total">—</span>
-      <span class="stat-label">Total Jobs</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-value green" id="stat-peak">—</span>
-      <span class="stat-label">Peak Daily</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-value warm" id="stat-avg">—</span>
-      <span class="stat-label">Avg Daily</span>
-    </div>
-    <div class="stat-item">
-      <span class="stat-value purple" id="stat-days">—</span>
-      <span class="stat-label">Days Tracked</span>
-    </div>
+  <div class="stats">
+    <div class="st"><span class="v blue">280,818</span><span class="l">Active Jobs</span></div>
+    <div class="st"><span class="v green">9,992</span><span class="l">Companies</span></div>
+    <div class="st"><span class="v warm">23,000</span><span class="l">With Salary</span></div>
+    <div class="st"><span class="v purple">16</span><span class="l">Industries</span></div>
   </div>
 
-  <div class="chart-grid">
-
-    <!-- Chart 1: SEOGets-style area chart -->
-    <div class="chart-card">
-      <div class="card-header">
-        <div>
-          <div class="card-label">Variation 1</div>
-          <div class="card-title">Growth Curve (SEOGets style)</div>
-        </div>
-        <span class="card-badge badge-seo">Area</span>
-      </div>
-      <div class="chart-container" id="chart-seo"></div>
-    </div>
-
-    <!-- Chart 2: Liquid / organic chart -->
-    <div class="chart-card">
-      <div class="card-header">
-        <div>
-          <div class="card-label">Variation 2</div>
-          <div class="card-title">Daily Discovery (Liquid)</div>
-        </div>
-        <span class="card-badge badge-liquid">Liquid</span>
-      </div>
-      <div class="chart-container" id="chart-liquid"></div>
-    </div>
-
-    <!-- Chart 3: Heatmap calendar -->
-    <div class="chart-card">
-      <div class="card-header">
-        <div>
-          <div class="card-label">Variation 3</div>
-          <div class="card-title">Discovery Intensity (Heatmap)</div>
-        </div>
-        <span class="card-badge badge-heatmap">Calendar</span>
-      </div>
-      <div class="chart-container" id="chart-heatmap"></div>
-    </div>
-
-    <!-- Chart 4: Platform race bar -->
-    <div class="chart-card">
-      <div class="card-header">
-        <div>
-          <div class="card-label">Variation 4</div>
-          <div class="card-title">Platform Breakdown (Stacked)</div>
-        </div>
-        <span class="card-badge badge-race">Stacked</span>
-      </div>
-      <div class="chart-container" id="chart-race"></div>
-    </div>
-
+  <div class="sdiv">Volume & Growth</div>
+  <div class="grid">
+    <div class="card full"><div class="ch"><div><div class="cl">Chart 1</div><div class="ct">Total Jobs Indexed Over Time</div></div><span class="badge b-blue">Cumulative</span></div><div class="ec" id="c1"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 2</div><div class="ct">New Jobs Discovered Per Week</div></div><span class="badge b-green">Velocity</span></div><div class="ec" id="c2"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 3</div><div class="ct">Remote vs On-Site vs Hybrid</div></div><span class="badge b-cyan">Work Type</span></div><div class="ec" id="c3"></div></div>
   </div>
 
-  <div class="page-footer">
-    Mock data · Will connect to live Supabase RPC once <code>get_jobs_by_date()</code> is deployed · <a href="/dashboard">Back to Dashboard</a>
+  <div class="sdiv">Industry Breakdown</div>
+  <div class="grid">
+    <div class="card"><div class="ch"><div><div class="cl">Chart 4</div><div class="ct">Jobs by Industry</div></div><span class="badge b-purple">Count</span></div><div class="ec tall" id="c4"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 5</div><div class="ct">Average Salary by Industry</div></div><span class="badge b-warm">Salary</span></div><div class="ec tall" id="c5"></div></div>
   </div>
 
+  <div class="sdiv">Seniority & Career Level</div>
+  <div class="grid">
+    <div class="card"><div class="ch"><div><div class="cl">Chart 6</div><div class="ct">Job Postings by Level</div></div><span class="badge b-indigo">Distribution</span></div><div class="ec" id="c6"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 7</div><div class="ct">Average Salary by Level</div></div><span class="badge b-warm">Compensation</span></div><div class="ec" id="c7"></div></div>
+  </div>
+
+  <div class="sdiv">Salary Intelligence</div>
+  <div class="grid">
+    <div class="card"><div class="ch"><div><div class="cl">Chart 8</div><div class="ct">Salary Distribution</div></div><span class="badge b-green">Ranges</span></div><div class="ec" id="c8"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 9</div><div class="ct">Salary: Remote vs On-Site</div></div><span class="badge b-cyan">Comparison</span></div><div class="ec" id="c9"></div></div>
+  </div>
+
+  <div class="sdiv">Hiring Activity</div>
+  <div class="grid">
+    <div class="card"><div class="ch"><div><div class="cl">Chart 10</div><div class="ct">Top 15 Hiring Companies</div></div><span class="badge b-blue">Volume</span></div><div class="ec tall" id="c10"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 11</div><div class="ct">Jobs by Department</div></div><span class="badge b-pink">Function</span></div><div class="ec tall" id="c11"></div></div>
+  </div>
+
+  <div class="sdiv">Listing Health</div>
+  <div class="grid">
+    <div class="card"><div class="ch"><div><div class="cl">Chart 12</div><div class="ct">How Long Listings Stay Open</div></div><span class="badge b-red">Lifespan</span></div><div class="ec" id="c12"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Chart 13</div><div class="ct">Daily Discovery Heatmap</div></div><span class="badge b-warm">Calendar</span></div><div class="ec" id="c13"></div></div>
+  </div>
+
+  <div class="foot">Mock data · Live Supabase RPC integration pending · <a href="/dashboard">Dashboard</a> · Updated Feb 18, 2026</div>
 </div>
 
 <script>
 (function() {
   'use strict';
 
-  // ── Generate realistic mock data ──
-  // Based on known project timeline:
-  // - Greenhouse scraping started mid-Jan 2026
-  // - CSV recovery Feb 14 (big spike)
-  // - Multi-ATS expansion Feb 16 (massive spike)
-  // - Steady scraping Feb 17-18
-
-  const days = [];
-  const startDate = new Date(2026, 0, 15); // Jan 15
-
-  // Platform proportions shift over time
-  function genDay(date, daily, ghPct, lvPct, ashPct, wkPct, recPct) {
-    return {
-      date: date.toISOString().slice(0, 10),
-      daily,
-      greenhouse: Math.round(daily * ghPct),
-      lever: Math.round(daily * lvPct),
-      ashby: Math.round(daily * ashPct),
-      workable: Math.round(daily * wkPct),
-      recruitee: Math.round(daily * recPct),
-    };
-  }
-
-  let cumulative = 0;
-
-  // Phase 1: Greenhouse only (Jan 15 - Feb 13)
-  for (let i = 0; i < 30; i++) {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
-    const daily = 2800 + Math.round(i * 95 + Math.random() * 400);
-    cumulative += daily;
-    const day = genDay(d, daily, 1, 0, 0, 0, 0);
-    day.cumulative = cumulative;
-    days.push(day);
-  }
-
-  // Feb 14: CSV recovery
-  const feb14 = new Date(2026, 1, 14);
-  cumulative += 14200;
-  days.push({ ...genDay(feb14, 14200, 1, 0, 0, 0, 0), cumulative });
-
-  // Feb 15: Steady GH
-  const feb15 = new Date(2026, 1, 15);
-  cumulative += 4100;
-  days.push({ ...genDay(feb15, 4100, 1, 0, 0, 0, 0), cumulative });
-
-  // Feb 16: Multi-ATS expansion
-  const feb16 = new Date(2026, 1, 16);
-  cumulative += 48500;
-  days.push({ ...genDay(feb16, 48500, 0.35, 0.22, 0.18, 0.13, 0.12), cumulative });
-
-  // Feb 17
-  const feb17 = new Date(2026, 1, 17);
-  cumulative += 11800;
-  days.push({ ...genDay(feb17, 11800, 0.40, 0.20, 0.15, 0.13, 0.12), cumulative });
-
-  // Feb 18
-  const feb18 = new Date(2026, 1, 18);
-  cumulative += 7900;
-  days.push({ ...genDay(feb18, 7900, 0.42, 0.19, 0.14, 0.13, 0.12), cumulative });
-
-  // ── Stats ──
-  const totalJobs = cumulative;
-  const peakDaily = Math.max(...days.map(d => d.daily));
-  const avgDaily = Math.round(totalJobs / days.length);
-
-  document.getElementById('stat-total').textContent = totalJobs.toLocaleString();
-  document.getElementById('stat-peak').textContent = peakDaily.toLocaleString();
-  document.getElementById('stat-avg').textContent = avgDaily.toLocaleString();
-  document.getElementById('stat-days').textContent = days.length;
-
-  // ── Shared config ──
-  const dates = days.map(d => d.date);
-  const dailyCounts = days.map(d => d.daily);
-  const cumulativeCounts = days.map(d => d.cumulative);
-
-  const tooltipBase = {
-    trigger: 'axis',
-    backgroundColor: 'rgba(18, 20, 26, 0.95)',
-    borderColor: '#1e2230',
-    textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 },
-    axisPointer: { lineStyle: { color: '#2a2d3a' } }
+  // ── DATA ──
+  const D = {
+    timeline: (function() {
+      const days = []; let cum = 0; const s = new Date(2026, 0, 15);
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(s); d.setDate(d.getDate() + i);
+        const daily = 2800 + Math.round(i * 95 + (Math.sin(i*0.8)*300));
+        cum += daily; days.push({ date: d.toISOString().slice(0,10), daily, cum });
+      }
+      [[14,14200],[15,4100],[16,48500],[17,11800],[18,7900]].forEach(([day,n]) => {
+        cum += n; days.push({ date: `2026-02-${String(day).padStart(2,'0')}`, daily: n, cum });
+      });
+      return days;
+    })(),
+    weekly: [
+      { w: 'Jan 13', c: 22400 }, { w: 'Jan 20', c: 28600 }, { w: 'Jan 27', c: 31200 },
+      { w: 'Feb 3', c: 34800 }, { w: 'Feb 10', c: 89200 }, { w: 'Feb 17', c: 19800 },
+    ],
+    remote: [
+      { n: 'On-site', v: 156400, co: '#3b82f6' }, { n: 'Remote', v: 72600, co: '#22c55e' },
+      { n: 'Hybrid', v: 39200, co: '#a855f7' }, { n: 'Unspecified', v: 12618, co: '#4a5068' },
+    ],
+    industries: [
+      ['Technology',68400],['Healthcare',31200],['Financial Services',28500],['Professional Services',22800],
+      ['Retail & E-commerce',19200],['Manufacturing',16800],['Education',14400],['Media & Entertainment',12600],
+      ['Real Estate',8400],['Energy',7200],['Transport & Logistics',6800],['Government',5600],
+      ['Hospitality',5400],['Nonprofit',4800],['Agriculture',3200],
+    ],
+    salInd: [
+      ['Technology',142000],['Financial Services',138000],['Energy',128000],['Professional Services',118000],
+      ['Media & Entertainment',112000],['Real Estate',105000],['Healthcare',95000],['Manufacturing',88000],
+      ['Government',85000],['Retail & E-commerce',82000],['Transport & Logistics',78000],['Education',72000],
+      ['Nonprofit',68000],['Hospitality',65000],
+    ],
+    levels: [
+      ['Entry Level',42100],['Associate',33700],['Mid-Level',56200],['Senior',67400],
+      ['Lead',22500],['Manager',28400],['Director',16800],['VP',5600],['C-Suite',2800],
+    ],
+    salLvl: [
+      ['Entry Level',58000],['Associate',72000],['Mid-Level',95000],['Senior',135000],
+      ['Lead',155000],['Manager',148000],['Director',185000],['VP',245000],['C-Suite',320000],
+    ],
+    salRange: [
+      ['$30-50K',1840],['$50-75K',3220],['$75-100K',4600],['$100-125K',4140],['$125-150K',3450],
+      ['$150-175K',2300],['$175-200K',1610],['$200-250K',1150],['$250K+',690],
+    ],
+    salRemote: [
+      { t: 'Remote', p25: 85000, med: 128000, p75: 168000 },
+      { t: 'Hybrid', p25: 78000, med: 118000, p75: 155000 },
+      { t: 'On-site', p25: 62000, med: 95000, p75: 135000 },
+    ],
+    companies: [
+      ['Amazon',4200],['Deloitte',3100],['Google',2800],['Microsoft',2600],['Meta',2100],
+      ['JPMorgan Chase',1900],['Apple',1700],['Accenture',1600],['Salesforce',1400],['Oracle',1300],
+      ['IBM',1200],['Goldman Sachs',1100],['Uber',980],['Netflix',920],['Stripe',850],
+    ],
+    depts: [
+      ['Engineering',72800],['Sales',38400],['Marketing',28600],['Operations',24200],['Product',19800],
+      ['Finance',16400],['Human Resources',14200],['Data & Analytics',13800],['Customer Success',12400],
+      ['Design',11600],['Legal',6200],
+    ],
+    lifespan: [
+      ['< 7 days',820],['7-14 days',1240],['14-30 days',1680],['30-60 days',960],['60-90 days',480],['90+ days',320],
+    ],
   };
 
-  const axisLabelStyle = {
-    color: '#4a5068',
-    fontFamily: 'JetBrains Mono',
-    fontSize: 10
-  };
+  // ── CONFIG ──
+  const TT = { backgroundColor: 'rgba(12,14,20,0.96)', borderColor: '#1e2230', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } };
+  const AL = { color: '#4a5068', fontFamily: 'JetBrains Mono', fontSize: 10 };
+  const GR = { left: 56, right: 20, top: 20, bottom: 32 };
+  const SP = { lineStyle: { color: '#151820' } };
+  const NO = { show: false };
+  const PAL = ['#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6','#f97316','#8b5cf6','#0ea5e9','#d946ef','#84cc16','#e11d48'];
+  function fmt(n) { return n >= 1000 ? (n/1000).toFixed(n >= 10000 ? 0 : 1) + 'K' : n; }
+  function fmtM(n) { return '$' + (n/1000).toFixed(0) + 'K'; }
+  const chs = [];
+  function I(id) { const c = echarts.init(document.getElementById(id)); chs.push(c); return c; }
+  const AX = c => ({ lineStyle: { color: '#1e2230' } });
 
-  const gridBase = { left: 56, right: 24, top: 24, bottom: 36 };
-
-
-  // ════════════════════════════════════════
-  // CHART 1 — SEOGets-style cumulative area
-  // ════════════════════════════════════════
-  const ch1 = echarts.init(document.getElementById('chart-seo'));
-  ch1.setOption({
-    tooltip: {
-      ...tooltipBase,
-      formatter: function(params) {
-        const p = params[0];
-        return `<div style="font-weight:600;margin-bottom:4px">${p.axisValue}</div>
-                <span style="color:#3b82f6">●</span> Total jobs: <strong>${Number(p.value).toLocaleString()}</strong>`;
-      }
-    },
-    grid: gridBase,
-    xAxis: {
-      type: 'category',
-      data: dates,
-      axisLabel: { ...axisLabelStyle, formatter: v => v.slice(5) },
-      axisLine: { lineStyle: { color: '#1e2230' } },
-      axisTick: { show: false },
-      boundaryGap: false
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { ...axisLabelStyle, formatter: v => v >= 1000 ? (v/1000) + 'K' : v },
-      splitLine: { lineStyle: { color: '#1a1d28' } },
-      axisLine: { show: false },
-      axisTick: { show: false }
-    },
-    series: [{
-      type: 'line',
-      data: cumulativeCounts,
-      smooth: 0.4,
-      symbol: 'none',
-      lineStyle: {
-        color: '#3b82f6',
-        width: 2.5,
-        shadowColor: 'rgba(59, 130, 246, 0.4)',
-        shadowBlur: 10
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(59, 130, 246, 0.35)' },
-            { offset: 0.6, color: 'rgba(59, 130, 246, 0.08)' },
-            { offset: 1, color: 'rgba(59, 130, 246, 0)' }
-          ]
-        }
-      },
-      markLine: {
-        silent: true,
-        symbol: 'none',
-        lineStyle: { color: '#f59e0b', type: 'dashed', width: 1 },
-        label: {
-          color: '#f59e0b',
-          fontSize: 9,
-          fontFamily: 'JetBrains Mono',
-          formatter: '{b}'
-        },
-        data: [
-          { name: 'Multi-ATS', xAxis: '2026-02-16' }
-        ]
-      }
+  // ── C1: Cumulative area ──
+  I('c1').setOption({
+    tooltip: { ...TT, trigger: 'axis', formatter: p => `<b>${p[0].axisValue}</b><br/>Total: <b>${Number(p[0].value).toLocaleString()}</b>` },
+    grid: { ...GR, right: 28 },
+    xAxis: { type: 'category', data: D.timeline.map(d => d.date), axisLabel: { ...AL, formatter: v => v.slice(5) }, axisLine: AX(), axisTick: NO, boundaryGap: false },
+    yAxis: { type: 'value', axisLabel: { ...AL, formatter: v => fmt(v) }, splitLine: SP, axisLine: NO, axisTick: NO },
+    series: [{ type: 'line', data: D.timeline.map(d => d.cum), smooth: 0.4, symbol: 'none',
+      lineStyle: { color: '#3b82f6', width: 2.5, shadowColor: 'rgba(59,130,246,0.4)', shadowBlur: 12 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(59,130,246,0.30)' },{ offset: 0.7, color: 'rgba(59,130,246,0.05)' },{ offset: 1, color: 'transparent' }] } },
+      markLine: { silent: true, symbol: 'none', lineStyle: { color: '#f59e0b', type: 'dashed', width: 1 }, label: { color: '#f59e0b', fontSize: 9, fontFamily: 'JetBrains Mono', formatter: '{b}' }, data: [{ name: 'Multi-ATS', xAxis: '2026-02-16' }] }
     }]
   });
 
-
-  // ════════════════════════════════════════
-  // CHART 2 — Liquid daily bars
-  // ════════════════════════════════════════
-  const ch2 = echarts.init(document.getElementById('chart-liquid'));
-  ch2.setOption({
-    tooltip: {
-      ...tooltipBase,
-      formatter: function(params) {
-        const p = params[0];
-        return `<div style="font-weight:600;margin-bottom:4px">${p.axisValue}</div>
-                <span style="color:#a855f7">●</span> Jobs discovered: <strong>${Number(p.value).toLocaleString()}</strong>`;
-      }
-    },
-    grid: { ...gridBase, bottom: 40 },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      axisLabel: { ...axisLabelStyle, formatter: v => v.slice(5), rotate: 0, interval: 4 },
-      axisLine: { lineStyle: { color: '#1e2230' } },
-      axisTick: { show: false }
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { ...axisLabelStyle, formatter: v => v >= 1000 ? (v/1000) + 'K' : v },
-      splitLine: { lineStyle: { color: '#1a1d28' } },
-      axisLine: { show: false },
-      axisTick: { show: false }
-    },
-    series: [{
-      type: 'bar',
-      data: dailyCounts,
-      barWidth: '60%',
-      itemStyle: {
-        borderRadius: [20, 20, 4, 4],
-        color: function(params) {
-          const val = params.value;
-          const max = peakDaily;
-          const ratio = val / max;
-          // Liquid gradient: purple → blue → cyan based on intensity
-          if (ratio > 0.7) return {
-            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: '#c084fc' },
-              { offset: 0.5, color: '#a855f7' },
-              { offset: 1, color: '#7c3aed' }
-            ]
-          };
-          if (ratio > 0.3) return {
-            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: '#818cf8' },
-              { offset: 1, color: '#6366f1' }
-            ]
-          };
-          return {
-            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: '#60a5fa' },
-              { offset: 1, color: '#3b82f6' }
-            ]
-          };
-        },
-        shadowColor: 'rgba(168, 85, 247, 0.3)',
-        shadowBlur: 8,
-        shadowOffsetY: 4
-      },
-      emphasis: {
-        itemStyle: {
-          shadowColor: 'rgba(168, 85, 247, 0.6)',
-          shadowBlur: 16
-        }
-      },
-      animationDelay: function(idx) { return idx * 30; },
-      animationEasing: 'elasticOut'
+  // ── C2: Weekly velocity ──
+  I('c2').setOption({
+    tooltip: { ...TT, trigger: 'axis', formatter: p => `<b>${p[0].axisValue}</b><br/>New: <b>${Number(p[0].value).toLocaleString()}</b>` },
+    grid: GR,
+    xAxis: { type: 'category', data: D.weekly.map(d => d.w), axisLabel: AL, axisLine: AX(), axisTick: NO },
+    yAxis: { type: 'value', axisLabel: { ...AL, formatter: v => fmt(v) }, splitLine: SP, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: D.weekly.map(d => d.c), barWidth: '50%',
+      itemStyle: { borderRadius: [6,6,2,2], color: p => ({ type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: p.dataIndex===4?'#22c55e':'#3b82f6' },{ offset: 1, color: p.dataIndex===4?'#15803d':'#1d4ed8' }] }) },
+      animationDelay: i => i*80, animationEasing: 'elasticOut'
     }]
   });
 
+  // ── C3: Remote donut ──
+  I('c3').setOption({
+    tooltip: { ...TT, formatter: p => `${p.marker} ${p.name}<br/><b>${Number(p.value).toLocaleString()}</b> (${p.percent}%)` },
+    series: [{ type: 'pie', radius: ['48%','72%'], center: ['50%','50%'],
+      data: D.remote.map(d => ({ name: d.n, value: d.v, itemStyle: { color: d.co } })),
+      label: { color: '#7a8299', fontSize: 11, fontFamily: 'Outfit', formatter: '{b}\n{d}%' },
+      labelLine: { lineStyle: { color: '#2a2d3a' } },
+      emphasis: { itemStyle: { shadowBlur: 20, shadowColor: 'rgba(0,0,0,0.4)' } },
+      animationType: 'scale', animationEasing: 'elasticOut'
+    }]
+  });
 
-  // ════════════════════════════════════════
-  // CHART 3 — Calendar heatmap
-  // ════════════════════════════════════════
-  const ch3 = echarts.init(document.getElementById('chart-heatmap'));
+  // ── C4: Jobs by industry ──
+  const ind = D.industries.slice().reverse();
+  I('c4').setOption({
+    tooltip: { ...TT, trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: p => `${p[0].name}<br/><b>${Number(p[0].value).toLocaleString()}</b> jobs` },
+    grid: { left: 150, right: 24, top: 8, bottom: 8 },
+    xAxis: { type: 'value', axisLabel: { ...AL, formatter: v => fmt(v) }, splitLine: SP, axisLine: NO, axisTick: NO },
+    yAxis: { type: 'category', data: ind.map(d => d[0]), axisLabel: { ...AL, fontSize: 11, color: '#7a8299' }, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: ind.map((d,i) => ({ value: d[1], itemStyle: { color: PAL[i%PAL.length], borderRadius: [0,4,4,0] } })), barWidth: '60%', animationDelay: i => i*40 }]
+  });
 
-  // Transform data for calendar heatmap
-  const heatData = days.map(d => [d.date, d.daily]);
+  // ── C5: Avg salary by industry ──
+  const si = D.salInd.slice().reverse();
+  I('c5').setOption({
+    tooltip: { ...TT, trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: p => `${p[0].name}<br/>Avg: <b>${fmtM(p[0].value)}</b>` },
+    grid: { left: 150, right: 24, top: 8, bottom: 8 },
+    xAxis: { type: 'value', axisLabel: { ...AL, formatter: v => '$'+(v/1000)+'K' }, splitLine: SP, axisLine: NO, axisTick: NO },
+    yAxis: { type: 'category', data: si.map(d => d[0]), axisLabel: { ...AL, fontSize: 11, color: '#7a8299' }, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: si.map((d,i) => { const r=(d[1]-60000)/80000; return { value: d[1], itemStyle: { borderRadius: [0,4,4,0], color: { type: 'linear', x: 0, y: 0, x2: 1, y2: 0, colorStops: [{ offset: 0, color: 'rgba(245,158,11,0.35)' },{ offset: 1, color: `rgba(245,158,11,${0.35+r*0.65})` }] } } }; }), barWidth: '60%', animationDelay: i => i*40 }]
+  });
 
-  ch3.setOption({
-    tooltip: {
-      ...tooltipBase,
-      position: 'top',
-      formatter: function(p) {
-        return `<div style="font-weight:600;margin-bottom:4px">${p.value[0]}</div>
-                Jobs: <strong>${Number(p.value[1]).toLocaleString()}</strong>`;
-      }
+  // ── C6: Jobs by level (nightingale) ──
+  I('c6').setOption({
+    tooltip: { ...TT, formatter: p => `${p.marker} ${p.name}<br/><b>${Number(p.value).toLocaleString()}</b> (${p.percent}%)` },
+    series: [{ type: 'pie', roseType: 'area', radius: ['18%','70%'], center: ['50%','52%'],
+      data: D.levels.map((d,i) => ({ name: d[0], value: d[1], itemStyle: { color: PAL[i], borderRadius: 4 } })),
+      label: { color: '#7a8299', fontSize: 10, fontFamily: 'JetBrains Mono' },
+      labelLine: { lineStyle: { color: '#2a2d3a' }, length: 8, length2: 12 },
+      emphasis: { itemStyle: { shadowBlur: 16, shadowColor: 'rgba(0,0,0,0.3)' } },
+      animationType: 'scale', animationEasing: 'cubicOut'
+    }]
+  });
+
+  // ── C7: Avg salary by level ──
+  I('c7').setOption({
+    tooltip: { ...TT, trigger: 'axis', formatter: p => `${p[0].name}<br/>Avg: <b>${fmtM(p[0].value)}</b>` },
+    grid: { left: 72, right: 20, top: 20, bottom: 40 },
+    xAxis: { type: 'category', data: D.salLvl.map(d => d[0]), axisLabel: { ...AL, rotate: 35 }, axisLine: AX(), axisTick: NO },
+    yAxis: { type: 'value', axisLabel: { ...AL, formatter: v => '$'+(v/1000)+'K' }, splitLine: SP, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: D.salLvl.map((d,i) => ({ value: d[1], itemStyle: { borderRadius: [6,6,2,2], color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops: [{ offset: 0, color: PAL[i] },{ offset: 1, color: PAL[i]+'66' }] } } })),
+      barWidth: '55%',
+      markLine: { silent: true, symbol: 'none', lineStyle: { color: '#f59e0b33', type: 'dashed' }, label: { color: '#f59e0b', fontSize: 9, fontFamily: 'JetBrains Mono' }, data: [{ type: 'average', name: 'Avg' }] }
+    }]
+  });
+
+  // ── C8: Salary distribution (liquid bars) ──
+  I('c8').setOption({
+    tooltip: { ...TT, trigger: 'axis', formatter: p => `${p[0].name}<br/><b>${Number(p[0].value).toLocaleString()}</b> jobs` },
+    grid: { left: 64, right: 20, top: 20, bottom: 40 },
+    xAxis: { type: 'category', data: D.salRange.map(d => d[0]), axisLabel: { ...AL, rotate: 25 }, axisLine: AX(), axisTick: NO },
+    yAxis: { type: 'value', axisLabel: { ...AL, formatter: v => fmt(v) }, splitLine: SP, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: D.salRange.map((d,i) => ({ value: d[1], itemStyle: { borderRadius: [20,20,4,4], color: { type: 'linear', x:0,y:0,x2:0,y2:1, colorStops: [{ offset: 0, color: i<3?'#22c55e':i<6?'#3b82f6':'#a855f7' },{ offset: 1, color: i<3?'#15803d':i<6?'#1d4ed8':'#7c3aed' }] }, shadowColor: 'rgba(59,130,246,0.2)', shadowBlur: 6, shadowOffsetY: 3 } })),
+      barWidth: '55%', animationDelay: i => i*60, animationEasing: 'elasticOut'
+    }]
+  });
+
+  // ── C9: Remote vs on-site salary ──
+  const sr = D.salRemote;
+  I('c9').setOption({
+    tooltip: { ...TT, trigger: 'axis', formatter: function(p) { let h=`<b>${p[0].axisValue}</b>`; p.forEach(s => h+=`<br/>${s.marker} ${s.seriesName}: <b>${fmtM(s.value)}</b>`); return h; } },
+    legend: { bottom: 0, textStyle: { color: '#7a8299', fontSize: 10, fontFamily: 'JetBrains Mono' }, icon: 'roundRect', itemWidth: 12, itemHeight: 8 },
+    grid: { left: 72, right: 20, top: 20, bottom: 48 },
+    xAxis: { type: 'category', data: sr.map(d => d.t), axisLabel: AL, axisLine: AX(), axisTick: NO },
+    yAxis: { type: 'value', axisLabel: { ...AL, formatter: v => '$'+(v/1000)+'K' }, splitLine: SP, axisLine: NO, axisTick: NO },
+    series: [
+      { name: '25th %ile', type: 'bar', stack: 's', data: sr.map(d => d.p25), barWidth: '40%', itemStyle: { color: 'rgba(59,130,246,0.25)', borderRadius: [0,0,4,4] } },
+      { name: 'Median', type: 'bar', stack: 's', data: sr.map(d => d.med-d.p25), itemStyle: { color: 'rgba(59,130,246,0.55)' } },
+      { name: '75th %ile', type: 'bar', stack: 's', data: sr.map(d => d.p75-d.med), itemStyle: { color: 'rgba(59,130,246,0.85)', borderRadius: [4,4,0,0] } },
+    ]
+  });
+
+  // ── C10: Top companies ──
+  const co = D.companies.slice().reverse();
+  I('c10').setOption({
+    tooltip: { ...TT, trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: p => `${p[0].name}<br/><b>${Number(p[0].value).toLocaleString()}</b> positions` },
+    grid: { left: 115, right: 24, top: 8, bottom: 8 },
+    xAxis: { type: 'value', axisLabel: { ...AL, formatter: v => fmt(v) }, splitLine: SP, axisLine: NO, axisTick: NO },
+    yAxis: { type: 'category', data: co.map(d => d[0]), axisLabel: { ...AL, fontSize: 11, color: '#7a8299' }, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: co.map(d => ({ value: d[1], itemStyle: { borderRadius: [0,4,4,0], color: { type: 'linear', x:0,y:0,x2:1,y2:0, colorStops: [{ offset: 0, color: 'rgba(59,130,246,0.25)' },{ offset: 1, color: '#3b82f6' }] } } })), barWidth: '55%', animationDelay: i => i*30 }]
+  });
+
+  // ── C11: Departments treemap ──
+  I('c11').setOption({
+    tooltip: { ...TT, formatter: p => `${p.name}<br/><b>${Number(p.value).toLocaleString()}</b> jobs` },
+    series: [{ type: 'treemap',
+      data: D.depts.map((d,i) => ({ name: d[0], value: d[1], itemStyle: { color: PAL[i], borderColor: '#12141a', borderWidth: 2 } })),
+      label: { fontSize: 12, fontFamily: 'Outfit', fontWeight: 500, color: '#fff' },
+      breadcrumb: NO, roam: false, nodeClick: false,
+      levels: [{ itemStyle: { borderRadius: 8 } }], animationDuration: 800
+    }]
+  });
+
+  // ── C12: Listing lifespan ──
+  I('c12').setOption({
+    tooltip: { ...TT, trigger: 'axis', formatter: p => `${p[0].name}<br/><b>${Number(p[0].value).toLocaleString()}</b> listings` },
+    grid: { left: 80, right: 20, top: 20, bottom: 32 },
+    xAxis: { type: 'category', data: D.lifespan.map(d => d[0]), axisLabel: AL, axisLine: AX(), axisTick: NO },
+    yAxis: { type: 'value', axisLabel: { ...AL, formatter: v => fmt(v) }, splitLine: SP, axisLine: NO, axisTick: NO },
+    series: [{ type: 'bar', data: D.lifespan.map((d,i) => ({ value: d[1], itemStyle: { borderRadius: [6,6,2,2], color: ['#22c55e','#3b82f6','#6366f1','#f59e0b','#ef4444','#dc2626'][i] } })),
+      barWidth: '50%', label: { show: true, position: 'top', color: '#7a8299', fontSize: 10, fontFamily: 'JetBrains Mono', formatter: p => Number(p.value).toLocaleString() }
+    }]
+  });
+
+  // ── C13: Calendar heatmap ──
+  I('c13').setOption({
+    tooltip: { ...TT, position: 'top', formatter: p => `<b>${p.value[0]}</b><br/>Jobs: <b>${Number(p.value[1]).toLocaleString()}</b>` },
+    visualMap: { show: true, type: 'piecewise', orient: 'horizontal', left: 'center', bottom: 0,
+      pieces: [{ lte: 3000, color: '#1a1d28', label: '<3K' },{ gt: 3000, lte: 5000, color: '#1e3a5f', label: '3-5K' },{ gt: 5000, lte: 10000, color: '#1d4ed8', label: '5-10K' },{ gt: 10000, lte: 20000, color: '#3b82f6', label: '10-20K' },{ gt: 20000, color: '#f59e0b', label: '20K+' }],
+      textStyle: { color: '#4a5068', fontSize: 9, fontFamily: 'JetBrains Mono' }, itemWidth: 14, itemHeight: 14, itemGap: 4
     },
-    visualMap: {
-      show: true,
-      type: 'piecewise',
-      orient: 'horizontal',
-      left: 'center',
-      bottom: 0,
-      pieces: [
-        { lte: 3000, color: '#1a1d28', label: '<3K' },
-        { gt: 3000, lte: 5000, color: '#1e3a5f', label: '3-5K' },
-        { gt: 5000, lte: 10000, color: '#1d4ed8', label: '5-10K' },
-        { gt: 10000, lte: 20000, color: '#3b82f6', label: '10-20K' },
-        { gt: 20000, color: '#f59e0b', label: '20K+' }
-      ],
-      textStyle: { color: '#4a5068', fontSize: 9, fontFamily: 'JetBrains Mono' },
-      itemWidth: 14,
-      itemHeight: 14,
-      itemGap: 4
-    },
-    calendar: [{
-      range: ['2026-01-15', '2026-02-18'],
-      cellSize: ['auto', 28],
-      top: 16,
-      left: 60,
-      right: 24,
-      bottom: 50,
-      orient: 'horizontal',
-      splitLine: { lineStyle: { color: '#1e2230', width: 1 } },
-      dayLabel: {
-        color: '#4a5068',
-        fontSize: 10,
-        fontFamily: 'JetBrains Mono',
-        nameMap: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-      },
-      monthLabel: {
-        color: '#7a8299',
-        fontSize: 11,
-        fontFamily: 'Outfit'
-      },
-      yearLabel: { show: false },
-      itemStyle: {
-        borderWidth: 2,
-        borderColor: '#12141a',
-        borderRadius: 4
-      }
+    calendar: [{ range: ['2026-01-15','2026-02-18'], cellSize: ['auto',28], top: 16, left: 60, right: 24, bottom: 50,
+      splitLine: { lineStyle: { color: '#1e2230' } },
+      dayLabel: { color: '#4a5068', fontSize: 10, fontFamily: 'JetBrains Mono', nameMap: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] },
+      monthLabel: { color: '#7a8299', fontSize: 11, fontFamily: 'Outfit' },
+      yearLabel: NO, itemStyle: { borderWidth: 2, borderColor: '#12141a', borderRadius: 4 }
     }],
-    series: [{
-      type: 'heatmap',
-      coordinateSystem: 'calendar',
-      data: heatData,
-      emphasis: {
-        itemStyle: {
-          borderColor: '#e8eaf0',
-          borderWidth: 1
-        }
-      }
-    }]
+    series: [{ type: 'heatmap', coordinateSystem: 'calendar', data: D.timeline.map(d => [d.date, d.daily]), emphasis: { itemStyle: { borderColor: '#e8eaf0', borderWidth: 1 } } }]
   });
-
-
-  // ════════════════════════════════════════
-  // CHART 4 — Stacked area by platform
-  // ════════════════════════════════════════
-  const ch4 = echarts.init(document.getElementById('chart-race'));
-
-  const platforms = [
-    { key: 'greenhouse', name: 'Greenhouse', color: '#22c55e' },
-    { key: 'lever', name: 'Lever', color: '#3b82f6' },
-    { key: 'ashby', name: 'Ashby', color: '#a855f7' },
-    { key: 'workable', name: 'Workable', color: '#f59e0b' },
-    { key: 'recruitee', name: 'Recruitee', color: '#ef4444' }
-  ];
-
-  ch4.setOption({
-    tooltip: {
-      ...tooltipBase,
-      trigger: 'axis',
-      formatter: function(params) {
-        let html = `<div style="font-weight:600;margin-bottom:6px">${params[0].axisValue}</div>`;
-        let total = 0;
-        params.forEach(p => {
-          if (p.value > 0) {
-            html += `<div style="display:flex;justify-content:space-between;gap:16px">
-              <span>${p.marker} ${p.seriesName}</span>
-              <strong>${Number(p.value).toLocaleString()}</strong>
-            </div>`;
-            total += p.value;
-          }
-        });
-        html += `<div style="border-top:1px solid #2a2d3a;margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">
-          <span>Total</span><strong>${total.toLocaleString()}</strong>
-        </div>`;
-        return html;
-      }
-    },
-    legend: {
-      bottom: 0,
-      textStyle: { color: '#7a8299', fontFamily: 'JetBrains Mono', fontSize: 10 },
-      icon: 'roundRect',
-      itemWidth: 12,
-      itemHeight: 8,
-      itemGap: 16
-    },
-    grid: { ...gridBase, bottom: 56 },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      axisLabel: { ...axisLabelStyle, formatter: v => v.slice(5), interval: 4 },
-      axisLine: { lineStyle: { color: '#1e2230' } },
-      axisTick: { show: false },
-      boundaryGap: false
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { ...axisLabelStyle, formatter: v => v >= 1000 ? (v/1000) + 'K' : v },
-      splitLine: { lineStyle: { color: '#1a1d28' } },
-      axisLine: { show: false },
-      axisTick: { show: false }
-    },
-    series: platforms.map(p => ({
-      name: p.name,
-      type: 'line',
-      stack: 'platforms',
-      smooth: 0.3,
-      symbol: 'none',
-      lineStyle: { width: 0 },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: p.color + 'cc' },
-            { offset: 1, color: p.color + '33' }
-          ]
-        }
-      },
-      emphasis: { focus: 'series' },
-      data: days.map(d => d[p.key])
-    }))
-  });
-
 
   // ── Responsive ──
-  window.addEventListener('resize', () => {
-    ch1.resize();
-    ch2.resize();
-    ch3.resize();
-    ch4.resize();
-  });
-
+  window.addEventListener('resize', () => chs.forEach(c => c.resize()));
 })();
 </script>
-
 </body>
 </html>
