@@ -150,7 +150,7 @@ $('#a-add-manual').addEventListener('click', () => {
     addedAt: new Date().toLocaleDateString(),
     source: 'manual'
   });
-  localStorage.setItem('bj_app_queue', JSON.stringify(appQueue));
+  saveUserData('bj_app_queue', JSON.stringify(appQueue));
   renderAppQueue();
 });
 
@@ -178,8 +178,8 @@ $('#a-process-queue').addEventListener('click', () => {
   appHistory.push(...submitted);
   appQueue = appQueue.filter(a => a.status !== 'submitted');
 
-  localStorage.setItem('bj_app_queue', JSON.stringify(appQueue));
-  localStorage.setItem('bj_app_history', JSON.stringify(appHistory));
+  saveUserData('bj_app_queue', JSON.stringify(appQueue));
+  saveUserData('bj_app_history', JSON.stringify(appHistory));
   renderAppQueue();
   renderAppHistory();
 
@@ -195,7 +195,7 @@ $('#a-process-queue').addEventListener('click', () => {
 // Remove from queue
 window.removeFromQueue = function(idx) {
   appQueue.splice(idx, 1);
-  localStorage.setItem('bj_app_queue', JSON.stringify(appQueue));
+  saveUserData('bj_app_queue', JSON.stringify(appQueue));
   renderAppQueue();
 };
 
