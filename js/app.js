@@ -13,6 +13,20 @@ async function init() {
   $('#app').style.display = 'flex';
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+  // Sync user data from Supabase → localStorage on login
+  await loadUserData(currentUser.id);
+  // Re-hydrate globals from potentially updated localStorage
+  savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  tuningLocExclPills = tuningSettings.locationExcludes || [];
+  tuningTitleExclPills = tuningSettings.titleExcludes || [];
+  tuningCoExclPills = tuningSettings.companyExcludes || [];
+  tuningIndExclPills = tuningSettings.industryExcludes || [];
+  levelHierarchy = tuningSettings.levelHierarchy || [];
+  hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
+  savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
+  appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+  resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   loadStats();
