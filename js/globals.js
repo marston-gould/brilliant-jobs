@@ -12,6 +12,131 @@ const $$ = s => document.querySelectorAll(s);
 // Auth
 let currentUser = null;
 
+// ============================================================
+// USER DATA SYNC — localStorage ↔ Supabase profiles.user_data
+// ============================================================
+// Maps short keys to localStorage keys
+const UD_KEYS = {
+  saved_filters: 'bj_saved_filters',
+  resumes: 'bj_resumes',
+  pipeline_meta: 'bj_pipeline_meta',
+  tuning: 'bj_tuning',
+  saved_jobs: 'bj_saved_jobs',
+  applied_jobs: 'bj_applied_jobs',
+  applied_dates: 'bj_applied_dates',
+  hidden_jobs: 'bj_hidden_jobs',
+  app_queue: 'bj_app_queue',
+  app_history: 'bj_app_history',
+  readiness: 'bj_readiness'
+};
+const UD_LS_TO_SHORT = Object.fromEntries(Object.entries(UD_KEYS).map(([k,v]) => [v, k]));
+
+// Debounce timer for batched Supabase writes
+let _udSyncTimer = null;
+let _udPendingKeys = new Set();
+
+/**
+ * Save user data to localStorage AND queue Supabase sync.
+ * Drop-in replacement for localStorage.setItem('bj_X', JSON.stringify(val)).
+ * @param {string} lsKey - Full localStorage key (e.g. 'bj_saved_filters')
+ * @param {string} jsonStr - JSON string to save
+ */
+function saveUserData(lsKey, jsonStr) {
+  localStorage.setItem(lsKey, jsonStr);
+  const shortKey = UD_LS_TO_SHORT[lsKey];
+  if (shortKey && currentUser) {
+    _udPendingKeys.add(shortKey);
+    clearTimeout(_udSyncTimer);
+    _udSyncTimer = setTimeout(_flushUserData, 2000);
+  }
+}
+
+/** Flush all pending keys to Supabase in one PATCH */
+async function _flushUserData() {
+  if (!currentUser || _udPendingKeys.size === 0) return;
+  const patch = {};
+  for (const key of _udPendingKeys) {
+    const lsKey = UD_KEYS[key];
+    try { patch[key] = JSON.parse(localStorage.getItem(lsKey) || 'null'); }
+    catch { patch[key] = null; }
+  }
+  _udPendingKeys.clear();
+  try {
+    const { error } = await sb.from('profiles')
+      .update({ user_data: sb.rpc ? undefined : undefined }) // placeholder
+      .eq('id', currentUser.id);
+    // Use raw PATCH to merge into JSONB (not overwrite entire column)
+    const session = (await sb.auth.getSession())?.data?.session;
+    const token = session?.access_token || SUPABASE_KEY;
+    await fetch(SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ user_data: Object.assign(
+        JSON.parse(localStorage.getItem('_bj_ud_cache') || '{}'),
+        patch
+      )})
+    });
+    // Update local cache of full user_data
+    const cached = JSON.parse(localStorage.getItem('_bj_ud_cache') || '{}');
+    Object.assign(cached, patch);
+    localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
+    console.log('[sync] Flushed', Object.keys(patch).join(', '));
+  } catch (e) {
+    console.warn('[sync] Flush error:', e.message);
+  }
+}
+
+/**
+ * Load user data from Supabase on login. Merges with localStorage:
+ * - Supabase wins if localStorage is empty for that key
+ * - localStorage wins if Supabase is empty (first sync / migration)
+ * - After merge, syncs back to Supabase
+ */
+async function loadUserData(userId) {
+  try {
+    const { data, error } = await sb.from('profiles')
+      .select('user_data')
+      .eq('id', userId)
+      .single();
+    if (error || !data?.user_data) {
+      console.log('[sync] No cloud data, will sync localStorage up on next save');
+      return;
+    }
+    const cloud = data.user_data;
+    localStorage.setItem('_bj_ud_cache', JSON.stringify(cloud));
+    let needsSync = false;
+    for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
+      const cloudVal = cloud[shortKey];
+      const localVal = localStorage.getItem(lsKey);
+      const localParsed = localVal ? JSON.parse(localVal) : null;
+      const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
+      const localEmpty = localParsed == null || (Array.isArray(localParsed) && localParsed.length === 0) || (typeof localParsed === 'object' && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0);
+
+      if (!cloudEmpty && localEmpty) {
+        // Cloud has data, local doesn't → pull from cloud
+        localStorage.setItem(lsKey, JSON.stringify(cloudVal));
+        console.log('[sync] Pulled', shortKey, 'from cloud');
+      } else if (cloudEmpty && !localEmpty) {
+        // Local has data, cloud doesn't → queue sync up
+        needsSync = true;
+        _udPendingKeys.add(shortKey);
+      }
+      // Both have data → local wins (user's current machine is source of truth)
+    }
+    if (needsSync) {
+      console.log('[sync] Local data needs upload:', [..._udPendingKeys].join(', '));
+      _flushUserData();
+    }
+  } catch (e) {
+    console.warn('[sync] Load error:', e.message);
+  }
+}
+
 // Saved filters
 var savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
