@@ -1,21 +1,20 @@
 /*──────────────────────────────────────────────────────────
-  Brilliant Jobs — Tailwind Input (Phase 4)
+  Brilliant Jobs — Tailwind Input (Phase 5)
   Build: npx tailwindcss -i src/input.css -o styles.css
   
   Phase 1: Tailwind base utilities + existing CSS intact.
   Phase 2: Logical properties (144 conversions).
   Phase 3: Fluid typography — clamp() vars for headings/stats.
-  Phase 4: HSL single-source color system — all colors derived
-  from HSL variables, computed dim/glow variants.
-  
-  Future phases will migrate classes into @layer components
-  once content paths include all HTML/JS files.
+  Phase 4: HSL single-source color system.
+  Phase 5: @layer organization — base (resets, vars, fonts),
+  components (all semantic classes), utilities from Tailwind.
 ──────────────────────────────────────────────────────────*/
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Fonts ── */
 /* ── Self-hosted fonts (latin subset, variable) ── */
 @font-face {
   font-family: 'Outfit';
@@ -34,6 +33,7 @@
   unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
 }
 
+@layer base {
 /* ── Existing styles (unlayered = never purged) ── */
     :root {
       /* ── HSL single-source color system ─────────────────────
@@ -134,6 +134,9 @@
     body { font-family: var(--sans); background: var(--bg-main); color: var(--text); -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
     .app { display: flex; min-height: 100vh; }
 
+}
+
+@layer components {
     /* ======================== NAV ======================== */
     .nav {
       width: var(--nav-w); background: var(--nav-bg);
@@ -1222,10 +1225,6 @@
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       padding: 16px; height: 100%; box-sizing: border-box;
     }
-    @media (max-width: 720px) {
-      .resume-row { flex-direction: column; }
-      .resume-row > .resume-card { flex: 1 1 auto; }
-    }
     .resume-card {
       background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
       padding: 20px; transition: border-color 0.15s, box-shadow 0.15s; position: relative;
@@ -1575,6 +1574,14 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .page.active .card, .page.active .stat-card, .page.active .download-box { animation: fadeIn 0.25s ease forwards; }
 
+
+}
+
+    @media (max-width: 720px) {
+      .resume-row { flex-direction: column; }
+      .resume-row > .resume-card { flex: 1 1 auto; }
+    }
+
     @media (max-width: 768px) {
       .nav { width: 60px; }
       .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: none; }
@@ -1585,4 +1592,3 @@
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
-    /* ======================== (keyword panel removed — readiness lives on Resumes page) ======================== */
