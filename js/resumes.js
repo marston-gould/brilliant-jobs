@@ -4,7 +4,7 @@
 resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
 
 function saveResumes() {
-  localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+  saveUserData('bj_resumes', JSON.stringify(resumes));
 }
 
 function getFileIcon(fileName) {
