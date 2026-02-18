@@ -945,7 +945,8 @@ function render() {
             <div class="${nameCls}">${f.n}</div>
             <div class="feature-detail">${f.d}</div>
           </div>
-        </li>`;
+        </li>
+          <li class="done"><strong>JS Bundle Pipeline</strong> — esbuild concat+minify. 14 files → 1 bundle (399KB → 263KB, 70KB gzipped). 17 → 4 script requests. Source map included. <code>npm run build:js</code>.</li>`;
       });
       html += '</ul></div></div>';
     });
