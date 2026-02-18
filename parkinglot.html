@@ -342,6 +342,11 @@ const sections = [
         tags: [['platform', 'Dashboard'], ['yield', 'DX + perf']]
       },
       {
+        s: 'viable', n: 'Supabase comprehensive audit',
+        d: 'Full platform audit across 6 phases: (1) Schema inventory — all tables, columns, types, constraints, orphaned tables. (2) RLS refresh — pen-test every table with anon key, fix open write access on ats_jobs/ats_companies/refresh_log/seekers_raw/job_locations. (3) Index & performance — EXPLAIN ANALYZE on hot queries, identify missing indexes, tune autovacuum for high-churn tables. (4) Edge Functions & cron — inventory 8 deployed functions vs spec, verify secrets, test auth validation. (5) Data integrity — dead board purge (238), orphaned jobs, dedup verification, loc_country null rate, salary parsing coverage. (6) Storage, auth & secrets — bucket policies, session management, rate limits. Critical security items already identified: anon writes, missing CSP headers, DOMPurify for stored XSS.',
+        tags: [['platform', 'Supabase'], ['yield', 'Security + scale readiness']]
+      },
+      {
         s: 'idea', n: 'Source attribution badges in feed',
         d: 'Show GH/LV/WK/ASH/REC pills on job cards so users know which ATS platform each listing came from.',
         tags: [['platform', 'Dashboard']]
@@ -381,6 +386,11 @@ const sections = [
         s: 'idea', n: 'Responsive Jobs Feed columns',
         d: 'Table columns need responsive handling for various viewport sizes — hide/collapse columns at breakpoints.',
         tags: [['platform', 'Dashboard']]
+      },
+      {
+        s: 'parked', n: 'SSR framework for SEO content pages (P11)',
+        d: 'P11 dynamic SEO pages (salary trends, ghost reports, market data by city/industry/role) need server-side rendering for crawlability. Hundreds of data-driven pages generated from live Supabase queries. Evaluate Astro (lightweight, static-first with islands) vs Next.js (heavier, largest ecosystem). Both deploy natively to Vercel. Decision deferred until P11 scope is defined.',
+        tags: [['platform', 'SEO Pages'], ['yield', 'Crawlable dynamic content']]
       },
     ]
   },
