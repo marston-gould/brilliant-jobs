@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:js": "node build.js",
-    "build:css": "npx tailwindcss -i src/input.css -o styles.css --minify",
-    "build": "npm run build:js && npm run build:css",
+    "bundle:js": "node build.js",
+    "bundle:css": "npx tailwindcss -i src/input.css -o styles.css --minify",
+    "bundle": "npm run bundle:js && npm run bundle:css",
     "css:watch": "npx tailwindcss -i src/input.css -o styles.css --watch",
     "preview": "vite preview"
   },
