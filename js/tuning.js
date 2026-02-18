@@ -114,7 +114,7 @@ function saveTuning() {
   tuningSettings.titleExcludes = tuningTitleExclPills;
   tuningSettings.companyExcludes = tuningCoExclPills;
   tuningSettings.industryExcludes = tuningIndExclPills;
-  localStorage.setItem('bj_tuning', JSON.stringify(tuningSettings));
+  saveUserData('bj_tuning', JSON.stringify(tuningSettings));
   updateTuningStatusDot();
 }
 
@@ -155,7 +155,7 @@ levelHierarchy = tuningSettings.levelHierarchy || JSON.parse(JSON.stringify(DEFA
 
 function saveLevels() {
   tuningSettings.levelHierarchy = levelHierarchy;
-  localStorage.setItem('bj_tuning', JSON.stringify(tuningSettings));
+  saveUserData('bj_tuning', JSON.stringify(tuningSettings));
   updateTuningBadges();
 }
 
@@ -379,7 +379,7 @@ window.editFilterLevelHierarchy = function(filterIdx) {
                     other.assignedLevels = other.assignedLevels.filter(l => l !== label);
                   }
                 });
-                localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+                saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
                 assignedLevels.push(label);
               } else if (action === 'other') {
                 // Remove from other filters, don't add to this one — it becomes "Other"
@@ -389,7 +389,7 @@ window.editFilterLevelHierarchy = function(filterIdx) {
                     other.assignedLevels = other.assignedLevels.filter(l => l !== label);
                   }
                 });
-                localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+                saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
                 cb.checked = false;
               } else {
                 cb.checked = false; // cancelled
@@ -448,14 +448,14 @@ window.editFilterLevelHierarchy = function(filterIdx) {
     overlay.querySelector('#fl-reset').addEventListener('click', () => {
       filterLevels = JSON.parse(JSON.stringify(levelHierarchy));
       delete savedFilters[filterIdx].levelHierarchy;
-      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
       renderModal();
     });
     overlay.querySelector('#fl-save').addEventListener('click', () => {
       savedFilters[filterIdx].levelHierarchy = JSON.parse(JSON.stringify(filterLevels));
       savedFilters[filterIdx].assignedLevels = assignedLevels.length > 0 ? [...assignedLevels] : undefined;
       savedFilters[filterIdx].includeOtherLevels = assignedLevels.length > 0 ? includeOther : undefined;
-      localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+      saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
       overlay.remove();
       renderSavedFilters();
       debouncedSearchJobs();
@@ -1119,7 +1119,7 @@ async function updatePoorMatchSuggestions() {
           changed = true;
         }
       });
-      if (changed) localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+      if (changed) saveUserData('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
     }
   }
 
@@ -1218,7 +1218,7 @@ async function updatePoorMatchSuggestions() {
 
 window.unhideJob = function(jobId, btn) {
   hiddenJobIds = hiddenJobIds.filter(h => h.id !== jobId);
-  localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+  saveUserData('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
   const card = btn.closest('.poor-match-card');
   if (card) card.style.opacity = '0.3';
   setTimeout(() => updatePoorMatchSuggestions(), 300);
