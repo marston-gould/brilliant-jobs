@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /dashboard
+Disallow: /dashboard.html
+Disallow: /roadmap
+Disallow: /roadmap.html
 
 Sitemap: https://brilliantjobs.app/sitemap.xml
