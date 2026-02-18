@@ -5,7 +5,7 @@
 // Migrate old format (array of strings) to new format (array of objects)
 if (hiddenJobIds.length > 0 && typeof hiddenJobIds[0] === 'string') {
   hiddenJobIds = hiddenJobIds.map(id => ({ id, reason: 'other', title: '', company: '', hiddenAt: null }));
-  localStorage.setItem('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
+  saveUserData('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
 }
 function isJobHidden(ghId) { return hiddenJobIds.some(h => h.id === ghId); }
 
