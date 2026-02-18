@@ -306,7 +306,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 16, 2026 · Dashboard v2.64 · ✅ Multi-ATS live: 9,866 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 135K+ jobs · refresh-jobs v13 deployed (50 boards/10min cron cycle, country parsing, dedup)
+    Brilliant Jobs · Internal Roadmap · Updated February 18, 2026 · Dashboard v2.64 · ✅ Multi-ATS live: 9,866 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 239K+ jobs · refresh-jobs v13 deployed (50 boards/10min cron cycle, country parsing, dedup)
   </div>
 
 </div>
@@ -801,10 +801,14 @@ const features = [
   // SEO Audit — Feb 18 2026
   { s: 'todo', n: 'SEO: Fix HTTP redirect to vercel.com', d: 'CRITICAL: http://brilliantjobs.app and http://www.brilliantjobs.app both 308 redirect to https://vercel.com/ instead of the site. All HTTP traffic lost. Fix via Vercel Dashboard → Domains DNS config. Verify A record points to Vercel IP and both domain entries show green checkmarks.', p: 3 },
   { s: 'todo', n: 'SEO: Fix 5 broken email links', d: 'CRITICAL: /privacy (2 links) and /terms (3 links) have Cloudflare email obfuscation baked into source HTML (/cdn-cgi/l/email-protection → 404). Site served by Vercel, not CF. Replace all with mailto:support@brilliantjobs.app.', p: 3 },
-  { s: 'todo', n: 'SEO: Noindex dashboard', d: 'Add noindex/nofollow robots meta tag to dashboard.html. Add Disallow: /dashboard and /dashboard.html to robots.txt. Dashboard is auth-gated app, should not be indexed.', p: 3 },
+  { s: 'done', n: 'SEO: Noindex dashboard + robots.txt + sitemap.xml', d: 'Created robots.txt with Disallow: /dashboard, /dashboard.html, /roadmap. Created sitemap.xml listing /, /help, /privacy, /terms with weekly changefreq. Both deployed to repo root. Dashboard already had noindex meta tag.', p: 3 },
   { s: 'todo', n: 'SEO: Missing meta tags on /help, /privacy, /terms', d: 'Add title tag + viewport meta to /help. Add meta descriptions to /privacy, /terms, /help. Descriptions written in SEO_AUDIT_FIXES.md.', p: 3 },
   { s: 'todo', n: 'SEO: Shorten index meta description', d: 'Current meta description is 177 chars (over 160 limit). Trim to: "Jobs from 9,800+ company career pages with extracted salary data and employer ghost rates. Built for job seekers, not employers. Free to start." (155 chars).', p: 3 },
   { s: 'todo', n: 'SEO: Fix /dashboard.html nav link', d: 'index.html line 604 references /dashboard.html instead of /dashboard. Causes unnecessary 308 redirect hop. Change href to /dashboard.', p: 3 },
+
+  // SEO & Performance — Feb 17-18 2026
+  { s: 'done', n: 'Schema.org structured data', d: 'Added SoftwareApplication JSON-LD to landing page: name, description, applicationCategory (BusinessApplication), operatingSystem (Web), offers (Free), aggregateRating placeholder. Improves rich snippet eligibility in search results.', p: 3 },
+  { s: 'done', n: 'Salary filter auto-apply fix', d: 'Fixed blur event handler on salary min/max inputs that triggered filter application before user could enter both values. Now only auto-applies when both min and max are present. Prevents premature filtering mid-entry.', p: 2 },
 
   // Dashboard JS Load Order — Feb 17 2026
   { s: 'done', n: 'globals.js — shared state extraction', d: 'Extracted all shared globals ($, $$, sb, currentUser, savedFilters, hiddenJobIds, appliedJobIds, tuning state, pill arrays, filterColors etc.) into js/globals.js. Loads first before all other modules. Eliminated cascade of ReferenceError crashes on dashboard load.', p: 5 },
@@ -925,4 +929,5 @@ render();
 
 </body>
 </html>
+
 
