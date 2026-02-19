@@ -71,7 +71,8 @@ END $$;
 -- =====================================================
 CREATE SCHEMA IF NOT EXISTS extensions;
 ALTER EXTENSION pg_trgm SET SCHEMA extensions;
-ALTER EXTENSION pg_net SET SCHEMA extensions;
+-- pg_net does not support SET SCHEMA (Supabase limitation) — skipping
+-- ALTER EXTENSION pg_net SET SCHEMA extensions;
 
 -- =====================================================
 -- PART 4: Fix RLS initplan — wrap auth.uid() in (select ...)
