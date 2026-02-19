@@ -337,8 +337,8 @@ const sections = [
         tags: [['platform', 'Supabase']]
       },
       {
-        s: 'viable', n: 'Supabase comprehensive audit',
-        d: 'Full platform audit across 6 phases: (1) Schema inventory — all tables, columns, types, constraints, orphaned tables. (2) RLS refresh — pen-test every table with anon key, fix open write access on ats_jobs/ats_companies/refresh_log/seekers_raw/job_locations. (3) Index & performance — EXPLAIN ANALYZE on hot queries, identify missing indexes, tune autovacuum for high-churn tables. (4) Edge Functions & cron — inventory 8 deployed functions vs spec, verify secrets, test auth validation. (5) Data integrity — dead board purge (238), orphaned jobs, dedup verification, loc_country null rate, salary parsing coverage. (6) Storage, auth & secrets — bucket policies, session management, rate limits. Critical security items already identified: anon writes, missing CSP headers, DOMPurify for stored XSS.',
+        s: 'done', n: 'Supabase comprehensive audit',
+        d: 'Migration 003 deployed. Covered: (1) 13 function search_path fixes, (2) 20 RLS initplan optimizations, (3) duplicate policy+index cleanup, (4) spatial_ref_sys RLS + extensions schema move, (5) partial index for status=open slow queries, (6) exec_sql helper for remote admin. Remaining: (1) Schema inventory — all tables, columns, types, constraints, orphaned tables. (2) RLS refresh — pen-test every table with anon key, fix open write access on ats_jobs/ats_companies/refresh_log/seekers_raw/job_locations. (3) Index & performance — EXPLAIN ANALYZE on hot queries, identify missing indexes, tune autovacuum for high-churn tables. (4) Edge Functions & cron — inventory 8 deployed functions vs spec, verify secrets, test auth validation. (5) Data integrity — dead board purge (238), orphaned jobs, dedup verification, loc_country null rate, salary parsing coverage. (6) Storage, auth & secrets — bucket policies, session management, rate limits. Critical security items already identified: anon writes, missing CSP headers, DOMPurify for stored XSS.',
         tags: [['platform', 'Supabase'], ['yield', 'Security + scale readiness']]
       },
       {
