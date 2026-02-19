@@ -66,8 +66,8 @@
 | # | Item | Est. | Status | Dependencies |
 |---|------|------|--------|-------------|
 | B1 | Migrate localStorage data to Supabase | 8h | ✅ | Pre-existing — saveUserData() sync layer covers all 11 keys |
-| B2 | Create job_queue table + worker pattern | 4h | 🔲 | — |
-| B3 | Move email/SMS sending through queue | 4h | 🔲 | B2 |
+| B2 | Create job_queue table + worker pattern | 4h | ✅ | claim_queue_job/complete_queue_job RPCs, FOR UPDATE SKIP LOCKED |
+| B3 | Move email/SMS sending through queue | 4h | ✅ | enqueue_notification() + queue-worker Edge Function |
 | B4 | Add soft deletes to user tables | 2h | ✅ | deleted_at on profiles/connections/resumes/companies/company_collections |
 | B5 | Add usage_events tracking | 3h | 🔲 | A11 (done) |
 | B6 | Create data export endpoint | 3h | 🔲 | — |
@@ -75,7 +75,7 @@
 | B8 | Set up Supabase CLI migrations | 2h | ✅ | supabase/config.toml committed |
 | B9 | Create baseline migration | 4h | ✅ | 20260219000000_baseline.sql — full Phase A+B schema |
 | B10 | Add missing indexes | 2h | ✅ | 7 indexes added (location, source+status, user composites, refresh) |
-| B11 | Set up monitoring + alerts | 3h | 🔲 | A7, A8 (done) |
+| B11 | Set up monitoring + alerts | 3h | ✅ | monitoring_alerts table + evaluate_alerts() — 3 automated checks |
 | B12 | Stripe integration | 8h | 🔲 | A11 (done) |
 
 **Phase B total estimate:** ~46h
@@ -107,5 +107,6 @@
 | 2026-02-19 | S2 | A3, A4, A5, A11 | Role/plan on profiles. Audit log. Idempotency keys. Plans/subscriptions schema (3 tiers). |
 | 2026-02-19 | S3 | A6, A12 | Feature gating RPC (8 features). Resilience module. Timeout+retry on all external calls. |
 | 2026-02-19 | B-S1 | B8, B9, B10 | Supabase CLI migrations. Baseline migration. 7 performance indexes (82 total). |
+| 2026-02-19 | B-S3 | B2, B3, B11 | Job queue (claim/complete/dead letter). Queue worker for async notifications. Monitoring alerts (pipeline stale, notification failures, dead jobs). |
 | 2026-02-19 | B-S2 | B1, B4 | Soft deletes on 5 user tables. localStorage sync audit — already complete (saveUserData covers all 11 keys). |
 | 2026-02-19 | S4 | A7, A8, A13 | Structured logger. Health check endpoint. PostHog snippet (gated). |
