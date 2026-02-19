@@ -75,6 +75,8 @@ $$('.nav-item').forEach(item => {
     $(`#page-${item.dataset.page}`).classList.add('active');
     // Persist active tab
     localStorage.setItem('bj_active_tab', item.dataset.page);
+    // Init stats charts when stats tab is shown
+    if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
