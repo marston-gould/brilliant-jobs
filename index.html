@@ -1053,6 +1053,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const $$ = s => document.querySelectorAll(s);
 
     // ============================================================
+    // RETURNING USER DETECTION
+    // ============================================================
+    const isReturning = document.cookie.includes('bj_returning');
+    if (isReturning) {
+      $('#nav-login-btn').textContent = 'Log In';
+      $('#hero-signup-btn').textContent = 'Log In to Your Dashboard';
+      $('#bottom-signup-btn').textContent = 'Log In to Your Dashboard';
+    } else {
+      $('#nav-login-btn').textContent = 'Sign Up';
+      $('#hero-signup-btn').textContent = 'Get Started — It\u2019s Free';
+      $('#bottom-signup-btn').textContent = 'Get Started — It\u2019s Free';
+    }
+
+    // ============================================================
     // MODAL
     // ============================================================
     function openModal(tab) {
@@ -1088,9 +1102,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     $('#modal-close-btn').addEventListener('click', closeModal);
     $('#auth-modal').addEventListener('click', e => { if (e.target === $('#auth-modal')) closeModal(); });
-    $('#nav-login-btn').addEventListener('click', (e) => { e.preventDefault(); openModal('login'); });
-    $('#hero-signup-btn').addEventListener('click', () => openModal('signup'));
-    $('#bottom-signup-btn').addEventListener('click', () => openModal('signup'));
+    $('#nav-login-btn').addEventListener('click', (e) => { e.preventDefault(); openModal(isReturning ? 'login' : 'signup'); });
+    $('#hero-signup-btn').addEventListener('click', () => openModal(isReturning ? 'login' : 'signup'));
+    $('#bottom-signup-btn').addEventListener('click', () => openModal(isReturning ? 'login' : 'signup'));
 
     $$('.price-btn').forEach(btn => {
       btn.addEventListener('click', () => openModal('signup'));
@@ -1260,6 +1274,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // LOGGED IN VIEW
     // ============================================================
     async function showLoggedIn(user) {
+      document.cookie = 'bj_returning=1; max-age=31536000; path=/; SameSite=Lax';
       await loadSupabase();
       $('#auth-forms').style.display = 'none';
       const loggedView = $('#logged-in-view');
