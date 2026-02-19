@@ -5,6 +5,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { fetchWithRetry, TIMEOUT_CONFIGS } from "../_shared/resilience.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -87,7 +88,7 @@ async function sendEmail(
   text?: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetchWithRetry("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -100,7 +101,7 @@ async function sendEmail(
         html,
         text: text || undefined,
       }),
-    });
+    }, TIMEOUT_CONFIGS.resend);
 
     if (!res.ok) {
       const err = await res.text();
@@ -123,7 +124,7 @@ async function sendSMS(
     return { ok: false, error: "Vonage credentials not configured" };
   }
   try {
-    const res = await fetch("https://rest.nexmo.com/sms/json", {
+    const res = await fetchWithRetry("https://rest.nexmo.com/sms/json", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -133,7 +134,7 @@ async function sendSMS(
         to: to.replace(/\D/g, ""), // digits only
         text,
       }),
-    });
+    }, TIMEOUT_CONFIGS.vonage);
 
     const data = await res.json();
     // Vonage returns messages array; check first message status
