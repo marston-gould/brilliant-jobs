@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-19
 **Target launch:** March 2026
-**Total Phase A estimate:** ~19h (revised to ~16.5h after A1/A2 audit)
+**Total Phase A estimate:** ~19h | **Actual:** ~5h | **Status:** ✅ ALL 13 ITEMS COMPLETE
 
 ---
 
@@ -54,9 +54,9 @@
 
 | # | Item | Est. | Actual | Status | Agent | Review By |
 |---|------|------|--------|--------|-------|-----------|
-| A8 | Set up structured logging in Edge Functions | 2h | — | 🔲 Queued | CRE | Data Architect (code consistency) |
-| A7 | Create health check endpoint | 1h | — | 🔲 Queued | CRE | — |
-| A13 | Add PostHog tracking | 2h | — | 🔲 Queued | Data Architect | Sentinel (data exposure) |
+| A8 | Set up structured logging in Edge Functions | 2h | 30min | ✅ Done | CRE | Data Architect (code consistency) |
+| A7 | Create health check endpoint | 1h | 30min | ✅ Done | CRE | — |
+| A13 | Add PostHog tracking | 2h | 15min | ✅ Done | Data Architect | Sentinel (data exposure) |
 
 **Dependencies:** A8 → A7 (health check uses structured logging). A13 is independent but lowest priority — deferrable to week 1 post-launch if needed.
 
@@ -103,5 +103,6 @@
 | Date | Items | Summary |
 |------|-------|---------|
 | 2026-02-19 | A1, A2, A9, A10 | Sprint 1 complete. RLS verified + hardened on all 20 tables. Security headers deployed. DOMPurify XSS protection on job descriptions. |
+| 2026-02-19 | A7, A8, A13 | Sprint 4 complete. Structured logger (logger.ts) with JSON output + correlation IDs. Health check endpoint with DB, pipeline, job data, and notification checks. PostHog snippet added (gated, activate with API key). |
 | 2026-02-19 | A6, A12 | Sprint 3 complete. Feature gating RPC (check_feature) supports 8 gated features with plan fallback. Shared resilience module (resilience.ts) with fetchWithRetry + circuit breaker. Applied to send-notification (Resend/Vonage), refresh-jobs (ATS APIs), validate-signup (LinkedIn). |
 | 2026-02-19 | A3, A4, A5, A11 | Sprint 2 complete. Profiles have role/plan columns (Marston = admin). Audit log table created (append-only, admin-readable). Idempotency keys on notification tables. Plans/subscriptions schema seeded with Free/Pro/Enterprise tiers. |
