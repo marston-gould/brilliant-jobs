@@ -1,0 +1,13 @@
+# Supabase CLI config for Brilliant Jobs
+# B8: Set up Supabase CLI migrations
+# Date: 2026-02-19
+
+[project]
+id = "qojhagupdnbtomfoxnsf"
+
+[db]
+port = 54322
+major_version = 15
+
+[api]
+port = 54321
