@@ -878,6 +878,22 @@ const features = [
   { s: 'done', n: 'Edge Functions version-controlled in GitHub', d: 'Downloaded all 12 deployed Edge Functions from Supabase via CLI (supabase functions download) and pushed to supabase/functions/ in repo. 13 files total (3,273 lines): refresh-jobs (442 lines, v16), refresh-orchestrator (74, v12), validate-signup (287, v5), send-notification (326, v4), account-lifecycle (169, v5), apply-on-notification (179, v4), handle-notification-response (262, v4), escalation-checker (209, v4), daily-digest (262, v4), weekly-summary (212, v4), job-intelligence (269, v4), enrich-job (102, v1), plus _shared/email-templates.ts (480 lines, 18 dark-themed HTML templates). All source now version-controlled.', p: 6 },
   { s: 'done', n: 'localStorage → Supabase sync', d: 'Added user_data JSONB column to profiles table. Built sync layer in globals.js: saveUserData() writes to both localStorage and debounced Supabase (2s batch), loadUserData() pulls from Supabase on login and merges with localStorage (cloud wins if local empty, local wins if both have data). 11 keys synced: saved_filters, resumes, pipeline_meta, tuning, saved_jobs, applied_jobs, applied_dates, hidden_jobs, app_queue, app_history, readiness. 8 UI-state keys stay local-only (active_tab, collapse states, show_previews). 32 localStorage.setItem calls replaced with saveUserData across 7 files (job-feed, keywords, resumes, pipeline, location, tuning, applications). app.js calls loadUserData after auth + re-hydrates all globals from potentially updated localStorage.', p: 6 },
   { s: 'done', n: 'JS bundle pipeline (esbuild)', d: 'Built build.js: concatenates 14 vanilla JS files in load order + minifies with esbuild. 399KB → 263KB minified (70KB gzipped). dashboard.html: 17 script tags → 4 (3 vendor/CDN + 1 bundle). Source map included. Vite dev server config for local development. npm run build:js for production, npm run dev for local. Circular dependencies (97 cross-file globals, 38+ cycles) made full ES module conversion impractical; concat+minify delivers same production benefits without code changes.', p: 17 },
+
+  // Phase 20 — Showcase
+  { s: 'todo', n: 'Tour engine: spotlight overlay + tooltip stepper', d: 'Lightweight walkthrough system — no external deps. Spotlight mask highlights active element, tooltip with explanation + Next/Skip. Position-aware flipping. Step X of Y progress. Dark overlay with cutout.', p: 20 },
+  { s: 'todo', n: 'Tour: first-run detection + auto-trigger', d: 'Detect first login (no saved filters, empty pipeline). Auto-launch walkthrough. Store completion in localStorage + profiles.user_data. Skip if returning user.', p: 20 },
+  { s: 'todo', n: 'Tour: Setup page', d: 'Walk through extension install, Google account connection. Explain what each integration unlocks.', p: 20 },
+  { s: 'todo', n: 'Tour: Jobs Feed + first filter creation', d: 'Explain What/Where/Who pills, keyword matching, salary parsing, Match %% column. Guide user through creating and saving their first filter.', p: 20 },
+  { s: 'todo', n: 'Tour: Search Tuning', d: 'Explain company exclusions, title rules, location rules, level hierarchy. Show how tuning improves feed quality and readiness grades.', p: 20 },
+  { s: 'todo', n: 'Tour: Resumes & Readiness', d: 'Guide through first resume upload. Explain readiness letter grades, filter assignment, per-job match scoring, missing-term chips.', p: 20 },
+  { s: 'todo', n: 'Tour: Pipeline', d: 'Explain stages (Saved through Offer/Rejected), staleness indicators (yellow/red dots), how to move jobs between stages.', p: 20 },
+  { s: 'todo', n: 'Tour: Applications & Notifications', d: 'Explain auto-apply vs apply-on-notification vs manual. Walk through notification preferences, escalation chain, phone setup.', p: 20 },
+  { s: 'todo', n: 'Tour: Stats + Ghost Monitor', d: 'Explain filter-scoped charts, compare mode, ghost scoring, average response times.', p: 20 },
+  { s: 'todo', n: 'Tour: replay from Settings', d: 'Add Replay Walkthrough button on Settings page. Support full replay or per-page tours.', p: 20 },
+  { s: 'todo', n: 'Tooltips: reusable component', d: 'Build tooltip component matching design system. Dark bg, Outfit font, 12px, max-width 280px, arrow pointer. Trigger on hover (desktop) or tap (mobile). Dismiss on click-outside. Position-aware edge flipping.', p: 20 },
+  { s: 'todo', n: 'Tooltips: Jobs Feed', d: 'Info-icon tooltips on: filter pills, Match %% header, salary column, sort options, new jobs badge, company name link.', p: 20 },
+  { s: 'todo', n: 'Tooltips: Search Tuning + Pipeline', d: 'Tooltips explaining each tuning section, stage headers, staleness dot colors, available actions per stage.', p: 20 },
+  { s: 'todo', n: 'Tooltips: Resume Readiness + Stats', d: 'Tooltips on letter grades, ngram matching, missing-term chips, each chart card explaining data and strategic takeaways.', p: 20 },
 ];
 
 
@@ -912,7 +928,8 @@ function render() {
     13: 'User Feedback & Surveys', 14: 'Admin & Feature Flags', 15: 'Gamification',
     16: 'Passive Mode', 17: 'Backlog & Debt', 18: 'Security & Hardening',
     19: 'Scalability & Multi-User',
-    20: 'Enterprise', 24: 'Platform Expansion'
+    20: 'Showcase',
+    21: 'Enterprise', 24: 'Platform Expansion'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
