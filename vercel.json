@@ -29,5 +29,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/job-market-data",
+      "destination": "/job-market-data.html"
+    }
   ]
 }
