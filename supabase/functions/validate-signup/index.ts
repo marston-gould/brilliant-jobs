@@ -2,6 +2,7 @@
 // Deploy: supabase functions deploy validate-signup --no-verify-jwt
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { fetchWithRetry } from '../_shared/resilience.ts'
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
 const corsHeaders = {
@@ -123,20 +124,15 @@ serve(async (req) => {
     let fetchSuccess = false
 
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 8000)
-
-      const res = await fetch(liUrl, {
+      // A6: LinkedIn validation with timeout + retry via shared resilience module
+      const res = await fetchWithRetry(liUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
           'Accept': 'text/html,application/xhtml+xml',
           'Accept-Language': 'en-US,en;q=0.9',
         },
-        signal: controller.signal,
         redirect: 'follow',
-      })
-
-      clearTimeout(timeout)
+      }, { timeoutMs: 8000, maxRetries: 1, backoffMs: 2000 })
 
       if (res.ok) {
         const html = await res.text()
