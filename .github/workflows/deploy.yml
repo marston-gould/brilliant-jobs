@@ -1,0 +1,46 @@
+# C4: CI/CD pipeline for Supabase migrations
+# Runs on push to main when migration files change
+# Also deploys Edge Functions when their code changes
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/functions/**'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'supabase/migrations/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase db push --db-url "${{ secrets.SUPABASE_DB_URL }}"
+
+  deploy-functions:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, 'supabase/functions/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - run: |
+          # Deploy only changed functions
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- supabase/functions/ | grep -oP 'functions/\K[^/]+' | sort -u)
+          for fn in $CHANGED; do
+            if [ -d "supabase/functions/$fn" ] && [ "$fn" != "_shared" ]; then
+              echo "Deploying $fn..."
+              supabase functions deploy "$fn" --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+            fi
+          done
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
