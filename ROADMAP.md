@@ -43,8 +43,8 @@
 
 | # | Item | Est. | Actual | Status | Agent | Review By |
 |---|------|------|--------|--------|-------|-----------|
-| A12 | Implement feature gating RPC | 2h | — | 🔲 Queued | Data Architect | Sentinel + Performance |
-| A6 | Add timeouts + retries to all external calls | 3h | — | 🔲 Queued | CRE | Performance (backoff tuning) |
+| A12 | Implement feature gating RPC | 2h | 20min | ✅ Done | Data Architect | Sentinel + Performance |
+| A6 | Add timeouts + retries to all external calls | 3h | 45min | ✅ Done | CRE | Performance (backoff tuning) |
 
 **Dependencies:** A12 depends on A3 + A11.
 
@@ -103,4 +103,5 @@
 | Date | Items | Summary |
 |------|-------|---------|
 | 2026-02-19 | A1, A2, A9, A10 | Sprint 1 complete. RLS verified + hardened on all 20 tables. Security headers deployed. DOMPurify XSS protection on job descriptions. |
+| 2026-02-19 | A6, A12 | Sprint 3 complete. Feature gating RPC (check_feature) supports 8 gated features with plan fallback. Shared resilience module (resilience.ts) with fetchWithRetry + circuit breaker. Applied to send-notification (Resend/Vonage), refresh-jobs (ATS APIs), validate-signup (LinkedIn). |
 | 2026-02-19 | A3, A4, A5, A11 | Sprint 2 complete. Profiles have role/plan columns (Marston = admin). Audit log table created (append-only, admin-readable). Idempotency keys on notification tables. Plans/subscriptions schema seeded with Free/Pro/Enterprise tiers. |
