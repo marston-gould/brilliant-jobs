@@ -1,29 +1,10 @@
-// Stats
-async function loadStats() {
-  try {
-    const conn = await sb.from('connections').select('id', { count: 'exact', head: true });
-    $('#st-connections').textContent = (conn.count || 0).toLocaleString();
-    const scanned = await sb.from('connections').select('id', { count: 'exact', head: true }).eq('visit_status', 'completed');
-    $('#st-scanned').textContent = (scanned.count || 0).toLocaleString();
-    const comp = await sb.from('companies').select('id', { count: 'exact', head: true });
-    $('#st-companies').textContent = (comp.count || 0).toLocaleString();
-    const atsJobs = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true }).eq('status', 'open');
-    if (!atsJobs.error) $('#st-jobs').textContent = (atsJobs.count || 0).toLocaleString();
-
-    // Community stats — backlogged until multiple data sources
-
-    const { data: topCos } = await sb.from('companies').select('company_name').not('company_name', 'is', null).limit(500);
-    if (topCos?.length > 0) {
-      const counts = {};
-      topCos.forEach(c => { const n = c.company_name?.trim(); if (n && n.length > 1) counts[n] = (counts[n] || 0) + 1; });
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
-      if (sorted.length > 0) {
-        $('#top-companies').innerHTML = sorted.map(([name, count], i) =>
-          `<div class="top-co-row"><div class="top-co-rank">${i + 1}</div><div class="top-co-name">${name}</div><div class="top-co-count">${count}</div></div>`
-        ).join('');
-      }
-    }
-  } catch (e) { console.error('Stats error:', e); }
+// Stats — now powered by stats.js (ECharts dashboard)
+function loadStats() {
+  // Lazy-init: stats.js handles everything via initStatsPage()
+  // Called on app init and when navigating to Stats tab
+  if (typeof initStatsPage === 'function') {
+    initStatsPage();
+  }
 }
 
 // Account (Settings page)
