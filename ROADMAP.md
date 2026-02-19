@@ -65,16 +65,16 @@
 
 | # | Item | Est. | Status | Dependencies |
 |---|------|------|--------|-------------|
-| B1 | Migrate localStorage data to Supabase | 8h | 🔲 | — |
+| B1 | Migrate localStorage data to Supabase | 8h | ✅ | Pre-existing — saveUserData() sync layer covers all 11 keys |
 | B2 | Create job_queue table + worker pattern | 4h | 🔲 | — |
 | B3 | Move email/SMS sending through queue | 4h | 🔲 | B2 |
-| B4 | Add soft deletes to user tables | 2h | 🔲 | — |
+| B4 | Add soft deletes to user tables | 2h | ✅ | deleted_at on profiles/connections/resumes/companies/company_collections |
 | B5 | Add usage_events tracking | 3h | 🔲 | A11 (done) |
 | B6 | Create data export endpoint | 3h | 🔲 | — |
 | B7 | Create account deletion flow | 3h | 🔲 | B4, B6 |
-| B8 | Set up Supabase CLI migrations | 2h | 🔲 | — |
-| B9 | Create baseline migration | 4h | 🔲 | B8 |
-| B10 | Add missing indexes | 2h | 🔲 | — |
+| B8 | Set up Supabase CLI migrations | 2h | ✅ | supabase/config.toml committed |
+| B9 | Create baseline migration | 4h | ✅ | 20260219000000_baseline.sql — full Phase A+B schema |
+| B10 | Add missing indexes | 2h | ✅ | 7 indexes added (location, source+status, user composites, refresh) |
 | B11 | Set up monitoring + alerts | 3h | 🔲 | A7, A8 (done) |
 | B12 | Stripe integration | 8h | 🔲 | A11 (done) |
 
@@ -106,4 +106,6 @@
 | 2026-02-19 | S1 | A1, A2, A9, A10 | RLS verified on 20 tables (+6 policies). Security headers deployed. DOMPurify on job descriptions. |
 | 2026-02-19 | S2 | A3, A4, A5, A11 | Role/plan on profiles. Audit log. Idempotency keys. Plans/subscriptions schema (3 tiers). |
 | 2026-02-19 | S3 | A6, A12 | Feature gating RPC (8 features). Resilience module. Timeout+retry on all external calls. |
+| 2026-02-19 | B-S1 | B8, B9, B10 | Supabase CLI migrations. Baseline migration. 7 performance indexes (82 total). |
+| 2026-02-19 | B-S2 | B1, B4 | Soft deletes on 5 user tables. localStorage sync audit — already complete (saveUserData covers all 11 keys). |
 | 2026-02-19 | S4 | A7, A8, A13 | Structured logger. Health check endpoint. PostHog snippet (gated). |
