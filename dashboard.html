@@ -1552,22 +1552,55 @@
       <div class="page" id="page-stats">
         <div class="page-header">
           <h2>Stats</h2>
-          <p>Your data at a glance <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('stats')">How this works →</a></p>
+          <p>Your data filtered, visualized <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('stats')">How this works →</a></p>
         </div>
         <div class="page-body">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="st-connections">—</div><div class="stat-label">Connections</div></div>
-            <div class="stat-card"><div class="stat-val" id="st-scanned">—</div><div class="stat-label">Profiles Processed</div></div>
-            <div class="stat-card"><div class="stat-val" id="st-companies">—</div><div class="stat-label">Companies</div></div>
-            <div class="stat-card"><div class="stat-val" id="st-jobs">—</div><div class="stat-label">Jobs Found</div></div>
+          <!-- Filter selector -->
+          <div id="stats-filter-bar" class="stats-filter-bar">
+            <div id="stats-filter-pills"></div>
+            <label class="stats-compare-toggle">
+              <span>Compare</span>
+              <div class="toggle-switch" id="stats-compare-sw">
+                <input type="checkbox" id="stats-compare-cb">
+                <span class="toggle-slider"></span>
+              </div>
+            </label>
           </div>
 
-          <!-- Community Intelligence — backlogged until multiple data sources available -->
+          <!-- Stat cards -->
+          <div class="stat-grid" id="stats-cards">
+            <div class="stat-card"><div class="stat-val" id="sc-total">—</div><div class="stat-label">Matching Jobs</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-salary">—</div><div class="stat-label">Median Salary</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-senior">—</div><div class="stat-label">Senior+ Level</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-remote">—</div><div class="stat-label">Remote Jobs</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-companies">—</div><div class="stat-label">Companies</div></div>
+          </div>
 
-          <div class="card">
-            <div class="card-title">Top Companies</div>
-            <div class="card-sub">Companies with the most connections</div>
-            <div id="top-companies"><div style="color:var(--text-faint);font-size:13px;padding:20px 0;">Complete setup to see company data</div></div>
+          <div id="stats-cap-notice" class="stats-cap-notice" style="display:none"></div>
+          <div id="stats-empty" class="stats-empty" style="display:none"></div>
+
+          <!-- Charts grid -->
+          <div class="stats-grid" id="stats-charts-grid">
+            <div class="stats-chart-card full">
+              <div class="stats-chart-title">Job Count Over Time</div>
+              <div class="ec" id="chart-timeline"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Salary Distribution</div>
+              <div class="ec" id="chart-salary"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Seniority Breakdown</div>
+              <div class="ec" id="chart-funnel"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Top Companies</div>
+              <div class="ec tall" id="chart-companies"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">ATS Source</div>
+              <div class="ec" id="chart-source"></div>
+            </div>
           </div>
 
         </div>
