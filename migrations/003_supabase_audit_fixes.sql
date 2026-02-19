@@ -60,8 +60,11 @@ END $$;
 
 -- =====================================================
 -- PART 2: Enable RLS on spatial_ref_sys (PostGIS table)
+-- NOTE: spatial_ref_sys is owned by supabase_admin, not postgres.
+-- Must be done via Supabase support or Dashboard → SQL Editor as superuser.
+-- Skipping here — low risk (read-only reference data, no user content).
 -- =====================================================
-ALTER TABLE public.spatial_ref_sys ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE public.spatial_ref_sys ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- PART 3: Move extensions out of public schema
