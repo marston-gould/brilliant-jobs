@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salary Data 2026: Pay by Department, Remote Premium &amp; Distribution | Brilliant Jobs</title>
+  <meta name="description" content="Median salary by department with standard deviation ranges. Remote jobs pay 35% more ($128K vs $95K). Salary distribution across 23,000+ listings. Updated daily.">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="Salary Data 2026: Pay by Department, Remote Premium &amp; Distribution">
+  <meta property="og:description" content="Median salary by department with standard deviation ranges. Remote jobs pay 35% more ($128K vs $95K). Salary distribution across 23,000+ listings. Updated daily.">
+  <meta property="og:type" content="article">
+  <link rel="canonical" href="https://brilliantjobs.app/salary-data">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Salary Data 2026: Median Pay by Department, Remote Premium & Distribution from 23K+ Listings",
+      "author": {
+        "@type": "Organization",
+        "name": "Brilliant Jobs",
+        "url": "https://brilliantjobs.app"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Brilliant Jobs"
+      },
+      "datePublished": "2026-02-18",
+      "dateModified": "2026-02-18",
+      "mainEntityOfPage": "https://brilliantjobs.app/salary-data"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the average salary for remote jobs vs on-site jobs in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Remote positions have a median salary of $128,000 compared to $95,000 for on-site roles \u2014 a 35% premium. Hybrid roles fall between at $118,000 median. This gap is consistent across industries and seniority levels."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which departments pay the most in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Engineering leads at $142K median, followed by Product ($138K), Data & Analytics ($132K), and Design ($125K). Sales shows the widest variance due to commission structures, ranging from $42K to $210K."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the most common salary range for job listings?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The $75K-$100K range has the most listings at 4,600 jobs, followed by $100K-$125K at 4,140. The $75K-$150K range collectively contains 53% of all salary-listed jobs."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What salary can I expect at each career level?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Entry-level $58K, Associate $72K, Mid-Level $95K, Senior $135K, Lead $155K, Manager $148K, Director $185K, VP $245K, C-Suite $320K. The biggest jump is mid-to-senior at 42%."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+  <style>
+    :root{--bg:#0a0c10;--bg-card:#12141a;--border:#1e2230;--text:#e8eaf0;--text-dim:#7a8299;--text-faint:#4a5068;--accent:#3b82f6;--green:#22c55e;--warm:#f59e0b;--red:#ef4444;--purple:#a855f7;--cyan:#06b6d4;--pink:#ec4899;--indigo:#6366f1}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh}
+    body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+    .wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:40px 28px 80px}
+    .summary{background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(168,85,247,0.06));border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:16px 20px;margin-block-end:32px;font-size:13px;color:var(--text-dim);line-height:1.7}
+    .summary strong{color:var(--text);font-weight:500}
+    .summary .label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-block-end:6px}
+    .hdr{margin-block-end:28px}
+    .hdr .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-block-end:10px}
+    .hdr .breadcrumb{font-size:12px;color:var(--text-faint);margin-block-end:12px}
+    .hdr .breadcrumb a{color:var(--text-dim);text-decoration:none}
+    .hdr .breadcrumb a:hover{color:var(--accent)}
+    .hdr h1{font-size:clamp(24px,3.5vw,36px);font-weight:700;letter-spacing:-0.5px;line-height:1.15;margin-block-end:10px}
+    .hdr h1 span{background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hdr .sub{color:var(--text-dim);font-size:14px;line-height:1.6;max-width:640px}
+    .hdr .sub strong{color:var(--text);font-weight:500}
+    .stats{display:flex;gap:28px;margin-block-end:36px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;flex-wrap:wrap}
+    .st{display:flex;flex-direction:column;gap:1px}
+    .st .v{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}
+    .st .l{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px}
+    .v.blue{color:var(--accent)}.v.green{color:var(--green)}.v.warm{color:var(--warm)}.v.purple{color:var(--purple)}.v.pink{color:var(--pink)}.v.cyan{color:var(--cyan)}
+    h2.sdiv{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);margin:48px 0 20px;padding-block-end:10px;border-block-end:1px solid var(--border)}
+    h2.sdiv:first-of-type{margin-block-start:0}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .grid .full{grid-column:1/-1}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.grid .full{grid-column:auto}}
+    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:20px;overflow:hidden;transition:border-color 0.3s}
+    .card:hover{border-color:rgba(59,130,246,0.25)}
+    .card .ch{display:flex;align-items:flex-start;justify-content:space-between;margin-block-end:16px}
+    .card .cl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-faint);margin-block-end:4px}
+    .card .ct{font-size:15px;font-weight:600}
+    .badge{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 9px;border-radius:16px;white-space:nowrap}
+    .b-blue{background:rgba(59,130,246,0.12);color:var(--accent)}.b-green{background:rgba(34,197,94,0.12);color:var(--green)}.b-warm{background:rgba(245,158,11,0.12);color:var(--warm)}.b-purple{background:rgba(168,85,247,0.12);color:var(--purple)}.b-cyan{background:rgba(6,182,212,0.12);color:var(--cyan)}.b-pink{background:rgba(236,72,153,0.12);color:var(--pink)}.b-red{background:rgba(239,68,68,0.12);color:var(--red)}.b-indigo{background:rgba(99,102,241,0.12);color:var(--indigo)}
+    .ec{width:100%;height:340px}.ec.tall{height:440px}.ec.xtall{height:520px}
+    .takeaway{margin-block-start:16px;padding:12px 16px;background:rgba(59,130,246,0.06);border-radius:8px;border-inline-start:3px solid var(--accent);font-size:12px;color:var(--text-dim);line-height:1.7}
+    .takeaway strong{color:var(--text)}
+    .faq{margin-block-start:48px}.faq h2{font-size:20px;font-weight:600;margin-block-end:20px}
+    .faq-item{border:1px solid var(--border);border-radius:10px;margin-block-end:12px;overflow:hidden}
+    .faq-q{padding:14px 18px;cursor:pointer;font-weight:500;font-size:14px;display:flex;justify-content:space-between;align-items:center;transition:background 0.2s}
+    .faq-q:hover{background:rgba(59,130,246,0.05)}
+    .faq-q .chv{transition:transform 0.3s;color:var(--text-faint)}
+    .faq-item.open .faq-q .chv{transform:rotate(180deg)}
+    .faq-a{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
+    .faq-item.open .faq-a{max-height:300px}
+    .faq-a p{padding:0 18px 14px;font-size:13px;color:var(--text-dim);line-height:1.7}
+    .related{margin-block-start:48px;padding:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}
+    .related h3{font-size:14px;font-weight:600;margin-block-end:16px;color:var(--text-dim)}
+    .related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .related-link{display:block;padding:14px 16px;border:1px solid var(--border);border-radius:10px;text-decoration:none;transition:border-color 0.2s,background 0.2s}
+    .related-link:hover{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)}
+    .related-link .rl-title{font-size:13px;font-weight:600;color:var(--text);margin-block-end:4px}
+    .related-link .rl-desc{font-size:11px;color:var(--text-faint);line-height:1.5}
+    .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
+    .foot a{color:var(--accent);text-decoration:none}
+    @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hdr">
+    <div class="breadcrumb"><a href="/">Brilliant Jobs</a> &rsaquo; <a href="/job-market-data">Market Data</a> &rsaquo; Salary Data</div>
+    <div class="eyebrow">Brilliant Jobs &middot; Data Lab</div>
+    <h1><span>Salary</span> Data</h1>
+    <p class="sub">Compensation analysis from <strong>23,000+ job listings</strong> with parsed salary data. Median pay by department, remote premium, and distribution across salary bands.</p>
+  </header>
+
+  <div class="summary">
+    <div class="label">Summary</div>
+    Analysis of <strong>23,000+ job listings with salary data</strong> (8.2% of 280K+ total). Remote positions pay <strong>35% more</strong> than on-site ($128K vs $95K median). <strong>Engineering</strong> has the highest department median at <strong>$142K</strong>. <strong>Sales</strong> has the widest variance ($42K-$210K at &plusmn;2 SD) due to commission structures. The $75K-$150K range contains <strong>53% of all salary-listed jobs</strong>. Last updated: February 18, 2026.
+  </div>
+
+  <div class="stats">
+    <div class="st"><span class="v warm">23,000</span><span class="l">Jobs With Salary</span></div>
+    <div class="st"><span class="v green">$128K</span><span class="l">Remote Median</span></div>
+    <div class="st"><span class="v blue">$142K</span><span class="l">Eng. Median</span></div>
+    <div class="st"><span class="v purple">35%</span><span class="l">Remote Premium</span></div>
+  </div>
+
+  <h2 class="sdiv">How is compensation distributed?</h2>
+  <div class="grid">
+    <div class="card"><div class="ch"><div><div class="cl">Salary Bands</div><div class="ct">Distribution of Listed Salaries</div></div><span class="badge b-green">Ranges</span></div><div class="ec" id="c1" role="img" aria-label="Salary distribution: $75-100K range has the most listings at 4,600, followed by $100-125K at 4,140 and $125-150K at 3,450. Only 690 jobs list above $250K"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Remote Premium</div><div class="ct">Salary Percentiles by Work Arrangement</div></div><span class="badge b-cyan">Percentiles</span></div><div class="ec" id="c2" role="img" aria-label="Remote median $128K (25th-75th: $85K-$168K), Hybrid median $118K, On-site median $95K. Remote jobs pay 35% more at the median"></div></div>
+    <div class="card full"><div class="ch"><div><div class="cl">Department Compensation</div><div class="ct">Salary Ranges by Department &mdash; Median, &plusmn;1 SD, &plusmn;2 SD</div></div><span class="badge b-pink">Range Plot</span></div><div class="ec xtall" id="c3" role="img" aria-label="Dot-in-pill salary range chart by department: Engineering median $142K with 2SD range $78K-$210K, Sales most variable $42K-$210K due to commissions, Legal most compressed $82K-$158K"></div></div>
+  </div>
+  <div class="takeaway"><strong>Key takeaway:</strong> The $75K-$150K range contains 53% of all salary-listed jobs &mdash; the market's center of gravity. Remote roles command a consistent 35% premium over on-site. Sales shows the widest salary variance of any department (commission structures), while Legal is the most compressed. If you're evaluating offers, <a href="/career-level-data" style="color:var(--accent);text-decoration:none;">see how salary scales across career levels from entry to C-suite</a>.</div>
+
+  <h2 class="sdiv">What does each career level pay?</h2>
+  <div class="grid">
+    <div class="card full"><div class="ch"><div><div class="cl">Salary Ladder</div><div class="ct">Average Salary by Career Level</div></div><span class="badge b-warm">Compensation</span></div><div class="ec tall" id="c4" role="img" aria-label="Bar chart: Entry $58K, Associate $72K, Mid-Level $95K, Senior $135K, Lead $155K, Manager $148K, Director $185K, VP $245K, C-Suite $320K. Biggest jump is mid-to-senior at 42%"></div></div>
+  </div>
+  <div class="takeaway"><strong>Key takeaway:</strong> The mid-to-senior jump ($95K&rarr;$135K) is the single highest-leverage salary move at 42%. Interestingly, Leads ($155K) out-earn Managers ($148K) on average &mdash; individual contributor tracks can match management tracks. For which industries pay the most, <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:none;">see the industry-level salary comparison</a>.</div>
+  <div class="faq">
+    <h2>Frequently Asked Questions</h2>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the average salary for remote vs on-site jobs in 2026?<span class="chv">&darr;</span></div><div class="faq-a"><p>Remote positions have a median salary of $128,000 compared to $95,000 for on-site &mdash; a 35% premium. Hybrid falls between at $118,000. This gap is consistent across industries and seniority levels.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which departments pay the most in 2026?<span class="chv">&darr;</span></div><div class="faq-a"><p>Engineering leads at $142K median, followed by Product ($138K), Data &amp; Analytics ($132K), and Design ($125K). Sales has the widest variance: $42K-$210K at &plusmn;2 standard deviations.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the most common salary range?<span class="chv">&darr;</span></div><div class="faq-a"><p>The $75K-$100K range has the most listings (4,600 jobs), followed by $100K-$125K (4,140). The $75K-$150K band collectively holds 53% of all salary-listed positions.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What salary can I expect at each career level?<span class="chv">&darr;</span></div><div class="faq-a"><p>Entry $58K, Associate $72K, Mid-Level $95K, Senior $135K, Lead $155K, Manager $148K, Director $185K, VP $245K, C-Suite $320K. Biggest jump: mid-to-senior (42%).</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Why do Leads earn more than Managers on average?<span class="chv">&darr;</span></div><div class="faq-a"><p>Senior individual contributor tracks (Lead, Principal, Staff) often match or exceed management tracks in compensation, especially in engineering and product roles where deep technical expertise commands a premium.</p></div></div>
+  </div>
+
+  <div class="related">
+    <h3>Explore More Market Data</h3>
+    <div class="related-grid">
+      <a href="/hiring-trends" class="related-link"><div class="rl-title">Hiring Trends</div><div class="rl-desc">Growth velocity, top employers, listing lifespan from 280K+ jobs</div></a>
+      <a href="/jobs-by-industry" class="related-link"><div class="rl-title">Jobs by Industry</div><div class="rl-desc">Which industries post the most and pay the best across 15 sectors</div></a>
+      <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, and the highest-leverage career moves</div></a>
+      <a href="/job-market-data" class="related-link"><div class="rl-title">Market Data Overview</div><div class="rl-desc">Summary dashboard with key stats from 280K+ listings across 9,800+ companies</div></a>
+    </div>
+  </div>
+  <div class="foot">Data from 9,800+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+</div>
+<script>
+(function(){
+  var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
+  var AL={color:'#4a5068',fontFamily:'JetBrains Mono',fontSize:10};
+  var GR={left:56,right:20,top:20,bottom:32};
+  var SP={lineStyle:{color:'#151820'}};
+  var NO={show:false};
+  var PAL=['#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6','#f97316','#8b5cf6','#0ea5e9','#d946ef','#84cc16','#e11d48'];
+  function fmt(n){return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'K':n}
+  function fmtM(n){return '$'+(n/1000).toFixed(0)+'K'}
+  var chs=[];
+  function I(id){var c=echarts.init(document.getElementById(id));chs.push(c);return c}
+  function AX(){return{lineStyle:{color:'#1e2230'}}}
+
+  var salRange=[['$30-50K',1840],['$50-75K',3220],['$75-100K',4600],['$100-125K',4140],['$125-150K',3450],['$150-175K',2300],['$175-200K',1610],['$200-250K',1150],['$250K+',690]];
+  var salRemote=[{t:'Remote',p25:85000,med:128000,p75:168000},{t:'Hybrid',p25:78000,med:118000,p75:155000},{t:'On-site',p25:62000,med:95000,p75:135000}];
+  var salDept=[{dept:'Engineering',med:142000,s1l:105000,s1h:179000,s2l:78000,s2h:210000},{dept:'Product',med:138000,s1l:102000,s1h:174000,s2l:75000,s2h:205000},{dept:'Data & Analytics',med:132000,s1l:98000,s1h:166000,s2l:72000,s2h:195000},{dept:'Design',med:125000,s1l:92000,s1h:158000,s2l:68000,s2h:185000},{dept:'Legal',med:118000,s1l:95000,s1h:142000,s2l:82000,s2h:158000},{dept:'Finance',med:112000,s1l:82000,s1h:145000,s2l:62000,s2h:172000},{dept:'Marketing',med:105000,s1l:75000,s1h:138000,s2l:55000,s2h:168000},{dept:'Sales',med:98000,s1l:65000,s1h:148000,s2l:42000,s2h:210000},{dept:'Operations',med:92000,s1l:68000,s1h:122000,s2l:52000,s2h:148000},{dept:'Customer Success',med:85000,s1l:62000,s1h:112000,s2l:48000,s2h:135000},{dept:'Human Resources',med:82000,s1l:60000,s1h:108000,s2l:45000,s2h:130000}];
+  var salLvl=[['Entry Level',58000],['Associate',72000],['Mid-Level',95000],['Senior',135000],['Lead',155000],['Manager',148000],['Director',185000],['VP',245000],['C-Suite',320000]];
+
+  // C1: Salary distribution
+  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:64,right:20,top:20,bottom:40},xAxis:{type:'category',data:salRange.map(function(d){return d[0]}),axisLabel:{...AL,rotate:25},axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:salRange.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[20,20,4,4],color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:i<3?'#22c55e':i<6?'#3b82f6':'#a855f7'},{offset:1,color:i<3?'#15803d':i<6?'#1d4ed8':'#7c3aed'}]}}}}),barWidth:'55%',animationDelay:function(i){return i*60},animationEasing:'elasticOut'}]});
+
+  // C2: Remote salary
+  I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){var h='<b>'+p[0].axisValue+'</b>';p.forEach(function(s){h+='<br/>'+s.marker+' '+s.seriesName+': <b>'+fmtM(s.value)+'</b>'});return h}},legend:{bottom:0,textStyle:{color:'#7a8299',fontSize:10,fontFamily:'JetBrains Mono'},icon:'roundRect',itemWidth:12,itemHeight:8},grid:{left:72,right:20,top:20,bottom:48},xAxis:{type:'category',data:salRemote.map(function(d){return d.t}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{name:'25th %ile',type:'bar',stack:'s',data:salRemote.map(function(d){return d.p25}),barWidth:'40%',itemStyle:{color:'rgba(59,130,246,0.25)',borderRadius:[0,0,4,4]}},{name:'Median',type:'bar',stack:'s',data:salRemote.map(function(d){return d.med-d.p25}),itemStyle:{color:'rgba(59,130,246,0.55)'}},{name:'75th %ile',type:'bar',stack:'s',data:salRemote.map(function(d){return d.p75-d.med}),itemStyle:{color:'rgba(59,130,246,0.85)',borderRadius:[4,4,0,0]}}]});
+
+  // C3: Dot-in-pill
+  var sd=salDept.slice().reverse();
+  var dn=sd.map(function(d){return d.dept});
+  I('c3').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'none'},formatter:function(params){var dept=params[0].axisValue;var d=sd.find(function(x){return x.dept===dept});return'<b>'+dept+'</b><br/><span style="color:#ec4899">\u25CF</span> Median: <b>'+fmtM(d.med)+'</b><br/><span style="color:rgba(236,72,153,0.5)">\u25CF</span> \u00b11 SD: '+fmtM(d.s1l)+' \u2013 '+fmtM(d.s1h)+'<br/><span style="color:rgba(236,72,153,0.2)">\u25CF</span> \u00b12 SD: '+fmtM(d.s2l)+' \u2013 '+fmtM(d.s2h)}},grid:{left:120,right:30,top:16,bottom:20},xAxis:{type:'value',min:30000,max:230000,axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:dn,axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var y=api.coord([0,i])[1];var x1=api.coord([d.s2l,0])[0];var x2=api.coord([d.s2h,0])[0];return{type:'rect',shape:{x:x1,y:y-11,width:x2-x1,height:22,r:11},style:{fill:'rgba(236,72,153,0.10)'}}},data:sd.map(function(d,i){return[i]}),z:1},{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var y=api.coord([0,i])[1];var x1=api.coord([d.s1l,0])[0];var x2=api.coord([d.s1h,0])[0];return{type:'rect',shape:{x:x1,y:y-7,width:x2-x1,height:14,r:7},style:{fill:'rgba(236,72,153,0.30)'}}},data:sd.map(function(d,i){return[i]}),z:2},{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var pt=api.coord([d.med,i]);return{type:'circle',shape:{cx:pt[0],cy:pt[1],r:5},style:{fill:'#ec4899',shadowColor:'rgba(236,72,153,0.6)',shadowBlur:8}}},data:sd.map(function(d,i){return[i]}),z:3},{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var pt=api.coord([d.med,i]);return{type:'text',style:{text:fmtM(d.med),x:pt[0],y:pt[1]-16,fill:'#ec4899',fontSize:10,fontFamily:'JetBrains Mono',textAlign:'center'}}},data:sd.map(function(d,i){return[i]}),z:4}]});
+
+  // C4: Salary by level
+  I('c4').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:72,right:20,top:20,bottom:40},xAxis:{type:'category',data:salLvl.map(function(d){return d[0]}),axisLabel:{...AL,rotate:35},axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:salLvl.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[6,6,2,2],color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:PAL[i]},{offset:1,color:PAL[i]+'66'}]}}}}),barWidth:'55%',markLine:{silent:true,symbol:'none',lineStyle:{color:'#f59e0b33',type:'dashed'},label:{color:'#f59e0b',fontSize:9,fontFamily:'JetBrains Mono'},data:[{type:'average',name:'Avg'}]}}]});
+
+  window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
+})();
+</script>
+</body>
+</html>
