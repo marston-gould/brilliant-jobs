@@ -86,16 +86,16 @@
 
 | # | Item | Est. | Status |
 |---|------|------|--------|
-| C1 | Move resumes to Supabase Storage | 4h | 🔲 |
-| C2 | Add orphaned file cleanup | 2h | 🔲 |
-| C3 | Set up staging environment | 4h | 🔲 |
-| C4 | CI/CD pipeline for migrations | 3h | 🔲 |
-| C5 | Add feature flags table | 2h | 🔲 |
-| C6 | Implement rate limiting | 3h | 🔲 |
-| C7 | Correlation IDs across all functions | 3h | 🔲 |
-| C8 | Containerize build | 2h | 🔲 |
-| C9 | Pagination audit + fix all unbounded queries | 3h | 🔲 |
-| C10 | Server-side caching (materialized views) | 3h | 🔲 |
+| C1 | Move resumes to Supabase Storage | 4h | ✅ | Pre-existing — resumes bucket + user_id/ folder structure already in place |
+| C2 | Add orphaned file cleanup | 2h | ✅ | cleanup-orphans Edge Function — 7-day grace, audit logged |
+| C3 | Set up staging environment | 4h | ✅ | Vercel preview deployments + docs/STAGING.md |
+| C4 | CI/CD pipeline for migrations | 3h | ✅ | .github/workflows/deploy.yml — auto-migrate + auto-deploy functions |
+| C5 | Add feature flags table | 2h | ✅ | feature_flags table + is_feature_enabled() with rollout/plan/user gating |
+| C6 | Implement rate limiting | 3h | ✅ | rate_limits table + check_rate_limit_for_user() plan-aware |
+| C7 | Correlation IDs across all functions | 3h | ✅ | _shared/middleware.ts withCorrelation() wrapper |
+| C8 | Containerize build | 2h | ✅ | Dockerfile + .dockerignore |
+| C9 | Pagination audit + fix all unbounded queries | 3h | ✅ | Audit complete — all queries have .limit()/.single()/.range() |
+| C10 | Server-side caching (materialized views) | 3h | ✅ | 3 materialized views + get_landing_stats() RPC + refresh function |
 
 ---
 
@@ -107,6 +107,9 @@
 | 2026-02-19 | S2 | A3, A4, A5, A11 | Role/plan on profiles. Audit log. Idempotency keys. Plans/subscriptions schema (3 tiers). |
 | 2026-02-19 | S3 | A6, A12 | Feature gating RPC (8 features). Resilience module. Timeout+retry on all external calls. |
 | 2026-02-19 | B-S1 | B8, B9, B10 | Supabase CLI migrations. Baseline migration. 7 performance indexes (82 total). |
+| 2026-02-19 | C-S1 | C5, C6, C9, C10 | Feature flags, rate limiting, pagination audit, materialized views |
+| 2026-02-19 | C-S2 | C3, C4, C7, C8 | Staging docs, CI/CD pipeline, correlation IDs, Dockerfile |
+| 2026-02-19 | C-S3 | C1, C2 | Resume storage verified (pre-existing), orphan cleanup function |
 | 2026-02-19 | B-S4 | B5, B6, B7 | Usage events tracking with rate-limited logger. Data export (13 tables, GDPR). Account deletion (soft delete + 30-day grace + cancel). |
 | 2026-02-19 | B-S3 | B2, B3, B11 | Job queue (claim/complete/dead letter). Queue worker for async notifications. Monitoring alerts (pipeline stale, notification failures, dead jobs). |
 | 2026-02-19 | B-S2 | B1, B4 | Soft deletes on 5 user tables. localStorage sync audit — already complete (saveUserData covers all 11 keys). |
