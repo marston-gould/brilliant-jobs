@@ -1113,6 +1113,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     $('#forgot-btn').addEventListener('click', async () => {
+      await loadSupabase();
       const email = $('#login-email').value.trim();
       const msgEl = $('#forgot-msg');
       msgEl.className = 'msg'; msgEl.style.display = 'none';
@@ -1141,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // LOGIN
     // ============================================================
     $('#login-btn').addEventListener('click', async () => {
+      await loadSupabase();
       const email = $('#login-email').value.trim();
       const password = $('#login-password').value;
       const msgEl = $('#login-msg');
@@ -1165,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // SIGNUP
     // ============================================================
     $('#signup-btn').addEventListener('click', async () => {
+      await loadSupabase();
       var msgEl = $('#signup-msg');
       msgEl.className = 'msg'; msgEl.style.display = 'none';
 
@@ -1257,6 +1260,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // LOGGED IN VIEW
     // ============================================================
     async function showLoggedIn(user) {
+      await loadSupabase();
       $('#auth-forms').style.display = 'none';
       const loggedView = $('#logged-in-view');
       loggedView.classList.add('active');
@@ -1290,6 +1294,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // LOGOUT
     // ============================================================
     $('#logout-btn').addEventListener('click', async () => {
+      await loadSupabase();
       await sb.auth.signOut();
       $('#logged-in-view').classList.remove('active');
       $('#auth-forms').style.display = 'block';
@@ -1300,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // CHECK SESSION ON LOAD
     // ============================================================
     (async () => {
+      await loadSupabase();
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user) {
         openModal('login');
@@ -1357,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cached && cached.jobs != null && Date.now() - cached.ts < CACHE_TTL) { applyStats(cached); return; }
       } catch (e) {}
       try {
+        await loadSupabase();
         const { data, error } = await sb.rpc('get_landing_stats');
         if (error) throw new Error('stats fetch failed');
         const stats = { jobs: data.jobs, companies: data.companies, metros: data.locations, ts: Date.now() };
