@@ -15,6 +15,7 @@ const jsFiles = [
   'js/integrations.js',
   'js/applications.js',
   'js/settings.js',
+  'js/stats.js',
   'js/app.js',
 ];
 
