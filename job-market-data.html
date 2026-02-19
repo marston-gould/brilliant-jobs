@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Job Market Data: Salary, Industry &amp; Hiring Trends from 280K+ Listings | Brilliant Jobs</title>
-  <meta name="description" content="Real-time job market data from 280,000+ listings across 9,800 companies. Salary ranges by department, hiring volume by industry, seniority distribution. Updated daily.">
+  <meta name="description" content="Real-time job market analytics from 280,000+ listings across 9,800+ companies. Salary data, industry hiring volume, career level distribution. Updated daily.">
   <meta name="robots" content="index, follow">
-  <meta property="og:title" content="Job Market Intelligence - 280K+ Real Listings Analyzed">
-  <meta property="og:description" content="Salary data, industry breakdowns, seniority distribution and hiring trends from 280,000+ job listings.">
+  <meta property="og:title" content="Job Market Data: Salary, Industry &amp; Hiring Trends from 280K+ Listings">
+  <meta property="og:description" content="Real-time job market analytics from 280,000+ listings across 9,800+ companies. Salary data, industry hiring volume, career level distribution. Updated daily.">
   <meta property="og:type" content="article">
   <link rel="canonical" href="https://brilliantjobs.app/job-market-data">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
   "@graph": [
     {
       "@type": "Article",
-      "headline": "Job Market Intelligence: Salary, Industry & Hiring Trends from 280,000+ Listings",
+      "headline": "Job Market Data: 280,000+ Listings Analyzed for Salary, Industry & Hiring Trends",
       "author": {
         "@type": "Organization",
         "name": "Brilliant Jobs",
@@ -31,49 +31,42 @@
         "name": "Brilliant Jobs"
       },
       "datePublished": "2026-02-18",
-      "dateModified": "2026-02-18"
+      "dateModified": "2026-02-18",
+      "mainEntityOfPage": "https://brilliantjobs.app/job-market-data"
     },
     {
       "@type": "FAQPage",
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What is the average salary for remote jobs vs on-site jobs in 2026?",
+          "name": "Where does Brilliant Jobs get its job market data?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Remote positions have a median salary of $128,000 compared to $95,000 for on-site roles - a 35% premium. Hybrid roles fall between at $118,000 median."
+            "text": "Brilliant Jobs scans 9,800+ company career pages directly via 5 ATS platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) every 10 minutes. This bypasses job boards, capturing 280,000+ active listings."
           }
         },
         {
           "@type": "Question",
-          "name": "Which industries are hiring the most in 2026?",
+          "name": "How often is the job market data updated?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Technology leads with 68,400 open positions (24%), followed by Healthcare at 31,200 (11%) and Financial Services at 28,500 (10%)."
+            "text": "Data refreshes continuously throughout the day. New listings are discovered within 10 minutes of posting. Salary data, industry breakdowns, and hiring trends are recalculated daily."
           }
         },
         {
           "@type": "Question",
-          "name": "What salary can I expect at each career level?",
+          "name": "What percentage of job listings include salary data?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Entry-level $58K, mid-level $95K, senior $135K, director $185K, VP $245K, C-suite $320K. Biggest jump is mid-to-senior (42%)."
+            "text": "About 8.2% of listings include parsed salary data \u2014 23,000+ jobs out of 280,000+. This is consistent with industry-wide salary transparency rates, though the trend is increasing."
           }
         },
         {
           "@type": "Question",
-          "name": "How does Brilliant Jobs collect job market data?",
+          "name": "How many ATS platforms does Brilliant Jobs track?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Brilliant Jobs scans 9,800+ company career pages via 5 ATS platforms every 10 minutes, bypassing job boards entirely."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Which departments pay the most?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Engineering leads at $142K median, followed by Product ($138K), Data & Analytics ($132K), Design ($125K). Sales has widest variance."
+            "text": "Five platforms: Greenhouse (3,830 boards), Lever (1,154), Ashby (1,294), Workable (~600), and Recruitee (~600). Combined coverage of 7,500+ company career pages and 280,000+ active listings."
           }
         }
       ]
@@ -92,7 +85,10 @@
     .summary .label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-block-end:6px}
     .hdr{margin-block-end:28px}
     .hdr .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-block-end:10px}
-    .hdr h1{font-size:clamp(26px,3.5vw,38px);font-weight:700;letter-spacing:-0.5px;line-height:1.15;margin-block-end:10px}
+    .hdr .breadcrumb{font-size:12px;color:var(--text-faint);margin-block-end:12px}
+    .hdr .breadcrumb a{color:var(--text-dim);text-decoration:none}
+    .hdr .breadcrumb a:hover{color:var(--accent)}
+    .hdr h1{font-size:clamp(24px,3.5vw,36px);font-weight:700;letter-spacing:-0.5px;line-height:1.15;margin-block-end:10px}
     .hdr h1 span{background:linear-gradient(135deg,var(--accent),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
     .hdr .sub{color:var(--text-dim);font-size:14px;line-height:1.6;max-width:640px}
     .hdr .sub strong{color:var(--text);font-weight:500}
@@ -100,8 +96,9 @@
     .st{display:flex;flex-direction:column;gap:1px}
     .st .v{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}
     .st .l{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px}
-    .v.blue{color:var(--accent)}.v.green{color:var(--green)}.v.warm{color:var(--warm)}.v.purple{color:var(--purple)}
+    .v.blue{color:var(--accent)}.v.green{color:var(--green)}.v.warm{color:var(--warm)}.v.purple{color:var(--purple)}.v.pink{color:var(--pink)}.v.cyan{color:var(--cyan)}
     h2.sdiv{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);margin:48px 0 20px;padding-block-end:10px;border-block-end:1px solid var(--border)}
+    h2.sdiv:first-of-type{margin-block-start:0}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
     .grid .full{grid-column:1/-1}
     @media(max-width:900px){.grid{grid-template-columns:1fr}.grid .full{grid-column:auto}}
@@ -122,8 +119,15 @@
     .faq-q .chv{transition:transform 0.3s;color:var(--text-faint)}
     .faq-item.open .faq-q .chv{transform:rotate(180deg)}
     .faq-a{max-height:0;overflow:hidden;transition:max-height 0.3s ease}
-    .faq-item.open .faq-a{max-height:200px}
+    .faq-item.open .faq-a{max-height:300px}
     .faq-a p{padding:0 18px 14px;font-size:13px;color:var(--text-dim);line-height:1.7}
+    .related{margin-block-start:48px;padding:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px}
+    .related h3{font-size:14px;font-weight:600;margin-block-end:16px;color:var(--text-dim)}
+    .related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .related-link{display:block;padding:14px 16px;border:1px solid var(--border);border-radius:10px;text-decoration:none;transition:border-color 0.2s,background 0.2s}
+    .related-link:hover{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)}
+    .related-link .rl-title{font-size:13px;font-weight:600;color:var(--text);margin-block-end:4px}
+    .related-link .rl-desc{font-size:11px;color:var(--text-faint);line-height:1.5}
     .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
     .foot a{color:var(--accent);text-decoration:none}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
@@ -136,159 +140,57 @@
     <h1>Job Market <span>Intelligence</span></h1>
     <p class="sub">Real-time insights from <strong>280,000+ job listings</strong> across <strong>9,800+ company career pages</strong> on 5 ATS platforms. Updated daily.</p>
   </header>
+
   <div class="summary">
     <div class="label">Summary</div>
-    This report analyzes <strong>280,818 active job listings</strong> scraped directly from company career pages across Greenhouse, Lever, Ashby, Workable, and Recruitee. Key findings: <strong>remote jobs pay 35% more</strong> than on-site ($128K vs $95K median). <strong>Technology leads hiring</strong> at 68,400 positions. Biggest salary jump is mid-to-senior (<strong>42% increase</strong>). Engineering has highest median pay at <strong>$142K</strong>. Geographic analysis uses the <a href="https://jeremyposadas.org/regions/" style="color:var(--accent)">United Regions of America</a> 14-region county-based model. Last updated: February 18, 2026.
+    This report analyzes <strong>280,818 active job listings</strong> scraped directly from company career pages across Greenhouse, Lever, Ashby, Workable, and Recruitee. Key findings: <strong>remote jobs pay 35% more</strong> than on-site ($128K vs $95K median). <strong>Technology leads hiring</strong> at 68,400 positions. Biggest salary jump is mid-to-senior (<strong>42% increase</strong>). Engineering has highest median pay at <strong>$142K</strong>. Last updated: February 18, 2026.
   </div>
+
   <div class="stats">
     <div class="st"><span class="v blue">280,818</span><span class="l">Active Jobs</span></div>
     <div class="st"><span class="v green">9,992</span><span class="l">Companies</span></div>
     <div class="st"><span class="v warm">23,000</span><span class="l">With Salary Data</span></div>
-    <div class="st"><span class="v purple">14</span><span class="l">US Regions</span></div>
+    <div class="st"><span class="v purple">5</span><span class="l">ATS Platforms</span></div>
   </div>
 
-  <h2 class="sdiv">How fast is the job market growing?</h2>
+  <h2 class="sdiv">Deep-dive reports</h2>
+
+  <div class="related-grid" style="margin-block-end:32px;">
+    <a href="/salary-data" class="related-link" style="padding:20px;">
+      <div class="rl-title" style="font-size:15px;margin-block-end:8px;">&dollar; Salary Data</div>
+      <div class="rl-desc" style="font-size:12px;">Median pay by department with &plusmn;1 and &plusmn;2 standard deviation ranges. Remote salary premium. Distribution across 23,000+ listings with parsed compensation.</div>
+    </a>
+    <a href="/hiring-trends" class="related-link" style="padding:20px;">
+      <div class="rl-title" style="font-size:15px;margin-block-end:8px;">&uarr; Hiring Trends</div>
+      <div class="rl-desc" style="font-size:12px;">Job discovery velocity, cumulative growth over time, top 15 employers by open positions, and how long listings typically stay open before closing.</div>
+    </a>
+    <a href="/jobs-by-industry" class="related-link" style="padding:20px;">
+      <div class="rl-title" style="font-size:15px;margin-block-end:8px;">&equiv; Jobs by Industry</div>
+      <div class="rl-desc" style="font-size:12px;">Hiring volume and average salary across 15 industries. Department-level treemap showing where the jobs actually are &mdash; Engineering, Sales, Marketing, and 8 more.</div>
+    </a>
+    <a href="/career-level-data" class="related-link" style="padding:20px;">
+      <div class="rl-title" style="font-size:15px;margin-block-end:8px;">&uArr; Career Level Data</div>
+      <div class="rl-desc" style="font-size:12px;">Seniority funnel from Entry to C-Suite, salary at each level, and remote vs on-site vs hybrid distribution. The mid-to-senior jump is the highest-leverage career move.</div>
+    </a>
+  </div>
+
+  <h2 class="sdiv">Key findings at a glance</h2>
   <div class="grid">
-    <div class="card full"><div class="ch"><div><div class="cl">Cumulative Growth</div><div class="ct">Total Jobs Indexed Over Time</div></div><span class="badge b-blue">Area</span></div><div class="ec" id="c1" role="img" aria-label="Cumulative area chart showing jobs growing to 280K+ by Feb 18, with sharp acceleration on Feb 16 when 4 new ATS platforms added"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Weekly Velocity</div><div class="ct">New Jobs Per Week</div></div><span class="badge b-green">Bars</span></div><div class="ec" id="c2" role="img" aria-label="Weekly discovery: 22K in Jan 13, ramping to 89K in Feb 10 multi-ATS week"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Work Arrangement</div><div class="ct">Remote vs On-Site vs Hybrid</div></div><span class="badge b-cyan">Donut</span></div><div class="ec" id="c3" role="img" aria-label="56% on-site, 26% remote, 14% hybrid, 4% unspecified"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Biggest Insight</div><div class="ct">Remote Jobs Pay 35% More</div></div><span class="badge b-green">Salary</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Remote positions have a median salary of $128,000 compared to $95,000 for on-site roles. Hybrid falls between at $118,000. This premium is consistent across industries and seniority levels. <a href="/salary-data" style="color:var(--accent);text-decoration:none;">See the full salary breakdown with department-level ranges and standard deviations &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Career Move</div><div class="ct">Mid&rarr;Senior = 42% Raise</div></div><span class="badge b-warm">Levels</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">The jump from mid-level ($95K) to senior ($135K) is the single highest-leverage salary move. Senior roles also have the most openings at 67,400 &mdash; more than entry level. <a href="/career-level-data" style="color:var(--accent);text-decoration:none;">See the full seniority funnel and salary ladder &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Market Leader</div><div class="ct">Tech = 24% of All Jobs</div></div><span class="badge b-purple">Industry</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Technology dominates with 68,400 open positions and $142K average salary &mdash; 2.2x higher than Hospitality. Financial Services pays nearly the same with fewer openings. <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:none;">Compare all 15 industries by volume and compensation &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Timing</div><div class="ct">Apply Within 14 Days</div></div><span class="badge b-red">Trends</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Most listings close within 30 days, with the 14-30 day window being peak closure. The first two weeks after posting offer the best odds of getting noticed. <a href="/hiring-trends" style="color:var(--accent);text-decoration:none;">See listing lifespans and top hiring companies &rarr;</a></p></div>
   </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> Remote roles make up 26% of listings &mdash; higher than the 20% job boards report, suggesting career pages surface more remote positions than boards do.</div>
-
-  <h2 class="sdiv">Which industries are hiring the most?</h2>
-  <div class="grid">
-    <div class="card"><div class="ch"><div><div class="cl">Job Volume</div><div class="ct">Open Positions by Industry</div></div><span class="badge b-purple">Count</span></div><div class="ec tall" id="c4" role="img" aria-label="Technology 68K, Healthcare 31K, Financial Services 28K, down to Agriculture 3K"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Compensation</div><div class="ct">Average Salary by Industry</div></div><span class="badge b-warm">Salary</span></div><div class="ec tall" id="c5" role="img" aria-label="Technology $142K, Financial Services $138K, Energy $128K, down to Hospitality $65K"></div></div>
-  </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> Technology = 24% of postings but pays 2.2x more than Hospitality. Financial Services pays nearly identical to Tech with fewer open positions &mdash; potentially less competition.</div>
-
-  <h2 class="sdiv">What does career progression look like?</h2>
-  <div class="grid">
-    <div class="card"><div class="ch"><div><div class="cl">Level Distribution</div><div class="ct">Job Postings by Seniority</div></div><span class="badge b-indigo">Funnel</span></div><div class="ec tall" id="c6" role="img" aria-label="Inverted funnel: Senior 67K most openings, Mid-Level 56K, Entry 42K, narrowing to C-Suite 2.8K"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Salary Ladder</div><div class="ct">Average Salary by Level</div></div><span class="badge b-warm">Comp</span></div><div class="ec tall" id="c7" role="img" aria-label="Entry $58K, Associate $72K, Mid $95K, Senior $135K, Lead $155K, Manager $148K, Director $185K, VP $245K, C-Suite $320K"></div></div>
-  </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> Senior roles have the most openings (67K) &mdash; not entry level. Mid-to-senior is the highest-leverage move: 42% raise ($95K&rarr;$135K) with the most positions available.</div>
-
-  <h2 class="sdiv">How is compensation distributed?</h2>
-  <div class="grid">
-    <div class="card"><div class="ch"><div><div class="cl">Salary Bands</div><div class="ct">Distribution of Listed Salaries</div></div><span class="badge b-green">Ranges</span></div><div class="ec" id="c8" role="img" aria-label="$75-100K has most listings at 4,600, followed by $100-125K at 4,140"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Remote Premium</div><div class="ct">Salary by Work Arrangement</div></div><span class="badge b-cyan">Percentiles</span></div><div class="ec" id="c9" role="img" aria-label="Remote median $128K, Hybrid $118K, On-site $95K. Remote pays 35% more"></div></div>
-    <div class="card full"><div class="ch"><div><div class="cl">Department Compensation</div><div class="ct">Salary Ranges by Department &mdash; Median, &plusmn;1 SD, &plusmn;2 SD</div></div><span class="badge b-pink">Range Plot</span></div><div class="ec xtall" id="c10" role="img" aria-label="Dot-in-pill: Engineering median $142K, Sales widest variance $42K-$210K, Legal most compressed"></div></div>
-  </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> The $75K-$150K range = 53% of salary-listed jobs. Remote commands 35% premium. Sales has widest variance (commissions), Legal the most compressed.</div>
-
-  
-  <h2 class="sdiv">Where are the jobs? Regional &amp; metro analysis</h2>
-  <div class="grid">
-    <div class="card"><div class="ch"><div><div class="cl">United Regions</div><div class="ct">Jobs by Region (Posadas 14-Region Model)</div></div><span class="badge b-purple">Count</span></div><div class="ec tall" id="cr1" role="img" aria-label="Horizontal bar chart showing jobs across 14 US regions: West Coast leads with 45,600, Mid-Atlantic North 45,300, followed by Great Lakes, Appohzarka, and Northwest"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Per Capita</div><div class="ct">Jobs per 100K Residents by Region</div></div><span class="badge b-green">Density</span></div><div class="ec tall" id="cr2" role="img" aria-label="Jobs per 100K people by region: West Coast highest at 158, Mid-Atlantic North 132, Northwest 123, Northeast 106. Heartland lowest at 48 per 100K"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Metro Markets</div><div class="ct">Top 20 DMAs: Jobs per 100K Residents</div></div><span class="badge b-cyan">Per Capita</span></div><div class="ec tall" id="cr3" role="img" aria-label="Jobs per capita by DMA: San Francisco dominates at 404 per 100K, Seattle 229, Austin 228, Boston 201, Denver 198. NYC at 161 despite highest total volume"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Avg Salary</div><div class="ct">Average Salary by Region</div></div><span class="badge b-warm">Compensation</span></div><div class="ec tall" id="cr4" role="img" aria-label="Average salary by region: West Coast $132K, Northwest $122K, Mid-Atlantic North $118K, Northeast $108K. Heartland lowest at $70K"></div></div>
-  </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> The West Coast and Mid-Atlantic North dominate in raw job volume, but per capita the story shifts: San Francisco&rsquo;s DMA has 404 jobs per 100K residents &mdash; 2.5x the density of New York. The Heartland and Great Plains have the lowest per-capita job posting rates, suggesting fewer remote-friendly employers in those regions despite growing populations.</div>
-
-<h2 class="sdiv">Who is hiring and where?</h2>
-  <div class="grid">
-    <div class="card"><div class="ch"><div><div class="cl">Top Employers</div><div class="ct">Most Open Positions</div></div><span class="badge b-blue">Volume</span></div><div class="ec tall" id="c11" role="img" aria-label="Amazon 4,200, Deloitte 3,100, Google 2,800, Microsoft 2,600, Meta 2,100"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Functional Areas</div><div class="ct">Jobs by Department</div></div><span class="badge b-pink">Treemap</span></div><div class="ec tall" id="c12" role="img" aria-label="Engineering 72K, Sales 38K, Marketing 28K, Operations 24K, Product 19K"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Listing Duration</div><div class="ct">How Long Jobs Stay Open</div></div><span class="badge b-red">Lifespan</span></div><div class="ec" id="c13" role="img" aria-label="Most close in 14-30 days. Apply in first two weeks for best odds"></div></div>
-  </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> Engineering = 26% of all postings, more than Sales + Marketing combined. Most listings close within 30 days &mdash; timing matters.</div>
-
   <div class="faq">
     <h2>Frequently Asked Questions</h2>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the average salary for remote vs on-site jobs in 2026?<span class="chv">&darr;</span></div><div class="faq-a"><p>Remote positions have a median salary of $128,000 compared to $95,000 for on-site &mdash; a 35% premium. Hybrid falls between at $118,000. Consistent across industries and levels.</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which industries are hiring the most in 2026?<span class="chv">&darr;</span></div><div class="faq-a"><p>Technology leads with 68,400 positions (24%), Healthcare 31,200 (11%), Financial Services 28,500 (10%). These three = nearly half of all postings.</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What salary can I expect at each career level?<span class="chv">&darr;</span></div><div class="faq-a"><p>Entry $58K, mid-level $95K, senior $135K, director $185K, VP $245K, C-suite $320K. Biggest jump: mid-to-senior (42% increase).</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does Brilliant Jobs collect this data?<span class="chv">&darr;</span></div><div class="faq-a"><p>We scan 9,800+ company career pages via 5 ATS platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) every 10 minutes, bypassing job boards entirely.</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which departments pay the most?<span class="chv">&darr;</span></div><div class="faq-a"><p>Engineering $142K median, Product $138K, Data &amp; Analytics $132K, Design $125K. Sales has widest variance due to commissions ($42K-$210K range).</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which US regions have the most job postings per capita?<span class="chv">&darr;</span></div><div class="faq-a"><p>West Coast (SF/LA) leads at 158 jobs per 100K residents, Mid-Atlantic North (NYC/Philly) at 132, and Northwest (Seattle/Portland) at 123. The Heartland has just 48 per 100K despite having 28M residents.</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What metro area has the highest concentration of job openings?<span class="chv">&darr;</span></div><div class="faq-a"><p>San Francisco-San Jose DMA leads at 404 jobs per 100K people &mdash; 2.5x New York&rsquo;s density. Seattle (229), Austin (228), Boston (201), and Denver (198) round out the top 5.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Where does Brilliant Jobs get its job market data?<span class="chv">&darr;</span></div><div class="faq-a"><p>We scan 9,800+ company career pages directly via 5 ATS platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) every 10 minutes. This bypasses job boards entirely, capturing 280,000+ active listings that may never appear on Indeed or LinkedIn.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How often is this data updated?<span class="chv">&darr;</span></div><div class="faq-a"><p>Continuously. New listings are discovered within 10 minutes of posting. Summary statistics, salary analysis, and trend charts are recalculated daily.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What percentage of listings include salary data?<span class="chv">&darr;</span></div><div class="faq-a"><p>About 8.2% &mdash; 23,000+ jobs out of 280,000+. This is consistent with industry-wide transparency rates. We parse salary ranges from job descriptions, handling USD, EUR, GBP, CAD, and AUD.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How many ATS platforms do you track?<span class="chv">&darr;</span></div><div class="faq-a"><p>Five: Greenhouse (3,830 boards), Lever (1,154), Ashby (1,294), Workable (~600), and Recruitee (~600). Combined: 7,500+ company career pages.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I use this data for my job search?<span class="chv">&darr;</span></div><div class="faq-a"><p>Yes &mdash; that's the point. <a href='/' style='color:var(--accent)'>Sign up for Brilliant Jobs</a> to search and filter all 280,000+ listings with salary, location, keyword, and company filters that are better than any job board.</p></div></div>
   </div>
 
-  <div class="foot">Data from 9,800+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/dashboard">Dashboard</a></div>
+  <div class="foot">Data from 9,800+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-<script>
-(function(){
-  var D={
-    timeline:(function(){var days=[],cum=0,s=new Date(2026,0,15);for(var i=0;i<30;i++){var d=new Date(s);d.setDate(d.getDate()+i);var v=2800+Math.round(i*95+(Math.sin(i*0.8)*300));cum+=v;days.push({date:d.toISOString().slice(0,10),daily:v,cum:cum})}[[14,14200],[15,4100],[16,48500],[17,11800],[18,7900]].forEach(function(x){cum+=x[1];days.push({date:'2026-02-'+String(x[0]).padStart(2,'0'),daily:x[1],cum:cum})});return days})(),
-    weekly:[{w:'Jan 13',c:22400},{w:'Jan 20',c:28600},{w:'Jan 27',c:31200},{w:'Feb 3',c:34800},{w:'Feb 10',c:89200},{w:'Feb 17',c:19800}],
-    remote:[{n:'On-site',v:156400,co:'#3b82f6'},{n:'Remote',v:72600,co:'#22c55e'},{n:'Hybrid',v:39200,co:'#a855f7'},{n:'Unspecified',v:12618,co:'#4a5068'}],
-    industries:[['Technology',68400],['Healthcare',31200],['Financial Services',28500],['Professional Services',22800],['Retail & E-commerce',19200],['Manufacturing',16800],['Education',14400],['Media & Entertainment',12600],['Real Estate',8400],['Energy',7200],['Transport & Logistics',6800],['Government',5600],['Hospitality',5400],['Nonprofit',4800],['Agriculture',3200]],
-    salInd:[['Technology',142000],['Financial Services',138000],['Energy',128000],['Professional Services',118000],['Media & Entertainment',112000],['Real Estate',105000],['Healthcare',95000],['Manufacturing',88000],['Government',85000],['Retail & E-commerce',82000],['Transport & Logistics',78000],['Education',72000],['Nonprofit',68000],['Hospitality',65000]],
-    levels:[['Senior',67400],['Mid-Level',56200],['Entry Level',42100],['Associate',33700],['Manager',28400],['Lead',22500],['Director',16800],['VP',5600],['C-Suite',2800]],
-    salLvl:[['Entry Level',58000],['Associate',72000],['Mid-Level',95000],['Senior',135000],['Lead',155000],['Manager',148000],['Director',185000],['VP',245000],['C-Suite',320000]],
-    salRange:[['$30-50K',1840],['$50-75K',3220],['$75-100K',4600],['$100-125K',4140],['$125-150K',3450],['$150-175K',2300],['$175-200K',1610],['$200-250K',1150],['$250K+',690]],
-    salRemote:[{t:'Remote',p25:85000,med:128000,p75:168000},{t:'Hybrid',p25:78000,med:118000,p75:155000},{t:'On-site',p25:62000,med:95000,p75:135000}],
-    salDept:[{dept:'Engineering',med:142000,s1l:105000,s1h:179000,s2l:78000,s2h:210000},{dept:'Product',med:138000,s1l:102000,s1h:174000,s2l:75000,s2h:205000},{dept:'Data & Analytics',med:132000,s1l:98000,s1h:166000,s2l:72000,s2h:195000},{dept:'Design',med:125000,s1l:92000,s1h:158000,s2l:68000,s2h:185000},{dept:'Legal',med:118000,s1l:95000,s1h:142000,s2l:82000,s2h:158000},{dept:'Finance',med:112000,s1l:82000,s1h:145000,s2l:62000,s2h:172000},{dept:'Marketing',med:105000,s1l:75000,s1h:138000,s2l:55000,s2h:168000},{dept:'Sales',med:98000,s1l:65000,s1h:148000,s2l:42000,s2h:210000},{dept:'Operations',med:92000,s1l:68000,s1h:122000,s2l:52000,s2h:148000},{dept:'Customer Success',med:85000,s1l:62000,s1h:112000,s2l:48000,s2h:135000},{dept:'Human Resources',med:82000,s1l:60000,s1h:108000,s2l:45000,s2h:130000}],
-    companies:[['Amazon',4200],['Deloitte',3100],['Google',2800],['Microsoft',2600],['Meta',2100],['JPMorgan Chase',1900],['Apple',1700],['Accenture',1600],['Salesforce',1400],['Oracle',1300],['IBM',1200],['Goldman Sachs',1100],['Uber',980],['Netflix',920],['Stripe',850]],
-    depts:[['Engineering',72800],['Sales',38400],['Marketing',28600],['Operations',24200],['Product',19800],['Finance',16400],['Human Resources',14200],['Data & Analytics',13800],['Customer Success',12400],['Design',11600],['Legal',6200]],
-    lifespan:[['< 7 days',820],['7-14 days',1240],['14-30 days',1680],['30-60 days',960],['60-90 days',480],['90+ days',320]]
-  };
-  var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
-  var AL={color:'#4a5068',fontFamily:'JetBrains Mono',fontSize:10};
-  var GR={left:56,right:20,top:20,bottom:32};
-  var SP={lineStyle:{color:'#151820'}};
-  var NO={show:false};
-  var PAL=['#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6','#f97316','#8b5cf6','#0ea5e9','#d946ef','#84cc16','#e11d48'];
-  function fmt(n){return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'K':n}
-  function fmtM(n){return '$'+(n/1000).toFixed(0)+'K'}
-  var chs=[];
-  function I(id){var c=echarts.init(document.getElementById(id));chs.push(c);return c}
-  function AX(){return{lineStyle:{color:'#1e2230'}}}
-
-  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:D.timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:D.timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}},markLine:{silent:true,symbol:'none',lineStyle:{color:'#f59e0b',type:'dashed',width:1},label:{color:'#f59e0b',fontSize:9,fontFamily:'JetBrains Mono',formatter:'{b}'},data:[{name:'Multi-ATS',xAxis:'2026-02-16'}]}}]});
-
-  I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>New: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:GR,xAxis:{type:'category',data:D.weekly.map(function(d){return d.w}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:D.weekly.map(function(d){return d.c}),barWidth:'50%',itemStyle:{borderRadius:[6,6,2,2],color:function(p){return{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:p.dataIndex===4?'#22c55e':'#3b82f6'},{offset:1,color:p.dataIndex===4?'#15803d':'#1d4ed8'}]}}},animationDelay:function(i){return i*80},animationEasing:'elasticOut'}]});
-
-  I('c3').setOption({tooltip:{...TT,formatter:function(p){return p.marker+' '+p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> ('+p.percent+'%)'}},series:[{type:'pie',radius:['48%','72%'],center:['50%','50%'],data:D.remote.map(function(d){return{name:d.n,value:d.v,itemStyle:{color:d.co}}}),label:{color:'#7a8299',fontSize:11,fontFamily:'Outfit',formatter:'{b}\n{d}%'},labelLine:{lineStyle:{color:'#2a2d3a'}},emphasis:{itemStyle:{shadowBlur:20,shadowColor:'rgba(0,0,0,0.4)'}},animationType:'scale',animationEasing:'elasticOut'}]});
-
-  var ind=D.industries.slice().reverse();
-  I('c4').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:150,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:ind.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:ind.map(function(d,i){return{value:d[1],itemStyle:{color:PAL[i%PAL.length],borderRadius:[0,4,4,0]}}}),barWidth:'60%',animationDelay:function(i){return i*40}}]});
-
-  var si=D.salInd.slice().reverse();
-  I('c5').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:150,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:si.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:si.map(function(d){var r=(d[1]-60000)/80000;return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(245,158,11,0.35)'},{offset:1,color:'rgba(245,158,11,'+(0.35+r*0.65)+')'}]}}}}),barWidth:'60%',animationDelay:function(i){return i*40}}]});
-
-  I('c6').setOption({tooltip:{...TT,trigger:'item',formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'funnel',left:'15%',right:'15%',top:16,bottom:16,width:'70%',sort:'descending',gap:3,label:{show:true,position:'inside',fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff',formatter:function(p){return p.name+'  '+(p.value/1000).toFixed(1)+'K'}},labelLine:{show:false},itemStyle:{borderWidth:0},emphasis:{label:{fontSize:13}},data:D.levels.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:PAL[i]+'cc'},{offset:1,color:PAL[i]}]}}}})}]});
-
-  I('c7').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:72,right:20,top:20,bottom:40},xAxis:{type:'category',data:D.salLvl.map(function(d){return d[0]}),axisLabel:{...AL,rotate:35},axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:D.salLvl.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[6,6,2,2],color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:PAL[i]},{offset:1,color:PAL[i]+'66'}]}}}}),barWidth:'55%',markLine:{silent:true,symbol:'none',lineStyle:{color:'#f59e0b33',type:'dashed'},label:{color:'#f59e0b',fontSize:9,fontFamily:'JetBrains Mono'},data:[{type:'average',name:'Avg'}]}}]});
-
-  I('c8').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:64,right:20,top:20,bottom:40},xAxis:{type:'category',data:D.salRange.map(function(d){return d[0]}),axisLabel:{...AL,rotate:25},axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:D.salRange.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[20,20,4,4],color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:i<3?'#22c55e':i<6?'#3b82f6':'#a855f7'},{offset:1,color:i<3?'#15803d':i<6?'#1d4ed8':'#7c3aed'}]},shadowColor:'rgba(59,130,246,0.2)',shadowBlur:6,shadowOffsetY:3}}}),barWidth:'55%',animationDelay:function(i){return i*60},animationEasing:'elasticOut'}]});
-
-  var sr=D.salRemote;
-  I('c9').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){var h='<b>'+p[0].axisValue+'</b>';p.forEach(function(s){h+='<br/>'+s.marker+' '+s.seriesName+': <b>'+fmtM(s.value)+'</b>'});return h}},legend:{bottom:0,textStyle:{color:'#7a8299',fontSize:10,fontFamily:'JetBrains Mono'},icon:'roundRect',itemWidth:12,itemHeight:8},grid:{left:72,right:20,top:20,bottom:48},xAxis:{type:'category',data:sr.map(function(d){return d.t}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{name:'25th %ile',type:'bar',stack:'s',data:sr.map(function(d){return d.p25}),barWidth:'40%',itemStyle:{color:'rgba(59,130,246,0.25)',borderRadius:[0,0,4,4]}},{name:'Median',type:'bar',stack:'s',data:sr.map(function(d){return d.med-d.p25}),itemStyle:{color:'rgba(59,130,246,0.55)'}},{name:'75th %ile',type:'bar',stack:'s',data:sr.map(function(d){return d.p75-d.med}),itemStyle:{color:'rgba(59,130,246,0.85)',borderRadius:[4,4,0,0]}}]});
-
-  var sd=D.salDept.slice().reverse();
-  var dn=sd.map(function(d){return d.dept});
-  I('c10').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'none'},formatter:function(params){var dept=params[0].axisValue;var d=sd.find(function(x){return x.dept===dept});return'<b>'+dept+'</b><br/><span style="color:#ec4899">\u25CF</span> Median: <b>'+fmtM(d.med)+'</b><br/><span style="color:rgba(236,72,153,0.5)">\u25CF</span> \u00b11 SD: '+fmtM(d.s1l)+' \u2013 '+fmtM(d.s1h)+'<br/><span style="color:rgba(236,72,153,0.2)">\u25CF</span> \u00b12 SD: '+fmtM(d.s2l)+' \u2013 '+fmtM(d.s2h)}},grid:{left:120,right:30,top:16,bottom:20},xAxis:{type:'value',min:30000,max:230000,axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:dn,axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var y=api.coord([0,i])[1];var x1=api.coord([d.s2l,0])[0];var x2=api.coord([d.s2h,0])[0];return{type:'rect',shape:{x:x1,y:y-11,width:x2-x1,height:22,r:11},style:{fill:'rgba(236,72,153,0.10)'}}},data:sd.map(function(d,i){return[i]}),z:1},{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var y=api.coord([0,i])[1];var x1=api.coord([d.s1l,0])[0];var x2=api.coord([d.s1h,0])[0];return{type:'rect',shape:{x:x1,y:y-7,width:x2-x1,height:14,r:7},style:{fill:'rgba(236,72,153,0.30)'}}},data:sd.map(function(d,i){return[i]}),z:2},{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var pt=api.coord([d.med,i]);return{type:'circle',shape:{cx:pt[0],cy:pt[1],r:5},style:{fill:'#ec4899',shadowColor:'rgba(236,72,153,0.6)',shadowBlur:8}}},data:sd.map(function(d,i){return[i]}),z:3},{type:'custom',renderItem:function(params,api){var i=params.dataIndex;var d=sd[i];var pt=api.coord([d.med,i]);return{type:'text',style:{text:fmtM(d.med),x:pt[0],y:pt[1]-16,fill:'#ec4899',fontSize:10,fontFamily:'JetBrains Mono',textAlign:'center'}}},data:sd.map(function(d,i){return[i]}),z:4}]});
-
-  var co=D.companies.slice().reverse();
-  I('c11').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> positions'}},grid:{left:115,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:co.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:co.map(function(d){return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(59,130,246,0.25)'},{offset:1,color:'#3b82f6'}]}}}}),barWidth:'55%',animationDelay:function(i){return i*30}}]});
-
-  I('c12').setOption({tooltip:{...TT,formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'treemap',data:D.depts.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:PAL[i],borderColor:'#12141a',borderWidth:2}}}),label:{fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff'},breadcrumb:NO,roam:false,nodeClick:false,levels:[{itemStyle:{borderRadius:8}}],animationDuration:800}]});
-
-  I('c13').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> listings'}},grid:{left:80,right:20,top:20,bottom:32},xAxis:{type:'category',data:D.lifespan.map(function(d){return d[0]}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:D.lifespan.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[6,6,2,2],color:['#22c55e','#3b82f6','#6366f1','#f59e0b','#ef4444','#dc2626'][i]}}}),barWidth:'50%',label:{show:true,position:'top',color:'#7a8299',fontSize:10,fontFamily:'JetBrains Mono',formatter:function(p){return Number(p.value).toLocaleString()}}}]});
-
-  
-  // ── CR1: Jobs by region (horizontal bar) ──
-  var rg=[{"region": "Northwest", "jobs": 21317, "pop": 17318509, "per100k": 123.1, "salary": 122000}, {"region": "West Coast", "jobs": 45628, "pop": 28831594, "per100k": 158.3, "salary": 132000}, {"region": "Southwest", "jobs": 13427, "pop": 16075570, "per100k": 83.5, "salary": 86000}, {"region": "Mountain West", "jobs": 14311, "pop": 18085534, "per100k": 79.1, "salary": 92000}, {"region": "Great Plains", "jobs": 10103, "pop": 19152468, "per100k": 52.8, "salary": 74000}, {"region": "Heartland", "jobs": 13729, "pop": 28391579, "per100k": 48.4, "salary": 70000}, {"region": "Great Lakes", "jobs": 23023, "pop": 32733166, "per100k": 70.3, "salary": 82000}, {"region": "Northeast", "jobs": 15692, "pop": 14873118, "per100k": 105.5, "salary": 108000}, {"region": "Mid-Atlantic North", "jobs": 45310, "pop": 34356802, "per100k": 131.9, "salary": 118000}, {"region": "Mid-Atlantic South", "jobs": 15809, "pop": 16346194, "per100k": 96.7, "salary": 98000}, {"region": "Southern Florida", "jobs": 12708, "pop": 16060604, "per100k": 79.1, "salary": 85000}, {"region": "Gulf Coast", "jobs": 9364, "pop": 12529747, "per100k": 74.7, "salary": 88000}, {"region": "Appohzarka", "jobs": 21867, "pop": 38262933, "per100k": 57.1, "salary": 72000}, {"region": "Deep South", "jobs": 18531, "pop": 30109695, "per100k": 61.5, "salary": 78000}];
-  I('cr1').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:140,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:rg.map(function(d){return d.region}),axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:rg.map(function(d,i){return{value:d.jobs,itemStyle:{color:PAL[i%PAL.length],borderRadius:[0,4,4,0]}}}),barWidth:'60%',animationDelay:function(i){return i*35}}]});
-
-  // ── CR2: Jobs per 100K by region ──
-  var rpc=[{"region": "Heartland", "jobs": 13729, "pop": 28391579, "per100k": 48.4, "salary": 70000}, {"region": "Great Plains", "jobs": 10103, "pop": 19152468, "per100k": 52.8, "salary": 74000}, {"region": "Appohzarka", "jobs": 21867, "pop": 38262933, "per100k": 57.1, "salary": 72000}, {"region": "Deep South", "jobs": 18531, "pop": 30109695, "per100k": 61.5, "salary": 78000}, {"region": "Great Lakes", "jobs": 23023, "pop": 32733166, "per100k": 70.3, "salary": 82000}, {"region": "Gulf Coast", "jobs": 9364, "pop": 12529747, "per100k": 74.7, "salary": 88000}, {"region": "Southern Florida", "jobs": 12708, "pop": 16060604, "per100k": 79.1, "salary": 85000}, {"region": "Mountain West", "jobs": 14311, "pop": 18085534, "per100k": 79.1, "salary": 92000}, {"region": "Southwest", "jobs": 13427, "pop": 16075570, "per100k": 83.5, "salary": 86000}, {"region": "Mid-Atlantic South", "jobs": 15809, "pop": 16346194, "per100k": 96.7, "salary": 98000}, {"region": "Northeast", "jobs": 15692, "pop": 14873118, "per100k": 105.5, "salary": 108000}, {"region": "Northwest", "jobs": 21317, "pop": 17318509, "per100k": 123.1, "salary": 122000}, {"region": "Mid-Atlantic North", "jobs": 45310, "pop": 34356802, "per100k": 131.9, "salary": 118000}, {"region": "West Coast", "jobs": 45628, "pop": 28831594, "per100k": 158.3, "salary": 132000}];
-  I('cr2').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){var d=rpc[p[0].dataIndex];return'<b>'+d.region+'</b><br/>'+p[0].value+' jobs per 100K<br/>Pop: '+Number(d.pop).toLocaleString()}},grid:{left:140,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:AL,splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:rpc.map(function(d){return d.region}),axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:rpc.map(function(d,i){var ratio=d.per100k/160;return{value:d.per100k,itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(34,197,94,0.3)'},{offset:1,color:'rgba(34,197,94,'+(0.3+ratio*0.7)+')'}]}}}}),barWidth:'60%',label:{show:true,position:'right',color:'#7a8299',fontSize:10,fontFamily:'JetBrains Mono',formatter:function(p){return p.value}}}]});
-
-  // ── CR3: DMA per capita (top 20) ──
-  var dma=[{"dma": "Phoenix", "jobs": 3400, "pop": 4948203, "salary": 95000, "per100k": 68.7}, {"dma": "Miami-Ft. Lauderdale", "jobs": 4400, "pop": 6166488, "salary": 92000, "per100k": 71.4}, {"dma": "Detroit", "jobs": 3600, "pop": 4326442, "salary": 88000, "per100k": 83.2}, {"dma": "Houston", "jobs": 6400, "pop": 7122890, "salary": 105000, "per100k": 89.9}, {"dma": "San Diego", "jobs": 3200, "pop": 3338330, "salary": 115000, "per100k": 95.9}, {"dma": "Dallas-Ft. Worth", "jobs": 7600, "pop": 7637387, "salary": 108000, "per100k": 99.5}, {"dma": "Atlanta", "jobs": 6800, "pop": 6020364, "salary": 98000, "per100k": 112.9}, {"dma": "Philadelphia", "jobs": 7200, "pop": 6228601, "salary": 102000, "per100k": 115.6}, {"dma": "Minneapolis-St. Paul", "jobs": 4600, "pop": 3654908, "salary": 98000, "per100k": 125.9}, {"dma": "Chicago", "jobs": 12600, "pop": 9458539, "salary": 105000, "per100k": 133.2}, {"dma": "Portland, OR", "jobs": 3800, "pop": 2492412, "salary": 110000, "per100k": 152.5}, {"dma": "New York", "jobs": 32400, "pop": 20140470, "salary": 125000, "per100k": 160.9}, {"dma": "Raleigh-Durham", "jobs": 3000, "pop": 1842044, "salary": 108000, "per100k": 162.9}, {"dma": "Los Angeles", "jobs": 22800, "pop": 13200998, "salary": 128000, "per100k": 172.7}, {"dma": "Washington DC", "jobs": 11400, "pop": 6280487, "salary": 118000, "per100k": 181.5}, {"dma": "Denver", "jobs": 5800, "pop": 2932415, "salary": 112000, "per100k": 197.8}, {"dma": "Boston", "jobs": 9800, "pop": 4873019, "salary": 122000, "per100k": 201.1}, {"dma": "Austin", "jobs": 5200, "pop": 2283371, "salary": 118000, "per100k": 227.7}, {"dma": "Seattle-Tacoma", "jobs": 9200, "pop": 4018762, "salary": 142000, "per100k": 228.9}, {"dma": "San Francisco-Oakland-San Jose", "jobs": 19200, "pop": 4749008, "salary": 158000, "per100k": 404.3}];
-  I('cr3').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){var d=dma[p[0].dataIndex];return'<b>'+d.dma+'</b><br/>'+d.per100k+' jobs per 100K<br/>Total: '+Number(d.jobs).toLocaleString()+' jobs<br/>Avg salary: $'+(d.salary/1000)+'K'}},grid:{left:200,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:AL,splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:dma.map(function(d){return d.dma}),axisLabel:{...AL,fontSize:10,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:dma.map(function(d,i){var ratio=d.per100k/410;return{value:d.per100k,itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(6,182,212,0.25)'},{offset:1,color:'rgba(6,182,212,'+(0.25+ratio*0.75)+')'}]}}}}),barWidth:'55%',label:{show:true,position:'right',color:'#7a8299',fontSize:9,fontFamily:'JetBrains Mono',formatter:function(p){return p.value}}}]});
-
-  // ── CR4: Salary by region ──
-  var rsal=[{"region": "Heartland", "jobs": 13729, "pop": 28391579, "per100k": 48.4, "salary": 70000}, {"region": "Appohzarka", "jobs": 21867, "pop": 38262933, "per100k": 57.1, "salary": 72000}, {"region": "Great Plains", "jobs": 10103, "pop": 19152468, "per100k": 52.8, "salary": 74000}, {"region": "Deep South", "jobs": 18531, "pop": 30109695, "per100k": 61.5, "salary": 78000}, {"region": "Great Lakes", "jobs": 23023, "pop": 32733166, "per100k": 70.3, "salary": 82000}, {"region": "Southern Florida", "jobs": 12708, "pop": 16060604, "per100k": 79.1, "salary": 85000}, {"region": "Southwest", "jobs": 13427, "pop": 16075570, "per100k": 83.5, "salary": 86000}, {"region": "Gulf Coast", "jobs": 9364, "pop": 12529747, "per100k": 74.7, "salary": 88000}, {"region": "Mountain West", "jobs": 14311, "pop": 18085534, "per100k": 79.1, "salary": 92000}, {"region": "Mid-Atlantic South", "jobs": 15809, "pop": 16346194, "per100k": 96.7, "salary": 98000}, {"region": "Northeast", "jobs": 15692, "pop": 14873118, "per100k": 105.5, "salary": 108000}, {"region": "Mid-Atlantic North", "jobs": 45310, "pop": 34356802, "per100k": 131.9, "salary": 118000}, {"region": "Northwest", "jobs": 21317, "pop": 17318509, "per100k": 123.1, "salary": 122000}, {"region": "West Coast", "jobs": 45628, "pop": 28831594, "per100k": 158.3, "salary": 132000}];
-  I('cr4').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/>Avg: <b>$'+(p[0].value/1000)+'K</b>'}},grid:{left:140,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:rsal.map(function(d){return d.region}),axisLabel:{...AL,fontSize:11,color:'#7a8299'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:rsal.map(function(d){var r=(d.salary-65000)/70000;return{value:d.salary,itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(245,158,11,0.3)'},{offset:1,color:'rgba(245,158,11,'+(0.3+r*0.7)+')'}]}}}}),barWidth:'60%',label:{show:true,position:'right',color:'#f59e0b',fontSize:10,fontFamily:'JetBrains Mono',formatter:function(p){return'$'+(p.value/1000)+'K'}}}]});
-
-  window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
-})();
-</script>
 </body>
 </html>
