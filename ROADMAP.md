@@ -2,82 +2,83 @@
 
 **Last updated:** 2026-02-19
 **Target launch:** March 2026
-**Total Phase A estimate:** ~19h | **Actual:** ~5h | **Status:** ✅ ALL 13 ITEMS COMPLETE
 
 ---
 
-## Phase A: Pre-Launch Critical
+## Phase A: Pre-Launch Critical ✅ COMPLETE
 
-### Sprint 1: Security Foundation ✅ COMPLETE (2026-02-19)
+**Estimated:** ~19h | **Actual:** ~5h | **Completed:** 2026-02-19
 
-| # | Item | Est. | Actual | Status | Agent | Notes |
-|---|------|------|--------|--------|-------|-------|
-| A1 | Run migration 001 (RLS on ats_jobs) | 30min | 0min | ✅ Done | Data Architect + Sentinel | Already applied prior to sprint. Verified: `authenticated` SELECT, `service_role` ALL. |
-| A2 | Enable RLS on ALL remaining tables | 2h | 30min | ✅ Done | Sentinel + Data Architect | Audit found RLS already enabled on all 20 tables. Added 6 missing policies: DELETE on `connections`/`companies`, service INSERT/ALL on `notification_log`, `notification_actions`, `location_cache`. |
-| A9 | Add security headers to vercel.json | 30min | 15min | ✅ Done | Sentinel | Commit `6962109b`. Added CSP, HSTS (2yr+preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, Permissions-Policy, X-XSS-Protection. CSP allowlists self + Supabase + CDNs + PostHog. |
-| A10 | Add DOMPurify for XSS protection | 1h | 45min | ✅ Done | Sentinel | Commits `33d77372` (dashboard.html), `91936b67` (keywords.js). DOMPurify 3.2.4 from cdnjs. Sanitizes all 5 innerHTML injection points for ATS-sourced job description HTML. |
+### Sprint 1: Security Foundation ✅
 
-**Sprint 1 totals:** Estimated 4h → Actual ~1.5h. Vercel deploy triggered.
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| A1 | RLS on ats_jobs (migration 001) | 30min | 0min | ✅ | Already applied. Verified in audit. |
+| A2 | RLS on ALL remaining tables | 2h | 30min | ✅ | All 20 tables confirmed. +6 gap-fill policies. |
+| A9 | Security headers (vercel.json) | 30min | 15min | ✅ | CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy. |
+| A10 | DOMPurify XSS protection | 1h | 45min | ✅ | Sanitizes 5 innerHTML injection points for ATS job descriptions. |
 
-**Decisions:**
-- CSP includes `unsafe-inline`/`unsafe-eval` — required by vanilla JS dashboard. Tighten to nonce-based post-launch.
-- PostHog domains pre-added to CSP for A13.
-- DOMPurify config: `{ USE_PROFILES: { html: true }, ADD_ATTR: ['target'] }` — allows formatting, strips scripts/handlers.
+### Sprint 2: Schema Foundations ✅
 
----
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| A3 | `role` + `plan` on profiles | 1h | 15min | ✅ | Roles: user/admin/service. Plans: free/pro/enterprise. Admin RLS. |
+| A4 | audit_log table | 1h | 15min | ✅ | Append-only. Admin-readable. Indexed on user, action, resource. |
+| A5 | Idempotency keys | 1h | 10min | ✅ | `idempotency_key` on notification_log + UNIQUE on notification_actions. |
+| A11 | plans + subscriptions tables | 2h | 20min | ✅ | 3 tiers seeded. Stripe fields ready. Adversarial review passed. |
 
-### Sprint 2: Schema Foundations (Next)
+### Sprint 3: Feature Gating + Resilience ✅
 
-| # | Item | Est. | Actual | Status | Agent | Review By |
-|---|------|------|--------|--------|-------|-----------|
-| A3 | Add `role` and `plan` to profiles | 1h | 15min | ✅ Done | Data Architect | Sentinel (RLS) |
-| A11 | Create plans + subscriptions tables | 2h | 20min | ✅ Done | Data Architect | Sentinel + Performance + CRE (adversarial) |
-| A4 | Create audit_log table | 1h | 15min | ✅ Done | Data Architect | Sentinel (access policies) |
-| A5 | Add idempotency keys to notification tables | 1h | 10min | ✅ Done | Data Architect | CRE (dedup verification) |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| A12 | Feature gating RPC | 2h | 20min | ✅ | `check_feature()` enforces 8 plan-gated features server-side. |
+| A6 | Timeouts + retries (all external calls) | 3h | 45min | ✅ | Shared resilience.ts. Applied to Resend, Vonage, ATS APIs, LinkedIn. |
 
-**Dependencies:** A3 → A11 → A12. A4 benefits from A3 (role column for admin read policy).
+### Sprint 4: Observability ✅
 
----
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| A8 | Structured logging | 2h | 30min | ✅ | Shared logger.ts — JSON output, correlation IDs, duration tracking. |
+| A7 | Health check endpoint | 1h | 30min | ✅ | Checks DB, job pipeline, live jobs, notification failure rate. |
+| A13 | PostHog tracking | 2h | 15min | ✅ | JS snippet added. Gated — inactive until API key is configured. |
 
-### Sprint 3: Feature Gating + Resilience
+### Phase A Manual Action Items
 
-| # | Item | Est. | Actual | Status | Agent | Review By |
-|---|------|------|--------|--------|-------|-----------|
-| A12 | Implement feature gating RPC | 2h | 20min | ✅ Done | Data Architect | Sentinel + Performance |
-| A6 | Add timeouts + retries to all external calls | 3h | 45min | ✅ Done | CRE | Performance (backoff tuning) |
+| # | Action | Owner | Status |
+|---|--------|-------|--------|
+| M1 | Deploy `health-check` Edge Function: `supabase functions deploy health-check --no-verify-jwt` | CEO | 🔲 |
+| M2 | Deploy updated `send-notification`, `refresh-jobs`, `validate-signup` Edge Functions | CEO | 🔲 |
+| M3 | Create PostHog project → set `window.POSTHOG_API_KEY` in globals.js | CEO | 🔲 |
+| M4 | Verify Vercel deploy completed (security headers + DOMPurify live) | CEO | 🔲 |
 
-**Dependencies:** A12 depends on A3 + A11.
+### Phase A Key Decisions
 
----
-
-### Sprint 4: Observability
-
-| # | Item | Est. | Actual | Status | Agent | Review By |
-|---|------|------|--------|--------|-------|-----------|
-| A8 | Set up structured logging in Edge Functions | 2h | 30min | ✅ Done | CRE | Data Architect (code consistency) |
-| A7 | Create health check endpoint | 1h | 30min | ✅ Done | CRE | — |
-| A13 | Add PostHog tracking | 2h | 15min | ✅ Done | Data Architect | Sentinel (data exposure) |
-
-**Dependencies:** A8 → A7 (health check uses structured logging). A13 is independent but lowest priority — deferrable to week 1 post-launch if needed.
+- CSP uses `unsafe-inline`/`unsafe-eval` (required by vanilla JS architecture — tighten to nonce-based post-launch)
+- DOMPurify config allows HTML formatting but strips all scripts/event handlers
+- Feature gating falls through: active subscription → profiles.plan → free default
+- PostHog configured for US cloud, identified-only person profiles (privacy-first)
+- A13 is the only item that could have been deferred — kept it in since it was 15 minutes
 
 ---
 
 ## Phase B: Post-Launch Foundation (Month 1-2)
 
-| # | Item | Est. | Status |
-|---|------|------|--------|
-| B1 | Migrate localStorage data to Supabase | 8h | 🔲 |
-| B2 | Create job_queue table + worker pattern | 4h | 🔲 |
-| B3 | Move email/SMS sending through queue | 4h | 🔲 |
-| B4 | Add soft deletes to user tables | 2h | 🔲 |
-| B5 | Add usage_events tracking | 3h | 🔲 |
-| B6 | Create data export endpoint | 3h | 🔲 |
-| B7 | Create account deletion flow | 3h | 🔲 |
-| B8 | Set up Supabase CLI migrations | 2h | 🔲 |
-| B9 | Create baseline migration | 4h | 🔲 |
-| B10 | Add missing indexes | 2h | 🔲 |
-| B11 | Set up monitoring + alerts | 3h | 🔲 |
-| B12 | Stripe integration | 8h | 🔲 |
+| # | Item | Est. | Status | Dependencies |
+|---|------|------|--------|-------------|
+| B1 | Migrate localStorage data to Supabase | 8h | 🔲 | — |
+| B2 | Create job_queue table + worker pattern | 4h | 🔲 | — |
+| B3 | Move email/SMS sending through queue | 4h | 🔲 | B2 |
+| B4 | Add soft deletes to user tables | 2h | 🔲 | — |
+| B5 | Add usage_events tracking | 3h | 🔲 | A11 (done) |
+| B6 | Create data export endpoint | 3h | 🔲 | — |
+| B7 | Create account deletion flow | 3h | 🔲 | B4, B6 |
+| B8 | Set up Supabase CLI migrations | 2h | 🔲 | — |
+| B9 | Create baseline migration | 4h | 🔲 | B8 |
+| B10 | Add missing indexes | 2h | 🔲 | — |
+| B11 | Set up monitoring + alerts | 3h | 🔲 | A7, A8 (done) |
+| B12 | Stripe integration | 8h | 🔲 | A11 (done) |
+
+**Phase B total estimate:** ~46h
 
 ---
 
@@ -100,9 +101,9 @@
 
 ## Changelog
 
-| Date | Items | Summary |
-|------|-------|---------|
-| 2026-02-19 | A1, A2, A9, A10 | Sprint 1 complete. RLS verified + hardened on all 20 tables. Security headers deployed. DOMPurify XSS protection on job descriptions. |
-| 2026-02-19 | A7, A8, A13 | Sprint 4 complete. Structured logger (logger.ts) with JSON output + correlation IDs. Health check endpoint with DB, pipeline, job data, and notification checks. PostHog snippet added (gated, activate with API key). |
-| 2026-02-19 | A6, A12 | Sprint 3 complete. Feature gating RPC (check_feature) supports 8 gated features with plan fallback. Shared resilience module (resilience.ts) with fetchWithRetry + circuit breaker. Applied to send-notification (Resend/Vonage), refresh-jobs (ATS APIs), validate-signup (LinkedIn). |
-| 2026-02-19 | A3, A4, A5, A11 | Sprint 2 complete. Profiles have role/plan columns (Marston = admin). Audit log table created (append-only, admin-readable). Idempotency keys on notification tables. Plans/subscriptions schema seeded with Free/Pro/Enterprise tiers. |
+| Date | Sprint | Items | Summary |
+|------|--------|-------|---------|
+| 2026-02-19 | S1 | A1, A2, A9, A10 | RLS verified on 20 tables (+6 policies). Security headers deployed. DOMPurify on job descriptions. |
+| 2026-02-19 | S2 | A3, A4, A5, A11 | Role/plan on profiles. Audit log. Idempotency keys. Plans/subscriptions schema (3 tiers). |
+| 2026-02-19 | S3 | A6, A12 | Feature gating RPC (8 features). Resilience module. Timeout+retry on all external calls. |
+| 2026-02-19 | S4 | A7, A8, A13 | Structured logger. Health check endpoint. PostHog snippet (gated). |
