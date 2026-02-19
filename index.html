@@ -1024,15 +1024,30 @@
     </div>
   </div>
 
-  <script src="/js/vendor/supabase.min.js" defer></script>
   <script>
 document.addEventListener('DOMContentLoaded', function() {
     // ============================================================
-    // SUPABASE
+    // SUPABASE — LAZY LOADED
     // ============================================================
     const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let sb = null;
+    let _sbLoading = null;
+    function loadSupabase() {
+      if (sb) return Promise.resolve(sb);
+      if (_sbLoading) return _sbLoading;
+      _sbLoading = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = '/js/vendor/supabase.min.js';
+        s.onload = () => {
+          sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          resolve(sb);
+        };
+        s.onerror = () => reject(new Error('Failed to load Supabase'));
+        document.head.appendChild(s);
+      });
+      return _sbLoading;
+    }
 
     const $ = s => document.querySelector(s);
     const $$ = s => document.querySelectorAll(s);
