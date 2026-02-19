@@ -30,10 +30,10 @@
 
 | # | Item | Est. | Actual | Status | Agent | Review By |
 |---|------|------|--------|--------|-------|-----------|
-| A3 | Add `role` and `plan` to profiles | 1h | — | 🔲 Queued | Data Architect | Sentinel (RLS) |
-| A11 | Create plans + subscriptions tables | 2h | — | 🔲 Queued | Data Architect | Sentinel + Performance + CRE (adversarial) |
-| A4 | Create audit_log table | 1h | — | 🔲 Queued | Data Architect | Sentinel (access policies) |
-| A5 | Add idempotency keys to notification tables | 1h | — | 🔲 Queued | Data Architect | CRE (dedup verification) |
+| A3 | Add `role` and `plan` to profiles | 1h | 15min | ✅ Done | Data Architect | Sentinel (RLS) |
+| A11 | Create plans + subscriptions tables | 2h | 20min | ✅ Done | Data Architect | Sentinel + Performance + CRE (adversarial) |
+| A4 | Create audit_log table | 1h | 15min | ✅ Done | Data Architect | Sentinel (access policies) |
+| A5 | Add idempotency keys to notification tables | 1h | 10min | ✅ Done | Data Architect | CRE (dedup verification) |
 
 **Dependencies:** A3 → A11 → A12. A4 benefits from A3 (role column for admin read policy).
 
@@ -103,3 +103,4 @@
 | Date | Items | Summary |
 |------|-------|---------|
 | 2026-02-19 | A1, A2, A9, A10 | Sprint 1 complete. RLS verified + hardened on all 20 tables. Security headers deployed. DOMPurify XSS protection on job descriptions. |
+| 2026-02-19 | A3, A4, A5, A11 | Sprint 2 complete. Profiles have role/plan columns (Marston = admin). Audit log table created (append-only, admin-readable). Idempotency keys on notification tables. Plans/subscriptions schema seeded with Free/Pro/Enterprise tiers. |
