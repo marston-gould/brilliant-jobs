@@ -473,7 +473,7 @@
       .hero h1 { font-size: 32px; }
       .hero-sub { font-size: 16px; }
       .section { padding: 48px 20px; }
-      .data-stats-grid { grid-template-columns: 1fr !important; }
+      .data-stats-grid { grid-template-columns: 1fr 1fr !important; }
       .benefit-grid, .pricing-grid { grid-template-columns: 1fr; }
       .modal { margin: 16px; }
       .stats-row { gap: 20px; }
@@ -822,28 +822,37 @@
   <section class="section fade-up" id="data">
     <div class="section-label">Market Intelligence</div>
     <h2>Real data from real career pages.<br>Not job board guesswork.</h2>
-    <p class="section-desc">We scan 9,800+ company career pages every day. Here's what the data shows — salary trends, hiring volume by industry, and which seniority levels have the most open positions.</p>
+    <p class="section-desc">We scan 9,800+ company career pages every day and publish what we find. Salary trends, hiring volume, seniority distribution &mdash; all from the source.</p>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:32px 0;" class="data-stats-grid">
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;">$128K</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Remote median salary</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0;" class="data-stats-grid">
+      <a href="/salary-data" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(59,130,246,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;">$128K</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Remote median salary</div>
         <div style="font-size:11px;color:var(--green);margin-top:2px;">+35% vs on-site</div>
-      </div>
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;">67.4K</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Senior-level openings</div>
-        <div style="font-size:11px;color:var(--green);margin-top:2px;">Most of any level</div>
-      </div>
-      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;color:var(--warm);font-family:'JetBrains Mono',monospace;">42%</div>
-        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Mid→Senior salary jump</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Salary Data &rarr;</div>
+      </a>
+      <a href="/hiring-trends" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(34,197,94,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;">280K+</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Active job listings</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">Across 9,800+ companies</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Hiring Trends &rarr;</div>
+      </a>
+      <a href="/jobs-by-industry" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(168,85,247,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--purple);font-family:'JetBrains Mono',monospace;">68.4K</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Tech industry jobs</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">24% of all listings</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Industry Data &rarr;</div>
+      </a>
+      <a href="/career-level-data" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(245,158,11,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--warm);font-family:'JetBrains Mono',monospace;">42%</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Mid&rarr;Senior salary jump</div>
         <div style="font-size:11px;color:var(--green);margin-top:2px;">Highest-leverage move</div>
-      </div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Career Levels &rarr;</div>
+      </a>
     </div>
 
-    <p style="text-align:center;margin-top:24px;">
-      <a href="/job-market-data" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;padding:12px 28px;border-radius:10px;font-weight:600;font-size:14px;text-decoration:none;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Explore salary data, industry breakdowns, and hiring trends from 280K+ listings →</a>
+    <p style="text-align:center;margin-top:20px;">
+      <a href="/job-market-data" style="color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">View all market intelligence reports &rarr;</a>
     </p>
   </section>
 
@@ -926,6 +935,8 @@
   <footer class="site-footer">
     <div class="footer-links">
       <a href="/job-market-data">Market Data</a>
+      <a href="/salary-data">Salaries</a>
+      <a href="/hiring-trends">Hiring</a>
       <a href="/help">Help</a>
       <a href="/terms">Terms</a>
       <a href="/privacy">Privacy</a>
