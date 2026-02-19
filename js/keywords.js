@@ -1072,7 +1072,8 @@ function decodeJobContent(raw) {
     if (decoded === html) break; // stable
     html = decoded;
   }
-  return html;
+  // A10: Sanitize decoded HTML via DOMPurify to prevent XSS from ATS-sourced content
+  return typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html, { USE_PROFILES: { html: true }, ADD_ATTR: ['target'] }) : html;
 }
 
 // Job Spec Modal
@@ -1521,7 +1522,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
     if (resp.ok) {
       const data = await resp.json();
       if (data.content) {
-        bodyEl.innerHTML = data.content;
+        bodyEl.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(data.content, { USE_PROFILES: { html: true }, ADD_ATTR: ['target'] }) : data.content;
         const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
         if (cachedJob) cachedJob.content = data.content;
         return;
