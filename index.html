@@ -473,6 +473,7 @@
       .hero h1 { font-size: 32px; }
       .hero-sub { font-size: 16px; }
       .section { padding: 48px 20px; }
+      .data-stats-grid { grid-template-columns: 1fr !important; }
       .benefit-grid, .pricing-grid { grid-template-columns: 1fr; }
       .modal { margin: 16px; }
       .stats-row { gap: 20px; }
@@ -816,6 +817,36 @@
     </div>
   </section>
 
+
+  <!-- ==================== MARKET DATA ==================== -->
+  <section class="section fade-up" id="data">
+    <div class="section-label">Market Intelligence</div>
+    <h2>Real data from real career pages.<br>Not job board guesswork.</h2>
+    <p class="section-desc">We scan 9,800+ company career pages every day. Here's what the data shows — salary trends, hiring volume by industry, and which seniority levels have the most open positions.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:32px 0;" class="data-stats-grid">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;">$128K</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Remote median salary</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">+35% vs on-site</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;">67.4K</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Senior-level openings</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">Most of any level</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;color:var(--warm);font-family:'JetBrains Mono',monospace;">42%</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Mid→Senior salary jump</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">Highest-leverage move</div>
+      </div>
+    </div>
+
+    <p style="text-align:center;margin-top:24px;">
+      <a href="/test-charts" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;padding:12px 28px;border-radius:10px;font-weight:600;font-size:14px;text-decoration:none;transition:opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Explore salary data, industry breakdowns, and hiring trends from 280K+ listings →</a>
+    </p>
+  </section>
+
   <!-- ==================== PRICING ==================== -->
   <section class="section fade-up" id="pricing">
     <div class="section-label">Pricing</div>
@@ -894,6 +925,7 @@
 
   <footer class="site-footer">
     <div class="footer-links">
+      <a href="/test-charts">Market Data</a>
       <a href="/help">Help</a>
       <a href="/terms">Terms</a>
       <a href="/privacy">Privacy</a>
