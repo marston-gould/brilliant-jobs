@@ -9,13 +9,14 @@
 // Supports: Greenhouse, Lever, Ashby, Workable, Recruitee
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { fetchWithRetry, TIMEOUT_CONFIGS } from "../_shared/resilience.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const CONCURRENCY = 5;
-const FETCH_TIMEOUT = 10_000;
+// A6: Timeout config now in _shared/resilience.ts (TIMEOUT_CONFIGS.ats = 15s)
 
 // ============ TYPES ============
 
@@ -43,20 +44,11 @@ interface ParsedJob {
 
 // ============ ATS SCRAPERS ============
 
-async function fetchWithTimeout(url: string, timeout = FETCH_TIMEOUT): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const resp = await fetch(url, {
-      signal: controller.signal,
-      headers: { Accept: "application/json" },
-    });
-    clearTimeout(timer);
-    return resp;
-  } catch (e) {
-    clearTimeout(timer);
-    throw e;
-  }
+// A6: Now uses shared resilience module with retry + exponential backoff
+async function fetchBoard(url: string): Promise<Response> {
+  return fetchWithRetry(url, {
+    headers: { Accept: "application/json" },
+  }, TIMEOUT_CONFIGS.ats);
 }
 
 // --- Greenhouse ---
@@ -226,7 +218,7 @@ async function scrapeBoard(board: Board): Promise<{
   if (!config) return { slug: board.slug, source: board.source, jobs: [], error: "unknown_ats" };
 
   try {
-    const resp = await fetchWithTimeout(config.url(board.slug));
+    const resp = await fetchBoard(config.url(board.slug));
 
     if (resp.status === 404 || resp.status === 410) {
       return { slug: board.slug, source: board.source, jobs: [], error: `http_${resp.status}` };
