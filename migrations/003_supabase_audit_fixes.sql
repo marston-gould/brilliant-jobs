@@ -1,5 +1,5 @@
 -- =====================================================
--- Brilliant Jobs — Supabase Audit Fixes Migration
+-- Brilliant Jobs — Supabase Audit Fixes Migration v2
 -- Run in Supabase SQL Editor (Dashboard → SQL Editor)
 -- =====================================================
 
@@ -21,41 +21,40 @@ END;
 $$;
 
 -- =====================================================
--- PART 1: Fix function search_path (13 functions)
+-- PART 1: Fix function search_path (all public functions)
+-- Uses DO block to handle any missing/renamed functions gracefully
 -- =====================================================
-ALTER FUNCTION public.seed_notification_defaults() SET search_path = public;
-ALTER FUNCTION public.handle_new_user() SET search_path = public;
-ALTER FUNCTION public.parse_location_parts(text) SET search_path = public;
-ALTER FUNCTION public.get_landing_stats() SET search_path = public;
-ALTER FUNCTION public.trigger_normalize_country() SET search_path = public;
-ALTER FUNCTION public.geocode_jobs_from_ref() SET search_path = public;
-ALTER FUNCTION public.trigger_parse_location() SET search_path = public;
-ALTER FUNCTION public.parse_location_country(text) SET search_path = public;
-ALTER FUNCTION public.normalize_job_locations() SET search_path = public;
-
--- queue_refresh_batch may have multiple overloads - fix all
 DO $$
 DECLARE fn record;
 BEGIN
   FOR fn IN
     SELECT p.oid::regprocedure::text AS sig
-    FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'public' AND p.proname = 'queue_refresh_batch'
+    FROM pg_proc p
+    JOIN pg_namespace n ON p.pronamespace = n.oid
+    WHERE n.nspname = 'public'
+      AND p.prokind = 'f'
+      AND p.proname IN (
+        'seed_notification_defaults',
+        'queue_refresh_batch',
+        'handle_new_user',
+        'parse_location_parts',
+        'get_landing_stats',
+        'trigger_normalize_country',
+        'geocode_jobs_from_ref',
+        'trigger_parse_location',
+        'parse_location_country',
+        'jobs_within_radius',
+        'find_jobs_within_radius',
+        'normalize_job_locations',
+        'exec_sql'
+      )
   LOOP
-    EXECUTE format('ALTER FUNCTION %s SET search_path = public', fn.sig);
-  END LOOP;
-END $$;
-
--- jobs_within_radius and find_jobs_within_radius - need exact signatures
-DO $$
-DECLARE fn record;
-BEGIN
-  FOR fn IN
-    SELECT p.oid::regprocedure::text AS sig
-    FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'public' AND p.proname IN ('jobs_within_radius', 'find_jobs_within_radius')
-  LOOP
-    EXECUTE format('ALTER FUNCTION %s SET search_path = public', fn.sig);
+    BEGIN
+      EXECUTE format('ALTER FUNCTION %s SET search_path = public', fn.sig);
+      RAISE NOTICE 'Fixed: %', fn.sig;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE 'Skipped (error): % — %', fn.sig, SQLERRM;
+    END;
   END LOOP;
 END $$;
 
@@ -63,20 +62,17 @@ END $$;
 -- PART 2: Enable RLS on spatial_ref_sys (PostGIS table)
 -- =====================================================
 ALTER TABLE public.spatial_ref_sys ENABLE ROW LEVEL SECURITY;
--- No policies = no access via PostgREST API (internal DB functions still work)
 
 -- =====================================================
 -- PART 3: Move extensions out of public schema
 -- =====================================================
--- pg_trgm and pg_net can be moved safely
--- (postgis stays in public due to spatial_ref_sys dependencies)
 CREATE SCHEMA IF NOT EXISTS extensions;
 ALTER EXTENSION pg_trgm SET SCHEMA extensions;
 ALTER EXTENSION pg_net SET SCHEMA extensions;
 
 -- =====================================================
 -- PART 4: Fix RLS initplan — wrap auth.uid() in (select ...)
--- This is the big one: 20 policies across 10 tables
+-- 20 policies across 10 tables
 -- =====================================================
 
 -- profiles (3 policies)
@@ -147,9 +143,8 @@ DROP POLICY IF EXISTS "Users see own notifications" ON public.notification_log;
 CREATE POLICY "Users see own notifications" ON public.notification_log
   FOR SELECT USING (user_id = (select auth.uid()));
 
--- notification_preferences (2 policies — also fixes duplicate permissive)
+-- notification_preferences (fix duplicate + initplan)
 DROP POLICY IF EXISTS "Users read own preferences" ON public.notification_preferences;
--- ^ This was the redundant policy causing multiple_permissive_policies lint
 DROP POLICY IF EXISTS "Users manage own preferences" ON public.notification_preferences;
 CREATE POLICY "Users manage own preferences" ON public.notification_preferences
   FOR ALL USING (user_id = (select auth.uid())) WITH CHECK (user_id = (select auth.uid()));
@@ -172,24 +167,18 @@ CREATE POLICY "Users manage own resumes" ON public.resumes
 -- =====================================================
 -- PART 5: Drop duplicate index on ats_jobs
 -- =====================================================
--- Keep idx_ats_jobs_title_gin (GIN is better for text search), drop the other
 DROP INDEX IF EXISTS idx_ats_jobs_title;
 
 -- =====================================================
 -- PART 6: Add partial index for status='open' queries
--- This speeds up the #1 slow query pattern (landing page + dashboard)
+-- (Cannot use CONCURRENTLY inside a transaction block in SQL Editor,
+--  so using regular CREATE INDEX here)
 -- =====================================================
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ats_jobs_status_open
+CREATE INDEX IF NOT EXISTS idx_ats_jobs_status_open
   ON ats_jobs (updated_at DESC) WHERE status = 'open';
 
 -- =====================================================
--- DONE. Summary:
--- - 13 functions: search_path fixed
--- - 1 table: RLS enabled (spatial_ref_sys)
--- - 2 extensions: moved to 'extensions' schema
--- - 20 RLS policies: auth.uid() → (select auth.uid())
--- - 1 redundant policy dropped (notification_preferences)
--- - 1 duplicate index dropped
--- - 1 partial index added for performance
--- - 1 exec_sql helper function created for future remote SQL
+-- DONE. Run the Supabase linter again to verify.
+-- Also enable Leaked Password Protection in:
+-- Dashboard → Auth → Settings
 -- =====================================================
