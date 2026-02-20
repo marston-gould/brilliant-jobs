@@ -1276,6 +1276,10 @@ function parseSalaryFromContent(html) {
   // Decode common HTML entities that appear in salary ranges
   text = text.replace(/&mdash;/g, '—').replace(/&ndash;/g, '–').replace(/&amp;/g, '&').replace(/&#8212;/g, '—').replace(/&#8211;/g, '–');
   text = text.replace(/\s+/g, ' ');
+  // Normalize space-separated thousands to comma-separated (e.g. "$95 000" → "$95,000")
+  text = text.replace(/(\$|£|€|CA\$|AU\$|US\$)\s*(\d{1,3})((?:\s\d{3})+)(?=\.\d{2}|\s|$|[^0-9])/g, function(m, sym, first, rest) {
+    return sym + first + rest.replace(/\s/g, ',');
+  });
 
   // Early exit: skip franchise disclosure documents entirely
   if (/franchise\s+disclosure|franchisee|reporting\s+publications?|item\s+19\b/i.test(text)) {
