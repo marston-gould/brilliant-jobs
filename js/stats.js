@@ -14,11 +14,22 @@ var statsSelectedFilters = JSON.parse(localStorage.getItem('bj_stats_filters') |
 var _statsDebounce = null;
 
 // Light-theme ECharts (dark tooltips float over light cards)
+// Color tokens — single source of truth, no hardcoded hsl() in chart functions
+var _T = {
+  dim: 'hsl(228,11%,41%)',   // --text-dim equivalent
+  faint: 'hsl(225,10%,63%)', // --text-faint equivalent
+  dark: 'hsl(230,28%,14%)',  // --text equivalent
+  mono: 'JetBrains Mono',
+  sans: 'Outfit',
+};
 var STATS_THEME = {
-  tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', borderWidth: 1, textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
-  axisLabel: { color: 'hsl(228,11%,41%)', fontFamily: 'JetBrains Mono', fontSize: 10 },
+  tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', borderWidth: 1, textStyle: { color: '#e8eaf0', fontFamily: _T.sans, fontSize: 12 } },
+  axisLabel: { color: _T.dim, fontFamily: _T.mono, fontSize: 10 },
   axisLine: { lineStyle: { color: 'hsl(228,16%,91%)' } },
   splitLine: { lineStyle: { color: 'hsl(228,16%,93%)' } },
+  // Reusable label presets for chart functions
+  catLabel: { color: _T.dim, fontFamily: _T.sans, fontSize: 11 },
+  barLabel: { show: true, position: 'right', color: _T.dim, fontFamily: _T.mono, fontSize: 10 },
 };
 var STATS_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#f97316','#14b8a6','#a855f7'];
 var DEFAULT_LEVEL_HIERARCHY = [
@@ -282,7 +293,7 @@ function getOrCreateChart(id) {
 function ttip() { return { backgroundColor:STATS_THEME.tooltip.backgroundColor, borderColor:STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle:STATS_THEME.tooltip.textStyle }; }
 function truncName(s, max) { return s && s.length > max ? s.slice(0, max) + '\u2026' : s; }
 function emptyChart(chart, msg) {
-  chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:msg,fill:'hsl(228,11%,41%)',fontSize:12,fontFamily:'Outfit',textAlign:'center',lineHeight:20}}], xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+  chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:msg,fill:_T.dim,fontSize:12,fontFamily:_T.sans,textAlign:'center',lineHeight:20}}], xAxis:{show:false},yAxis:{show:false},series:[] }, true);
 }
 
 // ─── C1: Job Count Over Time — bars, last 12 weeks, continuous ───
@@ -294,7 +305,7 @@ function renderTimeline(stats) {
       formatter:function(p){ var d=new Date(p[0].name); return '<b>Week of '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'; }}, ttip()),
     grid: { top:20, right:20, bottom:30, left:50 },
     xAxis: { type:'category', data:sorted.map(function(e){return e[0];}),
-      axisLabel: { color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10, interval:0,
+      axisLabel: { color:_T.dim, fontFamily:_T.mono, fontSize:10, interval:0,
         formatter:function(v){ var d=new Date(v); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }},
       axisLine: STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
@@ -325,7 +336,7 @@ function renderSalaryDist(stats) {
       formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value+' jobs';}}, ttip()),
     grid: { top:20, right:20, bottom:35, left:45 },
     xAxis: { type:'category', data:entries.map(function(e){return e.label;}),
-      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10, rotate:entries.length>6?30:0 },
+      axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10, rotate:entries.length>6?30:0 },
       axisLine:STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
     series: [{ type:'bar', data:entries.map(function(e){return e.count;}),
@@ -364,10 +375,10 @@ function renderSeniorityBars(stats) {
     grid: { top:10, right:40, bottom:10, left:100 },
     xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
     yAxis: { type:'category', data:rev.map(function(d){return d.name;}),
-      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11 }, axisLine:{show:false}, axisTick:{show:false} },
+      axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11 }, axisLine:{show:false}, axisTick:{show:false} },
     series: [{ type:'bar', data:rev.map(function(d,i){return {value:d.value, itemStyle:{color:senColors[i%senColors.length]}}; }),
       barMaxWidth:20, itemStyle:{borderRadius:[0,3,3,0]},
-      label:{ show:true, position:'right', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10 }}],
+      label:STATS_THEME.barLabel}],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -394,11 +405,11 @@ function renderTopCompanies(stats) {
     grid: { top:10, right:30, bottom:10, left:140 },
     xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
     yAxis: { type:'category', data:rev.map(function(e){return truncName(e[0],20);}),
-      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11, width:130, overflow:'truncate' }, axisLine:{show:false}, axisTick:{show:false} },
+      axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, width:130, overflow:'truncate' }, axisLine:{show:false}, axisTick:{show:false} },
     series: [{ type:'bar', data:rev.map(function(e){return e[1];}),
       itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(99,102,241,0.3)'},{offset:1,color:'#6366f1'}]), borderRadius:[0,3,3,0] },
       barMaxWidth:20,
-      label:{ show:true, position:'right', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10 }}],
+      label:STATS_THEME.barLabel}],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -423,14 +434,14 @@ function renderWorkType(stats) {
 
   var noteText = unspecPct > 50 ? 'Location type not specified for many jobs' : '';
   chart.setOption({
-    graphic: noteText ? [{type:'text',left:'center',bottom:5,style:{text:noteText,fill:'hsl(225,10%,63%)',fontSize:10,fontFamily:'Outfit'}}] : [],
+    graphic: noteText ? [{type:'text',left:'center',bottom:5,style:{text:noteText,fill:_T.faint,fontSize:10,fontFamily:_T.sans}}] : [],
     tooltip: Object.assign({ trigger:'item',
       formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+p.percent.toFixed(1)+'%)';}}, ttip()),
-    legend: { orient:'vertical', right:10, top:'center', textStyle:{color:'hsl(228,11%,41%)',fontFamily:'Outfit',fontSize:12},
+    legend: { orient:'vertical', right:10, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:12},
       formatter:function(name){ var v=wt[name]||0; var pct=displayTotal>0?Math.round(v/displayTotal*100):0; return name+'  '+pct+'%'; }},
     series: [{ type:'pie', radius:['42%','70%'], center:['35%','50%'], avoidLabelOverlap:true,
       label:{show:false},
-      emphasis:{label:{show:true,fontSize:14,fontFamily:'Outfit',fontWeight:'600',color:'hsl(230,28%,14%)'}},
+      emphasis:{label:{show:true,fontSize:14,fontFamily:_T.sans,fontWeight:'600',color:_T.dark}},
       data:data }],
     animation:true, animationDuration:600,
   }, true);
@@ -469,16 +480,16 @@ function renderSalaryByLevel(stats) {
       formatter:function(p){ var d=ordered.filter(function(x){return x.label===p[0].name;})[0]; return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K'+(d?' ('+d.count+' data points)':''); }}, ttip()),
     grid: { top:30, right:30, bottom:40, left:60 },
     xAxis: { type:'category', data:ordered.map(function(d){return d.label;}),
-      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11, rotate:ordered.length>8?30:0 },
+      axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, rotate:ordered.length>8?30:0 },
       axisLine:STATS_THEME.axisLine },
-    yAxis: { type:'value', axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10,
+    yAxis: { type:'value', axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10,
       formatter:function(v){return '$'+Math.round(v/1000)+'K';}}, splitLine:STATS_THEME.splitLine },
     series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
       barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
-      label:{ show:ordered.length<=8, position:'top', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10,
+      label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
         formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}},
       markLine:{ silent:true, symbol:'none', lineStyle:{color:'#ef4444',type:'dashed',width:1.5},
-        data:[{yAxis:overallAvg, label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:'JetBrains Mono',fontSize:10}}]}}],
+        data:[{yAxis:overallAvg, label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:_T.mono,fontSize:10}}]}}],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -507,11 +518,11 @@ function renderIndustryBars(stats) {
     grid: { top:10, right:30, bottom:10, left:160 },
     xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
     yAxis: { type:'category', data:rev.map(function(e){return e[0];}),
-      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11, width:150, overflow:'truncate' }, axisLine:{show:false}, axisTick:{show:false} },
+      axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, width:150, overflow:'truncate' }, axisLine:{show:false}, axisTick:{show:false} },
     series: [{ type:'bar', data:rev.map(function(e){return e[1];}),
       itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(34,197,94,0.3)'},{offset:1,color:'#22c55e'}]), borderRadius:[0,3,3,0] },
       barMaxWidth:18,
-      label:{ show:true, position:'right', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10 }}],
+      label:STATS_THEME.barLabel}],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -523,8 +534,8 @@ function showStatsLoading(on) {
   if (empty) empty.style.display = 'none';
   if (on) {
     ['#sc-total','#sc-salary','#sc-senior','#sc-remote','#sc-companies'].forEach(function(s){ var e=document.querySelector(s); if(e) e.textContent='\u2014'; });
-    if (grid) grid.style.opacity = '0.4';
-  } else { if (grid) grid.style.opacity = '1'; }
+    if (grid) grid.classList.add('loading');
+  } else { if (grid) grid.classList.remove('loading'); }
 }
 function showEmptyState(reason) {
   showStatsLoading(false);
