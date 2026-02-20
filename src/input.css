@@ -420,7 +420,9 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
+      transition: opacity 0.2s;
     }
+    .stats-grid.loading { opacity: 0.4; }
     .stats-grid .full { grid-column: 1 / -1; }
     .stats-chart-card {
       background: var(--bg-card);
