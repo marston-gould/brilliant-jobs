@@ -105,8 +105,7 @@
 
   <h2 class="sdiv">U.S. Geographic Distribution</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">Where are jobs concentrated across the U.S.?</div></div><span class="badge b-green">By State</span></div>
-    <div class="timeline-bar" id="tb3"><button id="pb3">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl3"><span class="week-label" id="wl3">—</span></div>
+    <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">Where are 137,912 open jobs across the U.S.?</div></div><span class="badge b-green">By State &middot; Live Snapshot</span></div>
     <div class="ec map" id="c3"><div class="loading-msg">Loading map data&hellip;</div></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> California, Texas, New York, and Florida consistently lead in job volume. But watch for emerging hotspots in the Mountain West and Southeast as remote work redistributes hiring.</div>
@@ -120,10 +119,10 @@
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.84 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.85 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
 </div>
 </main>
-<!-- v2.84 -->
+<!-- v2.85 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
@@ -221,19 +220,15 @@ document.addEventListener('DOMContentLoaded', async function() {
   var labels = ['wl1','wl2','wl3'];
   var weekSets = [weeks1,weeks2,[]];
 
-  // ── Chart 3: US State Choropleth (SVG + D3-geo) ──
+  // ── Chart 3: US State Choropleth (SVG, snapshot of open jobs) ──
   var NAME_TO_CODE = {};
   var CODE_TO_NAME = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","DC":"District of Columbia","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming"};
   Object.keys(CODE_TO_NAME).forEach(function(c){NAME_TO_CODE[CODE_TO_NAME[c]]=c});
 
-  var weeks3 = getWeeks(stateData);
-  var stByWeek = {};
-  weeks3.forEach(function(w){stByWeek[w]={}});
-  stateData.forEach(function(d){if(stByWeek[d.week])stByWeek[d.week][d.state_code]=d.job_count});
-  var maxByWeek3 = {};
-  weeks3.forEach(function(w){maxByWeek3[w]=0});
-  stateData.forEach(function(d){if(d.job_count>maxByWeek3[d.week])maxByWeek3[d.week]=d.job_count});
-  var globalMax3 = Math.max.apply(null,stateData.map(function(d){return d.job_count}));
+  // Build state->count from snapshot data (single week = current)
+  var stateJobMap = {};
+  stateData.forEach(function(d){ stateJobMap[d.state_code] = (stateJobMap[d.state_code]||0) + d.job_count; });
+  var globalMax3 = Math.max.apply(null, Object.values(stateJobMap));
 
   // Color interpolation
   var MAP_COLORS = [[15,41,34],[6,78,59],[4,120,87],[16,185,129],[52,211,153],[110,231,183]];
@@ -249,27 +244,45 @@ document.addEventListener('DOMContentLoaded', async function() {
     return 'rgb(' + r + ',' + g + ',' + b + ')';
   }
 
-  // Build SVG map
   try {
     var geoRes = await fetch('/js/vendor/us-states.json');
     var usGeo = await geoRes.json();
 
     var mapEl = document.getElementById('c3');
-    var mapW = mapEl.clientWidth, mapH = mapEl.clientHeight;
+    var mapW = 960, mapH = 600;
 
-    // Simple Albers-like projection (manual fit for continental US)
+    // Albers-ish projection for continental US
     function project(lon, lat) {
-      // Mercator with US-centric offset, good enough for a choropleth
-      var x = (lon + 124) * (mapW / 62);
-      var y = (52 - lat) * (mapH / 27);
+      var x = (lon + 124.5) * (mapW * 0.78 / 62) + mapW * 0.05;
+      var y = (50.5 - lat) * (mapH * 0.75 / 25) + mapH * 0.02;
       return [x, y];
     }
 
-    function pathFromCoords(rings) {
+    // Alaska inset: scale down and offset to bottom-left
+    function projectAK(lon, lat) {
+      var x = (lon + 180) * 0.4 + 20;
+      var y = (72 - lat) * 1.0 + mapH * 0.72;
+      return [x, y];
+    }
+
+    // Hawaii inset: offset to bottom-left, right of Alaska
+    function projectHI(lon, lat) {
+      var x = (lon + 161) * 4.5 + 240;
+      var y = (22.5 - lat) * 4.5 + mapH * 0.82;
+      return [x, y];
+    }
+
+    function getProjection(stateName) {
+      if (stateName === 'Alaska') return projectAK;
+      if (stateName === 'Hawaii') return projectHI;
+      return project;
+    }
+
+    function pathFromCoords(rings, proj) {
       var d = '';
       rings.forEach(function(ring) {
         ring.forEach(function(pt, i) {
-          var p = project(pt[0], pt[1]);
+          var p = proj(pt[0], pt[1]);
           d += (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1);
         });
         d += 'Z';
@@ -280,46 +293,50 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Tooltip
     var tip = document.createElement('div');
     tip.style.cssText = 'position:absolute;display:none;background:rgba(12,14,20,0.96);border:1px solid #1e2230;border-radius:6px;padding:8px 12px;color:#e8eaf0;font-family:Outfit,sans-serif;font-size:12px;pointer-events:none;z-index:10;white-space:nowrap';
-    mapEl.style.position = 'relative';
-    mapEl.appendChild(tip);
 
     var svgNS = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('viewBox', '0 0 ' + mapW + ' ' + mapH);
     svg.setAttribute('width', '100%');
     svg.setAttribute('height', '100%');
+    svg.style.maxHeight = '520px';
     mapEl.innerHTML = '';
     mapEl.style.position = 'relative';
     mapEl.appendChild(svg);
     mapEl.appendChild(tip);
 
-    // Legend
-    var legend = document.createElement('div');
-    legend.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;font-family:JetBrains Mono,monospace;font-size:9px;color:#7884a8';
-    legend.innerHTML = '<span id="leg-lo">0</span><canvas id="leg-bar" width="140" height="10" style="border-radius:3px"></canvas><span id="leg-hi">—</span>';
-    mapEl.appendChild(legend);
+    // Draw inset boxes for AK and HI
+    var box = document.createElementNS(svgNS, 'rect');
+    box.setAttribute('x','10');box.setAttribute('y',String(mapH*0.70));box.setAttribute('width','220');box.setAttribute('height',String(mapH*0.28));
+    box.setAttribute('fill','none');box.setAttribute('stroke','#1e2230');box.setAttribute('stroke-width','1');box.setAttribute('rx','4');
+    svg.appendChild(box);
+    var box2 = document.createElementNS(svgNS, 'rect');
+    box2.setAttribute('x','235');box2.setAttribute('y',String(mapH*0.78));box2.setAttribute('width','110');box2.setAttribute('height',String(mapH*0.20));
+    box2.setAttribute('fill','none');box2.setAttribute('stroke','#1e2230');box2.setAttribute('stroke-width','1');box2.setAttribute('rx','4');
+    svg.appendChild(box2);
 
-    var paths = {};
+    // Draw states
     usGeo.features.forEach(function(feat) {
       var name = feat.properties.name;
       var code = NAME_TO_CODE[name];
       if (!code) return;
+      var proj = getProjection(name);
       var coords = feat.geometry.type === 'Polygon' ? [feat.geometry.coordinates] : feat.geometry.coordinates;
       var d = '';
-      coords.forEach(function(poly) { d += pathFromCoords(poly); });
+      coords.forEach(function(poly) { d += pathFromCoords(poly, proj); });
+
+      var val = stateJobMap[code] || 0;
       var path = document.createElementNS(svgNS, 'path');
       path.setAttribute('d', d);
-      path.setAttribute('fill', '#1a1f2e');
+      path.setAttribute('fill', val ? mapColor(val, globalMax3) : '#1a1f2e');
       path.setAttribute('stroke', '#2d3348');
       path.setAttribute('stroke-width', '0.5');
-      path.setAttribute('data-state', code);
-      path.style.transition = 'fill 0.3s';
+      path.style.transition = 'fill 0.2s, stroke 0.2s';
       path.style.cursor = 'pointer';
-      path.addEventListener('mouseenter', function(e) {
+      path.addEventListener('mouseenter', function() {
         path.setAttribute('stroke', '#3b82f6');
-        path.setAttribute('stroke-width', '1.5');
-        var val = paths[code]._val || 0;
-        tip.innerHTML = '<b>' + name + '</b><br>' + val.toLocaleString() + ' jobs';
+        path.setAttribute('stroke-width', '2');
+        tip.innerHTML = '<b>' + name + '</b><br>' + val.toLocaleString() + ' open jobs';
         tip.style.display = 'block';
       });
       path.addEventListener('mousemove', function(e) {
@@ -333,43 +350,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         tip.style.display = 'none';
       });
       svg.appendChild(path);
-      paths[code] = path;
-      paths[code]._val = 0;
     });
 
-    function drawLegend(wMax) {
-      var c = document.getElementById('leg-bar');
-      if (!c) return;
-      var ctx = c.getContext('2d');
+    // Legend gradient bar
+    var legend = document.createElement('div');
+    legend.style.cssText = 'position:absolute;bottom:12px;right:20px;display:flex;align-items:center;gap:8px;font-family:JetBrains Mono,monospace;font-size:9px;color:#7884a8';
+    legend.innerHTML = '<span>0</span><canvas id="leg-bar" width="140" height="10" style="border-radius:3px"></canvas><span>' + globalMax3.toLocaleString() + ' jobs</span>';
+    mapEl.appendChild(legend);
+    var legCanvas = document.getElementById('leg-bar');
+    if (legCanvas) {
+      var ctx = legCanvas.getContext('2d');
       for (var x = 0; x < 140; x++) {
         ctx.fillStyle = mapColor(x, 139);
         ctx.fillRect(x, 0, 1, 10);
       }
-      document.getElementById('leg-hi').textContent = wMax.toLocaleString() + ' jobs';
     }
-
-    function render3(weekIdx) {
-      var w = weeks3[weekIdx];
-      var wMax = globalMax3 || 1;
-      var data = stByWeek[w] || {};
-      Object.keys(paths).forEach(function(code) {
-        var val = data[code] || 0;
-        paths[code].setAttribute('fill', val ? mapColor(val, wMax) : '#1a1f2e');
-        paths[code]._val = val;
-      });
-      drawLegend(wMax);
-    }
-
-    var sl3 = document.getElementById('sl3');
-    sl3.max = weeks3.length - 1; sl3.value = weeks3.length - 1;
-    sl3.addEventListener('input', function() { render3(+this.value); document.getElementById('wl3').textContent = fmtWeek(weeks3[+this.value]); });
-    render3(weeks3.length - 1);
-    document.getElementById('wl3').textContent = fmtWeek(weeks3[weeks3.length - 1]);
-
-    renderers[2] = render3;
-    weekSets[2] = weeks3;
   } catch(e) {
-    document.getElementById('c3').innerHTML = '<div class="loading-msg">Map error: ' + e.message + ' at ' + (e.stack||'').split('\n')[1] + '</div>';
+    document.getElementById('c3').innerHTML = '<div class="loading-msg">Map error: ' + e.message + '</div>';
   }
 
   // ── Play/pause animation ──
@@ -395,7 +392,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   document.getElementById('pb1').addEventListener('click',function(){togglePlay(0)});
   document.getElementById('pb2').addEventListener('click',function(){togglePlay(1)});
-  document.getElementById('pb3').addEventListener('click',function(){togglePlay(2)});
 
   // Resize
   window.addEventListener('resize', function(){ch1.resize();ch2.resize()});
