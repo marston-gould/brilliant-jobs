@@ -6,8 +6,9 @@ async function init() {
   if (!session?.user) { window.location.href = '/'; return; }
   currentUser = session.user;
   try {
-    const { data: profile } = await sb.from('profiles').select('approved').eq('id', currentUser.id).single();
+    const { data: profile } = await sb.from('profiles').select('approved,cohort_id').eq('id', currentUser.id).single();
     if (!profile?.approved) { window.location.href = '/?pending=1'; return; }
+    currentUser._cohortId = profile.cohort_id || null;
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
@@ -15,6 +16,15 @@ async function init() {
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
+  // Session analytics — Phase B
+  const bjSessionId = await initSession();
+  if (bjSessionId && window.posthog) {
+    posthog.register({
+      bj_session_id: bjSessionId,
+      bj_cohort_id: currentUser._cohortId || null,
+      bj_plan_id: 'free' // updated when subscriptions go live
+    });
+  }
   // Check admin access — show admin nav if user has admin role
   if (typeof checkAdminAccess === 'function') checkAdminAccess();
   // Re-hydrate globals from potentially updated localStorage
@@ -34,7 +44,45 @@ async function init() {
   loadStats();
   checkExtensionStatus();
   loadCollections();
+  // Start session heartbeat
+  if (bjSessionId) {
+    setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        sb.rpc('session_heartbeat', { p_session_id: bjSessionId });
+      }
+    }, 5 * 60 * 1000);
+  }
 }
+
+// Session analytics — create or reuse session
+async function initSession() {
+  const existing = sessionStorage.getItem('bj_session_id');
+  if (existing) {
+    sb.rpc('session_heartbeat', { p_session_id: existing });
+    return existing;
+  }
+  const deviceType = window.innerWidth < 768 ? 'mobile' :
+                     window.innerWidth < 1024 ? 'tablet' : 'desktop';
+  const params = new URLSearchParams(window.location.search);
+  const referralSource = params.get('utm_source') || params.get('ref') || 'direct';
+  const entryPage = window.location.pathname;
+  try {
+    const { data: sessionId, error } = await sb.rpc('create_session', {
+      p_user_id: currentUser.id,
+      p_device_type: deviceType,
+      p_referral_source: referralSource,
+      p_entry_page: entryPage,
+      p_metadata: {}
+    });
+    if (error) { console.error('[BJ] Session init error:', error); return null; }
+    sessionStorage.setItem('bj_session_id', sessionId);
+    return sessionId;
+  } catch (e) {
+    console.error('[BJ] Session init error:', e);
+    return null;
+  }
+}
+
 init();
 
 // Extension detection — check last_scan_at from profiles
