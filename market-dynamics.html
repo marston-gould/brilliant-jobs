@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid:{left:160,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:industries1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:maxVal1,calculable:false,orient:'vertical',right:8,top:'center',itemHeight:200,inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
+      visualMap:{min:0,max:maxVal1,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:['High','Low'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek1[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid:{left:100,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:levels2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:maxVal2,calculable:false,orient:'vertical',right:8,top:'center',itemHeight:200,inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
+      visualMap:{min:0,max:maxVal2,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:['High','Low'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek2[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       var mapData = Object.keys(stByWeek[w]||{}).map(function(code){return{name:STATE_NAMES[code]||code,value:stByWeek[w][code]}});
       ch3.setOption({
         tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},trigger:'item',formatter:function(p){return'<b>'+p.name+'</b><br/>'+Number(p.value||0).toLocaleString()+' jobs'}},
-        visualMap:{min:0,max:maxVal3,calculable:false,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
+        visualMap:{min:0,max:maxVal3,calculable:true,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,text:['High','Low'],inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()}},
         series:[{type:'map',map:'USA',roam:false,emphasis:{label:{show:true,color:'#fff',fontSize:10},itemStyle:{areaColor:'#3b82f6'}},itemStyle:{areaColor:'#1a1f2e',borderColor:'#2d3348',borderWidth:0.5},label:{show:false},data:mapData,animation:false}]
       });
     }
