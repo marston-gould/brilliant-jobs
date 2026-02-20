@@ -21,6 +21,20 @@ Cohorts are almost always tied to **acquisition timing** because the product evo
 - **Not an attribution tag.** Referral source, UTM campaign, LinkedIn vs. organic — these are acquisition *channels*, stored as session or user attributes. A user referred by a friend and a user from SEO in the same week are in the **same cohort** because they get the same experience.
 - **Not a plan.** A user's plan (free/pro/enterprise) determines their subscription tier. Their cohort determines the *version* of that plan they experience. Launch-cohort Pro at $14.99/mo is a different experience contract than summer-cohort Pro at $19.99/mo, even though both are "Pro."
 
+### UX Principle: Cohort is invisible
+
+The word "cohort" never appears in the UI. Users don't know they're in one. The cohort system is a backend analytical and operational construct only.
+
+What users *do* see:
+
+- **Their plan** — Free, Pro, Enterprise
+- **Their limits** — "2 of 10 filters used", "Unlimited resume grading"
+- **Their bonuses** — "10 included + 4 earned from referrals" (if adjustable)
+- **Their member-since date** — displayed on the Subscription/Settings page, sourced from `profiles.created_at`. This is the user-facing proxy for cohort — it tells *them* when they joined, and tells *us* which experience contract they're on.
+- **Upgrade prompts** — driven by `behavior = 'off'`, never by cohort identity
+
+What users never see: cohort IDs, cohort names, "you're in the launch cohort," or any language suggesting they're in a test group or segmented population. If a `launch_2026` user and a `summer_2026` user compare screens, the differences should feel like natural product evolution ("they added a new trial") — not like A/B test exposure.
+
 ### Examples
 
 | Cohort | Timing | Experience Definition |
