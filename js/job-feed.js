@@ -295,7 +295,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         query = query.or(clauses.join(','));
       }
     }
-    if (tuning.usOnly) {
+    if (tuning.usOnly && wh.length === 0) {
       query = query.or('loc_country.eq.US,loc_country.is.null');
       // Exclude jobs where location string clearly indicates non-US country
       // (needed because many jobs have loc_country=null but location like "remote, gb")
@@ -320,6 +320,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         query = query.not('location', 'ilike', `%${v}%`);
       }
     }
+  }
+
+  // Exclude hourly-rate jobs if tuning says so
+  if (tuning.excludeHourly) {
+    query = query.not('salary_rate', 'eq', 'hr');
   }
 
   // Remote job handling
@@ -455,7 +460,7 @@ async function searchJobs(page = 0) {
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && !hasBuilderPills) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved filters above, or use the filter builder.</div>
@@ -466,7 +471,7 @@ async function searchJobs(page = 0) {
   }
 
   // Show loading
-  tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
+  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
     <div style="font-size:13px;">Searching jobs…</div>
   </td></tr>`;
 
@@ -503,7 +508,7 @@ async function searchJobs(page = 0) {
     });
 
     if (!hasRealCriteria) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
         <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
       </td></tr>`;
@@ -623,7 +628,7 @@ async function searchJobs(page = 0) {
     await updateJobStatsFromFilters(filtersToRun);
 
     if (currentJobs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match these filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
@@ -666,7 +671,7 @@ async function searchJobs(page = 0) {
 
   } catch (e) {
     console.error('Search error:', e);
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--red);padding:32px 12px;">
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${e.message}</div>
     </td></tr>`;
   }
@@ -1028,18 +1033,17 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match">${matchBadge(jobMatchScores[job.greenhouse_id])}</td>
-      <td>${sourcePill('greenhouse')}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="9"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td></td><td colspan="8"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
   // Pagination row
   const totalPages = Math.ceil(total / JOBS_PER_PAGE);
   if (totalPages > 1) {
-    html += `<tr><td colspan="11" style="text-align:center;padding:16px;">
+    html += `<tr><td colspan="10" style="text-align:center;padding:16px;">
       <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
         ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
         <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>
