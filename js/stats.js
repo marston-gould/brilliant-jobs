@@ -147,7 +147,7 @@ async function fetchFilterData(sf) {
 // ─── Aggregation ───
 function aggregateStats(rows) {
   var s = { total: rows.length, medianSalary: null, seniorPct: 0, remotePct: 0, companyCount: 0,
-    levelCounts: {}, salaryBuckets: {}, topCompanies: [], locationCounts: {}, timelineBuckets: {} };
+    levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {} };
 
   var cos = {}; rows.forEach(function(r) { if (r.company_name) cos[r.company_name] = true; });
   s.companyCount = Object.keys(cos).length;
@@ -193,14 +193,26 @@ function aggregateStats(rows) {
   rows.forEach(function(r) { if (r.company_name) cc[r.company_name] = (cc[r.company_name]||0) + 1; });
   s.topCompanies = Object.entries(cc).sort(function(a,b) { return b[1]-a[1]; }).slice(0, 15);
 
-  // Location breakdown
+  // Work type breakdown (on-site vs hybrid vs remote)
+  s.workTypeCounts = { 'On-site': 0, 'Hybrid': 0, 'Remote': 0, 'Unspecified': 0 };
   rows.forEach(function(r) {
-    var loc = 'Unknown';
-    if (r.loc_type === 'remote' || (r.location||'').toLowerCase().startsWith('remote')) { loc = 'Remote'; }
-    else if (r.loc_city && r.loc_state) { loc = r.loc_city + ', ' + r.loc_state; }
-    else if (r.loc_state) { loc = r.loc_state; }
-    else if (r.location) { var p = r.location.split(','); loc = p[0].trim(); if (p.length > 1) loc += ', ' + p[1].trim(); }
-    s.locationCounts[loc] = (s.locationCounts[loc]||0) + 1;
+    var loc = (r.location || '').toLowerCase();
+    var lt = (r.loc_type || '').toLowerCase();
+    if (lt === 'remote' || loc.startsWith('remote')) {
+      // Check if "Remote - City" pattern (could be hybrid/flexible)
+      if (loc.match(/^remote\s*[-\/]\s*.+/)) {
+        // "Remote - Austin, TX" style — treat as remote but the city gives context
+        s.workTypeCounts['Remote']++;
+      } else {
+        s.workTypeCounts['Remote']++;
+      }
+    } else if (lt === 'hybrid' || loc.includes('hybrid')) {
+      s.workTypeCounts['Hybrid']++;
+    } else if (r.location && r.location.trim()) {
+      s.workTypeCounts['On-site']++;
+    } else {
+      s.workTypeCounts['Unspecified']++;
+    }
   });
 
   // Timeline (weekly)
@@ -240,22 +252,22 @@ function getOrCreateChart(id) {
   return c;
 }
 
-// C1: Timeline — area chart (full width)
+// C1: Timeline — discrete bar chart (full width)
 function renderTimeline(stats) {
   var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
   var sorted = Object.entries(stats.timelineBuckets).sort(function(a,b) { return a[0].localeCompare(b[0]); });
   var recent = sorted.slice(-26);
   chart.setOption({
-    tooltip: { backgroundColor: STATS_THEME.tooltip.backgroundColor, borderColor: STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle: STATS_THEME.tooltip.textStyle, trigger:'axis',
+    tooltip: { backgroundColor: STATS_THEME.tooltip.backgroundColor, borderColor: STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle: STATS_THEME.tooltip.textStyle, trigger:'axis', axisPointer:{type:'shadow'},
       formatter: function(p) { var d = new Date(p[0].name); return '<b>Week of ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</b><br/>' + p[0].value.toLocaleString() + ' new jobs'; } },
     grid: { top:20, right:20, bottom:30, left:50 },
     xAxis: { type:'category', data: recent.map(function(e){return e[0];}),
       axisLabel: { color:'#64748b', fontFamily:'JetBrains Mono', fontSize:10, formatter: function(v) { var d=new Date(v); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }, interval: Math.max(0, Math.floor(recent.length/6)-1) },
       axisLine: STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel: STATS_THEME.axisLabel, splitLine: STATS_THEME.splitLine },
-    series: [{ type:'line', data: recent.map(function(e){return e[1];}), smooth:true, symbol:'none',
-      lineStyle:{color:STATS_COLORS[0],width:2},
-      areaStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(99,102,241,0.35)'},{offset:1,color:'rgba(99,102,241,0.02)'}]) } }],
+    series: [{ type:'bar', data: recent.map(function(e){return e[1];}),
+      itemStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6366f1'},{offset:1,color:'rgba(99,102,241,0.3)'}]), borderRadius:[3,3,0,0] },
+      barMaxWidth:28 }],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -328,19 +340,30 @@ function renderTopCompanies(stats) {
   }, true);
 }
 
-// C7 (replaced ATS Source): Location Breakdown — donut
+// C7: Work Type Breakdown — donut (on-site vs hybrid vs remote)
 function renderLocationBreakdown(stats) {
   var chart = getOrCreateChart('#chart-location'); if (!chart) return;
-  var entries = Object.entries(stats.locationCounts).sort(function(a,b){return b[1]-a[1];});
-  var topN = entries.slice(0, 8);
-  var otherCt = 0; for (var i=8; i<entries.length; i++) otherCt += entries[i][1];
-  if (otherCt > 0) topN.push(['Other locations', otherCt]);
+  var wt = stats.workTypeCounts;
+  // Fixed order, fixed colors for consistency
+  var typeColors = { 'On-site': '#6366f1', 'Hybrid': '#f59e0b', 'Remote': '#22c55e', 'Unspecified': '#334155' };
+  var data = ['On-site','Hybrid','Remote','Unspecified']
+    .filter(function(t) { return wt[t] > 0; })
+    .map(function(t) { return { name: t, value: wt[t], itemStyle: { color: typeColors[t] } }; });
+  if (data.length === 0) {
+    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No location data available',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+    return;
+  }
+  var total = data.reduce(function(a,d){return a+d.value;},0);
   chart.setOption({
+    graphic:[],
     tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'item',
       formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';}},
-    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11}},
-    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,label:{show:false},
-      data:topN.map(function(e,i){return{name:e[0],value:e[1],itemStyle:{color:STATS_COLORS[i%STATS_COLORS.length]}};})}],
+    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:12},
+      formatter:function(name){var v=wt[name]||0;var pct=total>0?Math.round(v/total*100):0;return name+'  '+pct+'%';}},
+    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,
+      label:{show:false},
+      emphasis:{label:{show:true,fontSize:14,fontFamily:'Outfit',fontWeight:'600',color:'#f0f1f3'}},
+      data:data}],
     animation:true, animationDuration:600,
   }, true);
 }
