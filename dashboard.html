@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.77 - 2026-02-19 - Phase A architecture hardening: security headers, DOMPurify, PostHog. -->
+<!-- Brilliant Jobs Dashboard v2.78 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -7,6 +7,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="description" content="Brilliant Jobs dashboard — manage your job search, filters, resumes, and application pipeline.">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
@@ -43,7 +44,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.77</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v2.78</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
