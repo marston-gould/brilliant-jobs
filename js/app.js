@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v2.90';
+const BJ_VERSION = 'v2.91';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -144,6 +144,8 @@ if (lastTab && $(`#page-${lastTab}`)) {
   $$('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.page === lastTab);
   });
+  if (lastTab === 'admin' && typeof initAdminPage === 'function') initAdminPage();
+  if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
 }
 
 // Extension detection — check if extension has updated the profile recently
