@@ -33,6 +33,10 @@ const STATS_COLUMNS = 'greenhouse_id,ats_source,title,company_name,salary_min,sa
 
 // ─── Initialization ───
 function initStatsPage() {
+  // Only init when the stats page is actually visible
+  const page = document.getElementById('page-stats');
+  if (!page || !page.classList.contains('active')) return;
+
   if (statsInitialized) {
     refreshStatsCharts();
     return;
@@ -334,9 +338,17 @@ function setText(sel, val) {
 // ─── Charts ───
 
 function getOrCreateChart(containerId) {
-  const el = $(containerId);
-  if (!el) return null;
+  // Use getElementById directly (containerId starts with #)
+  const id = containerId.replace('#', '');
+  const el = document.getElementById(id);
+  if (!el) { console.warn('[Stats] Chart container not found:', id); return null; }
+  // Ensure container has dimensions before init
+  if (el.offsetWidth === 0 || el.offsetHeight === 0) {
+    console.warn('[Stats] Chart container has zero dimensions:', id);
+    return null;
+  }
   if (statsCharts[containerId]) {
+    // Dispose and recreate if container was resized
     return statsCharts[containerId];
   }
   const chart = echarts.init(el, null, { renderer: 'canvas' });
