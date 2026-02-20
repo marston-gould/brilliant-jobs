@@ -73,6 +73,11 @@
     .map-toggle:hover{border-color:rgba(59,130,246,0.3);color:var(--text)}
     .map-toggle.active{background:rgba(59,130,246,0.15);border-color:var(--accent);color:var(--accent)}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:320px!important}.ec.map{height:380px!important}}
+      .data-cta{margin:48px 0 32px;padding:40px 32px;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.08));border:1px solid rgba(59,130,246,0.15);border-radius:16px;text-align:center}
+    .data-cta-head{font-size:20px;font-weight:700;color:#e8eaf0;margin-bottom:8px}
+    .data-cta-sub{font-size:13px;color:#7884a8;margin-bottom:20px}
+    .data-cta-btn{display:inline-block;padding:12px 32px;background:#4f46e5;color:#fff;border-radius:10px;font-weight:600;font-size:14px;text-decoration:none;transition:all 0.15s}
+    .data-cta-btn:hover{background:#4338ca;transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,70,229,0.4)}
   </style>
 </head>
 <body>
@@ -80,7 +85,7 @@
 <div class="wrap">
   <header class="hdr">
     <nav class="breadcrumb" style="font-size:12px;color:var(--text-faint);margin-block-end:12px"><a href="/" style="color:var(--text-dim);text-decoration:none">Brilliant Jobs</a> &rsaquo; <a href="/data-lab" style="color:var(--text-dim);text-decoration:none">Market Data</a> &rsaquo; <span style="color:var(--text-faint)">Dynamics</span></nav>
-    <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
+    <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; <a href="/data-lab" style="color:inherit;text-decoration:none">Data Lab</a></div>
     <h1>Market <span>Dynamics</span></h1>
     <p class="sub">Watch how hiring shifts across industries, departments, seniority levels, and U.S. geographies over time. Drag the timeline slider to animate the data.</p>
   </header>
@@ -128,6 +133,7 @@
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
     </div>
   </div>
+  <div class="data-cta"><h3 class="data-cta-head">Track hiring shifts in real time with a free account</h3><p class="data-cta-sub">Free during beta. No credit card required.</p><a href="/#signup" class="data-cta-btn">Get Started Free &rarr;</a></div>
   <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.88 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
