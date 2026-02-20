@@ -303,6 +303,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       for (const cc of nonUS) {
         query = query.not('location', 'ilike', `%, ${cc}`);
       }
+      // Also exclude full country names (many jobs use "City, Country" or "Country - Remote")
+      const nonUSNames = ['India','Germany','United Kingdom','France','Australia','Canada','Ukraine','Israel','Netherlands','Singapore','Ireland','Brazil','Spain','Italy','Japan','Korea','Sweden','Poland','Mexico','Argentina','Colombia','Philippines','Romania','Czech','Portugal','Hong Kong','Denmark','Norway','Finland','Austria','Switzerland','Belgium','Turkey','Thailand','Vietnam','Taiwan','Malaysia','New Zealand'];
+      for (const name of nonUSNames) {
+        query = query.not('location', 'ilike', `%${name}%`);
+      }
     }
     for (const pill of whnot) {
       for (const v of pill.values) {
