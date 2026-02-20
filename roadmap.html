@@ -306,7 +306,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 18, 2026 · Dashboard v2.64 · ✅ Multi-ATS live: 9,866 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 283K+ jobs · refresh-jobs v13 deployed (50 boards/10min cron cycle, country parsing, dedup)
+    Brilliant Jobs · Internal Roadmap · Updated February 19, 2026 · Dashboard v2.78 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 296K+ jobs (283K open) · Architecture hardening complete (34/35) · 18 Edge Functions · 5 external SEO pages
   </div>
 
 </div>
@@ -567,9 +567,12 @@ const features = [
   { s: 'todo', n: 'Hiring velocity detection and alerts', d: 'Company posting 10x more jobs than usual → alert subscribed users', p: 4 },
   { s: 'todo', n: 'Referral availability indicator', d: 'Badge on job cards when user has 1+ connections at that company. Strength tiers: strong (1st degree, recent contact), warm (1st degree), weak (2nd degree). "You know 3 people here" in job modal.', p: 4 },
   { s: 'todo', n: 'Referral prompt before apply', d: 'When connection exists at company, prompt before application: "Want to request a referral from [Name] first?" with templated outreach message. Referral-first flow increases success rate.', p: 4 },
+  { s: 'todo', n: 'Personal stats — jobs by industry chart', d: 'Chart showing job counts grouped by industry for user filtered results. Data path: ats_jobs JOIN ats_companies ON company_slug=slug WHERE industry IS NOT NULL. Current coverage: 1,231/10,019 companies (12.3%) have industry. Needs enrichment pass to be useful.', p: 4 },
+  { s: 'todo', n: 'Industry enrichment pass — ref_companies backfill', d: 'Backfill ats_companies.industry from ref_companies by matching on slug/name. ref_companies has 11,565 records with industry data (85% coverage). Would boost ats_companies industry coverage from 12.3% to ~60-70%. Prerequisite for meaningful industry charts.', p: 4 },
 
   // Phase 10 — Multi-ATS: Per-Source Roadmaps
   { s: 'todo', n: 'Community stats counter', d: 'Show total jobs, companies, and connections across all users — deferred until multi-ATS integration expands data', p: 10 },
+  { s: 'todo', n: 'Workday ATS — 6th platform parser', d: 'BuiltWith shows 7,832 US companies using Workday. Enterprise-heavy (Salesforce, Goldman, Walmart). Requires new parser, discovery pipeline, and API pattern research. Largest untapped ATS platform.', p: 10 },
 
   // ── Multi-ATS Infrastructure (DONE) ──
   { s: 'done', n: 'Composite PK migration', d: 'Migrated ats_companies from slug-only PK to composite (slug, source). Allows same company name on different ATS platforms without collision. ats_jobs already had company_slug + ats_source columns.', p: 10 },
