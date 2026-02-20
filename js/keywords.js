@@ -1401,6 +1401,10 @@ function parseSalaryFromContent(html) {
     new RegExp('(?:salary|compensation|pay\\s+range|pay)[:\\s]*' + currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
     // "Up to $232 per hour" — common pattern for single-value rates
     new RegExp('(?:up\\s+to|starting\\s+at|from)\\s+' + currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+(?:hour|hr|week|wk|month|mo|day|session|visit)|hourly|\\/\\s*(?:hr|hour|h|wk|mo))', 'gi'),
+    // Standalone "$45/hr" or "$60/hour" or "$5,000/mo" — no keyword prefix needed when rate is explicit
+    new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*\\/\\s*(?:hr|hour|h|wk|week|mo|month|mth|day|d|yr|year)', 'gi'),
+    // Standalone "$45 per hour" or "$60 per week"
+    new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s+per\\s+(?:hour|hr|week|wk|month|mo|day|session|visit|year|yr|annum)', 'gi'),
   ];
   for (const pattern of singlePatterns) {
     pattern.lastIndex = 0;
