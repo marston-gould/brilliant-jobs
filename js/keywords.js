@@ -182,6 +182,8 @@ async function batchFetchJDContent(jobs, maxFetch) {
   for (var i = 0; i < jobs.length; i++) {
     var job = jobs[i];
     if (job.content || fetched >= maxFetch) continue;
+    // Only fetch from Greenhouse API — other ATS platforms don't support this endpoint
+    if (job.ats_source && job.ats_source !== 'greenhouse') continue;
     try {
       var urlMatch = (job.url || '').match(/boards\.greenhouse\.io\/([^\/]+)\/jobs\/(\d+)/);
       if (!urlMatch && job.company_slug) urlMatch = [null, job.company_slug, job.greenhouse_id];
