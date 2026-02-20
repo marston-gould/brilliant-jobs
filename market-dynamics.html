@@ -15,6 +15,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js" defer></script>
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -89,7 +90,7 @@
   <h2 class="sdiv">Industry &times; Department</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">Where are companies hiring, by sector?</div></div><span class="badge b-blue">Industry &times; Dept</span></div>
-    <div class="timeline-bar" id="tb1"><button onclick="togglePlay(0)">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl1"><span class="week-label" id="wl1">—</span></div>
+    <div class="timeline-bar" id="tb1"><button id="pb1">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl1"><span class="week-label" id="wl1">—</span></div>
     <div class="ec" id="c1"><div class="loading-msg">Loading data&hellip;</div></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> Technology dominates Engineering and Data & AI hiring, but Healthcare and Finance show growing demand for these same functions &mdash; signaling cross-industry digital transformation.</div>
@@ -97,7 +98,7 @@
   <h2 class="sdiv">Department &times; Seniority Level</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">What levels are companies hiring for?</div></div><span class="badge b-purple">Dept &times; Level</span></div>
-    <div class="timeline-bar" id="tb2"><button onclick="togglePlay(1)">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl2"><span class="week-label" id="wl2">—</span></div>
+    <div class="timeline-bar" id="tb2"><button id="pb2">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl2"><span class="week-label" id="wl2">—</span></div>
     <div class="ec" id="c2"><div class="loading-msg">Loading data&hellip;</div></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> Senior and Mid-level roles dominate across all departments. Entry-level hiring is concentrated in Sales and Customer Success, while C-Suite and VP openings cluster in Finance and Operations.</div>
@@ -105,7 +106,7 @@
   <h2 class="sdiv">U.S. Geographic Distribution</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">Where are jobs concentrated across the U.S.?</div></div><span class="badge b-green">By State</span></div>
-    <div class="timeline-bar" id="tb3"><button onclick="togglePlay(2)">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl3"><span class="week-label" id="wl3">—</span></div>
+    <div class="timeline-bar" id="tb3"><button id="pb3">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl3"><span class="week-label" id="wl3">—</span></div>
     <div class="ec map" id="c3"><div class="loading-msg">Loading map data&hellip;</div></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> California, Texas, New York, and Florida consistently lead in job volume. But watch for emerging hotspots in the Mountain West and Southeast as remote work redistributes hiring.</div>
@@ -142,168 +143,142 @@ document.addEventListener('DOMContentLoaded', async function() {
   ]);
 
   // ── Helpers ──
-  function getWeeks(data, weekField) {
-    return [...new Set(data.map(d => d[weekField||'week']))].sort();
-  }
-  function pivotHeatmap(data, xField, yField, weekField, weeks) {
-    var xs = [...new Set(data.map(d=>d[xField]))].sort();
-    var ys = [...new Set(data.map(d=>d[yField]))].sort();
-    var byWeek = {};
-    weeks.forEach(w => { byWeek[w] = []; });
-    data.forEach(d => {
-      if (!byWeek[d[weekField||'week']]) return;
-      byWeek[d[weekField||'week']].push([xs.indexOf(d[xField]), ys.indexOf(d[yField]), d.job_count]);
-    });
-    return {xs, ys, byWeek};
+  function getWeeks(data) {
+    return [...new Set(data.map(function(d){return d.week}))].sort();
   }
   function fmtWeek(w) {
-    var d = new Date(w+'T00:00:00');
+    var d = new Date(w+'T12:00:00');
     return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   }
 
   // ── Chart 1: Industry x Dept ──
-  var weeks1 = getWeeks(indDept,'week');
-  var p1 = pivotHeatmap(indDept,'dept','industry','week',weeks1);
-  var maxVal1 = Math.max(...indDept.map(d=>d.job_count));
+  var weeks1 = getWeeks(indDept);
+  var industries1 = [...new Set(indDept.map(function(d){return d.industry}))].sort();
+  var depts1 = [...new Set(indDept.map(function(d){return d.dept}))].sort();
+  var byWeek1 = {};
+  weeks1.forEach(function(w){byWeek1[w]=[]});
+  indDept.forEach(function(d){if(byWeek1[d.week])byWeek1[d.week].push([depts1.indexOf(d.dept),industries1.indexOf(d.industry),d.job_count])});
+  var maxVal1 = Math.max.apply(null,indDept.map(function(d){return d.job_count}));
+
   var ch1 = echarts.init(document.getElementById('c1'));
   function render1(weekIdx) {
     var w = weeks1[weekIdx];
     ch1.setOption({
-      tooltip:{...TT,formatter:function(p){return'<b>'+p1.ys[p.value[1]]+'</b> × <b>'+p1.xs[p.value[0]]+'</b><br/>'+Number(p.value[2]).toLocaleString()+' jobs'}},
-      grid:{left:140,right:80,top:10,bottom:60},
-      xAxis:{type:'category',data:p1.xs,axisLabel:{...AL,rotate:35,fontSize:9},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
-      yAxis:{type:'category',data:p1.ys,axisLabel:{...AL,fontSize:9}},
+      tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},formatter:function(p){return'<b>'+industries1[p.value[1]]+'</b> &times; <b>'+depts1[p.value[0]]+'</b><br/>'+Number(p.value[2]).toLocaleString()+' jobs'}},
+      grid:{left:160,right:80,top:10,bottom:80},
+      xAxis:{type:'category',data:depts1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
+      yAxis:{type:'category',data:industries1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
       visualMap:{min:0,max:maxVal1,calculable:false,orient:'vertical',right:8,top:'center',itemHeight:200,inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      series:[{type:'heatmap',data:p1.byWeek[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
+      series:[{type:'heatmap',data:byWeek1[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
   var sl1 = document.getElementById('sl1');
   sl1.max = weeks1.length-1; sl1.value = weeks1.length-1;
-  sl1.oninput = function(){render1(+this.value);document.getElementById('wl1').textContent=fmtWeek(weeks1[+this.value])};
+  sl1.addEventListener('input',function(){render1(+this.value);document.getElementById('wl1').textContent=fmtWeek(weeks1[+this.value])});
   render1(weeks1.length-1);
   document.getElementById('wl1').textContent = fmtWeek(weeks1[weeks1.length-1]);
 
   // ── Chart 2: Dept x Level ──
   var LEVEL_ORDER = ['C-Suite','VP','Director','Sr Manager','Lead','Manager','Senior','Mid','Entry/Junior'];
-  var weeks2 = getWeeks(deptLevel,'week');
-  var depts2 = [...new Set(deptLevel.map(d=>d.dept))].sort();
-  var levels2 = LEVEL_ORDER.filter(l => deptLevel.some(d=>d.level===l));
+  var weeks2 = getWeeks(deptLevel);
+  var depts2 = [...new Set(deptLevel.map(function(d){return d.dept}))].sort();
+  var levels2 = LEVEL_ORDER.filter(function(l){return deptLevel.some(function(d){return d.level===l})});
   var byWeek2 = {};
-  weeks2.forEach(w=>{byWeek2[w]=[]});
-  deptLevel.forEach(d=>{
-    if(!byWeek2[d.week])return;
-    byWeek2[d.week].push([depts2.indexOf(d.dept), levels2.indexOf(d.level), d.job_count]);
-  });
-  var maxVal2 = Math.max(...deptLevel.map(d=>d.job_count));
+  weeks2.forEach(function(w){byWeek2[w]=[]});
+  deptLevel.forEach(function(d){if(byWeek2[d.week])byWeek2[d.week].push([depts2.indexOf(d.dept),levels2.indexOf(d.level),d.job_count])});
+  var maxVal2 = Math.max.apply(null,deptLevel.map(function(d){return d.job_count}));
+
   var ch2 = echarts.init(document.getElementById('c2'));
   function render2(weekIdx) {
     var w = weeks2[weekIdx];
     ch2.setOption({
-      tooltip:{...TT,formatter:function(p){return'<b>'+depts2[p.value[0]]+'</b> × <b>'+levels2[p.value[1]]+'</b><br/>'+Number(p.value[2]).toLocaleString()+' jobs'}},
-      grid:{left:90,right:80,top:10,bottom:80},
-      xAxis:{type:'category',data:depts2,axisLabel:{...AL,rotate:40,fontSize:9},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
-      yAxis:{type:'category',data:levels2,axisLabel:{...AL,fontSize:9}},
+      tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},formatter:function(p){return'<b>'+depts2[p.value[0]]+'</b> &times; <b>'+levels2[p.value[1]]+'</b><br/>'+Number(p.value[2]).toLocaleString()+' jobs'}},
+      grid:{left:100,right:80,top:10,bottom:80},
+      xAxis:{type:'category',data:depts2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
+      yAxis:{type:'category',data:levels2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
       visualMap:{min:0,max:maxVal2,calculable:false,orient:'vertical',right:8,top:'center',itemHeight:200,inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
       series:[{type:'heatmap',data:byWeek2[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
   var sl2 = document.getElementById('sl2');
   sl2.max = weeks2.length-1; sl2.value = weeks2.length-1;
-  sl2.oninput = function(){render2(+this.value);document.getElementById('wl2').textContent=fmtWeek(weeks2[+this.value])};
+  sl2.addEventListener('input',function(){render2(+this.value);document.getElementById('wl2').textContent=fmtWeek(weeks2[+this.value])});
   render2(weeks2.length-1);
   document.getElementById('wl2').textContent = fmtWeek(weeks2[weeks2.length-1]);
 
   // ── Chart 3: US State Choropleth ──
-  // Load US GeoJSON
-  var geoRes = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
-  var usGeo = await geoRes.json();
-  // Convert TopoJSON to GeoJSON
-  var stateFeatures = topojsonFeature(usGeo, usGeo.objects.states);
-  echarts.registerMap('USA', stateFeatures);
+  var STATE_NAMES = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","DC":"District of Columbia","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming"};
 
-  // FIPS to state code mapping
-  var FIPS = {"01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT","10":"DE","11":"DC","12":"FL","13":"GA","15":"HI","16":"ID","17":"IL","18":"IN","19":"IA","20":"KS","21":"KY","22":"LA","23":"ME","24":"MD","25":"MA","26":"MI","27":"MN","28":"MS","29":"MO","30":"MT","31":"NE","32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY","37":"NC","38":"ND","39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV","55":"WI","56":"WY"};
-  var STATE_NAMES = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","DC":"Washington DC","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming"};
+  try {
+    var geoRes = await fetch('https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json');
+    var usTopo = await geoRes.json();
+    var usGeo = topojson.feature(usTopo, usTopo.objects.states);
+    echarts.registerMap('USA', usGeo);
 
-  var weeks3 = getWeeks(stateData,'week');
-  var stByWeek = {};
-  weeks3.forEach(w=>{stByWeek[w]={}});
-  stateData.forEach(d=>{if(stByWeek[d.week])stByWeek[d.week][d.state_code]=d.job_count});
-  var maxVal3 = Math.max(...stateData.map(d=>d.job_count));
+    var weeks3 = getWeeks(stateData);
+    var stByWeek = {};
+    weeks3.forEach(function(w){stByWeek[w]={}});
+    stateData.forEach(function(d){if(stByWeek[d.week])stByWeek[d.week][d.state_code]=d.job_count});
+    var maxVal3 = Math.max.apply(null,stateData.map(function(d){return d.job_count}));
 
-  var ch3 = echarts.init(document.getElementById('c3'));
-  function render3(weekIdx) {
-    var w = weeks3[weekIdx];
-    var mapData = Object.entries(stByWeek[w]||{}).map(function(e){return{name:STATE_NAMES[e[0]]||e[0],value:e[1]}});
-    ch3.setOption({
-      tooltip:{...TT,trigger:'item',formatter:function(p){return'<b>'+p.name+'</b><br/>'+Number(p.value||0).toLocaleString()+' jobs'}},
-      visualMap:{min:0,max:maxVal3,calculable:false,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      series:[{type:'map',map:'USA',roam:false,emphasis:{label:{show:true,color:'#fff',fontSize:10},itemStyle:{areaColor:'#3b82f6'}},itemStyle:{areaColor:'#1a1f2e',borderColor:'#2d3348',borderWidth:0.5},label:{show:false},data:mapData,progressive:0,animation:false}]
-    });
+    var ch3 = echarts.init(document.getElementById('c3'));
+    function render3(weekIdx) {
+      var w = weeks3[weekIdx];
+      var mapData = Object.keys(stByWeek[w]||{}).map(function(code){return{name:STATE_NAMES[code]||code,value:stByWeek[w][code]}});
+      ch3.setOption({
+        tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},trigger:'item',formatter:function(p){return'<b>'+p.name+'</b><br/>'+Number(p.value||0).toLocaleString()+' jobs'}},
+        visualMap:{min:0,max:maxVal3,calculable:false,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
+        series:[{type:'map',map:'USA',roam:false,emphasis:{label:{show:true,color:'#fff',fontSize:10},itemStyle:{areaColor:'#3b82f6'}},itemStyle:{areaColor:'#1a1f2e',borderColor:'#2d3348',borderWidth:0.5},label:{show:false},data:mapData,animation:false}]
+      });
+    }
+    var sl3 = document.getElementById('sl3');
+    sl3.max = weeks3.length-1; sl3.value = weeks3.length-1;
+    sl3.addEventListener('input',function(){render3(+this.value);document.getElementById('wl3').textContent=fmtWeek(weeks3[+this.value])});
+    render3(weeks3.length-1);
+    document.getElementById('wl3').textContent = fmtWeek(weeks3[weeks3.length-1]);
+
+    // Add map to play system
+    renderers[2] = render3;
+    weekSets[2] = weeks3;
+    document.getElementById('pb3').disabled = false;
+    window.addEventListener('resize', function(){ch3.resize()});
+  } catch(e) {
+    document.getElementById('c3').innerHTML = '<div class="loading-msg">Map failed to load: '+e.message+'</div>';
   }
-  var sl3 = document.getElementById('sl3');
-  sl3.max = weeks3.length-1; sl3.value = weeks3.length-1;
-  sl3.oninput = function(){render3(+this.value);document.getElementById('wl3').textContent=fmtWeek(weeks3[+this.value])};
-  render3(weeks3.length-1);
-  document.getElementById('wl3').textContent = fmtWeek(weeks3[weeks3.length-1]);
 
   // ── Play/pause animation ──
   var timers = [null,null,null];
-  var renderers = [render1,render2,render3];
-  var sliders = [sl1,sl2,sl3];
+  var renderers = [render1,render2,null];
+  var sliders = [sl1,sl2,document.getElementById('sl3')];
   var labels = ['wl1','wl2','wl3'];
-  var weekSets = [weeks1,weeks2,weeks3];
-  window.togglePlay = function(idx) {
-    var btn = document.querySelectorAll('.timeline-bar button')[idx];
+  var weekSets = [weeks1,weeks2,[]];
+
+  function togglePlay(idx) {
+    var btn = document.getElementById('pb'+(idx+1));
     if (timers[idx]) {
       clearInterval(timers[idx]); timers[idx]=null;
       btn.innerHTML='&#9654; Play'; return;
     }
+    if (!renderers[idx]) return;
     btn.innerHTML='&#9724; Pause';
     var sl = sliders[idx];
     if (+sl.value >= +sl.max) sl.value = 0;
     timers[idx] = setInterval(function(){
       var v = +sl.value + 1;
-      if (v > +sl.max) { v = 0; }
+      if (v > +sl.max) { clearInterval(timers[idx]); timers[idx]=null; btn.innerHTML='&#9654; Play'; return; }
       sl.value = v;
       renderers[idx](v);
       document.getElementById(labels[idx]).textContent = fmtWeek(weekSets[idx][v]);
     }, 600);
-  };
+  }
+
+  document.getElementById('pb1').addEventListener('click',function(){togglePlay(0)});
+  document.getElementById('pb2').addEventListener('click',function(){togglePlay(1)});
+  document.getElementById('pb3').addEventListener('click',function(){togglePlay(2)});
 
   // Resize
-  window.addEventListener('resize', function(){ch1.resize();ch2.resize();ch3.resize()});
+  window.addEventListener('resize', function(){ch1.resize();ch2.resize()});
 });
-
-// Minimal TopoJSON → GeoJSON converter
-function topojsonFeature(topology, object) {
-  var arcs = topology.arcs;
-  function decodeArc(arc) {
-    var x=0,y=0,coords=[];
-    var scale=topology.transform?topology.transform.scale:[1,1];
-    var translate=topology.transform?topology.transform.translate:[0,0];
-    arc.forEach(function(d){x+=d[0];y+=d[1];coords.push([x*scale[0]+translate[0],y*scale[1]+translate[1]])});
-    return coords;
-  }
-  function decodeRing(indices) {
-    var coords=[];
-    indices.forEach(function(i){
-      var arc=i<0?decodeArc(arcs[~i]).reverse():decodeArc(arcs[i]);
-      if(coords.length)arc=arc.slice(1);
-      coords=coords.concat(arc);
-    });
-    return coords;
-  }
-  var features = object.geometries.map(function(g){
-    var geometry;
-    if(g.type==='Polygon'){geometry={type:'Polygon',coordinates:g.arcs.map(decodeRing)};}
-    else if(g.type==='MultiPolygon'){geometry={type:'MultiPolygon',coordinates:g.arcs.map(function(p){return p.map(decodeRing)})};}
-    else{geometry={type:g.type,coordinates:[]};}
-    var FIPS_MAP={"01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California","08":"Colorado","09":"Connecticut","10":"Delaware","11":"Washington DC","12":"Florida","13":"Georgia","15":"Hawaii","16":"Idaho","17":"Illinois","18":"Indiana","19":"Iowa","20":"Kansas","21":"Kentucky","22":"Louisiana","23":"Maine","24":"Maryland","25":"Massachusetts","26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri","30":"Montana","31":"Nebraska","32":"Nevada","33":"New Hampshire","34":"New Jersey","35":"New Mexico","36":"New York","37":"North Carolina","38":"North Dakota","39":"Ohio","40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina","46":"South Dakota","47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont","51":"Virginia","53":"Washington","54":"West Virginia","55":"Wisconsin","56":"Wyoming"};
-    return{type:'Feature',properties:{name:FIPS_MAP[String(g.id).padStart(2,'0')]||g.properties?.name||''},geometry:geometry};
-  });
-  return{type:'FeatureCollection',features:features};
-}
 </script>
 </body>
 </html>
