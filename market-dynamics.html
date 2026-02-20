@@ -120,10 +120,10 @@
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.82 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.83 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
 </div>
 </main>
-<!-- v2.82 -->
+<!-- v2.83 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
@@ -213,6 +213,13 @@ document.addEventListener('DOMContentLoaded', async function() {
   sl2.addEventListener('input',function(){render2(+this.value);document.getElementById('wl2').textContent=fmtWeek(weeks2[+this.value])});
   render2(weeks2.length-1);
   document.getElementById('wl2').textContent = fmtWeek(weeks2[weeks2.length-1]);
+
+  // ── Play/pause shared state (must be before map try block) ──
+  var timers = [null,null,null];
+  var renderers = [render1,render2,null];
+  var sliders = [sl1,sl2,document.getElementById('sl3')];
+  var labels = ['wl1','wl2','wl3'];
+  var weekSets = [weeks1,weeks2,[]];
 
   // ── Chart 3: US State Choropleth (SVG + D3-geo) ──
   var NAME_TO_CODE = {};
@@ -365,11 +372,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // ── Play/pause animation ──
-  var timers = [null,null,null];
-  var renderers = [render1,render2,null];
-  var sliders = [sl1,sl2,document.getElementById('sl3')];
-  var labels = ['wl1','wl2','wl3'];
-  var weekSets = [weeks1,weeks2,[]];
 
   function togglePlay(idx) {
     var btn = document.getElementById('pb'+(idx+1));
