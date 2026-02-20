@@ -60,7 +60,7 @@
       font-size: 15px; font-weight: 700; color: #fff; text-decoration: none;
       letter-spacing: -0.3px;
     }
-    .top-bar a.brand-link:hover { color: var(--accent); }
+    .top-bar a.brand-link:hover { color: var(--accent); text-decoration: none; }
 
     .container {
       max-width: 760px;
@@ -120,8 +120,8 @@
 
     strong { color: var(--text); font-weight: 600; }
 
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(109,163,255,0.4); text-underline-offset: 2px; }
+    a:hover { text-decoration-color: var(--accent); }
 
     .legal-list {
       list-style: none;
@@ -170,6 +170,7 @@
     .footer a {
       font-size: 12px;
       color: var(--text-faint);
+      text-decoration-color: rgba(120,132,168,0.4);
     }
     .footer a:hover { color: var(--accent); }
 
