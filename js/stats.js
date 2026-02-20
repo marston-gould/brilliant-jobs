@@ -20,6 +20,21 @@ var STATS_THEME = {
 };
 var STATS_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#f97316','#14b8a6','#a855f7'];
 var DEFAULT_LEVEL_LABELS = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Principal','Manager','Director','VP','C-Suite'];
+
+// Default level hierarchy with keywords (used when user hasn't configured tuning)
+var DEFAULT_LEVEL_HIERARCHY = [
+  {label:'Intern', keywords:'intern,internship,co-op,coop'},
+  {label:'Entry', keywords:'entry level,entry-level,junior,jr,associate,new grad,graduate'},
+  {label:'Mid', keywords:'mid level,mid-level,intermediate'},
+  {label:'Senior', keywords:'senior,sr'},
+  {label:'Staff', keywords:'staff'},
+  {label:'Lead', keywords:'lead,team lead'},
+  {label:'Principal', keywords:'principal,distinguished,fellow'},
+  {label:'Manager', keywords:'manager,engineering manager,mgr'},
+  {label:'Director', keywords:'director'},
+  {label:'VP', keywords:'vp,vice president'},
+  {label:'C-Suite', keywords:'cto,cfo,ceo,coo,cio,chief,c-suite,head of'},
+];
 var STATS_COLUMNS = 'greenhouse_id,ats_source,title,company_name,salary_min,salary_max,salary_currency,location,loc_type,loc_state,loc_city,first_seen_at';
 
 // ─── Init ───
@@ -38,12 +53,18 @@ function renderFilterPills() {
   var container = document.getElementById('stats-filter-pills');
   if (!container) return;
   container.innerHTML = '';
+  // Force flex on container (CSS may not be loading)
+  container.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
   var isAll = statsSelectedFilters.includes('__all__');
 
+  // Base pill styles (inline to bypass any CSS issues)
+  var basePill = 'display:inline-block;font-size:12px;padding:6px 14px;border-radius:20px;cursor:pointer;font-weight:600;font-family:Outfit,-apple-system,sans-serif;transition:all 0.15s;line-height:1.3;white-space:nowrap;';
+  var inactivePill = basePill + 'border:1.5px solid #d1d5db;background:#fff;color:#64748b;';
+  var activePillAll = basePill + 'border:1.5px solid #3b82f6;background:rgba(59,130,246,0.1);color:#1e40af;';
+
   var allPill = document.createElement('button');
-  allPill.className = 'stats-fpill' + (isAll ? ' active' : '');
-  allPill.textContent = 'All Filters';
-  allPill.style.setProperty('--pill-color', 'var(--accent)');
+  allPill.textContent = '\u2630  All Filters';
+  allPill.style.cssText = isAll ? activePillAll : inactivePill;
   allPill.addEventListener('click', function() {
     statsSelectedFilters = ['__all__'];
     persistFilterSelection(); renderFilterPills(); debouncedFetchAndRender();
@@ -54,13 +75,19 @@ function renderFilterPills() {
     var pill = document.createElement('button');
     var color = filterColors[idx % filterColors.length];
     var isActive = isAll || statsSelectedFilters.includes(String(idx));
-    pill.className = 'stats-fpill' + (isActive ? ' active' : '');
     pill.textContent = sf.name || ('Filter ' + (idx + 1));
-    pill.style.setProperty('--pill-color', color);
-    if (isActive && !isAll) {
-      pill.style.borderColor = color;
-      pill.style.background = 'color-mix(in srgb, ' + color + ' 15%, transparent)';
+
+    if (isActive) {
+      pill.style.cssText = basePill + 'border:2px solid ' + color + ';background:' + color + '1a;color:' + color + ';';
+    } else {
+      pill.style.cssText = inactivePill;
     }
+
+    // Colored dot indicator
+    var dot = document.createElement('span');
+    dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;vertical-align:middle;';
+    pill.insertBefore(dot, pill.firstChild);
+
     pill.addEventListener('click', function() {
       var id = String(idx);
       statsSelectedFilters = statsSelectedFilters.filter(function(f) { return f !== '__all__'; });
@@ -73,8 +100,9 @@ function renderFilterPills() {
     container.appendChild(pill);
   });
 
-  var toggle = document.getElementById('stats-compare-sw');
-  if (toggle) { toggle.style.opacity = '0.4'; toggle.style.pointerEvents = 'none'; toggle.title = 'Coming soon'; }
+  // Hide compare toggle entirely for launch
+  var compareLabel = document.querySelector('.stats-compare-toggle');
+  if (compareLabel) compareLabel.style.display = 'none';
 }
 
 function persistFilterSelection() { localStorage.setItem('bj_stats_filters', JSON.stringify(statsSelectedFilters)); }
@@ -153,8 +181,8 @@ function aggregateStats(rows) {
   s.companyCount = Object.keys(cos).length;
 
   // Seniority — always show all hierarchy levels including 0
-  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : null;
-  var labels = hier ? hier.map(function(l) { return l.label; }) : DEFAULT_LEVEL_LABELS.slice();
+  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
+  var labels = hier.map(function(l) { return l.label; });
   labels.forEach(function(l) { s.levelCounts[l] = 0; });
   s.levelCounts['Other'] = 0;
   var seniorSet = {senior:1,staff:1,lead:1,principal:1,manager:1,director:1,vp:1,head:1,chief:1};
@@ -337,8 +365,8 @@ function renderLevelFunnel(stats) {
   var chart = getOrCreateChart('#chart-funnel'); if (!chart) return;
   // Use the filter-scoped data for seniority breakdown 
   // but always show ALL levels from hierarchy
-  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : null;
-  var labels = hier ? hier.map(function(l){return l.label;}) : DEFAULT_LEVEL_LABELS.slice();
+  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
+  var labels = hier.map(function(l){return l.label;});
   
   // Count by level from the filtered data
   var counts = {};
@@ -434,6 +462,20 @@ function showStatsLoading(on) {
   var grid = document.getElementById('stats-charts-grid');
   var empty = document.getElementById('stats-empty');
   if (empty) empty.style.display = 'none';
+
+  // Force grid layout inline (CSS may not be applying)
+  if (grid) {
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:16px;';
+    // Style each chart card
+    var cards = grid.querySelectorAll('.stats-chart-card');
+    cards.forEach(function(card) {
+      card.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;';
+      if (card.classList.contains('full')) {
+        card.style.gridColumn = '1 / -1';
+      }
+    });
+  }
+
   if (on) {
     ['#sc-total','#sc-salary','#sc-senior','#sc-remote','#sc-companies'].forEach(function(s){var e=document.querySelector(s);if(e)e.textContent='\u2014';});
     if (grid) grid.style.opacity = '0.4';
