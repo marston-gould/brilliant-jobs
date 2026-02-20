@@ -1,4 +1,4 @@
-# Feature Brief: Cohort Identity + Session Analytics Infrastructure
+# Feature Brief: Cohort Experience System + Session Analytics Infrastructure
 
 **From:** Pod 1 (Growth) — CPO
 **To:** Pod 2 (Engineering) — CTO + Data Architect
@@ -10,67 +10,86 @@
 
 ## Strategic Context
 
-The entitlements system (live in production per `docs/ENTITLEMENTS.md`) controls what each user can access. But we currently have no way to answer: "which *group* of users behaves differently, and why?"
+### What a cohort IS
 
-This brief adds two capabilities:
+A cohort defines **what version of the product a user experiences.** It's the answer to "what are the rules of engagement for this user?" — which entitlements they get, what pricing they see, what onboarding flow they go through, what feature gates apply.
 
-1. **Cohort identity** — tag every user with a cohort so we can segment analysis, run experiments, and grandfather pricing.
-2. **Session tracking** — give every user visit a unique ID so we can join behavioral data (PostHog) with transactional data (Supabase) and measure feature impact at the session level.
+Cohorts are almost always tied to **acquisition timing** because the product evolves. The product you ship in March 2026 is not the product you ship in September 2026 — pricing changes, free-tier limits shift, features get added or gated differently. Each cohort is a **frozen experience definition.** Once a user is assigned to a cohort, their base experience doesn't change when new cohorts are created for newer users.
 
-Without this, we're flying blind on every decision that follows launch: pricing changes, free-tier adjustments, feature gating experiments, referral program ROI, and retention analysis.
+### What a cohort IS NOT
 
----
+- **Not an attribution tag.** Referral source, UTM campaign, LinkedIn vs. organic — these are acquisition *channels*, stored as session or user attributes. A user referred by a friend and a user from SEO in the same week are in the **same cohort** because they get the same experience.
+- **Not a plan.** A user's plan (free/pro/enterprise) determines their subscription tier. Their cohort determines the *version* of that plan they experience. Launch-cohort Pro at $14.99/mo is a different experience contract than summer-cohort Pro at $19.99/mo, even though both are "Pro."
 
-## User Stories
+### Examples
 
-**As the** Brilliant Jobs product team,
-**We want to** assign every user to a cohort at signup and track each session with a unique ID,
-**So that** we can compare behavior across user segments, measure the impact of entitlement changes, and make data-driven decisions about pricing, features, and growth.
+| Cohort | Timing | Experience Definition |
+|--------|--------|----------------------|
+| `launch_2026` | March 2026 | 1 free filter, Pro at $14.99/mo, onboarding v1, no AI grading on free |
+| `summer_2026` | June 2026 | 1 free filter, Pro at $19.99/mo, onboarding v2 with Stats tour, 7-day AI grading trial on free |
+| `fall_2026` | Oct 2026 | 2 free filters, Pro at $19.99/mo, boolean operators on free, new dashboard layout |
 
-**As an** analyst reviewing launch performance,
-**I want to** join a user's cohort, plan, entitlements, and session activity in a single query,
-**So that** I can answer questions like "Do launch-cohort users who visit Stats in session 1 convert to Pro at a higher rate?" without stitching data across disconnected systems.
-
-**As a** product owner planning a pricing change,
-**I want to** define a cohort by signup date range and guarantee their entitlements persist,
-**So that** early adopters are grandfathered and I can measure the impact of changes on new cohorts without affecting existing users.
+When `summer_2026` rules go live, `launch_2026` users keep their experience. That's grandfathering — not just for pricing, but for the entire product surface.
 
 ---
 
-## Technical Stack Context
+## Feature Behavior Model
 
-- **Dev server:** Vite 6 (`npx vite`, port 3000)
-- **JS build:** esbuild via `build.js` — concatenates 15+ modules in `js/` → `dist/dashboard.min.js`
-- **CSS:** Tailwind 3.4 (`src/input.css` → `styles.css`)
-- **Backend:** Supabase (PostgreSQL + Auth + Edge Functions + RLS)
-- **Analytics:** PostHog (installed, collecting events)
-- **No frontend framework** — modular JS files, no React/Vue
+Every feature in the entitlement system has a **behavior category** that determines how it can change for a user within their cohort. This is critical for product management — it tells us what levers we can pull and what's locked.
 
-Session init logic should live in `js/app.js` or `js/main.js` (app bootstrap), not a standalone script. New modules are added to the `jsFiles` array in `build.js`.
+### The Five Categories
+
+| Category | Code | Meaning | Can change? | Example |
+|----------|------|---------|-------------|---------|
+| **Off** | `off` | Feature is disabled at this plan level within this cohort. Not visible, not accessible. | Only via plan upgrade or cohort-level override. | Free users: `auto_apply = off` |
+| **Fixed** | `fixed` | Feature has a hard limit that doesn't change regardless of behavior or time. The user gets exactly this amount, period. | No. Locked to cohort + plan definition. | Free: `filters = 1` (always 1, can't earn more on free) |
+| **Adjustable** | `adjustable` | Feature has a base limit that can be increased via entitlement grants (referrals, promotions, earned actions). | Yes — additive bonuses stack on the base. | Pro: `filters = 10` base, but referral bonuses can add +2 each |
+| **Degradable** | `degradable` | Feature starts at a limit but can be reduced if usage is low or absent. Use-it-or-lose-it mechanics. | Yes — downward. System can revoke unused capacity. | Pro: `resume_grading = 50/mo` — if user grades 0 resumes for 3 consecutive months, reduce to 10/mo with "upgrade to restore" prompt |
+| **Unlimited** | `unlimited` | No limit. Feature is fully open. | No ceiling to hit. | Enterprise: `filters = unlimited`, Pro: `resume_grading = unlimited` |
+
+### Behavior Category Rules
+
+1. **Off features show upgrade prompts.** When a user hits an `off` feature, the UI explains what it does and shows the path to access (upgrade to Pro, or trial if available).
+2. **Fixed features are the conversion lever.** They create the constraint that drives upgrades. Don't make fixed features adjustable on free tier — that dilutes the upgrade incentive.
+3. **Adjustable features reward engagement.** The base limit is the floor; earned actions raise the ceiling. This is where referral bonuses, onboarding rewards, and promotional grants apply.
+4. **Degradable features prevent waste and enable re-engagement.** If a Pro user pays for resume grading but never uses it, degrading the limit after N months of zero usage lets you trigger a re-engagement campaign ("You haven't graded a resume in 3 months — your limit has been reduced to 10/mo. Grade a resume now to restore your full limit."). This requires usage tracking and a degradation schedule.
+5. **Unlimited features are non-negotiable.** They never degrade, never cap. Used for Enterprise tier and for features where limiting creates more support burden than value.
+
+### Current Feature Catalog with Behavior Categories
+
+| Feature | Type | Free Behavior | Free Limit | Pro Behavior | Pro Limit | Enterprise |
+|---------|------|---------------|------------|--------------|-----------|------------|
+| `filters` | quota | fixed | 1 | adjustable | 10 | unlimited |
+| `resumes` | quota | fixed | 2 | adjustable | 5 | unlimited |
+| `resume_grading` | quota/mo | off | 0 | unlimited | -1 | unlimited |
+| `sms_notifications` | boolean | off | 0 | fixed | on | on |
+| `boolean_operators` | boolean | off | 0 | fixed | on | on |
+| `auto_apply` | boolean | off | 0 | fixed | on | on |
+| `network_intel` | boolean | off | 0 | fixed | on | on |
+| `api_access` | quota/day | off | 0 | off | 0 | adjustable (10K/day) |
+| `data_export` | quota/mo | off | 0 | unlimited | -1 | unlimited |
+| `priority_refresh` | boolean | off | 0 | fixed | on | on |
+
+**Note:** No features are `degradable` at launch. The category exists in the schema so we can activate it later based on usage data. The degradation engine (usage tracking + automatic limit reduction + re-engagement trigger) is a post-launch build.
 
 ---
 
-## Phase A: Cohort Identity (Pre-Launch — Ship Before March 2026)
+## Schema Design
 
-### What We're Building
+### Updated `entitlement_features` table
 
-A lightweight cohort tagging system on the user profile. No new tables — just columns, a trigger, and a seed.
-
-### Schema Changes
-
-**Add to `profiles` table:**
+Add `behavior_category` to the existing feature catalog:
 
 ```sql
-ALTER TABLE profiles
-  ADD COLUMN cohort_id text,
-  ADD COLUMN cohort_assigned_at timestamptz;
+ALTER TABLE entitlement_features
+  ADD COLUMN behavior_category text NOT NULL DEFAULT 'fixed'
+    CHECK (behavior_category IN ('off', 'fixed', 'adjustable', 'degradable', 'unlimited'));
 
-CREATE INDEX idx_profiles_cohort ON profiles (cohort_id);
-
-COMMENT ON COLUMN profiles.cohort_id IS 'User cohort for segmentation and analysis. Set at signup by trigger, can be overridden manually.';
+COMMENT ON COLUMN entitlement_features.behavior_category IS
+  'Default behavior category. Actual behavior per plan+cohort is in cohort_plan_entitlements.behavior.';
 ```
 
-**New table — `cohorts` (reference/catalog only):**
+### New table — `cohorts`
 
 ```sql
 CREATE TABLE cohorts (
@@ -79,19 +98,119 @@ CREATE TABLE cohorts (
   description     text,
   criteria_type   text NOT NULL CHECK (criteria_type IN ('date_range', 'count_cap', 'manual', 'rule')),
   criteria_value  jsonb NOT NULL DEFAULT '{}',
+  pricing_config  jsonb NOT NULL DEFAULT '{}',
   is_active       boolean NOT NULL DEFAULT true,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
-COMMENT ON TABLE cohorts IS 'Catalog of user cohorts. criteria_value defines membership rules. Actual membership is on profiles.cohort_id.';
+COMMENT ON TABLE cohorts IS 'Experience definitions. Each cohort is a frozen product configuration.';
+COMMENT ON COLUMN cohorts.pricing_config IS 'Stripe price IDs per plan for this cohort. E.g. {"pro_monthly": "price_xxx", "pro_annual": "price_yyy"}';
+COMMENT ON COLUMN cohorts.criteria_value IS 'Membership rules. date_range: {"start": "...", "end": "..."}. count_cap: {"max_users": 500}. rule: {"utm_source": "linkedin_launch"}.';
 ```
 
-**Seed the first cohort:**
+### New table — `cohort_plan_entitlements`
+
+This is the **experience definition** — what each feature looks like at each plan level within a specific cohort.
 
 ```sql
-INSERT INTO cohorts (id, name, description, criteria_type, criteria_value) VALUES
-  ('launch_2026', 'Launch Cohort', 'All users who sign up before April 30, 2026', 'date_range',
-   '{"start": "2026-01-01T00:00:00Z", "end": "2026-04-30T23:59:59Z"}');
+CREATE TABLE cohort_plan_entitlements (
+  cohort_id   text NOT NULL REFERENCES cohorts(id),
+  plan_id     text NOT NULL,
+  feature_id  text NOT NULL REFERENCES entitlement_features(id),
+  limit_value int NOT NULL,
+  behavior    text NOT NULL CHECK (behavior IN ('off', 'fixed', 'adjustable', 'degradable', 'unlimited')),
+
+  PRIMARY KEY (cohort_id, plan_id, feature_id)
+);
+
+COMMENT ON TABLE cohort_plan_entitlements IS
+  'The experience contract. Defines what each feature does at each plan level for a specific cohort. This is the source of truth for "what does this user get?"';
+COMMENT ON COLUMN cohort_plan_entitlements.behavior IS
+  'How this feature behaves: off (disabled), fixed (hard limit), adjustable (can earn more), degradable (can lose if unused), unlimited (no cap).';
+```
+
+### Add `cohort_id` to `profiles`
+
+```sql
+ALTER TABLE profiles
+  ADD COLUMN cohort_id text REFERENCES cohorts(id),
+  ADD COLUMN cohort_assigned_at timestamptz;
+
+CREATE INDEX idx_profiles_cohort ON profiles (cohort_id);
+```
+
+### Updated `check_entitlement()` Resolution
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              check_entitlement() v2                      │
+│                                                         │
+│  1. Look up user's plan (free/pro/enterprise)           │
+│  2. Look up user's cohort (from profiles.cohort_id)     │
+│  3. Check for user override → replaces everything       │
+│  4. Check for active trial → activates if base = off    │
+│  5. Get cohort_plan_entitlements for (cohort, plan,     │
+│     feature) → base limit + behavior category           │
+│  6. If no cohort entry → fall back to plan_entitlements  │
+│  7. If behavior = 'adjustable':                         │
+│       Sum active bonus + earned grants (additive)       │
+│  8. If behavior = 'degradable':                         │
+│       Check degradation rules, apply reduction if met   │
+│  9. Return: allowed, effective_limit, remaining,        │
+│             behavior, cohort_id                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key change from v1:** Step 5 checks `cohort_plan_entitlements` first, falling back to `plan_entitlements` (step 6) only if no cohort-specific entry exists. This means existing `plan_entitlements` rows serve as the global default, and cohort entries override them per-cohort.
+
+**New in response:** The `behavior` field is returned so the client knows whether to show "upgrade to unlock" (off), "you've used X of Y" (fixed/adjustable), or no limit indicator (unlimited). The client also knows whether bonuses can apply (adjustable) or not (fixed).
+
+### Seed data — `launch_2026` cohort
+
+```sql
+-- Create the cohort
+INSERT INTO cohorts (id, name, description, criteria_type, criteria_value, pricing_config) VALUES
+  ('launch_2026', 'Launch Cohort', 'All users who sign up March–April 2026. Founding experience.',
+   'date_range', '{"start": "2026-03-01T00:00:00Z", "end": "2026-04-30T23:59:59Z"}',
+   '{"pro_monthly": "price_launch_monthly", "pro_annual": "price_launch_annual"}');
+
+-- Define the experience
+INSERT INTO cohort_plan_entitlements (cohort_id, plan_id, feature_id, limit_value, behavior) VALUES
+  -- Free tier
+  ('launch_2026', 'free', 'filters',            1,  'fixed'),
+  ('launch_2026', 'free', 'resumes',            2,  'fixed'),
+  ('launch_2026', 'free', 'resume_grading',     0,  'off'),
+  ('launch_2026', 'free', 'sms_notifications',  0,  'off'),
+  ('launch_2026', 'free', 'boolean_operators',  0,  'off'),
+  ('launch_2026', 'free', 'auto_apply',         0,  'off'),
+  ('launch_2026', 'free', 'network_intel',      0,  'off'),
+  ('launch_2026', 'free', 'api_access',         0,  'off'),
+  ('launch_2026', 'free', 'data_export',        0,  'off'),
+  ('launch_2026', 'free', 'priority_refresh',   0,  'off'),
+
+  -- Pro tier
+  ('launch_2026', 'pro', 'filters',            10,  'adjustable'),
+  ('launch_2026', 'pro', 'resumes',             5,  'adjustable'),
+  ('launch_2026', 'pro', 'resume_grading',     -1,  'unlimited'),
+  ('launch_2026', 'pro', 'sms_notifications',   1,  'fixed'),
+  ('launch_2026', 'pro', 'boolean_operators',   1,  'fixed'),
+  ('launch_2026', 'pro', 'auto_apply',          1,  'fixed'),
+  ('launch_2026', 'pro', 'network_intel',       1,  'fixed'),
+  ('launch_2026', 'pro', 'api_access',          0,  'off'),
+  ('launch_2026', 'pro', 'data_export',        -1,  'unlimited'),
+  ('launch_2026', 'pro', 'priority_refresh',    1,  'fixed'),
+
+  -- Enterprise tier
+  ('launch_2026', 'enterprise', 'filters',           -1,  'unlimited'),
+  ('launch_2026', 'enterprise', 'resumes',           -1,  'unlimited'),
+  ('launch_2026', 'enterprise', 'resume_grading',    -1,  'unlimited'),
+  ('launch_2026', 'enterprise', 'sms_notifications',  1,  'fixed'),
+  ('launch_2026', 'enterprise', 'boolean_operators',  1,  'fixed'),
+  ('launch_2026', 'enterprise', 'auto_apply',         1,  'fixed'),
+  ('launch_2026', 'enterprise', 'network_intel',      1,  'fixed'),
+  ('launch_2026', 'enterprise', 'api_access',     10000,  'adjustable'),
+  ('launch_2026', 'enterprise', 'data_export',       -1,  'unlimited'),
+  ('launch_2026', 'enterprise', 'priority_refresh',   1,  'fixed');
 ```
 
 ### Auto-Assignment Trigger
@@ -102,15 +221,26 @@ RETURNS trigger AS $$
 DECLARE
   matching_cohort text;
 BEGIN
-  -- Date-range cohorts: find the first active cohort whose range includes now
+  -- Date-range cohorts: most recently created active cohort whose range includes now
   SELECT id INTO matching_cohort
   FROM cohorts
   WHERE is_active = true
     AND criteria_type = 'date_range'
     AND (criteria_value->>'start')::timestamptz <= now()
     AND (criteria_value->>'end')::timestamptz >= now()
-  ORDER BY created_at ASC
+  ORDER BY created_at DESC
   LIMIT 1;
+
+  -- Count-cap cohorts: find active cohort with room
+  IF matching_cohort IS NULL THEN
+    SELECT c.id INTO matching_cohort
+    FROM cohorts c
+    WHERE c.is_active = true
+      AND c.criteria_type = 'count_cap'
+      AND (SELECT COUNT(*) FROM profiles WHERE cohort_id = c.id) < (c.criteria_value->>'max_users')::int
+    ORDER BY c.created_at DESC
+    LIMIT 1;
+  END IF;
 
   IF matching_cohort IS NOT NULL THEN
     NEW.cohort_id := matching_cohort;
@@ -134,28 +264,188 @@ CREATE TRIGGER trg_assign_cohort
 UPDATE profiles
 SET cohort_id = 'launch_2026',
     cohort_assigned_at = created_at
-WHERE created_at >= '2026-01-01T00:00:00Z'
-  AND cohort_id IS NULL;
+WHERE cohort_id IS NULL;
 ```
 
-### Acceptance Criteria — Phase A
+---
 
-- [ ] `profiles` table has `cohort_id` and `cohort_assigned_at` columns
-- [ ] `cohorts` table exists with `launch_2026` seed row
-- [ ] New signups automatically get `cohort_id = 'launch_2026'` via trigger
-- [ ] Existing users are backfilled
-- [ ] `cohort_id` is indexed for query performance
-- [ ] RLS on `cohorts` table: read-only for authenticated users, write for service role only
+## Updated `check_entitlement()` Function
+
+```sql
+CREATE OR REPLACE FUNCTION check_entitlement(
+  p_user_id uuid,
+  p_feature text,
+  p_usage_count int DEFAULT 0
+)
+RETURNS jsonb AS $$
+DECLARE
+  v_plan text;
+  v_cohort text;
+  v_base_limit int;
+  v_behavior text;
+  v_override_row record;
+  v_trial_row record;
+  v_bonus int := 0;
+  v_effective int;
+  v_source text := 'plan';
+BEGIN
+  -- 1. Get user's plan and cohort
+  SELECT COALESCE(s.plan_id, 'free') INTO v_plan
+  FROM subscriptions s WHERE s.user_id = p_user_id AND s.status = 'active' LIMIT 1;
+  IF v_plan IS NULL THEN v_plan := 'free'; END IF;
+
+  SELECT cohort_id INTO v_cohort FROM profiles WHERE id = p_user_id;
+
+  -- 2. User override (highest priority)
+  SELECT * INTO v_override_row
+  FROM user_entitlements
+  WHERE user_id = p_user_id AND feature_id = p_feature AND grant_type = 'override'
+    AND (expires_at IS NULL OR expires_at > now())
+  ORDER BY created_at DESC LIMIT 1;
+
+  IF v_override_row IS NOT NULL THEN
+    v_effective := v_override_row.limit_value;
+    RETURN jsonb_build_object(
+      'allowed', CASE WHEN v_effective = -1 THEN true WHEN v_effective > 0 THEN p_usage_count < v_effective ELSE false END,
+      'feature', p_feature, 'plan', v_plan, 'cohort', v_cohort,
+      'behavior', 'override', 'base_limit', v_effective, 'bonus', 0,
+      'effective_limit', v_effective, 'current', p_usage_count,
+      'remaining', CASE WHEN v_effective = -1 THEN -1 ELSE GREATEST(v_effective - p_usage_count, 0) END,
+      'source', 'override'
+    );
+  END IF;
+
+  -- 3. Active trial
+  SELECT * INTO v_trial_row
+  FROM user_entitlements
+  WHERE user_id = p_user_id AND feature_id = p_feature AND grant_type = 'trial'
+    AND (expires_at IS NULL OR expires_at > now())
+  ORDER BY expires_at DESC LIMIT 1;
+
+  -- 4. Base limit — cohort_plan_entitlements first, fall back to plan_entitlements
+  SELECT cpe.limit_value, cpe.behavior INTO v_base_limit, v_behavior
+  FROM cohort_plan_entitlements cpe
+  WHERE cpe.cohort_id = v_cohort AND cpe.plan_id = v_plan AND cpe.feature_id = p_feature;
+
+  IF v_base_limit IS NULL THEN
+    SELECT pe.limit_value INTO v_base_limit
+    FROM plan_entitlements pe
+    WHERE pe.plan_id = v_plan AND pe.feature_id = p_feature;
+
+    SELECT ef.behavior_category INTO v_behavior
+    FROM entitlement_features ef WHERE ef.id = p_feature;
+
+    v_source := 'plan_default';
+  ELSE
+    v_source := 'cohort';
+  END IF;
+
+  -- Final fallback to feature default
+  IF v_base_limit IS NULL THEN
+    SELECT default_limit INTO v_base_limit FROM entitlement_features WHERE id = p_feature;
+    v_source := 'feature_default';
+  END IF;
+  v_base_limit := COALESCE(v_base_limit, 0);
+  v_behavior := COALESCE(v_behavior, 'fixed');
+
+  -- 5. If base is off but trial is active, use trial
+  IF v_base_limit = 0 AND v_trial_row IS NOT NULL THEN
+    v_effective := v_trial_row.limit_value;
+    RETURN jsonb_build_object(
+      'allowed', CASE WHEN v_effective = -1 THEN true WHEN v_effective > 0 THEN p_usage_count < v_effective ELSE false END,
+      'feature', p_feature, 'plan', v_plan, 'cohort', v_cohort,
+      'behavior', 'adjustable', 'base_limit', 0, 'bonus', v_effective,
+      'effective_limit', v_effective, 'current', p_usage_count,
+      'remaining', CASE WHEN v_effective = -1 THEN -1 ELSE GREATEST(v_effective - p_usage_count, 0) END,
+      'source', 'trial', 'trial_expires', v_trial_row.expires_at
+    );
+  END IF;
+
+  -- 6. If adjustable, sum bonuses
+  IF v_behavior = 'adjustable' THEN
+    SELECT COALESCE(SUM(limit_value), 0) INTO v_bonus
+    FROM user_entitlements
+    WHERE user_id = p_user_id AND feature_id = p_feature
+      AND grant_type IN ('bonus', 'earned')
+      AND (expires_at IS NULL OR expires_at > now());
+  END IF;
+
+  -- 7. Calculate effective limit
+  IF v_base_limit = -1 THEN
+    v_effective := -1;
+  ELSE
+    v_effective := v_base_limit + v_bonus;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'allowed', CASE WHEN v_effective = -1 THEN true WHEN v_effective > 0 THEN p_usage_count < v_effective ELSE false END,
+    'feature', p_feature, 'plan', v_plan, 'cohort', v_cohort,
+    'behavior', v_behavior, 'base_limit', v_base_limit, 'bonus', v_bonus,
+    'effective_limit', v_effective, 'current', p_usage_count,
+    'remaining', CASE WHEN v_effective = -1 THEN -1 ELSE GREATEST(v_effective - p_usage_count, 0) END,
+    'source', v_source
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+### What the response tells you
+
+```json
+{
+  "allowed": true,
+  "feature": "filters",
+  "plan": "pro",
+  "cohort": "launch_2026",
+  "behavior": "adjustable",
+  "base_limit": 10,
+  "bonus": 4,
+  "effective_limit": 14,
+  "current": 6,
+  "remaining": 8,
+  "source": "cohort"
+}
+```
+
+The client answers all five questions from the `behavior` field:
+
+1. **Is this off?** → `behavior = 'off'` → show upgrade prompt
+2. **Is the limit fixed?** → `behavior = 'fixed'` → show "X of Y used", no earn-more messaging
+3. **Can the user earn more?** → `behavior = 'adjustable'` → show "X of Y used" + "Earn more by referring friends"
+4. **Can this be reduced?** → `behavior = 'degradable'` → show "Use it or lose it" indicator (future)
+5. **Is this unlimited?** → `behavior = 'unlimited'` → show no limit indicator
+
+---
+
+## Phase A: Cohort Experience System (Pre-Launch)
+
+### Acceptance Criteria
+
+- [ ] `cohorts` table exists with `launch_2026` seed row including `pricing_config`
+- [ ] `cohort_plan_entitlements` table exists with full experience definition for `launch_2026` (all 10 features × 3 plans = 30 rows)
+- [ ] `entitlement_features` has `behavior_category` column populated for all existing features
+- [ ] `profiles` has `cohort_id` and `cohort_assigned_at` columns, indexed
+- [ ] Auto-assignment trigger fires on new profile insert (handles `date_range` and `count_cap`)
+- [ ] Existing users backfilled to `launch_2026`
+- [ ] `check_entitlement()` v2 deployed with cohort → plan fallback → feature default resolution
+- [ ] Response includes `behavior`, `cohort`, `base_limit`, `bonus`, `source` fields
+- [ ] Existing client-side callers of `check_entitlement()` handle expanded response (backward compatible — new fields are additive)
+- [ ] RLS: `cohorts` and `cohort_plan_entitlements` read-only for authenticated, write for service role
+- [ ] Entitlement catalog adjustments applied: free resumes 1→2, free data_export 1→0, pro resume_grading 50→unlimited
 
 ### Effort Estimate — Phase A
 
 | Work Unit | Effort |
 |-----------|--------|
-| Schema migration (columns + cohorts table + index) | 1h |
-| Trigger function + testing | 1h |
-| Backfill script | 0.5h |
+| Schema: `cohorts` + `cohort_plan_entitlements` + `behavior_category` column | 1.5h |
+| Schema: `profiles` columns + index + trigger | 1h |
+| Seed data: `launch_2026` cohort + 30 experience definition rows | 1h |
+| `check_entitlement()` v2 with cohort resolution + behavior | 3h |
+| Backfill existing users | 0.5h |
 | RLS policies | 0.5h |
-| **Total** | **3h** |
+| Entitlement catalog adjustments (3 UPDATE statements) | 0.5h |
+| Testing: assignment, resolution priority, fallback, backward compat | 2h |
+| **Total** | **10h (2 dev days)** |
 
 ---
 
@@ -163,11 +453,9 @@ WHERE created_at >= '2026-01-01T00:00:00Z'
 
 ### What We're Building
 
-A server-aware session tracking system that bridges PostHog behavioral data with Supabase transactional data. Every user visit gets a unique session ID that's shared between both systems.
+A server-aware session tracking system that bridges PostHog behavioral data with Supabase transactional data. Every user visit gets a unique session ID shared between both systems.
 
 ### Schema
-
-**New table — `user_sessions`:**
 
 ```sql
 CREATE TABLE user_sessions (
@@ -180,23 +468,15 @@ CREATE TABLE user_sessions (
   device_type     text,
   referral_source text,
   entry_page      text,
-  metadata        jsonb NOT NULL DEFAULT '{}',
-  
-  CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES auth.users(id)
+  metadata        jsonb NOT NULL DEFAULT '{}'
 );
 
 CREATE INDEX idx_sessions_user ON user_sessions (user_id, started_at DESC);
 CREATE INDEX idx_sessions_cohort ON user_sessions (cohort_id, started_at DESC);
 CREATE INDEX idx_sessions_plan ON user_sessions (plan_id, started_at DESC);
-
-COMMENT ON COLUMN user_sessions.cohort_id IS 'Snapshot of profiles.cohort_id at session start. Denormalized for fast joins — do not update retroactively.';
-COMMENT ON COLUMN user_sessions.plan_id IS 'Snapshot of user plan at session start. Denormalized — captures what plan was active during this session.';
-COMMENT ON COLUMN user_sessions.metadata IS 'Flexible bag: experiment assignments, active feature flags, A/B variant, etc.';
 ```
 
-### Why Snapshots Matter
-
-`cohort_id` and `plan_id` are denormalized onto the session record intentionally. If a user upgrades from free to Pro mid-month, we need to know which sessions happened on free and which on Pro. These are point-in-time snapshots, not live lookups. Never backfill or update them retroactively.
+`cohort_id` and `plan_id` are **point-in-time snapshots**, denormalized intentionally. If a user upgrades mid-month, we know which sessions happened on free and which on Pro. Never backfill or update retroactively.
 
 ### Session Creation RPC
 
@@ -214,7 +494,6 @@ DECLARE
   v_cohort text;
   v_plan text;
 BEGIN
-  -- Snapshot current cohort and plan
   SELECT cohort_id INTO v_cohort FROM profiles WHERE id = p_user_id;
   SELECT plan_id INTO v_plan FROM subscriptions WHERE user_id = p_user_id AND status = 'active' LIMIT 1;
 
@@ -227,7 +506,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-### Heartbeat RPC (keeps session alive)
+### Heartbeat RPC
 
 ```sql
 CREATE OR REPLACE FUNCTION session_heartbeat(p_session_id uuid)
@@ -240,20 +519,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ### Client-Side Integration
 
-**In `js/app.js` (or `js/main.js` — wherever app bootstrap runs):**
+**In `js/app.js` (after auth resolves, before PostHog events fire):**
 
 ```javascript
-// Session management
 async function initSession() {
   const existing = sessionStorage.getItem('bj_session_id');
   if (existing) {
-    // Resume existing session — send heartbeat
     sb.rpc('session_heartbeat', { p_session_id: existing });
     return existing;
   }
 
-  // New session — detect context
-  const deviceType = window.innerWidth < 768 ? 'mobile' : 
+  const deviceType = window.innerWidth < 768 ? 'mobile' :
                      window.innerWidth < 1024 ? 'tablet' : 'desktop';
   const params = new URLSearchParams(window.location.search);
   const referralSource = params.get('utm_source') || params.get('ref') || 'direct';
@@ -271,10 +547,9 @@ async function initSession() {
   return sessionId;
 }
 
-// Call on app init (after auth resolves)
 const sessionId = await initSession();
 
-// Heartbeat every 5 minutes to keep session alive
+// Heartbeat every 5 minutes when tab is visible
 setInterval(() => {
   if (document.visibilityState === 'visible') {
     sb.rpc('session_heartbeat', { p_session_id: sessionId });
@@ -284,78 +559,48 @@ setInterval(() => {
 
 ### PostHog Bridge
 
-**Critical integration — this is the join point between behavioral and transactional data.**
-
 ```javascript
-// After session init, register the session ID with PostHog
 posthog.register({
   bj_session_id: sessionId,
   bj_cohort_id: currentUser.cohort_id,
   bj_plan_id: currentUser.plan_id
 });
-
-// Now every PostHog event automatically carries these properties.
-// In PostHog, you can:
-//   - Filter events by bj_session_id to see a full session replay
-//   - Group by bj_cohort_id to compare cohort behavior
-//   - Break down by bj_plan_id to see free vs. Pro behavior
 ```
 
-### Session Timeout Logic
+Every PostHog event now carries these as super properties. The join path:
+- Filter by `bj_session_id` → full session behavior
+- Group by `bj_cohort_id` → compare cohort experiences
+- Break down by `bj_plan_id` → free vs. Pro behavior
 
-A session ends when the user closes the tab/browser (sessionStorage clears) or after 30 minutes of inactivity (no heartbeat). The `last_active_at` field handles this — sessions with `last_active_at` more than 30 minutes old are considered closed for analysis purposes.
-
-No explicit "end session" call needed. Query pattern:
-
-```sql
--- Active sessions: heartbeat within last 30 minutes
-SELECT * FROM user_sessions
-WHERE last_active_at > now() - interval '30 minutes';
-
--- Session duration: last_active_at - started_at
-SELECT id, user_id, cohort_id, plan_id,
-       last_active_at - started_at AS duration
-FROM user_sessions;
-```
-
-### RLS Policies
+### RLS
 
 ```sql
--- Users can read their own sessions
-CREATE POLICY sessions_read ON user_sessions
-  FOR SELECT USING (auth.uid() = user_id);
-
--- Sessions created via RPC (SECURITY DEFINER), no direct insert
-CREATE POLICY sessions_no_direct_insert ON user_sessions
-  FOR INSERT WITH CHECK (false);
-
--- No direct updates — heartbeat via RPC only
-CREATE POLICY sessions_no_direct_update ON user_sessions
-  FOR UPDATE USING (false);
+CREATE POLICY sessions_read ON user_sessions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY sessions_no_direct_insert ON user_sessions FOR INSERT WITH CHECK (false);
+CREATE POLICY sessions_no_direct_update ON user_sessions FOR UPDATE USING (false);
 ```
 
 ### Acceptance Criteria — Phase B
 
 - [ ] `user_sessions` table exists with indexes
-- [ ] `create_session()` RPC snapshots cohort_id and plan_id at session start
-- [ ] `session_heartbeat()` RPC updates `last_active_at`
-- [ ] Client-side: new session created on app init if none exists in `sessionStorage`
-- [ ] Client-side: heartbeat fires every 5 minutes when tab is visible
-- [ ] PostHog: `bj_session_id`, `bj_cohort_id`, `bj_plan_id` registered as super properties
-- [ ] RLS: users can read own sessions, no direct insert/update
-- [ ] Closing tab and reopening creates a new session (sessionStorage behavior)
-- [ ] Session works across dashboard page navigation (single-page app, sessionStorage persists)
+- [ ] `create_session()` snapshots cohort_id and plan_id
+- [ ] `session_heartbeat()` updates `last_active_at`
+- [ ] Client: new session on app init if none in `sessionStorage`
+- [ ] Client: heartbeat every 5 min when tab visible
+- [ ] PostHog: `bj_session_id`, `bj_cohort_id`, `bj_plan_id` registered
+- [ ] RLS: users read own sessions, no direct insert/update
+- [ ] Tab close + reopen creates new session
 
 ### Effort Estimate — Phase B
 
 | Work Unit | Effort |
 |-----------|--------|
-| Schema migration (user_sessions + indexes + RLS) | 1h |
+| Schema + indexes + RLS | 1h |
 | create_session() + session_heartbeat() RPCs | 2h |
 | Client-side session init + heartbeat in `js/app.js` | 2h |
 | PostHog super property registration | 1h |
 | Device detection + referral source parsing | 1h |
-| Testing (new session, resume session, heartbeat, tab close) | 2h |
+| Testing | 2h |
 | Documentation | 1h |
 | **Total** | **10h (2 dev days)** |
 
@@ -365,108 +610,26 @@ CREATE POLICY sessions_no_direct_update ON user_sessions
 
 | Phase | Scope | Effort | Timeline |
 |-------|-------|--------|----------|
-| A — Cohort Identity | profiles columns, cohorts table, trigger, backfill | 3h (0.5 day) | Before launch |
-| B — Session Analytics | user_sessions table, RPCs, client init, PostHog bridge | 10h (2 days) | Week 1 post-launch |
-| **Total** | | **13h (2.5 days)** | |
-
----
-
-## What This Unlocks (Analysis Queries)
-
-Once both phases are live, the following queries become possible:
-
-**Conversion path analysis:**
-```sql
--- Do users who visit Stats in their first session convert at a higher rate?
-SELECT
-  s.cohort_id,
-  CASE WHEN s.entry_page = '/dashboard.html#stats' THEN 'stats_first' ELSE 'other' END AS first_page,
-  COUNT(DISTINCT s.user_id) AS users,
-  COUNT(DISTINCT CASE WHEN sub.plan_id = 'pro' THEN s.user_id END) AS converted
-FROM user_sessions s
-LEFT JOIN subscriptions sub ON sub.user_id = s.user_id AND sub.plan_id = 'pro'
-WHERE s.started_at = (
-  SELECT MIN(s2.started_at) FROM user_sessions s2 WHERE s2.user_id = s.user_id
-)
-GROUP BY 1, 2;
-```
-
-**Cohort retention:**
-```sql
--- 7-day retention by cohort
-SELECT
-  p.cohort_id,
-  COUNT(DISTINCT p.id) AS total_users,
-  COUNT(DISTINCT CASE
-    WHEN EXISTS (
-      SELECT 1 FROM user_sessions s
-      WHERE s.user_id = p.id
-        AND s.started_at > p.created_at + interval '7 days'
-    ) THEN p.id
-  END) AS retained_7d
-FROM profiles p
-GROUP BY 1;
-```
-
-**Entitlement impact:**
-```sql
--- Do users with referral bonuses have more sessions?
-SELECT
-  CASE WHEN ue.id IS NOT NULL THEN 'has_referral_bonus' ELSE 'no_bonus' END AS segment,
-  AVG(session_count) AS avg_sessions
-FROM profiles p
-LEFT JOIN user_entitlements ue ON ue.user_id = p.id AND ue.grant_type = 'earned' AND ue.source LIKE 'referral:%'
-LEFT JOIN LATERAL (
-  SELECT COUNT(*) AS session_count FROM user_sessions s WHERE s.user_id = p.id
-) sc ON true
-GROUP BY 1;
-```
-
-**Session-level feature engagement (joining PostHog):**
-```
-PostHog query: events WHERE bj_session_id = X
-→ Returns: page views, button clicks, chart hovers, filter changes
-→ Join with: user_sessions.cohort_id, user_sessions.plan_id
-→ Answer: "Free users in the launch cohort spent 3x longer on Stats than post-launch free users"
-```
-
----
-
-## Scope Boundaries
-
-### In scope
-- Cohort assignment at signup (automatic via trigger)
-- Cohort catalog table with date-range criteria
-- Session creation and heartbeat tracking
-- PostHog property bridge
-- Point-in-time plan and cohort snapshots on sessions
-- Read-only RLS for users on their own sessions
-
-### Out of scope (future work)
-- **Admin UI for cohort management** — use SQL + Supabase dashboard for now. Build admin tool when operational volume justifies it (est. 500+ users).
-- **Count-cap cohorts** (e.g., "first 500 signups") — the `criteria_type` supports it but the trigger only implements `date_range` for now. Add `count_cap` logic when needed.
-- **Rule-based cohorts** (e.g., "users who came from LinkedIn ad campaign") — supported by schema but not implemented in trigger. Can be assigned manually or via a future automation.
-- **Cohort-level entitlements** (`cohort_entitlements` table with resolution in `check_entitlement()`) — deferred. Use individual `grant_entitlement()` calls tagged with `source: 'cohort:launch_2026'` for now. Build the cohort entitlements layer when we have 3+ active cohorts with different feature sets.
-- **Multi-cohort membership** — a user belongs to one cohort (primary). If multi-cohort becomes necessary (e.g., "launch cohort" AND "referral cohort"), we'll add a `cohort_memberships` junction table. Not needed at launch scale.
-- **Session replay integration** — PostHog has session replay. The `bj_session_id` bridge makes it joinable but we're not building custom replay UI.
+| A — Cohort Experience System | cohorts, cohort_plan_entitlements, behavior categories, check_entitlement v2, profiles migration, seed data | 10h (2 days) | Before launch |
+| B — Session Analytics | user_sessions, RPCs, client init, PostHog bridge | 10h (2 days) | Week 1 post-launch |
+| **Total** | | **20h (4 dev days)** | |
 
 ---
 
 ## Entitlement Catalog Adjustments
 
-During this review, Pod 1 identified three changes to the current entitlement values in `plan_entitlements`. These should be applied as part of the Phase A migration:
+Applied as part of the Phase A migration:
 
 | Feature | Current Free | New Free | Rationale |
 |---------|-------------|----------|-----------|
-| `resumes` | 1 | 2 | Removes friction at peak engagement (user wants to tailor resumes). Zero marginal cost. |
-| `data_export` | 1/mo | 0 | Export signals power usage. A free user can export once and churn. Move to Pro-only. |
+| `resumes` | 1 | 2 | Removes friction at peak engagement. Zero marginal cost. |
+| `data_export` | 1/mo | 0 | Export signals power usage. Don't give away free. |
 
 | Feature | Current Pro | New Pro | Rationale |
 |---------|-----------|---------|-----------|
-| `resume_grading` | 50/mo | -1 (unlimited) | 50 is effectively unlimited given expected usage of 5-8/mo. Simpler messaging, no tracking overhead. |
+| `resume_grading` | 50/mo | -1 (unlimited) | 50 is effectively unlimited. Simpler messaging. |
 
 ```sql
--- Apply with Phase A migration
 UPDATE plan_entitlements SET limit_value = 2 WHERE plan_id = 'free' AND feature_id = 'resumes';
 UPDATE plan_entitlements SET limit_value = 0 WHERE plan_id = 'free' AND feature_id = 'data_export';
 UPDATE plan_entitlements SET limit_value = -1 WHERE plan_id = 'pro' AND feature_id = 'resume_grading';
@@ -474,12 +637,34 @@ UPDATE plan_entitlements SET limit_value = -1 WHERE plan_id = 'pro' AND feature_
 
 ---
 
-## Open Questions for Pod 2
+## Scope Boundaries
 
-1. **Subscription lookup:** The `create_session()` function queries `subscriptions` for the user's current plan. Confirm the table name and the correct filter for active subscriptions (`status = 'active'`? Different column?).
-2. **App bootstrap timing:** Where exactly in the init flow does auth resolve? The session init must run *after* we have `currentUser.id` but *before* any PostHog events fire. Confirm the right hook point in `js/app.js`.
-3. **Edge case — unauthenticated pages:** The session system only tracks authenticated users on the dashboard. Public pages (`/job-market-data`, landing page) are tracked by PostHog alone with no `bj_session_id`. Is that acceptable, or do we want anonymous session tracking on public pages too? CPO recommendation: authenticated only for launch. Anonymous sessions add complexity with low analytical value at this stage.
+### In scope
+- Cohort as experience definition (not attribution)
+- Full experience contract per cohort+plan via `cohort_plan_entitlements`
+- Five behavior categories (off, fixed, adjustable, degradable, unlimited)
+- `check_entitlement()` v2 with cohort-aware resolution + behavior in response
+- Pricing config on cohort for Stripe price ID grandfathering
+- Auto-assignment trigger (date_range + count_cap)
+- Session tracking with point-in-time cohort/plan snapshots
+- PostHog bridge for behavioral + transactional joins
+
+### Out of scope (future work)
+- **Admin UI** — SQL + Supabase dashboard until ~500 users
+- **Degradation engine** — `degradable` behavior defined in schema, but automated usage-tracking + limit-reduction + re-engagement not built at launch
+- **Rule-based auto-assignment** — trigger handles `date_range` and `count_cap` only; `rule` and `manual` types assigned via SQL
+- **Multi-cohort membership** — one cohort per user at launch
+- **Cohort migration tooling** — manual `UPDATE profiles` for now
 
 ---
 
-*This brief was produced by Pod 1 (Growth). Pod 2 has authority to push back on effort estimates, suggest simpler alternatives, and flag technical risks. Security concerns are Pod 2 veto territory. Scope changes require CPO approval.*
+## Open Questions for Pod 2
+
+1. **Subscription table:** `create_session()` and `check_entitlement()` query `subscriptions WHERE user_id = X AND status = 'active'`. Confirm table name and active-status filter.
+2. **App bootstrap timing:** Session init runs after auth, before PostHog events. Confirm the hook point in `js/app.js`.
+3. **`check_entitlement()` backward compat:** v2 adds `behavior`, `cohort`, `base_limit`, `source` to the response. Are existing callers destructuring specific fields, or do they just read `allowed` and `effective_limit`? If the latter, this is non-breaking.
+4. **`plan_entitlements` coexistence:** v2 falls back to `plan_entitlements` when no cohort entry exists. CPO recommends keeping this fallback so new features work immediately without requiring cohort entries for every cohort.
+
+---
+
+*This brief was produced by Pod 1 (Growth). Pod 2 has authority to push back on effort, suggest alternatives, and flag risks. Security concerns are Pod 2 veto territory. Scope changes require CPO approval.*
