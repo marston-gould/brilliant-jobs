@@ -1,10 +1,13 @@
-console.log('[BJ] Dashboard v2.90 loaded');
+const BJ_VERSION = 'v2.90';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { window.location.href = '/'; return; }
   currentUser = session.user;
+  const vEl = document.getElementById('nav-version');
+  if (vEl) vEl.textContent = BJ_VERSION;
   try {
     const { data: profile } = await sb.from('profiles').select('approved,cohort_id').eq('id', currentUser.id).single();
     if (!profile?.approved) { window.location.href = '/?pending=1'; return; }
