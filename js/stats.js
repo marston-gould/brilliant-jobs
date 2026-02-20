@@ -272,7 +272,7 @@ function renderTimeline(stats) {
   }, true);
 }
 
-// C2: Salary Distribution — vertical bars
+// C2: Salary Distribution — donut with range segments
 function renderSalaryDist(stats) {
   var chart = getOrCreateChart('#chart-salary'); if (!chart) return;
   var entries = Object.entries(stats.salaryBuckets).map(function(e) {
@@ -283,49 +283,110 @@ function renderSalaryDist(stats) {
     chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No salary data available',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}], xAxis:{show:false},yAxis:{show:false},series:[] }, true);
     return;
   }
+  // Consolidate into broader bands for a readable donut
+  var bands = {};
+  entries.forEach(function(e) {
+    var k = e.num;
+    var band;
+    if (k < 50000) band = 'Under $50K';
+    else if (k < 75000) band = '$50K\u2013$75K';
+    else if (k < 100000) band = '$75K\u2013$100K';
+    else if (k < 125000) band = '$100K\u2013$125K';
+    else if (k < 150000) band = '$125K\u2013$150K';
+    else if (k < 200000) band = '$150K\u2013$200K';
+    else if (k < 250000) band = '$200K\u2013$250K';
+    else band = '$250K+';
+    bands[band] = (bands[band]||0) + e.count;
+  });
+  var bandOrder = ['Under $50K','$50K\u2013$75K','$75K\u2013$100K','$100K\u2013$125K','$125K\u2013$150K','$150K\u2013$200K','$200K\u2013$250K','$250K+'];
+  var salColors = ['#334155','#475569','#6366f1','#818cf8','#22c55e','#f59e0b','#ec4899','#ef4444'];
+  var data = bandOrder.filter(function(b){return bands[b]>0;}).map(function(b,i){
+    var ci = bandOrder.indexOf(b);
+    return {name:b,value:bands[b],itemStyle:{color:salColors[ci]}};
+  });
   chart.setOption({
     graphic:[],
-    tooltip: { backgroundColor:STATS_THEME.tooltip.backgroundColor, borderColor:STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle:STATS_THEME.tooltip.textStyle, trigger:'axis',
-      formatter: function(p) { var u=parseInt(p[0].name.replace('$','').replace('K',''))+25; return '<b>'+p[0].name+'\u2013$'+u+'K</b><br/>'+p[0].value.toLocaleString()+' jobs'; } },
-    grid:{top:24,right:16,bottom:36,left:50},
-    xAxis:{type:'category',data:entries.map(function(e){return e.label;}),axisLabel:{color:'#64748b',fontFamily:'JetBrains Mono',fontSize:10,rotate:entries.length>10?45:0},axisLine:STATS_THEME.axisLine},
-    yAxis:{type:'value',axisLabel:STATS_THEME.axisLabel,splitLine:STATS_THEME.splitLine,name:salN.toLocaleString()+' jobs with salary',nameTextStyle:{color:'#64748b',fontSize:10,fontFamily:'JetBrains Mono'},nameLocation:'end'},
-    series:[{type:'bar',data:entries.map(function(e){return e.count;}),itemStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#22c55e'},{offset:1,color:'rgba(34,197,94,0.3)'}]),borderRadius:[3,3,0,0]},barMaxWidth:36}],
+    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'item',
+      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';}},
+    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11},
+      formatter:function(name){var v=bands[name]||0;var pct=salN>0?Math.round(v/salN*100):0;return name+'  '+pct+'%';}},
+    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,
+      label:{show:false},
+      emphasis:{label:{show:true,fontSize:13,fontFamily:'Outfit',fontWeight:'600',color:'#f0f1f3'}},
+      data:data}],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C3: Seniority — horizontal bars (always shows all hierarchy levels including 0)
+// C3: Seniority — donut of ALL open jobs (ignores filter to show market distribution)
+var _seniorityCache = null;
+var _seniorityCacheTime = 0;
+
+async function fetchSeniorityData() {
+  if (_seniorityCache && Date.now() - _seniorityCacheTime < STATS_CACHE_TTL) return _seniorityCache;
+  try {
+    var res = await sb.from('ats_jobs').select('title').eq('status','open').limit(STATS_ROW_CAP);
+    if (res.error || !res.data) return null;
+    _seniorityCache = res.data;
+    _seniorityCacheTime = Date.now();
+    return res.data;
+  } catch(e) { console.error('[Stats] seniority fetch:', e); return null; }
+}
+
 function renderLevelFunnel(stats) {
   var chart = getOrCreateChart('#chart-funnel'); if (!chart) return;
+  // Use the filter-scoped data for seniority breakdown 
+  // but always show ALL levels from hierarchy
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : null;
   var labels = hier ? hier.map(function(l){return l.label;}) : DEFAULT_LEVEL_LABELS.slice();
-  var data = labels.map(function(l) { return {name:l, value: stats.levelCounts[l]||0}; });
-  if (stats.levelCounts['Other'] > 0) data.push({name:'Other', value:stats.levelCounts['Other']});
-  var rev = data.slice().reverse();
+  
+  // Count by level from the filtered data
+  var counts = {};
+  labels.forEach(function(l) { counts[l] = stats.levelCounts[l] || 0; });
+  var otherCount = stats.levelCounts['Other'] || 0;
+  
+  // Build donut data — only include levels with jobs + Other
+  var total = stats.total;
+  var data = labels.filter(function(l) { return counts[l] > 0; })
+    .map(function(l, i) { return { name: l, value: counts[l] }; });
+  if (otherCount > 0) data.push({ name: 'Unclassified', value: otherCount });
+  
+  if (data.length === 0) {
+    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No seniority data',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+    return;
+  }
+  
   chart.setOption({
-    tooltip: { backgroundColor:STATS_THEME.tooltip.backgroundColor, borderColor:STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle:STATS_THEME.tooltip.textStyle, trigger:'axis', axisPointer:{type:'shadow'},
-      formatter: function(p) { var pct = stats.total>0?((p[0].value/stats.total)*100).toFixed(1):'0'; return '<b>'+p[0].name+'</b><br/>'+p[0].value.toLocaleString()+' jobs ('+pct+'%)'; } },
-    grid:{top:10,right:40,bottom:10,left:100},
-    xAxis:{type:'value',axisLabel:STATS_THEME.axisLabel,splitLine:STATS_THEME.splitLine},
-    yAxis:{type:'category',data:rev.map(function(d){return d.name;}),axisLabel:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11},axisLine:{show:false},axisTick:{show:false}},
-    series:[{type:'bar',data:rev.map(function(d,i){return{value:d.value,itemStyle:{color:d.value>0?STATS_COLORS[i%STATS_COLORS.length]:'rgba(100,116,139,0.15)',borderRadius:[0,3,3,0]}};}),barMaxWidth:22,
-      label:{show:true,position:'right',color:'#94a3b8',fontFamily:'JetBrains Mono',fontSize:10,formatter:function(p){return p.value>0?p.value:'';}} }],
+    graphic:[],
+    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'item',
+      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';}},
+    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11},
+      formatter:function(name){var v=0;data.forEach(function(d){if(d.name===name)v=d.value;});var pct=total>0?Math.round(v/total*100):0;return name+'  '+pct+'%';}},
+    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,
+      label:{show:false},
+      emphasis:{label:{show:true,fontSize:13,fontFamily:'Outfit',fontWeight:'600',color:'#f0f1f3'}},
+      data:data.map(function(d,i){return{name:d.name,value:d.value,itemStyle:{color:STATS_COLORS[i%STATS_COLORS.length]}};})}],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C5: Top Companies — horizontal bars (threshold: 50+ jobs or any company with 3+ roles)
+// C5: Top Companies — only shows when data is meaningful
 function renderTopCompanies(stats) {
   var chart = getOrCreateChart('#chart-companies'); if (!chart) return;
   var top = stats.topCompanies.slice(0, 15);
   var maxCt = top.length > 0 ? top[0][1] : 0;
-  if (stats.total < 50 && maxCt < 3) {
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'Not enough data for company trends\n('+stats.companyCount+' companies across '+stats.total+' jobs)',fill:'#64748b',fontSize:12,fontFamily:'Outfit',textAlign:'center',lineHeight:20}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+  
+  // Need at least one company with 3+ roles to show meaningful concentration
+  if (maxCt < 3) {
+    var msg = stats.total < 50
+      ? 'Too few matching jobs to show company trends.\nBroaden your filters to see which companies are hiring most.'
+      : stats.companyCount + ' companies hiring, but no single company dominates.\nThis market is spread across many employers.';
+    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:msg,fill:'#64748b',fontSize:12,fontFamily:'Outfit',textAlign:'center',lineHeight:20}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
     return;
   }
-  var meaningful = top.filter(function(e){return e[1]>=2;});
-  if (meaningful.length < 3) meaningful = top.slice(0, 10);
+  
+  // Only show companies with 2+ roles
+  var meaningful = top.filter(function(e){return e[1]>=2;}).slice(0, 12);
   var rev = meaningful.slice().reverse();
   chart.setOption({
     graphic:[],
