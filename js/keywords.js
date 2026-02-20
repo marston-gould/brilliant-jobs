@@ -1329,10 +1329,10 @@ function parseSalaryFromContent(html) {
 
   // Patterns to match salary/rate ranges
   const rangePatterns = [
-    // "$120,000 - $150,000" or "$77 - $96" or "$77.00 to $96.00"
-    new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+(?:year|hour|hr|week|wk|month|mo|day|session|visit)|annually|annual|hourly|weekly|monthly|\\/\\s*(?:yr|year|hr|hour|h|wk|week|mo|month|mth|day|d)|USD|CAD|GBP|EUR)?', 'gi'),
+    // "$120,000 - $150,000" or "$77 - $96" or "$77.00 to $96.00" or "$49,530 USD to $149,243 USD"
+    new RegExp(currSym + '\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:USD|CAD|GBP|EUR|AUD)?\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:per\\s+(?:year|hour|hr|week|wk|month|mo|day|session|visit)|annually|annual|hourly|weekly|monthly|\\/\\s*(?:yr|year|hr|hour|h|wk|week|mo|month|mth|day|d)|USD|CAD|GBP|EUR)?', 'gi'),
     // "$120k - $150k"
-    new RegExp(currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
+    new RegExp(currSym + '\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]\\s*(?:USD|CAD|GBP|EUR|AUD)?\\s*(?:[-–—]|to)\\s*' + currSym + '?\\s*(\\d+(?:\\.\\d+)?)\\s*[kK]', 'gi'),
   ];
 
   for (const pattern of rangePatterns) {
