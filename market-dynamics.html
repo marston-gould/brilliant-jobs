@@ -159,16 +159,20 @@ document.addEventListener('DOMContentLoaded', async function() {
   weeks1.forEach(function(w){byWeek1[w]=[]});
   indDept.forEach(function(d){if(byWeek1[d.week])byWeek1[d.week].push([depts1.indexOf(d.dept),industries1.indexOf(d.industry),d.job_count])});
   var maxVal1 = Math.max.apply(null,indDept.map(function(d){return d.job_count}));
+  var maxByWeek1 = {};
+  weeks1.forEach(function(w){maxByWeek1[w]=0});
+  indDept.forEach(function(d){if(d.job_count>maxByWeek1[d.week])maxByWeek1[d.week]=d.job_count});
 
   var ch1 = echarts.init(document.getElementById('c1'));
   function render1(weekIdx) {
     var w = weeks1[weekIdx];
+    var wMax = maxByWeek1[w] || 1;
     ch1.setOption({
       tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},formatter:function(p){return'<b>'+industries1[p.value[1]]+'</b> &times; <b>'+depts1[p.value[0]]+'</b><br/>'+Number(p.value[2]).toLocaleString()+' jobs'}},
       grid:{left:160,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:industries1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:maxVal1,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:['High','Low'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
+      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[wMax.toLocaleString(),'0'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek1[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -187,16 +191,20 @@ document.addEventListener('DOMContentLoaded', async function() {
   weeks2.forEach(function(w){byWeek2[w]=[]});
   deptLevel.forEach(function(d){if(byWeek2[d.week])byWeek2[d.week].push([depts2.indexOf(d.dept),levels2.indexOf(d.level),d.job_count])});
   var maxVal2 = Math.max.apply(null,deptLevel.map(function(d){return d.job_count}));
+  var maxByWeek2 = {};
+  weeks2.forEach(function(w){maxByWeek2[w]=0});
+  deptLevel.forEach(function(d){if(d.job_count>maxByWeek2[d.week])maxByWeek2[d.week]=d.job_count});
 
   var ch2 = echarts.init(document.getElementById('c2'));
   function render2(weekIdx) {
     var w = weeks2[weekIdx];
+    var wMax = maxByWeek2[w] || 1;
     ch2.setOption({
       tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},formatter:function(p){return'<b>'+depts2[p.value[0]]+'</b> &times; <b>'+levels2[p.value[1]]+'</b><br/>'+Number(p.value[2]).toLocaleString()+' jobs'}},
       grid:{left:100,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:levels2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:maxVal2,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:['High','Low'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
+      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[wMax.toLocaleString(),'0'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek2[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -220,14 +228,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     weeks3.forEach(function(w){stByWeek[w]={}});
     stateData.forEach(function(d){if(stByWeek[d.week])stByWeek[d.week][d.state_code]=d.job_count});
     var maxVal3 = Math.max.apply(null,stateData.map(function(d){return d.job_count}));
+    var maxByWeek3 = {};
+    weeks3.forEach(function(w){maxByWeek3[w]=0});
+    stateData.forEach(function(d){if(d.job_count>maxByWeek3[d.week])maxByWeek3[d.week]=d.job_count});
 
     var ch3 = echarts.init(document.getElementById('c3'));
     function render3(weekIdx) {
       var w = weeks3[weekIdx];
+      var wMax = maxByWeek3[w] || 1;
       var mapData = Object.keys(stByWeek[w]||{}).map(function(code){return{name:STATE_NAMES[code]||code,value:stByWeek[w][code]}});
       ch3.setOption({
         tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},trigger:'item',formatter:function(p){return'<b>'+p.name+'</b><br/>'+Number(p.value||0).toLocaleString()+' jobs'}},
-        visualMap:{min:0,max:maxVal3,calculable:true,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,text:['High','Low'],inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()}},
+        visualMap:{min:0,max:wMax,calculable:true,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,text:[wMax.toLocaleString(),'0'],inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()}},
         series:[{type:'map',map:'USA',roam:false,emphasis:{label:{show:true,color:'#fff',fontSize:10},itemStyle:{areaColor:'#3b82f6'}},itemStyle:{areaColor:'#1a1f2e',borderColor:'#2d3348',borderWidth:0.5},label:{show:false},data:mapData,animation:false}]
       });
     }
