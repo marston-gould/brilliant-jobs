@@ -6,8 +6,9 @@ var adminPeriod = parseInt(localStorage.getItem('bj_admin_period') || '168');
 var _adminInitialized = false;
 
 function initAdminPage() {
+  console.log('[Admin] initAdminPage called');
   var page = document.getElementById('page-admin');
-  if (!page || !page.classList.contains('active')) return;
+  if (!page || !page.classList.contains('active')) { console.log('[Admin] page not active, skipping'); return; }
   if (_adminInitialized) { loadBoardHealth(); return; }
   _adminInitialized = true;
 
@@ -32,6 +33,7 @@ function initAdminPage() {
 }
 
 async function loadBoardHealth() {
+  console.log('[Admin] loadBoardHealth called, period:', adminPeriod);
   try {
     var results = await Promise.all([
       sb.rpc('get_board_health', { period_hours: adminPeriod }),
@@ -41,6 +43,7 @@ async function loadBoardHealth() {
     var platforms = results[1];
 
     if (snapshot.error) { console.error('[Admin] RPC error:', snapshot.error); return; }
+    console.log('[Admin] RPC data:', snapshot.data);
 
     var d = snapshot.data;
 
