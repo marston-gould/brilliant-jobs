@@ -25,7 +25,7 @@ var DEFAULT_LEVEL_LABELS = ['Intern','Entry','Associate','Mid','Senior','Staff',
 // Default level hierarchy with keywords (used when user hasn't configured tuning)
 var DEFAULT_LEVEL_HIERARCHY = [
   {label:'Intern', keywords:'intern,internship,co-op,coop'},
-  {label:'Entry', keywords:'entry level,entry-level,junior,jr,associate,new grad,graduate'},
+  {label:'Entry', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
   {label:'Mid', keywords:'mid level,mid-level,intermediate'},
   {label:'Senior', keywords:'senior,sr'},
   {label:'Staff', keywords:'staff'},
@@ -50,22 +50,32 @@ function initStatsPage() {
 }
 
 // ─── Filter Pills ───
+var _pillStylesInjected = false;
 function renderFilterPills() {
   var container = document.getElementById('stats-filter-pills');
   if (!container) return;
+
+  // Inject pill styles via <style> element as backup
+  if (!_pillStylesInjected) {
+    var styleEl = document.createElement('style');
+    styleEl.textContent = [
+      '#stats-filter-pills{display:flex!important;gap:8px!important;flex-wrap:wrap!important;align-items:center!important;}',
+      '.sfp-btn{display:inline-flex!important;align-items:center!important;font-size:12px!important;padding:6px 14px!important;border-radius:20px!important;cursor:pointer!important;font-weight:600!important;font-family:Outfit,-apple-system,sans-serif!important;transition:all 0.15s!important;line-height:1.3!important;white-space:nowrap!important;gap:6px!important;outline:none!important;}',
+      '.sfp-btn.sfp-inactive{border:1.5px solid #cbd5e1!important;background:#f8fafc!important;color:#64748b!important;}',
+      '.sfp-btn.sfp-inactive:hover{border-color:#94a3b8!important;background:#f1f5f9!important;}',
+      '.sfp-btn.sfp-all-active{border:1.5px solid #3b82f6!important;background:rgba(59,130,246,0.1)!important;color:#1e40af!important;}',
+      '.sfp-dot{display:inline-block!important;width:8px!important;height:8px!important;border-radius:50%!important;flex-shrink:0!important;}',
+    ].join('\n');
+    document.head.appendChild(styleEl);
+    _pillStylesInjected = true;
+  }
+
   container.innerHTML = '';
-  // Force flex on container (CSS may not be loading)
-  container.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center;';
   var isAll = statsSelectedFilters.includes('__all__');
 
-  // Base pill styles (inline to bypass any CSS issues)
-  var basePill = 'display:inline-block;font-size:12px;padding:6px 14px;border-radius:20px;cursor:pointer;font-weight:600;font-family:Outfit,-apple-system,sans-serif;transition:all 0.15s;line-height:1.3;white-space:nowrap;';
-  var inactivePill = basePill + 'border:1.5px solid #d1d5db;background:#fff;color:#64748b;';
-  var activePillAll = basePill + 'border:1.5px solid #3b82f6;background:rgba(59,130,246,0.1);color:#1e40af;';
-
   var allPill = document.createElement('button');
-  allPill.textContent = '\u2630  All Filters';
-  allPill.style.cssText = isAll ? activePillAll : inactivePill;
+  allPill.className = 'sfp-btn ' + (isAll ? 'sfp-all-active' : 'sfp-inactive');
+  allPill.innerHTML = '\u2630\u2002All Filters';
   allPill.addEventListener('click', function() {
     statsSelectedFilters = ['__all__'];
     persistFilterSelection(); renderFilterPills(); debouncedFetchAndRender();
@@ -76,18 +86,12 @@ function renderFilterPills() {
     var pill = document.createElement('button');
     var color = filterColors[idx % filterColors.length];
     var isActive = isAll || statsSelectedFilters.includes(String(idx));
-    pill.textContent = sf.name || ('Filter ' + (idx + 1));
-
+    pill.className = 'sfp-btn ' + (isActive ? '' : 'sfp-inactive');
     if (isActive) {
-      pill.style.cssText = basePill + 'border:2px solid ' + color + ';background:' + color + '1a;color:' + color + ';';
-    } else {
-      pill.style.cssText = inactivePill;
+      pill.setAttribute('style', 'border:2px solid '+color+'!important;background:'+color+'1a!important;color:'+color+'!important;');
     }
-
-    // Colored dot indicator
-    var dot = document.createElement('span');
-    dot.style.cssText = 'display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;vertical-align:middle;';
-    pill.insertBefore(dot, pill.firstChild);
+    // Dot + name
+    pill.innerHTML = '<span class="sfp-dot" style="background:'+color+'!important;"></span>' + (sf.name || ('Filter ' + (idx + 1)));
 
     pill.addEventListener('click', function() {
       var id = String(idx);
