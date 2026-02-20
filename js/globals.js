@@ -151,7 +151,7 @@ var tuningCoExclPills = tuningSettings.companyExcludes || [];
 var tuningIndExclPills = tuningSettings.industryExcludes || [];
 var levelHierarchy = tuningSettings.levelHierarchy || [];
 // Stub — overridden by tuning.js with full implementation
-var getJobLevel = function(title, hierarchy) { return null; };
+// getJobLevel — provided by tuning.js (do not stub here, var assignment kills function declaration hoisting)
 
 // Pill arrays (used by query-builder.js, location.js, browsers.js)
 var whatPills = [];
