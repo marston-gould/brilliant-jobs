@@ -1,6 +1,6 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-19
+**Last updated:** 2026-02-20
 **Target launch:** March 2026
 
 ---
@@ -99,10 +99,30 @@
 
 ---
 
+## Phase D: Product Features — Pre-Launch Sprint (February 2026)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| D1 | Stats Page Redesign | 2d | 1h | ✅ | Theme tokens extracted (_T object), 15+ hardcoded colors/fonts → STATS_THEME. Loading state via CSS class. Inline styles removed from HTML. |
+| D2 | ATS Board Health (Admin Panel) | 2d | 1h | ✅ | Migration 004: last_http_status + last_refresh_at on ats_companies. Admin RPCs (get_board_health, get_board_health_by_platform). Admin page with 5 stat cards, delta badges, period toggle, platform table. |
+| D3 | Landing Page Phase 1 | 4d | 1h | ⏳ | Interactive preview (replaces static demo), hero ghost CTA, walkthrough carousel (6 slides), 8 PostHog events. **Blocked:** preview-jobs Edge Function deploy + 5 screenshot assets. |
+| D4 | Cohort Phase B — Session Analytics | 2d | 30min | ✅ | Migration 005: user_sessions table + RLS. create_session/session_heartbeat RPCs. PostHog bridge (bj_session_id, bj_cohort_id, bj_plan_id super properties). sessionStorage-scoped, 5-min heartbeat. |
+| D5 | Edge Function: refresh-jobs update | 0.5d | — | 🔲 | Patch to record last_http_status + last_refresh_at on every board fetch. Timeout → status 0. Deploy via Supabase CLI. |
+| D6 | Edge Function: preview-jobs | 0.5d | — | 🔲 | New function for landing page preview. Source committed. Deploy via Supabase CLI. |
+| D7 | Walkthrough screenshots (5x) | 0.5d | — | 🔲 | CPO: feed.webp, match.webp, stats.webp, pipeline.webp, notifications.webp → /img/walkthrough/ |
+
+**Phase D status:** 4/7 complete. 3 pending items are operator tasks (Edge Function deploys + screenshots).
+
+---
+
 ## Changelog
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-20 | D-S1 | D1 | Stats page redesign: theme token extraction, CSS loading state, inline style removal. 3 commits. |
+| 2026-02-20 | D-S2 | D2 | Admin panel: board health metrics. Migration 004, 2 admin RPCs, admin page with stat cards + platform table. 6 commits. |
+| 2026-02-20 | D-S3 | D3 | Landing page Phase 1: interactive preview, walkthrough carousel, 8 PostHog events. 3 commits. Pending: EF deploy + screenshots. |
+| 2026-02-20 | D-S4 | D4 | Cohort Phase B: session analytics. Migration 005, user_sessions table, PostHog bridge. 2 commits. |
 | 2026-02-19 | S1 | A1, A2, A9, A10 | RLS verified on 20 tables (+6 policies). Security headers deployed. DOMPurify on job descriptions. |
 | 2026-02-19 | S2 | A3, A4, A5, A11 | Role/plan on profiles. Audit log. Idempotency keys. Plans/subscriptions schema (3 tiers). |
 | 2026-02-19 | S3 | A6, A12 | Feature gating RPC (8 features). Resilience module. Timeout+retry on all external calls. |
