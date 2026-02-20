@@ -15,6 +15,8 @@ async function init() {
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
+  // Check admin access — show admin nav if user has admin role
+  if (typeof checkAdminAccess === 'function') checkAdminAccess();
   // Re-hydrate globals from potentially updated localStorage
   savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
@@ -77,6 +79,7 @@ $$('.nav-item').forEach(item => {
     localStorage.setItem('bj_active_tab', item.dataset.page);
     // Init stats charts when stats tab is shown
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+    if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
