@@ -1,6 +1,7 @@
 // === js/stats.js ===
 // Stats page — filter-scoped analytics with ECharts
-// Dependencies: sb (Supabase client), savedFilters, filterColors, levelHierarchy, getJobLevel, buildFilterQuery, getLocationMatchIds
+// Redesigned per stats-page-redesign-brief.md (Pod 1, 2026-02-19)
+// Dependencies: sb, savedFilters, filterColors, levelHierarchy, getJobLevel, buildFilterQuery, getLocationMatchIds
 
 // ─── State ───
 var statsInitialized = false;
@@ -12,17 +13,14 @@ var STATS_DEDUP_CAP = 10000;
 var statsSelectedFilters = JSON.parse(localStorage.getItem('bj_stats_filters') || '["__all__"]');
 var _statsDebounce = null;
 
+// Light-theme ECharts (dark tooltips float over light cards)
 var STATS_THEME = {
-  tooltip: { backgroundColor: 'rgba(255,255,255,0.97)', borderColor: '#e2e8f0', borderWidth: 1, textStyle: { color: '#1e293b', fontFamily: 'Outfit', fontSize: 12 } },
-  axisLabel: { color: '#64748b', fontFamily: 'JetBrains Mono', fontSize: 10 },
-  axisLine: { lineStyle: { color: '#e2e8f0' } },
-  splitLine: { lineStyle: { color: '#f1f5f9' } },
-  emphasisLabelColor: '#1e293b',
+  tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', borderWidth: 1, textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+  axisLabel: { color: 'hsl(228,11%,41%)', fontFamily: 'JetBrains Mono', fontSize: 10 },
+  axisLine: { lineStyle: { color: 'hsl(228,16%,91%)' } },
+  splitLine: { lineStyle: { color: 'hsl(228,16%,93%)' } },
 };
 var STATS_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#f97316','#14b8a6','#a855f7'];
-var DEFAULT_LEVEL_LABELS = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Principal','Manager','Director','VP','C-Suite'];
-
-// Default level hierarchy with keywords (used when user hasn't configured tuning)
 var DEFAULT_LEVEL_HIERARCHY = [
   {label:'Intern', keywords:'intern,internship,co-op,coop'},
   {label:'Entry', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
@@ -49,33 +47,18 @@ function initStatsPage() {
   window.addEventListener('resize', statsResizeAll);
 }
 
-// ─── Filter Pills ───
-var _pillStylesInjected = false;
+// ─── Filter Pills (CSS classes only, no inline styles) ───
 function renderFilterPills() {
   var container = document.getElementById('stats-filter-pills');
   if (!container) return;
-
-  // Inject pill styles via <style> element as backup
-  if (!_pillStylesInjected) {
-    var styleEl = document.createElement('style');
-    styleEl.textContent = [
-      '#stats-filter-pills{display:flex!important;gap:8px!important;flex-wrap:wrap!important;align-items:center!important;}',
-      '.sfp-btn{display:inline-flex!important;align-items:center!important;font-size:12px!important;padding:6px 14px!important;border-radius:20px!important;cursor:pointer!important;font-weight:600!important;font-family:Outfit,-apple-system,sans-serif!important;transition:all 0.15s!important;line-height:1.3!important;white-space:nowrap!important;gap:6px!important;outline:none!important;}',
-      '.sfp-btn.sfp-inactive{border:1.5px solid #cbd5e1!important;background:#f8fafc!important;color:#64748b!important;}',
-      '.sfp-btn.sfp-inactive:hover{border-color:#94a3b8!important;background:#f1f5f9!important;}',
-      '.sfp-btn.sfp-all-active{border:1.5px solid #3b82f6!important;background:rgba(59,130,246,0.1)!important;color:#1e40af!important;}',
-      '.sfp-dot{display:inline-block!important;width:8px!important;height:8px!important;border-radius:50%!important;flex-shrink:0!important;}',
-    ].join('\n');
-    document.head.appendChild(styleEl);
-    _pillStylesInjected = true;
-  }
-
   container.innerHTML = '';
   var isAll = statsSelectedFilters.includes('__all__');
 
+  // "All" pill — no hamburger icon
   var allPill = document.createElement('button');
-  allPill.className = 'sfp-btn ' + (isAll ? 'sfp-all-active' : 'sfp-inactive');
-  allPill.innerHTML = '\u2630\u2002All Filters';
+  allPill.className = 'stats-fpill' + (isAll ? ' active' : '');
+  allPill.textContent = 'All';
+  allPill.style.setProperty('--pill-color', 'var(--accent)');
   allPill.addEventListener('click', function() {
     statsSelectedFilters = ['__all__'];
     persistFilterSelection(); renderFilterPills(); debouncedFetchAndRender();
@@ -86,12 +69,15 @@ function renderFilterPills() {
     var pill = document.createElement('button');
     var color = filterColors[idx % filterColors.length];
     var isActive = isAll || statsSelectedFilters.includes(String(idx));
-    pill.className = 'sfp-btn ' + (isActive ? '' : 'sfp-inactive');
-    if (isActive) {
-      pill.setAttribute('style', 'border:2px solid '+color+'!important;background:'+color+'1a!important;color:'+color+'!important;');
-    }
-    // Dot + name
-    pill.innerHTML = '<span class="sfp-dot" style="background:'+color+'!important;"></span>' + (sf.name || ('Filter ' + (idx + 1)));
+    pill.className = 'stats-fpill' + (isActive ? ' active' : '');
+    pill.style.setProperty('--pill-color', color);
+
+    // Colored dot
+    var dot = document.createElement('span');
+    dot.className = 'stats-fpill-dot';
+    dot.style.background = color;
+    pill.appendChild(dot);
+    pill.appendChild(document.createTextNode(sf.name || ('Filter ' + (idx + 1))));
 
     pill.addEventListener('click', function() {
       var id = String(idx);
@@ -104,10 +90,6 @@ function renderFilterPills() {
     });
     container.appendChild(pill);
   });
-
-  // Hide compare toggle entirely for launch
-  var compareLabel = document.querySelector('.stats-compare-toggle');
-  if (compareLabel) compareLabel.style.display = 'none';
 }
 
 function persistFilterSelection() { localStorage.setItem('bj_stats_filters', JSON.stringify(statsSelectedFilters)); }
@@ -145,11 +127,11 @@ async function fetchAndRenderStats() {
     var stats = aggregateStats(deduped);
     showStatsLoading(false);
     renderStatCards(stats);
-    renderTimeline(stats, deduped);
-    renderSalaryDist(stats, deduped);
-    renderLevelFunnel(stats);
+    renderTimeline(stats);
+    renderSalaryDist(stats);
+    renderSeniorityBars(stats);
     renderTopCompanies(stats);
-    renderLocationBreakdown(stats);
+    renderWorkType(stats);
     renderSalaryByLevel(stats);
     renderIndustryBars(stats);
     var notice = document.getElementById('stats-cap-notice');
@@ -182,109 +164,95 @@ async function fetchFilterData(sf) {
 // ─── Aggregation ───
 function aggregateStats(rows) {
   var s = { total: rows.length, medianSalary: null, seniorPct: 0, remotePct: 0, companyCount: 0,
-    levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {} };
+    levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {},
+    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0 };
 
   var cos = {}; rows.forEach(function(r) { if (r.company_name) cos[r.company_name] = true; });
   s.companyCount = Object.keys(cos).length;
 
-  // Seniority — always show all hierarchy levels including 0
+  // Seniority + salary-by-level in one pass
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
-  var labels = hier.map(function(l) { return l.label; });
-  labels.forEach(function(l) { s.levelCounts[l] = 0; });
+  hier.map(function(l) { return l.label; }).forEach(function(l) { s.levelCounts[l] = 0; });
   s.levelCounts['Other'] = 0;
-  var seniorSet = {senior:1,staff:1,lead:1,principal:1,manager:1,director:1,vp:1,head:1,chief:1};
+  var seniorSet = {Senior:1,Staff:1,Lead:1,Principal:1,Manager:1,Director:1,VP:1,'C-Suite':1};
   var seniorN = 0;
+  var salByLvl = {};
+
   rows.forEach(function(r) {
     var lvl = getJobLevel(r.title, hier);
     var label = lvl ? lvl.label : 'Other';
     s.levelCounts[label] = (s.levelCounts[label] || 0) + 1;
-    if (lvl && seniorSet[lvl.label.toLowerCase()]) seniorN++;
+    if (lvl && seniorSet[lvl.label]) seniorN++;
+    var sal = (r.salary_min && r.salary_max) ? (r.salary_min + r.salary_max) / 2 : (r.salary_min || r.salary_max || 0);
+    if (sal > 0) { if (!salByLvl[label]) salByLvl[label] = []; salByLvl[label].push(sal); }
   });
   s.seniorPct = rows.length > 0 ? Math.round((seniorN / rows.length) * 100) : 0;
+  Object.keys(salByLvl).forEach(function(label) {
+    var arr = salByLvl[label];
+    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length), count: arr.length };
+  });
 
   // Remote
   var remN = 0;
   rows.forEach(function(r) { if (r.loc_type === 'remote' || (r.location||'').toLowerCase().startsWith('remote')) remN++; });
   s.remotePct = rows.length > 0 ? Math.round((remN / rows.length) * 100) : 0;
 
-  // Salary
+  // Salary distribution
   var sals = [];
   rows.forEach(function(r) { var v = r.salary_min || r.salary_max; if (v && v > 0) sals.push(v); });
+  s.salaryJobCount = sals.length;
   sals.sort(function(a,b) { return a-b; });
   if (sals.length > 0) {
     var mid = Math.floor(sals.length / 2);
     s.medianSalary = sals.length % 2 === 0 ? Math.round((sals[mid-1]+sals[mid])/2) : sals[mid];
   }
-  var bSz = 25000;
   rows.forEach(function(r) {
     var v = r.salary_min || r.salary_max; if (!v || v <= 0) return;
-    var b = Math.floor(v / bSz) * bSz;
-    var label = '$' + (b/1000) + 'K';
-    s.salaryBuckets[label] = (s.salaryBuckets[label]||0) + 1;
+    var b = Math.floor(v / 25000) * 25000;
+    s.salaryBuckets['$' + (b/1000) + 'K'] = (s.salaryBuckets['$' + (b/1000) + 'K']||0) + 1;
   });
 
-  // Top companies
+  // Top companies (top 10 per brief)
   var cc = {};
   rows.forEach(function(r) { if (r.company_name) cc[r.company_name] = (cc[r.company_name]||0) + 1; });
-  s.topCompanies = Object.entries(cc).sort(function(a,b) { return b[1]-a[1]; }).slice(0, 15);
+  s.topCompanies = Object.entries(cc).sort(function(a,b) { return b[1]-a[1]; }).slice(0, 10);
 
-  // Work type breakdown (on-site vs hybrid vs remote)
-  s.workTypeCounts = { 'On-site': 0, 'Hybrid': 0, 'Remote': 0, 'Unspecified': 0 };
+  // Work type
+  s.workTypeCounts = { 'Remote': 0, 'On-site': 0, 'Hybrid': 0, 'Unspecified': 0 };
   rows.forEach(function(r) {
     var loc = (r.location || '').toLowerCase();
     var lt = (r.loc_type || '').toLowerCase();
-    if (lt === 'remote' || loc.startsWith('remote')) {
-      // Check if "Remote - City" pattern (could be hybrid/flexible)
-      if (loc.match(/^remote\s*[-\/]\s*.+/)) {
-        // "Remote - Austin, TX" style — treat as remote but the city gives context
-        s.workTypeCounts['Remote']++;
-      } else {
-        s.workTypeCounts['Remote']++;
-      }
-    } else if (lt === 'hybrid' || loc.includes('hybrid')) {
-      s.workTypeCounts['Hybrid']++;
-    } else if (r.location && r.location.trim()) {
-      s.workTypeCounts['On-site']++;
-    } else {
-      s.workTypeCounts['Unspecified']++;
-    }
+    if (lt === 'remote' || loc.startsWith('remote')) s.workTypeCounts['Remote']++;
+    else if (lt === 'hybrid' || loc.includes('hybrid')) s.workTypeCounts['Hybrid']++;
+    else if (r.location && r.location.trim()) s.workTypeCounts['On-site']++;
+    else s.workTypeCounts['Unspecified']++;
   });
 
-  // Timeline (weekly)
+  // Timeline — continuous 12-week window (no gaps)
+  var weekMap = {};
   rows.forEach(function(r) {
     if (!r.first_seen_at) return;
     var d = new Date(r.first_seen_at);
     var day = d.getDay();
     var mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    var key = mon.toISOString().slice(0, 10);
-    s.timelineBuckets[key] = (s.timelineBuckets[key]||0) + 1;
+    weekMap[mon.toISOString().slice(0, 10)] = (weekMap[mon.toISOString().slice(0, 10)]||0) + 1;
   });
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var todayDay = today.getDay();
+  var thisMonday = new Date(today); thisMonday.setDate(today.getDate() - (todayDay === 0 ? 6 : todayDay - 1));
+  for (var w = 11; w >= 0; w--) {
+    var weekStart = new Date(thisMonday); weekStart.setDate(thisMonday.getDate() - (w * 7));
+    var wk = weekStart.toISOString().slice(0, 10);
+    s.timelineBuckets[wk] = weekMap[wk] || 0;
+  }
 
-  // C6: Salary by Level — avg salary midpoint per seniority level
-  s.salaryByLevel = {};
-  var salByLvl = {};
+  // Industry
   rows.forEach(function(r) {
-    var sal = (r.salary_min && r.salary_max) ? (r.salary_min + r.salary_max) / 2 : (r.salary_min || r.salary_max || 0);
-    if (!sal || sal <= 0) return;
-    var lvl = getJobLevel(r.title, hier);
-    var label = lvl ? lvl.label : 'Other';
-    if (!salByLvl[label]) salByLvl[label] = [];
-    salByLvl[label].push(sal);
-  });
-  // Only include levels with salary data (relaxed threshold for small datasets)
-  Object.keys(salByLvl).forEach(function(label) {
-    if (salByLvl[label].length >= 1) {
-      var sum = salByLvl[label].reduce(function(a,b){return a+b;},0);
-      s.salaryByLevel[label] = { avg: Math.round(sum / salByLvl[label].length), count: salByLvl[label].length };
+    if (r.industry && r.industry.trim()) {
+      s.industryNonNull++;
+      s.industryCounts[r.industry.trim()] = (s.industryCounts[r.industry.trim()]||0) + 1;
     }
-  });
-
-  // C8: Industry counts
-  s.industryCounts = {};
-  rows.forEach(function(r) {
-    if (!r.industry || !r.industry.trim()) return;
-    var ind = r.industry.trim();
-    s.industryCounts[ind] = (s.industryCounts[ind]||0) + 1;
   });
 
   return s;
@@ -302,213 +270,194 @@ function renderStatCards(stats) {
 }
 function setText(sel, val) { var el = document.querySelector(sel); if (el) el.textContent = val; }
 
-// ─── Chart Helper ───
+// ─── Chart Helpers ───
 function getOrCreateChart(id) {
-  var elId = id.replace('#', '');
-  var el = document.getElementById(elId);
-  if (!el) { console.warn('[Stats] Not found:', elId); return null; }
-  if (el.offsetWidth === 0 || el.offsetHeight === 0) { console.warn('[Stats] Zero size:', elId); return null; }
+  var el = document.getElementById(id.replace('#',''));
+  if (!el || el.offsetWidth === 0 || el.offsetHeight === 0) return null;
   if (statsCharts[id]) return statsCharts[id];
   var c = echarts.init(el, null, { renderer: 'canvas' });
   statsCharts[id] = c;
   return c;
 }
+function ttip() { return { backgroundColor:STATS_THEME.tooltip.backgroundColor, borderColor:STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle:STATS_THEME.tooltip.textStyle }; }
+function truncName(s, max) { return s && s.length > max ? s.slice(0, max) + '\u2026' : s; }
+function emptyChart(chart, msg) {
+  chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:msg,fill:'hsl(228,11%,41%)',fontSize:12,fontFamily:'Outfit',textAlign:'center',lineHeight:20}}], xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+}
 
-// C1: Timeline — discrete bar chart (full width)
+// ─── C1: Job Count Over Time — bars, last 12 weeks, continuous ───
 function renderTimeline(stats) {
   var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
-  var sorted = Object.entries(stats.timelineBuckets).sort(function(a,b) { return a[0].localeCompare(b[0]); });
-  var recent = sorted.slice(-26);
+  var sorted = Object.entries(stats.timelineBuckets).sort(function(a,b){ return a[0].localeCompare(b[0]); });
   chart.setOption({
-    tooltip: { backgroundColor: STATS_THEME.tooltip.backgroundColor, borderColor: STATS_THEME.tooltip.borderColor, borderWidth:1, textStyle: STATS_THEME.tooltip.textStyle, trigger:'axis', axisPointer:{type:'shadow'},
-      formatter: function(p) { var d = new Date(p[0].name); return '<b>Week of ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + '</b><br/>' + p[0].value.toLocaleString() + ' new jobs'; } },
+    tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
+      formatter:function(p){ var d=new Date(p[0].name); return '<b>Week of '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'; }}, ttip()),
     grid: { top:20, right:20, bottom:30, left:50 },
-    xAxis: { type:'category', data: recent.map(function(e){return e[0];}),
-      axisLabel: { color:'#64748b', fontFamily:'JetBrains Mono', fontSize:10, formatter: function(v) { var d=new Date(v); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }, interval: Math.max(0, Math.floor(recent.length/6)-1) },
+    xAxis: { type:'category', data:sorted.map(function(e){return e[0];}),
+      axisLabel: { color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10, interval:0,
+        formatter:function(v){ var d=new Date(v); return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }},
       axisLine: STATS_THEME.axisLine },
-    yAxis: { type:'value', axisLabel: STATS_THEME.axisLabel, splitLine: STATS_THEME.splitLine },
-    series: [{ type:'bar', data: recent.map(function(e){return e[1];}),
-      itemStyle:{ color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6366f1'},{offset:1,color:'rgba(99,102,241,0.3)'}]), borderRadius:[3,3,0,0] },
+    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    series: [{ type:'bar', data:sorted.map(function(e){return e[1];}),
+      itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6366f1'},{offset:1,color:'rgba(99,102,241,0.3)'}]), borderRadius:[3,3,0,0] },
       barMaxWidth:28 }],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C2: Salary Distribution — donut with range segments
+// ─── C2: Salary Distribution — vertical bar chart (NOT donut) ───
 function renderSalaryDist(stats) {
   var chart = getOrCreateChart('#chart-salary'); if (!chart) return;
+  var sub = document.getElementById('chart-salary-sub');
+  if (sub) sub.textContent = stats.salaryJobCount + ' of ' + stats.total + ' jobs have salary data';
+
   var entries = Object.entries(stats.salaryBuckets).map(function(e) {
-    return { label: e[0], count: e[1], num: parseInt(e[0].replace('$','').replace('K',''))*1000 };
+    return { label:e[0], count:e[1], num:parseInt(e[0].replace('$','').replace('K',''))*1000 };
   }).sort(function(a,b){return a.num-b.num;}).filter(function(e){return e.num>=25000 && e.num<=500000;});
-  var salN = Object.values(stats.salaryBuckets).reduce(function(a,b){return a+b;}, 0);
-  if (entries.length === 0) {
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No salary data available',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}], xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+
+  if (entries.length < 3) {
+    emptyChart(chart, 'Not enough salary data for this filter.\nTry broadening your search.');
     return;
   }
-  // Consolidate into broader bands for a readable donut
-  var bands = {};
-  entries.forEach(function(e) {
-    var k = e.num;
-    var band;
-    if (k < 50000) band = 'Under $50K';
-    else if (k < 75000) band = '$50K\u2013$75K';
-    else if (k < 100000) band = '$75K\u2013$100K';
-    else if (k < 125000) band = '$100K\u2013$125K';
-    else if (k < 150000) band = '$125K\u2013$150K';
-    else if (k < 200000) band = '$150K\u2013$200K';
-    else if (k < 250000) band = '$200K\u2013$250K';
-    else band = '$250K+';
-    bands[band] = (bands[band]||0) + e.count;
-  });
-  var bandOrder = ['Under $50K','$50K\u2013$75K','$75K\u2013$100K','$100K\u2013$125K','$125K\u2013$150K','$150K\u2013$200K','$200K\u2013$250K','$250K+'];
-  var salColors = ['#334155','#475569','#6366f1','#818cf8','#22c55e','#f59e0b','#ec4899','#ef4444'];
-  var data = bandOrder.filter(function(b){return bands[b]>0;}).map(function(b,i){
-    var ci = bandOrder.indexOf(b);
-    return {name:b,value:bands[b],itemStyle:{color:salColors[ci]}};
-  });
   chart.setOption({
     graphic:[],
-    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'item',
-      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';}},
-    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11},
-      formatter:function(name){var v=bands[name]||0;var pct=salN>0?Math.round(v/salN*100):0;return name+'  '+pct+'%';}},
-    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,
-      label:{show:false},
-      emphasis:{label:{show:true,fontSize:13,fontFamily:'Outfit',fontWeight:'600',color:'#1e293b'}},
-      data:data}],
+    tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
+      formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value+' jobs';}}, ttip()),
+    grid: { top:20, right:20, bottom:35, left:45 },
+    xAxis: { type:'category', data:entries.map(function(e){return e.label;}),
+      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10, rotate:entries.length>6?30:0 },
+      axisLine:STATS_THEME.axisLine },
+    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    series: [{ type:'bar', data:entries.map(function(e){return e.count;}),
+      itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6366f1'},{offset:1,color:'rgba(99,102,241,0.3)'}]), borderRadius:[3,3,0,0] },
+      barMaxWidth:32 }],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C3: Seniority — donut of ALL open jobs (ignores filter to show market distribution)
-var _seniorityCache = null;
-var _seniorityCacheTime = 0;
-
-async function fetchSeniorityData() {
-  if (_seniorityCache && Date.now() - _seniorityCacheTime < STATS_CACHE_TTL) return _seniorityCache;
-  try {
-    var res = await sb.from('ats_jobs').select('title').eq('status','open').limit(STATS_ROW_CAP);
-    if (res.error || !res.data) return null;
-    _seniorityCache = res.data;
-    _seniorityCacheTime = Date.now();
-    return res.data;
-  } catch(e) { console.error('[Stats] seniority fetch:', e); return null; }
-}
-
-function renderLevelFunnel(stats) {
+// ─── C3: Seniority — horizontal bars (NOT donut). Suppress when Unclassified > 80% ───
+function renderSeniorityBars(stats) {
   var chart = getOrCreateChart('#chart-funnel'); if (!chart) return;
-  // Use the filter-scoped data for seniority breakdown 
-  // but always show ALL levels from hierarchy
-  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
-  var labels = hier.map(function(l){return l.label;});
-  
-  // Count by level from the filtered data
-  var counts = {};
-  labels.forEach(function(l) { counts[l] = stats.levelCounts[l] || 0; });
   var otherCount = stats.levelCounts['Other'] || 0;
-  
-  // Build donut data — only include levels with jobs + Other
-  var total = stats.total;
-  var data = labels.filter(function(l) { return counts[l] > 0; })
-    .map(function(l, i) { return { name: l, value: counts[l] }; });
-  if (otherCount > 0) data.push({ name: 'Unclassified', value: otherCount });
-  
-  if (data.length === 0) {
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No seniority data',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+  var unclPct = stats.total > 0 ? (otherCount / stats.total) * 100 : 100;
+
+  if (unclPct > 80) {
+    emptyChart(chart, 'Most jobs haven\'t been classified by seniority.\nConfigure your level keywords in\nTuning \u2192 Level Hierarchy to improve this.');
     return;
   }
-  
+
+  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
+  var data = hier.map(function(l){ return {name:l.label, value:stats.levelCounts[l.label]||0}; })
+    .filter(function(d){ return d.value > 0; });
+  if (otherCount > 0 && unclPct <= 80) data.push({name:'Other', value:otherCount});
+  data.sort(function(a,b){ return b.value - a.value; });
+
+  if (data.length === 0) { emptyChart(chart, 'No seniority data'); return; }
+
+  var senColors = ['#4338ca','#4f46e5','#6366f1','#818cf8','#a5b4fc','#c7d2fe','#ddd6fe','#e9d5ff','#c4b5fd','#a78bfa','#8b5cf6'];
+  var rev = data.slice().reverse();
+
   chart.setOption({
     graphic:[],
-    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'item',
-      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';}},
-    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11},
-      formatter:function(name){var v=0;data.forEach(function(d){if(d.name===name)v=d.value;});var pct=total>0?Math.round(v/total*100):0;return name+'  '+pct+'%';}},
-    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,
-      label:{show:false},
-      emphasis:{label:{show:true,fontSize:13,fontFamily:'Outfit',fontWeight:'600',color:'#1e293b'}},
-      data:data.map(function(d,i){return{name:d.name,value:d.value,itemStyle:{color:STATS_COLORS[i%STATS_COLORS.length]}};})}],
+    tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
+      formatter:function(p){ var pct=stats.total>0?Math.round(p[0].value/stats.total*100):0; return '<b>'+p[0].name+'</b><br/>'+p[0].value+' jobs ('+pct+'%)'; }}, ttip()),
+    grid: { top:10, right:40, bottom:10, left:100 },
+    xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    yAxis: { type:'category', data:rev.map(function(d){return d.name;}),
+      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11 }, axisLine:{show:false}, axisTick:{show:false} },
+    series: [{ type:'bar', data:rev.map(function(d,i){return {value:d.value, itemStyle:{color:senColors[i%senColors.length]}}; }),
+      barMaxWidth:20, itemStyle:{borderRadius:[0,3,3,0]},
+      label:{ show:true, position:'right', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10 }}],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C5: Top Companies — only shows when data is meaningful
+// ─── C5: Top Companies — horizontal bars, top 10, truncate names at 20 chars ───
 function renderTopCompanies(stats) {
   var chart = getOrCreateChart('#chart-companies'); if (!chart) return;
-  var top = stats.topCompanies.slice(0, 15);
+  var top = stats.topCompanies.slice(0, 10);
   var maxCt = top.length > 0 ? top[0][1] : 0;
-  
-  // Need at least one company with 3+ roles to show meaningful concentration
+
   if (maxCt < 3) {
     var msg = stats.total < 50
       ? 'Too few matching jobs to show company trends.\nBroaden your filters to see which companies are hiring most.'
       : stats.companyCount + ' companies hiring, but no single company dominates.\nThis market is spread across many employers.';
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:msg,fill:'#64748b',fontSize:12,fontFamily:'Outfit',textAlign:'center',lineHeight:20}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
-    return;
+    emptyChart(chart, msg); return;
   }
-  
-  // Only show companies with 2+ roles
-  var meaningful = top.filter(function(e){return e[1]>=2;}).slice(0, 12);
+
+  var meaningful = top.filter(function(e){return e[1]>=2;}).slice(0, 10);
   var rev = meaningful.slice().reverse();
   chart.setOption({
     graphic:[],
-    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'axis',axisPointer:{type:'shadow'},
-      formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value.toLocaleString()+' open roles';}},
-    grid:{top:10,right:30,bottom:10,left:140},
-    xAxis:{type:'value',axisLabel:STATS_THEME.axisLabel,splitLine:STATS_THEME.splitLine},
-    yAxis:{type:'category',data:rev.map(function(e){return e[0];}),axisLabel:{color:'#94a3b8',fontFamily:'Outfit',fontSize:11,width:130,overflow:'truncate'},axisLine:{show:false},axisTick:{show:false}},
-    series:[{type:'bar',data:rev.map(function(e){return e[1];}),itemStyle:{color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(99,102,241,0.3)'},{offset:1,color:'#6366f1'}]),borderRadius:[0,3,3,0]},barMaxWidth:20,
-      label:{show:true,position:'right',color:'#94a3b8',fontFamily:'JetBrains Mono',fontSize:10}}],
+    tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
+      formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value+' open roles';}}, ttip()),
+    grid: { top:10, right:30, bottom:10, left:140 },
+    xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    yAxis: { type:'category', data:rev.map(function(e){return truncName(e[0],20);}),
+      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11, width:130, overflow:'truncate' }, axisLine:{show:false}, axisTick:{show:false} },
+    series: [{ type:'bar', data:rev.map(function(e){return e[1];}),
+      itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(99,102,241,0.3)'},{offset:1,color:'#6366f1'}]), borderRadius:[0,3,3,0] },
+      barMaxWidth:20,
+      label:{ show:true, position:'right', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10 }}],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C7: Work Type Breakdown — donut (on-site vs hybrid vs remote)
-function renderLocationBreakdown(stats) {
+// ─── C7: Work Arrangement — donut (correct for categorical composition) ───
+function renderWorkType(stats) {
   var chart = getOrCreateChart('#chart-location'); if (!chart) return;
   var wt = stats.workTypeCounts;
-  // Fixed order, fixed colors for consistency
-  var typeColors = { 'On-site': '#6366f1', 'Hybrid': '#f59e0b', 'Remote': '#22c55e', 'Unspecified': '#334155' };
-  var data = ['On-site','Hybrid','Remote','Unspecified']
-    .filter(function(t) { return wt[t] > 0; })
-    .map(function(t) { return { name: t, value: wt[t], itemStyle: { color: typeColors[t] } }; });
-  if (data.length === 0) {
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No location data available',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
-    return;
-  }
-  var total = data.reduce(function(a,d){return a+d.value;},0);
+  var typeColors = { 'Remote':'#22c55e', 'On-site':'#6366f1', 'Hybrid':'#f59e0b', 'Unspecified':'#334155' };
+  var total = Object.values(wt).reduce(function(a,b){return a+b;},0);
+  var unspecPct = total > 0 ? (wt['Unspecified'] / total) * 100 : 0;
+
+  // Suppress Unspecified segment when > 50%
+  var order = ['Remote','On-site','Hybrid'];
+  if (unspecPct <= 50) order.push('Unspecified');
+
+  var data = order.filter(function(t){return wt[t]>0;})
+    .map(function(t){return {name:t, value:wt[t], itemStyle:{color:typeColors[t]}};});
+  var displayTotal = data.reduce(function(a,d){return a+d.value;},0);
+
+  if (data.length === 0) { emptyChart(chart, 'No location data available'); return; }
+
+  var noteText = unspecPct > 50 ? 'Location type not specified for many jobs' : '';
   chart.setOption({
-    graphic:[],
-    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'item',
-      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';}},
-    legend:{orient:'vertical',right:10,top:'center',textStyle:{color:'#94a3b8',fontFamily:'Outfit',fontSize:12},
-      formatter:function(name){var v=wt[name]||0;var pct=total>0?Math.round(v/total*100):0;return name+'  '+pct+'%';}},
-    series:[{type:'pie',radius:['42%','70%'],center:['35%','50%'],avoidLabelOverlap:true,
+    graphic: noteText ? [{type:'text',left:'center',bottom:5,style:{text:noteText,fill:'hsl(225,10%,63%)',fontSize:10,fontFamily:'Outfit'}}] : [],
+    tooltip: Object.assign({ trigger:'item',
+      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+p.percent.toFixed(1)+'%)';}}, ttip()),
+    legend: { orient:'vertical', right:10, top:'center', textStyle:{color:'hsl(228,11%,41%)',fontFamily:'Outfit',fontSize:12},
+      formatter:function(name){ var v=wt[name]||0; var pct=displayTotal>0?Math.round(v/displayTotal*100):0; return name+'  '+pct+'%'; }},
+    series: [{ type:'pie', radius:['42%','70%'], center:['35%','50%'], avoidLabelOverlap:true,
       label:{show:false},
-      emphasis:{label:{show:true,fontSize:14,fontFamily:'Outfit',fontWeight:'600',color:'#1e293b'}},
-      data:data}],
+      emphasis:{label:{show:true,fontSize:14,fontFamily:'Outfit',fontWeight:'600',color:'hsl(230,28%,14%)'}},
+      data:data }],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C6: Salary by Level — vertical bars with mark line at overall average (full-width)
+// ─── C6: Salary by Level — threshold: 100+ jobs AND 3+ levels with 5+ salary points ───
 function renderSalaryByLevel(stats) {
-  var chart = getOrCreateChart('#chart-salary-level'); if (!chart) return;
+  var card = document.getElementById('chart-salary-level');
+  var cardWrap = card ? card.closest('.stats-chart-card') : null;
   var salLvl = stats.salaryByLevel;
-  // Order by hierarchy rank
-  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
-  var hierLabels = hier.map(function(l){return l.label;});
-  // Build ordered data from hierarchy, then append Other
-  var ordered = hierLabels.filter(function(l){return salLvl[l];}).map(function(l){return {label:l, avg:salLvl[l].avg, count:salLvl[l].count};});
-  if (salLvl['Other']) ordered.push({label:'Other', avg:salLvl['Other'].avg, count:salLvl['Other'].count});
 
-  if (ordered.length === 0) {
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'Not enough salary data by level\n(need 3+ data points per level)',fill:'#64748b',fontSize:12,fontFamily:'Outfit',textAlign:'center',lineHeight:20}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+  var qualifiedLevels = Object.keys(salLvl).filter(function(l){ return salLvl[l].count >= 5; });
+  var meetsThreshold = stats.total >= 100 && qualifiedLevels.length >= 3;
+
+  if (!meetsThreshold) {
+    if (cardWrap) cardWrap.style.display = 'none';
     return;
   }
+  if (cardWrap) cardWrap.style.display = '';
 
-  var overallAvg = 0;
-  var totalCount = 0;
+  var chart = getOrCreateChart('#chart-salary-level'); if (!chart) return;
+  var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
+  var ordered = hier.map(function(l){return l.label;}).filter(function(l){return salLvl[l] && salLvl[l].count>=5;})
+    .map(function(l){return {label:l, avg:salLvl[l].avg, count:salLvl[l].count};});
+  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, count:salLvl['Other'].count});
+
+  var overallAvg = 0, totalCount = 0;
   ordered.forEach(function(d){overallAvg += d.avg * d.count; totalCount += d.count;});
   overallAvg = totalCount > 0 ? Math.round(overallAvg / totalCount) : 0;
 
@@ -516,79 +465,79 @@ function renderSalaryByLevel(stats) {
 
   chart.setOption({
     graphic:[],
-    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'axis',axisPointer:{type:'shadow'},
-      formatter:function(p){var d=ordered.filter(function(d){return d.label===p[0].name;})[0];return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K<br/>'+(d?d.count:'')+' job'+(d&&d.count!==1?'s':'')+' with salary';}},
-    grid:{top:30,right:30,bottom:40,left:60},
-    xAxis:{type:'category',data:ordered.map(function(d){return d.label;}),axisLabel:{color:'#64748b',fontFamily:'Outfit',fontSize:11,rotate:ordered.length>8?30:0},axisLine:STATS_THEME.axisLine},
-    yAxis:{type:'value',axisLabel:{color:'#64748b',fontFamily:'JetBrains Mono',fontSize:10,formatter:function(v){return '$'+Math.round(v/1000)+'K';}},splitLine:STATS_THEME.splitLine},
-    series:[{type:'bar',data:ordered.map(function(d,i){return{value:d.avg,itemStyle:{color:barColors[i%barColors.length]}};}),
-      barMaxWidth:40,
-      itemStyle:{borderRadius:[4,4,0,0]},
-      label:{show:ordered.length<=8,position:'top',color:'#64748b',fontFamily:'JetBrains Mono',fontSize:10,formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}},
-      markLine:{silent:true,symbol:'none',lineStyle:{color:'#ef4444',type:'dashed',width:1.5},
-        data:[{yAxis:overallAvg,label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:'JetBrains Mono',fontSize:10}}]}}],
+    tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
+      formatter:function(p){ var d=ordered.filter(function(x){return x.label===p[0].name;})[0]; return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K'+(d?' ('+d.count+' data points)':''); }}, ttip()),
+    grid: { top:30, right:30, bottom:40, left:60 },
+    xAxis: { type:'category', data:ordered.map(function(d){return d.label;}),
+      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11, rotate:ordered.length>8?30:0 },
+      axisLine:STATS_THEME.axisLine },
+    yAxis: { type:'value', axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10,
+      formatter:function(v){return '$'+Math.round(v/1000)+'K';}}, splitLine:STATS_THEME.splitLine },
+    series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
+      barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
+      label:{ show:ordered.length<=8, position:'top', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10,
+        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}},
+      markLine:{ silent:true, symbol:'none', lineStyle:{color:'#ef4444',type:'dashed',width:1.5},
+        data:[{yAxis:overallAvg, label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:'JetBrains Mono',fontSize:10}}]}}],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// C8: Industry Breakdown — horizontal bars, top 10
+// ─── C8: Industry — threshold: industry non-null > 60% ───
 function renderIndustryBars(stats) {
-  var chart = getOrCreateChart('#chart-industry'); if (!chart) return;
-  var ic = stats.industryCounts;
-  var sorted = Object.entries(ic).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
-  if (sorted.length === 0) {
-    chart.setOption({ graphic:[{type:'text',left:'center',top:'middle',style:{text:'No industry data available',fill:'#64748b',fontSize:13,fontFamily:'Outfit'}}],xAxis:{show:false},yAxis:{show:false},series:[] }, true);
+  var card = document.getElementById('chart-industry');
+  var cardWrap = card ? card.closest('.stats-chart-card') : null;
+  var coveragePct = stats.total > 0 ? (stats.industryNonNull / stats.total) * 100 : 0;
+
+  if (coveragePct < 60) {
+    if (cardWrap) cardWrap.style.display = 'none';
     return;
   }
+  if (cardWrap) cardWrap.style.display = '';
+
+  var chart = getOrCreateChart('#chart-industry'); if (!chart) return;
+  var sorted = Object.entries(stats.industryCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+  if (sorted.length === 0) { emptyChart(chart, 'No industry data available'); return; }
+
   var rev = sorted.slice().reverse();
   chart.setOption({
     graphic:[],
-    tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'axis',axisPointer:{type:'shadow'},
-      formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value.toLocaleString()+' jobs';}},
-    grid:{top:10,right:30,bottom:10,left:160},
-    xAxis:{type:'value',axisLabel:STATS_THEME.axisLabel,splitLine:STATS_THEME.splitLine},
-    yAxis:{type:'category',data:rev.map(function(e){return e[0];}),axisLabel:{color:'#64748b',fontFamily:'Outfit',fontSize:11,width:150,overflow:'truncate'},axisLine:{show:false},axisTick:{show:false}},
-    series:[{type:'bar',data:rev.map(function(e){return e[1];}),
-      itemStyle:{color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(34,197,94,0.3)'},{offset:1,color:'#22c55e'}]),borderRadius:[0,3,3,0]},barMaxWidth:18,
-      label:{show:true,position:'right',color:'#64748b',fontFamily:'JetBrains Mono',fontSize:10}}],
+    tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
+      formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value+' jobs';}}, ttip()),
+    grid: { top:10, right:30, bottom:10, left:160 },
+    xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    yAxis: { type:'category', data:rev.map(function(e){return e[0];}),
+      axisLabel:{ color:'hsl(228,11%,41%)', fontFamily:'Outfit', fontSize:11, width:150, overflow:'truncate' }, axisLine:{show:false}, axisTick:{show:false} },
+    series: [{ type:'bar', data:rev.map(function(e){return e[1];}),
+      itemStyle:{ color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'rgba(34,197,94,0.3)'},{offset:1,color:'#22c55e'}]), borderRadius:[0,3,3,0] },
+      barMaxWidth:18,
+      label:{ show:true, position:'right', color:'hsl(228,11%,41%)', fontFamily:'JetBrains Mono', fontSize:10 }}],
     animation:true, animationDuration:600,
   }, true);
 }
 
-// ─── Loading / Empty ───
+// ─── Loading / Empty (no inline styles) ───
 function showStatsLoading(on) {
   var grid = document.getElementById('stats-charts-grid');
   var empty = document.getElementById('stats-empty');
   if (empty) empty.style.display = 'none';
-
-  // Force grid layout inline (CSS may not be applying)
-  if (grid) {
-    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:16px;';
-    // Style each chart card
-    var cards = grid.querySelectorAll('.stats-chart-card');
-    cards.forEach(function(card) {
-      card.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;';
-      if (card.classList.contains('full')) {
-        card.style.gridColumn = '1 / -1';
-      }
-    });
-  }
-
   if (on) {
-    ['#sc-total','#sc-salary','#sc-senior','#sc-remote','#sc-companies'].forEach(function(s){var e=document.querySelector(s);if(e)e.textContent='\u2014';});
+    ['#sc-total','#sc-salary','#sc-senior','#sc-remote','#sc-companies'].forEach(function(s){ var e=document.querySelector(s); if(e) e.textContent='\u2014'; });
     if (grid) grid.style.opacity = '0.4';
   } else { if (grid) grid.style.opacity = '1'; }
 }
 function showEmptyState(reason) {
   showStatsLoading(false);
-  var msgs = { 'no-filters':'Create saved filters on the Jobs Feed page to see your personalized stats', 'no-results':'No jobs match this filter. Try broadening your search criteria.', 'error':'Something went wrong loading stats. Try refreshing the page.' };
+  var msgs = { 'no-filters':'Create saved filters on the Jobs Feed page to see your personalized stats',
+    'no-results':'No jobs match this filter. Try broadening your search criteria.',
+    'error':'Something went wrong loading stats. Try refreshing the page.' };
   ['#sc-total','#sc-salary','#sc-senior','#sc-remote','#sc-companies'].forEach(function(s){setText(s,'\u2014');});
   var el = document.getElementById('stats-empty');
   if (el) { el.textContent = msgs[reason]||msgs['error']; el.style.display = ''; }
 }
 
 // ─── Resize / Refresh ───
-function statsResizeAll() { Object.values(statsCharts).forEach(function(c){if(c&&!c.isDisposed())c.resize();}); }
+function statsResizeAll() { Object.values(statsCharts).forEach(function(c){ if(c&&!c.isDisposed()) c.resize(); }); }
 function refreshStatsCharts() {
   renderFilterPills();
   var stale = Object.values(statsCache).some(function(c){return Date.now()-c.timestamp>=STATS_CACHE_TTL;});
