@@ -11,8 +11,9 @@
   <link rel="canonical" href="https://brilliantjobs.app/career-level-data">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js" defer></script>
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -184,7 +185,7 @@
   <div class="foot">Data from 9,800+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
 </div>
 <script>
-(function(){
+document.addEventListener('DOMContentLoaded',function(){
   var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL={color:'#4a5068',fontFamily:'JetBrains Mono',fontSize:10};
   var GR={left:56,right:20,top:20,bottom:32};
@@ -211,7 +212,7 @@
   I('c4').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){var h='<b>'+p[0].axisValue+'</b>';p.forEach(function(s){h+='<br/>'+s.marker+' '+s.seriesName+': <b>'+fmtM(s.value)+'</b>'});return h}},legend:{bottom:0,textStyle:{color:'#7a8299',fontSize:10,fontFamily:'JetBrains Mono'},icon:'roundRect',itemWidth:12,itemHeight:8},grid:{left:72,right:20,top:20,bottom:48},xAxis:{type:'category',data:sr.map(function(d){return d.t}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{name:'25th %ile',type:'bar',stack:'s',data:sr.map(function(d){return d.p25}),barWidth:'40%',itemStyle:{color:'rgba(59,130,246,0.25)',borderRadius:[0,0,4,4]}},{name:'Median',type:'bar',stack:'s',data:sr.map(function(d){return d.med-d.p25}),itemStyle:{color:'rgba(59,130,246,0.55)'}},{name:'75th %ile',type:'bar',stack:'s',data:sr.map(function(d){return d.p75-d.med}),itemStyle:{color:'rgba(59,130,246,0.85)',borderRadius:[4,4,0,0]}}]});
 
   window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
-})();
+});
 </script>
 </body>
 </html>
