@@ -671,7 +671,6 @@
                   <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
                   <th data-sort="match" style="width:5%;">Match <span class="sort-arrow">↕</span></th>
-                  <th style="width:5%;">Source</th>
                   <th style="width:140px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
                       <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
@@ -714,6 +713,9 @@
             <div class="tuning-card-body">
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
                 <input type="checkbox" id="tuning-us-only" style="margin:0;"> only show jobs in the united states
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
+                <input type="checkbox" id="tuning-exclude-hourly" style="margin:0;"> exclude hourly-rate jobs
               </label>
               <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">global location exclusions</label>
               <div class="query-builder" id="tuning-location-exclude" style="margin-top:6px;min-height:40px;position:relative;">
