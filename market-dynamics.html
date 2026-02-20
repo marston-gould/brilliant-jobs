@@ -79,7 +79,7 @@
 <main>
 <div class="wrap">
   <header class="hdr">
-    <nav class="breadcrumb" style="font-size:12px;color:var(--text-faint);margin-block-end:12px"><a href="/" style="color:var(--text-dim);text-decoration:none">Brilliant Jobs</a> &rsaquo; <a href="/job-market-data" style="color:var(--text-dim);text-decoration:none">Market Data</a> &rsaquo; <span style="color:var(--text-faint)">Dynamics</span></nav>
+    <nav class="breadcrumb" style="font-size:12px;color:var(--text-faint);margin-block-end:12px"><a href="/" style="color:var(--text-dim);text-decoration:none">Brilliant Jobs</a> &rsaquo; <a href="/data-lab" style="color:var(--text-dim);text-decoration:none">Market Data</a> &rsaquo; <span style="color:var(--text-faint)">Dynamics</span></nav>
     <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
     <h1>Market <span>Dynamics</span></h1>
     <p class="sub">Watch how hiring shifts across industries, departments, seniority levels, and U.S. geographies over time. Drag the timeline slider to animate the data.</p>
@@ -108,7 +108,7 @@
 
   <h2 class="sdiv">U.S. Geographic Distribution</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">137,912 open jobs across the U.S.</div></div><span class="badge b-green">By State</span></div>
+    <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">Where are the open jobs across the U.S.?</div></div><span class="badge b-green">By State</span></div>
     <div style="display:flex;gap:8px;margin-block-end:12px">
       <button class="map-toggle active" id="mt-open" onclick="setMapMode('open')">Open Jobs</button>
       <button class="map-toggle" id="mt-vel" onclick="setMapMode('velocity')">New Jobs / Week</button>
@@ -121,17 +121,17 @@
   <div class="related">
     <h3>Explore More Market Data</h3>
         <div class="related-grid">
-      <a href="/job-market-data" class="related-link"><div class="rl-title">Market Overview</div><div class="rl-desc">Summary stats from 280K+ listings across 10,000+ companies</div></a>
+      <a href="/data-lab" class="related-link"><div class="rl-title">Data Lab</div><div class="rl-desc">Summary stats from 280K+ listings across 10,000+ companies</div></a>
       <a href="/hiring-trends" class="related-link"><div class="rl-title">Hiring Trends</div><div class="rl-desc">Growth velocity, top employers, listing lifespan</div></a>
       <a href="/salary-data" class="related-link"><div class="rl-title">Salary Data</div><div class="rl-desc">Median pay by department, remote premium, distribution</div></a>
       <a href="/jobs-by-industry" class="related-link"><div class="rl-title">Jobs by Industry</div><div class="rl-desc">Volume and salary across 15 industries</div></a>
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.86 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.87 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
-<!-- v2.86 -->
+<!-- v2.87 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
@@ -158,6 +158,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     var d = new Date(w+'T12:00:00');
     return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   }
+  function roundScale(v) {
+    if (v >= 10000) return Math.ceil(v / 1000) * 1000;
+    if (v >= 1000) return Math.ceil(v / 100) * 100;
+    if (v >= 100) return Math.ceil(v / 10) * 10;
+    return v;
+  }
 
   // ── Chart 1: Industry x Dept ──
   var weeks1 = getWeeks(indDept);
@@ -180,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid:{left:160,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:industries1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[wMax.toLocaleString(),'0'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
+      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[roundScale(wMax).toLocaleString(),'0'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek1[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -212,7 +218,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid:{left:100,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:levels2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[wMax.toLocaleString(),'0'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
+      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[roundScale(wMax).toLocaleString(),'0'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek2[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -271,13 +277,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       return [x, y];
     }
     function projectAK(lon, lat) {
-      var x = (lon + 190) * 0.32 + 15;
-      var y = (73 - lat) * 0.95 + mapH * 0.72;
+      var x = (lon + 187) * 0.55 + 10;
+      var y = (72 - lat) * 1.6 + mapH * 0.63;
       return [x, y];
     }
     function projectHI(lon, lat) {
-      var x = (lon + 162) * 4.2 + 230;
-      var y = (22.8 - lat) * 4.2 + mapH * 0.83;
+      var x = (lon + 161.5) * 5.5 + 235;
+      var y = (22.5 - lat) * 5.5 + mapH * 0.80;
       return [x, y];
     }
     function getProj(name) {
@@ -310,8 +316,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Inset boxes
     var svgBox = function(x,y,w,h) { var b=document.createElementNS(svgNS,'rect'); b.setAttribute('x',x);b.setAttribute('y',y);b.setAttribute('width',w);b.setAttribute('height',h); b.setAttribute('fill','none');b.setAttribute('stroke','#1e2230');b.setAttribute('stroke-width','1');b.setAttribute('rx','4'); svg.appendChild(b); };
-    svgBox(5, mapH*0.70, 210, mapH*0.28);
-    svgBox(220, mapH*0.78, 120, mapH*0.20);
+    svgBox(5, mapH*0.58, 225, mapH*0.40);
+    svgBox(235, mapH*0.78, 120, mapH*0.20);
 
     // State paths
     var statePaths = {};
@@ -356,10 +362,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     legend.innerHTML = '<span>0</span><canvas id="leg-bar" width="140" height="10" style="border-radius:3px"></canvas><span id="leg-hi"></span>';
     mapEl.appendChild(legend);
     function drawLegend(maxVal) {
+      var rounded = roundScale(maxVal);
       var c = document.getElementById('leg-bar');
       if (c) { var ctx = c.getContext('2d'); for (var x=0;x<140;x++) { ctx.fillStyle = mapColor(x,139); ctx.fillRect(x,0,1,10); } }
       var el = document.getElementById('leg-hi');
-      if (el) el.textContent = maxVal.toLocaleString() + ' jobs';
+      if (el) el.textContent = rounded.toLocaleString() + ' jobs';
     }
 
     // Render open jobs (static)
