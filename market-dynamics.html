@@ -120,10 +120,10 @@
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.81 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.82 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
 </div>
 </main>
-<!-- v2.81 -->
+<!-- v2.82 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
@@ -214,47 +214,154 @@ document.addEventListener('DOMContentLoaded', async function() {
   render2(weeks2.length-1);
   document.getElementById('wl2').textContent = fmtWeek(weeks2[weeks2.length-1]);
 
-  // ── Chart 3: US State Choropleth ──
-  var STATE_NAMES = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","DC":"District of Columbia","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming"};
+  // ── Chart 3: US State Choropleth (SVG + D3-geo) ──
+  var NAME_TO_CODE = {};
+  var CODE_TO_NAME = {"AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut","DE":"Delaware","DC":"District of Columbia","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa","KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan","MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire","NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma","OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas","UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming"};
+  Object.keys(CODE_TO_NAME).forEach(function(c){NAME_TO_CODE[CODE_TO_NAME[c]]=c});
 
+  var weeks3 = getWeeks(stateData);
+  var stByWeek = {};
+  weeks3.forEach(function(w){stByWeek[w]={}});
+  stateData.forEach(function(d){if(stByWeek[d.week])stByWeek[d.week][d.state_code]=d.job_count});
+  var maxByWeek3 = {};
+  weeks3.forEach(function(w){maxByWeek3[w]=0});
+  stateData.forEach(function(d){if(d.job_count>maxByWeek3[d.week])maxByWeek3[d.week]=d.job_count});
+
+  // Color interpolation
+  var MAP_COLORS = [[15,41,34],[6,78,59],[4,120,87],[16,185,129],[52,211,153],[110,231,183]];
+  function mapColor(val, max) {
+    if (!val || !max) return '#1a1f2e';
+    var t = Math.min(val / max, 1);
+    var idx = t * (MAP_COLORS.length - 1);
+    var lo = Math.floor(idx), hi = Math.min(lo + 1, MAP_COLORS.length - 1);
+    var f = idx - lo;
+    var r = Math.round(MAP_COLORS[lo][0] + (MAP_COLORS[hi][0] - MAP_COLORS[lo][0]) * f);
+    var g = Math.round(MAP_COLORS[lo][1] + (MAP_COLORS[hi][1] - MAP_COLORS[lo][1]) * f);
+    var b = Math.round(MAP_COLORS[lo][2] + (MAP_COLORS[hi][2] - MAP_COLORS[lo][2]) * f);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  // Build SVG map
   try {
     var geoRes = await fetch('/js/vendor/us-states.json');
     var usGeo = await geoRes.json();
-    echarts.registerMap('USA', {geoJSON: usGeo});
 
-    var weeks3 = getWeeks(stateData);
-    var stByWeek = {};
-    weeks3.forEach(function(w){stByWeek[w]={}});
-    stateData.forEach(function(d){if(stByWeek[d.week])stByWeek[d.week][d.state_code]=d.job_count});
-    var maxVal3 = Math.max.apply(null,stateData.map(function(d){return d.job_count}));
-    var maxByWeek3 = {};
-    weeks3.forEach(function(w){maxByWeek3[w]=0});
-    stateData.forEach(function(d){if(d.job_count>maxByWeek3[d.week])maxByWeek3[d.week]=d.job_count});
+    var mapEl = document.getElementById('c3');
+    var mapW = mapEl.clientWidth, mapH = mapEl.clientHeight;
 
-    var ch3 = echarts.init(document.getElementById('c3'));
+    // Simple Albers-like projection (manual fit for continental US)
+    function project(lon, lat) {
+      // Mercator with US-centric offset, good enough for a choropleth
+      var x = (lon + 124) * (mapW / 62);
+      var y = (52 - lat) * (mapH / 27);
+      return [x, y];
+    }
+
+    function pathFromCoords(rings) {
+      var d = '';
+      rings.forEach(function(ring) {
+        ring.forEach(function(pt, i) {
+          var p = project(pt[0], pt[1]);
+          d += (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1);
+        });
+        d += 'Z';
+      });
+      return d;
+    }
+
+    // Tooltip
+    var tip = document.createElement('div');
+    tip.style.cssText = 'position:absolute;display:none;background:rgba(12,14,20,0.96);border:1px solid #1e2230;border-radius:6px;padding:8px 12px;color:#e8eaf0;font-family:Outfit,sans-serif;font-size:12px;pointer-events:none;z-index:10;white-space:nowrap';
+    mapEl.style.position = 'relative';
+    mapEl.appendChild(tip);
+
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + mapW + ' ' + mapH);
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '100%');
+    mapEl.innerHTML = '';
+    mapEl.style.position = 'relative';
+    mapEl.appendChild(svg);
+    mapEl.appendChild(tip);
+
+    // Legend
+    var legend = document.createElement('div');
+    legend.style.cssText = 'position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;font-family:JetBrains Mono,monospace;font-size:9px;color:#7884a8';
+    legend.innerHTML = '<span id="leg-lo">0</span><canvas id="leg-bar" width="140" height="10" style="border-radius:3px"></canvas><span id="leg-hi">—</span>';
+    mapEl.appendChild(legend);
+
+    var paths = {};
+    usGeo.features.forEach(function(feat) {
+      var name = feat.properties.name;
+      var code = NAME_TO_CODE[name];
+      if (!code) return;
+      var coords = feat.geometry.type === 'Polygon' ? [feat.geometry.coordinates] : feat.geometry.coordinates;
+      var d = '';
+      coords.forEach(function(poly) { d += pathFromCoords(poly); });
+      var path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', '#1a1f2e');
+      path.setAttribute('stroke', '#2d3348');
+      path.setAttribute('stroke-width', '0.5');
+      path.setAttribute('data-state', code);
+      path.style.transition = 'fill 0.3s';
+      path.style.cursor = 'pointer';
+      path.addEventListener('mouseenter', function(e) {
+        path.setAttribute('stroke', '#3b82f6');
+        path.setAttribute('stroke-width', '1.5');
+        var val = paths[code]._val || 0;
+        tip.innerHTML = '<b>' + name + '</b><br>' + val.toLocaleString() + ' jobs';
+        tip.style.display = 'block';
+      });
+      path.addEventListener('mousemove', function(e) {
+        var rect = mapEl.getBoundingClientRect();
+        tip.style.left = (e.clientX - rect.left + 12) + 'px';
+        tip.style.top = (e.clientY - rect.top - 30) + 'px';
+      });
+      path.addEventListener('mouseleave', function() {
+        path.setAttribute('stroke', '#2d3348');
+        path.setAttribute('stroke-width', '0.5');
+        tip.style.display = 'none';
+      });
+      svg.appendChild(path);
+      paths[code] = path;
+      paths[code]._val = 0;
+    });
+
+    function drawLegend(wMax) {
+      var c = document.getElementById('leg-bar');
+      if (!c) return;
+      var ctx = c.getContext('2d');
+      for (var x = 0; x < 140; x++) {
+        ctx.fillStyle = mapColor(x, 139);
+        ctx.fillRect(x, 0, 1, 10);
+      }
+      document.getElementById('leg-hi').textContent = wMax.toLocaleString() + ' jobs';
+    }
+
     function render3(weekIdx) {
       var w = weeks3[weekIdx];
       var wMax = maxByWeek3[w] || 1;
-      var mapData = Object.keys(stByWeek[w]||{}).map(function(code){return{name:STATE_NAMES[code]||code,value:stByWeek[w][code]}});
-      ch3.setOption({
-        tooltip:{backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},trigger:'item',formatter:function(p){return'<b>'+p.name+'</b><br/>'+Number(p.value||0).toLocaleString()+' jobs'}},
-        visualMap:{min:0,max:wMax,calculable:true,orient:'horizontal',left:'center',bottom:10,itemWidth:12,itemHeight:140,text:[wMax.toLocaleString(),'0'],inRange:{color:['#0f2922','#064e3b','#047857','#10b981','#34d399','#6ee7b7']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()}},
-        series:[{type:'map',map:'USA',roam:false,emphasis:{label:{show:true,color:'#fff',fontSize:10},itemStyle:{areaColor:'#3b82f6'}},itemStyle:{areaColor:'#1a1f2e',borderColor:'#2d3348',borderWidth:0.5},label:{show:false},data:mapData,animation:false}]
+      var data = stByWeek[w] || {};
+      Object.keys(paths).forEach(function(code) {
+        var val = data[code] || 0;
+        paths[code].setAttribute('fill', val ? mapColor(val, wMax) : '#1a1f2e');
+        paths[code]._val = val;
       });
+      drawLegend(wMax);
     }
-    var sl3 = document.getElementById('sl3');
-    sl3.max = weeks3.length-1; sl3.value = weeks3.length-1;
-    sl3.addEventListener('input',function(){render3(+this.value);document.getElementById('wl3').textContent=fmtWeek(weeks3[+this.value])});
-    render3(weeks3.length-1);
-    document.getElementById('wl3').textContent = fmtWeek(weeks3[weeks3.length-1]);
 
-    // Add map to play system
+    var sl3 = document.getElementById('sl3');
+    sl3.max = weeks3.length - 1; sl3.value = weeks3.length - 1;
+    sl3.addEventListener('input', function() { render3(+this.value); document.getElementById('wl3').textContent = fmtWeek(weeks3[+this.value]); });
+    render3(weeks3.length - 1);
+    document.getElementById('wl3').textContent = fmtWeek(weeks3[weeks3.length - 1]);
+
     renderers[2] = render3;
     weekSets[2] = weeks3;
-    document.getElementById('pb3').disabled = false;
-    window.addEventListener('resize', function(){ch3.resize()});
   } catch(e) {
-    document.getElementById('c3').innerHTML = '<div class="loading-msg">Map failed to load: '+e.message+'</div>';
+    document.getElementById('c3').innerHTML = '<div class="loading-msg">Map error: ' + e.message + ' at ' + (e.stack||'').split('\n')[1] + '</div>';
   }
 
   // ── Play/pause animation ──
