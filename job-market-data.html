@@ -75,7 +75,7 @@
 }
   </script>
   <style>
-    :root{--bg:#0a0c10;--bg-card:#12141a;--border:#1e2230;--text:#e8eaf0;--text-dim:#7a8299;--text-faint:#4a5068;--accent:#3b82f6;--green:#22c55e;--warm:#f59e0b;--red:#ef4444;--purple:#a855f7;--cyan:#06b6d4;--pink:#ec4899;--indigo:#6366f1}
+    :root{--bg:#0a0c10;--bg-card:#12141a;--border:#1e2230;--text:#e8eaf0;--text-dim:#8a92a9;--text-faint:#7884a8;--accent:#3b82f6;--green:#22c55e;--warm:#f59e0b;--red:#ef4444;--purple:#a855f7;--cyan:#06b6d4;--pink:#ec4899;--indigo:#6366f1}
     *{margin:0;padding:0;box-sizing:border-box}
     body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh}
     body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
@@ -129,11 +129,12 @@
     .related-link .rl-title{font-size:13px;font-weight:600;color:var(--text);margin-block-end:4px}
     .related-link .rl-desc{font-size:11px;color:var(--text-faint);line-height:1.5}
     .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
-    .foot a{color:var(--accent);text-decoration:none}
+    .foot a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
   </style>
 </head>
 <body>
+<main>
 <div class="wrap">
   <header class="hdr">
     <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
@@ -176,10 +177,10 @@
 
   <h2 class="sdiv">Key findings at a glance</h2>
   <div class="grid">
-    <div class="card"><div class="ch"><div><div class="cl">Biggest Insight</div><div class="ct">Remote Jobs Pay 35% More</div></div><span class="badge b-green">Salary</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Remote positions have a median salary of $128,000 compared to $95,000 for on-site roles. Hybrid falls between at $118,000. This premium is consistent across industries and seniority levels. <a href="/salary-data" style="color:var(--accent);text-decoration:none;">See the full salary breakdown with department-level ranges and standard deviations &rarr;</a></p></div>
-    <div class="card"><div class="ch"><div><div class="cl">Career Move</div><div class="ct">Mid&rarr;Senior = 42% Raise</div></div><span class="badge b-warm">Levels</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">The jump from mid-level ($95K) to senior ($135K) is the single highest-leverage salary move. Senior roles also have the most openings at 67,400 &mdash; more than entry level. <a href="/career-level-data" style="color:var(--accent);text-decoration:none;">See the full seniority funnel and salary ladder &rarr;</a></p></div>
-    <div class="card"><div class="ch"><div><div class="cl">Market Leader</div><div class="ct">Tech = 24% of All Jobs</div></div><span class="badge b-purple">Industry</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Technology dominates with 68,400 open positions and $142K average salary &mdash; 2.2x higher than Hospitality. Financial Services pays nearly the same with fewer openings. <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:none;">Compare all 15 industries by volume and compensation &rarr;</a></p></div>
-    <div class="card"><div class="ch"><div><div class="cl">Timing</div><div class="ct">Apply Within 14 Days</div></div><span class="badge b-red">Trends</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Most listings close within 30 days, with the 14-30 day window being peak closure. The first two weeks after posting offer the best odds of getting noticed. <a href="/hiring-trends" style="color:var(--accent);text-decoration:none;">See listing lifespans and top hiring companies &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Biggest Insight</div><div class="ct">Remote Jobs Pay 35% More</div></div><span class="badge b-green">Salary</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Remote positions have a median salary of $128,000 compared to $95,000 for on-site roles. Hybrid falls between at $118,000. This premium is consistent across industries and seniority levels. <a href="/salary-data" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">See the full salary breakdown with department-level ranges and standard deviations &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Career Move</div><div class="ct">Mid&rarr;Senior = 42% Raise</div></div><span class="badge b-warm">Levels</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">The jump from mid-level ($95K) to senior ($135K) is the single highest-leverage salary move. Senior roles also have the most openings at 67,400 &mdash; more than entry level. <a href="/career-level-data" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">See the full seniority funnel and salary ladder &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Market Leader</div><div class="ct">Tech = 24% of All Jobs</div></div><span class="badge b-purple">Industry</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Technology dominates with 68,400 open positions and $142K average salary &mdash; 2.2x higher than Hospitality. Financial Services pays nearly the same with fewer openings. <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">Compare all 15 industries by volume and compensation &rarr;</a></p></div>
+    <div class="card"><div class="ch"><div><div class="cl">Timing</div><div class="ct">Apply Within 14 Days</div></div><span class="badge b-red">Trends</span></div><p style="font-size:13px;color:var(--text-dim);line-height:1.7;">Most listings close within 30 days, with the 14-30 day window being peak closure. The first two weeks after posting offer the best odds of getting noticed. <a href="/hiring-trends" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">See listing lifespans and top hiring companies &rarr;</a></p></div>
   </div>
   <div class="faq">
     <h2>Frequently Asked Questions</h2>
@@ -192,5 +193,6 @@
 
   <div class="foot">Data from 9,800+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
 </div>
+</main>
 </body>
 </html>
