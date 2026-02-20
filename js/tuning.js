@@ -110,6 +110,7 @@ tuningIndExclPills = tuningSettings.industryExcludes || [];
 
 function saveTuning() {
   tuningSettings.usOnly = $('#tuning-us-only').checked;
+  tuningSettings.excludeHourly = $('#tuning-exclude-hourly').checked;
   tuningSettings.locationExcludes = tuningLocExclPills;
   tuningSettings.titleExcludes = tuningTitleExclPills;
   tuningSettings.companyExcludes = tuningCoExclPills;
@@ -123,6 +124,7 @@ function updateTuningStatusDot() {
   if (!dot) return;
   const hasCustom =
     tuningSettings.usOnly ||
+    tuningSettings.excludeHourly ||
     (tuningLocExclPills && tuningLocExclPills.length > 0) ||
     (tuningTitleExclPills && tuningTitleExclPills.length > 0) ||
     (tuningCoExclPills && tuningCoExclPills.length > 0) ||
@@ -255,6 +257,7 @@ function getJobLevel(title, hierarchy) {
 
 // Restore state
 if (tuningSettings.usOnly) $('#tuning-us-only').checked = true;
+if (tuningSettings.excludeHourly) $('#tuning-exclude-hourly').checked = true;
 
 // Per-filter level hierarchy editor — uses a modal-style overlay
 window.editFilterLevelHierarchy = function(filterIdx) {
