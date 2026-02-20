@@ -1089,8 +1089,8 @@ async function backgroundEnrichSalary() {
       }
     }
 
-    // Then: fetch specs for jobs without content or salary
-    const needsFetch = allJobs.filter(j => !j.salary_min && !j.content).slice(0, 20);
+    // Then: fetch specs for jobs without content or salary (Greenhouse only — other ATS platforms don't have this API)
+    const needsFetch = allJobs.filter(j => !j.salary_min && !j.content && (!j.ats_source || j.ats_source === 'greenhouse')).slice(0, 20);
     if (needsFetch.length === 0) { _enrichRunning = false; return; }
     console.log(`[BJ] Background salary enrichment: ${needsFetch.length} jobs`);
 
