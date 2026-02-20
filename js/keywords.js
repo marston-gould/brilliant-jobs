@@ -83,7 +83,7 @@ function extractNgrams(jobs, maxPerGroup = 40) {
 
   for (const job of jobs) {
     const raw = job.content || job.description || '';
-    if (!raw) continue;
+    if (!raw || isContentUnavailable(raw)) continue;
     jobsWithContent++;
 
     const text = stripHtmlToText(raw);
@@ -197,6 +197,10 @@ async function batchFetchJDContent(jobs, maxFetch) {
           enrichJob(job.greenhouse_id, { content: job.content });
           fetched++;
         }
+      } else if (resp.status === 404 || resp.status === 410) {
+        // Listing removed from ATS — mark so we never retry
+        job.content = '<!-- unavailable -->';
+        enrichJob(job.greenhouse_id, { content: job.content });
       }
       await new Promise(function(r){ setTimeout(r, 200); });
     } catch (e) { /* skip */ }
@@ -282,7 +286,7 @@ function scoreResumeByLevel(resume, jds) {
 
 // Score a single job against the best resume for its filter
 function computeJobMatchScore(job) {
-  if (!job.content) return null;
+  if (!job.content || isContentUnavailable(job.content)) return null;
 
   var filterNums = job._filterNums || [];
   if (filterNums.length === 0) return null;
@@ -1062,6 +1066,11 @@ async function loadPreviewSnippets() {
 setTimeout(initPreviewToggle, 100);
 
 // Robust HTML content decoder — handles any level of entity encoding
+// Check if job content is a sentinel indicating the ATS listing was removed (404/410)
+function isContentUnavailable(content) {
+  return content === '<!-- unavailable -->';
+}
+
 function decodeJobContent(raw) {
   if (!raw) return '';
   let html = raw;
@@ -1122,7 +1131,7 @@ async function openJobModal(jobId, e) {
 
   // Populate body — robust decode that handles any level of HTML encoding
   const rawContent = job.content || job.description || null;
-  if (rawContent) {
+  if (rawContent && !isContentUnavailable(rawContent)) {
     bodyEl.innerHTML = decodeJobContent(rawContent);
     // Parse salary from cached content if not already parsed
     if (!job.salary_min) {
@@ -1196,8 +1205,10 @@ function toggleApplyForm() {
     btn.style.color = '';
     // Re-trigger the spec load
     const job = allJobs.find(j => j.greenhouse_id === jobId);
-    if (job?.content) {
+    if (job?.content && !isContentUnavailable(job.content)) {
       bodyEl.innerHTML = decodeJobContent(job.content);
+    } else if (job?.content && isContentUnavailable(job.content)) {
+      bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">This job listing is no longer available on the company\'s careers page.</div>';
     } else {
       bodyEl.innerHTML = '<div style="text-align:center;padding:40px;"><div class="loading-spinner" style="margin:0 auto 12px;"></div><div style="color:var(--text-faint);font-size:13px;">Loading job details…</div></div>';
       fetchJobSpec(jobId, jobUrl, bodyEl);
@@ -1464,6 +1475,13 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
           enrichJob(jobId, { content: updateData.content, salary: updateData.salary_min ? { min: updateData.salary_min, max: updateData.salary_max, raw: updateData.salary_raw, currency: updateData.salary_currency, rate: updateData.salary_rate } : undefined });
           return;
         }
+      } else if (resp.status === 404 || resp.status === 410) {
+        // Listing removed — mark as unavailable, skip slug fallback
+        const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
+        if (cachedJob) cachedJob.content = '<!-- unavailable -->';
+        enrichJob(jobId, { content: '<!-- unavailable -->' });
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">This job listing is no longer available on the company\'s careers page.</div>';
+        return;
       }
     }
   } catch (err) {
@@ -1507,6 +1525,12 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
           enrichJob(jobId, { content: updateData.content, salary: updateData.salary_min ? { min: updateData.salary_min, max: updateData.salary_max, raw: updateData.salary_raw, currency: updateData.salary_currency, rate: updateData.salary_rate } : undefined });
           return;
         }
+      } else if (resp.status === 404 || resp.status === 410) {
+        // Listing removed — mark as unavailable, skip proxy fallback
+        if (job) job.content = '<!-- unavailable -->';
+        enrichJob(jobId, { content: '<!-- unavailable -->' });
+        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">This job listing is no longer available on the company\'s careers page.</div>';
+        return;
       }
     }
   } catch (err) {
