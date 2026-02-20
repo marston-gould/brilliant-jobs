@@ -38,7 +38,7 @@ serve(async (req) => {
   const health: HealthCheck = {
     status: "healthy",
     timestamp: new Date().toISOString(),
-    version: "2.64",
+    version: "2.79",
     checks: {},
   };
 
@@ -64,29 +64,31 @@ serve(async (req) => {
   }
 
   // Check 2: Job refresh pipeline health
+  // Primary: check max(last_seen) on ats_jobs — proves data is being updated
+  // Fallback: check refresh_log table
   try {
     const start = performance.now();
-    const { data, error } = await sb
-      .from("refresh_log")
-      .select("*")
-      .order("created_at", { ascending: false })
+    const { data: freshest, error: freshErr } = await sb
+      .from("ats_jobs")
+      .select("last_seen")
+      .order("last_seen", { ascending: false })
       .limit(1)
       .maybeSingle();
     const ms = Math.round(performance.now() - start);
 
-    if (error) throw error;
-    if (data) {
-      const lastRefresh = new Date(data.created_at);
-      const minutesAgo = Math.round((Date.now() - lastRefresh.getTime()) / 60000);
-      const stale = minutesAgo > 30; // Alert if no refresh in 30 min
+    if (freshErr) throw freshErr;
+    if (freshest) {
+      const lastSeen = new Date(freshest.last_seen);
+      const minutesAgo = Math.round((Date.now() - lastSeen.getTime()) / 60000);
+      const stale = minutesAgo > 30; // Alert if no data update in 30 min
       health.checks.job_refresh = {
         status: stale ? "fail" : "pass",
         latencyMs: ms,
-        message: `Last refresh ${minutesAgo}min ago`,
+        message: `Last data update ${minutesAgo}min ago`,
       };
       if (stale) health.status = "degraded";
     } else {
-      health.checks.job_refresh = { status: "fail", latencyMs: ms, message: "No refresh log entries" };
+      health.checks.job_refresh = { status: "fail", latencyMs: ms, message: "No jobs in database" };
       health.status = "degraded";
     }
   } catch (e) {
@@ -104,7 +106,7 @@ serve(async (req) => {
     const { count, error } = await sb
       .from("ats_jobs")
       .select("*", { count: "exact", head: true })
-      .eq("status", "live");
+      .eq("status", "open");
     const ms = Math.round(performance.now() - start);
 
     if (error) throw error;
