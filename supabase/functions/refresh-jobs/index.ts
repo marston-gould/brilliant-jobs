@@ -1,6 +1,12 @@
-// refresh-jobs Edge Function v11
+// refresh-jobs Edge Function v12
 // Multi-ATS job scraper — processes 50 boards per invocation (stalest first).
 // pg_cron fires every 10 minutes → full cycle of ~10K boards in ~33 hours.
+//
+// v12 changes:
+//   - Records last_http_status + last_refresh_at on every board fetch
+//   - Timeout/network errors → status 0
+//   - 4xx/5xx → actual status code
+//   - 200 → success
 //
 // v11 changes:
 //   - Removed ?content=true from Greenhouse (OOM fix)
@@ -213,29 +219,30 @@ async function scrapeBoard(board: Board): Promise<{
   source: string;
   jobs: ParsedJob[];
   error?: string;
+  httpStatus?: number;
 }> {
   const config = ATS_CONFIG[board.source];
-  if (!config) return { slug: board.slug, source: board.source, jobs: [], error: "unknown_ats" };
+  if (!config) return { slug: board.slug, source: board.source, jobs: [], error: "unknown_ats", httpStatus: 0 };
 
   try {
     const resp = await fetchBoard(config.url(board.slug));
 
     if (resp.status === 404 || resp.status === 410) {
-      return { slug: board.slug, source: board.source, jobs: [], error: `http_${resp.status}` };
+      return { slug: board.slug, source: board.source, jobs: [], error: `http_${resp.status}`, httpStatus: resp.status };
     }
     if (resp.status === 429) {
-      return { slug: board.slug, source: board.source, jobs: [], error: "rate_limited" };
+      return { slug: board.slug, source: board.source, jobs: [], error: "rate_limited", httpStatus: 429 };
     }
     if (!resp.ok) {
-      return { slug: board.slug, source: board.source, jobs: [], error: `http_${resp.status}` };
+      return { slug: board.slug, source: board.source, jobs: [], error: `http_${resp.status}`, httpStatus: resp.status };
     }
 
     const data = await resp.json();
     const jobs = config.parse(data, board.slug, board.name || board.slug);
-    return { slug: board.slug, source: board.source, jobs };
+    return { slug: board.slug, source: board.source, jobs, httpStatus: 200 };
   } catch (e: any) {
     const msg = e.name === "AbortError" ? "timeout" : (e.message || "unknown").slice(0, 80);
-    return { slug: board.slug, source: board.source, jobs: [], error: msg };
+    return { slug: board.slug, source: board.source, jobs: [], error: msg, httpStatus: 0 };
   }
 }
 
@@ -322,7 +329,8 @@ async function markClosedJobs(
       .update({ status: "closed", closed_at: now, updated_at: now })
       .eq("company_slug", slug)
       .eq("ats_source", source)
-      .in("greenhouse_id", batch);
+      .in("greenhouse_id", batch)
+      .is("closed_at", null);
 
     if (!error) closed += batch.length;
   }
@@ -332,8 +340,17 @@ async function markClosedJobs(
 
 // ============ UPDATE COMPANY ============
 
-async function updateCompany(slug: string, source: string, jobCount: number, companyName?: string) {
-  const update: any = { job_count: jobCount, last_checked: new Date().toISOString() };
+async function updateCompany(
+  slug: string, source: string, jobCount: number,
+  httpStatus: number, companyName?: string
+) {
+  const now = new Date().toISOString();
+  const update: any = {
+    job_count: jobCount,
+    last_checked: now,
+    last_http_status: httpStatus,
+    last_refresh_at: now,
+  };
   if (companyName && companyName !== slug) {
     update.name = companyName;
   }
@@ -352,7 +369,7 @@ Deno.serve(async (req: Request) => {
   const sourceFilter = url.searchParams.get("source") || null;
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "50") || 50, 200);
 
-  console.log(`[refresh-jobs] v11 Starting: source=${sourceFilter || "all"}, limit=${limit}`);
+  console.log(`[refresh-jobs] v12 Starting: source=${sourceFilter || "all"}, limit=${limit}`);
 
   let query = sb
     .from("ats_companies")
@@ -392,10 +409,11 @@ Deno.serve(async (req: Request) => {
 
     for (const result of results) {
       boardsProcessed++;
+      const status = result.httpStatus ?? 0;
 
       if (result.error) {
         errors++;
-        await updateCompany(result.slug, result.source, 0);
+        await updateCompany(result.slug, result.source, 0, status);
         continue;
       }
 
@@ -408,9 +426,9 @@ Deno.serve(async (req: Request) => {
         totalClosed += closed;
 
         const apiName = result.jobs[0]?.company_name;
-        await updateCompany(result.slug, result.source, result.jobs.length, apiName);
+        await updateCompany(result.slug, result.source, result.jobs.length, status, apiName);
       } else {
-        await updateCompany(result.slug, result.source, 0);
+        await updateCompany(result.slug, result.source, 0, status);
       }
     }
   }
