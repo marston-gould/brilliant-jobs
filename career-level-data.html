@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
-  <script src="/js/vendor/echarts.custom.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" defer></script>
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -136,7 +136,7 @@
 <main>
 <div class="wrap">
   <header class="hdr">
-    <div class="breadcrumb"><a href="/">Brilliant Jobs</a> &rsaquo; <a href="/job-market-data">Market Data</a> &rsaquo; Career Levels</div>
+    <div class="breadcrumb"><a href="/">Brilliant Jobs</a> &rsaquo; <a href="/data-lab">Data Lab</a> &rsaquo; Career Levels</div>
     <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
     <h1>Career <span>Level</span> Data</h1>
     <p class="sub">Seniority distribution, salary at each level, and work arrangement breakdown from <strong>280,000+ job listings</strong>.</p>
@@ -177,14 +177,14 @@
   <div class="related">
     <h3>Explore More Market Data</h3>
         <div class="related-grid">
-      <a href="/job-market-data" class="related-link"><div class="rl-title">Market Overview</div><div class="rl-desc">Summary stats from 280K+ listings across 10,000+ companies</div></a>
+      <a href="/data-lab" class="related-link"><div class="rl-title">Data Lab</div><div class="rl-desc">Summary stats from 280K+ listings across 10,000+ companies</div></a>
       <a href="/hiring-trends" class="related-link"><div class="rl-title">Hiring Trends</div><div class="rl-desc">Growth velocity, top employers, listing lifespan</div></a>
       <a href="/salary-data" class="related-link"><div class="rl-title">Salary Data</div><div class="rl-desc">Median pay by department, remote premium, distribution</div></a>
       <a href="/jobs-by-industry" class="related-link"><div class="rl-title">Jobs by Industry</div><div class="rl-desc">Volume and salary across 15 industries</div></a>
       <a href="/market-dynamics" class="related-link"><div class="rl-title">Market Dynamics</div><div class="rl-desc">Animated heatmaps, geographic distribution, hiring velocity</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.81 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.87 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
@@ -194,6 +194,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var SP={lineStyle:{color:'#151820'}};
   var NO={show:false};
   var PAL=['#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6','#f97316'];
+  var LVLPAL=['#dc2626','#f59e0b','#f97316','#eab308','#22c55e','#14b8a6','#06b6d4','#3b82f6','#6366f1'];
   function fmt(n){return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'K':n}
   function fmtM(n){return '$'+(n/1000).toFixed(0)+'K'}
   var chs=[];
@@ -205,7 +206,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var remote=[{n:'On-site',v:156400,co:'#3b82f6'},{n:'Remote',v:72600,co:'#22c55e'},{n:'Hybrid',v:39200,co:'#a855f7'},{n:'Unspecified',v:12618,co:'#4a5068'}];
   var sr=[{t:'Remote',p25:85000,med:128000,p75:168000},{t:'Hybrid',p25:78000,med:118000,p75:155000},{t:'On-site',p25:62000,med:95000,p75:135000}];
 
-  I('c1').setOption({tooltip:{...TT,trigger:'item',formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'funnel',left:'15%',right:'15%',top:16,bottom:16,width:'70%',sort:'none',gap:3,label:{show:true,position:'inside',fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff',formatter:function(p){return p.name+'  '+(p.value/1000).toFixed(1)+'K'}},labelLine:{show:false},itemStyle:{borderWidth:0},data:levels.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:PAL[i]+'cc'},{offset:1,color:PAL[i]}]}}}})}]});
+  I('c1').setOption({tooltip:{...TT,trigger:'item',formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'funnel',left:'15%',right:'15%',top:16,bottom:16,width:'70%',sort:'none',gap:3,label:{show:true,position:'inside',fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff',formatter:function(p){return p.name+'  '+(p.value/1000).toFixed(1)+'K'}},labelLine:{show:false},itemStyle:{borderWidth:0},data:levels.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:LVLPAL[i]+'33'},{offset:0.4,color:LVLPAL[i]+'99'},{offset:1,color:LVLPAL[i]}]}}}})}]});
 
   I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:72,right:20,top:20,bottom:40},xAxis:{type:'category',data:salLvl.map(function(d){return d[0]}),axisLabel:{...AL,rotate:35},axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:salLvl.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[6,6,2,2],color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:PAL[i]},{offset:1,color:PAL[i]+'66'}]}}}}),barWidth:'55%',markLine:{silent:true,symbol:'none',lineStyle:{color:'#f59e0b33',type:'dashed'},label:{color:'#f59e0b',fontSize:9,fontFamily:'JetBrains Mono'},data:[{type:'average',name:'Avg'}]}}]});
 
