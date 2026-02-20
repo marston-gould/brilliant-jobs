@@ -267,9 +267,9 @@ function aggregateStats(rows) {
     if (!salByLvl[label]) salByLvl[label] = [];
     salByLvl[label].push(sal);
   });
-  // Only include levels with 3+ salary data points (per spec)
+  // Only include levels with salary data (relaxed threshold for small datasets)
   Object.keys(salByLvl).forEach(function(label) {
-    if (salByLvl[label].length >= 3) {
+    if (salByLvl[label].length >= 1) {
       var sum = salByLvl[label].reduce(function(a,b){return a+b;},0);
       s.salaryByLevel[label] = { avg: Math.round(sum / salByLvl[label].length), count: salByLvl[label].length };
     }
@@ -513,7 +513,7 @@ function renderSalaryByLevel(stats) {
   chart.setOption({
     graphic:[],
     tooltip:{backgroundColor:STATS_THEME.tooltip.backgroundColor,borderColor:STATS_THEME.tooltip.borderColor,borderWidth:1,textStyle:STATS_THEME.tooltip.textStyle,trigger:'axis',axisPointer:{type:'shadow'},
-      formatter:function(p){return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K<br/>'+ordered.filter(function(d){return d.label===p[0].name;})[0].count+' data points';}},
+      formatter:function(p){var d=ordered.filter(function(d){return d.label===p[0].name;})[0];return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K<br/>'+(d?d.count:'')+' job'+(d&&d.count!==1?'s':'')+' with salary';}},
     grid:{top:30,right:30,bottom:40,left:60},
     xAxis:{type:'category',data:ordered.map(function(d){return d.label;}),axisLabel:{color:'#64748b',fontFamily:'Outfit',fontSize:11,rotate:ordered.length>8?30:0},axisLine:STATS_THEME.axisLine},
     yAxis:{type:'value',axisLabel:{color:'#64748b',fontFamily:'JetBrains Mono',fontSize:10,formatter:function(v){return '$'+Math.round(v/1000)+'K';}},splitLine:STATS_THEME.splitLine},
