@@ -93,17 +93,21 @@ COMMENT ON COLUMN entitlement_features.behavior_category IS
 
 ```sql
 CREATE TABLE cohorts (
-  id              text PRIMARY KEY,
-  name            text NOT NULL,
-  description     text,
-  criteria_type   text NOT NULL CHECK (criteria_type IN ('date_range', 'count_cap', 'manual', 'rule')),
-  criteria_value  jsonb NOT NULL DEFAULT '{}',
-  pricing_config  jsonb NOT NULL DEFAULT '{}',
-  is_active       boolean NOT NULL DEFAULT true,
-  created_at      timestamptz NOT NULL DEFAULT now()
+  id                text PRIMARY KEY,
+  name              text NOT NULL,
+  description       text,
+  parent_cohort_id  text REFERENCES cohorts(id),
+  criteria_type     text NOT NULL CHECK (criteria_type IN ('date_range', 'count_cap', 'manual', 'rule')),
+  criteria_value    jsonb NOT NULL DEFAULT '{}',
+  pricing_config    jsonb NOT NULL DEFAULT '{}',
+  is_active         boolean NOT NULL DEFAULT true,
+  is_locked         boolean NOT NULL DEFAULT false,
+  created_at        timestamptz NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE cohorts IS 'Experience definitions. Each cohort is a frozen product configuration.';
+COMMENT ON COLUMN cohorts.parent_cohort_id IS 'The cohort this was cloned from. Used for diff tracking — not runtime inheritance. check_entitlement() never walks the parent chain.';
+COMMENT ON COLUMN cohorts.is_locked IS 'When true, cohort_plan_entitlements rows for this cohort cannot be modified. Prevents accidental changes to live cohorts. Unlock explicitly before editing.';
 COMMENT ON COLUMN cohorts.pricing_config IS 'Stripe price IDs per plan for this cohort. E.g. {"pro_monthly": "price_xxx", "pro_annual": "price_yyy"}';
 COMMENT ON COLUMN cohorts.criteria_value IS 'Membership rules. date_range: {"start": "...", "end": "..."}. count_cap: {"max_users": 500}. rule: {"utm_source": "linkedin_launch"}.';
 ```
@@ -119,6 +123,7 @@ CREATE TABLE cohort_plan_entitlements (
   feature_id  text NOT NULL REFERENCES entitlement_features(id),
   limit_value int NOT NULL,
   behavior    text NOT NULL CHECK (behavior IN ('off', 'fixed', 'adjustable', 'degradable', 'unlimited')),
+  is_modified boolean NOT NULL DEFAULT false,
 
   PRIMARY KEY (cohort_id, plan_id, feature_id)
 );
@@ -127,6 +132,137 @@ COMMENT ON TABLE cohort_plan_entitlements IS
   'The experience contract. Defines what each feature does at each plan level for a specific cohort. This is the source of truth for "what does this user get?"';
 COMMENT ON COLUMN cohort_plan_entitlements.behavior IS
   'How this feature behaves: off (disabled), fixed (hard limit), adjustable (can earn more), degradable (can lose if unused), unlimited (no cap).';
+COMMENT ON COLUMN cohort_plan_entitlements.is_modified IS
+  'Set to true when this row has been changed from its parent cohort values. Cloned rows start as false. Enables instant diff queries: SELECT * WHERE is_modified = true.';
+```
+
+### Cohort lock guard
+
+Prevents accidental modification of entitlements for live cohorts. Must explicitly unlock before editing.
+
+```sql
+CREATE OR REPLACE FUNCTION prevent_locked_cohort_changes()
+RETURNS trigger AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cohorts WHERE id = OLD.cohort_id AND is_locked = true) THEN
+    RAISE EXCEPTION 'Cohort "%" is locked. Run: UPDATE cohorts SET is_locked = false WHERE id = ''%'' before modifying entitlements.', OLD.cohort_id, OLD.cohort_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_lock_cohort_entitlements
+  BEFORE UPDATE OR DELETE ON cohort_plan_entitlements
+  FOR EACH ROW EXECUTE FUNCTION prevent_locked_cohort_changes();
+```
+
+### Auto-mark modified rows
+
+When a cloned row is updated, automatically set `is_modified = true`.
+
+```sql
+CREATE OR REPLACE FUNCTION mark_modified_entitlement()
+RETURNS trigger AS $$
+BEGIN
+  IF OLD.limit_value IS DISTINCT FROM NEW.limit_value
+     OR OLD.behavior IS DISTINCT FROM NEW.behavior THEN
+    NEW.is_modified := true;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_mark_modified
+  BEFORE UPDATE ON cohort_plan_entitlements
+  FOR EACH ROW EXECUTE FUNCTION mark_modified_entitlement();
+```
+
+### Clone cohort function
+
+Creates a new cohort by copying all entitlement rows from an existing one. All copied rows start with `is_modified = false`. Update the rows that differ — the trigger auto-marks them as modified.
+
+```sql
+CREATE OR REPLACE FUNCTION clone_cohort(
+  p_source text,
+  p_target text,
+  p_name text,
+  p_description text,
+  p_criteria_type text,
+  p_criteria_value jsonb,
+  p_pricing_config jsonb DEFAULT '{}'
+)
+RETURNS text AS $$
+BEGIN
+  INSERT INTO cohorts (id, name, description, parent_cohort_id, criteria_type, criteria_value, pricing_config)
+  VALUES (p_target, p_name, p_description, p_source, p_criteria_type, p_criteria_value, p_pricing_config);
+
+  INSERT INTO cohort_plan_entitlements (cohort_id, plan_id, feature_id, limit_value, behavior, is_modified)
+  SELECT p_target, plan_id, feature_id, limit_value, behavior, false
+  FROM cohort_plan_entitlements WHERE cohort_id = p_source;
+
+  RETURN p_target;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Usage — creating `summer_2026` from `launch_2026`:**
+
+```sql
+-- Clone the experience definition
+SELECT clone_cohort(
+  'launch_2026', 'summer_2026',
+  'Summer Cohort', 'Users who sign up May–August 2026. Price increase.',
+  'date_range', '{"start": "2026-05-01T00:00:00Z", "end": "2026-08-31T23:59:59Z"}',
+  '{"pro_monthly": "price_summer_monthly", "pro_annual": "price_summer_annual"}'
+);
+
+-- Now update only what's different — triggers auto-mark is_modified = true
+UPDATE cohort_plan_entitlements
+SET limit_value = 5
+WHERE cohort_id = 'summer_2026' AND plan_id = 'free' AND feature_id = 'resume_grading';
+
+-- See what changed from the parent:
+SELECT cpe.plan_id, cpe.feature_id, cpe.limit_value AS new_value, cpe.behavior AS new_behavior,
+       parent.limit_value AS parent_value, parent.behavior AS parent_behavior
+FROM cohort_plan_entitlements cpe
+JOIN cohorts c ON c.id = cpe.cohort_id
+JOIN cohort_plan_entitlements parent
+  ON parent.cohort_id = c.parent_cohort_id
+  AND parent.plan_id = cpe.plan_id
+  AND parent.feature_id = cpe.feature_id
+WHERE cpe.cohort_id = 'summer_2026' AND cpe.is_modified = true;
+```
+
+### Get user entitlements v2 (full matrix)
+
+Returns the complete entitlement matrix for a user — all features with behavior, limits, bonuses, and source. Used for testing, support, and the Subscription settings page.
+
+```sql
+CREATE OR REPLACE FUNCTION get_user_entitlements(p_user_id uuid)
+RETURNS jsonb AS $$
+DECLARE
+  v_result jsonb := '[]'::jsonb;
+  v_feature record;
+BEGIN
+  FOR v_feature IN SELECT id FROM entitlement_features ORDER BY sort_order LOOP
+    v_result := v_result || (SELECT check_entitlement(p_user_id, v_feature.id));
+  END LOOP;
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**Test harness usage:**
+```sql
+-- Full picture for any user: cohort, plan, all features, all behaviors, all bonuses
+SELECT get_user_entitlements('78ed2e8b-...');
+
+-- Smoke test after any cohort change: verify a sample user from each cohort
+SELECT p.cohort_id, get_user_entitlements(p.id)
+FROM profiles p
+WHERE p.cohort_id IN ('launch_2026', 'summer_2026')
+ORDER BY p.cohort_id
+LIMIT 2;
 ```
 
 ### Add `cohort_id` to `profiles`
@@ -421,31 +557,40 @@ The client answers all five questions from the `behavior` field:
 
 ### Acceptance Criteria
 
-- [ ] `cohorts` table exists with `launch_2026` seed row including `pricing_config`
-- [ ] `cohort_plan_entitlements` table exists with full experience definition for `launch_2026` (all 10 features × 3 plans = 30 rows)
+- [ ] `cohorts` table exists with `parent_cohort_id`, `is_locked`, and `launch_2026` seed row including `pricing_config`
+- [ ] `cohort_plan_entitlements` table exists with `is_modified` column and full experience definition for `launch_2026` (10 features × 3 plans = 30 rows)
+- [ ] Lock guard trigger: modifying entitlements for a locked cohort raises an exception
+- [ ] Auto-mark trigger: updating `limit_value` or `behavior` on a cloned row sets `is_modified = true`
+- [ ] `clone_cohort()` function: creates new cohort with `parent_cohort_id` set, copies all entitlement rows with `is_modified = false`
+- [ ] Diff query works: `SELECT ... WHERE is_modified = true` shows only changed rows, joinable with parent for comparison
 - [ ] `entitlement_features` has `behavior_category` column populated for all existing features
 - [ ] `profiles` has `cohort_id` and `cohort_assigned_at` columns, indexed
 - [ ] Auto-assignment trigger fires on new profile insert (handles `date_range` and `count_cap`)
 - [ ] Existing users backfilled to `launch_2026`
 - [ ] `check_entitlement()` v2 deployed with cohort → plan fallback → feature default resolution
 - [ ] Response includes `behavior`, `cohort`, `base_limit`, `bonus`, `source` fields
+- [ ] `get_user_entitlements()` v2 returns full feature matrix for a user (calls `check_entitlement()` per feature)
 - [ ] Existing client-side callers of `check_entitlement()` handle expanded response (backward compatible — new fields are additive)
 - [ ] RLS: `cohorts` and `cohort_plan_entitlements` read-only for authenticated, write for service role
 - [ ] Entitlement catalog adjustments applied: free resumes 1→2, free data_export 1→0, pro resume_grading 50→unlimited
+- [ ] `launch_2026` cohort locked after seed data verified (`is_locked = true`)
 
 ### Effort Estimate — Phase A
 
 | Work Unit | Effort |
 |-----------|--------|
-| Schema: `cohorts` + `cohort_plan_entitlements` + `behavior_category` column | 1.5h |
-| Schema: `profiles` columns + index + trigger | 1h |
+| Schema: `cohorts` (with `parent_cohort_id`, `is_locked`) + `cohort_plan_entitlements` (with `is_modified`) + `behavior_category` column | 2h |
+| Lock guard trigger + auto-mark modified trigger | 1h |
+| `clone_cohort()` function | 1h |
+| Schema: `profiles` columns + index + assignment trigger | 1h |
 | Seed data: `launch_2026` cohort + 30 experience definition rows | 1h |
 | `check_entitlement()` v2 with cohort resolution + behavior | 3h |
+| `get_user_entitlements()` v2 (full matrix) | 1h |
 | Backfill existing users | 0.5h |
 | RLS policies | 0.5h |
 | Entitlement catalog adjustments (3 UPDATE statements) | 0.5h |
-| Testing: assignment, resolution priority, fallback, backward compat | 2h |
-| **Total** | **10h (2 dev days)** |
+| Testing: assignment, resolution priority, fallback, clone+diff, lock guard, backward compat | 2.5h |
+| **Total** | **14h (~3 dev days)** |
 
 ---
 
@@ -610,9 +755,9 @@ CREATE POLICY sessions_no_direct_update ON user_sessions FOR UPDATE USING (false
 
 | Phase | Scope | Effort | Timeline |
 |-------|-------|--------|----------|
-| A — Cohort Experience System | cohorts, cohort_plan_entitlements, behavior categories, check_entitlement v2, profiles migration, seed data | 10h (2 days) | Before launch |
+| A — Cohort Experience System | cohorts, cohort_plan_entitlements, behavior categories, check_entitlement v2, clone + diff + lock tooling, profiles migration, seed data | 14h (3 days) | Before launch |
 | B — Session Analytics | user_sessions, RPCs, client init, PostHog bridge | 10h (2 days) | Week 1 post-launch |
-| **Total** | | **20h (4 dev days)** | |
+| **Total** | | **24h (5 dev days)** | |
 
 ---
 
@@ -644,14 +789,22 @@ UPDATE plan_entitlements SET limit_value = -1 WHERE plan_id = 'pro' AND feature_
 - Full experience contract per cohort+plan via `cohort_plan_entitlements`
 - Five behavior categories (off, fixed, adjustable, degradable, unlimited)
 - `check_entitlement()` v2 with cohort-aware resolution + behavior in response
+- `get_user_entitlements()` v2 — full feature matrix for testing and support
+- `clone_cohort()` function — one-call cohort creation from a parent with `parent_cohort_id` tracking
+- `is_modified` diff tracking on entitlement rows — instant visibility into what changed from parent
+- `is_locked` guard on cohorts — prevents accidental modification of live cohort entitlements
 - Pricing config on cohort for Stripe price ID grandfathering
 - Auto-assignment trigger (date_range + count_cap)
 - Session tracking with point-in-time cohort/plan snapshots
 - PostHog bridge for behavioral + transactional joins
 
 ### Out of scope (future work)
-- **Admin UI** — SQL + Supabase dashboard until ~500 users
-- **Degradation engine** — `degradable` behavior defined in schema, but automated usage-tracking + limit-reduction + re-engagement not built at launch
+- **Admin UI** — SQL + Supabase dashboard until ~500 users. First admin build should be a read-only cohort dashboard (user counts, experience diffs, entitlement matrix lookup per user)
+- **A/B split assignment** — weighted random across simultaneous cohorts. Needs `split` criteria type + trigger update. Build when volume supports experimentation (~500+ signups, month 2-3)
+- **`feature_usage_summary` table** — daily/weekly aggregation of feature usage per user. Prerequisite for activating `degradable` behavior and for answering "which features are users actually using?" Build before any degradation thresholds are set.
+- **Degradation engine** — `degradable` behavior defined in schema, but automated usage-tracking + limit-reduction + re-engagement not built at launch. Needs 3+ months of usage data to calibrate thresholds.
+- **Re-subscription pricing rule** — what happens when a grandfathered user cancels and re-subscribes? Business rule to document before first price increase.
+- **Cohort inheritance (runtime)** — not implementing parent-chain resolution in `check_entitlement()`. Clone + diff approach keeps resolution flat and fast.
 - **Rule-based auto-assignment** — trigger handles `date_range` and `count_cap` only; `rule` and `manual` types assigned via SQL
 - **Multi-cohort membership** — one cohort per user at launch
 - **Cohort migration tooling** — manual `UPDATE profiles` for now
