@@ -1090,6 +1090,7 @@ async function backgroundEnrichSalary() {
     }
 
     // Then: fetch specs for jobs without content or salary (Greenhouse only — other ATS platforms don't have this API)
+    // Skip jobs already marked unavailable (sentinel value from prior failed fetches)
     const needsFetch = allJobs.filter(j => !j.salary_min && !j.content && (!j.ats_source || j.ats_source === 'greenhouse')).slice(0, 20);
     if (needsFetch.length === 0) { _enrichRunning = false; return; }
     console.log(`[BJ] Background salary enrichment: ${needsFetch.length} jobs`);
@@ -1110,7 +1111,14 @@ async function backgroundEnrichSalary() {
 
       try {
         const resp = await fetch(apiUrl);
-        if (!resp.ok) continue;
+        if (!resp.ok) {
+          // 404/410 = listing removed from ATS. Mark content so we never retry this job.
+          if (resp.status === 404 || resp.status === 410) {
+            job.content = '<!-- unavailable -->';
+            enrichJob(job.greenhouse_id, { content: job.content });
+          }
+          continue;
+        }
         const data = await resp.json();
         if (!data.content) continue;
 
