@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
-  <script src="/js/vendor/echarts.custom.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js" defer></script>
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -137,7 +137,7 @@
 <main>
 <div class="wrap">
   <header class="hdr">
-    <div class="breadcrumb"><a href="/">Brilliant Jobs</a> &rsaquo; <a href="/job-market-data">Market Data</a> &rsaquo; Jobs by Industry</div>
+    <div class="breadcrumb"><a href="/">Brilliant Jobs</a> &rsaquo; <a href="/data-lab">Data Lab</a> &rsaquo; Jobs by Industry</div>
     <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
     <h1>Jobs by <span>Industry</span></h1>
     <p class="sub">Hiring volume and compensation across <strong>15 industries</strong> and <strong>11 departments</strong>. Which sectors post the most jobs and pay the best.</p>
@@ -179,14 +179,14 @@
   <div class="related">
     <h3>Explore More Market Data</h3>
         <div class="related-grid">
-      <a href="/job-market-data" class="related-link"><div class="rl-title">Market Overview</div><div class="rl-desc">Summary stats from 280K+ listings across 10,000+ companies</div></a>
+      <a href="/data-lab" class="related-link"><div class="rl-title">Data Lab</div><div class="rl-desc">Summary stats from 280K+ listings across 10,000+ companies</div></a>
       <a href="/hiring-trends" class="related-link"><div class="rl-title">Hiring Trends</div><div class="rl-desc">Growth velocity, top employers, listing lifespan</div></a>
       <a href="/salary-data" class="related-link"><div class="rl-title">Salary Data</div><div class="rl-desc">Median pay by department, remote premium, distribution</div></a>
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
       <a href="/market-dynamics" class="related-link"><div class="rl-title">Market Dynamics</div><div class="rl-desc">Animated heatmaps, geographic distribution, hiring velocity</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.81 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/job-market-data">Market Data</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.87 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded',function(){
   I('c1').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:150,right:70,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:ii.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:ii.map(function(d,i){return{value:d[1],itemStyle:{color:PAL[i%PAL.length],borderRadius:[0,4,4,0]}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return Number(p.value).toLocaleString()}},animationDelay:function(i){return i*40}}]});
 
   var si=salInd.slice().reverse();
-  I('c2').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:150,right:60,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:si.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:si.map(function(d){var r=(d[1]-60000)/80000;return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(245,158,11,0.35)'},{offset:1,color:'rgba(245,158,11,'+(0.35+r*0.65)+')'}]}}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return'$'+(p.value/1000)+'K'}},animationDelay:function(i){return i*40}}]});
+  I('c2').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:150,right:60,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:si.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:si.map(function(d){var r=(d[1]-60000)/80000;return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(6,182,212,0.3)'},{offset:1,color:'rgba(6,182,212,'+(0.35+r*0.65)+')'}]}}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return'$'+(p.value/1000)+'K'}},animationDelay:function(i){return i*40}}]});
 
   I('c3').setOption({tooltip:{...TT,formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'treemap',data:depts.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:PAL[i],borderColor:'#12141a',borderWidth:2}}}),label:{fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff'},breadcrumb:NO,roam:false,nodeClick:false,levels:[{itemStyle:{borderRadius:8}}],animationDuration:800}]});
 
