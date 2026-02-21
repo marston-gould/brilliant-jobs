@@ -295,7 +295,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         query = query.or(clauses.join(','));
       }
     }
-    if (tuning.usOnly && wh.length === 0) {
+    if (tuning.usOnly) {
       query = query.or('loc_country.eq.US,loc_country.is.null');
       // Exclude jobs where location string clearly indicates non-US country
       // (needed because many jobs have loc_country=null but location like "remote, gb")
