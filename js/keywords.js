@@ -2093,7 +2093,7 @@ document.addEventListener('click', e => {
   }
 });
 
-function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl, companySlug) {
+function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl, companySlug, filterIdxs) {
   // Remove any existing popup
   document.querySelectorAll('.hide-reason-popup').forEach(p => p.remove());
 
@@ -2125,7 +2125,8 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
         company: company || '',
         url: jobUrl || '',
         companySlug: companySlug || '',
-        hiddenAt: new Date().toISOString()
+        hiddenAt: new Date().toISOString(),
+        filterIdxs: filterIdxs || []
       });
       saveUserData('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
       popup.remove();
@@ -2139,9 +2140,15 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 function hideJob(jobId, btn) {
   const row = btn.closest('tr');
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
+  // Track which filter(s) were active when this job was hidden
+  var activeFilterIdxs = [];
+  if (typeof savedFilters !== 'undefined') {
+    var sel = JSON.parse(localStorage.getItem('bj_sf_selected') || '[]');
+    if (sel.length > 0) activeFilterIdxs = sel.map(Number).filter(function(n) { return !isNaN(n) && n >= 0; });
+  }
   showHideReasonPopup(jobId, job.title || '', job.company_name || '', btn, () => {
     if (row) row.style.display = 'none';
-  }, job.url || '', job.company_slug || '');
+  }, job.url || '', job.company_slug || '', activeFilterIdxs);
 }
 
 function toggleSaveJob(jobId, btn) {
