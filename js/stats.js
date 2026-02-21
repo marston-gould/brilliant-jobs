@@ -147,7 +147,6 @@ async function fetchAndRenderStats() {
     renderPostingAge(stats);
     renderGeoMap(stats, configs);
     renderSalaryByLevel(stats);
-    renderIndustryBars(stats);
     var notice = document.getElementById('stats-cap-notice');
     if (notice) {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
