@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.31';
+const BJ_VERSION = 'v3.32';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -31,6 +31,8 @@ async function init() {
   }
   // Check admin access — show admin nav if user has admin role
   if (typeof checkAdminAccess === 'function') checkAdminAccess();
+  // Re-init admin page if it was the active tab (tab restore runs before auth)
+  if (typeof initAdminPage === 'function') initAdminPage();
   // Re-hydrate globals from potentially updated localStorage
   savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
