@@ -93,15 +93,19 @@
     <strong>Darker cells = more jobs.</strong> Use the timeline slider below each chart to scrub through weeks and see how hiring volume shifts. Hit play to animate automatically. Each cell shows the count of new jobs discovered that week for that combination.
   </div>
 
+
+  <h2 class="sdiv">Deep-dive reports</h2>
+  <div class="related-grid" style="margin-block-end:32px;">
+      <a href="/salary-data" class="related-link" style="padding:20px;">
+        <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
+
   <h2 class="sdiv">Industry &times; Department</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">Where are companies hiring, by sector?</div></div><span class="badge b-blue">Industry &times; Dept</span></div>
     <div class="timeline-bar" id="tb1"><button id="pb1">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl1"><span class="week-label" id="wl1">—</span></div>
     <div class="ec" id="c1"><div class="loading-msg">Loading data&hellip;</div></div>
   </div>
-  <div class="takeaway"><strong>Key insight:</strong> Technology dominates Engineering and Data & AI hiring, but Healthcare and Finance show growing demand for these same functions &mdash; signaling cross-industry digital transformation.</div>
-
-  <h2 class="sdiv">Department &times; Seniority Level</h2>
+  <div class="takeaway"><strong>Key insight:</strong> Technology dominates Engineering and Data & AI hiring, but Healthcare and Finance show growing demand for these same functions &mdash; signaling cross-industry digital transformation.</div>  <h2 class="sdiv">Department &times; Seniority Level</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">What levels are companies hiring for?</div></div><span class="badge b-purple">Dept &times; Level</span></div>
     <div class="timeline-bar" id="tb2"><button id="pb2">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl2"><span class="week-label" id="wl2">—</span></div>
@@ -143,10 +147,6 @@
     <div id="percapita-map" style="width:100%;height:500px"></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> San Francisco leads with 22.9 open jobs per 10,000 residents &mdash; nearly 5x the national average. Silicon Valley (San Jose: 10.0) and Austin (9.7) round out the top 3, reflecting the concentration of tech hiring in these metros relative to their population.</div>
-  <h2 class="sdiv">Deep-dive reports</h2>
-  <div class="related-grid" style="margin-block-end:32px;">
-      <a href="/salary-data" class="related-link" style="padding:20px;">
-        <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
         <div class="rl-desc" style="font-size:12px;">Median pay by department with &plusmn;1 and &plusmn;2 standard deviation ranges. Remote salary premium. Distribution across 21,000+ listings with parsed compensation.</div>
       </a>
       <a href="/hiring-trends" class="related-link" style="padding:20px;">
@@ -167,10 +167,10 @@
       </a>
   </div>
 
-  <div class="foot">Data from 10,000+ career pages<br>v3.15 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages<br>v3.16 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
-<!-- v3.15 -->
+<!-- v3.16 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
