@@ -134,20 +134,21 @@ function renderResumes() {
     return `
     <div class="resume-row ${isPlaceholder ? 'is-placeholder' : ''}">
       <div class="resume-card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <div class="rc-icon ${icon.cls}" style="${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-          <div style="display:flex;gap:4px;align-items:center;">${gdriveIcon}</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div class="rc-icon-sm ${icon.cls}" style="font-size:9px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
+          <div style="min-width:0;flex:1;">
+            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+            ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
+          </div>
+          ${gdriveIcon}
         </div>
-        <div class="rc-name" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
-        ${gradeHtml}
         ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-        ${!isPlaceholder && r.textStatus === 'ready' && r.keywords?.length > 0 && !gradeHtml ? `<div style="font-size:10px;color:var(--green);margin-bottom:6px;cursor:pointer;" onclick="toggleResumeKeywords(${i})" title="Click to view">${r.keywords.length} keywords extracted <span style="color:var(--text-faint);">\u25b8</span></div><div class="rc-keywords" id="rc-kw-${i}" style="display:none;margin-bottom:8px;max-height:80px;overflow-y:auto;"><div style="display:flex;flex-wrap:wrap;gap:3px;">${r.keywords.slice(0,25).map(([t,c]) => `<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);">${t} <span style="font-family:var(--mono);font-size:9px;color:var(--accent);">${c}</span></span>`).join('')}</div></div>` : ''}
+        <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
         ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
         <div style="margin:8px 0;">${levelSelect}</div>
         <div class="rc-filters-label">Assigned Filters</div>
         <div class="rc-filter-list">${filterPills}</div>
         ${statsLine}
-        ${!isPlaceholder ? `<div class="rc-meta">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
         <div class="rc-actions">
           <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
           <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
