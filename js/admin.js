@@ -540,7 +540,7 @@ async function loadSeoDrilldown() {
         (idx.last_crawl_time ? ' · Crawled ' + new Date(idx.last_crawl_time).toLocaleDateString() : '') +
         (idx.mobile_usability ? ' · Mobile: ' + idx.mobile_usability : '');
     } else {
-      idxEl.innerHTML = 'No inspection data. <a href="#" onclick="triggerSeoSync(['gsc_inspect']);return false;" style="color:var(--blue);">Run URL inspection</a>';
+      idxEl.innerHTML = 'No inspection data. <a href="#" onclick="triggerSeoSync([&quot;gsc_inspect&quot;]);return false;" style="color:var(--blue);">Run URL inspection</a>';
     }
   }
 }
