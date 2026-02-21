@@ -365,6 +365,71 @@ function matchBadge(result) {
 }
 
 // Main readiness analysis — runs automatically on Resumes page load, or manually via button
+// ─── Resume selector for readiness analysis ───
+var _resumeSelectOpen = false;
+var _selectedResumeIdxs = null; // null = all, Set = specific indexes
+
+function toggleResumeSelector() {
+  var dd = document.getElementById('resume-select-dropdown');
+  if (!dd) return;
+  _resumeSelectOpen = !_resumeSelectOpen;
+  dd.style.display = _resumeSelectOpen ? '' : 'none';
+  if (_resumeSelectOpen) populateResumeSelector();
+}
+
+function populateResumeSelector() {
+  var list = document.getElementById('resume-select-list');
+  if (!list) return;
+  var eligible = [];
+  for (var i = 0; i < resumes.length; i++) {
+    if (!resumes[i].archived && resumes[i].textStatus === 'ready' && resumes[i].keywords && resumes[i].keywords.length > 0) {
+      eligible.push(i);
+    }
+  }
+  if (eligible.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text-faint);padding:8px;">No eligible resumes</div>';
+    return;
+  }
+  var html = '';
+  eligible.forEach(function(ri) {
+    var r = resumes[ri];
+    var checked = !_selectedResumeIdxs || _selectedResumeIdxs.has(ri) ? 'checked' : '';
+    html += '<label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;font-size:12px;color:var(--text-dim);">';
+    html += '<input type="checkbox" ' + checked + ' onchange="onResumeSelectChange(' + ri + ', this.checked)" style="accent-color:var(--accent);">';
+    html += '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Resume ' + (ri + 1)) + '</span>';
+    html += '</label>';
+  });
+  list.innerHTML = html;
+}
+
+function onResumeSelectChange(ri, checked) {
+  if (!_selectedResumeIdxs) {
+    // First deselection — initialize set with all eligible
+    _selectedResumeIdxs = new Set();
+    for (var i = 0; i < resumes.length; i++) {
+      if (!resumes[i].archived && resumes[i].textStatus === 'ready' && resumes[i].keywords && resumes[i].keywords.length > 0) {
+        _selectedResumeIdxs.add(i);
+      }
+    }
+  }
+  if (checked) _selectedResumeIdxs.add(ri);
+  else _selectedResumeIdxs.delete(ri);
+}
+
+function selectAllResumes(all) {
+  _selectedResumeIdxs = all ? null : new Set();
+  populateResumeSelector();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+  if (_resumeSelectOpen && !e.target.closest('#resume-select-wrap')) {
+    _resumeSelectOpen = false;
+    var dd = document.getElementById('resume-select-dropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+
 // ─── AI-powered resume scoring (Pro feature) ───
 async function fetchAIScore(params) {
   try {
@@ -453,6 +518,8 @@ async function runReadinessAnalysis(opts) {
     var r = resumes[ri];
     if (r.archived || r.textStatus !== 'ready' || !r.keywords || !r.keywords.length) continue;
 
+    // Skip if not selected in resume selector
+    if (_selectedResumeIdxs && !_selectedResumeIdxs.has(ri)) continue;
     var assignedFilterNames = r.filterIds || [];
     if (assignedFilterNames.length === 0) continue;
     var assignedFilters = sf.filter(function(f){ return assignedFilterNames.includes(f.name); });
