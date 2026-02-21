@@ -46,7 +46,7 @@ var DEFAULT_LEVEL_HIERARCHY = [
   {label:'VP', keywords:'vp,vice president'},
   {label:'C-Suite', keywords:'cto,cfo,ceo,coo,cio,chief,c-suite,head of'},
 ];
-var STATS_COLUMNS = 'greenhouse_id,ats_source,title,company_name,salary_min,salary_max,salary_currency,location,loc_type,loc_state,loc_city,first_seen_at,industry';
+var STATS_COLUMNS = 'greenhouse_id,ats_source,title,company_name,company_slug,salary_min,salary_max,salary_currency,location,loc_type,loc_state,loc_city,first_seen_at,industry';
 
 // ─── Init ───
 function initStatsPage() {
@@ -167,6 +167,9 @@ async function fetchFilterData(sf) {
     var locIds = await getLocationMatchIds(sf.wherePills || [], sf.whereNotPills || [], tuning, sf.includeRemote);
     var base = sb.from('ats_jobs').select(STATS_COLUMNS);
     var q = buildFilterQuery(sf, base, locIds);
+    // Exclude user-hidden jobs to match feed counts
+    var hiddenIds = JSON.parse(localStorage.getItem('bj_hidden') || '[]');
+    if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
     q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
     var res = await q;
     if (res.error) { console.error('[Stats] Query error:', res.error); return []; }
@@ -180,7 +183,7 @@ function aggregateStats(rows) {
     levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {},
     salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0 };
 
-  var cos = {}; rows.forEach(function(r) { if (r.company_name) cos[r.company_name] = true; });
+  var cos = {}; rows.forEach(function(r) { var ck = r.company_slug || r.company_name; if (ck) cos[ck] = true; });
   s.companyCount = Object.keys(cos).length;
 
   // Seniority + salary-by-level in one pass
