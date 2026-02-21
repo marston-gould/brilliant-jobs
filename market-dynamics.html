@@ -164,15 +164,15 @@
 
   <h2 class="sdiv">Jobs Per Capita</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro area. Size &amp; color show <strong style="color:var(--text)">jobs per 10K residents</strong>: <span style="color:#22c55e">●</span> 8+ (hot)&ensp;<span style="color:#3b82f6">●</span> 4-8&ensp;<span style="color:#8b5cf6">●</span> 2-4&ensp;<span style="color:#7884a8">●</span> &lt;2</div>
+    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#22c55e">● Best: 8+</span>&ensp;<span style="color:#3b82f6">● Good: 4-8</span>&ensp;<span style="color:#8b5cf6">● Low: 2-4</span>&ensp;<span style="color:#7884a8">● Sparse: &lt;2</span></div>
     <div id="percapita-map" style="width:100%;height:500px"></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> San Francisco leads with 22.9 open jobs per 10,000 residents &mdash; nearly 5x the national average. Silicon Valley (San Jose: 10.0) and Austin (9.7) round out the top 3, reflecting the concentration of tech hiring in these metros relative to their population.</div>
 
-  <div class="foot">Data from 10,000+ career pages<br>v3.19 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages<br>v3.20 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
-<!-- v3.19 -->
+<!-- v3.20 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid:{left:160,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:industries1,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[roundScale(wMax).toLocaleString(),'0'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
+      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[roundScale(wMax).toLocaleString(),'0'],inRange:{color:['#0f172a','#1e3a5f','#1e40af','#3b82f6','#60a5fa','#93c5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return(Math.round(v/100)*100).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek1[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       grid:{left:100,right:80,top:10,bottom:80},
       xAxis:{type:'category',data:depts2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9,rotate:40},splitArea:{show:true,areaStyle:{color:['rgba(255,255,255,0.01)','rgba(0,0,0,0.01)']}}},
       yAxis:{type:'category',data:levels2,axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9}},
-      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[roundScale(wMax).toLocaleString(),'0'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return Math.round(v).toLocaleString()+' jobs'}},
+      visualMap:{min:0,max:wMax,calculable:true,orient:'vertical',right:8,top:'center',itemHeight:200,text:[roundScale(wMax).toLocaleString(),'0'],inRange:{color:['#14101e','#3b1f6e','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd']},textStyle:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:9},formatter:function(v){return(Math.round(v/100)*100).toLocaleString()+' jobs'}},
       series:[{type:'heatmap',data:byWeek2[w]||[],emphasis:{itemStyle:{borderColor:'#fff',borderWidth:1}},progressive:0,animation:false}]
     });
   }
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Legend
     var legend = document.createElement('div');
     legend.style.cssText = 'position:absolute;top:50%;right:12px;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;font-family:JetBrains Mono,monospace;font-size:9px;color:#7884a8';
-    legend.innerHTML = '<span id="leg-hi"></span><canvas id="leg-bar" width="10" height="140" style="border-radius:3px"></canvas><span>0</span>';
+    legend.innerHTML = '<span id="leg-hi" style="font-size:8px"></span><canvas id="leg-bar" width="10" height="140" style="border-radius:3px"></canvas><span style="font-size:8px">0 jobs</span>';
     mapEl.appendChild(legend);
     function drawLegend(maxVal) {
       var rounded = roundScale(maxVal);
