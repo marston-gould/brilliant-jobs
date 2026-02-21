@@ -1759,6 +1759,84 @@ function parseSalaryFromContent(html) {
   return null;
 }
 
+
+// Detect if ATS returned 200 but content indicates listing is dead
+function isDeadJobContent(html) {
+  if (!html || html.length < 20) return false;
+  var text = html.replace(/<[^>]+>/g, ' ').toLowerCase().trim();
+  // Only flag if content is very short (error page, not a real JD)
+  if (text.length > 500) return false;
+  var deadPatterns = [
+    'no longer accepting applications',
+    'position has been filled',
+    'this job is no longer available',
+    'job not found',
+    'page not found',
+    'this position is no longer open',
+    'this role has been filled',
+    'sorry, this job has been closed',
+    'this posting has expired'
+  ];
+  return deadPatterns.some(function(p) { return text.indexOf(p) >= 0; });
+}
+
+// ─── Dead Job Handler ───
+// When ATS returns 404/410, the listing has been removed.
+// Close in DB, remove from feed, update counts.
+function handleDeadJob(jobId, bodyEl) {
+  console.log('[BJ] Dead job detected:', jobId);
+  
+  // Update local cache
+  const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
+  if (cachedJob) {
+    cachedJob.content = '<!-- unavailable -->';
+    cachedJob.status = 'closed';
+  }
+  
+  // Close in DB via edge function (status + content)
+  enrichJob(jobId, { content: '<!-- unavailable -->', status: 'closed' });
+  
+  // Remove from feed DOM
+  const feedRow = document.querySelector(`tr[data-jobid="${jobId}"]`);
+  if (feedRow) {
+    feedRow.style.transition = 'opacity 0.3s';
+    feedRow.style.opacity = '0';
+    setTimeout(() => {
+      feedRow.remove();
+      // Also remove snippet row if present
+      const snippetRow = document.querySelector(`tr.job-snippet-row[data-jobid="${jobId}"]`);
+      if (snippetRow) snippetRow.remove();
+    }, 300);
+  }
+  
+  // Remove from allJobs array so it doesn't reappear
+  const idx = allJobs.findIndex(j => j.greenhouse_id === jobId);
+  if (idx >= 0) allJobs.splice(idx, 1);
+  
+  // Also remove from currentJobs if present
+  if (typeof currentJobs !== 'undefined') {
+    const cidx = currentJobs.findIndex(j => j.greenhouse_id === jobId);
+    if (cidx >= 0) currentJobs.splice(cidx, 1);
+  }
+  
+  // Update feed count
+  const totalEl = document.getElementById('j-total');
+  if (totalEl) {
+    const cur = parseInt(totalEl.textContent.replace(/,/g, '')) || 0;
+    if (cur > 0) totalEl.textContent = (cur - 1).toLocaleString();
+  }
+  
+  // Show message in modal
+  if (bodyEl) {
+    bodyEl.innerHTML = '<div style="text-align:center;padding:40px;">' +
+      '<div style="font-size:32px;margin-bottom:12px;">🚫</div>' +
+      '<div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:8px;">Job Removed</div>' +
+      '<div style="color:var(--text-faint);font-size:13px;line-height:1.5;">' +
+      'This listing is no longer available on the company\'s careers page.<br>' +
+      'It has been removed from your feed and marked as closed.</div></div>';
+  }
+}
+
 async function fetchJobSpec(jobId, jobUrl, bodyEl) {
   try {
     // Try Greenhouse public JSON API — CORS-friendly, returns structured content
@@ -1774,6 +1852,11 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         if (data.content) {
           // Decode through helper that handles any encoding level
           const htmlContent = decodeJobContent(data.content);
+          // Check if ATS returned a dead-listing page disguised as content
+          if (isDeadJobContent(htmlContent)) {
+            handleDeadJob(jobId, bodyEl);
+            return;
+          }
           bodyEl.innerHTML = htmlContent;
           // Also show department/location from API if available
           const meta = [];
@@ -1803,11 +1886,8 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
           return;
         }
       } else if (resp.status === 404 || resp.status === 410) {
-        // Listing removed — mark as unavailable, skip slug fallback
-        const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
-        if (cachedJob) cachedJob.content = '<!-- unavailable -->';
-        enrichJob(jobId, { content: '<!-- unavailable -->' });
-        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">This job listing is no longer available on the company\'s careers page.</div>';
+        // Listing removed — close job and remove from feed
+        handleDeadJob(jobId, bodyEl);
         return;
       }
     }
@@ -1828,6 +1908,10 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         const data = await resp.json();
         if (data.content) {
           const htmlContent = decodeJobContent(data.content);
+          if (isDeadJobContent(htmlContent)) {
+            handleDeadJob(jobId, bodyEl);
+            return;
+          }
           bodyEl.innerHTML = htmlContent;
           const meta = [];
           if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
@@ -1853,10 +1937,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
           return;
         }
       } else if (resp.status === 404 || resp.status === 410) {
-        // Listing removed — mark as unavailable, skip proxy fallback
-        if (job) job.content = '<!-- unavailable -->';
-        enrichJob(jobId, { content: '<!-- unavailable -->' });
-        bodyEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">This job listing is no longer available on the company\'s careers page.</div>';
+        handleDeadJob(jobId, bodyEl);
         return;
       }
     }
