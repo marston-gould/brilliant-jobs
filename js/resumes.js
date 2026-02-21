@@ -150,6 +150,7 @@ function renderResumes() {
         <div class="rc-filter-list">${filterPills}</div>
         ${statsLine}
         <div class="rc-actions">
+          <button class="rc-btn" onclick="runReadinessAnalysis({resumeIndex:${i}})" id="rc-analyze-${i}" style="background:var(--accent);color:#fff;font-weight:600;">Analyze</button>
           <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
           <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
           <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
