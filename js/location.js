@@ -145,6 +145,14 @@ async function searchLocations(query) {
       }
     }
 
+    // Check "United States" country option
+    if ('united states'.startsWith(ql) || 'usa'.startsWith(ql) || 'us'.startsWith(ql) || ql === 'u.s.' || ql === 'u.s.a.') {
+      if (!seenKeys.has('country:us')) {
+        seenKeys.add('country:us');
+        results.push({ display: 'United States', type: 'country', countryCode: 'US', badge: 'country' });
+      }
+    }
+
     // Also check "remote"
     if ('remote'.startsWith(ql)) {
       if (!seenKeys.has('remote')) {
@@ -186,7 +194,7 @@ async function searchLocations(query) {
       const aPrefix = a.display.toLowerCase().startsWith(ql) ? 0 : 1;
       const bPrefix = b.display.toLowerCase().startsWith(ql) ? 0 : 1;
       if (aPrefix !== bPrefix) return aPrefix - bPrefix;
-      const typeOrder = { state: 0, metro: 1, city: 2, radius: 2, remote: 3, cache: 4 };
+      const typeOrder = { country: 0, state: 1, metro: 2, city: 3, radius: 3, remote: 4, cache: 5 };
       const aType = typeOrder[a.type] ?? 5;
       const bType = typeOrder[b.type] ?? 5;
       if (aType !== bType) return aType - bType;
@@ -207,6 +215,7 @@ function renderLocationDropdown(results, query) {
       state: '<span style="font-size:9px;background:rgba(139,92,246,0.1);color:#8b5cf6;padding:1px 6px;border-radius:4px;font-weight:600;">state</span>',
       metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
       radius: `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.radius_mi}mi</span>`,
+      country: '<span style="font-size:9px;background:rgba(59,130,246,0.1);color:var(--accent);padding:1px 6px;border-radius:4px;font-weight:600;">country</span>',
       remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
       pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
     };
