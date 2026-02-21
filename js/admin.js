@@ -34,6 +34,12 @@ function initAdminPage() {
     console.log('[Admin] page not active, skipping');
     return;
   }
+  // Guard: don't load data until user is authenticated
+  if (!window.currentUser) {
+    console.log('[Admin] waiting for auth, deferring load');
+    _adminTabInit = {}; // reset so it reloads when auth is ready
+    return;
+  }
   console.log('[Admin] initAdminPage called');
   initAdminTabs();
 }
