@@ -14,3 +14,6 @@ major_version = 17
 [studio]
 enabled = true
 port = 54323
+
+[functions.score-resume]
+verify_jwt = false
