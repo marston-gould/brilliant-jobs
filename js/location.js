@@ -3,6 +3,50 @@ const qbInputWhere = $('#qb-input-where');
 const locationDropdown = $('#location-dropdown');
 let locationSearchTimeout;
 
+// ─── Cached ref_city_radius (static JSON, avoids Supabase query per keystroke) ───
+let _refCityCache = null;
+async function getRefCityRadius() {
+  if (_refCityCache) return _refCityCache;
+  // Try localStorage first (24h TTL)
+  var cached = localStorage.getItem('bj_ref_city_radius');
+  if (cached) {
+    try {
+      var parsed = JSON.parse(cached);
+      if (parsed.ts && Date.now() - parsed.ts < 86400000) {
+        _refCityCache = parsed.data;
+        return _refCityCache;
+      }
+    } catch (e) {}
+  }
+  // Fetch static JSON
+  try {
+    var res = await fetch('/data/ref_city_radius.json');
+    if (res.ok) {
+      _refCityCache = await res.json();
+      localStorage.setItem('bj_ref_city_radius', JSON.stringify({ data: _refCityCache, ts: Date.now() }));
+      return _refCityCache;
+    }
+  } catch (e) { console.warn('[Location] Failed to load ref_city_radius.json:', e); }
+  // Fallback to Supabase
+  _refCityCache = [];
+  return _refCityCache;
+}
+
+function searchRefCities(query, limit) {
+  if (!_refCityCache || !_refCityCache.length) return [];
+  var q = query.toLowerCase();
+  return _refCityCache.filter(function(r) {
+    if (r.city.toLowerCase().indexOf(q) !== -1) return true;
+    if (r.aliases) {
+      var arr = typeof r.aliases === 'string' ? [r.aliases] : r.aliases;
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i].toLowerCase().indexOf(q) !== -1) return true;
+      }
+    }
+    return false;
+  }).slice(0, limit || 15);
+}
+
 qbInputWhere.addEventListener('input', () => {
   const q = qbInputWhere.value.trim();
   if (q.length < 2) { locationDropdown.classList.remove('open'); return; }
@@ -78,12 +122,9 @@ async function searchLocations(query) {
       }
     }
 
-    // Search ref_city_radius for cities and metros
-    const { data: refData } = await sb
-      .from('ref_city_radius')
-      .select('city, state, lat, lng, radius_mi, type, aliases')
-      .or(`city.ilike.%${query}%,aliases.cs.{${query}}`)
-      .limit(15);
+    // Search ref_city_radius (cached locally)
+    const refCities = await getRefCityRadius();
+    const refData = searchRefCities(query, 15);
 
     if (refData) {
       for (const r of refData) {
@@ -314,12 +355,8 @@ async function searchLocationsForNot(query) {
       }
     }
 
-    // Search ref_city_radius
-    const { data: refData } = await sb
-      .from('ref_city_radius')
-      .select('city, state, type')
-      .or(`city.ilike.%${query}%,aliases.cs.{${query}}`)
-      .limit(10);
+    // Search ref_city_radius (cached locally)
+    const refData = searchRefCities(query, 10);
     if (refData) {
       for (const r of refData) {
         const display = r.type === 'metro' ? r.city : `${r.city}, ${r.state}`;
