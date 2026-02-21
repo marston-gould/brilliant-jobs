@@ -468,7 +468,7 @@ async function fetchAIScore(params) {
       score: data.match_score,
       matched: null,
       total: null,
-      topMissing: (data.recommendations && data.recommendations.missing_skills || data.key_gaps || []).map(function(s) { return { term: s, count: null }; }),
+      topMissing: (data.recommendations && (data.recommendations.missing_tools || data.recommendations.missing_skills) || data.key_gaps || []).map(function(s) { return { term: s, count: null }; }),
       topMatched: (data.key_matches || []).map(function(s) { return { term: s, count: null }; }),
       bigramMatched: [],
       bigramMissing: [],
@@ -480,6 +480,8 @@ async function fetchAIScore(params) {
       recommendations: data.recommendations,
       levelFit: data.level_fit,
       differentialInsight: data.differential_insight,
+      careerTrajectory: data.career_trajectory_assessment,
+      scopeComparison: data.scope_comparison,
       upgradePrompt: data.upgrade_prompt
     };
   } catch (e) {
@@ -814,26 +816,51 @@ function buildReadinessSide(ri, data) {
 
       // Recommendations
       if (fs.recommendations) {
-        if (fs.recommendations.missing_skills && fs.recommendations.missing_skills.length > 0) {
-          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Missing skills:</div>';
-          html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">';
-          fs.recommendations.missing_skills.forEach(function(s) {
-            html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + s + '</span>';
-          });
-          html += '</div>';
+        var recSections = [
+          { key: 'impact_quantification', label: 'Impact & Metrics', icon: '\ud83d\udcca' },
+          { key: 'missing_tools', label: 'Missing Tools & Platforms', icon: '\ud83d\udee0\ufe0f' },
+          { key: 'title_translation', label: 'Title Adjustments', icon: '\ud83c\udff7\ufe0f' },
+          { key: 'tone_alignment', label: 'Language & Tone', icon: '\ud83d\udde3\ufe0f' },
+          { key: 'redundancy_fixes', label: 'Cut / Tighten', icon: '\u2702\ufe0f' },
+          { key: 'format', label: 'Format & Structure', icon: '\ud83d\udccb' },
+          { key: 'missing_skills', label: 'Missing Skills', icon: '\u26a0\ufe0f' },
+          { key: 'word_usage', label: 'Word Usage', icon: '\u270f\ufe0f' },
+        ];
+        recSections.forEach(function(sec) {
+          var items = fs.recommendations[sec.key];
+          if (items && items.length > 0) {
+            html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:4px 0 3px;">' + sec.icon + ' ' + sec.label + ':</div>';
+            if (sec.key === 'missing_tools' || sec.key === 'missing_skills') {
+              html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+              items.forEach(function(s) {
+                html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + s + '</span>';
+              });
+              html += '</div>';
+            } else {
+              items.forEach(function(tip) {
+                html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">\u2192 ' + tip + '</div>';
+              });
+            }
+          }
+        });
+
+        // Gap narrative (single string, not array)
+        if (fs.recommendations.gap_narrative) {
+          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:4px 0 3px;">\ud83d\udea9 Career Gap Narrative:</div>';
+          html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">' + fs.recommendations.gap_narrative + '</div>';
         }
-        if (fs.recommendations.word_usage && fs.recommendations.word_usage.length > 0) {
-          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Rewrite tips:</div>';
-          fs.recommendations.word_usage.forEach(function(tip) {
-            html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">\u2192 ' + tip + '</div>';
-          });
-        }
-        if (fs.recommendations.format && fs.recommendations.format.length > 0) {
-          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:4px 0 3px;">Format tips:</div>';
-          fs.recommendations.format.forEach(function(tip) {
-            html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">\u2192 ' + tip + '</div>';
-          });
-        }
+      }
+
+      // Career trajectory assessment
+      if (fs.careerTrajectory) {
+        html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:6px 0 3px;">\ud83d\udcc8 Career Trajectory:</div>';
+        html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;">' + fs.careerTrajectory + '</div>';
+      }
+
+      // Scope comparison
+      if (fs.scopeComparison) {
+        html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:6px 0 3px;">\ud83d\udccf Scope Match:</div>';
+        html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;">' + fs.scopeComparison + '</div>';
       }
 
       // Level fit (AI)
