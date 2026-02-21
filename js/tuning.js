@@ -1144,6 +1144,7 @@ async function updatePoorMatchSuggestions() {
         <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match">✦ Improve</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
@@ -1250,3 +1251,219 @@ window.addSuggestedExclusion = function(type, term, chip) {
 updatePoorMatchSuggestions();
 
 
+
+// ─── Feature 2: AI Analysis of Hidden Jobs ───
+
+async function analyzeHiddenJob(jobId, btn) {
+  // Find the hidden job record
+  var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
+  if (!hidden) return;
+  
+  // Get resume text — use the most recent non-archived resume
+  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  if (resumesWithText.length === 0) {
+    alert('Upload a resume first (Resumes tab) to enable AI filter analysis.');
+    return;
+  }
+  var resume = resumesWithText[resumesWithText.length - 1];
+  
+  // Get the source filter's pills if available
+  var filterPills = null;
+  if (hidden.filterIdxs && hidden.filterIdxs.length > 0 && typeof savedFilters !== 'undefined') {
+    var srcFilter = savedFilters[hidden.filterIdxs[0]];
+    if (srcFilter) {
+      filterPills = {
+        what: (srcFilter.whatPills || []).map(function(p) { return p.values; }).flat(),
+        where: (srcFilter.wherePills || []).map(function(p) { return p.values; }).flat(),
+        whatNot: (srcFilter.whatNotPills || []).map(function(p) { return p.values; }).flat(),
+        whoNot: (srcFilter.whoNotPills || []).map(function(p) { return p.values; }).flat()
+      };
+    }
+  }
+  
+  // Show modal with loading
+  var modal = document.getElementById('ai-filter-modal');
+  var body = document.getElementById('ai-filter-body');
+  var footer = document.getElementById('ai-filter-footer');
+  var meta = document.getElementById('ai-filter-meta');
+  var titleEl = modal.querySelector('.job-modal-title');
+  
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  footer.style.display = 'none';
+  titleEl.textContent = '✦ Improve Filter';
+  meta.textContent = 'Analyzing: ' + (hidden.title || 'Hidden job') + ' at ' + (hidden.company || '');
+  body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+    '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+    '<div style="color:var(--text-dim);font-size:13px;">AI is analyzing why this was a poor match…</div></div>';
+  
+  try {
+    var session = null;
+    try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
+    if (!session) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Please sign in to use AI features.</div>';
+      return;
+    }
+    
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/analyze-hidden-job', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        job_id: jobId,
+        resume_text: resume.extractedText.slice(0, 6000),
+        filter_pills: filterPills
+      })
+    });
+    
+    if (!resp.ok) {
+      var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI analysis failed') + '</div>';
+      return;
+    }
+    
+    var data = await resp.json();
+    // Store for accept handler
+    window._analyzeHiddenData = data;
+    window._analyzeHiddenFilterIdxs = hidden.filterIdxs || [];
+    renderAnalyzeHiddenPreview(data, hidden);
+    
+  } catch (err) {
+    console.error('[Analyze Hidden]', err);
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Error: ' + err.message + '</div>';
+  }
+}
+
+function renderAnalyzeHiddenPreview(data, hidden) {
+  var body = document.getElementById('ai-filter-body');
+  var footer = document.getElementById('ai-filter-footer');
+  var acceptBtn = document.getElementById('ai-filter-accept');
+  
+  var html = '';
+  
+  // Mismatch summary
+  if (data.mismatch_summary) {
+    html += '<div style="padding:12px 16px;background:var(--bg);border-radius:8px;margin-bottom:20px;border-left:3px solid var(--accent);">';
+    html += '<div style="font-size:13px;color:var(--text);line-height:1.5;">' + data.mismatch_summary + '</div>';
+    html += '</div>';
+  }
+  
+  // Target filter selector
+  var filterIdxs = window._analyzeHiddenFilterIdxs || [];
+  if (filterIdxs.length > 0 && typeof savedFilters !== 'undefined' && savedFilters[filterIdxs[0]]) {
+    html += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;">Adding exclusions to: <strong style="color:var(--text);">' + savedFilters[filterIdxs[0]].name + '</strong></div>';
+  } else {
+    html += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;">';
+    html += '<label>Add exclusions to: <select id="analyze-target-filter" style="background:var(--bg-card);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px;margin-left:4px;">';
+    if (typeof savedFilters !== 'undefined') {
+      savedFilters.forEach(function(sf, i) {
+        html += '<option value="' + i + '">' + sf.name + '</option>';
+      });
+    }
+    html += '</select></label></div>';
+  }
+  
+  // Suggestions
+  var sections = [
+    { key: 'what_not', label: 'WHAT NOT — Exclude these title keywords', items: data.what_not || [], color: '#f87171' },
+    { key: 'where_not', label: 'WHERE NOT — Exclude these locations', items: data.where_not || [], color: '#f59e0b' },
+    { key: 'who_not', label: 'WHO NOT — Exclude these companies', items: data.who_not || [], color: '#fb923c' }
+  ];
+  
+  var hasSuggestions = false;
+  sections.forEach(function(sec) {
+    if (sec.items.length === 0) return;
+    hasSuggestions = true;
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' + sec.label + '</div>';
+    sec.items.forEach(function(item, i) {
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:4px;">';
+      html += '<input type="checkbox" checked data-section="' + sec.key + '" data-index="' + i + '" style="accent-color:' + sec.color + ';">';
+      html += '<span style="color:var(--text);font-weight:500;">' + item.term + '</span>';
+      html += '<span style="color:var(--text-faint);font-size:10px;margin-left:auto;">' + item.reason + '</span>';
+      html += '</label>';
+    });
+    html += '</div>';
+  });
+  
+  if (!hasSuggestions) {
+    html += '<div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">No specific exclusions suggested. The mismatch may be too subtle for simple keyword filtering.</div>';
+  }
+  
+  body.innerHTML = html;
+  footer.style.display = hasSuggestions ? 'flex' : 'none';
+  
+  // Change accept button text and handler
+  if (acceptBtn) {
+    acceptBtn.textContent = 'Add to Filter';
+    acceptBtn.onclick = acceptAnalyzeHidden;
+  }
+}
+
+function acceptAnalyzeHidden() {
+  var data = window._analyzeHiddenData;
+  if (!data) return;
+  
+  // Determine target filter
+  var filterIdx = -1;
+  var filterIdxs = window._analyzeHiddenFilterIdxs || [];
+  if (filterIdxs.length > 0) {
+    filterIdx = filterIdxs[0];
+  } else {
+    var sel = document.getElementById('analyze-target-filter');
+    if (sel) filterIdx = parseInt(sel.value);
+  }
+  
+  if (filterIdx < 0 || !savedFilters[filterIdx]) {
+    alert('No valid filter selected.');
+    return;
+  }
+  
+  var filter = savedFilters[filterIdx];
+  
+  // Collect checked items
+  document.querySelectorAll('#ai-filter-body input[type="checkbox"][data-section]:checked').forEach(function(cb) {
+    var sec = cb.dataset.section;
+    var idx = parseInt(cb.dataset.index);
+    var items = sec === 'what_not' ? data.what_not : sec === 'where_not' ? data.where_not : data.who_not;
+    var item = items[idx];
+    if (!item) return;
+    
+    var pill = { values: [item.term], type: sec === 'where_not' ? 'location' : 'keyword' };
+    
+    if (sec === 'what_not') {
+      if (!filter.whatNotPills) filter.whatNotPills = [];
+      // Don't duplicate
+      if (!filter.whatNotPills.some(function(p) { return p.values[0] === item.term; })) {
+        filter.whatNotPills.push(pill);
+      }
+    } else if (sec === 'where_not') {
+      if (!filter.whereNotPills) filter.whereNotPills = [];
+      if (!filter.whereNotPills.some(function(p) { return p.values[0] === item.term; })) {
+        filter.whereNotPills.push(pill);
+      }
+    } else if (sec === 'who_not') {
+      if (!filter.whoNotPills) filter.whoNotPills = [];
+      if (!filter.whoNotPills.some(function(p) { return p.values[0] === item.term; })) {
+        filter.whoNotPills.push(pill);
+      }
+    }
+  });
+  
+  // Save updated filter
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  
+  // Close modal
+  closeAiFilterModal();
+  window._analyzeHiddenData = null;
+  window._analyzeHiddenFilterIdxs = null;
+  
+  // Refresh
+  if (typeof renderSavedFilters === 'function') renderSavedFilters();
+  if (typeof debouncedSearchJobs === 'function') debouncedSearchJobs();
+}
