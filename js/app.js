@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.36';
+const BJ_VERSION = 'v3.37';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -23,12 +23,14 @@ async function init() {
     $(`#page-${activeTab}`).classList.add('active');
     $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
   }
-  // DEBUG: log page-admin state
+  // DEBUG: log full visibility chain
   const _pa = $('#page-admin');
-  console.log('[DEBUG] page-admin classList:', _pa ? _pa.className : 'NOT FOUND');
-  console.log('[DEBUG] page-admin display:', _pa ? getComputedStyle(_pa).display : 'N/A');
-  console.log('[DEBUG] page-admin parent display:', _pa ? getComputedStyle(_pa.parentElement).display : 'N/A');
-  console.log('[DEBUG] activeTab from LS:', activeTab);
+  const _main = $('.main');
+  const _app = $('#app');
+  console.log('[DEBUG] #app display:', _app ? getComputedStyle(_app).display : 'N/A', 'size:', _app?.offsetWidth, 'x', _app?.offsetHeight);
+  console.log('[DEBUG] .main display:', _main ? getComputedStyle(_main).display : 'N/A', 'size:', _main?.offsetWidth, 'x', _main?.offsetHeight, 'overflow:', _main ? getComputedStyle(_main).overflow : 'N/A');
+  console.log('[DEBUG] page-admin class:', _pa?.className, 'display:', _pa ? getComputedStyle(_pa).display : 'N/A', 'size:', _pa?.offsetWidth, 'x', _pa?.offsetHeight);
+  console.log('[DEBUG] activeTab:', activeTab);
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
