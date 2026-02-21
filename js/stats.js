@@ -556,11 +556,11 @@ function renderIndustryBars(stats) {
   var cardWrap = card ? card.closest('.stats-chart-card') : null;
   var coveragePct = stats.total > 0 ? (stats.industryNonNull / stats.total) * 100 : 0;
 
-  if (coveragePct < 20) {
-    if (cardWrap) cardWrap.style.display = 'none';
+  if (cardWrap) cardWrap.style.display = '';
+  if (coveragePct < 1) {
+    emptyChart(chart || getOrCreateChart('#chart-industry'), 'Industry data available for ' + stats.industryNonNull + ' of ' + stats.total + ' jobs (' + Math.round(coveragePct) + '%). More enrichment coming soon.');
     return;
   }
-  if (cardWrap) cardWrap.style.display = '';
 
   var chart = getOrCreateChart('#chart-industry'); if (!chart) return;
   var sorted = Object.entries(stats.industryCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
