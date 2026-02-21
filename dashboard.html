@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v2.81 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
+<!-- Brilliant Jobs Dashboard v3.00 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -20,7 +20,7 @@
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
-  <!-- CSS extracted to styles.css in v2.45 -->
+  <!-- CSS extracted to styles.css in v3.00 -->
   <!-- A13: PostHog analytics -->
   <script>
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -44,7 +44,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;"></span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.00</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -111,10 +111,6 @@
         </div>
 
         <div class="nav-section-label">Account</div>
-        <div class="nav-item" id="nav-admin" data-page="admin" style="display:none">
-          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-          <span>Admin</span>
-        </div>
         <div class="nav-item" data-page="settings">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
           <span>Settings</span>
@@ -938,11 +934,11 @@
 
           <!-- Readiness Analysis Bar -->
           <div class="card" id="readiness-panel" style="display:none;padding:12px 18px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-              <div style="font-size:12px;color:var(--text-dim);">AI-powered resume analysis scores your resume against real JDs from your filters.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="font-size:12px;color:var(--text-dim);">Resume readiness scores appear beside each resume card below.</div>
               <div style="display:flex;gap:8px;align-items:center;">
                 <span id="readiness-status" style="font-size:10px;color:var(--text-faint);"></span>
-                <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()" style="font-weight:600;">Analyze All</button>
+                <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()">Re-analyze</button>
               </div>
             </div>
           </div>
@@ -1589,175 +1585,32 @@
           <div class="stats-grid" id="stats-charts-grid">
             <div class="stats-chart-card full">
               <div class="stats-chart-title">Job Count Over Time</div>
-              <div class="ec" id="chart-timeline"></div>
+              <div class="ec" id="chart-timeline" style="width:100%;height:300px"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Salary Distribution</div>
               <div class="stats-chart-sub" id="chart-salary-sub"></div>
-              <div class="ec" id="chart-salary"></div>
+              <div class="ec" id="chart-salary" style="width:100%;height:300px"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Seniority Breakdown</div>
-              <div class="ec" id="chart-funnel"></div>
+              <div class="ec" id="chart-funnel" style="width:100%;height:300px"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Top Companies</div>
-              <div class="ec tall" id="chart-companies"></div>
+              <div class="ec tall" id="chart-companies" style="width:100%;height:380px"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Work Arrangement</div>
-              <div class="ec" id="chart-location"></div>
+              <div class="ec" id="chart-location" style="width:100%;height:300px"></div>
             </div>
             <div class="stats-chart-card full">
               <div class="stats-chart-title">Salary Ladder</div>
-              <div class="ec tall" id="chart-salary-level"></div>
+              <div class="ec tall" id="chart-salary-level" style="width:100%;height:380px"></div>
             </div>
             <div class="stats-chart-card">
               <div class="stats-chart-title">Top Industries</div>
-              <div class="ec tall" id="chart-industry"></div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- ============ SETTINGS ============ -->
-      <!-- ============ ADMIN ============ -->
-      <div class="page" id="page-admin">
-        <div class="page-header">
-          <h2>Admin</h2>
-          <p>Platform operations &amp; analytics</p>
-        </div>
-        <div class="page-body">
-          <div class="admin-tabs" id="admin-tabs">
-            <button class="admin-tab active" data-tab="feed-health">Feed Health</button>
-            <button class="admin-tab" data-tab="cohorts">Cohorts</button>
-            <button class="admin-tab" data-tab="users">Users</button>
-            <button class="admin-tab" data-tab="seo">SEO</button>
-            <button class="admin-tab" data-tab="revenue">Revenue</button>
-          </div>
-
-          <!-- Tab 1: Feed Health -->
-          <div class="admin-panel active" id="admin-panel-feed-health">
-            <div class="admin-period-toggle" id="admin-period-toggle">
-              <button class="admin-period-btn" data-hours="24">24h</button>
-              <button class="admin-period-btn active" data-hours="168">7d</button>
-              <button class="admin-period-btn" data-hours="720">30d</button>
-            </div>
-            <div class="stat-grid" id="admin-stats">
-              <div class="stat-card"><div class="stat-val" id="ah-total">—</div><div class="stat-label">Total Feeds</div><div class="admin-delta" id="ah-total-delta"></div></div>
-              <div class="stat-card"><div class="stat-val" id="ah-with-jobs">—</div><div class="stat-label">With Jobs</div><div class="admin-delta" id="ah-with-jobs-delta"></div></div>
-              <div class="stat-card"><div class="stat-val" id="ah-4xx">—</div><div class="stat-label">4xx Errors</div><div class="admin-delta" id="ah-4xx-delta"></div></div>
-              <div class="stat-card"><div class="stat-val" id="ah-jobs">—</div><div class="stat-label">Total Jobs</div><div class="admin-delta" id="ah-jobs-delta"></div></div>
-              <div class="stat-card"><div class="stat-val" id="ah-net">—</div><div class="stat-label">Net Jobs</div><div class="admin-delta" id="ah-net-delta"></div></div>
-            </div>
-            <div class="admin-health" id="admin-health"></div>
-            <div class="card" style="margin-block-start:20px;overflow-x:auto">
-              <table class="admin-platform-table" id="admin-platform-table">
-                <thead><tr><th>Platform</th><th>Total</th><th>+Added</th><th>-Lost</th><th>With Jobs</th><th>4xx</th><th>Jobs</th><th>+New</th><th>-Closed</th></tr></thead>
-                <tbody id="admin-platform-body"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Tab 2: Cohorts -->
-          <div class="admin-panel" id="admin-panel-cohorts">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="ac-total-cohorts">—</div><div class="stat-label">Cohorts</div></div>
-              <div class="stat-card"><div class="stat-val" id="ac-total-users">—</div><div class="stat-label">Total Users</div></div>
-              <div class="stat-card"><div class="stat-val" id="ac-pro-pct">—</div><div class="stat-label">Pro Conversion</div></div>
-              <div class="stat-card"><div class="stat-val" id="ac-active-7d">—</div><div class="stat-label">Active (7d)</div></div>
-            </div>
-            <div class="card" style="margin-block-start:20px;overflow-x:auto">
-              <table class="admin-platform-table" id="admin-cohort-table">
-                <thead><tr><th>Cohort</th><th>Users</th><th>Free</th><th>Pro</th><th>Active 7d</th><th>Active 30d</th><th>Entitlements</th><th>Locked</th></tr></thead>
-                <tbody id="admin-cohort-body"></tbody>
-              </table>
-            </div>
-            <div class="card" style="margin-block-start:16px;display:none" id="admin-cohort-detail">
-              <h3 style="font-size:14px;margin-bottom:12px" id="admin-cohort-detail-title"></h3>
-              <table class="admin-platform-table" id="admin-entitlement-table">
-                <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
-                <tbody id="admin-entitlement-body"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Tab 3: Users -->
-          <div class="admin-panel" id="admin-panel-users">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="au-total">—</div><div class="stat-label">Total Users</div></div>
-              <div class="stat-card"><div class="stat-val" id="au-active-7d">—</div><div class="stat-label">Active (7d)</div></div>
-              <div class="stat-card"><div class="stat-val" id="au-new-7d">—</div><div class="stat-label">New (7d)</div></div>
-              <div class="stat-card"><div class="stat-val" id="au-pro">—</div><div class="stat-label">Pro Users</div></div>
-            </div>
-            <div class="card" style="margin-block-start:20px">
-              <h3 style="font-size:14px;margin-bottom:12px">Feature Adoption</h3>
-              <div class="stat-grid">
-                <div class="stat-card"><div class="stat-val" id="au-filters">—</div><div class="stat-label">With Saved Filters</div></div>
-                <div class="stat-card"><div class="stat-val" id="au-resumes">—</div><div class="stat-label">With Resumes</div></div>
-                <div class="stat-card"><div class="stat-val" id="au-connections">—</div><div class="stat-label">With Connections</div></div>
-              </div>
-            </div>
-            <div class="card" style="margin-block-start:16px">
-              <h3 style="font-size:14px;margin-bottom:12px">Sessions (Last 7 Days)</h3>
-              <div class="stat-grid">
-                <div class="stat-card"><div class="stat-val" id="au-sessions-7d">—</div><div class="stat-label">Sessions</div></div>
-                <div class="stat-card"><div class="stat-val" id="au-avg-duration">—</div><div class="stat-label">Avg Duration</div></div>
-                <div class="stat-card"><div class="stat-val" id="au-device-desktop">—</div><div class="stat-label">Desktop</div></div>
-                <div class="stat-card"><div class="stat-val" id="au-device-mobile">—</div><div class="stat-label">Mobile</div></div>
-              </div>
-            </div>
-            <div class="card" style="margin-block-start:16px">
-              <h3 style="font-size:14px;margin-bottom:12px">Signups by Week</h3>
-              <div id="admin-signup-chart" style="width:100%;height:200px"></div>
-            </div>
-          </div>
-
-          <!-- Tab 4: SEO -->
-          <div class="admin-panel" id="admin-panel-seo">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="as-total">—</div><div class="stat-label">Open Jobs</div></div>
-              <div class="stat-card"><div class="stat-val" id="as-salary">—</div><div class="stat-label">With Salary</div></div>
-              <div class="stat-card"><div class="stat-val" id="as-dept">—</div><div class="stat-label">With Department</div></div>
-              <div class="stat-card"><div class="stat-val" id="as-location">—</div><div class="stat-label">With Location</div></div>
-            </div>
-            <div class="card" style="margin-block-start:20px">
-              <h3 style="font-size:14px;margin-bottom:12px">Data Coverage — Powers External Pages</h3>
-              <table class="admin-platform-table"><thead><tr><th>Column</th><th>Populated</th><th>Coverage</th><th>Powers Page</th></tr></thead>
-                <tbody id="admin-seo-body"></tbody>
-              </table>
-            </div>
-            <div class="card" style="margin-block-start:16px">
-              <h3 style="font-size:14px;margin-bottom:12px">External Pages</h3>
-              <table class="admin-platform-table"><thead><tr><th>Page</th><th>URL</th><th>Charts</th><th>Data Source</th></tr></thead>
-                <tbody>
-                  <tr><td>Salary Data</td><td><a href="/salary-data" target="_blank">/salary-data</a></td><td>4</td><td>Hardcoded</td></tr>
-                  <tr><td>Hiring Trends</td><td><a href="/hiring-trends" target="_blank">/hiring-trends</a></td><td>4</td><td>Hardcoded</td></tr>
-                  <tr><td>Jobs by Industry</td><td><a href="/jobs-by-industry" target="_blank">/jobs-by-industry</a></td><td>4</td><td>Hardcoded</td></tr>
-                  <tr><td>Career Levels</td><td><a href="/career-level-data" target="_blank">/career-level-data</a></td><td>4</td><td>Hardcoded</td></tr>
-                  <tr><td>Market Dynamics</td><td><a href="/market-dynamics" target="_blank">/market-dynamics</a></td><td>3</td><td>Live RPC</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Tab 5: Revenue -->
-          <div class="admin-panel" id="admin-panel-revenue">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="ar-mrr">$0</div><div class="stat-label">MRR</div></div>
-              <div class="stat-card"><div class="stat-val" id="ar-pro">—</div><div class="stat-label">Pro Users</div></div>
-              <div class="stat-card"><div class="stat-val" id="ar-conversion">—</div><div class="stat-label">Conversion Rate</div></div>
-              <div class="stat-card"><div class="stat-val" id="ar-total">—</div><div class="stat-label">Total Users</div></div>
-            </div>
-            <div class="card" style="margin-block-start:20px">
-              <h3 style="font-size:14px;margin-bottom:12px">Plan Distribution</h3>
-              <table class="admin-platform-table"><thead><tr><th>Plan</th><th>Users</th><th>% of Total</th></tr></thead>
-                <tbody id="admin-plan-body"></tbody>
-              </table>
-            </div>
-            <div class="card" style="margin-block-start:16px;text-align:center;padding:32px;color:var(--text-dim)">
-              <p style="font-size:13px">Stripe integration pending. MRR, churn, and billing metrics will appear here once connected.</p>
+              <div class="ec tall" id="chart-industry" style="width:100%;height:380px"></div>
             </div>
           </div>
 
