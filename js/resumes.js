@@ -150,7 +150,6 @@ function renderResumes() {
         <div class="rc-filter-list">${filterPills}</div>
         ${statsLine}
         <div class="rc-actions">
-          <button class="rc-btn" onclick="runReadinessAnalysis({resumeIndex:${i}})" id="rc-analyze-${i}" style="background:var(--accent);color:#fff;font-weight:600;">Analyze</button>
           <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
           <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
           <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
@@ -161,7 +160,7 @@ function renderResumes() {
         !isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]
           ? buildReadinessSide(i, readinessCache.scores[i])
           : (assignedIds.length > 0 && !isPlaceholder
-              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;"><div style="font-size:11px;color:var(--text-faint);font-style:italic;">Click Re-analyze to score</div></div>'
+              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button></div>'
               : '<div class="readiness-side" id="readiness-side-' + i + '"></div>')
       }</div>
     </div>`;
