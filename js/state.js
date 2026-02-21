@@ -122,19 +122,7 @@ export async function loadUserData(userId) {
   } catch(e) { console.warn('[sync] Load error:', e.message); }
 }
 
-export async function enrichJob(jobId, data) {
-  try {
-    const session = (await sb.auth.getSession())?.data?.session;
-    const token = session?.access_token || SUPABASE_KEY;
-    const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'apikey':SUPABASE_KEY },
-      body: JSON.stringify({ job_id: jobId, ...data })
-    });
-    if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
-  } catch(e) { console.warn('[enrich-job] Error:', e.message); }
-}
-
+export 
 export function rehydrateState() {
   savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
