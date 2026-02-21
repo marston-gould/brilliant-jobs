@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.26 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
+<!-- Brilliant Jobs Dashboard v3.27 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -41,7 +41,7 @@
     .admin-period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .admin-platform-name{font-weight:500}
   </style>
-  <!-- CSS extracted to styles.css in v3.26 -->
+  <!-- CSS extracted to styles.css in v3.27 -->
   <!-- A13: PostHog analytics -->
   <script>
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -65,7 +65,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.26</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.27</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -658,6 +658,7 @@
                 <span class="sf-title">Select / Deselect All</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
+                <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);border-radius:4px;cursor:pointer;white-space:nowrap;" title="Generate filter from your resume using AI">✦ AI Suggest</button>
                 <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:4px;cursor:pointer;">Delete Selected</button>
                 <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
               </div>
@@ -1857,6 +1858,28 @@
         <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading job details…</div>
       </div>
       <div class="job-modal-footer" id="job-modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- AI Filter Suggest Modal -->
+  <div class="job-modal-overlay" id="ai-filter-modal" style="display:none;" onclick="closeAiFilterModal(event)">
+    <div class="job-modal" onclick="event.stopPropagation()" style="max-width:560px;">
+      <div class="job-modal-header">
+        <div class="job-modal-title-wrap">
+          <h3 class="job-modal-title">✦ AI Filter Suggestions</h3>
+          <div class="job-modal-meta" id="ai-filter-meta">Based on your resume</div>
+        </div>
+        <div class="job-modal-actions">
+          <button class="job-modal-close" onclick="closeAiFilterModal()">&times;</button>
+        </div>
+      </div>
+      <div class="job-modal-body" id="ai-filter-body" style="padding:20px;">
+        <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading…</div>
+      </div>
+      <div class="job-modal-footer" id="ai-filter-footer" style="display:none;">
+        <button class="btn btn-primary btn-sm" id="ai-filter-accept" onclick="acceptAiFilter()">Create Filter</button>
+        <button class="btn btn-sm" onclick="closeAiFilterModal()" style="background:var(--bg-card-hover);color:var(--text-dim);border:1px solid var(--border);">Cancel</button>
+      </div>
     </div>
   </div>
 
