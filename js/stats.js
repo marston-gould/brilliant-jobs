@@ -618,13 +618,40 @@ function renderGeoMap(stats, configs) {
 
   var stateCounts = stats.stateCounts || {};
   var cityCounts = stats.cityCounts || {};
+  var locationCounts = stats.locationCounts || {};
   var stateEntries = Object.entries(stateCounts).sort(function(a,b){return b[1]-a[1];});
+  var locationEntries = Object.entries(locationCounts).sort(function(a,b){return b[1]-a[1];});
 
-  if (stateEntries.length === 0) {
+  if (locationEntries.length === 0 && stateEntries.length === 0) {
     mapEl.innerHTML = '<div style="text-align:center;padding:80px 20px;color:'+_T.dim+';font-size:12px">No location data for this filter</div>';
     if (listEl) listEl.innerHTML = '';
     return;
   }
+
+  // For small result sets (<75 jobs), show a clean list instead of a bar chart
+  if (stats.total < 75) {
+    // Destroy existing chart if any
+    if (statsCharts['#chart-geo-map']) { statsCharts['#chart-geo-map'].dispose(); delete statsCharts['#chart-geo-map']; }
+    if (titleEl) titleEl.textContent = 'Where Are the Jobs (' + stats.locationsTotal + ' of ' + stats.total + ' have locations)';
+    var top20 = locationEntries.slice(0, 20);
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0">';
+    top20.forEach(function(e, i) {
+      html += '<div style="display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid '+_T.border+';font-size:13px;' + (i%2===0?'border-right:1px solid '+_T.border+';':'') + '">' +
+        '<span style="color:'+_T.dim+'">' + e[0] + '</span>' +
+        '<span style="font-weight:700;font-family:'+_T.mono+';color:'+_T.dark+'">' + e[1] + '</span></div>';
+    });
+    html += '</div>';
+    if (stats.locationsTotal === 0) {
+      html = '<div style="text-align:center;padding:60px 20px;color:'+_T.dim+';font-size:13px">All jobs in this filter are remote or have no location specified</div>';
+    }
+    mapEl.innerHTML = html;
+    mapEl.style.height = 'auto';
+    if (listEl) listEl.style.display = 'none';
+    return;
+  }
+  // For larger result sets, restore chart height and show list
+  mapEl.style.height = '400px';
+  if (listEl) listEl.style.display = '';
 
   // Detect if filter has metro pills
   var hasMetroPills = false;
