@@ -121,11 +121,22 @@ function extractNgrams(jobs, maxPerGroup = 40) {
     }
   }
 
+  // EEO and legal boilerplate bigrams/trigrams to exclude
+  const EEO_PHRASES = new Set([
+    'national origin','sexual orientation','gender identity','gender expression',
+    'marital status','veteran status','disability status','citizenship status',
+    'genetic information','equal opportunity','affirmative action','protected class',
+    'protected veteran','race color','color religion','religion national',
+    'age disability','pregnancy discrimination','reasonable accommodation',
+    'equal employment','employment opportunity','regardless race','regardless gender',
+    'diverse candidates','inclusive workplace','diversity equity','equity inclusion',
+  ]);
+
   // Minimum threshold: must appear in at least 2 JDs (or 10% of jobs, whichever is higher)
   const minCount = Math.max(2, Math.ceil(jobsWithContent * 0.10));
 
   const sortAndFilter = (counts) => Object.entries(counts)
-    .filter(([term, count]) => count >= minCount && !KW_GENERIC.has(term))
+    .filter(([term, count]) => count >= minCount && !KW_GENERIC.has(term) && !EEO_PHRASES.has(term))
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxPerGroup);
 
@@ -773,9 +784,76 @@ function buildReadinessSide(ri, data) {
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
     html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
-    html += '<span style="font-size:9px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+    if (fs.ai) {
+      html += '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';
+      html += '<span style="font-size:9px;color:var(--text-faint);">' + (fs.fitStatus || '') + ' \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+    } else {
+      html += '<span style="font-size:9px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+    }
     html += '<span onclick="document.getElementById(\'' + detailId + '\').style.display=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'\':\'none\';this.textContent=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'Show all \u25b8\':\'Hide \u25be\'" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:auto;font-weight:500;white-space:nowrap;">Show all \u25b8</span>';
     html += '</div>';
+
+    // ─── AI results rendering ───
+    if (fs.ai && fs.summary) {
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;line-height:1.5;">' + fs.summary + '</div>';
+
+      // Core requirements (AI)
+      if (fs.coreRequirements && fs.coreRequirements.length > 0) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+        for (var cri = 0; cri < fs.coreRequirements.length; cri++) {
+          var cr = fs.coreRequirements[cri];
+          var crColor = cr.resume_evidence === 'strong' ? 'var(--green)' : cr.resume_evidence === 'partial' ? 'var(--warm)' : 'var(--red)';
+          var crBg = cr.resume_evidence === 'strong' ? 'rgba(34,197,94,0.06)' : cr.resume_evidence === 'partial' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)';
+          var crBorder = cr.resume_evidence === 'strong' ? 'rgba(34,197,94,0.2)' : cr.resume_evidence === 'partial' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.15)';
+          var crIcon = cr.resume_evidence === 'strong' ? '\u2713' : cr.resume_evidence === 'partial' ? '\u25cb' : '\u2717';
+          html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:' + crBg + ';border:1px solid ' + crBorder + ';color:' + crColor + ';">' + crIcon + ' ' + cr.skill + ' <span style="opacity:0.7">' + cr.prevalence + '%</span></span>';
+        }
+        html += '</div>';
+      }
+
+      // Expandable AI detail
+      html += '<div id="' + detailId + '" style="display:none;margin-top:6px;">';
+
+      // Recommendations
+      if (fs.recommendations) {
+        if (fs.recommendations.missing_skills && fs.recommendations.missing_skills.length > 0) {
+          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Missing skills:</div>';
+          html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">';
+          fs.recommendations.missing_skills.forEach(function(s) {
+            html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + s + '</span>';
+          });
+          html += '</div>';
+        }
+        if (fs.recommendations.word_usage && fs.recommendations.word_usage.length > 0) {
+          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin-bottom:3px;">Rewrite tips:</div>';
+          fs.recommendations.word_usage.forEach(function(tip) {
+            html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">\u2192 ' + tip + '</div>';
+          });
+        }
+        if (fs.recommendations.format && fs.recommendations.format.length > 0) {
+          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:4px 0 3px;">Format tips:</div>';
+          fs.recommendations.format.forEach(function(tip) {
+            html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">\u2192 ' + tip + '</div>';
+          });
+        }
+      }
+
+      // Level fit (AI)
+      if (fs.levelFit) {
+        html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:6px 0 3px;">Level fit:</div>';
+        html += '<div style="font-size:10px;color:var(--text-dim);padding:4px 8px;background:var(--bg-card);border-radius:4px;border:1px solid var(--border);">';
+        html += '<strong>' + fs.levelFit.best_level + '</strong> — ' + fs.levelFit.reasoning;
+        html += '</div>';
+      }
+
+      // Differential insight
+      if (fs.differentialInsight) {
+        html += '<div style="font-size:10px;color:var(--accent);margin-top:6px;font-style:italic;">\ud83d\udca1 ' + fs.differentialInsight + '</div>';
+      }
+
+      html += '</div>'; // close expandable
+    } else {
+      // ─── Ngram results rendering (fallback) ───
 
     // Missing terms preview
     if (fs.topMissing && fs.topMissing.length > 0) {
@@ -809,7 +887,11 @@ function buildReadinessSide(ri, data) {
       }
       html += '</div>';
     }
-    html += '</div></div>';
+    html += '</div>'; // close expandable
+
+    } // end ngram branch
+
+    html += '</div>'; // close filter block
   }
 
   // Level fit
