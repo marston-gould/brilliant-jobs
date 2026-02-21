@@ -648,12 +648,13 @@ function commitSaveFilter() {
   const name = $('#save-filter-name').value.trim().toLowerCase();
   if (!name || allPills() === 0) return;
 
-  // Warn if no WHERE filter set
-  if (wherePills.length === 0) {
+  // Warn if no WHERE filter set AND US-only tuning is off
+  const tuningCheck = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  if (wherePills.length === 0 && !tuningCheck.usOnly) {
     alert(
       'Please add a location filter.\n\n' +
       'Without a location, this filter will match jobs worldwide.\n\n' +
-      'Add a location like "United States", "Remote", or a specific city in the Where row, then save again.'
+      'Add a location like "Remote" or a specific city in the Where row, or enable "US Only" in Tuning, then save again.'
     );
     $('#qb-input-where').focus();
     // Open the filter builder if collapsed
