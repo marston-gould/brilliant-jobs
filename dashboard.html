@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.28 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
+<!-- Brilliant Jobs Dashboard v3.29 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1760,7 +1760,7 @@
             </div>
             <div id="seo-subtabs-inner" style="display:flex;gap:4px;margin-bottom:16px;">
               <button class="admin-period-btn active" data-seotab="overview" onclick="switchSeoSubtab('overview')">Overall</button>
-              <button class="admin-period-btn" data-seotab="pages" onclick="switchSeoSubtab('pages')">Pages</button>
+              <button class="admin-period-btn" data-seotab="pages" onclick="switchSeoSubtab('pages')">Page Drilldown</button>
               <button class="admin-period-btn" data-seotab="queries" onclick="switchSeoSubtab('queries')">Queries</button>
               <button class="admin-period-btn" data-seotab="health" onclick="switchSeoSubtab('health')">Technical</button>
             </div>
@@ -1785,10 +1785,46 @@
 
             <!-- Page-Level Drilldown -->
             <div class="seo-subpanel" id="seo-sub-pages" style="display:none;">
-              <table class="admin-table" style="width:100%">
-                <thead><tr><th>Page</th><th>Clicks</th><th>Impressions</th><th>Avg Pos</th></tr></thead>
-                <tbody id="seo-pages-body"></tbody>
-              </table>
+              <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+                <select id="seo-drill-url" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--mono);min-width:280px;" onchange="loadSeoDrilldown()">
+                  <option value="">Select a page…</option>
+                  <option value="https://brilliantjobs.app/">/ (homepage)</option>
+                  <option value="https://brilliantjobs.app/data-lab">/data-lab</option>
+                  <option value="https://brilliantjobs.app/salary-data">/salary-data</option>
+                  <option value="https://brilliantjobs.app/hiring-trends">/hiring-trends</option>
+                  <option value="https://brilliantjobs.app/jobs-by-industry">/jobs-by-industry</option>
+                  <option value="https://brilliantjobs.app/career-level-data">/career-level-data</option>
+                  <option value="https://brilliantjobs.io/">.io / (landing)</option>
+                  <option value="https://brilliantjobs.io/help">.io /help</option>
+                  <option value="https://brilliantjobs.io/privacy">.io /privacy</option>
+                  <option value="https://brilliantjobs.io/terms">.io /terms</option>
+                </select>
+                <button class="admin-period-btn" onclick="runPsiForSelected()" style="font-size:10px;padding:3px 10px;background:rgba(77,142,255,0.1);color:var(--blue);border:1px solid rgba(77,142,255,0.3);" title="Run a fresh PSI scan for this URL">▸ Run PSI Now</button>
+              </div>
+              <div id="seo-drill-content" style="display:none;">
+                <!-- Score cards row -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+                  <div class="stat-card"><div class="stat-val" id="drill-psi-mobile">—</div><div class="stat-label">PSI Mobile</div></div>
+                  <div class="stat-card"><div class="stat-val" id="drill-psi-desktop">—</div><div class="stat-label">PSI Desktop</div></div>
+                  <div class="stat-card"><div class="stat-val" id="drill-clicks">—</div><div class="stat-label">GSC Clicks</div></div>
+                  <div class="stat-card"><div class="stat-val" id="drill-pageviews">—</div><div class="stat-label">Pageviews</div></div>
+                </div>
+                <!-- PSI trend chart -->
+                <div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">PSI Score Trend</div>
+                <div id="seo-drill-chart" style="height:260px;margin-bottom:16px;"></div>
+                <!-- Core Web Vitals -->
+                <div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Core Web Vitals (latest)</div>
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px;" id="drill-cwv-grid"></div>
+                <!-- Issues -->
+                <div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Flagged Issues</div>
+                <div id="drill-issues" style="margin-bottom:16px;"></div>
+                <!-- Index status -->
+                <div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Index Status</div>
+                <div id="drill-index" style="font-size:12px;color:var(--text-dim);margin-bottom:16px;">No inspection data yet</div>
+              </div>
+              <div id="seo-drill-empty" style="text-align:center;color:var(--text-faint);padding:40px 0;font-size:13px;">
+                Select a page above to see its performance across all tools
+              </div>
             </div>
 
             <!-- Query Analysis -->
