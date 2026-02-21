@@ -132,6 +132,8 @@
     .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
     .foot a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
+      .dash-link{display:none;position:fixed;top:16px;right:16px;z-index:100;background:rgba(59,130,246,0.12);color:var(--accent);font-size:12px;font-family:"JetBrains Mono",monospace;padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.25);text-decoration:none;transition:all 0.2s}
+    .dash-link:hover{background:rgba(59,130,246,0.2);border-color:var(--accent)}
   </style>
 </head>
 <body>
@@ -188,7 +190,7 @@
       <a href="/market-dynamics" class="related-link"><div class="rl-title">Market Dynamics</div><div class="rl-desc">Animated heatmaps, geographic distribution, hiring velocity</div></a>
     </div>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v3.02 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v3.03 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
@@ -227,5 +229,18 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 </script>
 </main>
+<a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+<script>
+window.addEventListener('DOMContentLoaded',function(){
+  try{
+    if(typeof supabase==='undefined')return;
+    var sb=supabase.createClient('https://qojhagupdnbtomfoxnsf.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg');
+    sb.auth.getSession().then(function(r){
+      if(r.data&&r.data.session){var el=document.getElementById('dash-link');if(el)el.style.display='inline-block';}
+    });
+  }catch(e){}
+});
+</script>
 </body>
 </html>
