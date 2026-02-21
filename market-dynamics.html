@@ -93,6 +93,12 @@
     <strong>Darker cells = more jobs.</strong> Use the timeline slider below each chart to scrub through weeks and see how hiring volume shifts. Hit play to animate automatically. Each cell shows the count of new jobs discovered that week for that combination.
   </div>
 
+  <h2 class="sdiv">Deep-dive reports</h2>
+  <div class="related-grid" style="margin-block-end:32px;">
+      <a href="/salary-data" class="related-link" style="padding:20px;">
+        <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
+
+
   <h2 class="sdiv">Industry &times; Department</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">Where are companies hiring, by sector?</div></div><span class="badge b-blue">Industry &times; Dept</span></div>
@@ -139,15 +145,11 @@
 
   <h2 class="sdiv">Jobs Per Capita</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Bubble Map</span></div>
-    <div id="percapita-map" style="width:100%;height:500px"></div>
+    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Ranked</span></div>
+    <div id="percapita-map" style="width:100%;height:480px"></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> San Francisco leads with 22.9 open jobs per 10,000 residents &mdash; nearly 5x the national average. Silicon Valley (San Jose: 10.0) and Austin (9.7) round out the top 3, reflecting the concentration of tech hiring in these metros relative to their population.</div>
 
-  <h2 class="sdiv">Deep-dive reports</h2>
-  <div class="related-grid" style="margin-block-end:32px;">
-      <a href="/salary-data" class="related-link" style="padding:20px;">
-        <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
         <div class="rl-desc" style="font-size:12px;">Median pay by department with &plusmn;1 and &plusmn;2 standard deviation ranges. Remote salary premium. Distribution across 21,000+ listings with parsed compensation.</div>
       </a>
       <a href="/hiring-trends" class="related-link" style="padding:20px;">
@@ -167,10 +169,10 @@
         <div class="rl-desc" style="font-size:12px;">Seniority funnel from Entry to C-Suite, salary at each level, and remote vs on-site vs hybrid distribution. The mid-to-senior jump is the highest-leverage career move.</div>
       </a>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v3.10 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages <br>v3.11 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
-<!-- v3.10 -->
+<!-- v3.11 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
@@ -474,7 +476,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         var tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
         var pcText = m[3] !== null ? m[3].toFixed(1) : '—';
-        var pcColor = m[3] >= 8 ? '#22c55e' : m[3] >= 4 ? '#f59e0b' : '#e8eaf0';
+        var pcColor = m[3] !== null ? 'hsl(' + Math.round(120 + (1 - Math.min(m[3]/23, 1)) * (-60)) + ',' + Math.round(50 + Math.min(m[3]/23, 1) * 40) + '%,' + Math.round(40 + Math.min(m[3]/23, 1) * 20) + '%)' : '#e8eaf0';
         tr.innerHTML = '<td style="padding:6px 12px;color:var(--text-faint)">'+(i+1)+'</td>'
           +'<td style="padding:6px 12px;color:var(--text)">'+m[0]+', '+m[1]+'</td>'
           +'<td style="padding:6px 12px;text-align:right;color:var(--text);font-weight:600">'+m[2].toLocaleString()+'</td>'
@@ -483,41 +485,24 @@ document.addEventListener('DOMContentLoaded', async function() {
       });
     }
 
-    // ── Per-Capita Bubble Map ──
-    var pcMetros=[['San Francisco','CA',37.7749,-122.4194,10289,22.9],['San Jose','CA',37.3382,-121.8863,1904,10.0],['Austin','TX',30.2672,-97.7431,2240,9.7],['Seattle','WA',47.6062,-122.3321,2058,5.1],['Boston','MA',42.3601,-71.0589,2342,4.8],['New York','NY',40.7128,-74.006,8596,4.4],['Washington','DC',38.9072,-77.0369,2736,4.3],['Denver','CO',39.7392,-104.9903,1166,4.0],['Raleigh','NC',35.7796,-78.6382,564,4.0],['Phoenix','AZ',33.4484,-112.074,1869,3.8],['Los Angeles','CA',34.0522,-118.2437,4374,3.4],['Salt Lake City','UT',40.7608,-111.891,412,3.4],['Las Vegas','NV',36.1699,-115.1398,684,3.0],['Nashville','TN',36.1627,-86.7816,576,3.0],['Dallas','TX',32.7767,-96.797,2305,2.9],['Charlotte','NC',35.2271,-80.8431,762,2.9],['Atlanta','GA',33.749,-84.388,1703,2.8],['Chicago','IL',41.8781,-87.6298,2337,2.5],['San Diego','CA',32.7157,-117.1611,781,2.4],['Portland','OR',45.5152,-122.6784,527,2.1],['Dallas','TX',32.7767,-96.797,2305,1.9],['Tampa','FL',27.9506,-82.4572,585,1.8],['Miami','FL',25.7617,-80.1918,1013,1.7],['Phoenix','AZ',33.4484,-112.074,1869,1.7],['Minneapolis','MN',44.9778,-93.265,548,1.5],['Houston','TX',29.7604,-95.3698,931,1.3],['Philadelphia','PA',39.9526,-75.1652,737,1.2]];
-    // Remove duplicates (Dallas appears twice above from city mapping)
-    var pcSeen = {};
-    pcMetros = pcMetros.filter(function(m) { var k=m[0]+m[1]; if(pcSeen[k]) return false; pcSeen[k]=true; return true; });
-
+    // ── Per-Capita Ranked Bar Chart ──
+    var pcMetros=[['San Francisco, CA',22.9,10289],['San Jose, CA',10.0,1904],['Austin, TX',9.7,2240],['Seattle, WA',5.1,2058],['Boston, MA',4.8,2342],['New York, NY',4.4,8596],['Washington, DC',4.3,2736],['Denver, CO',4.0,1166],['Raleigh, NC',4.0,564],['Phoenix, AZ',3.8,1869],['Los Angeles, CA',3.4,4374],['Salt Lake City, UT',3.4,412],['Las Vegas, NV',3.0,684],['Nashville, TN',3.0,576],['Dallas, TX',2.9,2305],['Charlotte, NC',2.9,762],['Atlanta, GA',2.8,1703],['Chicago, IL',2.5,2337],['San Diego, CA',2.4,781],['Portland, OR',2.1,527]];
     var pcEl = document.getElementById('percapita-map');
     if (pcEl && typeof echarts !== 'undefined') {
       var pcChart = echarts.init(pcEl, null, {renderer:'canvas'});
-      // Project to simple US map coordinates
-      var mapW = pcEl.offsetWidth || 800;
-      var mapH = pcEl.offsetHeight || 500;
-      function projPC(lat,lng) {
-        var x = ((lng + 125) / 60) * mapW;
-        var y = ((50 - lat) / 26) * mapH;
-        return [Math.max(20,Math.min(mapW-20,x)), Math.max(20,Math.min(mapH-20,y))];
-      }
-      var maxPC = Math.max.apply(null, pcMetros.map(function(m){return m[5];}));
-      var pcData = pcMetros.map(function(m) {
-        var p = projPC(m[2],m[3]);
-        var r = Math.max(8, Math.min(55, (m[5]/maxPC) * 55));
-        return { name:m[0]+', '+m[1], value:[p[0],p[1],m[5],m[4]], symbolSize:r };
-      });
+      var pcRev = pcMetros.slice().reverse();
+      var pcMax = pcMetros[0][1];
       pcChart.setOption({
-        tooltip:{trigger:'item',backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},
-          formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value[2]+' jobs per 10K<br/>'+Number(p.value[3]).toLocaleString()+' total jobs';}},
-        xAxis:{show:false,min:0,max:mapW},
-        yAxis:{show:false,min:0,max:mapH},
-        series:[{type:'scatter',coordinateSystem:'cartesian2d',
-          data:pcData,
-          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(34,197,94,0.7)':v>=4?'rgba(245,158,11,0.7)':'rgba(99,102,241,0.6)';},
-            borderColor:'rgba(255,255,255,0.3)',borderWidth:1},
-          label:{show:true,position:'right',color:'#8a92a9',fontSize:9,fontFamily:'JetBrains Mono',
-            formatter:function(p){return p.value[2]>=4?p.name.split(',')[0]:'';}}
-        }],
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'},backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},
+          formatter:function(p){var d=pcRev[p[0].dataIndex];return '<b>'+d[0]+'</b><br/>'+d[1]+' jobs per 10K residents<br/>'+Number(d[2]).toLocaleString()+' total jobs';}},
+        grid:{top:8,right:60,bottom:8,left:130},
+        xAxis:{type:'value',axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10},splitLine:{lineStyle:{color:'#1e2230'}},name:'per 10K residents',nameTextStyle:{color:'#7884a8',fontSize:10,fontFamily:'JetBrains Mono'},nameLocation:'end'},
+        yAxis:{type:'category',data:pcRev.map(function(d){return d[0];}),axisLabel:{color:'#8a92a9',fontFamily:'JetBrains Mono',fontSize:10},axisLine:{show:false},axisTick:{show:false}},
+        series:[{type:'bar',data:pcRev.map(function(d){
+          var ratio=d[1]/pcMax;
+          var r=Math.round(34+ratio*187), g=Math.round(197-ratio*60), b=Math.round(94+ratio*20);
+          return {value:d[1],itemStyle:{color:'rgb('+r+','+g+','+b+')',borderRadius:[0,3,3,0]}};
+        }),barMaxWidth:16,label:{show:true,position:'right',color:'#8a92a9',fontFamily:'JetBrains Mono',fontSize:9,formatter:function(p){return p.value.toFixed(1);}}}],
         animation:true,animationDuration:800
       });
       window.addEventListener('resize',function(){pcChart.resize();});
