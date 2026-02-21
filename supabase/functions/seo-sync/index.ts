@@ -1,6 +1,7 @@
 // supabase/functions/seo-sync/index.ts
 // Daily SEO data sync: GSC performance, URL inspection, PSI, DataForSEO, PostHog
 // Tasks: gsc_performance | gsc_inspect | psi | dataforseo | posthog | all
+// v2 — supports target_url for per-page PSI, collects all 10 URLs
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -47,7 +48,7 @@ async function getGoogleToken(): Promise<string> {
     iat: now, exp: now + 3600,
   }));
   const signInput = `${header}.${claims}`;
-  const keyPem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\n/g, '');
+  const keyPem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\\n/g, '');
   const binaryKey = Uint8Array.from(atob(keyPem), c => c.charCodeAt(0));
   const cryptoKey = await crypto.subtle.importKey(
     'pkcs8', binaryKey, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']
@@ -149,10 +150,11 @@ async function syncInspect(): Promise<{ checked: number }> {
 }
 
 // ─── Task 3: PageSpeed Insights ───
-async function syncPsi(): Promise<{ pages: number }> {
+async function syncPsi(targetUrl?: string): Promise<{ pages: number }> {
   const today = dateStr(0);
+  const urls = targetUrl ? [targetUrl] : SITE_URLS; // All 10 URLs by default
   let n = 0;
-  for (const url of SITE_URLS.slice(0, 5)) {
+  for (const url of urls) {
     try {
       for (const strat of ['mobile','desktop'] as const) {
         const r = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${GOOGLE_API_KEY}&strategy=${strat}&category=performance&category=seo`);
@@ -177,7 +179,8 @@ async function syncPsi(): Promise<{ pages: number }> {
         await sb.from('seo_tech_audits').upsert({
           date: today, url, source: `psi_${strat}`, score: perf, metrics, issues,
         }, { onConflict: 'date,url,source' });
-        if (url.endsWith('/')) {
+        // Update site daily for homepage
+        if (url.endsWith('/') && (url.includes('brilliantjobs.app') || url.includes('brilliantjobs.io/'))) {
           const col = strat==='mobile' ? 'psi_mobile_score' : 'psi_desktop_score';
           await sb.from('seo_site_daily').upsert({ date: today, [col]: perf }, { onConflict: 'date' });
         }
@@ -282,15 +285,17 @@ serve(async (req) => {
       }
     }
     let tasks = ['all'];
+    let targetUrl: string | undefined;
     if (req.method === 'POST') {
       const body = await req.json().catch(()=>({}));
       if (body.tasks) tasks = Array.isArray(body.tasks) ? body.tasks : [body.tasks];
+      if (body.target_url) targetUrl = body.target_url;
     }
     const res: Record<string, any> = {};
     const all = tasks.includes('all');
     // Run PSI + PostHog first (no Google SA required)
     if (all || tasks.includes('psi'))
-      try { res.psi = await syncPsi(); } catch(e) { res.psi = { error: String(e) }; }
+      try { res.psi = await syncPsi(targetUrl); } catch(e) { res.psi = { error: String(e) }; }
     if (all || tasks.includes('posthog'))
       try { res.posthog = await syncPosthog(); } catch(e) { res.posthog = { error: String(e) }; }
     // GSC tasks require service account
