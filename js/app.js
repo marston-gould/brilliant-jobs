@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.17';
+const BJ_VERSION = 'v3.18';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
