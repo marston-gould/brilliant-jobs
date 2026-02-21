@@ -9,9 +9,10 @@ async function init() {
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
   try {
-    const { data: profile } = await sb.from('profiles').select('approved,cohort_id').eq('id', currentUser.id).single();
+    const { data: profile } = await sb.from('profiles').select('approved,cohort_id,plan').eq('id', currentUser.id).single();
     if (!profile?.approved) { window.location.href = '/?pending=1'; return; }
     currentUser._cohortId = profile.cohort_id || null;
+    window._bjUserPlan = profile.plan || 'free';
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
