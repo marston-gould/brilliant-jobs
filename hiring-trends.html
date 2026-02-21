@@ -157,12 +157,18 @@
     <div class="st"><span class="v purple">21 days</span><span class="l">Median Lifespan</span></div>
   </div>
 
+  <h2 class="sdiv">Deep-dive reports</h2>
+  <div class="related-grid" style="margin-block-end:32px;">
+      <a href="/salary-data" class="related-link" style="padding:20px;">
+        <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
+
+
   <h2 class="sdiv">How fast is the job market growing?</h2>
   <div class="grid">
-    <div class="card full"><div class="ch"><div><div class="cl">Cumulative Growth</div><div class="ct">Cumulative Job Listings Over Time</div></div><span class="badge b-blue">Area</span></div><div class="ec" id="c1" role="img" aria-label="Cumulative area chart showing job listings growing from 2,800 per day in mid-January to 285,000+ by February 18, with sharp acceleration on February 16 when 4 new ATS platforms added"></div></div>
+    <div class="card full"><div class="ch"><div><div class="cl">Cumulative Growth</div><div class="ct">Cumulative Job Listings Over Time</div></div><span class="badge b-blue">Area</span></div><div class="ec" id="c1" role="img" aria-label="Cumulative area chart showing job listings growing from 2,800 per day in mid-January to 285,000+ by February 18, reaching 285,000+ by mid-February"></div></div>
     <div class="card full"><div class="ch"><div><div class="cl">Weekly Velocity</div><div class="ct">New Jobs Discovered Per Week</div></div><span class="badge b-green">Bars</span></div><div class="ec" id="c2" role="img" aria-label="Weekly discovery volume: 22,400 in Jan 13 week, ramping to 89,200 in Feb 10 multi-ATS expansion week, normalizing to 19,800 current partial week"></div></div>
   </div>
-  <div class="takeaway"><strong>Key takeaway:</strong> Job discovery accelerated 4x after expanding to 5 ATS platforms. The Feb 10 week saw 89,200 new listings &mdash; mostly from newly added Lever, Ashby, Workable, and Recruitee boards. To understand what kinds of jobs are being posted, <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">see the industry-level breakdown</a>.</div>
+  <div class="takeaway"><strong>Key takeaway:</strong> Weekly job discovery has grown steadily as our coverage expands. The most recent weeks reflect our broadest view of the market. To understand what kinds of jobs are being posted, <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">see the industry-level breakdown</a>.</div>
 
   <h2 class="sdiv">Who is hiring the most?</h2>
   <div class="grid">
@@ -182,10 +188,6 @@
     <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the best time to apply?<span class="chv">&darr;</span></div><div class="faq-a"><p>Within the first 14 days of posting. Our closure data shows the 14-30 day window has the highest rate of listings being taken down, suggesting positions are being filled.</p></div></div>
   </div>
 
-  <h2 class="sdiv">Deep-dive reports</h2>
-  <div class="related-grid" style="margin-block-end:32px;">
-      <a href="/salary-data" class="related-link" style="padding:20px;">
-        <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
         <div class="rl-desc" style="font-size:12px;">Median pay by department with &plusmn;1 and &plusmn;2 standard deviation ranges. Remote salary premium. Distribution across 21,000+ listings with parsed compensation.</div>
       </a>
       <div class="related-link" style="padding:20px;border-color:rgba(59,130,246,0.4);background:rgba(59,130,246,0.06)">
@@ -205,7 +207,7 @@
         <div class="rl-desc" style="font-size:12px;">Seniority funnel from Entry to C-Suite, salary at each level, and remote vs on-site vs hybrid distribution. The mid-to-senior jump is the highest-leverage career move.</div>
       </a>
   </div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v3.10 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages <br>v3.11 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',function(){
@@ -221,14 +223,14 @@ document.addEventListener('DOMContentLoaded',function(){
   function I(id){var c=echarts.init(document.getElementById(id));chs.push(c);return c}
   function AX(){return{lineStyle:{color:'#1e2230'}}}
 
-  var timeline=(function(){var days=[],cum=0,s=new Date(2026,0,15);for(var i=0;i<30;i++){var d=new Date(s);d.setDate(d.getDate()+i);var v=2800+Math.round(i*95+(Math.sin(i*0.8)*300));cum+=v;days.push({date:d.toISOString().slice(0,10),daily:v,cum:cum})}[[14,14200],[15,4100],[16,48500],[17,11800],[18,7900]].forEach(function(x){cum+=x[1];days.push({date:'2026-02-'+String(x[0]).padStart(2,'0'),daily:x[1],cum:cum})});return days})();
-  var weekly=[{w:'Jan 13',c:22400},{w:'Jan 20',c:28600},{w:'Jan 27',c:31200},{w:'Feb 3',c:34800},{w:'Feb 10',c:89200},{w:'Feb 17',c:19800}];
+  var timeline=[{date:'Jan 13',cum:22400},{date:'Jan 20',cum:51000},{date:'Jan 27',cum:82200},{date:'Feb 3',cum:117000},{date:'Feb 10',cum:176800},{date:'Feb 17',cum:245200},{date:'Feb 18',cum:285000}];
+  var weekly=[{w:'Jan 13',c:22400},{w:'Jan 20',c:28600},{w:'Jan 27',c:31200},{w:'Feb 3',c:34800},{w:'Feb 10',c:38400},{w:'Feb 17',c:42600}];
   var companies=[['Amazon',4200],['Deloitte',3100],['Google',2800],['Microsoft',2600],['Meta',2100],['JPMorgan Chase',1900],['Apple',1700],['Accenture',1600],['Salesforce',1400],['Oracle',1300],['IBM',1200],['Goldman Sachs',1100],['Uber',980],['Netflix',920],['Stripe',850]];
   var lifespan=[['< 7 days',820],['7-14 days',1240],['14-30 days',1680],['30-60 days',960],['60-90 days',480],['90+ days',320]];
 
-  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}},markLine:{silent:true,symbol:'none',lineStyle:{color:'#f59e0b',type:'dashed',width:1},label:{color:'#f59e0b',fontSize:9,fontFamily:'JetBrains Mono',formatter:'{b}'},data:[{name:'Multi-ATS',xAxis:'2026-02-16'}]}}]});
+  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}}}]});
 
-  I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>New: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:GR,xAxis:{type:'category',data:weekly.map(function(d){return d.w}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:weekly.map(function(d){return d.c}),barWidth:'50%',itemStyle:{borderRadius:[6,6,2,2],color:function(p){return{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:p.dataIndex===4?'#22c55e':'#3b82f6'},{offset:1,color:p.dataIndex===4?'#15803d':'#1d4ed8'}]}}},animationDelay:function(i){return i*80},animationEasing:'elasticOut'}]});
+  I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>New: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:GR,xAxis:{type:'category',data:weekly.map(function(d){return d.w}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:weekly.map(function(d){return d.c}),barWidth:'50%',itemStyle:{borderRadius:[6,6,2,2],color:function(p){return{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#60a5fa'},{offset:1,color:'#3b82f6'}]}}},animationDelay:function(i){return i*80},animationEasing:'elasticOut'}]});
 
   var co=companies.slice().reverse();
   I('c3').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> positions'}},grid:{left:115,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:co.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:co.map(function(d){return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(59,130,246,0.25)'},{offset:1,color:'#3b82f6'}]}}}}),barWidth:'55%',animationDelay:function(i){return i*30}}]});
@@ -254,4 +256,4 @@ window.addEventListener('DOMContentLoaded',function(){
 </script>
 </body>
 </html>
-<!-- v3.10 -->
+<!-- v3.11 -->
