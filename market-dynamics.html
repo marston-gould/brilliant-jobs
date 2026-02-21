@@ -110,8 +110,8 @@
   <div class="card">
     <div class="ch"><div><div class="cl">Choropleth</div><div class="ct">Where are the open jobs across the U.S.?</div></div><span class="badge b-green">By State</span></div>
     <div style="display:flex;gap:8px;margin-block-end:12px">
-      <button class="map-toggle active" id="mt-open" onclick="setMapMode('open')">Open Jobs</button>
-      <button class="map-toggle" id="mt-vel" onclick="setMapMode('velocity')">New Jobs / Week</button>
+      <button class="map-toggle active" id="mt-open">Open Jobs</button>
+      <button class="map-toggle" id="mt-vel">New Jobs / Week</button>
     </div>
     <div id="vel-bar" style="display:none" class="timeline-bar"><button id="pb3">&#9654; Play</button><input type="range" min="0" max="1" value="0" id="sl3"><span class="week-label" id="wl3">—</span></div>
     <div class="ec map" id="c3"><div class="loading-msg">Loading map data&hellip;</div></div>
@@ -424,6 +424,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     renderers[2] = renderVel;
     weekSets[2] = velWeeks;
     document.getElementById('pb3').addEventListener('click', function(){ togglePlay(2); });
+    document.getElementById('mt-open').addEventListener('click', function(){ setMapMode('open'); });
+    document.getElementById('mt-vel').addEventListener('click', function(){ setMapMode('velocity'); });
 
   } catch(e) {
     document.getElementById('c3').innerHTML = '<div class="loading-msg">Map error: ' + e.message + '</div>';
