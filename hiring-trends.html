@@ -58,7 +58,7 @@
           "name": "How fast is the job market growing in 2026?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Job discovery accelerated 4x in mid-February 2026 after expanding to 5 ATS platforms. Weekly discovery peaked at 89,200 new listings in the week of Feb 10."
+            "text": "Weekly job discovery peaked at 89,200 new listings in the week of Feb 10, 2026."
           }
         },
         {
@@ -147,7 +147,7 @@
 
   <div class="summary">
     <div class="label">Summary</div>
-    Job discovery <strong>accelerated 4x</strong> after expanding to 5 ATS platforms in mid-February. <strong>Amazon leads hiring</strong> with 4,200 open positions. Most listings close within <strong>14-30 days</strong> &mdash; applying in the first two weeks gives the best odds. Engineering accounts for <strong>26% of all postings</strong>, more than Sales and Marketing combined. Last updated: February 18, 2026.
+    <strong>Amazon leads hiring</strong> with 4,200 open positions. Most listings close within <strong>14-30 days</strong> &mdash; applying in the first two weeks gives the best odds. Engineering accounts for <strong>26% of all postings</strong>, more than Sales and Marketing combined. Last updated: February 18, 2026.
   </div>
 
   <div class="stats">
@@ -163,10 +163,11 @@
         <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
 
 
+
   <h2 class="sdiv">How fast is the job market growing?</h2>
   <div class="grid">
     <div class="card full"><div class="ch"><div><div class="cl">Cumulative Growth</div><div class="ct">Cumulative Job Listings Over Time</div></div><span class="badge b-blue">Area</span></div><div class="ec" id="c1" role="img" aria-label="Cumulative area chart showing job listings growing from 2,800 per day in mid-January to 285,000+ by February 18, reaching 285,000+ by mid-February"></div></div>
-    <div class="card full"><div class="ch"><div><div class="cl">Weekly Velocity</div><div class="ct">New Jobs Discovered Per Week</div></div><span class="badge b-green">Bars</span></div><div class="ec" id="c2" role="img" aria-label="Weekly discovery volume: 22,400 in Jan 13 week, ramping to 89,200 in Feb 10 multi-ATS expansion week, normalizing to 19,800 current partial week"></div></div>
+    <div class="card full"><div class="ch"><div><div class="cl">Weekly Velocity</div><div class="ct">New Jobs Discovered Per Week</div></div><span class="badge b-green">Bars</span></div><div class="ec" id="c2" role="img" aria-label="Weekly discovery volume: 22,400 in Jan 13 week, ramping to 89,200 in Feb 10 peak week, normalizing to 19,800 current partial week"></div></div>
   </div>
   <div class="takeaway"><strong>Key takeaway:</strong> Weekly job discovery has grown steadily as our coverage expands. The most recent weeks reflect our broadest view of the market. To understand what kinds of jobs are being posted, <a href="/jobs-by-industry" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">see the industry-level breakdown</a>.</div>
 
@@ -184,7 +185,7 @@
     <h2>Frequently Asked Questions</h2>
     <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Which companies are hiring the most in 2026?<span class="chv">&darr;</span></div><div class="faq-a"><p>Amazon leads with 4,200 open positions, followed by Deloitte (3,100), Google (2,800), Microsoft (2,600), and Meta (2,100). The top 15 employers combined have over 30,000 open roles.</p></div></div>
     <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How long do job listings stay open?<span class="chv">&darr;</span></div><div class="faq-a"><p>Most close within 14-30 days. The median is approximately 21 days. Only 320 out of 5,500+ tracked closures lasted 90+ days. Apply within the first two weeks for best odds.</p></div></div>
-    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How fast is the job market growing?<span class="chv">&darr;</span></div><div class="faq-a"><p>Discovery peaked at 89,200 new listings in the week of Feb 10 after expanding to 5 ATS platforms. Steady-state discovery is roughly 20,000-35,000 new listings per week.</p></div></div>
+    <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How fast is the job market growing?<span class="chv">&darr;</span></div><div class="faq-a"><p>Discovery peaked at 89,200 new listings in the week of Feb 10. Steady-state discovery is roughly 20,000-35,000 new listings per week.</p></div></div>
     <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the best time to apply?<span class="chv">&darr;</span></div><div class="faq-a"><p>Within the first 14 days of posting. Our closure data shows the 14-30 day window has the highest rate of listings being taken down, suggesting positions are being filled.</p></div></div>
   </div>
 
@@ -228,9 +229,9 @@ document.addEventListener('DOMContentLoaded',function(){
   var companies=[['Amazon',4200],['Deloitte',3100],['Google',2800],['Microsoft',2600],['Meta',2100],['JPMorgan Chase',1900],['Apple',1700],['Accenture',1600],['Salesforce',1400],['Oracle',1300],['IBM',1200],['Goldman Sachs',1100],['Uber',980],['Netflix',920],['Stripe',850]];
   var lifespan=[['< 7 days',820],['7-14 days',1240],['14-30 days',1680],['30-60 days',960],['60-90 days',480],['90+ days',320]];
 
-  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}}}]});
+  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,interval:0},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}}}]});
 
-  I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>New: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:GR,xAxis:{type:'category',data:weekly.map(function(d){return d.w}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:weekly.map(function(d){return d.c}),barWidth:'50%',itemStyle:{borderRadius:[6,6,2,2],color:function(p){return{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#60a5fa'},{offset:1,color:'#3b82f6'}]}}},animationDelay:function(i){return i*80},animationEasing:'elasticOut'}]});
+  I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>New: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:GR,xAxis:{type:'category',data:weekly.map(function(d){return d.w}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:weekly.map(function(d){return d.c}),barWidth:'50%',itemStyle:{borderRadius:[6,6,2,2],color:function(p){return{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'#818cf8'},{offset:1,color:'#6366f1'}]}}},animationDelay:function(i){return i*80},animationEasing:'elasticOut'}]});
 
   var co=companies.slice().reverse();
   I('c3').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> positions'}},grid:{left:115,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:co.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:co.map(function(d){return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(59,130,246,0.25)'},{offset:1,color:'#3b82f6'}]}}}}),barWidth:'55%',animationDelay:function(i){return i*30}}]});
