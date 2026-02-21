@@ -365,6 +365,53 @@ function matchBadge(result) {
 }
 
 // Main readiness analysis — runs automatically on Resumes page load, or manually via button
+// ─── AI-powered resume scoring (Pro feature) ───
+async function fetchAIScore(params) {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return null;
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(params)
+    });
+
+    if (!res.ok) {
+      console.log('[BJ] AI score HTTP', res.status);
+      return null;
+    }
+    var data = await res.json();
+    if (data.error) { console.log('[BJ] AI score error:', data.error); return null; }
+
+    // Normalize to existing score format for backward compatibility
+    return {
+      score: data.match_score,
+      matched: null,
+      total: null,
+      topMissing: (data.recommendations && data.recommendations.missing_skills || data.key_gaps || []).map(function(s) { return { term: s, count: null }; }),
+      topMatched: (data.key_matches || []).map(function(s) { return { term: s, count: null }; }),
+      bigramMatched: [],
+      bigramMissing: [],
+      jdsAnalyzed: data.jds_analyzed,
+      ai: true,
+      fitStatus: data.fit_status,
+      summary: data.analysis_summary,
+      coreRequirements: data.core_requirements,
+      recommendations: data.recommendations,
+      levelFit: data.level_fit,
+      differentialInsight: data.differential_insight,
+      upgradePrompt: data.upgrade_prompt
+    };
+  } catch (e) {
+    console.error('[BJ] AI score error, falling back to ngram:', e);
+    return null;
+  }
+}
+
 async function runReadinessAnalysis(opts) {
   opts = opts || {};
   var silent = opts.silent || false; // true = background run, no button state changes
@@ -428,7 +475,27 @@ async function runReadinessAnalysis(opts) {
         totalJDsFetched += fetched;
       }
 
-      var filterScore = scoreResumeVsJDs(r, jds);
+      var filterScore = null;
+
+      // Try AI scoring for Pro users
+      var userPlan = window._bjUserPlan || 'free';
+      var jdsWithContentAI = jds.filter(function(j){ return j.content; });
+      if ((userPlan === 'pro' || userPlan === 'enterprise') && r.extractedText && jdsWithContentAI.length >= 3) {
+        if (statusEl) statusEl.textContent = 'AI scoring for "' + filter.name + '"\u2026';
+        filterScore = await fetchAIScore({
+          resume_text: r.extractedText,
+          resume_keywords: r.keywords,
+          mode: 'corpus',
+          filter_name: filter.name,
+          job_ids: jdsWithContentAI.map(function(j) { return j.greenhouse_id; }),
+          max_jds: 20
+        });
+      }
+
+      // Fallback to ngram scoring
+      if (!filterScore) {
+        filterScore = scoreResumeVsJDs(r, jds);
+      }
       if (filterScore) {
         scores[ri].filters[filter.name] = filterScore;
         totalFiltersAnalyzed++;
@@ -1178,8 +1245,84 @@ async function openJobModal(jobId, e) {
     footerHtml += '<button class="' + saveClass + '" id="modal-save-btn" onclick="modalSave(\'' + jobId + '\', this)">' + saveLabel + '</button>';
   }
   footerHtml += '<button class="job-action-btn hide-btn" onclick="modalHide(\'' + jobId + '\')" style="padding:4px 10px;font-size:11px;">Hide</button>';
+  // AI Score button (Pro users with assigned resume)
+  var userPlan = window._bjUserPlan || 'free';
+  if (userPlan === 'pro' || userPlan === 'enterprise') {
+    footerHtml += '<button class="job-action-btn" onclick="aiScoreJob(\'' + jobId + '\')" id="ai-score-btn" style="padding:4px 10px;font-size:11px;border-color:var(--accent);color:var(--accent);">AI Score</button>';
+  }
   footerHtml += '<button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
   footerEl.innerHTML = footerHtml;
+
+  // AI score result container
+  var aiContainer = document.createElement('div');
+  aiContainer.id = 'ai-score-result';
+  footerEl.parentNode.insertBefore(aiContainer, footerEl);
+}
+
+// ─── Per-job AI scoring from modal ───
+async function aiScoreJob(jobId) {
+  var btn = document.getElementById('ai-score-btn');
+  var resultEl = document.getElementById('ai-score-result');
+  if (btn) { btn.disabled = true; btn.textContent = 'Scoring\u2026'; }
+
+  // Find assigned resume for this job's filter
+  var resume = null;
+  var storedResumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  if (storedResumes.length > 0) resume = storedResumes[0]; // Use first resume as default
+
+  if (!resume || !resume.extractedText) {
+    if (resultEl) resultEl.innerHTML = '<div style="font-size:12px;color:var(--text-faint);padding:8px 0;">No resume text available for AI scoring</div>';
+    if (btn) { btn.disabled = false; btn.textContent = 'AI Score'; }
+    return;
+  }
+
+  var result = await fetchAIScore({
+    resume_text: resume.extractedText,
+    resume_keywords: resume.keywords || [],
+    mode: 'single',
+    job_ids: [jobId],
+    max_jds: 1
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = 'AI Score'; }
+
+  if (!result || !result.ai) {
+    if (resultEl) resultEl.innerHTML = '<div style="font-size:12px;color:var(--red);padding:8px 0;">AI scoring failed — try again</div>';
+    return;
+  }
+
+  // Render rich result
+  var g = scoreToGrade(result.score);
+  var html = '<div style="margin:8px 0;padding:12px;background:var(--bg-input);border-radius:8px;border:1px solid var(--border);">';
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
+  html += '<span style="font-size:28px;font-weight:700;color:' + g.color + ';font-family:var(--mono)">' + g.grade + '</span>';
+  html += '<span style="font-size:14px;color:var(--text)">' + (result.fitStatus || '') + '</span>';
+  html += '</div>';
+  html += '<p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">' + (result.summary || '') + '</p>';
+
+  if (result.topMissing && result.topMissing.length > 0) {
+    html += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:4px">Missing skills:</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">';
+    result.topMissing.forEach(function(s) {
+      html += '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.2)">' + s.term + '</span>';
+    });
+    html += '</div>';
+  }
+
+  if (result.recommendations && result.recommendations.word_usage) {
+    html += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:4px">Rewrite tips:</div>';
+    result.recommendations.word_usage.forEach(function(tip) {
+      html += '<div style="font-size:11px;color:var(--text-dim);padding-left:8px">\u2192 ' + tip + '</div>';
+    });
+  }
+
+  html += '</div>';
+  if (resultEl) resultEl.innerHTML = html;
+
+  // PostHog
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('ai_score_completed', { mode: 'single', score: result.score, ai: true });
+  }
 }
 
 
