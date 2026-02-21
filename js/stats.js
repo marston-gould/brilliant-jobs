@@ -296,14 +296,17 @@ function aggregateStats(rows) {
     else s.postingAgeBuckets['90+ days']++;
   });
 
-  // Location aggregation for map + metro list
+  // Location aggregation for map + metro list (US only)
   s.stateCounts = {};
   s.cityCounts = {};
+  var US_ST = {AL:1,AK:1,AZ:1,AR:1,CA:1,CO:1,CT:1,DC:1,DE:1,FL:1,GA:1,HI:1,ID:1,IL:1,IN:1,IA:1,KS:1,KY:1,LA:1,ME:1,MD:1,MA:1,MI:1,MN:1,MS:1,MO:1,MT:1,NE:1,NV:1,NH:1,NJ:1,NM:1,NY:1,NC:1,ND:1,OH:1,OK:1,OR:1,PA:1,RI:1,SC:1,SD:1,TN:1,TX:1,UT:1,VT:1,VA:1,WA:1,WV:1,WI:1,WY:1};
   rows.forEach(function(r) {
-    if (r.loc_state) s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
-    if (r.loc_city && r.loc_state) {
-      var key = r.loc_city + ', ' + r.loc_state;
-      s.cityCounts[key] = (s.cityCounts[key]||0) + 1;
+    if (r.loc_state && US_ST[r.loc_state]) {
+      s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
+      if (r.loc_city) {
+        var key = r.loc_city + ', ' + r.loc_state;
+        s.cityCounts[key] = (s.cityCounts[key]||0) + 1;
+      }
     }
   });
 
@@ -353,7 +356,7 @@ function renderTimeline(stats) {
     series: [{ type:'bar', data:sorted.map(function(e){
         var isWtd = stats.timelineWtdKey && e[0] === stats.timelineWtdKey;
         return { value:e[1], itemStyle:{ color: isWtd
-          ? new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#f59e0b'},{offset:1,color:'rgba(245,158,11,0.3)'}])
+          ? new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#818cf8'},{offset:1,color:'rgba(129,140,248,0.3)'}])
           : new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6366f1'},{offset:1,color:'rgba(99,102,241,0.3)'}]),
           borderRadius:[3,3,0,0], borderType: isWtd ? 'dashed' : 'solid' }};
       }),
@@ -378,7 +381,7 @@ function renderSalaryDist(stats) {
   }
 
   // Color gradient: cool (low salary) → warm (high salary), matching salary-data page
-  var salaryColors = ['#06b6d4','#14b8a6','#22c55e','#84cc16','#eab308','#f59e0b','#f97316','#ef4444','#dc2626','#b91c1c','#991b1b','#7f1d1d'];
+  var salaryColors = ['#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e','#ef4444','#f97316','#f59e0b','#eab308','#22c55e'];
 
   chart.setOption({
     graphic:[],
@@ -407,7 +410,7 @@ function renderSeniorityBars(stats) {
   }
 
   // Ordered Entry → C-Suite (correct career ladder: Manager before Lead)
-  var SENIORITY_ORDER = ['Entry Level','Associate','Mid-Level','Senior','Manager','Lead','Director','VP','C-Suite'];
+  var SENIORITY_ORDER = ['Intern','Entry','Mid','Senior','Staff','Manager','Lead','Principal','Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
@@ -424,7 +427,7 @@ function renderSeniorityBars(stats) {
   if (data.length === 0) { emptyChart(chart, 'No seniority data'); return; }
 
   // Colors: cool (entry) → warm (C-suite), matching salary-data page seniority palette
-  var senColors = ['#6366f1','#3b82f6','#06b6d4','#14b8a6','#22c55e','#eab308','#f59e0b','#f97316','#ef4444','#dc2626','#94a3b8'];
+  var senColors = ['#3b82f6','#6366f1','#8b5cf6','#22c55e','#14b8a6','#f59e0b','#f97316','#ec4899','#ef4444','#dc2626','#94a3b8'];
 
   chart.setOption({
     graphic:[],
@@ -553,7 +556,7 @@ function renderIndustryBars(stats) {
   var cardWrap = card ? card.closest('.stats-chart-card') : null;
   var coveragePct = stats.total > 0 ? (stats.industryNonNull / stats.total) * 100 : 0;
 
-  if (coveragePct < 60) {
+  if (coveragePct < 20) {
     if (cardWrap) cardWrap.style.display = 'none';
     return;
   }
@@ -585,7 +588,7 @@ function renderPostingAge(stats) {
   var chart = getOrCreateChart('#chart-posting-age'); if (!chart) return;
   var buckets = stats.postingAgeBuckets;
   var labels = ['0-7 days','8-14 days','15-30 days','31-60 days','61-90 days','90+ days'];
-  var ageColors = ['#22c55e','#84cc16','#eab308','#f59e0b','#f97316','#ef4444'];
+  var ageColors = ['#3b82f6','#6366f1','#8b5cf6','#f59e0b','#f97316','#ef4444'];
   
   chart.setOption({
     graphic:[],
