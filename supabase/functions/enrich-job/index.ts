@@ -1,10 +1,8 @@
 // supabase/functions/enrich-job/index.ts
-// Replaces 8 client-side writes to ats_jobs that will break after RLS fix
-// Client POSTs job_id + enrichment data, function validates and writes with service_role
-//
-// Accepts two enrichment types:
-//   1. content: HTML job description from ATS API
-//   2. salary: parsed salary data (min, max, raw, currency, rate)
+// Enriches ats_jobs with content, salary, and status data.
+// Called by client when:
+//   1. Job description fetched from ATS API (content + salary extraction)
+//   2. Dead job detected (status = 'closed')
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -15,7 +13,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -26,9 +23,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json()
-    const { job_id, content, salary } = body
+    const { job_id, content, salary, status } = body
 
-    // Validate required field
     if (!job_id || typeof job_id !== 'string') {
       return new Response(
         JSON.stringify({ error: 'job_id is required and must be a string' }),
@@ -36,19 +32,16 @@ serve(async (req) => {
       )
     }
 
-    // Must have at least one enrichment type
-    if (!content && !salary) {
+    if (!content && !salary && !status) {
       return new Response(
-        JSON.stringify({ error: 'Must provide content and/or salary data' }),
+        JSON.stringify({ error: 'Must provide content, salary, and/or status data' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Build update payload
     const updateData: Record<string, any> = {}
 
     if (content && typeof content === 'string') {
-      // Cap content at 50KB to prevent abuse
       updateData.content = content.substring(0, 50000)
     }
 
@@ -60,6 +53,18 @@ serve(async (req) => {
       if (salary.rate && typeof salary.rate === 'string') updateData.salary_rate = salary.rate.substring(0, 10)
     }
 
+    // Status update — only allow specific transitions
+    if (status && typeof status === 'string') {
+      const allowedStatuses = ['open', 'closed']
+      if (allowedStatuses.includes(status)) {
+        updateData.status = status
+        // Record when the job was detected as closed
+        if (status === 'closed') {
+          updateData.closed_at = new Date().toISOString()
+        }
+      }
+    }
+
     if (Object.keys(updateData).length === 0) {
       return new Response(
         JSON.stringify({ error: 'No valid enrichment data provided' }),
@@ -67,35 +72,32 @@ serve(async (req) => {
       )
     }
 
-    // Use service_role to write (bypasses RLS)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Update the job — only if it exists (no upsert, no insert)
     const { error } = await supabase
       .from('ats_jobs')
       .update(updateData)
       .eq('greenhouse_id', job_id)
 
     if (error) {
-      console.error('Enrich-job update failed:', error)
+      console.error('Update failed:', error)
       return new Response(
-        JSON.stringify({ error: 'Update failed', details: error.message }),
+        JSON.stringify({ error: 'Database update failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     return new Response(
-      JSON.stringify({ success: true, job_id, fields: Object.keys(updateData) }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ ok: true, updated: Object.keys(updateData) }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
-
-  } catch (err) {
-    console.error('Enrich-job error:', err)
+  } catch (e) {
+    console.error('Error:', e)
     return new Response(
-      JSON.stringify({ error: 'Internal error' }),
+      JSON.stringify({ error: e.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
