@@ -9,16 +9,15 @@
 
 // ─── Admin access gate ───
 function checkAdminAccess() {
-  if (!window.sb) { console.warn('[Admin] No sb client'); return; }
+  if (typeof sb === 'undefined') { console.warn('[Admin] No sb client'); return; }
   sb.auth.getUser().then(function(res) {
     if (!res.data || !res.data.user) { console.warn('[Admin] No authenticated user'); return; }
     console.log('[Admin] Checking role for', res.data.user.email);
     sb.from('profiles').select('role').eq('id', res.data.user.id).single().then(function(r) {
-      console.log('[Admin] Profile query result:', JSON.stringify(r.data), 'error:', JSON.stringify(r.error));
+      if (r.error) { console.error('[Admin] Profile query error:', r.error.message); return; }
       if (r.data && r.data.role === 'admin') {
         var nav = document.getElementById('nav-admin');
-        if (nav) { nav.style.display = ''; console.log('[Admin] Nav shown'); }
-        else { console.warn('[Admin] nav-admin element not found'); }
+        if (nav) { nav.style.display = ''; console.log('[Admin] ✓ Nav shown'); }
       }
     }).catch(function(e) { console.error('[Admin] Profile query failed:', e); });
   }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
