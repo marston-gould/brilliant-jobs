@@ -357,7 +357,7 @@ function renderTimeline(stats) {
         var isWtd = stats.timelineWtdKey && e[0] === stats.timelineWtdKey;
         return { value:e[1], itemStyle:{ color: isWtd
           ? new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#818cf8'},{offset:1,color:'rgba(129,140,248,0.3)'}])
-          : new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6366f1'},{offset:1,color:'rgba(99,102,241,0.3)'}]),
+          : new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#60a5fa'},{offset:1,color:'rgba(59,130,246,0.4)'}]),
           borderRadius:[3,3,0,0], borderType: isWtd ? 'dashed' : 'solid' }};
       }),
       barMaxWidth:28 }],
@@ -596,7 +596,7 @@ function renderPostingAge(stats) {
       formatter:function(p){return '<b>'+p[0].name+'</b><br/>'+p[0].value+' jobs';}}, ttip()),
     grid: { top:20, right:20, bottom:35, left:50 },
     xAxis: { type:'category', data:labels,
-      axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10 },
+      axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10, interval:0 },
       axisLine:STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
     series: [{ type:'bar', data:labels.map(function(l,i){return {value:buckets[l]||0, itemStyle:{color:ageColors[i], borderRadius:[3,3,0,0]}};}),
@@ -664,12 +664,18 @@ function renderGeoMap(stats, configs) {
   var listData;
   if (hasMetroPills) {
     // Show cities within the metro filter areas
-    listData = Object.entries(cityCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+    listData = Object.entries(cityCounts).filter(function(e){
+        var st=e[0].split(', ').pop();
+        return /^[A-Z]{2}$/.test(st) && 'AL,AK,AZ,AR,CA,CO,CT,DC,DE,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,VA,WA,WV,WI,WY'.indexOf(st)>=0;
+      }).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
     listEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:'+_T.dark+'">Top Cities in Filter</div>' +
       listData.map(function(e,i){return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid '+_T.border+'"><span>'+(i+1)+'. '+e[0]+'</span><span style="font-weight:600">'+e[1].toLocaleString()+'</span></div>';}).join('');
   } else {
     // Show top metro areas (city, state combos)
-    listData = Object.entries(cityCounts).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+    listData = Object.entries(cityCounts).filter(function(e){
+        var st=e[0].split(', ').pop();
+        return /^[A-Z]{2}$/.test(st) && 'AL,AK,AZ,AR,CA,CO,CT,DC,DE,FL,GA,HI,ID,IL,IN,IA,KS,KY,LA,ME,MD,MA,MI,MN,MS,MO,MT,NE,NV,NH,NJ,NM,NY,NC,ND,OH,OK,OR,PA,RI,SC,SD,TN,TX,UT,VT,VA,WA,WV,WI,WY'.indexOf(st)>=0;
+      }).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
     listEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:'+_T.dark+'">Top 10 Metro Areas</div>' +
       listData.map(function(e,i){return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid '+_T.border+'"><span>'+(i+1)+'. '+e[0]+'</span><span style="font-weight:600">'+e[1].toLocaleString()+'</span></div>';}).join('');
   }
