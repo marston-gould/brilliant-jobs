@@ -307,39 +307,224 @@ async function loadUsersTab() {
 // TAB 4: SEO / DATA COVERAGE
 // ═══════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════
+// TAB 4: SEO — Full Analytics Dashboard
+// ═══════════════════════════════════════════════════════════
+
+var _seoSubtab = 'overview';
+var _seoDays = 30;
+var _seoCharts = {};
+
+function switchSeoSubtab(tab) {
+  _seoSubtab = tab;
+  document.querySelectorAll('.seo-subpanel').forEach(function(p) { p.style.display = 'none'; });
+  document.querySelectorAll('#seo-subtabs .admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+  var panel = document.getElementById('seo-sub-' + tab);
+  if (panel) panel.style.display = '';
+  var btn = document.querySelector('#seo-subtabs [data-seotab="' + tab + '"]');
+  if (btn) btn.classList.add('active');
+  loadSeoSubtab(tab);
+}
+
+function setSeoRange(days) {
+  _seoDays = days;
+  document.querySelectorAll('#seo-date-range .admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+  var btn = document.querySelector('#seo-date-range [data-seodays="' + days + '"]');
+  if (btn) btn.classList.add('active');
+  loadSeoSubtab(_seoSubtab);
+}
+
 async function loadSeoTab() {
   console.log('[Admin] loadSeoTab');
+  loadSeoSubtab(_seoSubtab);
+}
+
+async function loadSeoSubtab(tab) {
   try {
-    var res = await sb.rpc('get_seo_page_health');
-    if (res.error) { console.error('[Admin] SEO RPC error:', res.error); return; }
-    var d = res.data;
-    if (!d) return;
-
-    setAdminText('as-total', fmtAdminNum(d.total_jobs));
-    setAdminText('as-salary', fmtAdminNum(d.with_salary));
-    setAdminText('as-dept', fmtAdminNum(d.with_department));
-    setAdminText('as-location', fmtAdminNum(d.with_location));
-
-    var total = d.total_jobs || 1;
-    var rows = [
-      { col: 'salary_min/max', pop: d.with_salary, page: 'Salary Data' },
-      { col: 'department', pop: d.with_department, page: 'Jobs by Industry (dept chart)' },
-      { col: 'industry', pop: d.with_industry, page: 'Jobs by Industry' },
-      { col: 'career_level', pop: d.with_level, page: 'Career Level Data' },
-      { col: 'loc_state', pop: d.with_location, page: 'Market Dynamics' },
-    ];
-
-    var tbody = document.getElementById('admin-seo-body');
-    if (tbody) {
-      tbody.innerHTML = rows.map(function(r) {
-        var pct = Math.round((r.pop || 0) / total * 100);
-        var cls = pct >= 60 ? 'admin-green' : pct >= 30 ? 'admin-amber' : 'admin-red';
-        return '<tr><td>' + r.col + '</td><td>' + fmtAdminNum(r.pop || 0) + '</td>' +
-          '<td class="' + cls + '">' + pct + '%</td><td>' + r.page + '</td></tr>';
-      }).join('');
+    switch(tab) {
+      case 'overview': await loadSeoOverview(); break;
+      case 'pages': await loadSeoPages(); break;
+      case 'queries': await loadSeoQueries(); break;
+      case 'health': await loadSeoHealth(); break;
     }
-  } catch (err) {
-    console.error('[Admin] loadSeoTab error:', err);
+  } catch(err) { console.error('[Admin] SEO subtab error:', err); }
+}
+
+// ─── Overview ───
+async function loadSeoOverview() {
+  // Summary cards
+  var ov = await sb.rpc('get_seo_overview');
+  if (ov.data) {
+    var d = ov.data;
+    setAdminText('seo-clicks-7d', fmtAdminNum(d.clicks_7d || 0));
+    setAdminText('seo-impr-7d', fmtAdminNum(d.impressions_7d || 0));
+    setAdminText('seo-position', d.avg_position_7d || '—');
+    setAdminText('seo-psi', d.latest_psi_mobile || '—');
+    setAdminText('seo-signups', fmtAdminNum(d.signups_7d || 0));
+  }
+
+  // Trend chart
+  var trend = await sb.rpc('get_seo_site_trend', { days_back: _seoDays });
+  if (trend.data && trend.data.length > 0) {
+    var chartEl = document.getElementById('seo-chart-trend');
+    if (chartEl) {
+      if (!_seoCharts.trend) _seoCharts.trend = echarts.init(chartEl, null, { renderer: 'canvas' });
+      var dates = trend.data.map(function(r) { return r.date; });
+      _seoCharts.trend.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#9ba1b4', fontSize: 11 }, top: 0 },
+        grid: { top: 30, right: 60, bottom: 30, left: 50 },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontSize: 10 } },
+        yAxis: [
+          { type: 'value', name: 'Clicks', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
+          { type: 'value', name: 'Impressions', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }
+        ],
+        series: [
+          { name: 'Clicks', type: 'bar', data: trend.data.map(function(r) { return r.total_clicks; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 12 },
+          { name: 'Impressions', type: 'line', yAxisIndex: 1, data: trend.data.map(function(r) { return r.total_impressions; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, smooth: true, symbol: 'none' }
+        ]
+      }, true);
+    }
+  }
+
+  // ROI chart (clicks vs signups)
+  var roi = await sb.rpc('get_seo_roi', { days_back: _seoDays });
+  if (roi.data && roi.data.length > 0) {
+    var roiEl = document.getElementById('seo-chart-roi');
+    if (roiEl) {
+      if (!_seoCharts.roi) _seoCharts.roi = echarts.init(roiEl, null, { renderer: 'canvas' });
+      _seoCharts.roi.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['Clicks', 'Signups'], textStyle: { color: '#9ba1b4', fontSize: 11 }, top: 0 },
+        grid: { top: 30, right: 40, bottom: 30, left: 50 },
+        xAxis: { type: 'category', data: roi.data.map(function(r) { return r.date; }), axisLabel: { color: '#7b829a', fontSize: 10 } },
+        yAxis: [
+          { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
+          { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }
+        ],
+        series: [
+          { name: 'Clicks', type: 'line', data: roi.data.map(function(r) { return r.total_clicks; }), lineStyle: { color: '#4d8eff' }, symbol: 'none', smooth: true },
+          { name: 'Signups', type: 'bar', yAxisIndex: 1, data: roi.data.map(function(r) { return r.signups; }), itemStyle: { color: '#a78bfa' }, barMaxWidth: 8 }
+        ]
+      }, true);
+    }
+  }
+}
+
+// ─── Pages ───
+async function loadSeoPages() {
+  var res = await sb.rpc('get_seo_top_pages', { days_back: _seoDays, lim: 30 });
+  var tbody = document.getElementById('seo-pages-body');
+  if (!tbody || !res.data) return;
+  tbody.innerHTML = res.data.map(function(r) {
+    var short = r.url.replace('https://brilliantjobs.app', '').replace('https://brilliantjobs.io', '') || '/';
+    return '<tr><td style="font-family:var(--mono);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + r.url + '">' + short + '</td>' +
+      '<td>' + fmtAdminNum(r.total_clicks) + '</td>' +
+      '<td>' + fmtAdminNum(r.total_impressions) + '</td>' +
+      '<td>' + (r.avg_position || '—') + '</td></tr>';
+  }).join('');
+}
+
+// ─── Queries ───
+async function loadSeoQueries() {
+  var res = await sb.rpc('get_seo_top_queries', { days_back: _seoDays, lim: 50 });
+  var tbody = document.getElementById('seo-queries-body');
+  if (!tbody || !res.data) return;
+  tbody.innerHTML = res.data.map(function(r) {
+    var ctrPct = r.avg_ctr ? (r.avg_ctr * 100).toFixed(1) + '%' : '—';
+    return '<tr><td style="font-size:12px;">' + (r.query || '—') + '</td>' +
+      '<td>' + fmtAdminNum(r.total_clicks) + '</td>' +
+      '<td>' + fmtAdminNum(r.total_impressions) + '</td>' +
+      '<td>' + ctrPct + '</td>' +
+      '<td>' + (r.avg_position || '—') + '</td></tr>';
+  }).join('');
+}
+
+// ─── Technical Health ───
+async function loadSeoHealth() {
+  // Index status
+  var idx = await sb.rpc('get_seo_index_status');
+  var idxBody = document.getElementById('seo-index-body');
+  if (idxBody && idx.data) {
+    idxBody.innerHTML = idx.data.length > 0 ? idx.data.map(function(r) {
+      var short = r.url.replace('https://brilliantjobs.app', '').replace('https://brilliantjobs.io', '') || '/';
+      var verdictCls = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+      var crawlDate = r.last_crawl_time ? new Date(r.last_crawl_time).toLocaleDateString() : '—';
+      return '<tr><td style="font-family:var(--mono);font-size:11px;">' + short + '</td>' +
+        '<td class="' + verdictCls + '">' + (r.verdict || '—') + '</td>' +
+        '<td>' + (r.coverage_state || '—') + '</td>' +
+        '<td>' + crawlDate + '</td>' +
+        '<td>' + (r.mobile_usability || '—') + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:20px;">No index data yet. Run the SEO sync edge function to populate.</td></tr>';
+  }
+
+  // Audit scores trend (PSI over time from seo_site_daily)
+  var trend = await sb.rpc('get_seo_site_trend', { days_back: _seoDays });
+  if (trend.data && trend.data.some(function(r) { return r.psi_mobile_score; })) {
+    var psiEl = document.getElementById('seo-chart-psi-trend');
+    if (psiEl) {
+      if (!_seoCharts.psi) _seoCharts.psi = echarts.init(psiEl, null, { renderer: 'canvas' });
+      var psiData = trend.data.filter(function(r) { return r.psi_mobile_score != null; });
+      _seoCharts.psi.setOption({
+        tooltip: { trigger: 'axis' },
+        legend: { data: ['PSI Mobile', 'Impressions'], textStyle: { color: '#9ba1b4', fontSize: 11 }, top: 0 },
+        grid: { top: 30, right: 50, bottom: 30, left: 50 },
+        xAxis: { type: 'category', data: psiData.map(function(r) { return r.date; }), axisLabel: { color: '#7b829a', fontSize: 10 } },
+        yAxis: [
+          { type: 'value', name: 'PSI', min: 0, max: 100, axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
+          { type: 'value', name: 'Impressions', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }
+        ],
+        series: [
+          { name: 'PSI Mobile', type: 'line', data: psiData.map(function(r) { return r.psi_mobile_score; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
+          { name: 'Impressions', type: 'bar', yAxisIndex: 1, data: psiData.map(function(r) { return r.total_impressions; }), itemStyle: { color: 'rgba(77,142,255,0.3)' }, barMaxWidth: 12 }
+        ]
+      }, true);
+    }
+  }
+
+  // Audit table
+  var audits = await sb.rpc('get_seo_tech_health', { days_back: _seoDays });
+  var auditBody = document.getElementById('seo-audits-body');
+  if (auditBody && audits.data) {
+    auditBody.innerHTML = audits.data.length > 0 ? audits.data.slice(0, 30).map(function(r) {
+      var short = r.url.replace('https://brilliantjobs.app', '').replace('https://brilliantjobs.io', '') || '/';
+      var scoreCls = r.score >= 90 ? 'admin-green' : r.score >= 50 ? 'admin-amber' : 'admin-red';
+      var issueCount = Array.isArray(r.issues) ? r.issues.length : 0;
+      return '<tr><td>' + r.date + '</td>' +
+        '<td style="font-family:var(--mono);font-size:11px;">' + short + '</td>' +
+        '<td>' + r.source + '</td>' +
+        '<td class="' + scoreCls + '">' + (r.score || '—') + '</td>' +
+        '<td>' + issueCount + ' issues</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:20px;">No audit data yet. Run technical audits to populate.</td></tr>';
+  }
+}
+
+// ─── SEO Sync Trigger ───
+async function triggerSeoSync(tasks) {
+  var btn = document.getElementById('seo-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+  try {
+    var session = (await sb.auth.getSession()).data.session;
+    if (!session) { alert('Sign in required'); return; }
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/seo-sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ tasks: tasks || ['psi', 'posthog'] })
+    });
+    var data = await resp.json();
+    console.log('[Admin] SEO sync result:', data);
+    if (btn) btn.textContent = 'Done ✓';
+    setTimeout(function() { if (btn) { btn.disabled = false; btn.textContent = '↻ Sync Now'; } }, 2000);
+    // Refresh the current subtab
+    loadSeoSubtab(_seoSubtab);
+  } catch(err) {
+    console.error('[Admin] SEO sync error:', err);
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Sync Now'; }
+    alert('Sync failed: ' + err.message);
   }
 }
 
