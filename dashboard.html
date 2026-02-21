@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.38 -->
+<!-- Brilliant Jobs Dashboard v3.39 - 2026-02-21 - Fix: unclosed divs in page-stats nesting settings/subscription/admin -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1674,6 +1674,8 @@
 
         </div>
       </div>
+      </div>
+      </div>
 
       <!-- ============ SETTINGS ============ -->
       <div class="page" id="page-settings">
@@ -1708,8 +1710,7 @@
       </div>
 
       <!-- ============ ADMIN CONSOLE ============ -->
-      <div class="page" id="page-admin" style="min-height:100px;">
-        <div style="background:red;color:white;padding:20px;font-size:24px;font-weight:bold;min-height:50px;">ADMIN PAGE IS RENDERING - IF YOU CAN SEE THIS, THE PAGE WORKS</div>
+      <div class="page" id="page-admin">
         <div class="page-header">
           <h2>Admin Console</h2>
           <p>System health, cohorts, users, SEO coverage, and revenue</p>
