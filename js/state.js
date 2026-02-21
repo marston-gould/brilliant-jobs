@@ -17,15 +17,13 @@ export let tuningLocExclPills = tuningSettings.locationExcludes || [];
 export let tuningTitleExclPills = tuningSettings.titleExcludes || [];
 export let tuningCoExclPills = tuningSettings.companyExcludes || [];
 export let tuningIndExclPills = tuningSettings.industryExcludes || [];
-export let levelHierarchy = tuningSettings.levelHierarchy || [];
+export let levelHierarchy = tuningSettings.levelHierarchy || (typeof DEFAULT_LEVELS !== 'undefined' ? JSON.parse(JSON.stringify(DEFAULT_LEVELS)) : levelHierarchy);
 export function setTuningSettings(t) { tuningSettings = t; }
 export function setTuningLocExclPills(p) { tuningLocExclPills = p; }
 export function setTuningTitleExclPills(p) { tuningTitleExclPills = p; }
 export function setTuningCoExclPills(p) { tuningCoExclPills = p; }
 export function setTuningIndExclPills(p) { tuningIndExclPills = p; }
 export function setLevelHierarchy(h) { levelHierarchy = h; }
-export let getJobLevel = function(title, hierarchy) { return null; };
-export function setGetJobLevel(fn) { getJobLevel = fn; }
 export let whatPills = [];
 export let wherePills = [];
 export let whenPills = [];
@@ -130,7 +128,7 @@ export function rehydrateState() {
   tuningTitleExclPills = tuningSettings.titleExcludes || [];
   tuningCoExclPills = tuningSettings.companyExcludes || [];
   tuningIndExclPills = tuningSettings.industryExcludes || [];
-  levelHierarchy = tuningSettings.levelHierarchy || [];
+  levelHierarchy = tuningSettings.levelHierarchy || (typeof DEFAULT_LEVELS !== 'undefined' ? JSON.parse(JSON.stringify(DEFAULT_LEVELS)) : levelHierarchy);
   hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
   savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
   appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
