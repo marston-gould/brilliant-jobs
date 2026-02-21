@@ -99,6 +99,7 @@
         <div class="rl-title" style="font-size:15px;margin-block-end:8px;">$ Salary Data</div>
 
 
+
   <h2 class="sdiv">Industry &times; Department</h2>
   <div class="card">
     <div class="ch"><div><div class="cl">Heatmap</div><div class="ct">Where are companies hiring, by sector?</div></div><span class="badge b-blue">Industry &times; Dept</span></div>
@@ -499,9 +500,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         xAxis:{type:'value',axisLabel:{color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10},splitLine:{lineStyle:{color:'#1e2230'}},name:'per 10K residents',nameTextStyle:{color:'#7884a8',fontSize:10,fontFamily:'JetBrains Mono'},nameLocation:'end'},
         yAxis:{type:'category',data:pcRev.map(function(d){return d[0];}),axisLabel:{color:'#8a92a9',fontFamily:'JetBrains Mono',fontSize:10},axisLine:{show:false},axisTick:{show:false}},
         series:[{type:'bar',data:pcRev.map(function(d){
-          var ratio=d[1]/pcMax;
-          var r=Math.round(34+ratio*187), g=Math.round(197-ratio*60), b=Math.round(94+ratio*20);
-          return {value:d[1],itemStyle:{color:'rgb('+r+','+g+','+b+')',borderRadius:[0,3,3,0]}};
+          var c = d[1]>=8 ? '#22c55e' : d[1]>=4 ? '#3b82f6' : '#6366f1';
+          return {value:d[1],itemStyle:{color:c,borderRadius:[0,3,3,0]}};
         }),barMaxWidth:16,label:{show:true,position:'right',color:'#8a92a9',fontFamily:'JetBrains Mono',fontSize:9,formatter:function(p){return p.value.toFixed(1);}}}],
         animation:true,animationDuration:800
       });
