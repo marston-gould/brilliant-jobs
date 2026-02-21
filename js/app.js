@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.34';
+const BJ_VERSION = 'v3.35';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -23,6 +23,12 @@ async function init() {
     $(`#page-${activeTab}`).classList.add('active');
     $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
   }
+  // DEBUG: log page-admin state
+  const _pa = $('#page-admin');
+  console.log('[DEBUG] page-admin classList:', _pa ? _pa.className : 'NOT FOUND');
+  console.log('[DEBUG] page-admin display:', _pa ? getComputedStyle(_pa).display : 'N/A');
+  console.log('[DEBUG] page-admin parent display:', _pa ? getComputedStyle(_pa.parentElement).display : 'N/A');
+  console.log('[DEBUG] activeTab from LS:', activeTab);
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
