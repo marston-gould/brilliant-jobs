@@ -411,18 +411,168 @@ async function loadSeoOverview() {
   }
 }
 
-// ─── Pages ───
+// ─── Page Drilldown ───
 async function loadSeoPages() {
-  var res = await sb.rpc('get_seo_top_pages', { days_back: _seoDays, lim: 30 });
-  var tbody = document.getElementById('seo-pages-body');
-  if (!tbody || !res.data) return;
-  tbody.innerHTML = res.data.map(function(r) {
-    var short = r.url.replace('https://brilliantjobs.app', '').replace('https://brilliantjobs.io', '') || '/';
-    return '<tr><td style="font-family:var(--mono);font-size:11px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + r.url + '">' + short + '</td>' +
-      '<td>' + fmtAdminNum(r.total_clicks) + '</td>' +
-      '<td>' + fmtAdminNum(r.total_impressions) + '</td>' +
-      '<td>' + (r.avg_position || '—') + '</td></tr>';
-  }).join('');
+  // Auto-load if a URL is already selected
+  var sel = document.getElementById('seo-drill-url');
+  if (sel && sel.value) loadSeoDrilldown();
+}
+
+async function loadSeoDrilldown() {
+  var sel = document.getElementById('seo-drill-url');
+  var url = sel ? sel.value : '';
+  var content = document.getElementById('seo-drill-content');
+  var empty = document.getElementById('seo-drill-empty');
+  if (!url) {
+    if (content) content.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (content) content.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  var res = await sb.rpc('get_seo_page_drilldown', { target_url: url, days_back: _seoDays });
+  if (!res.data) return;
+  var d = res.data;
+
+  // Score cards
+  var latestMobile = null, latestDesktop = null;
+  if (d.psi_trend && d.psi_trend.length) {
+    for (var i = d.psi_trend.length - 1; i >= 0; i--) {
+      if (!latestMobile && d.psi_trend[i].source === 'psi_mobile') latestMobile = d.psi_trend[i];
+      if (!latestDesktop && d.psi_trend[i].source === 'psi_desktop') latestDesktop = d.psi_trend[i];
+      if (latestMobile && latestDesktop) break;
+    }
+  }
+  setAdminText('drill-psi-mobile', latestMobile ? latestMobile.score : '—');
+  setAdminText('drill-psi-desktop', latestDesktop ? latestDesktop.score : '—');
+
+  // Color the PSI scores
+  var mEl = document.getElementById('drill-psi-mobile');
+  var dEl = document.getElementById('drill-psi-desktop');
+  if (mEl && latestMobile) mEl.style.color = latestMobile.score >= 90 ? 'var(--green)' : latestMobile.score >= 50 ? 'var(--amber,#f59e0b)' : 'var(--red)';
+  if (dEl && latestDesktop) dEl.style.color = latestDesktop.score >= 90 ? 'var(--green)' : latestDesktop.score >= 50 ? 'var(--amber,#f59e0b)' : 'var(--red)';
+
+  // GSC clicks total
+  var totalClicks = 0;
+  if (d.gsc_trend) d.gsc_trend.forEach(function(r) { totalClicks += r.clicks || 0; });
+  setAdminText('drill-clicks', totalClicks || '—');
+
+  // Conversions total
+  var totalPV = 0;
+  if (d.conversions) d.conversions.forEach(function(r) { if (r.event_type === 'pageview') totalPV += r.count || 0; });
+  setAdminText('drill-pageviews', totalPV || '—');
+
+  // PSI trend chart
+  var chartEl = document.getElementById('seo-drill-chart');
+  if (chartEl && d.psi_trend && d.psi_trend.length > 0) {
+    if (!_seoCharts.drill) _seoCharts.drill = echarts.init(chartEl, null, { renderer: 'canvas' });
+    var mobileData = d.psi_trend.filter(function(r) { return r.source === 'psi_mobile'; });
+    var desktopData = d.psi_trend.filter(function(r) { return r.source === 'psi_desktop'; });
+    var dates = [];
+    var seen = {};
+    d.psi_trend.forEach(function(r) { if (!seen[r.date]) { dates.push(r.date); seen[r.date] = true; } });
+    dates.sort();
+
+    var mobileMap = {}; mobileData.forEach(function(r) { mobileMap[r.date] = r.score; });
+    var desktopMap = {}; desktopData.forEach(function(r) { desktopMap[r.date] = r.score; });
+
+    _seoCharts.drill.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['Mobile', 'Desktop'], textStyle: { color: '#9ba1b4', fontSize: 11 }, top: 0 },
+      grid: { top: 30, right: 40, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontSize: 10 } },
+      yAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
+      series: [
+        { name: 'Mobile', type: 'line', data: dates.map(function(d) { return mobileMap[d] || null; }), lineStyle: { color: '#f59e0b', width: 2 }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6, connectNulls: true },
+        { name: 'Desktop', type: 'line', data: dates.map(function(d) { return desktopMap[d] || null; }), lineStyle: { color: '#4d8eff', width: 2 }, itemStyle: { color: '#4d8eff' }, symbol: 'circle', symbolSize: 6, connectNulls: true }
+      ]
+    }, true);
+  }
+
+  // Core Web Vitals
+  var cwvGrid = document.getElementById('drill-cwv-grid');
+  if (cwvGrid && latestMobile && latestMobile.metrics) {
+    var m = latestMobile.metrics;
+    var vitals = [
+      { label: 'FCP', val: m.fcp ? (m.fcp/1000).toFixed(2) + 's' : '—', good: m.fcp < 1800 },
+      { label: 'LCP', val: m.lcp ? (m.lcp/1000).toFixed(2) + 's' : '—', good: m.lcp < 2500 },
+      { label: 'CLS', val: m.cls != null ? m.cls.toFixed(3) : '—', good: m.cls < 0.1 },
+      { label: 'TBT', val: m.tbt != null ? Math.round(m.tbt) + 'ms' : '—', good: m.tbt < 200 },
+      { label: 'SI', val: m.si ? (m.si/1000).toFixed(2) + 's' : '—', good: m.si < 3400 },
+      { label: 'SEO', val: m.seo || '—', good: m.seo >= 90 }
+    ];
+    cwvGrid.innerHTML = vitals.map(function(v) {
+      var cls = v.good ? 'admin-green' : 'admin-red';
+      return '<div class="stat-card" style="padding:8px;"><div class="stat-val ' + cls + '" style="font-size:16px;">' + v.val + '</div><div class="stat-label" style="font-size:9px;">' + v.label + '</div></div>';
+    }).join('');
+  } else if (cwvGrid) {
+    cwvGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-faint);font-size:12px;padding:12px;">No CWV data yet — run a PSI scan</div>';
+  }
+
+  // Issues
+  var issuesEl = document.getElementById('drill-issues');
+  if (issuesEl) {
+    var allIssues = [];
+    if (latestMobile && latestMobile.issues) allIssues = allIssues.concat(latestMobile.issues.map(function(i) { i._src = 'mobile'; return i; }));
+    if (latestDesktop && latestDesktop.issues) allIssues = allIssues.concat(latestDesktop.issues.map(function(i) { i._src = 'desktop'; return i; }));
+    if (allIssues.length > 0) {
+      issuesEl.innerHTML = allIssues.map(function(i) {
+        return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">' +
+          '<span style="color:var(--red);font-size:10px;">●</span>' +
+          '<span style="color:var(--text-dim);">' + (i.title || i.id) + '</span>' +
+          '<span style="margin-left:auto;font-size:10px;color:var(--text-faint);">' + (i._src || '') + '</span>' +
+          '</div>';
+      }).join('');
+    } else {
+      issuesEl.innerHTML = '<div style="color:var(--green);font-size:12px;">✓ No issues flagged</div>';
+    }
+  }
+
+  // Index status
+  var idxEl = document.getElementById('drill-index');
+  if (idxEl) {
+    if (d.index_status) {
+      var idx = d.index_status;
+      var verdictCls = idx.verdict === 'PASS' ? 'admin-green' : idx.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+      idxEl.innerHTML = '<span class="' + verdictCls + '">' + (idx.verdict || '—') + '</span>' +
+        ' · ' + (idx.coverage_state || '—') +
+        (idx.last_crawl_time ? ' · Crawled ' + new Date(idx.last_crawl_time).toLocaleDateString() : '') +
+        (idx.mobile_usability ? ' · Mobile: ' + idx.mobile_usability : '');
+    } else {
+      idxEl.innerHTML = 'No inspection data. <a href="#" onclick="triggerSeoSync(['gsc_inspect']);return false;" style="color:var(--blue);">Run URL inspection</a>';
+    }
+  }
+}
+
+async function runPsiForSelected() {
+  var sel = document.getElementById('seo-drill-url');
+  if (!sel || !sel.value) { alert('Select a page first'); return; }
+  var btn = event.target;
+  btn.disabled = true; btn.textContent = 'Running…';
+  try {
+    // Call seo-sync with just PSI for this specific URL
+    var session = (await sb.auth.getSession()).data.session;
+    if (!session) { alert('Sign in required'); return; }
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/seo-sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ tasks: ['psi'], target_url: sel.value })
+    });
+    var data = await resp.json();
+    console.log('[Admin] PSI result:', data);
+    btn.textContent = 'Done ✓';
+    setTimeout(function() { btn.disabled = false; btn.textContent = '▸ Run PSI Now'; }, 2000);
+    loadSeoDrilldown();
+  } catch(err) {
+    console.error('[Admin] PSI error:', err);
+    btn.disabled = false; btn.textContent = '▸ Run PSI Now';
+    alert('PSI failed: ' + err.message);
+  }
 }
 
 // ─── Queries ───
