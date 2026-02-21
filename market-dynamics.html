@@ -73,11 +73,6 @@
     .map-toggle:hover{border-color:rgba(59,130,246,0.3);color:var(--text)}
     .map-toggle.active{background:rgba(59,130,246,0.15);border-color:var(--accent);color:var(--accent)}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:320px!important}.ec.map{height:380px!important}}
-      .data-cta{margin:48px 0 32px;padding:40px 32px;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.08));border:1px solid rgba(59,130,246,0.15);border-radius:16px;text-align:center}
-    .data-cta-head{font-size:20px;font-weight:700;color:#e8eaf0;margin-bottom:8px}
-    .data-cta-sub{font-size:13px;color:#7884a8;margin-bottom:20px}
-    .data-cta-btn{display:inline-block;padding:12px 32px;background:#4f46e5;color:#fff;border-radius:10px;font-weight:600;font-size:14px;text-decoration:none;transition:all 0.15s}
-    .data-cta-btn:hover{background:#4338ca;transform:translateY(-1px);box-shadow:0 4px 16px rgba(79,70,229,0.4)}
   </style>
 </head>
 <body>
@@ -85,7 +80,7 @@
 <div class="wrap">
   <header class="hdr">
     <nav class="breadcrumb" style="font-size:12px;color:var(--text-faint);margin-block-end:12px"><a href="/" style="color:var(--text-dim);text-decoration:none">Brilliant Jobs</a> &rsaquo; <a href="/data-lab" style="color:var(--text-dim);text-decoration:none">Market Data</a> &rsaquo; <span style="color:var(--text-faint)">Dynamics</span></nav>
-    <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; <a href="/data-lab" style="color:inherit;text-decoration:none">Data Lab</a></div>
+    <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
     <h1>Market <span>Dynamics</span></h1>
     <p class="sub">Watch how hiring shifts across industries, departments, seniority levels, and U.S. geographies over time. Drag the timeline slider to animate the data.</p>
   </header>
@@ -133,24 +128,27 @@
       <a href="/career-level-data" class="related-link"><div class="rl-title">Career Level Data</div><div class="rl-desc">Seniority funnel, salary ladder, work arrangement</div></a>
     </div>
   </div>
-  <div class="data-cta"><h3 class="data-cta-head">Track hiring shifts in real time with a free account</h3><p class="data-cta-sub">Free during beta. No credit card required.</p><a href="/#signup" class="data-cta-btn">Get Started Free &rarr;</a></div>
-  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.88 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v3.00 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
-<!-- v2.94 -->
+<!-- v3.00 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
+  var AK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+  var HD = {'apikey':AK,'Authorization':'Bearer '+AK};
   var TT = {backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL = {color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
 
-  // Single RPC call — no direct table access, no anon key in source
-  var rpcRes = await fetch(SB+'/rpc/get_market_dynamics',{method:'POST',headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg'},body:'{}'});
-  var rpcData = await rpcRes.json();
-  var indDept = rpcData.industry_dept || [];
-  var deptLevel = rpcData.dept_level || [];
-  var stateData = rpcData.state_week || [];
-  var velData = rpcData.state_velocity || [];
+  async function q(table) {
+    var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
+    return r.json();
+  }
+
+  // Load all 3 datasets in parallel
+  var [indDept, deptLevel, stateData] = await Promise.all([
+    q('mv_industry_dept_week'), q('mv_dept_level_week'), q('mv_state_week')
+  ]);
 
   // ── Helpers ──
   function getWeeks(data) {
@@ -247,7 +245,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   stateData.forEach(function(d){ openByState[d.state_code] = (openByState[d.state_code]||0) + d.job_count; });
   var openMax = Math.max.apply(null, Object.values(openByState));
 
-  // Velocity data (already loaded from RPC)
+  // Velocity data
+  var velData = await q('mv_state_velocity');
   var velWeeks = [...new Set(velData.map(function(d){return d.week}))].sort();
   var velByWeek = {};
   velWeeks.forEach(function(w){velByWeek[w]={}});
