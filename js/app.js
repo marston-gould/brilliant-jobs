@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.33';
+const BJ_VERSION = 'v3.34';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -16,6 +16,13 @@ async function init() {
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
+  // Re-apply active page (tab restore ran while #app was hidden)
+  const activeTab = localStorage.getItem('bj_active_tab');
+  if (activeTab && $(`#page-${activeTab}`)) {
+    $$('.page').forEach(p => p.classList.remove('active'));
+    $(`#page-${activeTab}`).classList.add('active');
+    $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
+  }
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
