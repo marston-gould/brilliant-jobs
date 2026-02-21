@@ -137,24 +137,20 @@
   <div class="foot">Data from 10,000+ career pages via Greenhouse, Lever, Ashby, Workable, Recruitee<br>v2.88 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
-<!-- v2.88 -->
+<!-- v2.94 -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
   var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
-  var AK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-  var HD = {'apikey':AK,'Authorization':'Bearer '+AK};
   var TT = {backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL = {color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
 
-  async function q(table) {
-    var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
-    return r.json();
-  }
-
-  // Load all 3 datasets in parallel
-  var [indDept, deptLevel, stateData] = await Promise.all([
-    q('mv_industry_dept_week'), q('mv_dept_level_week'), q('mv_state_week')
-  ]);
+  // Single RPC call — no direct table access, no anon key in source
+  var rpcRes = await fetch(SB+'/rpc/get_market_dynamics',{method:'POST',headers:{'Content-Type':'application/json','apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg'},body:'{}'});
+  var rpcData = await rpcRes.json();
+  var indDept = rpcData.industry_dept || [];
+  var deptLevel = rpcData.dept_level || [];
+  var stateData = rpcData.state_week || [];
+  var velData = rpcData.state_velocity || [];
 
   // ── Helpers ──
   function getWeeks(data) {
@@ -251,8 +247,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   stateData.forEach(function(d){ openByState[d.state_code] = (openByState[d.state_code]||0) + d.job_count; });
   var openMax = Math.max.apply(null, Object.values(openByState));
 
-  // Velocity data
-  var velData = await q('mv_state_velocity');
+  // Velocity data (already loaded from RPC)
   var velWeeks = [...new Set(velData.map(function(d){return d.week}))].sort();
   var velByWeek = {};
   velWeeks.forEach(function(w){velByWeek[w]={}});
