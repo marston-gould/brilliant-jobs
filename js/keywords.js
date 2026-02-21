@@ -630,11 +630,9 @@ function updateResumeCardGrades(scores) {
   for (var si = 0; si < indices.length; si++) {
     var ri = indices[si];
     var data = scores[ri];
-    var slot = document.getElementById('rc-grade-' + ri);
-    if (!slot) continue;
-    slot.innerHTML = buildInlineGrade(ri, data);
+    // Grade display moved entirely to side panel — no inline card grade
   }
-  // Also update side panels
+  // Update side panels (the primary readiness display)
   updateReadinessSidePanels(scores);
 }
 
