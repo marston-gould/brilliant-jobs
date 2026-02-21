@@ -188,7 +188,7 @@ function aggregateStats(rows) {
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   hier.map(function(l) { return l.label; }).forEach(function(l) { s.levelCounts[l] = 0; });
   s.levelCounts['Other'] = 0;
-  var seniorSet = {Senior:1,Staff:1,Lead:1,Principal:1,Manager:1,Director:1,VP:1,'C-Suite':1};
+  var seniorSet = {Senior:1,Staff:1,Lead:1,Principal:1,Manager:1,Director:1,VP:1,'C-Suite':1,'Sr Director':1,'Assoc Director':1,'Sr Manager':1};
   var seniorN = 0;
   var salByLvl = {};
 
@@ -404,7 +404,7 @@ function renderSeniorityBars(stats) {
   var otherCount = stats.levelCounts['Other'] || 0;
   var unclPct = stats.total > 0 ? (otherCount / stats.total) * 100 : 100;
 
-  if (unclPct > 80) {
+  if (unclPct > 95) {
     emptyChart(chart, 'Most jobs haven\'t been classified by seniority.\nConfigure your level keywords in\nTuning \u2192 Level Hierarchy to improve this.');
     return;
   }
@@ -422,7 +422,7 @@ function renderSeniorityBars(stats) {
       data.push({name:l.label, value:stats.levelCounts[l.label]});
     }
   });
-  if (otherCount > 0 && unclPct <= 80) data.push({name:'Other', value:otherCount});
+  if (otherCount > 0 && unclPct <= 95) data.push({name:'Other', value:otherCount});
 
   if (data.length === 0) { emptyChart(chart, 'No seniority data'); return; }
 
