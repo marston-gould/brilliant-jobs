@@ -640,7 +640,7 @@ const features = [
   // ── Maintenance & Cleanup ──
   { s: 'todo', n: 'Staffing agency detection and flagging', d: 'Top boards by volume include staffing agencies (Jobgether 4,606, Mercier Consultancy 3,276, EramTalent). Flag or exclude to prevent feed flooding.', p: 10 },
   { s: 'done', n: 'Dead board purge', d: 'Added is_active boolean column to ats_companies (default true). Set 1,016 boards with job_count=0 to is_active=false. Breakdown: Workable 586, Lever 177, Ashby 99, Greenhouse 92, Recruitee 60. 8,850 active boards remain. refresh-jobs needs update to filter by is_active.', p: 10 },
-  { s: 'todo', n: 'Unknown board retry', d: '130 boards timed out during validation. Queue for retry on next monthly discovery cycle.', p: 10 },
+  { s: 'done', n: 'Unknown board retry', d: '130 boards timed out during validation. Queue for retry on next monthly discovery cycle.', p: 10 },
   { s: 'todo', n: 'Migrate discovery scripts to GitHub Actions', d: 'Move dfs_scheduled_discovery.js and dfs_validate_boards.js from local laptop to GitHub Actions cron. Monthly schedule, secrets in repo settings.', p: 10 },
   { s: 'todo', n: 'Location normalization for non-GH platforms', d: 'Batch normalize_job_locations() for all Lever, Ashby, Workable, Recruitee jobs after initial full-cycle scrape completes.', p: 10 },
   { s: 'todo', n: 'Salary parsing for non-GH platforms', d: 'Extend salary extraction to non-Greenhouse job content. Some platforms include structured salary in API responses.', p: 10 },
