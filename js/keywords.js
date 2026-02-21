@@ -1118,7 +1118,7 @@ function initReadinessPanel() {
         statusEl.textContent = ago < 60 ? ago + 'm ago' : ago < 1440 ? Math.round(ago / 60) + 'h ago' : Math.round(ago / 1440) + 'd ago';
       }
       var btn = document.getElementById('readiness-run-btn');
-      if (btn) btn.disabled = false; btn.textContent = singleResumeIdx !== null ? 'Re-analyze' : 'Analyze All';
+      if (btn) { btn.disabled = false; btn.textContent = 'Analyze All'; }
 
       // Auto-refresh if cache is older than 24 hours
       var cacheAge = readinessCache.lastRun ? Date.now() - new Date(readinessCache.lastRun).getTime() : Infinity;
