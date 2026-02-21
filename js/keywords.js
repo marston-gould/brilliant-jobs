@@ -768,10 +768,11 @@ function buildReadinessSide(ri, data) {
 
   var html = '<div class="readiness-side" id="readiness-side-' + ri + '">';
 
-  // Header
+  // Header with score and re-analyze button
   html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
   html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
   html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+  html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
   html += '</div>';
 
   // Per-filter breakdown
