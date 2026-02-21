@@ -787,8 +787,8 @@ function buildReadinessSide(ri, data) {
     html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
     if (fs.ai) {
-      html += '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';
-      html += '<span style="font-size:9px;color:var(--text-faint);">' + (fs.fitStatus || '') + ' \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+      html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';
+      html += '<span style="font-size:11px;color:var(--text-faint);">' + (fs.fitStatus || '') + ' \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
     } else {
       html += '<span style="font-size:9px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
     }
@@ -797,18 +797,18 @@ function buildReadinessSide(ri, data) {
 
     // ─── AI results rendering ───
     if (fs.ai && fs.summary) {
-      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;line-height:1.5;">' + fs.summary + '</div>';
+      html += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.6;">' + fs.summary + '</div>';
 
       // Core requirements (AI)
       if (fs.coreRequirements && fs.coreRequirements.length > 0) {
-        html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">';
         for (var cri = 0; cri < fs.coreRequirements.length; cri++) {
           var cr = fs.coreRequirements[cri];
           var crColor = cr.resume_evidence === 'strong' ? 'var(--green)' : cr.resume_evidence === 'partial' ? 'var(--warm)' : 'var(--red)';
           var crBg = cr.resume_evidence === 'strong' ? 'rgba(34,197,94,0.06)' : cr.resume_evidence === 'partial' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)';
           var crBorder = cr.resume_evidence === 'strong' ? 'rgba(34,197,94,0.2)' : cr.resume_evidence === 'partial' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.15)';
           var crIcon = cr.resume_evidence === 'strong' ? '\u2713' : cr.resume_evidence === 'partial' ? '\u25cb' : '\u2717';
-          html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:' + crBg + ';border:1px solid ' + crBorder + ';color:' + crColor + ';">' + crIcon + ' ' + cr.skill + ' <span style="opacity:0.7">' + cr.prevalence + '%</span></span>';
+          html += '<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:' + crBg + ';border:1px solid ' + crBorder + ';color:' + crColor + ';">' + crIcon + ' ' + cr.skill + ' <span style="opacity:0.7">' + cr.prevalence + '%</span></span>';
         }
         html += '</div>';
       }
@@ -819,28 +819,28 @@ function buildReadinessSide(ri, data) {
       // Recommendations
       if (fs.recommendations) {
         var recSections = [
-          { key: 'impact_quantification', label: 'Impact & Metrics', icon: '\ud83d\udcca' },
-          { key: 'missing_tools', label: 'Missing Tools & Platforms', icon: '\ud83d\udee0\ufe0f' },
-          { key: 'title_translation', label: 'Title Adjustments', icon: '\ud83c\udff7\ufe0f' },
-          { key: 'tone_alignment', label: 'Language & Tone', icon: '\ud83d\udde3\ufe0f' },
-          { key: 'redundancy_fixes', label: 'Cut / Tighten', icon: '\u2702\ufe0f' },
-          { key: 'format', label: 'Format & Structure', icon: '\ud83d\udccb' },
-          { key: 'missing_skills', label: 'Missing Skills', icon: '\u26a0\ufe0f' },
-          { key: 'word_usage', label: 'Word Usage', icon: '\u270f\ufe0f' },
+          { key: 'impact_quantification', label: 'Impact & Metrics', icon: '\u25b9' },
+          { key: 'missing_tools', label: 'Missing Tools & Platforms', icon: '\u25b9' },
+          { key: 'title_translation', label: 'Title Adjustments', icon: '\u25b9' },
+          { key: 'tone_alignment', label: 'Language & Tone', icon: '\u25b9' },
+          { key: 'redundancy_fixes', label: 'Cut / Tighten', icon: '\u25b9' },
+          { key: 'format', label: 'Format & Structure', icon: '\u25b9' },
+          { key: 'missing_skills', label: 'Missing Skills', icon: '\u25b9' },
+          { key: 'word_usage', label: 'Word Usage', icon: '\u25b9' },
         ];
         recSections.forEach(function(sec) {
           var items = fs.recommendations[sec.key];
           if (items && items.length > 0) {
-            html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:4px 0 3px;">' + sec.icon + ' ' + sec.label + ':</div>';
+            html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin:6px 0 4px;">' + sec.icon + ' ' + sec.label + '</div>';
             if (sec.key === 'missing_tools' || sec.key === 'missing_skills') {
-              html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">';
+              html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">';
               items.forEach(function(s) {
-                html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + s + '</span>';
+                html += '<span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);color:var(--red);">\u2717 ' + s + '</span>';
               });
               html += '</div>';
             } else {
               items.forEach(function(tip) {
-                html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">\u2192 ' + tip + '</div>';
+                html += '<div style="font-size:12px;color:var(--text-dim);padding-left:10px;margin-bottom:3px;line-height:1.5;">\u2192 ' + tip + '</div>';
               });
             }
           }
@@ -848,34 +848,34 @@ function buildReadinessSide(ri, data) {
 
         // Gap narrative (single string, not array)
         if (fs.recommendations.gap_narrative) {
-          html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:4px 0 3px;">\ud83d\udea9 Career Gap Narrative:</div>';
-          html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;margin-bottom:2px;">' + fs.recommendations.gap_narrative + '</div>';
+          html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin:6px 0 4px;">\u25b9 Career Gap Narrative</div>';
+          html += '<div style="font-size:12px;color:var(--text-dim);padding-left:10px;margin-bottom:3px;line-height:1.5;">' + fs.recommendations.gap_narrative + '</div>';
         }
       }
 
       // Career trajectory assessment
       if (fs.careerTrajectory) {
-        html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:6px 0 3px;">\ud83d\udcc8 Career Trajectory:</div>';
-        html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;">' + fs.careerTrajectory + '</div>';
+        html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin:8px 0 4px;">\u25b9 Career Trajectory</div>';
+        html += '<div style="font-size:12px;color:var(--text-dim);padding-left:10px;line-height:1.5;">' + fs.careerTrajectory + '</div>';
       }
 
       // Scope comparison
       if (fs.scopeComparison) {
-        html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:6px 0 3px;">\ud83d\udccf Scope Match:</div>';
-        html += '<div style="font-size:10px;color:var(--text-dim);padding-left:8px;">' + fs.scopeComparison + '</div>';
+        html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin:8px 0 4px;">\u25b9 Scope Match</div>';
+        html += '<div style="font-size:12px;color:var(--text-dim);padding-left:10px;line-height:1.5;">' + fs.scopeComparison + '</div>';
       }
 
       // Level fit (AI)
       if (fs.levelFit) {
-        html += '<div style="font-size:9px;font-weight:600;color:var(--text-faint);margin:6px 0 3px;">Level fit:</div>';
-        html += '<div style="font-size:10px;color:var(--text-dim);padding:4px 8px;background:var(--bg-card);border-radius:4px;border:1px solid var(--border);">';
-        html += '<strong>' + fs.levelFit.best_level + '</strong> — ' + fs.levelFit.reasoning;
+        html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin:8px 0 4px;">\u25b9 Level Fit</div>';
+        html += '<div style="font-size:12px;color:var(--text-dim);padding:6px 10px;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);line-height:1.5;">';
+        html += '<strong>' + fs.levelFit.best_level + '</strong> \u2014 ' + fs.levelFit.reasoning;
         html += '</div>';
       }
 
       // Differential insight
       if (fs.differentialInsight) {
-        html += '<div style="font-size:10px;color:var(--accent);margin-top:6px;font-style:italic;">\ud83d\udca1 ' + fs.differentialInsight + '</div>';
+        html += '<div style="font-size:12px;color:var(--accent);margin-top:8px;font-style:italic;line-height:1.5;">' + fs.differentialInsight + '</div>';
       }
 
       html += '</div>'; // close expandable
