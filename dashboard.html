@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.27 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
+<!-- Brilliant Jobs Dashboard v3.28 - 2026-02-19 - Fix: version alignment, enrich-job 401s, Greenhouse-only API gating, mixed content CSP. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -40,8 +40,33 @@
     .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:11px;cursor:pointer}
     .admin-period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .admin-platform-name{font-weight:500}
-  </style>
-  <!-- CSS extracted to styles.css in v3.27 -->
+  
+    /* SEO sub-panels */
+    .seo-subpanel { display: none; }
+    .seo-subpanel.active { display: block; }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    </style>
+  <!-- CSS extracted to styles.css in v3.28 -->
   <!-- A13: PostHog analytics -->
   <script>
     !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -65,7 +90,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.27</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.28</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1729,10 +1754,69 @@
           </div>
 
           <div class="admin-panel" id="admin-panel-seo">
-            <table class="admin-table" style="width:100%">
-              <thead><tr><th>Coverage</th><th>%</th><th>Page</th></tr></thead>
-              <tbody id="admin-seo-body"></tbody>
-            </table>
+            <!-- SEO Sub-tabs -->
+            <div id="seo-subtabs" style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px;align-items:center;">
+              <button class="admin-period-btn" id="seo-sync-btn" onclick="triggerSeoSync(['psi','posthog'])" style="margin-left:auto;background:linear-gradient(135deg,rgba(52,211,153,0.15),rgba(77,142,255,0.15));color:var(--green);border:1px solid rgba(52,211,153,0.3);font-size:10px;padding:3px 10px;" title="Run PSI + PostHog sync (GSC requires service account key)">↻ Sync Now</button>
+            </div>
+            <div id="seo-subtabs-inner" style="display:flex;gap:4px;margin-bottom:16px;">
+              <button class="admin-period-btn active" data-seotab="overview" onclick="switchSeoSubtab('overview')">Overall</button>
+              <button class="admin-period-btn" data-seotab="pages" onclick="switchSeoSubtab('pages')">Pages</button>
+              <button class="admin-period-btn" data-seotab="queries" onclick="switchSeoSubtab('queries')">Queries</button>
+              <button class="admin-period-btn" data-seotab="health" onclick="switchSeoSubtab('health')">Technical</button>
+            </div>
+            <div id="seo-date-range" style="display:flex;gap:4px;margin-bottom:16px;">
+              <button class="admin-period-btn" data-seodays="7" onclick="setSeoRange(7)">7d</button>
+              <button class="admin-period-btn active" data-seodays="30" onclick="setSeoRange(30)">30d</button>
+              <button class="admin-period-btn" data-seodays="90" onclick="setSeoRange(90)">90d</button>
+            </div>
+
+            <!-- Overall Performance -->
+            <div class="seo-subpanel active" id="seo-sub-overview">
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;">
+                <div class="stat-card"><div class="stat-val" id="seo-clicks-7d">—</div><div class="stat-label">Clicks (7d)</div></div>
+                <div class="stat-card"><div class="stat-val" id="seo-impr-7d">—</div><div class="stat-label">Impressions (7d)</div></div>
+                <div class="stat-card"><div class="stat-val" id="seo-position">—</div><div class="stat-label">Avg Position</div></div>
+                <div class="stat-card"><div class="stat-val" id="seo-psi">—</div><div class="stat-label">PSI Mobile</div></div>
+                <div class="stat-card"><div class="stat-val" id="seo-signups">—</div><div class="stat-label">Signups (7d)</div></div>
+              </div>
+              <div id="seo-chart-trend" style="height:300px;margin-bottom:20px;"></div>
+              <div id="seo-chart-roi" style="height:200px;"></div>
+            </div>
+
+            <!-- Page-Level Drilldown -->
+            <div class="seo-subpanel" id="seo-sub-pages" style="display:none;">
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Page</th><th>Clicks</th><th>Impressions</th><th>Avg Pos</th></tr></thead>
+                <tbody id="seo-pages-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Query Analysis -->
+            <div class="seo-subpanel" id="seo-sub-queries" style="display:none;">
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr></thead>
+                <tbody id="seo-queries-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Technical Health -->
+            <div class="seo-subpanel" id="seo-sub-health" style="display:none;">
+              <div style="margin-bottom:16px;">
+                <div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Index Status</div>
+                <table class="admin-table" style="width:100%">
+                  <thead><tr><th>URL</th><th>Verdict</th><th>Coverage</th><th>Last Crawl</th><th>Mobile</th></tr></thead>
+                  <tbody id="seo-index-body"></tbody>
+                </table>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Audit Scores</div>
+                <div id="seo-chart-psi-trend" style="height:250px;margin-bottom:16px;"></div>
+                <table class="admin-table" style="width:100%">
+                  <thead><tr><th>Date</th><th>Page</th><th>Source</th><th>Score</th><th>Issues</th></tr></thead>
+                  <tbody id="seo-audits-body"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           <div class="admin-panel" id="admin-panel-revenue">
