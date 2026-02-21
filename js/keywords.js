@@ -492,15 +492,16 @@ async function fetchAIScore(params) {
 
 async function runReadinessAnalysis(opts) {
   opts = opts || {};
-  var silent = opts.silent || false; // true = background run, no button state changes
-  var btn = document.getElementById('readiness-run-btn');
+  var silent = opts.silent || false;
+  var singleResumeIdx = typeof opts.resumeIndex === 'number' ? opts.resumeIndex : null;
+  var btn = singleResumeIdx !== null ? document.getElementById('rc-analyze-' + singleResumeIdx) : document.getElementById('readiness-run-btn');
   var statusEl = document.getElementById('readiness-status');
   var resultsEl = document.getElementById('readiness-results');
 
   if (readinessRunning) return;
   readinessRunning = true;
 
-  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Analyzing\u2026'; }
+  if (!silent && btn) { btn.disabled = true; btn.textContent = singleResumeIdx !== null ? 'Analyzing\u2026' : 'Analyzing All\u2026'; }
 
   var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
@@ -531,8 +532,8 @@ async function runReadinessAnalysis(opts) {
     var r = resumes[ri];
     if (r.archived || r.textStatus !== 'ready' || !r.keywords || !r.keywords.length) continue;
 
-    // Skip if not selected in resume selector
-    if (_selectedResumeIdxs && !_selectedResumeIdxs.has(ri)) continue;
+    // Single-resume mode: only analyze the requested resume
+    if (singleResumeIdx !== null && ri !== singleResumeIdx) continue;
     var assignedFilterNames = r.filterIds || [];
     if (assignedFilterNames.length === 0) continue;
     var assignedFilters = sf.filter(function(f){ return assignedFilterNames.includes(f.name); });
@@ -621,7 +622,7 @@ async function runReadinessAnalysis(opts) {
   jobMatchScores = {};
 
   if (statusEl) statusEl.textContent = 'Analyzed ' + totalFiltersAnalyzed + ' filter' + (totalFiltersAnalyzed !== 1 ? 's' : '') + ', fetched ' + totalJDsFetched + ' new JDs';
-  if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
+  if (btn) { btn.disabled = false; btn.textContent = singleResumeIdx !== null ? 'Re-analyze' : 'Analyze All'; }
   readinessRunning = false;
 }
 
@@ -1117,7 +1118,7 @@ function initReadinessPanel() {
         statusEl.textContent = ago < 60 ? ago + 'm ago' : ago < 1440 ? Math.round(ago / 60) + 'h ago' : Math.round(ago / 1440) + 'd ago';
       }
       var btn = document.getElementById('readiness-run-btn');
-      if (btn) btn.textContent = 'Re-analyze';
+      if (btn) btn.disabled = false; btn.textContent = singleResumeIdx !== null ? 'Re-analyze' : 'Analyze All';
 
       // Auto-refresh if cache is older than 24 hours
       var cacheAge = readinessCache.lastRun ? Date.now() - new Date(readinessCache.lastRun).getTime() : Infinity;
