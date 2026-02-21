@@ -35,7 +35,7 @@ function initAdminPage() {
     return;
   }
   // Guard: don't load data until user is authenticated
-  if (!window.currentUser) {
+  if (typeof currentUser === 'undefined' || !currentUser) {
     console.log('[Admin] waiting for auth, deferring load');
     _adminTabInit = {}; // reset so it reloads when auth is ready
     return;
