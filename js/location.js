@@ -1234,3 +1234,232 @@ function applyButton(sources, urls, jobId) {
   return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); markApplied('${jobId}', this)">${label}</a>`;
 }
 
+
+// ─── Feature 3: AI Resume-to-Filter Generator ───
+
+var _aiFilterData = null;
+
+function initAiFilterButton() {
+  var btn = document.getElementById('ai-suggest-filter-btn');
+  if (!btn) return;
+  btn.addEventListener('click', startAiFilterSuggest);
+}
+
+async function startAiFilterSuggest() {
+  // Check if user has any resumes with extracted text
+  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  
+  if (resumesWithText.length === 0) {
+    alert('Upload a resume first (Resumes tab), then come back to generate a filter.');
+    return;
+  }
+  
+  // If multiple resumes, use the most recently uploaded one
+  var resume = resumesWithText[resumesWithText.length - 1];
+  
+  // Show modal with loading state
+  var modal = document.getElementById('ai-filter-modal');
+  var body = document.getElementById('ai-filter-body');
+  var footer = document.getElementById('ai-filter-footer');
+  var meta = document.getElementById('ai-filter-meta');
+  
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  footer.style.display = 'none';
+  meta.textContent = 'Analyzing: ' + (resume.name || 'Resume');
+  body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+    '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+    '<div style="color:var(--text-dim);font-size:13px;">AI is analyzing your resume…</div>' +
+    '<div style="color:var(--text-faint);font-size:11px;margin-top:8px;">This takes 5-10 seconds</div></div>';
+  
+  try {
+    // Get auth token
+    var session = null;
+    try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
+    if (!session) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Please sign in to use AI features.</div>';
+      return;
+    }
+    
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/generate-filter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ resume_text: resume.extractedText.slice(0, 8000) })
+    });
+    
+    if (!resp.ok) {
+      var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI generation failed') + '</div>';
+      return;
+    }
+    
+    var data = await resp.json();
+    _aiFilterData = data;
+    renderAiFilterPreview(data);
+    
+  } catch (err) {
+    console.error('[AI Filter]', err);
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Error: ' + err.message + '</div>';
+  }
+}
+
+function renderAiFilterPreview(data) {
+  var body = document.getElementById('ai-filter-body');
+  var footer = document.getElementById('ai-filter-footer');
+  
+  var html = '';
+  
+  // Filter name
+  html += '<div style="margin-bottom:20px;">';
+  html += '<label style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter Name</label>';
+  html += '<input type="text" id="ai-filter-name" value="' + (data.filter_name || 'AI Suggested').replace(/"/g, '&quot;') + '" style="width:100%;padding:8px 12px;margin-top:4px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--sans);font-size:13px;">';
+  html += '</div>';
+  
+  // Suggestion sections
+  var sections = [
+    { key: 'what', label: 'WHAT — Job Titles', items: data.what || [], color: '#4d8eff' },
+    { key: 'where', label: 'WHERE — Locations', items: data.where || [], color: '#34d399' },
+    { key: 'what_not', label: 'WHAT NOT — Exclude', items: data.what_not || [], color: '#f87171' },
+    { key: 'who_not', label: 'WHO NOT — Companies to Skip', items: data.who_not || [], color: '#f59e0b' }
+  ];
+  
+  sections.forEach(function(sec) {
+    if (sec.items.length === 0) return;
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">' + sec.label + '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    sec.items.forEach(function(item, i) {
+      html += '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;transition:all 0.15s;" class="ai-pill-toggle">';
+      html += '<input type="checkbox" checked data-section="' + sec.key + '" data-index="' + i + '" style="accent-color:' + sec.color + ';">';
+      html += '<span style="color:var(--text);">' + item + '</span>';
+      html += '</label>';
+    });
+    html += '</div>';
+    // Reasoning
+    if (data.reasoning && data.reasoning[sec.key === 'what_not' ? 'what_not' : sec.key === 'who_not' ? 'what_not' : sec.key]) {
+      var reason = data.reasoning[sec.key] || '';
+      if (reason) {
+        html += '<div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-style:italic;">' + reason + '</div>';
+      }
+    }
+    html += '</div>';
+  });
+  
+  // Salary
+  if (data.salary_min) {
+    html += '<div style="margin-bottom:16px;">';
+    html += '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">HOW MUCH — Minimum Salary</div>';
+    html += '<label style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;" class="ai-pill-toggle">';
+    html += '<input type="checkbox" checked data-section="salary" style="accent-color:#a78bfa;">';
+    html += '<span style="color:var(--text);">$' + Math.round(data.salary_min / 1000) + 'K+</span>';
+    html += '</label>';
+    if (data.reasoning && data.reasoning.salary) {
+      html += '<div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-style:italic;">' + data.reasoning.salary + '</div>';
+    }
+    html += '</div>';
+  }
+  
+  // Remote toggle
+  html += '<div style="margin-bottom:16px;">';
+  html += '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">';
+  html += '<input type="checkbox" id="ai-filter-remote" ' + (data.include_remote ? 'checked' : '') + '>';
+  html += 'Include remote jobs</label>';
+  html += '</div>';
+  
+  body.innerHTML = html;
+  footer.style.display = 'flex';
+}
+
+function acceptAiFilter() {
+  if (!_aiFilterData) return;
+  
+  var data = _aiFilterData;
+  var name = (document.getElementById('ai-filter-name') || {}).value || data.filter_name || 'AI Suggested';
+  
+  // Collect checked items
+  var checked = {};
+  document.querySelectorAll('#ai-filter-body input[type="checkbox"][data-section]').forEach(function(cb) {
+    var sec = cb.dataset.section;
+    if (!checked[sec]) checked[sec] = [];
+    if (cb.checked) {
+      if (sec === 'salary') {
+        checked[sec].push(data.salary_min);
+      } else {
+        var items = sec === 'what' ? data.what : sec === 'where' ? data.where : sec === 'what_not' ? data.what_not : data.who_not;
+        checked[sec].push(items[parseInt(cb.dataset.index)]);
+      }
+    }
+  });
+  
+  var includeRemote = (document.getElementById('ai-filter-remote') || {}).checked || false;
+  
+  // Build filter pills in the format saved filters expect
+  var newWhatPills = (checked.what || []).map(function(v) { return { values: [v], type: 'keyword' }; });
+  var newWherePills = (checked.where || []).map(function(v) { return { values: [v], type: 'location', locType: 'city' }; });
+  var newWhatNotPills = (checked.what_not || []).map(function(v) { return { values: [v], type: 'keyword' }; });
+  var newWhoNotPills = (checked.who_not || []).map(function(v) { return { values: [v], type: 'keyword' }; });
+  var newPayPills = [];
+  if (checked.salary && checked.salary.length > 0) {
+    newPayPills.push({ values: [String(checked.salary[0])], type: 'salary' });
+  }
+  
+  // Create the saved filter object
+  var filterData = {
+    name: name,
+    whatPills: newWhatPills,
+    wherePills: newWherePills,
+    whenPills: [],
+    whoPills: [],
+    payPills: newPayPills,
+    whatNotPills: newWhatNotPills,
+    whereNotPills: [],
+    whoNotPills: newWhoNotPills,
+    includeNoSalary: newPayPills.length > 0 ? false : true,
+    includeRemote: includeRemote,
+    createdAt: Date.now(),
+    lastUsed: Date.now(),
+    useCount: 0,
+    aiGenerated: true
+  };
+  
+  // Add to saved filters
+  savedFilters.push(filterData);
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  
+  // Close modal
+  closeAiFilterModal();
+  
+  // Refresh UI
+  renderSavedFilters();
+  
+  // Load the new filter into the query builder
+  if (typeof loadFilterIntoBuilder === 'function') {
+    loadFilterIntoBuilder(savedFilters.length - 1);
+  }
+  
+  // Trigger search
+  if (typeof debouncedSearchJobs === 'function') {
+    debouncedSearchJobs();
+  }
+}
+
+function closeAiFilterModal(e) {
+  if (e && e.target !== e.currentTarget) return;
+  var modal = document.getElementById('ai-filter-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+  _aiFilterData = null;
+}
+
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAiFilterButton);
+} else {
+  initAiFilterButton();
+}
