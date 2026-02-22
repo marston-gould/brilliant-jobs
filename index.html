@@ -570,46 +570,33 @@
       .pricing-grid { gap: 16px; }
     }
 
-    /* ==================== SEGMENT VISIBILITY (v3.45) ==================== */
-    /* Hide all segmented content by default */
+    /* ==================== SEGMENT VISIBILITY (v3.45 → v3.56 fix) ==================== */
+    /* Only heroes and nav/footer elements are segmented. All content sections are always visible. */
     .segment-new,
     .segment-returning,
     .segment-lapsed,
     .segment-active { display: none; }
 
-    /* New visitors: show new + shared sections */
+    /* Show the correct hero + nav elements per segment */
     [data-segment="new"] .segment-new { display: block; }
     [data-segment="new"] section.segment-new { display: block; }
-    [data-segment="new"] div.segment-new { display: block; }
     [data-segment="new"] nav.segment-new { display: flex; }
     [data-segment="new"] footer.segment-new { display: block; }
 
-    /* Returning visitors: show returning + shared sections */
     [data-segment="returning"] .segment-returning { display: block; }
     [data-segment="returning"] section.segment-returning { display: block; }
-    [data-segment="returning"] div.segment-returning { display: block; }
     [data-segment="returning"] nav.segment-returning { display: flex; }
     [data-segment="returning"] footer.segment-returning { display: block; }
 
-    /* Lapsed users: show lapsed sections only */
     [data-segment="lapsed"] .segment-lapsed { display: block; }
     [data-segment="lapsed"] section.segment-lapsed { display: block; }
     [data-segment="lapsed"] nav.segment-lapsed { display: flex; }
     [data-segment="lapsed"] footer.segment-lapsed { display: block; }
 
-    /* Active users: show redirect fallback only */
     [data-segment="active"] .segment-active { display: block; }
     [data-segment="active"] section.segment-active { display: flex; }
 
-    /* FAQ objections: only visible for returning visitors with 3+ visits */
-    .faq-objections { display: none !important; }
-    [data-segment="returning"][data-visit-depth="deep"] .faq-objections { display: block !important; }
-
-    /* Preview widget: auto-expand for returning visitors */
-    [data-segment="returning"] #preview-results { display: block !important; }
-    [data-segment="returning"] #preview-filters { display: block; }
-
-    /* Fallback: if no data-segment yet (JS disabled), show new variant */
+    /* Fallback: if no segment set yet (script hasn't run), show new variant */
     html:not([data-segment]) .segment-new { display: block; }
     html:not([data-segment]) nav.segment-new { display: flex; }
     html:not([data-segment]) footer.segment-new { display: block; }
@@ -830,7 +817,7 @@
   </section>
 
   <!-- ==================== STATS BAR ==================== -->
-  <div class="stats-bar fade-up segment-new segment-returning">
+  <div class="stats-bar fade-up">
     <div class="stats-row">
       <div class="stat-item">
         <div class="stat-num" id="lp-active-jobs">—</div>
@@ -852,7 +839,7 @@
   </div>
 
   <!-- ==================== THE RIGGED GAME ==================== -->
-  <section class="section fade-up segment-new" id="why">
+  <section class="section fade-up" id="why">
     <div class="section-label">The Problem</div>
     <h2>The job search is rigged.<br>Just not in your favor.</h2>
     <p class="section-desc">The biggest job sites are designed to maximize your time on their platform, not minimize your time searching. You already know this. You feel it every time you see "Easy Apply" on a role that was filled six weeks ago.</p>
@@ -903,7 +890,7 @@
   </section>
 
   <!-- ==================== BENEFITS (full - new visitors) ==================== -->
-  <section class="section fade-up segment-new" id="benefits">
+  <section class="section fade-up" id="benefits">
     <div class="section-label">What You Get</div>
     <h2>Built for the person applying,<br>not the company posting.</h2>
     <p class="section-desc">Every feature exists to save you time, show you the truth, or help you land the right job — not to sell your attention to recruiters.</p>
@@ -952,7 +939,7 @@
     </div>
 
     <!-- INTERACTIVE PREVIEW — Try Before You Buy (shared: new + returning) -->
-    <div class="preview-section fade-up segment-new segment-returning" id="preview-section">
+    <div class="preview-section fade-up" id="preview-section">
       <h3>See jobs in your field</h3>
       <div class="sub">Try a search — no account needed.</div>
 
@@ -991,7 +978,7 @@
   </section>
 
   <!-- ==================== BENEFITS (compressed - returning visitors) ==================== -->
-  <section class="section fade-up segment-returning" id="benefits-short">
+  <section class="section fade-up" id="benefits-short">
     <div class="section-label">Quick Recap</div>
     <h2>Why Brilliant Jobs</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:24px;max-width:720px;margin-inline:auto;">
@@ -1011,7 +998,7 @@
   </section>
 
   <!-- ==================== OBJECTION FAQ (returning visitors, visit 3+) ==================== -->
-  <section class="section fade-up segment-returning faq-objections" id="objection-faq">
+  <section class="section fade-up faq-objections" id="objection-faq">
     <div class="section-label">Common Questions</div>
     <h2>You might be wondering...</h2>
     <div style="max-width:640px;margin:24px auto 0;display:flex;flex-direction:column;gap:16px;">
@@ -1035,7 +1022,7 @@
   </section>
 
   <!-- ==================== GHOST TRANSPARENCY ==================== -->
-  <section class="section fade-up segment-new segment-returning">
+  <section class="section fade-up">
     <div class="ghost-section">
       <div class="section-label" style="color:var(--green);">Employer Accountability</div>
       <h2 style="margin-bottom:8px;">The first public record of who responds<br>and who ghosts.</h2>
@@ -1064,7 +1051,7 @@
 
 
   <!-- ==================== HOW IT WORKS ==================== -->
-  <section class="section fade-up segment-new" id="how-it-works">
+  <section class="section fade-up" id="how-it-works">
     <div class="section-label">How It Works</div>
     <h2>Set up once. Your search gets<br>smarter from there.</h2>
     <p class="section-desc">Three minutes of setup. Then your job search runs itself.</p>
@@ -1078,7 +1065,7 @@
 
 
   <!-- ==================== MARKET DATA ==================== -->
-  <section class="section fade-up segment-new segment-returning" id="data">
+  <section class="section fade-up" id="data">
     <div class="section-label">Market Intelligence</div>
     <h2>Real data from real career pages.<br>Not job board guesswork.</h2>
     <p class="section-desc">We scan 10,000+ company career pages every day and publish what we find. Salary trends, hiring volume, seniority distribution &mdash; all from the source.</p>
@@ -1116,7 +1103,7 @@
   </section>
 
   <!-- ==================== PRICING ==================== -->
-  <section class="section fade-up segment-new segment-returning" id="pricing">
+  <section class="section fade-up" id="pricing">
     <div class="section-label">Pricing</div>
     <h2>We make money when you get hired.<br>That's it.</h2>
     <p class="section-desc">No ads. No sponsored listings. No selling your data to recruiters. Full access during beta — early adopters keep upgraded access.</p>
@@ -1170,7 +1157,7 @@
   </section>
 
   <!-- ==================== SOCIAL PROOF ==================== -->
-  <div class="section fade-up segment-new" style="padding-bottom:0;">
+  <div class="section fade-up" style="padding-bottom:0;">
     <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by a job seeker</div>
       <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;color:var(--text-dim);font-size:14px;">
@@ -1183,7 +1170,7 @@
   </div>
 
   <!-- ==================== WALKTHROUGH CAROUSEL ==================== -->
-  <section class="section fade-up segment-new" id="walkthrough">
+  <section class="section fade-up" id="walkthrough">
     <div class="section-label">See the Full Product</div>
     <h2>What you get after signing up</h2>
     <p class="section-desc">A 30-second tour of the dashboard experience.</p>
@@ -1236,7 +1223,7 @@
   </section>
 
   <!-- ==================== BOTTOM CTA ==================== -->
-  <section class="section fade-up segment-new segment-returning" style="text-align:center;padding-bottom:120px;">
+  <section class="section fade-up" style="text-align:center;padding-bottom:120px;">
     <h2 style="margin-bottom:16px;">You've been searching their way.<br>Try yours.</h2>
     <p class="section-desc" style="margin:0 auto 32px;">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
     <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Get Started — It's Free</button>
