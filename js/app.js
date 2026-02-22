@@ -20,6 +20,11 @@ async function init() {
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
+  // Show admin nav immediately — profile already fetched, no extra round trip
+  if (profile && profile.role === 'admin') {
+    var navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+  }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
   if (activeTab && $(`#page-${activeTab}`)) {
