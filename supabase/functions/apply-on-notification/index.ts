@@ -81,6 +81,40 @@ serve(async (req: Request) => {
 
     const timeoutHours = prefs?.escalation_timeout_hours || 4;
 
+    // 2b. Debit 1 credit for Smart Job Alert (Starter/Pro only)
+    const { data: profile } = await sb
+      .from("profiles")
+      .select("plan, credit_balance")
+      .eq("id", job.user_id)
+      .single();
+
+    const userPlan = profile?.plan || "free";
+    if (userPlan === "free") {
+      console.log(`[apply-on-notification] Skipped — user ${job.user_id} is on free plan`);
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "Smart Job Alerts require Starter or Pro plan" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Debit 1 credit via RPC
+    const { data: debitResult, error: debitError } = await sb.rpc("debit_credits", {
+      p_user_id: job.user_id,
+      p_amount: 1,
+      p_action: "smart_job_alert",
+      p_reference_id: job.job_id,
+    });
+
+    if (debitError || !debitResult?.success) {
+      console.log(`[apply-on-notification] Skipped — insufficient credits for user ${job.user_id}: ${debitError?.message || debitResult?.reason}`);
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "Insufficient credits for Smart Job Alert (1 credit required)" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[apply-on-notification] Debited 1 credit for user ${job.user_id}, new balance: ${debitResult.new_balance}`);
+
     // 3. Build action URLs
     // These point to the handle-notification-response Edge Function
     const baseActionUrl = `${SUPABASE_URL}/functions/v1/handle-notification-response`;
@@ -124,6 +158,8 @@ serve(async (req: Request) => {
       status: "pending",
       email_sent_at: new Date().toISOString(),
       expires_at: expiresAt.toISOString(),
+      credits_used: 1,
+      notification_tier: userPlan,
     });
 
     if (insertError) {
@@ -152,6 +188,11 @@ serve(async (req: Request) => {
         job_title: job.job_title,
         // Only send email now — SMS comes via escalation-checker if no response
         force_channel: "email",
+        // v2 tracking
+        idempotency_key: `apply_alert_${job.user_id}_${job.job_id}`,
+        user_plan: userPlan,
+        user_cohort: "cohort_launch",
+        template_version: "2.0.0",
       }),
     });
 
