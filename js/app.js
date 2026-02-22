@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.80';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — pricing page live — Vonage toll-free, inbound reply handler, escalation chain');
+const BJ_VERSION = 'v3.81';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — index maintenance: dropped 7 unused indexes (~104MB), added health monitor');
 
 // Auth
 async function init() {
