@@ -45,13 +45,30 @@ let _udPendingKeys = new Set();
  * @param {string} jsonStr - JSON string to save
  */
 function saveUserData(lsKey, jsonStr) {
-  localStorage.setItem(lsKey, jsonStr);
+  // Size guard: warn if single key exceeds 500KB, reject if >2MB (v3.85)
+  var bytes = new Blob([jsonStr]).size;
+  if (bytes > 2 * 1024 * 1024) {
+    console.error('[BJ] Storage rejected: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB (>2MB limit)');
+    return false;
+  }
+  if (bytes > 500 * 1024) {
+    console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
+  }
+  try {
+    localStorage.setItem(lsKey, jsonStr);
+  } catch (e) {
+    // QuotaExceededError — storage is full
+    console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
+    _handleStorageFull(lsKey);
+    return false;
+  }
   const shortKey = UD_LS_TO_SHORT[lsKey];
   if (shortKey && currentUser) {
     _udPendingKeys.add(shortKey);
     clearTimeout(_udSyncTimer);
     _udSyncTimer = setTimeout(_flushUserData, 2000);
   }
+  return true;
 }
 
 /** Flush all pending keys to Supabase in one PATCH */
@@ -275,6 +292,74 @@ async function enrichJob(jobId, data) {
   } catch (e) {
     console.warn('[enrich-job] Error:', e.message);
   }
+}
+
+
+
+// ============================================================
+// STORAGE HEALTH — size monitoring and emergency cleanup (v3.85)
+// ============================================================
+
+/** Get total localStorage usage in bytes */
+function getStorageUsage() {
+  var total = 0;
+  var keys = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    var size = new Blob([localStorage.getItem(key)]).size;
+    total += size + new Blob([key]).size;
+    if (key.startsWith('bj_')) keys[key] = size;
+  }
+  return { totalBytes: total, totalKB: Math.round(total / 1024), bjKeys: keys };
+}
+
+/** Log storage usage to console (call from DevTools: storageHealth()) */
+function storageHealth() {
+  var usage = getStorageUsage();
+  console.group('[BJ] Storage Health');
+  console.log('Total localStorage:', usage.totalKB + 'KB');
+  var sorted = Object.entries(usage.bjKeys).sort(function(a, b) { return b[1] - a[1]; });
+  sorted.forEach(function(entry) {
+    var pct = Math.round(entry[1] / usage.totalBytes * 100);
+    console.log('  ' + entry[0] + ': ' + Math.round(entry[1] / 1024) + 'KB (' + pct + '%)');
+  });
+  console.log('Estimated limit: ~5MB (varies by browser)');
+  console.log('Usage: ' + Math.round(usage.totalBytes / (5 * 1024 * 1024) * 100) + '% of estimated limit');
+  console.groupEnd();
+  return usage;
+}
+
+/** Emergency cleanup when storage is full */
+function _handleStorageFull(failedKey) {
+  console.warn('[BJ] Running emergency storage cleanup...');
+  // Priority: remove caches first, then old data
+  var sacrificial = ['bj_readiness', 'bj_ref_city_radius', '_bj_ud_cache'];
+  for (var i = 0; i < sacrificial.length; i++) {
+    if (sacrificial[i] !== failedKey) {
+      localStorage.removeItem(sacrificial[i]);
+      console.log('[BJ] Cleared ' + sacrificial[i]);
+    }
+  }
+  // Trim hidden_jobs and applied_jobs to last 500
+  ['bj_hidden_jobs', 'bj_applied_jobs', 'bj_saved_jobs'].forEach(function(key) {
+    try {
+      var arr = JSON.parse(localStorage.getItem(key) || '[]');
+      if (arr.length > 500) {
+        arr = arr.slice(-500);
+        localStorage.setItem(key, JSON.stringify(arr));
+        console.log('[BJ] Trimmed ' + key + ' to 500 items');
+      }
+    } catch (e) {}
+  });
+  // Trim app_history to last 200
+  try {
+    var hist = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+    if (hist.length > 200) {
+      hist = hist.slice(-200);
+      localStorage.setItem('bj_app_history', JSON.stringify(hist));
+      console.log('[BJ] Trimmed bj_app_history to 200 items');
+    }
+  } catch (e) {}
 }
 
 // ============================================================
