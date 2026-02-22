@@ -4,6 +4,8 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+<!-- pipeline test: this line proves the branch workflow works -->
+
 ## v3.48 — 2026-02-22
 - **SEO tab redesign** (Pod 1 spec): Full visual overhaul of Admin Console SEO tab
   - 13 new CSS classes replacing all inline styles (.seo-controls, .seo-select, .seo-section-label, .seo-detail-grid, .seo-metric-row, .seo-metric-label, .seo-metric-value, .seo-loading, .seo-empty, etc.)
