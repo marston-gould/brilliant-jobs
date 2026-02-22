@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded',async function(){
   var CACHE_TTL=86400000;
   function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
   function cSet(k,d){try{localStorage.setItem('bj_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
-  async function rpc(fn){var c=cGet(fn);if(c)return c;try{var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});if(!r.ok)return[];var d=await r.json();if(d&&d.code)return[];cSet(fn,d);return d}catch(e){return[]}}
+  async function rpc(fn){var c=cGet(fn);if(c&&Array.isArray(c)&&c.length>0)return c;try{var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});if(!r.ok)return[];var d=await r.json();if(d&&d.code)return[];if(Array.isArray(d)&&d.length>0)cSet(fn,d);return d}catch(e){return[]}}
   var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL={color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
   var GR={left:56,right:20,top:20,bottom:32};

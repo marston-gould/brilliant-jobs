@@ -169,7 +169,7 @@
 
   <h2 class="sdiv">Jobs Per Capita</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#60a5fa">● Best: 8+</span>&ensp;<span style="color:#3b82f6">● Good: 4-8</span>&ensp;<span style="color:#2563eb">● Moderate: 2-4</span>&ensp;<span style="color:#1e40af">● Low: &lt;2</span></div>
+    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#4ade80">● Best: 8+</span>&ensp;<span style="color:#22d3ee">● Good: 4-8</span>&ensp;<span style="color:#fbbf24">● Moderate: 2-4</span>&ensp;<span style="color:#94a3b8">● Low: &lt;2</span></div>
     <div id="percapita-map" style="width:100%;height:500px"></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> San Francisco leads with 22.9 open jobs per 10,000 residents &mdash; nearly 5x the national average. Silicon Valley (San Jose: 10.0) and Austin (9.7) round out the top 3, reflecting the concentration of tech hiring in these metros relative to their population.</div>
@@ -194,9 +194,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_md_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
   function cSet(k,d){try{localStorage.setItem('bj_md_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
   async function q(table) {
-    var c=cGet(table);if(c)return c;
-    var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
-    var d = await r.json();cSet(table,d);return d;
+    var c=cGet(table);if(c&&Array.isArray(c)&&c.length>0)return c;
+    try{var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
+    if(!r.ok)return[];var d = await r.json();if(Array.isArray(d)&&d.length>0)cSet(table,d);return d||[];}catch(e){return[];}
   }
 
   // Load all 3 datasets in parallel
@@ -309,10 +309,11 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Color interpolation
   var MAP_COLORS = [[20,30,48],[30,64,120],[59,130,246],[96,165,250],[147,197,253],[219,234,254]];
-  var VEL_COLORS = [[20,30,48],[30,80,60],[34,197,94],[74,222,128],[134,239,172],[187,247,208]];
+  var VEL_COLORS = [[25,45,40],[16,120,70],[22,163,74],[52,211,153],[110,231,183],[167,243,208]];
   function mapColor(val, max, colors) {
     if (!val || !max) return '#1a1f2e';
-    var t = Math.sqrt(Math.min(val / max, 1));
+    var ratio = Math.min(val / max, 1);
+    var t = 0.15 + 0.85 * Math.sqrt(ratio);
     var pal = colors || MAP_COLORS;
     var idx = t * (pal.length - 1);
     var lo = Math.floor(idx), hi = Math.min(lo + 1, pal.length - 1);
@@ -333,13 +334,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       return [x, y];
     }
     function projectAK(lon, lat) {
-      var x = (lon + 187) * 1.1 + 10;
-      var y = (72 - lat) * 3.0 + mapH * 0.50;
+      var x = (lon + 187) * 1.8 - 20;
+      var y = (72 - lat) * 4.5 + mapH * 0.38;
       return [x, y];
     }
     function projectHI(lon, lat) {
-      var x = (lon + 161.5) * 10.0 + 240;
-      var y = (22.5 - lat) * 10.0 + mapH * 0.70;
+      var x = (lon + 161.5) * 14.0 + 200;
+      var y = (22.5 - lat) * 14.0 + mapH * 0.58;
       return [x, y];
     }
     function getProj(name) {
@@ -497,7 +498,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         var jobAlpha = (0.3 + jobPct * 0.7).toFixed(2);
         var jobColor = 'rgba(59,130,246,' + jobAlpha + ')';
         // Per-capita: blue intensity scale (light to bright)
-        var pcColor = m[3] >= 8 ? '#60a5fa' : m[3] >= 4 ? '#3b82f6' : m[3] >= 2 ? '#2563eb' : '#1e40af';
+        var pcColor = m[3] >= 8 ? '#4ade80' : m[3] >= 4 ? '#22d3ee' : m[3] >= 2 ? '#fbbf24' : '#94a3b8';
         var pcAlpha = m[3] >= 8 ? '1' : m[3] >= 4 ? '0.85' : m[3] >= 2 ? '0.65' : '0.45';
         tr.innerHTML = '<td style="padding:6px 12px;color:var(--text-faint)">'+(i+1)+'</td>'
           +'<td style="padding:6px 12px;color:var(--text)">'+m[0]+', '+m[1]+'</td>'
@@ -535,7 +536,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         series:[{type:'scatter',coordinateSystem:'geo',
           data:pcSeriesData,
           symbolSize: function(val) { return Math.max(10, Math.min(55, Math.sqrt(val[2]/maxPC) * 55)); },
-          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(96,165,250,0.85)':v>=4?'rgba(59,130,246,0.75)':v>=2?'rgba(37,99,235,0.65)':'rgba(30,64,175,0.50)';},
+          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(74,222,128,0.9)':v>=4?'rgba(34,211,238,0.85)':v>=2?'rgba(251,191,36,0.8)':'rgba(148,163,184,0.6)';},
             borderColor:'rgba(147,197,253,0.4)',borderWidth:1},
           label:{show:true,position:'right',color:'#8a92a9',fontSize:9,fontFamily:'JetBrains Mono',
             formatter:function(p){return p.name.split(',')[0];}}
