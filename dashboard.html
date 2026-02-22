@@ -1773,10 +1773,11 @@
                 <option value="https://brilliantjobs.io/privacy">.io /privacy</option>
                 <option value="https://brilliantjobs.io/terms">.io /terms</option>
               </select>
-              <div id="seo-date-range" style="display:flex;gap:4px;">
-                <button class="admin-period-btn" data-seodays="7" onclick="setSeoRange(7)">7d</button>
-                <button class="admin-period-btn active" data-seodays="30" onclick="setSeoRange(30)">30d</button>
-                <button class="admin-period-btn" data-seodays="90" onclick="setSeoRange(90)">90d</button>
+              <div id="seo-date-range" style="display:flex;gap:6px;align-items:center;">
+                <label style="font-size:11px;color:var(--text-faint);">From</label>
+                <input type="date" id="seo-date-from" onchange="seoDateChanged()" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;font-family:var(--mono);">
+                <label style="font-size:11px;color:var(--text-faint);">To</label>
+                <input type="date" id="seo-date-to" onchange="seoDateChanged()" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;font-family:var(--mono);">
               </div>
               <button class="admin-period-btn" id="seo-sync-btn" onclick="triggerSeoSync(['all'])" style="margin-left:auto;background:linear-gradient(135deg,rgba(52,211,153,0.15),rgba(77,142,255,0.15));color:var(--green);border:1px solid rgba(52,211,153,0.3);font-size:10px;padding:3px 10px;" title="Run all 9 SEO sync tools">↻ Sync All</button>
             </div>
