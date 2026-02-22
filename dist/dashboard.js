@@ -13462,36 +13462,46 @@ function renderDfsAudit() {
     latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
     var m = latest.metrics || {};
     var issues = latest.issues || [];
-    var sc = latest.score || 0;
-    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+    var sc = latest.score;
+    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
+    var scDisplay = sc != null ? sc : '\u2014';
     el.innerHTML =
       '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Score</span> <span class="seo-metric-value ' + scColor + '">' + (sc || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value">' + (m.title_length || '\u2014') + ' chars</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || '\u2014') + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">On-Page Score</span> <span class="seo-metric-value ' + scColor + '" style="font-size:22px;">' + scDisplay + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Checks</span> <span class="seo-metric-value"><span class="admin-green">' + (m.checks_passed || 0) + '</span>/<span>' + (m.checks_total || 0) + '</span></span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Status</span> <span class="seo-metric-value">' + (m.status_code || '\u2014') + '</span></div>' +
       '</div>' +
       '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">H1s</span> <span class="seo-metric-value">' + (m.h1_count || 0) + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Load</span> <span class="seo-metric-value">' + (m.load_time ? m.load_time.toFixed(2) + 's' : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value" title="' + (m.title || '').replace(/"/g, '&quot;') + '">' + (m.title_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">H1/H2/H3</span> <span class="seo-metric-value">' + (m.h1_count||0) + '/' + (m.h2_count||0) + '/' + (m.h3_count||0) + '</span></div>' +
       '</div>' +
-      (issues.length > 0 ? '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) { return '<div class="seo-issue-item">' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues</span></div>');
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Images</span> <span class="seo-metric-value">' + (m.images_count || 0) + (m.images_without_alt ? ' <span class="admin-amber">(' + m.images_without_alt + ' no alt)</span>' : '') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
+      '</div>' +
+      (issues.length > 0 ? '<div style="margin-top:8px;font-size:10px;text-transform:uppercase;color:var(--text-faint);font-weight:600;letter-spacing:0.5px;">Failed Checks (' + issues.length + ')</div><div class="seo-issue-list">' + issues.slice(0,10).map(function(i) { return '<div class="seo-issue-item">\u2717 ' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row" style="margin-top:4px;"><span class="seo-metric-value admin-green">\u2713 All checks passed</span></div>');
   } else {
-    // Aggregate — show table of latest scores
+    // Aggregate — table of all pages with scores
     var latestDate = dfsData[dfsData.length - 1].date;
     var latest = dfsData.filter(function(r) { return r.date === latestDate; });
-    el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
+    var avgScore = latest.reduce(function(s, r) { return s + (r.score || 0); }, 0);
+    avgScore = latest.length ? Math.round(avgScore / latest.length) : 0;
+    var avgColor = avgScore >= 90 ? 'admin-green' : avgScore >= 50 ? 'admin-amber' : 'admin-red';
+    el.innerHTML = '<div style="margin-bottom:8px;"><span class="seo-metric-label">Avg On-Page Score</span> <span class="seo-metric-value ' + avgColor + '" style="font-size:18px;margin-left:6px;">' + avgScore + '</span></div>' +
+      '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Title</th><th>H1s</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
       latest.map(function(r) {
         var m = r.metrics || {};
         var path = '/';
         try { path = new URL(r.url).pathname || '/'; } catch(e) {}
-        var sc = r.score || 0;
-        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+        var sc = r.score;
+        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
         return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
-          '<td class="' + scColor + '" style="font-weight:600;">' + sc + '</td>' +
-          '<td>' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</td>' +
+          '<td class="' + scColor + '" style="font-weight:600;">' + (sc != null ? sc : '\u2014') + '</td>' +
+          '<td>' + (m.title_length || 0) + '</td>' +
+          '<td>' + (m.h1_count || 0) + '</td>' +
           '<td>' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
           '<td>' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
       }).join('') + '</tbody></table>';
@@ -13560,7 +13570,7 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.68';
+const BJ_VERSION = 'v3.69';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth

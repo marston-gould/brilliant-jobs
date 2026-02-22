@@ -196,45 +196,102 @@ async function syncPsi(targetUrl?: string): Promise<{ pages: number }> {
 }
 
 // ─── Task 4: DataForSEO On-Page ───
+// Uses instant_pages for per-URL on-page analysis (no crawl task needed)
 async function syncDfs(): Promise<{ tasks: number }> {
   const today = dateStr(0);
   const auth = btoa(`${DFS_LOGIN}:${DFS_API_KEY}`);
   let n = 0;
-  for (const url of SITE_URLS.slice(0, 5)) {
+  for (const url of SITE_URLS.slice(0, 6)) {
     try {
-      const cr = await fetch('https://api.dataforseo.com/v3/on_page/task_post', {
-        method: 'POST', headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify([{ target: url, max_crawl_pages: 1, store_raw_html: false }]),
+      // instant_pages: single-page analysis, returns immediately
+      const cr = await fetch('https://api.dataforseo.com/v3/on_page/instant_pages', {
+        method: 'POST',
+        headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([{
+          url,
+          enable_javascript: true,
+          load_resources: true,
+          enable_browser_rendering: true,
+        }]),
       });
       const cd = await cr.json();
-      const tid = cd.tasks?.[0]?.id;
-      if (!tid) continue;
-      let result = null;
-      for (let i = 0; i < 6; i++) {
-        await new Promise(r=>setTimeout(r,5000));
-        const sr = await fetch(`https://api.dataforseo.com/v3/on_page/summary/${tid}`, {
-          headers: { Authorization: `Basic ${auth}` },
-        });
-        const sd = await sr.json();
-        const t = sd.tasks?.[0];
-        if (t?.status_code===20000 && t?.result) { result=t.result[0]; break; }
+      const task = cd.tasks?.[0];
+      if (task?.status_code !== 20000) {
+        console.error(`[seo-sync] dfs ${url}: task error`, task?.status_message);
+        continue;
       }
-      if (result) {
-        const p = result.crawl_status_code===200 ? result : {};
-        await sb.from('seo_tech_audits').upsert({
-          date: today, url, source: 'dataforseo',
-          score: p.onpage_score ? Math.round(p.onpage_score*100) : null,
-          metrics: {
-            title_length: p.meta?.title?.length, description_length: p.meta?.description?.length,
-            h1_count: p.meta?.htags?.h1?.length||0, internal_links: p.internal_links_count,
-            external_links: p.external_links_count, page_size: p.page_size,
-            load_time: p.time_to_interactive, status_code: p.crawl_status_code,
-          },
-          issues: (p.checks||[]).filter((c:any)=>!c.is_passed)
-            .map((c:any)=>({ check:c.name, message:c.message })).slice(0,15),
-        }, { onConflict: 'date,url,source' });
-        n++;
+      const items = task.result?.[0]?.items;
+      if (!items?.length) {
+        console.log(`[seo-sync] dfs ${url}: no items returned`);
+        continue;
       }
+      const p = items[0];
+
+      // Extract on-page score and detailed metrics
+      const meta = p.meta || {};
+      const checks = p.checks || {};
+      const resources = p.page_resource_data || {};
+
+      // Build issues list from checks that indicate actual SEO problems
+      // Only include checks that should be true but are false (negative checks)
+      const NEGATIVE_CHECKS = new Set([
+        'no_content_encoding', 'high_loading_time', 'high_waiting_time',
+        'is_broken', 'is_4xx_code', 'is_5xx_code',
+        'no_title', 'title_too_long', 'title_too_short',
+        'no_description', 'description_too_long', 'description_too_short',
+        'no_h1_tag', 'duplicate_title', 'duplicate_description',
+        'duplicate_content', 'no_image_alt', 'no_image_title',
+        'no_favicon', 'seo_friendly_url_characters_check',
+        'no_content_encoding', 'is_http', 'low_content_rate',
+        'high_content_rate', 'no_doctype', 'canonical',
+        'has_meta_refresh_redirect', 'size_greater_than_3mb',
+      ]);
+      const issues: { check: string; message: string }[] = [];
+      for (const [checkName, checkVal] of Object.entries(checks)) {
+        // For negative checks (problems): report when true
+        // For positive checks (good things): report when false only if it's a known problem indicator
+        if (checkVal === true && NEGATIVE_CHECKS.has(checkName)) {
+          issues.push({ check: checkName, message: checkName.replace(/_/g, ' ') });
+        }
+      }
+
+      await sb.from('seo_tech_audits').upsert({
+        date: today, url, source: 'dataforseo',
+        score: p.onpage_score != null ? Math.round(p.onpage_score) : null,
+        metrics: {
+          onpage_score: p.onpage_score,
+          title: meta.title,
+          title_length: meta.title?.length || 0,
+          description: meta.description,
+          description_length: meta.description?.length || 0,
+          h1: meta.htags?.h1 || [],
+          h1_count: meta.htags?.h1?.length || 0,
+          h2_count: meta.htags?.h2?.length || 0,
+          h3_count: meta.htags?.h3?.length || 0,
+          canonical: meta.canonical,
+          internal_links: p.internal_links_count || 0,
+          external_links: p.external_links_count || 0,
+          images_count: meta.images_count || 0,
+          images_without_alt: meta.images_without_alt_count || 0,
+          page_size: p.size || 0,
+          encoded_size: p.encoded_size || 0,
+          load_time: p.fetch_timing?.duration_time || 0,
+          status_code: p.status_code,
+          content_encoding: p.content_encoding,
+          is_https: p.is_https,
+          is_www: p.is_www,
+          total_dom_size: resources.total_size || 0,
+          scripts_count: resources.scripts_count || 0,
+          stylesheets_count: resources.stylesheets_count || 0,
+          // Checks summary
+          checks_passed: Object.values(checks).filter((v: any) => v === true).length,
+          checks_failed: Object.values(checks).filter((v: any) => v === false).length,
+          checks_total: Object.keys(checks).length,
+        },
+        issues: issues.slice(0, 20),
+      }, { onConflict: 'date,url,source' });
+      n++;
+      console.log(`[seo-sync] dfs ${url}: score=${p.onpage_score}, checks=${Object.keys(checks).length}`);
     } catch(e) { console.error(`[seo-sync] dfs ${url}:`, e); }
   }
   return { tasks: n };
