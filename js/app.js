@@ -1,5 +1,5 @@
 const BJ_VERSION = 'v3.86';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — backup & DR: dr_health_check(), recovery runbook');
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — DR plan, error recovery docs');
 
 // Auth
 async function init() {
