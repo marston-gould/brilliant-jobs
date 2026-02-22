@@ -309,13 +309,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Color interpolation
   var MAP_COLORS = [[20,30,48],[30,64,120],[59,130,246],[96,165,250],[147,197,253],[219,234,254]];
-  function mapColor(val, max) {
+  var VEL_COLORS = [[20,30,48],[30,80,60],[34,197,94],[74,222,128],[134,239,172],[187,247,208]];
+  function mapColor(val, max, colors) {
     if (!val || !max) return '#1a1f2e';
-    var t = Math.min(val / max, 1);
-    var idx = t * (MAP_COLORS.length - 1);
-    var lo = Math.floor(idx), hi = Math.min(lo + 1, MAP_COLORS.length - 1);
+    var t = Math.sqrt(Math.min(val / max, 1));
+    var pal = colors || MAP_COLORS;
+    var idx = t * (pal.length - 1);
+    var lo = Math.floor(idx), hi = Math.min(lo + 1, pal.length - 1);
     var f = idx - lo;
-    return 'rgb(' + Math.round(MAP_COLORS[lo][0]+(MAP_COLORS[hi][0]-MAP_COLORS[lo][0])*f) + ',' + Math.round(MAP_COLORS[lo][1]+(MAP_COLORS[hi][1]-MAP_COLORS[lo][1])*f) + ',' + Math.round(MAP_COLORS[lo][2]+(MAP_COLORS[hi][2]-MAP_COLORS[lo][2])*f) + ')';
+    return 'rgb(' + Math.round(pal[lo][0]+(pal[hi][0]-pal[lo][0])*f) + ',' + Math.round(pal[lo][1]+(pal[hi][1]-pal[lo][1])*f) + ',' + Math.round(pal[lo][2]+(pal[hi][2]-pal[lo][2])*f) + ')';
   }
 
   try {
@@ -331,13 +333,13 @@ document.addEventListener('DOMContentLoaded', async function() {
       return [x, y];
     }
     function projectAK(lon, lat) {
-      var x = (lon + 187) * 0.75 + 10;
-      var y = (72 - lat) * 2.2 + mapH * 0.58;
+      var x = (lon + 187) * 1.1 + 10;
+      var y = (72 - lat) * 3.0 + mapH * 0.50;
       return [x, y];
     }
     function projectHI(lon, lat) {
-      var x = (lon + 161.5) * 7.5 + 240;
-      var y = (22.5 - lat) * 7.5 + mapH * 0.76;
+      var x = (lon + 161.5) * 10.0 + 240;
+      var y = (22.5 - lat) * 10.0 + mapH * 0.70;
       return [x, y];
     }
     function getProj(name) {
@@ -415,10 +417,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     legend.style.cssText = 'position:absolute;top:50%;right:12px;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;font-family:JetBrains Mono,monospace;font-size:9px;color:#7884a8';
     legend.innerHTML = '<span id="leg-hi" style="font-size:8px"></span><canvas id="leg-bar" width="10" height="140" style="border-radius:3px"></canvas><span style="font-size:8px">0 jobs</span>';
     mapEl.appendChild(legend);
-    function drawLegend(maxVal) {
+    function drawLegend(maxVal, isVel) {
       var rounded = roundScale(maxVal);
       var c = document.getElementById('leg-bar');
-      if (c) { var ctx = c.getContext('2d'); for (var y=0;y<140;y++) { ctx.fillStyle = mapColor(139-y,139); ctx.fillRect(0,y,10,1); } }
+      if (c) { var ctx = c.getContext('2d'); for (var y=0;y<140;y++) { ctx.fillStyle = mapColor(139-y,139, isVel ? VEL_COLORS : MAP_COLORS); ctx.fillRect(0,y,10,1); } }
       var el = document.getElementById('leg-hi');
       if (el) el.textContent = rounded.toLocaleString() + ' jobs';
     }
@@ -427,11 +429,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     function renderOpen() {
       Object.keys(statePaths).forEach(function(code) {
         var val = openByState[code] || 0;
-        statePaths[code].setAttribute('fill', val ? mapColor(val, openMax) : '#1a1f2e');
+        statePaths[code].setAttribute('fill', val ? mapColor(val, openMax, MAP_COLORS) : '#1a1f2e');
         statePaths[code]._val = val;
         statePaths[code]._mode = 'open';
       });
-      drawLegend(openMax);
+      drawLegend(openMax, false);
     }
 
     // Render velocity for a given week
@@ -440,11 +442,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       var data = velByWeek[w] || {};
       Object.keys(statePaths).forEach(function(code) {
         var val = data[code] || 0;
-        statePaths[code].setAttribute('fill', val ? mapColor(val, velMax) : '#1a1f2e');
+        statePaths[code].setAttribute('fill', val ? mapColor(val, velMax, VEL_COLORS) : '#1a1f2e');
         statePaths[code]._val = val;
         statePaths[code]._mode = 'vel';
       });
-      drawLegend(velMax);
+      drawLegend(velMax, true);
     }
 
     // Mode toggle

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v3.57 - 2026-02-22 - Prod fixes: segment bleed, version sync -->
+<!-- Brilliant Jobs Landing Page v3.58 - 2026-02-22 - Prod fixes: segment bleed, version sync -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -570,7 +570,7 @@
       .pricing-grid { gap: 16px; }
     }
 
-    /* ==================== SEGMENT VISIBILITY (v3.57 fix) ==================== */
+    /* ==================== SEGMENT VISIBILITY (v3.58 fix) ==================== */
     .segment-new,
     .segment-returning,
     .segment-lapsed,
@@ -711,10 +711,10 @@
   }
   </script>
 
-  <!-- Segment detection — runs before body paint to prevent FOUC (v3.57) -->
+  <!-- Segment detection — runs before body paint to prevent FOUC (v3.58) -->
   <script>
   (function() {
-    console.log('[BJ] Landing page v3.57');
+    console.log('[BJ] Landing page v3.58');
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -1258,7 +1258,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v3.57</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v3.58</p>
   </footer>
 
   <!-- AUTH MODAL -->
@@ -1385,11 +1385,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================================
     // MODAL
     // ============================================================
-    function openModal(tab) {
+    window.openModal = function openModal(tab) {
       $('#auth-modal').classList.add('active');
       switchTab(tab || 'login');
     }
-    function closeModal() {
+    window.closeModal = function closeModal() {
       $('#auth-modal').classList.remove('active');
     }
 
