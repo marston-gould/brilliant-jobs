@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.52';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — rewrite pipeline + QA team');
+const BJ_VERSION = 'v3.53';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — output integration + LI alignment + DB persistence');
 
 // Auth
 async function init() {
