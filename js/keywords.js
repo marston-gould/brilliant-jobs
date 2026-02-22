@@ -1651,6 +1651,14 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
     html += '</div></details>';
   }
 
+  // G31: Feedback button
+  html += '<div style="margin-top:12px;text-align:center;">';
+  html += '<button class="btn btn-sm" onclick="bjShowFeedbackUI(\'' + stateKey + '\')" style="font-size:11px;padding:6px 16px;border:1px solid var(--border);">\u2b50 Rate & Request Revision</button>';
+  html += '</div>';
+
+  // Feedback UI container (hidden initially)
+  html += '<div id="feedback-ui-' + stateKey + '" style="display:none;"></div>';
+
   html += '</div>';
   if (btn) btn.style.display = 'none';
   var resultsDiv = document.createElement('div');
@@ -1659,7 +1667,258 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
   if (typeof renderResumeCards === 'function') setTimeout(function() { renderResumeCards(); }, 500);
 }
 
-// ─── Wire Gap Interview + Acceptance into the readiness panel ───
+// ════════════════════════════════════════════════════════════
+// FEEDBACK + ITERATION (G31–G36)
+// ════════════════════════════════════════════════════════════
+
+function bjShowFeedbackUI(stateKey) {
+  var el = document.getElementById('feedback-ui-' + stateKey);
+  if (!el) return;
+
+  var state = window._bjRewriteState[stateKey] || {};
+  var fb = state.feedback || { overall: 0, accuracy: 0, relevance: 0, voice: 0, formatting: 0, text: '' };
+
+  var html = '<div style="margin-top:10px;padding:12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.15);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--warm);margin-bottom:8px;">How did we do?</div>';
+
+  // Star ratings for 5 dimensions
+  var dims = [
+    { key: 'overall', label: 'Overall quality' },
+    { key: 'accuracy', label: 'Accuracy' },
+    { key: 'relevance', label: 'Relevance' },
+    { key: 'voice', label: 'Voice & tone' },
+    { key: 'formatting', label: 'Formatting' }
+  ];
+
+  dims.forEach(function(dim) {
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<span style="font-size:11px;color:var(--text-dim);width:90px;">' + dim.label + '</span>';
+    for (var s = 1; s <= 5; s++) {
+      var filled = s <= (fb[dim.key] || 0);
+      html += '<span onclick="bjSetRating(\'' + stateKey + '\',\'' + dim.key + '\',' + s + ')" style="cursor:pointer;font-size:16px;color:' + (filled ? '#f59e0b' : 'var(--border)') + ';" id="star-' + stateKey + '-' + dim.key + '-' + s + '">\u2605</span>';
+    }
+    html += '<span style="font-size:10px;color:var(--text-faint);" id="star-val-' + stateKey + '-' + dim.key + '">' + (fb[dim.key] || '-') + '/5</span>';
+    html += '</div>';
+  });
+
+  // Qualitative feedback
+  html += '<div style="margin-top:8px;">';
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">What would you change?</div>';
+  html += '<textarea id="feedback-text-' + stateKey + '" placeholder="E.g.: The skills section feels too generic. I want more emphasis on my AWS work. The second bullet under Company B sounds robotic." style="width:100%;height:60px;padding:6px 8px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;resize:vertical;font-family:inherit;">' + (fb.text || '') + '</textarea>';
+  html += '</div>';
+
+  html += '<div style="display:flex;gap:8px;margin-top:10px;">';
+  html += '<button class="btn btn-sm" onclick="bjSubmitFeedback(\'' + stateKey + '\')" style="font-size:11px;padding:6px 16px;background:var(--warm);color:#fff;font-weight:600;">Submit Feedback</button>';
+  html += '<button class="btn btn-sm" onclick="document.getElementById(\'feedback-ui-' + stateKey + '\').style.display=\'none\'" style="font-size:11px;padding:6px 12px;color:var(--text-faint);">Cancel</button>';
+  html += '</div>';
+
+  html += '</div>';
+  el.innerHTML = html;
+  el.style.display = '';
+}
+
+function bjSetRating(stateKey, dim, value) {
+  var state = window._bjRewriteState[stateKey] || {};
+  if (!state.feedback) state.feedback = {};
+  state.feedback[dim] = value;
+  window._bjRewriteState[stateKey] = state;
+
+  // Update stars visual
+  for (var s = 1; s <= 5; s++) {
+    var star = document.getElementById('star-' + stateKey + '-' + dim + '-' + s);
+    if (star) star.style.color = s <= value ? '#f59e0b' : 'var(--border)';
+  }
+  var valEl = document.getElementById('star-val-' + stateKey + '-' + dim);
+  if (valEl) valEl.textContent = value + '/5';
+}
+
+async function bjSubmitFeedback(stateKey) {
+  var state = window._bjRewriteState[stateKey] || {};
+  var textEl = document.getElementById('feedback-text-' + stateKey);
+  if (textEl) state.feedback.text = textEl.value;
+
+  if (!state.feedback.overall) {
+    alert('Please rate overall quality before submitting.');
+    return;
+  }
+
+  // Save feedback to database
+  if (state.rewriteResult && state.rewriteResult.session_id) {
+    try {
+      var session = await sb.auth.getSession();
+      if (session.data.session) {
+        var SRK = session.data.session.access_token;
+        await sb.from('rewrite_rounds')
+          .update({
+            rating_overall: state.feedback.overall,
+            rating_accuracy: state.feedback.accuracy,
+            rating_relevance: state.feedback.relevance,
+            rating_voice: state.feedback.voice,
+            rating_formatting: state.feedback.formatting,
+            feedback_text: state.feedback.text
+          })
+          .eq('session_id', state.rewriteResult.session_id)
+          .eq('round_number', state.rewriteResult.round_number || 1);
+      }
+    } catch (e) { console.error('[BJ] Feedback save error:', e); }
+  }
+
+  // G33: Call Revision Assessor
+  var feedbackEl = document.getElementById('feedback-ui-' + stateKey);
+  if (feedbackEl) feedbackEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:11px;color:var(--text-faint);">Analyzing your feedback\u2026</div>';
+
+  try {
+    var assessSession = await sb.auth.getSession();
+    if (!assessSession.data.session) return;
+
+    var assessRes = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + assessSession.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        mode: 'revision-assess',
+        resume_sections: state.rewriteResult?.resume_sections,
+        feedback: state.feedback
+      })
+    });
+
+    var assessment = null;
+    if (assessRes.ok) {
+      var assessData = await assessRes.json();
+      assessment = assessData;
+    }
+
+    // Show assessment
+    bjShowRevisionAssessment(stateKey, state.feedback, assessment);
+
+  } catch (e) {
+    console.error('[BJ] Revision assessment error:', e);
+    bjShowRevisionAssessment(stateKey, state.feedback, null);
+  }
+}
+
+function bjShowRevisionAssessment(stateKey, feedback, assessment) {
+  var feedbackEl = document.getElementById('feedback-ui-' + stateKey);
+  if (!feedbackEl) return;
+
+  var html = '<div style="margin-top:10px;padding:12px;background:rgba(77,142,255,0.04);border:1px solid rgba(77,142,255,0.15);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#4d8eff;margin-bottom:6px;">\ud83d\udcca Revision Assessment</div>';
+
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">Your ratings: ';
+  ['overall','accuracy','relevance','voice','formatting'].forEach(function(d) {
+    if (feedback[d]) html += d + ': ' + feedback[d] + '/5  ';
+  });
+  html += '</div>';
+
+  if (assessment && assessment.revision_recommended !== undefined) {
+    var confColor = assessment.confidence === 'high' ? 'var(--green)' : assessment.confidence === 'medium' ? 'var(--warm)' : 'var(--text-faint)';
+    html += '<div style="margin-top:8px;padding:8px;background:var(--bg-main);border-radius:6px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:' + (assessment.revision_recommended ? 'var(--green)' : 'var(--text-faint)') + ';">';
+    html += assessment.revision_recommended ? '\u2713 A revision is likely to improve your resume' : '\u2014 A revision may not meaningfully improve the result';
+    html += '</div>';
+    html += '<div style="font-size:10px;color:' + confColor + ';margin-top:2px;">Confidence: ' + (assessment.confidence || 'unknown') + '</div>';
+    if (assessment.confidence_reason) html += '<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">' + assessment.confidence_reason + '</div>';
+    if (assessment.suggestion_to_user) html += '<div style="font-size:10px;color:var(--warm);margin-top:4px;">\ud83d\udca1 ' + assessment.suggestion_to_user + '</div>';
+    if (assessment.estimated_improvements) {
+      html += '<div style="margin-top:6px;">';
+      assessment.estimated_improvements.forEach(function(imp) {
+        html += '<div style="font-size:10px;color:var(--text-dim);">' + imp.area + ': ' + imp.current_rating + '/5 \u2192 ~' + imp.estimated_after + '/5</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<div style="display:flex;gap:8px;margin-top:10px;">';
+  html += '<button class="btn btn-sm" onclick="bjRequestRevision(\'' + stateKey + '\')" style="font-size:11px;padding:6px 16px;background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;">\u2728 Request Revision</button>';
+  html += '<button class="btn btn-sm" onclick="document.getElementById(\'feedback-ui-' + stateKey + '\').innerHTML=\'<div style=padding:8px;font-size:11px;color:var(--green);text-align:center>\u2713 Feedback saved. Thanks!</div>\'" style="font-size:11px;padding:6px 12px;color:var(--text-faint);">I\'m satisfied</button>';
+  html += '</div>';
+  html += '</div>';
+
+  feedbackEl.innerHTML = html;
+}
+
+// G34: Revision loop — re-runs rewrite pipeline with feedback
+async function bjRequestRevision(stateKey) {
+  var state = window._bjRewriteState[stateKey] || {};
+  if (!state.rewriteResult) return;
+
+  // Update feedback context for the next round
+  state.previousFeedback = {
+    ratings: state.feedback,
+    previous_sections: state.rewriteResult.resume_sections,
+    round_number: (state.rewriteResult.round_number || 1) + 1
+  };
+
+  // Re-trigger the rewrite with feedback context injected
+  var parts = stateKey.split('-');
+  var ri = parseInt(parts[0]);
+  var fi = parseInt(parts[1]);
+
+  var btn = document.getElementById('feedback-ui-' + stateKey);
+  if (btn) btn.innerHTML = '<div style="padding:12px;text-align:center;font-size:11px;color:var(--warm);">Generating revision\u2026 This may take 30-60 seconds.</div>';
+
+  var filterNames = Object.keys(scores[ri]?.filters || {});
+  var filterScore = scores[ri]?.filters[filterNames[fi]];
+  if (!filterScore) return;
+
+  var acceptedRecs = [];
+  Object.keys(state.accepted || {}).forEach(function(k) {
+    if (state.accepted[k]) acceptedRecs.push({ id: k, type: k.split('-')[0], user_input: (state.achievementInputs||{})[k] || null });
+  });
+
+  var r = resumes[ri];
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rewrite-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        resume_text: r?.extractedText || '',
+        resume_profile: filterScore.resumeProfile,
+        jd_profile: filterScore.jdProfile,
+        accepted_recommendations: acceptedRecs,
+        achievement_inputs: state.achievementInputs || {},
+        gap_answers: state.gapAnswers || {},
+        user_highlights: state.userHighlights || [],
+        user_notes: state.userNotes || '',
+        include_cover_letter: state.coverLetter || false,
+        template_id: state.template || 'executive',
+        filter_name: filterNames[fi] || 'General',
+        coaching: filterScore.coaching,
+        previous_feedback: state.previousFeedback,
+        round_number: (state.rewriteResult.round_number || 1) + 1
+      })
+    });
+
+    if (!res.ok) {
+      if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Revision failed. Try again.</div>';
+      return;
+    }
+
+    var data = await res.json();
+    state.rewriteResult = data;
+
+    // Clear old results and show new ones
+    var container = document.getElementById('acceptance-ui-' + stateKey);
+    if (container) {
+      var oldResults = container.querySelectorAll('div[style*="rgba(34,197,94"]');
+      oldResults.forEach(function(el) { el.remove(); });
+    }
+    bjShowRewriteResults(stateKey, ri, fi, data);
+
+  } catch (e) {
+    console.error('[BJ] Revision error:', e);
+    if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Error: ' + e.message + '</div>';
+  }
+}
 
 async function bjInitRewriteFlow(ri, fi, filterScore) {
   var stateKey = ri + '-' + fi;
