@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.70';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
+const BJ_VERSION = 'v3.71';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — billing: credit balance, pricing modal, Stripe checkout');
 
 // Auth
 async function init() {
@@ -61,6 +61,8 @@ async function init() {
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
+  // Initialize billing (credit balance, pricing, payment return check)
+  initBilling();
   loadStats();
   checkExtensionStatus();
   loadCollections();
