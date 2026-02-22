@@ -333,8 +333,52 @@ function selectGoldStandard(industryClassification: any): { industry: string; st
 
 
 // ════════════════════════════════════════════════════════════
-// PREMIUM PIPELINE
+// GAP INTERVIEW AGENT
 // ════════════════════════════════════════════════════════════
+
+const AGENT_GAP_INTERVIEWER = `You are a Career Interview Specialist. For each gap between a candidate's resume and job requirements, generate 2-3 targeted questions that could uncover relevant experience the candidate has but didn't include on their resume.
+
+Think laterally:
+- If the gap is "Kubernetes", ask about Docker, containers, cloud infrastructure, deployment tools
+- If the gap is "team leadership of 10+", ask about cross-functional teams, dotted-line reports, contractor management, mentoring
+- If the gap is "Python", ask about scripting, automation, data analysis, Jupyter, pandas, SQL
+- If the gap is a specific industry, ask about adjacent industries and transferable domain knowledge
+
+Each question should be conversational and non-intimidating. Help the user realize they may have relevant experience they forgot to mention.
+
+Output ONLY a JSON object:
+{
+  "gap_questions": [
+    {
+      "gap": "the requirement that's missing",
+      "severity": "critical" | "important" | "minor",
+      "questions": ["question 1", "question 2"],
+      "hint": "brief encouragement like: Even adjacent experience counts — Docker, ECS, cloud deployments all relate"
+    }
+  ]
+}
+
+Only generate questions for gaps where the candidate MIGHT have relevant experience. Skip gaps that are clearly unrecoverable (e.g., "PhD required" when candidate has no graduate education).
+
+No markdown, no code fences, no preamble. JSON only.`;
+
+async function runGapInterview(gapAnalysis: any[], resumeProfile: any): Promise<any> {
+  const input = `<gap_analysis>\n${JSON.stringify(gapAnalysis)}\n</gap_analysis>\n\n<candidate_profile_summary>\nIndustries: ${(resumeProfile?.raw_stats?.industries || []).join(', ')}\nYears experience: ${resumeProfile?.raw_stats?.total_years_experience || 'unknown'}\nSkills: ${(resumeProfile?.skills_inventory || []).slice(0, 20).map((s: any) => s.skill).join(', ')}\n</candidate_profile_summary>\n\nGenerate targeted questions for each gap. Return ONLY JSON.`;
+
+  const result = await callAnthropic(HAIKU_MODEL, AGENT_GAP_INTERVIEWER, input, 2000, 0);
+
+  if (!result.ok) {
+    console.error('[score-resume:gap-interview] Failed:', result.error);
+    return { gap_questions: [], error: 'Gap interview generation failed' };
+  }
+
+  try {
+    return parseJSON(result.text);
+  } catch (e) {
+    console.error('[score-resume:gap-interview] JSON parse failed');
+    return { gap_questions: [], error: 'Failed to parse gap interview response' };
+  }
+}
 
 async function runPremiumPipeline(resumeText: string, jdBlock: string, filterName: string, jdCount: number): Promise<any> {
   const startTime = Date.now();
@@ -511,12 +555,37 @@ serve(async (req) => {
     const body = await req.json();
     const { resume_text, resume_keywords, mode, tier: requestedTier, filter_name, job_ids, max_jds } = body;
 
-    if (!resume_text || !mode) {
-      return new Response(JSON.stringify({ error: 'Missing resume_text or mode' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    if (!mode) {
+      return new Response(JSON.stringify({ error: 'Missing mode' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
-    if (!['corpus', 'single'].includes(mode)) {
-      return new Response(JSON.stringify({ error: 'Invalid mode. Use "corpus" or "single"' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    if (mode !== 'gap-interview' && !resume_text) {
+      return new Response(JSON.stringify({ error: 'Missing resume_text' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+
+    if (!['corpus', 'single', 'gap-interview'].includes(mode)) {
+      return new Response(JSON.stringify({ error: 'Invalid mode. Use "corpus", "single", or "gap-interview"' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── GAP INTERVIEW MODE ───
+    // Lightweight mode: takes gap_analysis + resume_profile from a previous premium analysis
+    // and generates targeted questions to close gaps
+    if (mode === 'gap-interview') {
+      const { gap_analysis, resume_profile } = body;
+      if (!gap_analysis || !Array.isArray(gap_analysis)) {
+        return new Response(JSON.stringify({ error: 'gap-interview mode requires gap_analysis array' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+      }
+
+      console.log(`[score-resume] GAP INTERVIEW user=${user.id} gaps=${gap_analysis.length}`);
+      const gapResult = await runGapInterview(gap_analysis, resume_profile || {});
+
+      return new Response(JSON.stringify({
+        mode: 'gap-interview',
+        ...gapResult,
+        model: HAIKU_MODEL
+      }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
     }
 
     // Determine tier — default to 'basic', premium requires explicit request
