@@ -334,15 +334,15 @@ document.addEventListener('DOMContentLoaded', async function() {
       return [x, y];
     }
     function projectAK(lon, lat) {
-      // Inset box: bottom-left, x=20-230, y=mapH*0.62 to mapH*0.95
-      var bx = 20, by = mapH * 0.62, bw = 210, bh = mapH * 0.32;
+      // Inset box: bottom-left, well below continental US
+      var bx = 10, by = mapH * 0.68, bw = 200, bh = mapH * 0.28;
       var x = bx + ((lon + 190) / 65) * bw;
       var y = by + ((72 - lat) / 20) * bh;
       return [x, y];
     }
     function projectHI(lon, lat) {
-      // Inset box: to the right of AK, x=250-380, y=mapH*0.78 to mapH*0.95
-      var bx = 250, by = mapH * 0.78, bw = 130, bh = mapH * 0.17;
+      // Inset box: to the right of AK
+      var bx = 220, by = mapH * 0.82, bw = 120, bh = mapH * 0.15;
       var x = bx + ((lon + 161) / 6) * bw;
       var y = by + ((22.5 - lat) / 3.5) * bh;
       return [x, y];
@@ -377,12 +377,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Inset boxes for Alaska and Hawaii
     var svgBox = function(x,y,w,h) { var b=document.createElementNS(svgNS,'rect'); b.setAttribute('x',x);b.setAttribute('y',y);b.setAttribute('width',w);b.setAttribute('height',h); b.setAttribute('fill','none');b.setAttribute('stroke','#2d3348');b.setAttribute('stroke-width','1.5');b.setAttribute('rx','4'); svg.appendChild(b); };
-    svgBox(12, mapH*0.60, 228, mapH*0.36);
-    svgBox(242, mapH*0.76, 148, mapH*0.20);
+    svgBox(2, mapH*0.66, 218, mapH*0.32);
+    svgBox(222, mapH*0.80, 128, mapH*0.18);
     // Labels
     var addLabel = function(x,y,text) { var t=document.createElementNS(svgNS,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('fill','#4a5270');t.setAttribute('font-size','10');t.setAttribute('font-family','Outfit,sans-serif');t.setAttribute('font-weight','600');t.textContent=text;svg.appendChild(t); };
-    addLabel(18, mapH*0.60 + 14, 'ALASKA');
-    addLabel(248, mapH*0.76 + 14, 'HAWAII');
+    addLabel(8, mapH*0.66 + 14, 'ALASKA');
+    addLabel(228, mapH*0.80 + 14, 'HAWAII');
 
     // State paths
     var statePaths = {};
@@ -412,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         tip.style.top = (e.clientY - rect.top - 30) + 'px';
       });
       path.addEventListener('mouseleave', function() {
-        path.setAttribute('stroke', '#2d3348'); path.setAttribute('stroke-width', '0.5');
+        path.setAttribute('stroke', 'rgba(255,255,255,0.2)'); path.setAttribute('stroke-width', '0.8');
         tip.style.display = 'none';
       });
       svg.appendChild(path);
@@ -540,7 +540,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           map: 'USA_INSET',
           roam: false,
           silent: true,
-          itemStyle: { areaColor: '#12141a', borderColor: '#2d3348', borderWidth: 0.5 },
+          itemStyle: { areaColor: '#12141a', borderColor: 'rgba(255,255,255,0.2)', borderWidth: 0.8 },
           emphasis: { disabled: true },
           left: 80, right: 20, top: 20, bottom: 20,
           regions: [

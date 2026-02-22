@@ -12147,11 +12147,28 @@ function aggregateStats(rows) {
   s.locationCounts = {};
   s.locationsTotal = 0;
   var US_ST = {AL:1,AK:1,AZ:1,AR:1,CA:1,CO:1,CT:1,DC:1,DE:1,FL:1,GA:1,HI:1,ID:1,IL:1,IN:1,IA:1,KS:1,KY:1,LA:1,ME:1,MD:1,MA:1,MI:1,MN:1,MS:1,MO:1,MT:1,NE:1,NV:1,NH:1,NJ:1,NM:1,NY:1,NC:1,ND:1,OH:1,OK:1,OR:1,PA:1,RI:1,SC:1,SD:1,TN:1,TX:1,UT:1,VT:1,VA:1,WA:1,WV:1,WI:1,WY:1};
+  function normalizeLocation(raw) {
+    var loc = raw.toLowerCase().trim();
+    // Strip country suffixes
+    loc = loc.replace(/,?\s*united states$/,'').replace(/,?\s*usa$/,'').replace(/,?\s*us$/,'').trim();
+    // Handle remote variants
+    if (loc === 'remote' || loc === '') return null;
+    if (/^remote\s*[-–—]\s*/.test(loc)) loc = loc.replace(/^remote\s*[-–—]\s*/,'').trim();
+    if (/^remote,?\s*/.test(loc) && loc !== 'remote') loc = loc.replace(/^remote,?\s*/,'').trim();
+    if (loc === '' || loc === 'remote') return null;
+    // Handle "(remote)" suffix
+    loc = loc.replace(/\s*\(remote\)\s*$/,'').trim();
+    // Multi-location: split on semicolons and take first
+    if (loc.indexOf(';') !== -1) loc = loc.split(';')[0].trim();
+    if (!loc) return null;
+    return loc;
+  }
   rows.forEach(function(r) {
-    var loc = (r.location || '').trim();
-    if (loc && loc.toLowerCase() !== 'remote') {
+    var raw = (r.location || '').trim();
+    var loc = normalizeLocation(raw);
+    if (loc) {
       s.locationsTotal++;
-      s.locationCounts[loc.toLowerCase()] = (s.locationCounts[loc.toLowerCase()]||0) + 1;
+      s.locationCounts[loc] = (s.locationCounts[loc]||0) + 1;
     }
     if (r.loc_state && US_ST[r.loc_state]) {
       s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
@@ -12196,23 +12213,33 @@ function emptyChart(chart, msg) {
 function renderTimeline(stats) {
   var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
   var sorted = Object.entries(stats.timelineBuckets).sort(function(a,b){ return a[0].localeCompare(b[0]); });
+  // Compute cumulative
+  var cum = [], running = 0;
+  sorted.forEach(function(e) { running += e[1]; cum.push(running); });
   chart.setOption({
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=new Date(p[0].name); var isWtd = stats.timelineWtdKey && p[0].name === stats.timelineWtdKey; return '<b>'+(isWtd?'WTD: ':'Week of ')+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'+(isWtd?' (so far)':''); }}, ttip()),
-    grid: { top:20, right:20, bottom:30, left:50 },
+      formatter:function(p){ var d=new Date(p[0].name); var isWtd = stats.timelineWtdKey && p[0].name === stats.timelineWtdKey; var cumVal=p[1]?p[1].value:0; return '<b>'+(isWtd?'WTD: ':'Week of ')+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'+(isWtd?' (so far)':'')+'<br/>'+cumVal+' cumulative'; }}, ttip()),
+    grid: { top:30, right:50, bottom:30, left:50 },
     xAxis: { type:'category', data:sorted.map(function(e){return e[0];}),
       axisLabel: { color:_T.dim, fontFamily:_T.mono, fontSize:10, interval:0,
         formatter:function(v){ var d=new Date(v); var label=d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); return stats.timelineWtdKey && v===stats.timelineWtdKey ? label+'\n(WTD)' : label; }},
       axisLine: STATS_THEME.axisLine },
-    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
-    series: [{ type:'bar', data:sorted.map(function(e){
+    yAxis: [
+      { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+      { type:'value', position:'right', axisLabel:{ color:'rgba(99,102,241,0.6)', fontFamily:_T.mono, fontSize:10, formatter:function(v){return v>=1000?(v/1000).toFixed(0)+'K':v;} }, splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false} }
+    ],
+    series: [{ type:'bar', yAxisIndex:0, data:sorted.map(function(e){
         var isWtd = stats.timelineWtdKey && e[0] === stats.timelineWtdKey;
         return { value:e[1], itemStyle:{ color: isWtd
           ? new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#818cf8'},{offset:1,color:'rgba(129,140,248,0.3)'}])
           : new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#60a5fa'},{offset:1,color:'rgba(59,130,246,0.4)'}]),
           borderRadius:[3,3,0,0], borderType: isWtd ? 'dashed' : 'solid' }};
       }),
-      barMaxWidth:28 }],
+      barMaxWidth:28 },
+      { type:'line', yAxisIndex:1, data:cum, smooth:0.3, symbol:'none',
+        lineStyle:{color:'rgba(99,102,241,0.7)',width:2},
+        areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(99,102,241,0.15)'},{offset:1,color:'rgba(99,102,241,0)'}])} }
+    ],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -13450,7 +13477,7 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.66';
+const BJ_VERSION = 'v3.67';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth
