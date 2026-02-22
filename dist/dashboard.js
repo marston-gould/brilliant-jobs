@@ -2416,6 +2416,7 @@ document.addEventListener('click', function(e) {
 
 // ─── AI-powered resume scoring (Pro feature) ───
 async function fetchAIScore(params) {
+  if (window._aiScoreDisabled) return null;
   try {
     var session = await sb.auth.getSession();
     if (!session.data.session) return null;
@@ -2431,6 +2432,10 @@ async function fetchAIScore(params) {
 
     if (!res.ok) {
       console.log('[BJ] AI score HTTP', res.status);
+      if (res.status === 406 || res.status === 404) {
+        window._aiScoreDisabled = true;
+        console.warn('[BJ] AI scoring disabled — Edge Function returned ' + res.status + '. Redeploy with: supabase functions deploy score-resume --no-verify-jwt');
+      }
       return null;
     }
     var data = await res.json();
@@ -7733,8 +7738,47 @@ async function startAiFilterSuggest() {
     return;
   }
   
-  // If multiple resumes, use the most recently uploaded one
-  var resume = resumesWithText[resumesWithText.length - 1];
+  // If multiple resumes, show picker; otherwise use the only one
+  var resume;
+  if (resumesWithText.length > 1) {
+    var pickerHtml = '<div style="padding:12px;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Choose a resume to analyze:</div>';
+    resumesWithText.forEach(function(r, idx) {
+      pickerHtml += '<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.1s;" ' +
+        'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'var(--accent-glow)\'" ' +
+        'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
+        'onclick="window._aiResumeChoice=' + idx + ';document.getElementById(\'ai-resume-picker\').style.display=\'none\';continueAiFilterSuggest();">' +
+        '<div style="font-size:13px;font-weight:600;">' + (r.name || 'Resume ' + (idx+1)) + '</div>' +
+        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + ' · ' + (r.uploadedAt || '') + '</div></div>';
+    });
+    pickerHtml += '</div>';
+    var modal = document.getElementById('ai-filter-modal');
+    var body = document.getElementById('ai-filter-body');
+    var footer = document.getElementById('ai-filter-footer');
+    var meta = document.getElementById('ai-filter-meta');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    footer.style.display = 'none';
+    meta.textContent = 'Select a resume';
+    body.innerHTML = '<div id="ai-resume-picker">' + pickerHtml + '</div>';
+    return;
+  } else {
+    resume = resumesWithText[0];
+  }
+  
+  _doAiFilterAnalysis(resume);
+}
+
+function continueAiFilterSuggest() {
+  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  var idx = window._aiResumeChoice || 0;
+  var resume = resumesWithText[idx];
+  if (!resume) return;
+  _doAiFilterAnalysis(resume);
+}
+
+async function _doAiFilterAnalysis(resume) {
   
   // Show modal with loading state
   var modal = document.getElementById('ai-filter-modal');
@@ -7772,7 +7816,10 @@ async function startAiFilterSuggest() {
     
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI generation failed') + '</div>';
+      var msg = err.error || 'AI generation failed';
+      if (resp.status === 401) msg = 'Session expired — please log out and back in, then try again.';
+      if (resp.status === 406) msg = 'Edge Function not available. Redeploy with: supabase functions deploy generate-filter --no-verify-jwt';
+      body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--red);margin-bottom:8px;">' + msg + '</div><div style="font-size:11px;color:var(--text-faint);">Status: ' + resp.status + '</div></div>';
       return;
     }
     
@@ -11908,8 +11955,10 @@ function aggregateStats(rows) {
   });
   s.seniorPct = rows.length > 0 ? Math.round((seniorN / rows.length) * 100) : 0;
   Object.keys(salByLvl).forEach(function(label) {
-    var arr = salByLvl[label];
-    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length), count: arr.length };
+    var arr = salByLvl[label].sort(function(a,b){return a-b;});
+    var n = arr.length;
+    var p = function(pct) { var i = Math.floor(pct * (n - 1)); var f = pct * (n - 1) - i; return Math.round(arr[i] + (arr[Math.min(i+1,n-1)] - arr[i]) * f); };
+    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / n), p15: p(0.15), median: p(0.5), p85: p(0.85), count: n };
   });
 
   // Remote
@@ -12234,29 +12283,36 @@ function renderSalaryByLevel(stats) {
   var chart = getOrCreateChart('#chart-salary-level'); if (!chart) return;
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var ordered = hier.map(function(l){return l.label;}).filter(function(l){return salLvl[l] && salLvl[l].count>=5;})
-    .map(function(l){return {label:l, avg:salLvl[l].avg, count:salLvl[l].count};});
-  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, count:salLvl['Other'].count});
+    .map(function(l){return {label:l, avg:salLvl[l].avg, p15:salLvl[l].p15, median:salLvl[l].median, p85:salLvl[l].p85, count:salLvl[l].count};});
+  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, p15:salLvl['Other'].p15, median:salLvl['Other'].median, p85:salLvl['Other'].p85, count:salLvl['Other'].count});
 
   var overallAvg = 0, totalCount = 0;
   ordered.forEach(function(d){overallAvg += d.avg * d.count; totalCount += d.count;});
   overallAvg = totalCount > 0 ? Math.round(overallAvg / totalCount) : 0;
 
   var barColors = ['#6366f1','#818cf8','#a78bfa','#22c55e','#34d399','#f59e0b','#fbbf24','#ec4899','#f97316','#ef4444','#06b6d4','#8b5cf6'];
+  var fK = function(v){return '$'+Math.round(v/1000)+'K';};
 
   chart.setOption({
     graphic:[],
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=ordered.filter(function(x){return x.label===p[0].name;})[0]; return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K'+(d?' ('+d.count+' data points)':''); }}, ttip()),
+      formatter:function(p){ var idx=p[0].dataIndex; var d=ordered[idx]; if(!d)return ''; return '<b>'+d.label+'</b> ('+d.count+' jobs)<br/>P85: '+fK(d.p85)+'<br/>Median: <b>'+fK(d.median)+'</b><br/>P15: '+fK(d.p15); }}, ttip()),
     grid: { top:30, right:30, bottom:40, left:60 },
     xAxis: { type:'category', data:ordered.map(function(d){return d.label;}),
       axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, rotate:ordered.length>8?30:0 },
       axisLine:STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10,
-      formatter:function(v){return '$'+Math.round(v/1000)+'K';}}, splitLine:STATS_THEME.splitLine },
-    series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
-      barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
-      label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
-        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}}}],
+      formatter:function(v){return fK(v);}}, splitLine:STATS_THEME.splitLine },
+    series: [
+      { name:'P15 base', type:'bar', stack:'range', data:ordered.map(function(d){return {value:d.p15, itemStyle:{color:'transparent'}};}),
+        barMaxWidth:40, itemStyle:{borderRadius:0} },
+      { name:'Range', type:'bar', stack:'range', data:ordered.map(function(d,i){return {value:d.p85-d.p15, itemStyle:{color:barColors[i%barColors.length],opacity:0.35,borderRadius:[4,4,0,0]}};}),
+        barMaxWidth:40 },
+      { name:'Median', type:'scatter', symbol:'rect', symbolSize:function(v,p){return [36,3];},
+        data:ordered.map(function(d,i){return {value:d.median, itemStyle:{color:barColors[i%barColors.length]}};}),
+        z:10, label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
+          formatter:function(p){return fK(p.value);}}}
+    ],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -13304,7 +13360,7 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.64';
+const BJ_VERSION = 'v3.65';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth

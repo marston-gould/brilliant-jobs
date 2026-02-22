@@ -1308,8 +1308,47 @@ async function startAiFilterSuggest() {
     return;
   }
   
-  // If multiple resumes, use the most recently uploaded one
-  var resume = resumesWithText[resumesWithText.length - 1];
+  // If multiple resumes, show picker; otherwise use the only one
+  var resume;
+  if (resumesWithText.length > 1) {
+    var pickerHtml = '<div style="padding:12px;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Choose a resume to analyze:</div>';
+    resumesWithText.forEach(function(r, idx) {
+      pickerHtml += '<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.1s;" ' +
+        'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'var(--accent-glow)\'" ' +
+        'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
+        'onclick="window._aiResumeChoice=' + idx + ';document.getElementById(\'ai-resume-picker\').style.display=\'none\';continueAiFilterSuggest();">' +
+        '<div style="font-size:13px;font-weight:600;">' + (r.name || 'Resume ' + (idx+1)) + '</div>' +
+        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + ' · ' + (r.uploadedAt || '') + '</div></div>';
+    });
+    pickerHtml += '</div>';
+    var modal = document.getElementById('ai-filter-modal');
+    var body = document.getElementById('ai-filter-body');
+    var footer = document.getElementById('ai-filter-footer');
+    var meta = document.getElementById('ai-filter-meta');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    footer.style.display = 'none';
+    meta.textContent = 'Select a resume';
+    body.innerHTML = '<div id="ai-resume-picker">' + pickerHtml + '</div>';
+    return;
+  } else {
+    resume = resumesWithText[0];
+  }
+  
+  _doAiFilterAnalysis(resume);
+}
+
+function continueAiFilterSuggest() {
+  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  var idx = window._aiResumeChoice || 0;
+  var resume = resumesWithText[idx];
+  if (!resume) return;
+  _doAiFilterAnalysis(resume);
+}
+
+async function _doAiFilterAnalysis(resume) {
   
   // Show modal with loading state
   var modal = document.getElementById('ai-filter-modal');
@@ -1347,7 +1386,10 @@ async function startAiFilterSuggest() {
     
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI generation failed') + '</div>';
+      var msg = err.error || 'AI generation failed';
+      if (resp.status === 401) msg = 'Session expired — please log out and back in, then try again.';
+      if (resp.status === 406) msg = 'Edge Function not available. Redeploy with: supabase functions deploy generate-filter --no-verify-jwt';
+      body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--red);margin-bottom:8px;">' + msg + '</div><div style="font-size:11px;color:var(--text-faint);">Status: ' + resp.status + '</div></div>';
       return;
     }
     

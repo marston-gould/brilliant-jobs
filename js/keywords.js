@@ -443,6 +443,7 @@ document.addEventListener('click', function(e) {
 
 // ─── AI-powered resume scoring (Pro feature) ───
 async function fetchAIScore(params) {
+  if (window._aiScoreDisabled) return null;
   try {
     var session = await sb.auth.getSession();
     if (!session.data.session) return null;
@@ -458,6 +459,10 @@ async function fetchAIScore(params) {
 
     if (!res.ok) {
       console.log('[BJ] AI score HTTP', res.status);
+      if (res.status === 406 || res.status === 404) {
+        window._aiScoreDisabled = true;
+        console.warn('[BJ] AI scoring disabled — Edge Function returned ' + res.status + '. Redeploy with: supabase functions deploy score-resume --no-verify-jwt');
+      }
       return null;
     }
     var data = await res.json();
