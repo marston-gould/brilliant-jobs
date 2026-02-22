@@ -8,6 +8,7 @@ let _creditBalance = 0;
 let _userPricing = null;
 let _userSubscription = null;
 let _creditHistory = [];
+let _isAdmin = false;
 
 // ─── Credit Balance + Pricing Loaders ───
 async function loadCreditBalance() {
@@ -81,6 +82,11 @@ async function loadCreditHistory() {
 function renderCreditBadge(balance) {
   const el = document.getElementById('credit-balance-badge');
   if (!el) return;
+  if (_isAdmin) {
+    el.textContent = '∞';
+    el.className = 'credit-balance-count credit-green';
+    return;
+  }
   el.textContent = balance.toLocaleString();
   el.className = 'credit-balance-count';
   if (balance > 50) el.classList.add('credit-green');
@@ -91,14 +97,31 @@ function renderCreditBadge(balance) {
 function renderPlanBadge(pricing) {
   const el = document.querySelector('.nav-user-plan');
   if (!el) return;
+  if (_isAdmin) {
+    el.textContent = 'ADMIN';
+    el.style.color = '#f59e0b';
+    el.style.fontWeight = '700';
+    el.style.letterSpacing = '1px';
+    return;
+  }
   const tierNames = { free: 'Free Plan', starter: 'Starter Plan', pro: 'Pro Plan' };
   el.textContent = tierNames[pricing.tier] || 'Free Plan';
+  el.style.color = '';
+  el.style.fontWeight = '';
+  el.style.letterSpacing = '';
 }
 
 // ─── Subscription Page Renderers ───
 function renderSubscriptionPlan(pricing) {
   const tierNames = { free: 'Free', starter: 'Starter', pro: 'Pro' };
   const el = (id) => document.getElementById(id);
+  if (_isAdmin) {
+    if (el('sub-plan-name')) el('sub-plan-name').textContent = 'Admin';
+    if (el('sub-plan-price')) el('sub-plan-price').textContent = 'Unlimited';
+    if (el('sub-plan-credits-included')) el('sub-plan-credits-included').textContent = 'Unlimited credits';
+    if (el('sub-plan-payg')) el('sub-plan-payg').textContent = 'All features unlocked';
+    return;
+  }
   if (el('sub-plan-name')) el('sub-plan-name').textContent = tierNames[pricing.tier] || 'Free';
   if (el('sub-plan-price')) el('sub-plan-price').textContent = pricing.subscription_price_cents === 0 ? '$0/mo' : '$' + (pricing.subscription_price_cents / 100).toFixed(0) + '/mo';
   if (el('sub-plan-credits-included')) el('sub-plan-credits-included').textContent = pricing.included_credits + ' credits included/month';
@@ -119,6 +142,11 @@ function renderSubscriptionPeriod(sub) {
 function renderSubscriptionBalance(balance) {
   const el = document.getElementById('sub-balance-number');
   if (el) {
+    if (_isAdmin) {
+      el.textContent = '∞';
+      el.className = 'sub-balance-number credit-green';
+      return;
+    }
     el.textContent = balance.toLocaleString();
     el.className = 'sub-balance-number';
     if (balance > 50) el.classList.add('credit-green');
@@ -167,6 +195,7 @@ function checkLowCreditAlert(balance) {
   const alertEl = document.getElementById('sub-credit-alert');
   const countEl = document.getElementById('sub-alert-count');
   if (!alertEl) return;
+  if (_isAdmin) { alertEl.style.display = 'none'; return; }
   if (balance === 0) {
     if (countEl) countEl.textContent = '0';
     const msgEl = document.getElementById('sub-alert-msg');
@@ -234,7 +263,7 @@ function renderCreditPacks(pricing) {
 function renderUpgradeBanner(pricing) {
   const banner = document.getElementById('sub-upgrade-banner');
   if (!banner) return;
-  if (pricing.tier === 'pro') { banner.style.display = 'none'; return; }
+  if (_isAdmin || pricing.tier === 'pro') { banner.style.display = 'none'; return; }
   const headline = document.getElementById('sub-upgrade-headline');
   const detail = document.getElementById('sub-upgrade-detail');
   const btn = banner.querySelector('button');
@@ -297,6 +326,7 @@ async function openCustomerPortal() {
 
 // ─── Credit Gate (call before credit-consuming actions) ───
 async function requireCredits(amount, description) {
+  if (_isAdmin) return true;
   if (_creditBalance >= amount) return true;
   showToast('You need ' + amount + ' credits. You have ' + _creditBalance + '.', 'warning');
   openPricingModal();
@@ -353,6 +383,8 @@ function initAutoRefillUI() {
 
 // ─── Init ───
 function initBilling() {
+  // Check admin status from profile (already fetched in app.js init)
+  _isAdmin = (window._bjUserRole === 'admin');
   loadCreditBalance();
   loadUserPricing();
   loadUserSubscription();

@@ -1,5 +1,5 @@
 const BJ_VERSION = 'v3.72';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — subscription tab: plan/credits/usage/pricing/packs/auto-refill/upgrade CTAs');
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — subscription tab, credit system, Stripe checkout');
 
 // Auth
 async function init() {
@@ -17,6 +17,7 @@ async function init() {
     if (!p?.approved) { window.location.href = '/?pending=1'; return; }
     currentUser._cohortId = p.cohort_id || null;
     window._bjUserPlan = p.plan || 'free';
+    window._bjUserRole = p.role || 'user';
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
@@ -34,6 +35,26 @@ async function init() {
   }
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+  // Update nav tier badge based on profile role/plan
+  const navPlanEl = document.querySelector('.nav-user-plan');
+  if (navPlanEl && profile) {
+    if (profile.role === 'admin') {
+      navPlanEl.textContent = 'ADMIN';
+      navPlanEl.style.color = '#f59e0b';
+      navPlanEl.style.fontWeight = '700';
+      navPlanEl.style.letterSpacing = '1px';
+    } else if ((profile.plan || 'free') === 'pro') {
+      navPlanEl.textContent = 'Pro Plan';
+      navPlanEl.style.color = '#3b82f6';
+      navPlanEl.style.fontWeight = '600';
+    } else if ((profile.plan || 'free') === 'enterprise') {
+      navPlanEl.textContent = 'Enterprise';
+      navPlanEl.style.color = '#8b5cf6';
+      navPlanEl.style.fontWeight = '600';
+    } else {
+      navPlanEl.textContent = 'Free Plan';
+    }
+  }
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
   // Session analytics — Phase B
@@ -62,7 +83,7 @@ async function init() {
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
-  initBilling();
+  if (typeof initBilling === 'function') initBilling();
   loadStats();
   checkExtensionStatus();
   loadCollections();
@@ -346,6 +367,7 @@ $('#download-btn').addEventListener('click', async () => {
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
 
 
 
