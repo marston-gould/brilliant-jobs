@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.78';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — credit gating wired — smart alerts 1cr, resume rewrite 5cr');
+const BJ_VERSION = 'v3.79';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — phase 3 SMS live — Vonage toll-free, inbound reply handler, escalation chain');
 
 // Auth
 async function init() {
