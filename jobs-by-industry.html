@@ -177,11 +177,11 @@
     <strong>Technology dominates</strong> with 68,400 open positions (24% of all listings) and the highest average salary at <strong>$142K</strong>. <strong>Financial Services</strong> pays nearly the same ($138K) with fewer openings &mdash; potentially less competition. <strong>Engineering</strong> is the largest department at 72,800 jobs (26%), more than Sales and Marketing combined. Last updated: February 18, 2026.
   </div>
 
-  <div class="stats">
-    <div class="st"><span class="v warm">15</span><span class="l">Industries</span></div>
-    <div class="st"><span class="v blue">68,400</span><span class="l">Top: Tech Jobs</span></div>
-    <div class="st"><span class="v green">$142K</span><span class="l">Tech Avg Salary</span></div>
-    <div class="st"><span class="v purple">72,800</span><span class="l">Top Dept: Eng.</span></div>
+  <div class="stats" id="ind-stats">
+    <div class="st"><span class="v warm" id="ind-stat-count">–</span><span class="l">Industries</span></div>
+    <div class="st"><span class="v blue" id="ind-stat-top">–</span><span class="l" id="ind-stat-top-l">Top Industry</span></div>
+    <div class="st"><span class="v green" id="ind-stat-sal">–</span><span class="l" id="ind-stat-sal-l">Top Avg Salary</span></div>
+    <div class="st"><span class="v purple" id="ind-stat-dept">–</span><span class="l" id="ind-stat-dept-l">Top Dept</span></div>
   </div>
 
 
@@ -212,7 +212,7 @@
   <h2 class="sdiv">Which industries hire the most and pay the best?</h2>
   <div class="grid">
     <div class="card"><div class="ch"><div><div class="cl">Job Volume</div><div class="ct">Open Positions by Industry</div></div><span class="badge b-purple">Count</span></div><div class="ec tall" id="c1" role="img" aria-label="Technology 68,400, Healthcare 31,200, Financial Services 28,500, Professional Services 22,800, Retail 19,200, Manufacturing 16,800, Education 14,400, Media 12,600, down to Agriculture 3,200"></div></div>
-    <div class="card"><div class="ch"><div><div class="cl">Compensation</div><div class="ct">Average Salary by Industry</div></div><span class="badge b-warm">Salary</span></div><div class="ec tall" id="c2" role="img" aria-label="Average salary: Technology $142K, Financial Services $138K, Energy $128K, Professional Services $118K, down to Hospitality $65K"></div></div>
+    <div class="card"><div class="ch"><div><div class="cl">Compensation</div><div class="ct">Average Salary by Industry</div></div><span class="badge b-cyan">Salary</span></div><div class="ec tall" id="c2" role="img" aria-label="Average salary: Technology $142K, Financial Services $138K, Energy $128K, Professional Services $118K, down to Hospitality $65K"></div></div>
   </div>
   <div class="takeaway"><strong>Key takeaway:</strong> Technology posts the most jobs AND pays the most. But Financial Services is the hidden gem &mdash; nearly identical pay ($138K vs $142K) with far fewer openings, meaning less competition per role. For how these salaries break down by department within industries, <a href="/salary-data" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px;">see the department-level salary ranges with standard deviations</a>.</div>
 
@@ -261,17 +261,24 @@ document.addEventListener('DOMContentLoaded',async function(){
     rpc('get_jobs_by_industry'), rpc('get_salary_by_industry'),
     rpc('get_jobs_by_department'), rpc('get_jobs_timeline'), rpc('get_remote_breakdown')
   ]);
-  
 
-  var ii=industries.slice().reverse();
-  I('c1').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:150,right:70,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:ii.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:ii.map(function(d,i){return{value:d[1],itemStyle:{color:PAL[i%PAL.length],borderRadius:[0,4,4,0]}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return Number(p.value).toLocaleString()}},animationDelay:function(i){return i*40}}]});
+  // Populate stat cards from live data
+  try {
+    var el=function(id){return document.getElementById(id)};
+    if(industries&&industries.length){el('ind-stat-count').textContent=industries.length;el('ind-stat-top').textContent=Number(industries[0][1]).toLocaleString();el('ind-stat-top-l').textContent='Top: '+industries[0][0]}
+    if(salInd&&salInd.length){el('ind-stat-sal').textContent='$'+(salInd[0][1]/1000).toFixed(0)+'K';el('ind-stat-sal-l').textContent=salInd[0][0]+' Avg'}
+    if(depts&&depts.length){el('ind-stat-dept').textContent=Number(depts[0][1]).toLocaleString();el('ind-stat-dept-l').textContent='Top: '+depts[0][0]}
+  }catch(e){}
+
+  var ii=industries.filter(function(d){return d[0]!=='Other'}).slice().reverse();
+  I('c1').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:150,right:70,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:ii.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:ii.map(function(d,i){var t=i/(ii.length-1);return{value:d[1],itemStyle:{color:'rgba(59,130,246,'+(0.35+t*0.65)+')',borderRadius:[0,4,4,0]}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return Number(p.value).toLocaleString()}},animationDelay:function(i){return i*40}}]});
 
   var si=salInd.slice().reverse();
   I('c2').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/>Avg: <b>'+fmtM(p[0].value)+'</b>'}},grid:{left:150,right:60,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return'$'+(v/1000)+'K'}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:si.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:si.map(function(d){var r=(d[1]-60000)/80000;return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(6,182,212,0.3)'},{offset:1,color:'rgba(6,182,212,'+(0.35+r*0.65)+')'}]}}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return'$'+(p.value/1000)+'K'}},animationDelay:function(i){return i*40}}]});
 
   I('c3').setOption({tooltip:{...TT,formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'treemap',data:depts.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:PAL[i],borderColor:'#12141a',borderWidth:2}}}),label:{fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff'},breadcrumb:NO,roam:false,nodeClick:false,levels:[{itemStyle:{borderRadius:8}}],animationDuration:800}]});
 
-  I('c4').setOption({tooltip:{...TT,formatter:function(p){return p.marker+' '+p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> ('+p.percent+'%)'}},series:[{type:'pie',radius:['48%','72%'],center:['50%','50%'],data:remote.map(function(d){return{name:d.n,value:d.v,itemStyle:{color:d.co}}}),label:{color:'#8a92a9',fontSize:11,fontFamily:'Outfit',formatter:'{b}\n{d}%'},labelLine:{lineStyle:{color:'#2a2d3a'}},emphasis:{itemStyle:{shadowBlur:20,shadowColor:'rgba(0,0,0,0.4)'}}}]});
+  I('c4').setOption({tooltip:{...TT,formatter:function(p){return p.marker+' '+p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> ('+p.percent+'%)'}},series:[{type:'pie',radius:['48%','72%'],center:['50%','50%'],data:remote.filter(function(d){return d.n!=='Unspecified'}).map(function(d){return{name:d.n,value:d.v,itemStyle:{color:d.co}}}),label:{color:'#8a92a9',fontSize:11,fontFamily:'Outfit',formatter:'{b}\n{d}%'},labelLine:{lineStyle:{color:'#2a2d3a'}},emphasis:{itemStyle:{shadowBlur:20,shadowColor:'rgba(0,0,0,0.4)'}}}]});
 
   window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
 });

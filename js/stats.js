@@ -34,8 +34,8 @@ var STATS_THEME = {
 };
 var STATS_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#f97316','#14b8a6','#a855f7'];
 var DEFAULT_LEVEL_HIERARCHY = [
-  {label:'Intern', keywords:'intern,internship,co-op,coop'},
-  {label:'Entry', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
+  {label:'Entry Level', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
+  {label:'Associate', keywords:'associate,assoc'},
   {label:'Mid', keywords:'mid level,mid-level,intermediate'},
   {label:'Senior', keywords:'senior,sr'},
   {label:'Staff', keywords:'staff'},
@@ -204,8 +204,10 @@ function aggregateStats(rows) {
   });
   s.seniorPct = rows.length > 0 ? Math.round((seniorN / rows.length) * 100) : 0;
   Object.keys(salByLvl).forEach(function(label) {
-    var arr = salByLvl[label];
-    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length), count: arr.length };
+    var arr = salByLvl[label].sort(function(a,b){return a-b;});
+    var n = arr.length;
+    var p = function(pct) { var i = Math.floor(pct * (n - 1)); var f = pct * (n - 1) - i; return Math.round(arr[i] + (arr[Math.min(i+1,n-1)] - arr[i]) * f); };
+    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / n), p15: p(0.15), median: p(0.5), p85: p(0.85), count: n };
   });
 
   // Remote
@@ -249,18 +251,19 @@ function aggregateStats(rows) {
   rows.forEach(function(r) {
     if (!r.first_seen_at) return;
     var d = new Date(r.first_seen_at);
-    var day = d.getDay();
-    var mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    weekMap[mon.toISOString().slice(0, 10)] = (weekMap[mon.toISOString().slice(0, 10)]||0) + 1;
+    var day = d.getUTCDay();
+    var mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - (day === 0 ? 6 : day - 1)));
+    var mk = mon.toISOString().slice(0, 10);
+    weekMap[mk] = (weekMap[mk]||0) + 1;
   });
   var now = new Date();
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  var todayDay = today.getDay();
-  var thisMonday = new Date(today); thisMonday.setDate(today.getDate() - (todayDay === 0 ? 6 : todayDay - 1));
+  var todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  var todayDay = todayUTC.getUTCDay();
+  var thisMonday = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), todayUTC.getUTCDate() - (todayDay === 0 ? 6 : todayDay - 1)));
   var isSunday = todayDay === 0;
   // 12 complete past weeks
   for (var w = 12; w >= 1; w--) {
-    var weekStart = new Date(thisMonday); weekStart.setDate(thisMonday.getDate() - (w * 7));
+    var weekStart = new Date(thisMonday.getTime() - (w * 7 * 86400000));
     var wk = weekStart.toISOString().slice(0, 10);
     s.timelineBuckets[wk] = weekMap[wk] || 0;
   }
@@ -301,8 +304,32 @@ function aggregateStats(rows) {
   // Location aggregation for map + metro list (US only)
   s.stateCounts = {};
   s.cityCounts = {};
+  s.locationCounts = {};
+  s.locationsTotal = 0;
   var US_ST = {AL:1,AK:1,AZ:1,AR:1,CA:1,CO:1,CT:1,DC:1,DE:1,FL:1,GA:1,HI:1,ID:1,IL:1,IN:1,IA:1,KS:1,KY:1,LA:1,ME:1,MD:1,MA:1,MI:1,MN:1,MS:1,MO:1,MT:1,NE:1,NV:1,NH:1,NJ:1,NM:1,NY:1,NC:1,ND:1,OH:1,OK:1,OR:1,PA:1,RI:1,SC:1,SD:1,TN:1,TX:1,UT:1,VT:1,VA:1,WA:1,WV:1,WI:1,WY:1};
+  function normalizeLocation(raw) {
+    var loc = raw.toLowerCase().trim();
+    // Strip country suffixes
+    loc = loc.replace(/,?\s*united states$/,'').replace(/,?\s*usa$/,'').replace(/,?\s*us$/,'').trim();
+    // Handle remote variants
+    if (loc === 'remote' || loc === '') return null;
+    if (/^remote\s*[-–—]\s*/.test(loc)) loc = loc.replace(/^remote\s*[-–—]\s*/,'').trim();
+    if (/^remote,?\s*/.test(loc) && loc !== 'remote') loc = loc.replace(/^remote,?\s*/,'').trim();
+    if (loc === '' || loc === 'remote') return null;
+    // Handle "(remote)" suffix
+    loc = loc.replace(/\s*\(remote\)\s*$/,'').trim();
+    // Multi-location: split on semicolons and take first
+    if (loc.indexOf(';') !== -1) loc = loc.split(';')[0].trim();
+    if (!loc) return null;
+    return loc;
+  }
   rows.forEach(function(r) {
+    var raw = (r.location || '').trim();
+    var loc = normalizeLocation(raw);
+    if (loc) {
+      s.locationsTotal++;
+      s.locationCounts[loc] = (s.locationCounts[loc]||0) + 1;
+    }
     if (r.loc_state && US_ST[r.loc_state]) {
       s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
       if (r.loc_city) {
@@ -346,23 +373,33 @@ function emptyChart(chart, msg) {
 function renderTimeline(stats) {
   var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
   var sorted = Object.entries(stats.timelineBuckets).sort(function(a,b){ return a[0].localeCompare(b[0]); });
+  // Compute cumulative
+  var cum = [], running = 0;
+  sorted.forEach(function(e) { running += e[1]; cum.push(running); });
   chart.setOption({
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=new Date(p[0].name); var isWtd = stats.timelineWtdKey && p[0].name === stats.timelineWtdKey; return '<b>'+(isWtd?'WTD: ':'Week of ')+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'+(isWtd?' (so far)':''); }}, ttip()),
-    grid: { top:20, right:20, bottom:30, left:50 },
+      formatter:function(p){ var d=new Date(p[0].name); var isWtd = stats.timelineWtdKey && p[0].name === stats.timelineWtdKey; var cumVal=p[1]?p[1].value:0; return '<b>'+(isWtd?'WTD: ':'Week of ')+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'+(isWtd?' (so far)':'')+'<br/>'+cumVal+' cumulative'; }}, ttip()),
+    grid: { top:30, right:50, bottom:30, left:50 },
     xAxis: { type:'category', data:sorted.map(function(e){return e[0];}),
       axisLabel: { color:_T.dim, fontFamily:_T.mono, fontSize:10, interval:0,
         formatter:function(v){ var d=new Date(v); var label=d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); return stats.timelineWtdKey && v===stats.timelineWtdKey ? label+'\n(WTD)' : label; }},
       axisLine: STATS_THEME.axisLine },
-    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
-    series: [{ type:'bar', data:sorted.map(function(e){
+    yAxis: [
+      { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+      { type:'value', position:'right', axisLabel:{ color:'rgba(99,102,241,0.6)', fontFamily:_T.mono, fontSize:10, formatter:function(v){return v>=1000?(v/1000).toFixed(0)+'K':v;} }, splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false} }
+    ],
+    series: [{ type:'bar', yAxisIndex:0, data:sorted.map(function(e){
         var isWtd = stats.timelineWtdKey && e[0] === stats.timelineWtdKey;
         return { value:e[1], itemStyle:{ color: isWtd
           ? new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#818cf8'},{offset:1,color:'rgba(129,140,248,0.3)'}])
           : new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#60a5fa'},{offset:1,color:'rgba(59,130,246,0.4)'}]),
           borderRadius:[3,3,0,0], borderType: isWtd ? 'dashed' : 'solid' }};
       }),
-      barMaxWidth:28 }],
+      barMaxWidth:28 },
+      { type:'line', yAxisIndex:1, data:cum, smooth:0.3, symbol:'none',
+        lineStyle:{color:'rgba(99,102,241,0.7)',width:2},
+        areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(99,102,241,0.15)'},{offset:1,color:'rgba(99,102,241,0)'}])} }
+    ],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -411,8 +448,8 @@ function renderSeniorityBars(stats) {
     return;
   }
 
-  // Ordered Entry → C-Suite (correct career ladder: Manager before Lead)
-  var SENIORITY_ORDER = ['Intern','Entry','Mid','Senior','Staff','Manager','Lead','Principal','Director','VP','C-Suite'];
+  // Ordered Entry → C-Suite (correct career ladder)
+  var SENIORITY_ORDER = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Head','Principal','Sr Manager','Manager','Sr Director','Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
@@ -436,7 +473,7 @@ function renderSeniorityBars(stats) {
     tooltip: Object.assign({ trigger:'item',
       formatter:function(p){ var pct=stats.total>0?Math.round(p.value/stats.total*100):0; return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+pct+'%)'; }}, ttip()),
     legend: { orient:'vertical', right:4, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:10},
-      formatter:function(name){var d=data.find(function(x){return x.name===name;}); return name+(d?' ('+d.value+')':'');}},
+      formatter:function(name){var d=data.find(function(x){return x.name===name;}); var total=data.reduce(function(a,b){return a+b.value;},0); var pct=d&&total>0?Math.round(d.value/total*100):0; return name+(d?' ('+pct+'%)':'');}},
     series: [{ type:'pie', radius:['38%','68%'], center:['35%','50%'],
       data:data.map(function(d,i){return {name:d.name, value:d.value, itemStyle:{color:senColors[i%senColors.length]}};}),
       label:{show:false},
@@ -523,31 +560,36 @@ function renderSalaryByLevel(stats) {
   var chart = getOrCreateChart('#chart-salary-level'); if (!chart) return;
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var ordered = hier.map(function(l){return l.label;}).filter(function(l){return salLvl[l] && salLvl[l].count>=5;})
-    .map(function(l){return {label:l, avg:salLvl[l].avg, count:salLvl[l].count};});
-  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, count:salLvl['Other'].count});
+    .map(function(l){return {label:l, avg:salLvl[l].avg, p15:salLvl[l].p15, median:salLvl[l].median, p85:salLvl[l].p85, count:salLvl[l].count};});
+  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, p15:salLvl['Other'].p15, median:salLvl['Other'].median, p85:salLvl['Other'].p85, count:salLvl['Other'].count});
 
   var overallAvg = 0, totalCount = 0;
   ordered.forEach(function(d){overallAvg += d.avg * d.count; totalCount += d.count;});
   overallAvg = totalCount > 0 ? Math.round(overallAvg / totalCount) : 0;
 
   var barColors = ['#6366f1','#818cf8','#a78bfa','#22c55e','#34d399','#f59e0b','#fbbf24','#ec4899','#f97316','#ef4444','#06b6d4','#8b5cf6'];
+  var fK = function(v){return '$'+Math.round(v/1000)+'K';};
 
   chart.setOption({
     graphic:[],
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=ordered.filter(function(x){return x.label===p[0].name;})[0]; return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K'+(d?' ('+d.count+' data points)':''); }}, ttip()),
+      formatter:function(p){ var idx=p[0].dataIndex; var d=ordered[idx]; if(!d)return ''; return '<b>'+d.label+'</b> ('+d.count+' jobs)<br/>P85: '+fK(d.p85)+'<br/>Median: <b>'+fK(d.median)+'</b><br/>P15: '+fK(d.p15); }}, ttip()),
     grid: { top:30, right:30, bottom:40, left:60 },
     xAxis: { type:'category', data:ordered.map(function(d){return d.label;}),
       axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, rotate:ordered.length>8?30:0 },
       axisLine:STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10,
-      formatter:function(v){return '$'+Math.round(v/1000)+'K';}}, splitLine:STATS_THEME.splitLine },
-    series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
-      barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
-      label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
-        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}},
-      markLine:{ silent:true, symbol:'none', lineStyle:{color:'#ef4444',type:'dashed',width:1.5},
-        data:[{yAxis:overallAvg, label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:_T.mono,fontSize:10}}]}}],
+      formatter:function(v){return fK(v);}}, splitLine:STATS_THEME.splitLine },
+    series: [
+      { name:'P15 base', type:'bar', stack:'range', data:ordered.map(function(d){return {value:d.p15, itemStyle:{color:'transparent'}};}),
+        barMaxWidth:40, itemStyle:{borderRadius:0} },
+      { name:'Range', type:'bar', stack:'range', data:ordered.map(function(d,i){return {value:d.p85-d.p15, itemStyle:{color:barColors[i%barColors.length],opacity:0.35,borderRadius:[4,4,0,0]}};}),
+        barMaxWidth:40 },
+      { name:'Median', type:'scatter', symbol:'rect', symbolSize:function(v,p){return [36,3];},
+        data:ordered.map(function(d,i){return {value:d.median, itemStyle:{color:barColors[i%barColors.length]}};}),
+        z:10, label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
+          formatter:function(p){return fK(p.value);}}}
+    ],
     animation:true, animationDuration:600,
   }, true);
 }

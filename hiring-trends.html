@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded',async function(){
   var CACHE_TTL=86400000;
   function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
   function cSet(k,d){try{localStorage.setItem('bj_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
-  async function rpc(fn){var c=cGet(fn);if(c)return c;var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});var d=await r.json();cSet(fn,d);return d}
+  async function rpc(fn){var c=cGet(fn);if(c&&Array.isArray(c)&&c.length>0)return c;try{var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});if(!r.ok)return[];var d=await r.json();if(d&&d.code)return[];if(Array.isArray(d)&&d.length>0)cSet(fn,d);return d}catch(e){return[]}}
   var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL={color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
   var GR={left:56,right:20,top:20,bottom:32};
@@ -264,13 +264,17 @@ document.addEventListener('DOMContentLoaded',async function(){
     rpc('get_weekly_job_counts'), rpc('get_weekly_velocity'),
     rpc('get_top_companies'), rpc('get_listing_lifespan')
   ]);
-  timeline = timeline.map(function(d){return{date:d.week_start,daily:d.new_jobs,cum:d.cumulative}});
+  timeline = Array.isArray(timeline)?timeline.map(function(d){return{date:d.week_start,daily:d.new_jobs,cum:d.cumulative}}):[];
 
-  I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}}}]});
+  if (timeline.length === 0) {
+    document.getElementById('c1').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#4a5270;font-size:13px;">No cumulative data available. RPC get_weekly_job_counts returned empty.</div>';
+  } else {
+    I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}}}]});
+  }
 
   I('c2').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>New: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:GR,xAxis:{type:'category',data:weekly.map(function(d){return d.w}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:weekly.map(function(d){return d.c}),barWidth:'50%',itemStyle:{borderRadius:[6,6,2,2],color:function(p){return p.dataIndex===4?'#22c55e':'#60a5fa'}},animationDelay:function(i){return i*80},animationEasing:'elasticOut'}]});
 
-  var co=companies.slice().reverse();
+  var co=Array.isArray(companies)&&companies.length?companies.slice().reverse():[];
   I('c3').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> positions'}},grid:{left:115,right:24,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:co.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:co.map(function(d){return{value:d[1],itemStyle:{borderRadius:[0,4,4,0],color:{type:'linear',x:0,y:0,x2:1,y2:0,colorStops:[{offset:0,color:'rgba(59,130,246,0.25)'},{offset:1,color:'#3b82f6'}]}}}}),barWidth:'55%',animationDelay:function(i){return i*30}}]});
 
   I('c4').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> listings'}},grid:{left:80,right:20,top:20,bottom:32},xAxis:{type:'category',data:lifespan.map(function(d){return d[0]}),axisLabel:AL,axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:lifespan.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[6,6,2,2],color:['#22c55e','#3b82f6','#6366f1','#f59e0b','#ef4444','#dc2626'][i]}}}),barWidth:'50%',label:{show:true,position:'top',color:'#8a92a9',fontSize:10,fontFamily:'JetBrains Mono',formatter:function(p){return Number(p.value).toLocaleString()}}}]});

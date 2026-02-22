@@ -671,15 +671,14 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Load global tuning settings
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-  // WHAT — title matching via word-boundary regex + full-text search
+  // WHAT — title matching via ilike + full-text search (ilike uses trigram index)
   // All What pills are OR'd together (each pill is one keyword)
   const allWhatClauses = w.flatMap(pill => {
     return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
-      const rxSafe = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return [
-        `title.imatch.\\m${rxSafe}\\M`,
+        `title.ilike.%${safe}%`,
         `search_vector.wfts(english).${safe}`,
       ];
     });
@@ -892,17 +891,22 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
 }
 
 function parseWhenValue(v) {
-  const lower = v.toLowerCase();
+  const lower = v.toLowerCase().trim();
   const now = new Date();
   if (lower.includes('today') || lower === '1d') {
     const d = new Date(now); d.setDate(d.getDate() - 1); return d;
-  } else if (lower.includes('week') || lower === '7d') {
+  } else if (lower === 'week' || lower === '7d' || lower === '7 days' || lower === 'this week' || lower === '1 week') {
     const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-  } else if (lower.includes('month') || lower === '30d') {
+  } else if (lower.includes('month') && !lower.includes('3')) {
     const d = new Date(now); d.setDate(d.getDate() - 30); return d;
   } else if (lower.includes('3 month') || lower === '90d') {
     const d = new Date(now); d.setDate(d.getDate() - 90); return d;
   }
+  // Generic "N days" / "Nd" / "last N days" / "N weeks"
+  var m = lower.match(/(\d+)\s*d(?:ays?)?/);
+  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1])); return d; }
+  m = lower.match(/(\d+)\s*w(?:eeks?)?/);
+  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1]) * 7); return d; }
   return null;
 }
 
@@ -1234,6 +1238,13 @@ async function updateJobStatsFromFilters(filters) {
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
     console.error('Stats update error:', e);
+    // Fallback: compute from loaded jobs if available
+    try {
+      var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+      var cos = new Set();
+      jobs.forEach(function(j) { if (j.company_slug) cos.add(j.company_slug); });
+      updateJobStats(jobs.length, cos.size, 0, 0);
+    } catch (e2) {}
   }
 }
 
@@ -2405,6 +2416,7 @@ document.addEventListener('click', function(e) {
 
 // ─── AI-powered resume scoring (Pro feature) ───
 async function fetchAIScore(params) {
+  if (window._aiScoreDisabled) return null;
   try {
     var session = await sb.auth.getSession();
     if (!session.data.session) return null;
@@ -2420,6 +2432,10 @@ async function fetchAIScore(params) {
 
     if (!res.ok) {
       console.log('[BJ] AI score HTTP', res.status);
+      if (res.status === 406 || res.status === 404) {
+        window._aiScoreDisabled = true;
+        console.warn('[BJ] AI scoring disabled — Edge Function returned ' + res.status + '. Redeploy with: supabase functions deploy score-resume --no-verify-jwt');
+      }
       return null;
     }
     var data = await res.json();
@@ -2777,12 +2793,20 @@ function buildReadinessSide(ri, data) {
 
   var html = '<div class="readiness-side" id="readiness-side-' + ri + '">';
 
-  // Header with score and re-analyze button
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
-  html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
-  html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
-  html += '</div>';
+  // Header with score and re-analyze button (only if multiple filters to show aggregate)
+  if (filterNames.length > 1) {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+    html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '</div>';
+  } else {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+    html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '</div>';
+  }
 
   // Per-filter breakdown
   for (var fi = 0; fi < filterNames.length; fi++) {
@@ -2793,7 +2817,9 @@ function buildReadinessSide(ri, data) {
 
     html += '<div style="margin-bottom:10px;padding-bottom:10px;' + (fi < filterNames.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
-    html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    if (filterNames.length > 1) {
+      html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    }
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
     if (fs.ai) {
       html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';
@@ -7220,12 +7246,11 @@ function renderPayPills() {
 $('#qb-input-pay-min').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    if ($('#qb-input-pay-max').value || $('#qb-input-pay-min').value) {
-      if (!$('#qb-input-pay-max').value && $('#qb-input-pay-min').value) {
-        applyPayFilter();
-      } else {
-        applyPayFilter();
-      }
+    if ($('#qb-input-pay-min').value && !$('#qb-input-pay-max').value) {
+      // Min only — focus max to let user set a range, or press Enter again to apply as min+
+      $('#qb-input-pay-max').focus();
+    } else if ($('#qb-input-pay-min').value || $('#qb-input-pay-max').value) {
+      applyPayFilter();
     }
   }
 });
@@ -7543,6 +7568,9 @@ function renderSavedFilters() {
   });
   updateSfActiveCount();
 
+  // Show/hide resume→filter CTA
+  updateResumeFilterCta();
+
   // Auto-run search on initial render if filters exist
   if (savedFilters.length > 0 && !window._initialSearchDone) {
     window._initialSearchDone = true;
@@ -7684,6 +7712,15 @@ function applyButton(sources, urls, jobId) {
 
 var _aiFilterData = null;
 
+function updateResumeFilterCta() {
+  var cta = document.getElementById('resume-filter-cta');
+  if (!cta) return;
+  var hasResumes = (typeof resumes !== 'undefined' ? resumes : []).some(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  cta.style.display = hasResumes ? '' : 'none';
+}
+
 function initAiFilterButton() {
   var btn = document.getElementById('ai-suggest-filter-btn');
   if (!btn) return;
@@ -7701,8 +7738,125 @@ async function startAiFilterSuggest() {
     return;
   }
   
-  // If multiple resumes, use the most recently uploaded one
-  var resume = resumesWithText[resumesWithText.length - 1];
+  // Show modal
+  var modal = document.getElementById('ai-filter-modal');
+  var body = document.getElementById('ai-filter-body');
+  var footer = document.getElementById('ai-filter-footer');
+  var meta = document.getElementById('ai-filter-meta');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  footer.style.display = 'none';
+
+  // Build resume picker with upload option
+  var pickerHtml = '<div style="padding:16px;">';
+  
+  if (resumesWithText.length > 0) {
+    meta.textContent = 'Choose a resume to analyze';
+    pickerHtml += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select a resume for AI to analyze and generate job filters:</div>';
+    resumesWithText.forEach(function(r, idx) {
+      pickerHtml += '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.1s;display:flex;align-items:center;gap:10px;" ' +
+        'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'var(--accent-glow)\'" ' +
+        'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
+        'onclick="window._aiResumeChoice=' + idx + ';_doAiFilterAnalysis();">' +
+        '<div style="width:32px;height:32px;border-radius:6px;background:hsla(var(--accent-hsl),0.1);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">' + (r.name.match(/\.pdf$/i) ? 'PDF' : 'DOC') + '</div>' +
+        '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Resume') + '</div>' +
+        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + (r.uploadedAt ? ' · ' + r.uploadedAt : '') + '</div></div>' +
+        '<span style="font-size:18px;color:var(--accent);opacity:0.5;">→</span></div>';
+    });
+    pickerHtml += '<div style="margin:16px 0 8px;border-top:1px solid var(--border);padding-top:12px;font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Or upload a new resume</div>';
+  } else {
+    meta.textContent = 'Upload a resume to get started';
+    pickerHtml += '<div style="text-align:center;margin-bottom:16px;">' +
+      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
+      '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;">Upload your resume and AI will analyze it to generate optimized job search filters.</div></div>';
+  }
+  
+  // Upload zone always shown
+  pickerHtml += '<div id="ai-resume-upload-zone" style="border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:all 0.15s;" ' +
+    'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'hsla(var(--accent-hsl),0.04)\'" ' +
+    'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
+    'onclick="document.getElementById(\'ai-resume-file-input\').click();">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px;">+ Upload Resume</div>' +
+    '<div style="font-size:11px;color:var(--text-faint);">PDF, DOC, DOCX · Will be saved to your Resumes library</div></div>' +
+    '<input type="file" id="ai-resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleAiResumeUpload(this.files[0]);">';
+  
+  pickerHtml += '</div>';
+  body.innerHTML = pickerHtml;
+  
+  // If only one resume, skip picker
+  if (resumesWithText.length === 1) {
+    window._aiResumeChoice = 0;
+    _doAiFilterAnalysis();
+    return;
+  }
+}
+
+async function handleAiResumeUpload(file) {
+  if (!file) return;
+  var body = document.getElementById('ai-filter-body');
+  var meta = document.getElementById('ai-filter-meta');
+  meta.textContent = 'Uploading & extracting text…';
+  body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+    '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+    '<div style="color:var(--text-dim);font-size:13px;">Uploading ' + file.name + '…</div>' +
+    '<div style="color:var(--text-faint);font-size:11px;margin-top:4px;">Extracting text and saving to your resume library</div></div>';
+  
+  try {
+    // Use the existing resume upload flow
+    if (typeof handleResumeFiles === 'function') {
+      await handleResumeFiles([file]);
+      // Wait a moment for text extraction
+      await new Promise(function(r) { setTimeout(r, 2000); });
+    }
+    
+    // Find the newly uploaded resume
+    var newResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+      return r.extractedText && r.extractedText.length > 100 && !r.archived;
+    });
+    
+    if (newResumes.length === 0) {
+      // Text extraction might still be in progress
+      meta.textContent = 'Extracting text…';
+      body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+        '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+        '<div style="color:var(--text-dim);font-size:13px;">Extracting text from resume…</div>' +
+        '<div style="color:var(--text-faint);font-size:11px;margin-top:4px;">This may take a moment for PDF files</div></div>';
+      // Poll for text extraction
+      for (var attempt = 0; attempt < 10; attempt++) {
+        await new Promise(function(r) { setTimeout(r, 2000); });
+        newResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+          return r.extractedText && r.extractedText.length > 100 && !r.archived;
+        });
+        if (newResumes.length > 0) break;
+      }
+    }
+    
+    if (newResumes.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Could not extract text from resume. Try a different file format (PDF or DOCX).</div>';
+      return;
+    }
+    
+    window._aiResumeChoice = newResumes.length - 1;
+    _doAiFilterAnalysis();
+    
+  } catch (err) {
+    console.error('[AI Filter Upload]', err);
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Upload failed: ' + err.message + '</div>';
+  }
+}
+
+function continueAiFilterSuggest() {
+  _doAiFilterAnalysis();
+}
+
+async function _doAiFilterAnalysis() {
+  var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  var idx = window._aiResumeChoice || 0;
+  var resume = resumesWithText[idx];
+  if (!resume) return;
   
   // Show modal with loading state
   var modal = document.getElementById('ai-filter-modal');
@@ -7740,7 +7894,10 @@ async function startAiFilterSuggest() {
     
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">' + (err.error || 'AI generation failed') + '</div>';
+      var msg = err.error || 'AI generation failed';
+      if (resp.status === 401) msg = 'Session expired — please log out and back in, then try again.';
+      if (resp.status === 406) msg = 'Edge Function not available. Redeploy with: supabase functions deploy generate-filter --no-verify-jwt';
+      body.innerHTML = '<div style="text-align:center;padding:40px;"><div style="color:var(--red);margin-bottom:8px;">' + msg + '</div><div style="font-size:11px;color:var(--text-faint);">Status: ' + resp.status + '</div></div>';
       return;
     }
     
@@ -7882,6 +8039,18 @@ function acceptAiFilter() {
   
   // Refresh UI
   renderSavedFilters();
+  
+  // Auto-assign filter to the resume that was analyzed
+  var resumeIdx = window._aiResumeChoice;
+  if (typeof resumeIdx === 'number' && typeof resumes !== 'undefined' && resumes[resumeIdx]) {
+    var r = resumes[resumeIdx];
+    if (!r.assignedFilters) r.assignedFilters = [];
+    if (r.assignedFilters.indexOf(name) === -1) {
+      r.assignedFilters.push(name);
+      saveUserData('bj_resumes', JSON.stringify(resumes));
+      if (typeof renderResumes === 'function') renderResumes();
+    }
+  }
   
   // Load the new filter into the query builder
   if (typeof loadFilterIntoBuilder === 'function') {
@@ -9428,7 +9597,7 @@ async function updatePoorMatchSuggestions() {
         <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
-      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match">✦ Improve</button>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
@@ -9780,6 +9949,28 @@ function renderResumes() {
   countEl.textContent = activeResumes.length;
   archivedEl.textContent = archivedResumes.length;
 
+  // Collapse upload zone when resumes exist
+  const uploadZone = $('#resume-upload-zone');
+  if (uploadZone) {
+    if (activeResumes.length > 0) {
+      uploadZone.style.padding = '8px 16px';
+      uploadZone.style.minHeight = '0';
+      uploadZone.style.cursor = 'pointer';
+      uploadZone.innerHTML = '<input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:var(--text-faint);">Add another resume</span></div>';
+      uploadZone.onclick = function() { $('#resume-file-input').click(); };
+    } else {
+      uploadZone.style.padding = '';
+      uploadZone.style.minHeight = '';
+      uploadZone.style.cursor = '';
+      uploadZone.innerHTML = '<input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>' +
+        '<h4>Drop resumes here or click to upload</h4><p>PDF, DOC, or DOCX — up to 5MB each</p>';
+      uploadZone.onclick = function() { $('#resume-file-input').click(); };
+    }
+    // Re-bind file input change handler
+    $('#resume-file-input').addEventListener('change', handleResumeFileInput);
+  }
+
   // Level count
   const uniqueLevels = new Set(activeResumes.map(r => r.levelLabel).filter(Boolean));
   levelsEl.textContent = uniqueLevels.size;
@@ -9907,8 +10098,7 @@ function renderResumes() {
         <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
         ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
         <div style="margin:8px 0;">${levelSelect}</div>
-        <div class="rc-filters-label">Assigned Filters</div>
-        <div class="rc-filter-list">${filterPills}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">${filterPills}</div>
         ${statsLine}
         <div class="rc-actions">
           <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
@@ -10446,6 +10636,14 @@ window.reUploadResume = function(idx) {
 };
 
 // Resume file input handler
+function handleResumeFileInput() {
+  var inp = $('#resume-file-input');
+  if (inp && inp.files) {
+    Array.from(inp.files).forEach(f => addResume(f));
+    inp.value = '';
+  }
+}
+
 const resumeInput = $('#resume-file-input');
 const resumeZone = $('#resume-upload-zone');
 if (resumeZone) {
@@ -10459,10 +10657,7 @@ if (resumeZone) {
   });
 }
 if (resumeInput) {
-  resumeInput.addEventListener('change', () => {
-    Array.from(resumeInput.files).forEach(f => addResume(f));
-    resumeInput.value = '';
-  });
+  resumeInput.addEventListener('change', handleResumeFileInput);
 }
 
 renderResumes();
@@ -11680,8 +11875,8 @@ var STATS_THEME = {
 };
 var STATS_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#f97316','#14b8a6','#a855f7'];
 var DEFAULT_LEVEL_HIERARCHY = [
-  {label:'Intern', keywords:'intern,internship,co-op,coop'},
-  {label:'Entry', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
+  {label:'Entry Level', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
+  {label:'Associate', keywords:'associate,assoc'},
   {label:'Mid', keywords:'mid level,mid-level,intermediate'},
   {label:'Senior', keywords:'senior,sr'},
   {label:'Staff', keywords:'staff'},
@@ -11850,8 +12045,10 @@ function aggregateStats(rows) {
   });
   s.seniorPct = rows.length > 0 ? Math.round((seniorN / rows.length) * 100) : 0;
   Object.keys(salByLvl).forEach(function(label) {
-    var arr = salByLvl[label];
-    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length), count: arr.length };
+    var arr = salByLvl[label].sort(function(a,b){return a-b;});
+    var n = arr.length;
+    var p = function(pct) { var i = Math.floor(pct * (n - 1)); var f = pct * (n - 1) - i; return Math.round(arr[i] + (arr[Math.min(i+1,n-1)] - arr[i]) * f); };
+    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / n), p15: p(0.15), median: p(0.5), p85: p(0.85), count: n };
   });
 
   // Remote
@@ -11895,18 +12092,19 @@ function aggregateStats(rows) {
   rows.forEach(function(r) {
     if (!r.first_seen_at) return;
     var d = new Date(r.first_seen_at);
-    var day = d.getDay();
-    var mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    weekMap[mon.toISOString().slice(0, 10)] = (weekMap[mon.toISOString().slice(0, 10)]||0) + 1;
+    var day = d.getUTCDay();
+    var mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - (day === 0 ? 6 : day - 1)));
+    var mk = mon.toISOString().slice(0, 10);
+    weekMap[mk] = (weekMap[mk]||0) + 1;
   });
   var now = new Date();
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  var todayDay = today.getDay();
-  var thisMonday = new Date(today); thisMonday.setDate(today.getDate() - (todayDay === 0 ? 6 : todayDay - 1));
+  var todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  var todayDay = todayUTC.getUTCDay();
+  var thisMonday = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), todayUTC.getUTCDate() - (todayDay === 0 ? 6 : todayDay - 1)));
   var isSunday = todayDay === 0;
   // 12 complete past weeks
   for (var w = 12; w >= 1; w--) {
-    var weekStart = new Date(thisMonday); weekStart.setDate(thisMonday.getDate() - (w * 7));
+    var weekStart = new Date(thisMonday.getTime() - (w * 7 * 86400000));
     var wk = weekStart.toISOString().slice(0, 10);
     s.timelineBuckets[wk] = weekMap[wk] || 0;
   }
@@ -11947,8 +12145,32 @@ function aggregateStats(rows) {
   // Location aggregation for map + metro list (US only)
   s.stateCounts = {};
   s.cityCounts = {};
+  s.locationCounts = {};
+  s.locationsTotal = 0;
   var US_ST = {AL:1,AK:1,AZ:1,AR:1,CA:1,CO:1,CT:1,DC:1,DE:1,FL:1,GA:1,HI:1,ID:1,IL:1,IN:1,IA:1,KS:1,KY:1,LA:1,ME:1,MD:1,MA:1,MI:1,MN:1,MS:1,MO:1,MT:1,NE:1,NV:1,NH:1,NJ:1,NM:1,NY:1,NC:1,ND:1,OH:1,OK:1,OR:1,PA:1,RI:1,SC:1,SD:1,TN:1,TX:1,UT:1,VT:1,VA:1,WA:1,WV:1,WI:1,WY:1};
+  function normalizeLocation(raw) {
+    var loc = raw.toLowerCase().trim();
+    // Strip country suffixes
+    loc = loc.replace(/,?\s*united states$/,'').replace(/,?\s*usa$/,'').replace(/,?\s*us$/,'').trim();
+    // Handle remote variants
+    if (loc === 'remote' || loc === '') return null;
+    if (/^remote\s*[-–—]\s*/.test(loc)) loc = loc.replace(/^remote\s*[-–—]\s*/,'').trim();
+    if (/^remote,?\s*/.test(loc) && loc !== 'remote') loc = loc.replace(/^remote,?\s*/,'').trim();
+    if (loc === '' || loc === 'remote') return null;
+    // Handle "(remote)" suffix
+    loc = loc.replace(/\s*\(remote\)\s*$/,'').trim();
+    // Multi-location: split on semicolons and take first
+    if (loc.indexOf(';') !== -1) loc = loc.split(';')[0].trim();
+    if (!loc) return null;
+    return loc;
+  }
   rows.forEach(function(r) {
+    var raw = (r.location || '').trim();
+    var loc = normalizeLocation(raw);
+    if (loc) {
+      s.locationsTotal++;
+      s.locationCounts[loc] = (s.locationCounts[loc]||0) + 1;
+    }
     if (r.loc_state && US_ST[r.loc_state]) {
       s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
       if (r.loc_city) {
@@ -11992,23 +12214,33 @@ function emptyChart(chart, msg) {
 function renderTimeline(stats) {
   var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
   var sorted = Object.entries(stats.timelineBuckets).sort(function(a,b){ return a[0].localeCompare(b[0]); });
+  // Compute cumulative
+  var cum = [], running = 0;
+  sorted.forEach(function(e) { running += e[1]; cum.push(running); });
   chart.setOption({
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=new Date(p[0].name); var isWtd = stats.timelineWtdKey && p[0].name === stats.timelineWtdKey; return '<b>'+(isWtd?'WTD: ':'Week of ')+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'+(isWtd?' (so far)':''); }}, ttip()),
-    grid: { top:20, right:20, bottom:30, left:50 },
+      formatter:function(p){ var d=new Date(p[0].name); var isWtd = stats.timelineWtdKey && p[0].name === stats.timelineWtdKey; var cumVal=p[1]?p[1].value:0; return '<b>'+(isWtd?'WTD: ':'Week of ')+d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+'</b><br/>'+p[0].value+' new jobs'+(isWtd?' (so far)':'')+'<br/>'+cumVal+' cumulative'; }}, ttip()),
+    grid: { top:30, right:50, bottom:30, left:50 },
     xAxis: { type:'category', data:sorted.map(function(e){return e[0];}),
       axisLabel: { color:_T.dim, fontFamily:_T.mono, fontSize:10, interval:0,
         formatter:function(v){ var d=new Date(v); var label=d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); return stats.timelineWtdKey && v===stats.timelineWtdKey ? label+'\n(WTD)' : label; }},
       axisLine: STATS_THEME.axisLine },
-    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
-    series: [{ type:'bar', data:sorted.map(function(e){
+    yAxis: [
+      { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+      { type:'value', position:'right', axisLabel:{ color:'rgba(99,102,241,0.6)', fontFamily:_T.mono, fontSize:10, formatter:function(v){return v>=1000?(v/1000).toFixed(0)+'K':v;} }, splitLine:{show:false}, axisLine:{show:false}, axisTick:{show:false} }
+    ],
+    series: [{ type:'bar', yAxisIndex:0, data:sorted.map(function(e){
         var isWtd = stats.timelineWtdKey && e[0] === stats.timelineWtdKey;
         return { value:e[1], itemStyle:{ color: isWtd
           ? new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#818cf8'},{offset:1,color:'rgba(129,140,248,0.3)'}])
           : new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#60a5fa'},{offset:1,color:'rgba(59,130,246,0.4)'}]),
           borderRadius:[3,3,0,0], borderType: isWtd ? 'dashed' : 'solid' }};
       }),
-      barMaxWidth:28 }],
+      barMaxWidth:28 },
+      { type:'line', yAxisIndex:1, data:cum, smooth:0.3, symbol:'none',
+        lineStyle:{color:'rgba(99,102,241,0.7)',width:2},
+        areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(99,102,241,0.15)'},{offset:1,color:'rgba(99,102,241,0)'}])} }
+    ],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -12057,8 +12289,8 @@ function renderSeniorityBars(stats) {
     return;
   }
 
-  // Ordered Entry → C-Suite (correct career ladder: Manager before Lead)
-  var SENIORITY_ORDER = ['Intern','Entry','Mid','Senior','Staff','Manager','Lead','Principal','Director','VP','C-Suite'];
+  // Ordered Entry → C-Suite (correct career ladder)
+  var SENIORITY_ORDER = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Head','Principal','Sr Manager','Manager','Sr Director','Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
@@ -12082,7 +12314,7 @@ function renderSeniorityBars(stats) {
     tooltip: Object.assign({ trigger:'item',
       formatter:function(p){ var pct=stats.total>0?Math.round(p.value/stats.total*100):0; return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+pct+'%)'; }}, ttip()),
     legend: { orient:'vertical', right:4, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:10},
-      formatter:function(name){var d=data.find(function(x){return x.name===name;}); return name+(d?' ('+d.value+')':'');}},
+      formatter:function(name){var d=data.find(function(x){return x.name===name;}); var total=data.reduce(function(a,b){return a+b.value;},0); var pct=d&&total>0?Math.round(d.value/total*100):0; return name+(d?' ('+pct+'%)':'');}},
     series: [{ type:'pie', radius:['38%','68%'], center:['35%','50%'],
       data:data.map(function(d,i){return {name:d.name, value:d.value, itemStyle:{color:senColors[i%senColors.length]}};}),
       label:{show:false},
@@ -12169,31 +12401,36 @@ function renderSalaryByLevel(stats) {
   var chart = getOrCreateChart('#chart-salary-level'); if (!chart) return;
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var ordered = hier.map(function(l){return l.label;}).filter(function(l){return salLvl[l] && salLvl[l].count>=5;})
-    .map(function(l){return {label:l, avg:salLvl[l].avg, count:salLvl[l].count};});
-  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, count:salLvl['Other'].count});
+    .map(function(l){return {label:l, avg:salLvl[l].avg, p15:salLvl[l].p15, median:salLvl[l].median, p85:salLvl[l].p85, count:salLvl[l].count};});
+  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, p15:salLvl['Other'].p15, median:salLvl['Other'].median, p85:salLvl['Other'].p85, count:salLvl['Other'].count});
 
   var overallAvg = 0, totalCount = 0;
   ordered.forEach(function(d){overallAvg += d.avg * d.count; totalCount += d.count;});
   overallAvg = totalCount > 0 ? Math.round(overallAvg / totalCount) : 0;
 
   var barColors = ['#6366f1','#818cf8','#a78bfa','#22c55e','#34d399','#f59e0b','#fbbf24','#ec4899','#f97316','#ef4444','#06b6d4','#8b5cf6'];
+  var fK = function(v){return '$'+Math.round(v/1000)+'K';};
 
   chart.setOption({
     graphic:[],
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=ordered.filter(function(x){return x.label===p[0].name;})[0]; return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K'+(d?' ('+d.count+' data points)':''); }}, ttip()),
+      formatter:function(p){ var idx=p[0].dataIndex; var d=ordered[idx]; if(!d)return ''; return '<b>'+d.label+'</b> ('+d.count+' jobs)<br/>P85: '+fK(d.p85)+'<br/>Median: <b>'+fK(d.median)+'</b><br/>P15: '+fK(d.p15); }}, ttip()),
     grid: { top:30, right:30, bottom:40, left:60 },
     xAxis: { type:'category', data:ordered.map(function(d){return d.label;}),
       axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, rotate:ordered.length>8?30:0 },
       axisLine:STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10,
-      formatter:function(v){return '$'+Math.round(v/1000)+'K';}}, splitLine:STATS_THEME.splitLine },
-    series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
-      barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
-      label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
-        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}},
-      markLine:{ silent:true, symbol:'none', lineStyle:{color:'#ef4444',type:'dashed',width:1.5},
-        data:[{yAxis:overallAvg, label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:_T.mono,fontSize:10}}]}}],
+      formatter:function(v){return fK(v);}}, splitLine:STATS_THEME.splitLine },
+    series: [
+      { name:'P15 base', type:'bar', stack:'range', data:ordered.map(function(d){return {value:d.p15, itemStyle:{color:'transparent'}};}),
+        barMaxWidth:40, itemStyle:{borderRadius:0} },
+      { name:'Range', type:'bar', stack:'range', data:ordered.map(function(d,i){return {value:d.p85-d.p15, itemStyle:{color:barColors[i%barColors.length],opacity:0.35,borderRadius:[4,4,0,0]}};}),
+        barMaxWidth:40 },
+      { name:'Median', type:'scatter', symbol:'rect', symbolSize:function(v,p){return [36,3];},
+        data:ordered.map(function(d,i){return {value:d.median, itemStyle:{color:barColors[i%barColors.length]}};}),
+        z:10, label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
+          formatter:function(p){return fK(p.value);}}}
+    ],
     animation:true, animationDuration:600,
   }, true);
 }
@@ -12788,10 +13025,16 @@ function renderSeoStatCards() {
   var indexStatus = _seoData.index_status || [];
   var siteDailyArr = _seoData.site_daily || [];
 
-  // PSI avg performance (latest mobile)
+  // PSI avg performance (latest mobile) — average across ALL pages
   var psiMobile = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
-  var latestPsi = psiMobile.length ? psiMobile[psiMobile.length - 1] : null;
-  var psiPerf = latestPsi && latestPsi.metrics ? latestPsi.metrics.performance : null;
+  var psiPerf = null;
+  if (psiMobile.length) {
+    var latestPsiDate = psiMobile[psiMobile.length - 1].date;
+    var latestPsiPages = psiMobile.filter(function(r) { return r.date === latestPsiDate; });
+    var perfSum = 0;
+    latestPsiPages.forEach(function(r) { if (r.metrics) perfSum += r.metrics.performance || 0; });
+    psiPerf = latestPsiPages.length ? Math.round(perfSum / latestPsiPages.length) : null;
+  }
 
   // YLT avg
   var yltData = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
@@ -12909,15 +13152,19 @@ function renderPsiChart() {
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
   if (!audits.length) { seoNoData(chart, 'PageSpeed Insights (Mobile)'); return; }
 
+  // Logarithmic transform: compress 0-100 scale to show detail in 80-100 range
+  // Use log10(101-v) inverted so higher scores get more visual space
+  function psiLog(v) { if (v == null) return null; return v; }
+
   if (_seoUrl) {
     // Single URL time series
     var dates = audits.map(function(r) { return r.date; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'PageSpeed Insights (Mobile) — ' + (_seoUrl ? new URL(_seoUrl).pathname : ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
+      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
       series: [
         { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
         { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
@@ -12926,23 +13173,33 @@ function renderPsiChart() {
       ]
     }), true);
   } else {
-    // Aggregate — latest scores by page
+    // Aggregate — average across all pages for latest date
     var latestDate = audits[audits.length - 1].date;
     var latest = audits.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
+    var avgMetrics = { performance: 0, seo: 0, accessibility: 0, best_practices: 0 };
+    latest.forEach(function(r) {
+      if (r.metrics) {
+        avgMetrics.performance += r.metrics.performance || 0;
+        avgMetrics.seo += r.metrics.seo || 0;
+        avgMetrics.accessibility += r.metrics.accessibility || 0;
+        avgMetrics.best_practices += r.metrics.best_practices || 0;
+      }
+    });
+    var n = latest.length || 1;
+    Object.keys(avgMetrics).forEach(function(k) { avgMetrics[k] = Math.round(avgMetrics[k] / n); });
+    
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [avgMetrics.performance, avgMetrics.seo, avgMetrics.accessibility, avgMetrics.best_practices];
+    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: ['Performance', 'SEO', 'A11y', 'BP'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-      grid: { top: 35, right: 20, bottom: 60, left: 40 },
-      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 35 } },
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [
-        { name: 'Performance', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.performance; }), itemStyle: { color: '#f59e0b' }, barMaxWidth: 14 },
-        { name: 'SEO', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.seo; }), itemStyle: { color: '#34d399' }, barMaxWidth: 14 },
-        { name: 'A11y', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.accessibility; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 14 },
-        { name: 'BP', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.best_practices; }), itemStyle: { color: '#a78bfa' }, barMaxWidth: 14 }
-      ]
+      title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700, formatter: function(p) { return p.value; } } }]
     }), true);
   }
 }
@@ -12976,27 +13233,72 @@ function renderYltChart() {
   if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
 
   if (_seoUrl) {
-    var dates = yltData.map(function(r) { return r.date; });
-    var scores = yltData.map(function(r) { return r.score; });
+    // Single URL: category scores over time
+    var pageData = yltData.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageData.length) { seoNoData(chart, 'YLT — no data for this URL'); return; }
+    var dates = pageData.map(function(r) { return r.date; });
+    var catKeys = pageData[0].metrics && pageData[0].metrics.categories ? Object.keys(pageData[0].metrics.categories) : [];
+    var catColors = ['#eab308','#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6'];
     var t = seoChartTheme(), ax = seoAxis();
+    var series = catKeys.map(function(k, i) {
+      var label = pageData[0].metrics.categories[k].label || k;
+      return { name: label, type: 'line', data: pageData.map(function(r) {
+        return r.metrics && r.metrics.categories && r.metrics.categories[k] ? r.metrics.categories[k].score : null;
+      }), lineStyle: { color: catColors[i % catColors.length] }, itemStyle: { color: catColors[i % catColors.length] }, symbol: 'circle', symbolSize: 4 };
+    });
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'YLT Category Scores', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      legend: { data: series.map(function(s) { return s.name; }), textStyle: { color: '#7b829a', fontSize: 9 }, top: 4, right: 10, type: 'scroll' },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [{ type: 'line', data: scores, lineStyle: { color: '#eab308' }, itemStyle: { color: '#eab308' }, symbol: 'circle', symbolSize: 6, areaStyle: { color: 'rgba(234,179,8,0.1)' } }]
+      series: series
     }), true);
   } else {
+    // All Pages: blended average score + category radar
     var latestDate = yltData[yltData.length - 1].date;
     var latest = yltData.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
-    var scores = latest.map(function(r) { return r.score || 0; });
-    var t = seoChartTheme(), ax = seoAxis();
+    var avgScore = Math.round(latest.reduce(function(s, r) { return s + (r.score || 0); }, 0) / (latest.length || 1));
+    
+    // Aggregate categories across all pages
+    var catTotals = {}, catCount = 0;
+    latest.forEach(function(r) {
+      if (r.metrics && r.metrics.categories) {
+        catCount++;
+        Object.keys(r.metrics.categories).forEach(function(k) {
+          var cat = r.metrics.categories[k];
+          if (!catTotals[k]) catTotals[k] = { label: cat.label || k, total: 0, count: 0 };
+          catTotals[k].total += cat.score || 0;
+          catTotals[k].count++;
+        });
+      }
+    });
+    
+    var catEntries = Object.values(catTotals).map(function(c) {
+      return { name: c.label, value: Math.round(c.total / c.count) };
+    });
+    
+    var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      grid: { top: 35, right: 20, bottom: 50, left: 50 },
-      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [{ type: 'bar', data: scores, itemStyle: { color: function(p) { var v = p.value; return v >= 80 ? '#34d399' : v >= 50 ? '#f59e0b' : '#ef4444'; } }, barMaxWidth: 30 }]
+      title: { text: 'YLT Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 9 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: 'Avg Score',
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>Avg across ' + catCount + ' pages</b><br/>' + lines.join('<br/>');
+      } }
     }), true);
   }
 }
@@ -13037,7 +13339,7 @@ function renderUrlInspection() {
   if (!el) return;
   var data = _seoData.index_status || [];
   if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;">Run inspection</a></div>';
+    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([&#39;gsc_inspect&#39;]);return false;">Run inspection</a></div>';
     return;
   }
 
@@ -13055,14 +13357,32 @@ function renderUrlInspection() {
         '<div class="seo-metric-item"><span class="seo-metric-label">Mobile</span> <span class="seo-metric-value">' + (latest.mobile_usability || '\u2014') + '</span></div>' +
       '</div>';
   } else {
-    var pass = 0, fail = 0, other = 0, seen = {};
-    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
-    el.innerHTML =
-      '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-value admin-green">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-value admin-red">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-value">' + other + '</span> <span class="seo-metric-label">other</span></div>' +
-      '</div>';
+    // All pages: show horizontal bar chart of verdict per URL
+    var seen = {}, rows = [];
+    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; rows.push(r); });
+    
+    var pass = 0, fail = 0, other = 0;
+    rows.forEach(function(r) { if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
+    
+    var chartHtml = '<div style="margin-bottom:12px;display:flex;gap:16px;">' +
+      '<div><span class="seo-metric-value admin-green" style="font-size:18px;">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
+      '<div><span class="seo-metric-value admin-amber" style="font-size:18px;">' + other + '</span> <span class="seo-metric-label">pending</span></div>' +
+      '<div><span class="seo-metric-value admin-red" style="font-size:18px;">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
+    '</div>';
+    
+    // Per-URL status table
+    chartHtml += '<div style="max-height:200px;overflow-y:auto;">';
+    chartHtml += '<table class="admin-platform-table" style="font-size:11px;"><thead><tr><th>URL</th><th>Status</th><th>Coverage</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var path = '/';
+      try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+      var vc = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+      chartHtml += '<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + path + '</td>' +
+        '<td class="' + vc + '">' + (r.verdict || '—') + '</td>' +
+        '<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + (r.coverage_state || '—') + '</td></tr>';
+    });
+    chartHtml += '</tbody></table></div>';
+    el.innerHTML = chartHtml;
   }
 }
 
@@ -13136,43 +13456,53 @@ function renderDfsAudit() {
   var el = document.getElementById('seo-side-dfs');
   if (!el) return;
   var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
-  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([\'dataforseo\']);return false;">run sync</a></div>'; return; }
+  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([&#39;dataforseo&#39;]);return false;">run sync</a></div>'; return; }
 
   if (_seoUrl) {
     var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
     latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
     var m = latest.metrics || {};
     var issues = latest.issues || [];
-    var sc = latest.score || 0;
-    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+    var sc = latest.score;
+    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
+    var scDisplay = sc != null ? sc : '\u2014';
     el.innerHTML =
       '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Score</span> <span class="seo-metric-value ' + scColor + '">' + (sc || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value">' + (m.title_length || '\u2014') + ' chars</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || '\u2014') + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">On-Page Score</span> <span class="seo-metric-value ' + scColor + '" style="font-size:22px;">' + scDisplay + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Checks</span> <span class="seo-metric-value"><span class="admin-green">' + (m.checks_passed || 0) + '</span>/<span>' + (m.checks_total || 0) + '</span></span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Status</span> <span class="seo-metric-value">' + (m.status_code || '\u2014') + '</span></div>' +
       '</div>' +
       '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">H1s</span> <span class="seo-metric-value">' + (m.h1_count || 0) + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Load</span> <span class="seo-metric-value">' + (m.load_time ? m.load_time.toFixed(2) + 's' : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value" title="' + (m.title || '').replace(/"/g, '&quot;') + '">' + (m.title_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">H1/H2/H3</span> <span class="seo-metric-value">' + (m.h1_count||0) + '/' + (m.h2_count||0) + '/' + (m.h3_count||0) + '</span></div>' +
       '</div>' +
-      (issues.length > 0 ? '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) { return '<div class="seo-issue-item">' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues</span></div>');
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Images</span> <span class="seo-metric-value">' + (m.images_count || 0) + (m.images_without_alt ? ' <span class="admin-amber">(' + m.images_without_alt + ' no alt)</span>' : '') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
+      '</div>' +
+      (issues.length > 0 ? '<div style="margin-top:8px;font-size:10px;text-transform:uppercase;color:var(--text-faint);font-weight:600;letter-spacing:0.5px;">Failed Checks (' + issues.length + ')</div><div class="seo-issue-list">' + issues.slice(0,10).map(function(i) { return '<div class="seo-issue-item">\u2717 ' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row" style="margin-top:4px;"><span class="seo-metric-value admin-green">\u2713 All checks passed</span></div>');
   } else {
-    // Aggregate — show table of latest scores
+    // Aggregate — table of all pages with scores
     var latestDate = dfsData[dfsData.length - 1].date;
     var latest = dfsData.filter(function(r) { return r.date === latestDate; });
-    el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
+    var avgScore = latest.reduce(function(s, r) { return s + (r.score || 0); }, 0);
+    avgScore = latest.length ? Math.round(avgScore / latest.length) : 0;
+    var avgColor = avgScore >= 90 ? 'admin-green' : avgScore >= 50 ? 'admin-amber' : 'admin-red';
+    el.innerHTML = '<div style="margin-bottom:8px;"><span class="seo-metric-label">Avg On-Page Score</span> <span class="seo-metric-value ' + avgColor + '" style="font-size:18px;margin-left:6px;">' + avgScore + '</span></div>' +
+      '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Title</th><th>H1s</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
       latest.map(function(r) {
         var m = r.metrics || {};
         var path = '/';
         try { path = new URL(r.url).pathname || '/'; } catch(e) {}
-        var sc = r.score || 0;
-        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+        var sc = r.score;
+        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
         return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
-          '<td class="' + scColor + '" style="font-weight:600;">' + sc + '</td>' +
-          '<td>' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</td>' +
+          '<td class="' + scColor + '" style="font-weight:600;">' + (sc != null ? sc : '\u2014') + '</td>' +
+          '<td>' + (m.title_length || 0) + '</td>' +
+          '<td>' + (m.h1_count || 0) + '</td>' +
           '<td>' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
           '<td>' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
       }).join('') + '</tbody></table>';
@@ -13241,8 +13571,8 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.55';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — full AI resume pipeline — Phase G complete');
+const BJ_VERSION = 'v3.70';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth
 async function init() {
@@ -13253,14 +13583,21 @@ async function init() {
   localStorage.setItem('bj_has_account', 'true');
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
+  let profile = null;
   try {
-    const { data: profile } = await sb.from('profiles').select('approved,cohort_id,plan').eq('id', currentUser.id).single();
-    if (!profile?.approved) { window.location.href = '/?pending=1'; return; }
-    currentUser._cohortId = profile.cohort_id || null;
-    window._bjUserPlan = profile.plan || 'free';
+    const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
+    profile = p;
+    if (!p?.approved) { window.location.href = '/?pending=1'; return; }
+    currentUser._cohortId = p.cohort_id || null;
+    window._bjUserPlan = p.plan || 'free';
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
+  // Show admin nav immediately — profile already fetched, no extra round trip
+  if (profile && profile.role === 'admin') {
+    var navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+  }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
   if (activeTab && $(`#page-${activeTab}`)) {
@@ -13268,28 +13605,6 @@ async function init() {
     $(`#page-${activeTab}`).classList.add('active');
     $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
   }
-  // DEBUG: log full visibility chain
-  const _pa = $('#page-admin');
-  const _main = $('.main');
-  const _app = $('#app');
-  console.log('[DEBUG] #app display:', _app ? getComputedStyle(_app).display : 'N/A', 'size:', _app?.offsetWidth, 'x', _app?.offsetHeight);
-  console.log('[DEBUG] .main display:', _main ? getComputedStyle(_main).display : 'N/A', 'size:', _main?.offsetWidth, 'x', _main?.offsetHeight, 'overflow:', _main ? getComputedStyle(_main).overflow : 'N/A');
-  console.log('[DEBUG] page-admin class:', _pa?.className, 'display:', _pa ? getComputedStyle(_pa).display : 'N/A', 'size:', _pa?.offsetWidth, 'x', _pa?.offsetHeight);
-  console.log('[DEBUG] activeTab:', activeTab);
-  // Force reflow and check again after paint
-  if (_main) _main.scrollTop = 0;
-  setTimeout(() => {
-    const pa2 = $('#page-admin');
-    if (pa2) {
-      console.log('[DEBUG-DEFERRED] page-admin class:', pa2.className, 'display:', getComputedStyle(pa2).display, 'size:', pa2.offsetWidth, 'x', pa2.offsetHeight);
-      console.log('[DEBUG-DEFERRED] page-admin children:', pa2.children.length, 'firstChild tag:', pa2.firstElementChild?.tagName, 'firstChild size:', pa2.firstElementChild?.offsetWidth, 'x', pa2.firstElementChild?.offsetHeight);
-      // Log all siblings to see what IS visible
-      const siblings = Array.from(pa2.parentElement.children).filter(c => c.classList.contains('page'));
-      siblings.forEach(s => {
-        console.log('[DEBUG-SIBLINGS]', s.id, 'class:', s.className, 'size:', s.offsetWidth, 'x', s.offsetHeight);
-      });
-    }
-  }, 2000);
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
@@ -13303,8 +13618,6 @@ async function init() {
       bj_plan_id: window._bjUserPlan || 'free'
     });
   }
-  // Check admin access — show admin nav if user has admin role
-  if (typeof checkAdminAccess === 'function') checkAdminAccess();
   // Re-init admin page if it was the active tab (tab restore runs before auth)
   if (typeof initAdminPage === 'function') initAdminPage();
   // Re-hydrate globals from potentially updated localStorage

@@ -20,4 +20,5 @@ import './resumes.js';
 import './integrations.js';
 import './applications.js';
 import './settings.js';
+import './billing.js';
 import './app.js';

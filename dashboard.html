@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.56 - 2026-02-22 -->
+<!-- Brilliant Jobs Dashboard v3.70 - 2026-02-22 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -21,14 +21,14 @@
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <style>
-    .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
+    .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:14px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
     .admin-tab:hover{border-color:var(--accent);color:var(--text)}
     .admin-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .admin-tab.disabled{opacity:.4;cursor:not-allowed}
     .admin-panel{display:none}
     .admin-panel.active{display:block}
-    .admin-table{border-collapse:collapse;font-size:12px;font-family:"JetBrains Mono",monospace}
-    .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+    .admin-table{border-collapse:collapse;font-size:14px;font-family:"JetBrains Mono",monospace}
+    .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
     .admin-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text)}
     .admin-table tr:hover td{background:var(--bg-main)}
     .admin-green{color:var(--green)}
@@ -37,7 +37,7 @@
     .admin-health-dot.green{background:var(--green)}
     .admin-health-dot.yellow{background:var(--warm)}
     .admin-health-dot.red{background:var(--red)}
-    .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:11px;cursor:pointer}
+    .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer}
     .admin-period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .admin-platform-name{font-weight:500}
   
@@ -54,7 +54,7 @@
     .stat-val {
       font-size: 22px;
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
       line-height: 1.2;
     }
     .stat-label {
@@ -92,7 +92,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.56</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.73</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -180,6 +180,11 @@
             <div class="nav-user-email" id="nav-email">loading...</div>
             <div class="nav-user-plan">Free Plan</div>
           </div>
+        </div>
+        <div class="credit-balance" id="credit-balance" onclick="openPricingModal()" title="Click to purchase credits">
+          <svg class="credit-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h6"/></svg>
+          <span class="credit-balance-count credit-green" id="credit-balance-badge">0</span>
+          <span class="credit-balance-label">credits</span>
         </div>
         <button class="btn-logout" id="logout-btn">Log Out</button>
       </div>
@@ -647,8 +652,8 @@
               <div class="qb-salary-field" style="flex:1;">
                 <span class="qb-salary-prefix">$</span>
                 <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
-                <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;margin-left:8px;"></div>
               </div>
+              <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;margin-left:8px;"></div>
             </div>
           </div>
           <div class="qb-hint">
@@ -695,6 +700,17 @@
           </div>
 
           <!-- Sort bar -->
+          <!-- Resume → Filter CTA (shown when resumes exist but no filters) -->
+          <div id="resume-filter-cta" style="display:none;margin-bottom:12px;padding:12px 16px;background:linear-gradient(135deg,rgba(77,142,255,0.06),rgba(167,139,250,0.06));border:1px solid rgba(77,142,255,0.15);border-radius:10px;cursor:pointer;" onclick="document.getElementById('ai-suggest-filter-btn').click()">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">✦</span>
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:600;color:var(--accent);">Generate a search filter from your resume</div>
+                <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">AI will analyze your resume and suggest job titles, locations, and keywords to search for.</div>
+              </div>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
           <div class="sort-bar" id="sort-bar">
             <span class="sort-bar-label">Sort by:</span>
             <div class="sort-pills" id="sort-pills"></div>
@@ -1705,13 +1721,153 @@
       <div class="page" id="page-subscription">
         <div class="page-header">
           <h2>Subscription</h2>
-          <p>Manage your plan, billing, and referral discounts <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('subscription')">How this works →</a></p>
+          <p>Manage your plan, credits, and billing <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('subscription')">How this works →</a></p>
         </div>
         <div class="page-body">
-          <div class="empty-state">
-            <h3>Coming Soon</h3>
-            <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
+
+          <!-- Low Credit Alert Banner (hidden by default) -->
+          <div class="sub-alert" id="sub-credit-alert" style="display:none;">
+            <div class="sub-alert-icon">⚡</div>
+            <div class="sub-alert-text">
+              <strong>Running low on credits</strong>
+              <span id="sub-alert-msg">You have <span id="sub-alert-count">0</span> credits remaining.</span>
+            </div>
+            <button class="btn-primary btn-sm" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Get More Credits</button>
           </div>
+
+          <!-- Current Plan + Credit Balance Cards -->
+          <div class="sub-summary-grid">
+            <div class="card sub-plan-card">
+              <div class="card-title">Current Plan</div>
+              <div class="sub-plan-name" id="sub-plan-name">Free</div>
+              <div class="sub-plan-price" id="sub-plan-price">$0/mo</div>
+              <div class="sub-plan-detail" id="sub-plan-credits-included">0 credits included/month</div>
+              <div class="sub-plan-detail" id="sub-plan-payg">PAYG rate: $0.25/credit</div>
+              <div class="sub-plan-detail" id="sub-plan-period" style="display:none;">Renews: <span id="sub-plan-renew-date">—</span></div>
+              <button class="btn-secondary btn-sm" style="margin-top:12px;" onclick="openCustomerPortal()" id="sub-manage-btn" title="Payment method, invoices, cancel">Manage Billing</button>
+            </div>
+
+            <div class="card sub-balance-card">
+              <div class="card-title">Credit Balance</div>
+              <div class="sub-balance-number" id="sub-balance-number">0</div>
+              <div class="sub-balance-label">credits available</div>
+              <div class="sub-burn-rate" id="sub-burn-rate" style="display:none;">
+                At your current usage (~<span id="sub-daily-burn">0</span>/day), you have <strong><span id="sub-days-left">—</span> days</strong> of credits remaining
+              </div>
+              <button class="btn-primary btn-sm" style="margin-top:12px;" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Buy Credits</button>
+            </div>
+
+            <div class="card sub-usage-card">
+              <div class="card-title">Credit Usage (30d)</div>
+              <div class="sub-usage-chart" id="sub-usage-chart" style="height:120px;"></div>
+              <div class="sub-usage-breakdown" id="sub-usage-breakdown">
+                <div class="sub-usage-row"><span>Resume Scoring</span><span id="sub-usage-scoring">0</span></div>
+                <div class="sub-usage-row"><span>AI Rewrites</span><span id="sub-usage-rewrites">0</span></div>
+                <div class="sub-usage-row"><span>Job Alerts</span><span id="sub-usage-alerts">0</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- What Uses Credits -->
+          <div class="card sub-credits-explainer">
+            <div class="card-title">What Uses Credits</div>
+            <div class="sub-credit-costs">
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">📄</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">Resume Score</div>
+                  <div class="sub-cost-desc">AI analysis of your resume against a job description</div>
+                </div>
+                <div class="sub-cost-amount">3 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">✏️</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Resume Rewrite</div>
+                  <div class="sub-cost-desc">Tailored resume rewrite optimized for a specific role</div>
+                </div>
+                <div class="sub-cost-amount">5 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">🔔</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">Smart Job Alert</div>
+                  <div class="sub-cost-desc">AI-filtered alerts matching your preferences</div>
+                </div>
+                <div class="sub-cost-amount">1 credit</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">🔍</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Filter Suggest</div>
+                  <div class="sub-cost-desc">Generate optimized search filters from your resume</div>
+                </div>
+                <div class="sub-cost-amount">2 credits</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tier Comparison -->
+          <div class="card">
+            <div class="card-title">Plans</div>
+            <div class="sub-card-sub">Upgrade for more credits and lower PAYG rates</div>
+            <div class="sub-tiers" id="sub-tiers">
+              <!-- Rendered by billing.js -->
+            </div>
+          </div>
+
+          <!-- Credit Packs -->
+          <div class="card" id="sub-packs-section">
+            <div class="card-title">Buy Credit Packs</div>
+            <div class="sub-card-sub">One-time purchase at your plan's rate. Credits never expire.</div>
+            <div class="sub-packs" id="sub-packs">
+              <!-- Rendered by billing.js -->
+            </div>
+          </div>
+
+          <!-- Auto-Refill -->
+          <div class="card">
+            <div class="card-title">Auto-Refill</div>
+            <div class="sub-card-sub">Never run out — automatically top up when your balance gets low</div>
+            <div class="sub-refill-options" id="sub-refill-options">
+              <label class="sub-refill-toggle">
+                <input type="checkbox" id="sub-refill-enabled"> Enable auto-refill
+              </label>
+              <div class="sub-refill-levels" id="sub-refill-levels" style="display:none;">
+                <div class="sub-refill-level" data-level="low">
+                  <input type="radio" name="refill-level" value="low" id="refill-low">
+                  <label for="refill-low">
+                    <strong>$1</strong> <span class="sub-refill-discount">5% off</span>
+                    <div class="sub-refill-detail">~10 credits when balance hits 0</div>
+                  </label>
+                </div>
+                <div class="sub-refill-level" data-level="medium">
+                  <input type="radio" name="refill-level" value="medium" id="refill-medium">
+                  <label for="refill-medium">
+                    <strong>$5</strong> <span class="sub-refill-discount">10% off</span>
+                    <div class="sub-refill-detail">~55 credits when balance hits 0</div>
+                  </label>
+                </div>
+                <div class="sub-refill-level" data-level="high">
+                  <input type="radio" name="refill-level" value="high" id="refill-high">
+                  <label for="refill-high">
+                    <strong>$10</strong> <span class="sub-refill-discount">15% off</span>
+                    <div class="sub-refill-detail">~117 credits when balance hits 0</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upgrade CTA (shown for free/starter users) -->
+          <div class="sub-upgrade-banner" id="sub-upgrade-banner" style="display:none;">
+            <div class="sub-upgrade-text">
+              <strong id="sub-upgrade-headline">Unlock more with Pro</strong>
+              <span id="sub-upgrade-detail">300 credits/month, $0.10/credit PAYG, 15% auto-refill discount</span>
+            </div>
+            <button class="btn-primary" onclick="startCheckout('subscription','pro')">Upgrade to Pro</button>
+          </div>
+
         </div>
       </div>
 
@@ -1744,14 +1900,30 @@
           </div>
 
           <div class="admin-panel" id="admin-panel-cohorts">
+            <!-- KPI Stat Cards -->
+            <div class="stat-grid" style="margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="ac-total-cohorts">&mdash;</div><div class="stat-label">Cohorts</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-total-users">&mdash;</div><div class="stat-label">Total Users</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-pro-pct">&mdash;</div><div class="stat-label">Pro Conversion</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-active-7d">&mdash;</div><div class="stat-label">Active 7d</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-retention">&mdash;</div><div class="stat-label">Retention 30d</div></div>
+            </div>
+            <!-- Cohort Table -->
             <table class="admin-table" style="width:100%">
-              <thead><tr><th>Cohort</th><th>Users</th><th>Free</th><th>Pro</th><th>Created</th></tr></thead>
+              <thead><tr><th>Cohort</th><th>Users</th><th>Free</th><th>Pro</th><th>Active 7d</th><th>Active 30d</th><th>Entitlements</th><th>Status</th></tr></thead>
               <tbody id="admin-cohort-body"></tbody>
             </table>
+            <!-- Charts Row -->
+            <div style="display:flex;gap:16px;margin-top:20px;flex-wrap:wrap">
+              <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:250px"></div>
+            </div>
+            <!-- Entitlement Detail (expanded) -->
             <div id="admin-cohort-detail" style="display:none;margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:8px">
               <h3 id="admin-cohort-detail-title"></h3>
               <table class="admin-table" style="width:100%;margin-top:12px">
-                <thead><tr><th>Entitlement</th><th>Value</th></tr></thead>
+                <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
                 <tbody id="admin-entitlement-body"></tbody>
               </table>
             </div>
