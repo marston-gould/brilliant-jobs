@@ -544,11 +544,133 @@ Write a tailored cover letter. Return ONLY JSON.`;
 
     const agentsMs = Date.now() - startTime;
 
-    // ─── GENERATE DOCX FILES ───
+    // ════════════════════════════════════════════════════════════
+    // QA TEAM (run in parallel)
+    // ════════════════════════════════════════════════════════════
+
+    console.log('[rewrite-resume] QA team starting...');
+
+    const qaOriginal = JSON.stringify(resume_profile);
+    const qaRewritten = JSON.stringify(resumeData.sections);
+
+    // Agent 3: Accuracy Auditor
+    const accuracyPrompt = `You are a Resume Accuracy Auditor. Compare the ORIGINAL resume profile against the REWRITTEN resume sections.
+
+Flag ANY instance where the rewrite:
+1. Adds metrics, numbers, or achievements NOT in the original AND NOT provided as achievement_inputs
+2. Inflates scope (e.g., "managed 3 people" became "led a team of 15")
+3. Adds skills, tools, or certifications never mentioned
+4. Changes job titles to something materially different
+5. Adds company names, clients, or projects not in the original
+
+For each flag: { severity: "critical"|"warning"|"note", original_text: string, rewritten_text: string, issue: string, fix: string }
+
+Output JSON: { flags: [...], clean: boolean, flag_count: int }
+No markdown, no code fences. JSON only.`;
+
+    const accuracyInput = `<original_profile>\n${qaOriginal}\n</original_profile>\n\n<rewritten_sections>\n${qaRewritten}\n</rewritten_sections>\n\n<user_provided_data>\n${JSON.stringify(achievement_inputs || {})}\n${JSON.stringify(gap_answers || {})}\n${JSON.stringify(user_highlights || [])}\n</user_provided_data>\n\nAudit for accuracy. Return ONLY JSON.`;
+
+    // Agent 4: Bleed Detector
+    const bleedPrompt = `You are a Resume Consistency Auditor. Check that each bullet point in the rewritten resume is correctly attributed to the right job.
+
+Flag ANY instance where:
+1. An achievement from Job A appears under Job B
+2. Metrics from one role are mixed into another
+3. Skills at one company are attributed to a different company
+4. Date ranges don't align with achievements
+
+For each flag: { bullet_text: string, current_section: string, likely_source: string, issue: string, fix: string }
+
+Output JSON: { flags: [...], clean: boolean, flag_count: int }
+No markdown, no code fences. JSON only.`;
+
+    const bleedInput = `<original_profile>\n${qaOriginal}\n</original_profile>\n\n<rewritten_sections>\n${qaRewritten}\n</rewritten_sections>\n\nCheck for cross-job contamination. Return ONLY JSON.`;
+
+    // Agent 5: Voice & Polish Auditor
+    const voicePrompt = `You are an Editorial Auditor specializing in detecting AI-generated text. Review the rewritten resume and fix issues.
+
+AI-SPEAK TO FLAG AND FIX:
+- "Leveraged" → "used", "applied"
+- "Spearheaded" → "led", "started", "launched"
+- "Synergized"/"synergy" → remove or rephrase
+- "Cutting-edge"/"state-of-the-art" → name the specific technology
+- "Passionate about" → remove entirely
+- "Results-driven professional" → remove
+- "Dynamic" → remove or use specific descriptor
+- "Proven track record" → remove, let bullets prove it
+- "Utilized" → "used"
+- "Facilitated" → "ran", "organized", "led"
+- "Endeavor"/"endeavors" → "work", "project"
+- Sentences starting "As a [adjective] [noun]..." → rewrite
+- Excessive em dashes — limit to 1 per page
+- Semicolons in bullet points → periods
+
+PUNCTUATION:
+- Inconsistent bullet endings (some periods, some not) → standardize
+- Inconsistent date formats → standardize
+- Double spaces → single
+
+For each fix: { location: string, original: string, fixed: string, category: "ai_speak"|"punctuation"|"tone" }
+
+Output JSON: {
+  flags: [...],
+  auto_fixes_applied: int,
+  clean_sections: the fully cleaned resume sections JSON (same structure as input),
+  flag_count: int
+}
+No markdown, no code fences. JSON only.`;
+
+    const voiceInput = `<rewritten_sections>\n${qaRewritten}\n</rewritten_sections>\n\n${coverLetterData ? '<cover_letter>\n' + JSON.stringify(coverLetterData) + '\n</cover_letter>\n\n' : ''}Review and fix. Return ONLY JSON.`;
+
+    // Run QA agents in parallel
+    const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+    const [accuracyRes, bleedRes, voiceRes] = await Promise.all([
+      callAnthropic(HAIKU_MODEL, accuracyPrompt, accuracyInput, 2000, 0),
+      callAnthropic(HAIKU_MODEL, bleedPrompt, bleedInput, 2000, 0),
+      callAnthropic(SONNET_MODEL, voicePrompt, voiceInput, 4000, 0),
+    ]);
+
+    let qaReport: any = { accuracy: null, bleed: null, voice: null };
+    let cleanedSections = resumeData.sections; // Default to unmodified
+
+    // Parse QA results
+    if (accuracyRes.ok) {
+      try { qaReport.accuracy = parseJSON(accuracyRes.text); } catch (e) { console.error('[rewrite-resume] Accuracy parse failed'); }
+    }
+    if (bleedRes.ok) {
+      try { qaReport.bleed = parseJSON(bleedRes.text); } catch (e) { console.error('[rewrite-resume] Bleed parse failed'); }
+    }
+    if (voiceRes.ok) {
+      try {
+        const voiceData = parseJSON(voiceRes.text);
+        qaReport.voice = {
+          flags: voiceData.flags || [],
+          auto_fixes_applied: voiceData.auto_fixes_applied || 0,
+          flag_count: voiceData.flag_count || 0
+        };
+        // Use cleaned sections from voice auditor if available
+        if (voiceData.clean_sections) {
+          cleanedSections = voiceData.clean_sections;
+        }
+      } catch (e) { console.error('[rewrite-resume] Voice parse failed'); }
+    }
+
+    // Auto-revert critical accuracy flags
+    if (qaReport.accuracy && qaReport.accuracy.flags) {
+      const criticals = qaReport.accuracy.flags.filter((f: any) => f.severity === 'critical');
+      if (criticals.length > 0) {
+        console.log(`[rewrite-resume] ${criticals.length} critical accuracy flags — noted for user review`);
+        qaReport.accuracy.critical_count = criticals.length;
+      }
+    }
+
+    const qaMs = Date.now() - startTime;
+
+    // ─── GENERATE DOCX FILES (using QA-cleaned sections) ───
     console.log(`[rewrite-resume] Generating .docx files with template: ${template.id}`);
 
-    // Resume .docx
-    const resumeDoc = buildResumeDocx(resumeData.sections || [], template);
+    // Resume .docx — use cleaned sections from voice auditor
+    const resumeDoc = buildResumeDocx(cleanedSections || resumeData.sections || [], template);
     const resumeBuffer = await Packer.toBuffer(resumeDoc);
 
     // Cover letter .docx (conditional)
@@ -592,15 +714,17 @@ Write a tailored cover letter. Return ONLY JSON.`;
       resume_path: resumePath,
       cover_letter_path: coverPath,
       template_used: template.id,
-      resume_sections: resumeData.sections,
+      resume_sections: cleanedSections || resumeData.sections,
       changes_made: resumeData.changes_made || [],
       unchanged_sections: resumeData.unchanged_sections || [],
       cover_letter: coverLetterData,
-      agents_used: coverLetterData ? 2 : 1,
+      qa_report: qaReport,
+      agents_used: (coverLetterData ? 2 : 1) + 3, // rewrite team + QA team
       timing: {
         writer_ms: writerMs,
         cover_ms: coverLetterData ? agentsMs - writerMs : 0,
-        docx_ms: docxMs - agentsMs,
+        qa_ms: qaMs - agentsMs,
+        docx_ms: docxMs - qaMs,
         total_ms: totalMs
       }
     }), {
