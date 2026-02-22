@@ -3,6 +3,16 @@
 ## BLOCKERS
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 
+## v3.41 — 2026-02-22
+- **SEO Admin redesign**: Complete rebuild of the SEO/Data Coverage admin tab with 9-tool dashboard
+- **seo-sync Edge Function v3**: Added 4 new data sources — Yellow Lab Tools (public API, frontend quality scores), Chrome UX Report API (real-user field data), Google Knowledge Graph Search API (entity detection), Cloudflare Analytics (traffic, page views, uniques, status codes, countries)
+- **PSI expanded**: PageSpeed Insights now collects all 4 Lighthouse categories (Performance, SEO, Accessibility, Best Practices) — previously only Performance and SEO
+- **New dashboard layout**: URL dropdown (All Pages or individual), date range selector (7d/30d/90d), 6 time series charts (PostHog traffic, GSC clicks+impressions, PSI 4-category scores, CrUX metrics, Yellow Lab Tools scores, Cloudflare traffic), side panel with URL inspection status, Core Web Vitals drilldown, GSC search queries, Knowledge Graph entities
+- **Cloudflare integration**: Zone ID `***REDACTED_CF_ZONE***` wired via GraphQL Analytics API (httpRequests1dGroups, free plan compatible)
+- **Credential consolidation**: Unified all 4 credential files (CREDENTIALS__1_, CREDENTIALS__3_, credential-google, credentialsnew) into single CREDENTIALS_MASTER with all 10 services
+- **Day 1 data**: Yellow Labs (6 pages, all 99), Cloudflare (2 days), Knowledge Graph (4 entities), PSI (8 pages × 2 strategies), CrUX (awaiting sufficient traffic)
+
+
 ## v2.60 — 2026-02-16
 - **CRITICAL FIX — Resume scoring data path**: `toggleResumeFilter()` saves assignments to `resume.filterIds[]` (array of filter names on the resume object), but all scoring code checked `filter.resumeId` (a property on the filter object that was **never set**). This meant readiness analysis, feed match scores, and auto-analysis all silently found zero assignments and produced no scores. Fixed all three code paths: `initReadinessPanel`, `runReadinessAnalysis`, and `computeJobMatchScore` now read from `resume.filterIds`.
 - **Feed match scoring fix**: `computeJobMatchScore()` was taking first 40 tokens from a `Set` in insertion order (document order = arbitrary). Now frequency-ranks terms within each JD — most-repeated skill terms score highest. This makes match scores meaningful.
