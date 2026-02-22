@@ -72,6 +72,19 @@ function initAdminTabs() {
     });
   }
 
+  // Period toggle for Revenue tab
+  var revPeriod = document.getElementById('admin-rev-period');
+  if (revPeriod) {
+    revPeriod.addEventListener('click', function(e) {
+      var btn = e.target.closest('.admin-period-btn');
+      if (!btn) return;
+      revPeriod.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      _adminTabInit['revenue'] = false;
+      loadRevenueTab(parseInt(btn.dataset.revDays));
+    });
+  }
+
   switchAdminTab(adminActiveTab);
 }
 
@@ -914,30 +927,92 @@ async function triggerSeoSync(tasks) {
 // TAB 5: REVENUE
 // ═══════════════════════════════════════════════════════════
 
-async function loadRevenueTab() {
-  console.log('[Admin] loadRevenueTab');
+async function loadRevenueTab(daysBack) {
+  daysBack = daysBack || 30;
+  console.log('[Admin] loadRevenueTab', daysBack, 'days');
   try {
-    var res = await sb.rpc('get_revenue_overview');
+    var res = await sb.rpc('get_admin_revenue', { p_days_back: daysBack });
     if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); return; }
     var d = res.data;
     if (!d) return;
 
-    setAdminText('ar-total', fmtAdminNum(d.total_users));
-    setAdminText('ar-pro', fmtAdminNum(d.pro_users));
-    setAdminText('ar-conversion', d.conversion_rate != null ? d.conversion_rate + '%' : '0%');
-    var mrr = (d.pro_users || 0) * 29;
-    setAdminText('ar-mrr', '$' + fmtAdminNum(mrr));
+    // KPI Cards
+    setAdminText('ar-total-users', fmtAdminNum(d.total_users));
+    var paidCount = (d.tier_distribution || []).filter(function(t) { return t.tier !== 'free'; }).reduce(function(s, t) { return s + t.user_count; }, 0);
+    setAdminText('ar-paid-subs', fmtAdminNum(paidCount));
+    var cs = d.credit_stats || {};
+    setAdminText('ar-credits-granted', fmtAdminNum(cs.total_credits_granted || 0));
+    setAdminText('ar-credits-used', fmtAdminNum(cs.total_credits_used || 0));
+    setAdminText('ar-active-users', fmtAdminNum(cs.unique_users || 0));
+    var totalCost = (d.cost_breakdown || []).reduce(function(s, c) { return s + (c.total_cost_cents || 0); }, 0);
+    setAdminText('ar-platform-cost', '$' + (totalCost / 100).toFixed(2));
 
-    var plans = d.plan_distribution || [];
-    var total = d.total_users || 1;
-    var tbody = document.getElementById('admin-plan-body');
-    if (tbody) {
-      tbody.innerHTML = plans.map(function(p) {
-        return '<tr><td class="admin-platform-name">' + (p.plan || 'free') + '</td>' +
-          '<td>' + fmtAdminNum(p.count) + '</td>' +
-          '<td>' + Math.round(p.count / total * 100) + '%</td></tr>';
-      }).join('');
+    // Tier Distribution Pie Chart
+    var tierData = (d.tier_distribution || []).map(function(t) {
+      return { name: (t.tier || 'free').charAt(0).toUpperCase() + (t.tier || 'free').slice(1), value: t.user_count };
+    });
+    if (tierData.length === 0) tierData = [{ name: 'Free', value: d.total_users || 0 }];
+    var tierChart = echarts.init(document.getElementById('ar-chart-tiers'));
+    tierChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      series: [{
+        type: 'pie', radius: ['40%', '70%'], center: ['50%', '55%'],
+        label: { show: true, formatter: '{b}\n{c}', fontSize: 11 },
+        data: tierData,
+        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 }
+      }]
+    });
+
+    // Daily Credit Activity Bar Chart
+    var dailyData = d.daily_activity || [];
+    var dailyChart = echarts.init(document.getElementById('ar-chart-daily'));
+    dailyChart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: 40, right: 16, top: 20, bottom: 28 },
+      xAxis: { type: 'category', data: dailyData.map(function(r) { return r.day; }), axisLabel: { fontSize: 10, rotate: 45 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      series: [
+        { name: 'Granted', type: 'bar', stack: 'credits', data: dailyData.map(function(r) { return r.credits_in; }), itemStyle: { color: 'hsl(142, 60%, 50%)' } },
+        { name: 'Used', type: 'bar', stack: 'used', data: dailyData.map(function(r) { return r.credits_out; }), itemStyle: { color: 'hsl(0, 70%, 55%)' } }
+      ]
+    });
+
+    // Revenue by Type Table
+    var typeBody = document.getElementById('ar-type-body');
+    if (typeBody) {
+      typeBody.innerHTML = (d.revenue_by_type || []).map(function(r) {
+        return '<tr><td class="admin-platform-name">' + r.type + '</td>' +
+          '<td>' + fmtAdminNum(r.tx_count) + '</td>' +
+          '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(r.credits_in) + '</td>' +
+          '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(r.credits_out) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">No transactions yet</td></tr>';
     }
+
+    // Cost Breakdown Table
+    var costBody = document.getElementById('ar-cost-body');
+    if (costBody) {
+      costBody.innerHTML = (d.cost_breakdown || []).map(function(r) {
+        return '<tr><td class="admin-platform-name">' + (r.cost_category || '—').toUpperCase() + '</td>' +
+          '<td>' + fmtAdminNum(r.tx_count) + '</td>' +
+          '<td>$' + (r.total_cost_cents / 100).toFixed(2) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No cost data yet</td></tr>';
+    }
+
+    // Top Users Table
+    var usersBody = document.getElementById('ar-users-body');
+    if (usersBody) {
+      usersBody.innerHTML = (d.top_users || []).map(function(u) {
+        var email = u.email || u.user_id.substring(0, 8) + '...';
+        return '<tr><td class="admin-platform-name">' + email + '</td>' +
+          '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(u.credits_used) + '</td>' +
+          '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(u.credits_granted) + '</td>' +
+          '<td>' + fmtAdminNum(u.tx_count) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">No credit usage yet</td></tr>';
+    }
+
+    // Resize charts on window resize
+    window.addEventListener('resize', function() { tierChart.resize(); dailyChart.resize(); });
+
   } catch (err) {
     console.error('[Admin] loadRevenueTab error:', err);
   }

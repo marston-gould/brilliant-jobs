@@ -2028,10 +2028,60 @@
           </div>
 
           <div class="admin-panel" id="admin-panel-revenue">
-            <table class="admin-table" style="width:100%">
-              <thead><tr><th>Plan</th><th>Users</th><th>MRR</th></tr></thead>
-              <tbody id="admin-plan-body"></tbody>
-            </table>
+            <div id="admin-rev-period" style="display:flex;gap:4px;margin-bottom:16px">
+              <button class="admin-period-btn active" data-rev-days="7">7d</button>
+              <button class="admin-period-btn" data-rev-days="30">30d</button>
+              <button class="admin-period-btn" data-rev-days="90">90d</button>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="stat-grid" id="admin-rev-kpis" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-val" id="ar-total-users">—</div></div>
+              <div class="stat-card"><div class="stat-label">Paid Subscribers</div><div class="stat-val" id="ar-paid-subs">—</div></div>
+              <div class="stat-card"><div class="stat-label">Credits Granted</div><div class="stat-val" id="ar-credits-granted">—</div></div>
+              <div class="stat-card"><div class="stat-label">Credits Used</div><div class="stat-val" id="ar-credits-used">—</div></div>
+              <div class="stat-card"><div class="stat-label">Active Credit Users</div><div class="stat-val" id="ar-active-users">—</div></div>
+              <div class="stat-card"><div class="stat-label">Platform Cost</div><div class="stat-val" id="ar-platform-cost">—</div></div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Tier Distribution</div>
+                <div id="ar-chart-tiers" style="height:200px;"></div>
+              </div>
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Daily Credit Activity</div>
+                <div id="ar-chart-daily" style="height:200px;"></div>
+              </div>
+            </div>
+
+            <!-- Revenue by Type -->
+            <div class="card" style="padding:16px;margin-bottom:20px;">
+              <div class="card-title">Credit Transactions by Type</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Type</th><th>Transactions</th><th>Credits In</th><th>Credits Out</th></tr></thead>
+                <tbody id="ar-type-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Cost Breakdown -->
+            <div class="card" style="padding:16px;margin-bottom:20px;">
+              <div class="card-title">Platform Cost Breakdown</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Category</th><th>Transactions</th><th>Total Cost</th></tr></thead>
+                <tbody id="ar-cost-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Top Users Table -->
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Top Users by Credit Usage</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>User</th><th>Credits Used</th><th>Credits Granted</th><th>Transactions</th></tr></thead>
+                <tbody id="ar-users-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
