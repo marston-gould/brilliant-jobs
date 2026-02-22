@@ -328,9 +328,72 @@ async function openCustomerPortal() {
 async function requireCredits(amount, description) {
   if (_isAdmin) return true;
   if (_creditBalance >= amount) return true;
-  showToast('You need ' + amount + ' credits. You have ' + _creditBalance + '.', 'warning');
+  showToast('You need ' + amount + ' credits for ' + description + '. You have ' + _creditBalance + '.', 'warning');
   openPricingModal();
   return false;
+}
+
+// ─── Debit Credits (call to actually debit after action) ───
+async function debitCreditsForAction(amount, costCategory, description, costCents) {
+  if (!currentUser?.id) return null;
+  try {
+    var result = await sb.rpc('debit_credits', {
+      p_user_id: currentUser.id,
+      p_amount: amount,
+      p_cost_category: costCategory || 'claude',
+      p_description: description || 'AI action',
+      p_cost_cents: costCents || 0
+    });
+    if (result.error) {
+      console.error('[Billing] debit_credits error:', result.error);
+      return { success: false, error: result.error.message };
+    }
+    var data = result.data;
+    if (data.success) {
+      // Update local balance
+      if (data.admin) {
+        _creditBalance = 999999;
+      } else {
+        _creditBalance = data.balance;
+      }
+      renderCreditBadge(_creditBalance);
+      renderSubscriptionBalance(_creditBalance);
+      // Check if auto-refill should fire
+      if (data.trigger_refill) {
+        triggerAutoRefill();
+      }
+    }
+    return data;
+  } catch (e) {
+    console.error('[Billing] debitCreditsForAction error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+// ─── Auto-Refill Trigger ───
+async function triggerAutoRefill() {
+  if (!currentUser?.id) return;
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+    console.log('[Billing] Triggering auto-refill');
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/auto-refill', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id }),
+    });
+    var data = await res.json();
+    if (data.refilled) {
+      showToast('Auto-refill: $' + (data.amount_cents / 100).toFixed(2) + ' charged. Credits incoming!', 'success');
+      // Credits will be granted by Stripe webhook — refresh balance after delay
+      setTimeout(function() { loadCreditBalance(); }, 5000);
+    } else if (data.reason === 'payment_failed') {
+      showToast('Auto-refill failed: ' + (data.error || 'payment declined') + '. Check your payment method.', 'error');
+    }
+  } catch (e) {
+    console.warn('[Billing] Auto-refill trigger error:', e);
+  }
 }
 
 // ─── Payment Return Detection ───
