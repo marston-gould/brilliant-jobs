@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.55
+**Current version:** v3.75
 
 ---
 
@@ -47,10 +47,10 @@
 
 | # | Action | Owner | Status |
 |---|--------|-------|--------|
-| M1 | Deploy `health-check` Edge Function: `supabase functions deploy health-check --no-verify-jwt` | CEO | ✅ |
+| M1 | Deploy `health-check` Edge Function | CEO | ✅ |
 | M2 | Deploy updated `send-notification`, `refresh-jobs`, `validate-signup` Edge Functions | CEO | ✅ |
-| M3 | Create PostHog project → set `window.POSTHOG_API_KEY` in globals.js | CEO | 🔲 |
-| M4 | Verify Vercel deploy completed (security headers + DOMPurify live) | CEO | 🔲 |
+| M3 | Create PostHog project → set `window.POSTHOG_API_KEY` in globals.js | CEO | ✅ | PostHog project 318006 active |
+| M4 | Verify Vercel deploy completed (security headers + DOMPurify live) | CEO | ✅ |
 
 ### Phase A Key Decisions
 
@@ -77,9 +77,9 @@
 | B9 | Create baseline migration | 4h | ✅ | 20260219000000_baseline.sql — full Phase A+B schema |
 | B10 | Add missing indexes | 2h | ✅ | 7 indexes added (location, source+status, user composites, refresh) |
 | B11 | Set up monitoring + alerts | 3h | ✅ | monitoring_alerts table + evaluate_alerts() — 3 automated checks |
-| B12 | Stripe integration | 8h | ⏳ | Deferred — awaiting Stripe account + pricing confirmation |
+| B12 | Stripe integration | 8h | ✅ | Phase H complete — webhook, checkout, credit system, subscription management. See Phase H. |
 
-**Phase B total estimate:** ~46h | **Actual:** ~3h | **Status:** 11/12 complete (B12 deferred)
+**Phase B total estimate:** ~46h | **Actual:** ~3h | **Status:** 12/12 complete (B12 built in Phase H)
 
 ---
 
@@ -363,10 +363,167 @@
 
 ---
 
+
+## Phase H: Stripe Monetization (v3.71–v3.75)
+
+**Goal:** Credit-based monetization with three subscription tiers, PAYG credit purchases, auto-refill, pay-when-hired model, and admin revenue dashboard.
+
+**Source:** `MONETIZATION_HANDOFF.docx` (Pod 1 spec, 16-step implementation plan)
+
+### Sprint 1: Stripe Backend (v3.71) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H1 | Stripe products + prices in Dashboard | v3.71 | ✅ | 3 subscription tiers (Free/$0, Starter/$20, Pro/$40), 3 credit packs (10/$5, 50/$20, 100/$35), auto-refill prices. Stripe account `acct_1T3TKyAUKPQHZOPa`. |
+| H2 | `stripe-webhook` Edge Function | v3.71 | ✅ | Signature validation, routes: checkout.session.completed, customer.subscription.updated/deleted, invoice.payment_succeeded/failed. Credit allocation on subscription start. |
+| H3 | `create-checkout` Edge Function | v3.71 | ✅ | Creates Stripe Checkout Sessions for subscriptions + one-time credit purchases. Success/cancel return URLs. |
+| H4 | `manage-subscription` Edge Function | v3.71 | ✅ | Opens Stripe Customer Portal for plan changes, cancellation, billing history. |
+| H5 | Billing frontend (`js/billing.js`) | v3.71 | ✅ | Credit balance badge in nav, pricing modal (3 tiers), Stripe checkout redirect flows. |
+
+### Sprint 2: Subscription Tab (v3.72) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H6 | Subscription tab UI | v3.72 | ✅ | Plan card with current tier, credit balance + burn rate, usage breakdown, tier comparison table. |
+| H7 | Credit packs UI | v3.72 | ✅ | 3 credit pack cards (10/50/100) with tier-discounted pricing, one-click Stripe checkout. |
+| H8 | Auto-refill UI | v3.72 | ✅ | Toggle + 3 level cards (10/25/50 credits), threshold config, saves to DB. |
+| H9 | Admin plan display | v3.72 | ✅ | "ADMIN" badge, ∞ credits shown, no low-credit alerts, no upgrade prompts. |
+| H10 | Upgrade banner | v3.72 | ✅ | Tier-specific messaging for free/starter users. Customer Portal link. |
+
+### Sprint 3: Admin Revenue Tab (v3.75) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H11 | Admin Revenue tab | v3.75 | ✅ | KPIs (MRR, active subs, credit velocity, ARPU), tier pie chart, daily activity bars, cost breakdown, top users table, period toggle (7d/30d/90d). |
+
+### Sprint 4: Credit Gating (v3.75) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H12 | `debitCreditsForAction()` client helper | v3.75 | ✅ | Deducts credits before AI calls. Calls `debit_credits` RPC. |
+| H13 | Resume AI Score gating (3 credits) | v3.75 | ✅ | Wired into `fetchAIScore()`. |
+| H14 | AI Filter Generation gating (2 credits) | v3.75 | ✅ | Wired into `generate-filter` call. |
+| H15 | `auto-refill` Edge Function | v3.75 | ✅ | Monitors credit balance, triggers Stripe charge when below threshold. Admin bypass. Deployed to Supabase. |
+
+### Sprint 5: Pay-When-Hired Pipeline (v3.74–v3.75) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H16 | "Hired" pipeline stage | v3.74 | ✅ | New stage between Offer and Rejected in pipeline progression. |
+| H17 | SetupIntent authorization flow | v3.74 | ✅ | Stripe SetupIntent to collect payment method on hire confirmation. |
+| H18 | `hire-fee` Edge Function | v3.74 | ✅ | Processes hire fee charge (configurable % of reported salary). Deployed to Supabase. |
+| H19 | Job title/salary persistence | v3.74 | ✅ | Stored in pipeline meta for hire fee reference. |
+
+### Phase H Summary
+
+| Sprint | Items | Theme |
+|--------|-------|-------|
+| H-S1 | H1–H5 | ✅ Stripe backend + billing frontend (v3.71) |
+| H-S2 | H6–H10 | ✅ Subscription tab UI (v3.72) |
+| H-S3 | H11 | ✅ Admin Revenue tab (v3.75) |
+| H-S4 | H12–H15 | ✅ Credit gating + auto-refill (v3.75) |
+| H-S5 | H16–H19 | ✅ Pay-when-hired pipeline (v3.74–v3.75) |
+| **Total** | **19 items** | **✅ Phase H complete (v3.71–v3.75)** |
+
+### What's NOT Built Yet
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Live Stripe testing | 🔲 | Products exist in sandbox, no end-to-end test card purchase yet |
+| Production Stripe keys | 🔲 | Still on sandbox (`sk_test_*`), need live keys for launch |
+| Smart Job Alert credit debit (1cr) | 🔲 | Defined but not wired into notification Edge Functions |
+| AI Resume Rewrite credit debit (5cr) | 🔲 | Defined but not wired into rewrite feature |
+| Vendor payout consolidation | 🔲 | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe |
+
+---
+
+## Production Hotfix Log (v3.56–v3.70)
+
+**27 versions across 3 days of production debugging and stabilization.**
+
+### v3.56–v3.60: Critical Production Fixes
+
+| Version | Status | Summary |
+|---------|--------|---------|
+| v3.56 | ✅ | Bundle rebuild (stale at v3.47), dashboard perf (deferred scripts), landing page segment fix |
+| v3.57 | ✅ | Segment visibility bleed, RPC error handling, version sync, bundle rebuild |
+| v3.58 | ✅ | openModal global scope (landing login broken), salary min→max UX, Entry Level sort, dept salary axis scaling, AK/HI choropleth, velocity map green ramp |
+| v3.59 | ✅ | Bundle stale detection, Edge Function deploys |
+| v3.60 | ✅ | Metro table blue gradient color scheme, Open Jobs color scaling, per-capita bubble map dedup |
+
+### v3.61–v3.65: Dashboard & Data Fixes
+
+| Version | Status | Summary |
+|---------|--------|---------|
+| v3.61 | ✅ | Forgot password flow, lapsed-user hero button, 7 production issues |
+| v3.62 | ✅ | Seniority breakdown %, stat card layout, chart label improvements, 8 UX issues |
+| v3.63 | ✅ | WHEN filter "last 14 days" fix (was silently ignored) |
+| v3.64 | ✅ | Stat card numbers invisible, map fixes, resume card layout, 7 issues |
+| v3.65 | ✅ | Salary P15-P85 ranges, resume picker, 406 circuit breaker |
+
+### v3.66–v3.70: Admin & SEO Fixes
+
+| Version | Status | Summary |
+|---------|--------|---------|
+| v3.66 | ✅ | AI filter upload+picker+auto-tag, salary ranges, 500 diagnosis |
+| v3.67 | ✅ | Location normalization, cumulative line chart, white borders, AK fix |
+| v3.68 | ✅ | Admin SEO dashboard 7 fixes |
+| v3.69 | ✅ | DataForSEO fix: instant_pages + proper issue filtering |
+| v3.70 | ✅ | Timeline bar timezone bug (2/15 vs 2/16) |
+
+### v3.71–v3.73: Feature Releases
+
+| Version | Status | Summary |
+|---------|--------|---------|
+| v3.71 | ✅ | Monetization backend (Stripe webhook, checkout, billing frontend) |
+| v3.72 | ✅ | Subscription tab (plan card, credit balance, tier comparison, credit packs, auto-refill UI, admin plan) |
+| v3.73 | ✅ | Admin text sizing, PSI/YLT chart redesign, cohort analytics (5 KPIs + 3 charts), Feed Health fix |
+
+### v3.74–v3.75: Monetization Completion
+
+| Version | Status | Summary |
+|---------|--------|---------|
+| v3.74 | ✅ | Pay-when-hired SetupIntent, hired pipeline stage, hire fee Edge Function |
+| v3.75 | ✅ | Admin Revenue tab, credit gating (score-resume 3cr, generate-filter 2cr), auto-refill EF, bundle rebuild |
+
+
+## Master Status Summary
+
+| Phase | Items | Version Range | Status |
+|-------|-------|---------------|--------|
+| **A** Pre-Launch Critical | 13/13 | — | ✅ Complete |
+| **B** Post-Launch Foundation | 12/12 | — | ✅ Complete |
+| **C** Scale Readiness | 10/10 | — | ✅ Complete |
+| **D** Product Features | 10/11 | v3.30–v3.40 | ✅ (D3/D7 blocked on screenshots) |
+| **E** Feb 21 Feature Sprint | 46/46 | v2.68–v3.48 | ✅ Complete |
+| **F** Feb 22 Sprint | 15/15 | v3.30–v3.40 | ✅ Complete |
+| **G** AI Resume Pipeline | 36/36 | v3.49–v3.55 | ✅ Complete |
+| **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ✅ Complete |
+| **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
+| **Total built** | **161+ items** | **v2.68–v3.75** | — |
+
+### Outstanding Items (Not Done)
+
+| Item | Phase | Priority | Blocker |
+|------|-------|----------|---------|
+| D3 — Landing Page interactive preview | D | Medium | 5 screenshot assets from CPO (D7) |
+| D7 — Walkthrough screenshots (5x) | D | Medium | CPO deliverable |
+| Live Stripe end-to-end test | H | **High** | Needs test card purchase in sandbox |
+| Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
+| Smart Job Alert credit debit (1cr) | H | Low | Wire into notification EFs |
+| AI Resume Rewrite credit debit (5cr) | H | Low | Wire into rewrite EFs |
+| Vendor payout consolidation | H | Low | Post-launch ops (Vercel/Supabase/DataForSEO/Cloudflare/Resend → Stripe) |
+| ATS partner applications (Greenhouse, Lever, Ashby) | — | Medium | Greenhouse deadline March 3 |
+| Remaining ATS customer list (H-Z) | — | Low | Could add significant job inventory |
+
+---
+
 ## Changelog
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | H-ALL | H1–H19 | **v3.75:** Phase H Stripe Monetization complete. 5 sprints: Stripe backend (webhook/checkout/portal EFs), subscription tab UI, admin Revenue tab, credit gating (score 3cr, filter 2cr), auto-refill EF, pay-when-hired (SetupIntent + hire-fee EF + hired stage). All 5 open PRs merged, bundle rebuilt, Edge Functions deployed. |
+| 2026-02-22 | DEPLOY | — | **v3.73:** Admin text sizing, PSI/YLT chart redesign (bar+radar), cohort analytics (5 KPIs + 3 ECharts), Feed Health RPC timeout fix. |
 | 2026-02-22 | HOTFIX | — | **v3.60 metro + map fixes:** Metro table color scheme changed from rainbow (green/blue/purple/gray) to consistent blue gradient. Open Jobs column now color-scaled. Per-capita bubble map: removed duplicate Dallas/Phoenix entries, blue gradient bubbles, sqrt sizing. |
 | 2026-02-22 | HOTFIX | — | **v3.58 prod bug fixes:** openModal global scope (landing login broken). Salary min→max UX (focus max on Enter). Entry Level sort fix (space vs hyphen). Dept salary ranges axis scaling. AK/HI choropleth 40% bigger. Velocity map green ramp + sqrt scaling. Removed markLine from salary charts. |
 | 2026-02-22 | BUILD | — | **CRITICAL FIX:** Bundle `dist/dashboard.min.js` was stale at v3.47. All source changes from v3.48–v3.55 (Phase G, E18 fix, SEO redesign) were committed to source files but never bundled. Rebuilt and deployed. |
