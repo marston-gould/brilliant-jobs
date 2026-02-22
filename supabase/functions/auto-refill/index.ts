@@ -19,9 +19,9 @@ const CORS_HEADERS = {
 
 // Auto-refill price IDs (from Stripe product setup)
 const REFILL_PRICES: Record<string, { price_id: string; amount_cents: number }> = {
-  low:    { price_id: 'price_1T3iJVAUKPQHZOPaDJ6HjrNC', amount_cents: 100 },
-  medium: { price_id: 'price_1T3iJVAUKPQHZOPanDBwEDhg', amount_cents: 500 },
-  high:   { price_id: 'price_1T3iJWAUKPQHZOPamNB6VXdl', amount_cents: 1000 },
+  low:    { price_id: 'price_1T3lhRPKzCZbw3KzgbBS3HCu', amount_cents: 100 },
+  medium: { price_id: 'price_1T3lhQPKzCZbw3KziqFpZXuT', amount_cents: 500 },
+  high:   { price_id: 'price_1T3lhTPKzCZbw3KzOvis8Awp', amount_cents: 1000 },
 };
 
 async function stripePost(endpoint: string, params: Record<string, string>) {
