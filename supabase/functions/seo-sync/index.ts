@@ -461,40 +461,34 @@ async function syncKnowledgeGraph(): Promise<{ pages: number }> {
   return { pages: n };
 }
 
-// ─── Task 9: Cloudflare Bot Analytics ───
+// ─── Task 9: Cloudflare Traffic Analytics ───
+// Uses httpRequests1dGroups (available on free plan)
+// Provides: requests, pageViews, uniques, country breakdown, status codes, threats
+// Note: per-user-agent bot detection requires Business plan (httpRequestsAdaptiveGroups)
 async function syncCloudflare(daysBack = 7): Promise<{ days: number }> {
+  const startDate = dateStr(daysBack);
   const today = dateStr(0);
   let n = 0;
-
-  // Known bot patterns
-  const botPatterns = [
-    'Googlebot', 'Bingbot', 'YandexBot', 'Baiduspider',
-    'GPTBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-Web', 'Bytespider',
-    'CCBot', 'PerplexityBot', 'Applebot',
-    'AhrefsBot', 'SemrushBot', 'DotBot', 'MJ12bot', 'PetalBot',
-  ];
-
-  const startDate = dateStr(daysBack);
 
   try {
     const query = `{
       viewer {
         zones(filter: {zoneTag: "${CF_ZONE}"}) {
-          httpRequestsAdaptiveGroups(
-            limit: 500
-            filter: {
-              date_geq: "${startDate}"
-              date_leq: "${today}"
-            }
-            orderBy: [count_DESC]
+          httpRequests1dGroups(
+            limit: 30
+            filter: { date_geq: "${startDate}", date_leq: "${today}" }
+            orderBy: [date_DESC]
           ) {
-            dimensions {
-              date
-              clientRequestHTTPHost
-              userAgent
-              edgeResponseStatus
+            dimensions { date }
+            sum {
+              requests
+              pageViews
+              threats
+              countryMap { clientCountryName requests }
+              responseStatusMap { edgeResponseStatus requests }
+              threatPathingMap { threatPathingName requests }
             }
-            count
+            uniq { uniques }
           }
         }
       }
@@ -510,43 +504,38 @@ async function syncCloudflare(daysBack = 7): Promise<{ days: number }> {
     });
     const d = await r.json();
 
-    const groups = d.data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups || [];
-    if (!groups.length) { console.log('[seo-sync] cf: no data'); return { days: 0 }; }
+    if (d.errors) {
+      console.error('[seo-sync] cf errors:', JSON.stringify(d.errors));
+      return { days: 0 };
+    }
 
-    // Group by date, then categorize bots
-    const byDate: Record<string, { bots: Record<string, number>, total: number, status_codes: Record<string, number> }> = {};
+    const groups = d.data?.viewer?.zones?.[0]?.httpRequests1dGroups || [];
+    if (!groups.length) { console.log('[seo-sync] cf: no data'); return { days: 0 }; }
 
     for (const g of groups) {
       const date = g.dimensions.date;
-      const ua = g.dimensions.userAgent || '';
-      const status = String(g.dimensions.edgeResponseStatus || 0);
-      const count = g.count;
-
-      if (!byDate[date]) byDate[date] = { bots: {}, total: 0, status_codes: {} };
-      byDate[date].total += count;
-      byDate[date].status_codes[status] = (byDate[date].status_codes[status] || 0) + count;
-
-      // Check if this is a known bot
-      for (const bot of botPatterns) {
-        if (ua.toLowerCase().includes(bot.toLowerCase())) {
-          byDate[date].bots[bot] = (byDate[date].bots[bot] || 0) + count;
-          break;
-        }
+      const s = g.sum;
+      const statusCodes: Record<string, number> = {};
+      for (const sm of (s.responseStatusMap || [])) {
+        statusCodes[String(sm.edgeResponseStatus)] = sm.requests;
       }
-    }
+      const countries: Record<string, number> = {};
+      for (const cm of (s.countryMap || [])) {
+        countries[cm.clientCountryName] = cm.requests;
+      }
 
-    // Store per-date
-    for (const [date, data] of Object.entries(byDate)) {
-      const botTotal = Object.values(data.bots).reduce((s, c) => s + c, 0);
       await sb.from('seo_tech_audits').upsert({
-        date, url: `https://${CF_ZONE}`, source: 'cloudflare',
+        date,
+        url: 'https://brilliantjobs.app/',
+        source: 'cloudflare',
         score: null,
         metrics: {
-          total_requests: data.total,
-          bot_requests: botTotal,
-          bots: data.bots,
-          status_codes: data.status_codes,
-          bot_percentage: data.total > 0 ? Math.round(botTotal / data.total * 10000) / 100 : 0,
+          total_requests: s.requests,
+          page_views: s.pageViews,
+          unique_visitors: g.uniq?.uniques || 0,
+          threats: s.threats,
+          status_codes: statusCodes,
+          countries,
         },
         issues: [],
       }, { onConflict: 'date,url,source' });
