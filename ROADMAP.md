@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.77
+**Current version:** v3.78
 
 ---
 
@@ -558,8 +558,8 @@
 | D7 — Walkthrough screenshots (5x) | D | Medium | CPO deliverable |
 | Live Stripe end-to-end test | H | **High** | Needs test card purchase in sandbox |
 | Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
-| Smart Job Alert credit debit (1cr) | H | Low | Wire into notification EFs |
-| AI Resume Rewrite credit debit (5cr) | H | Low | Wire into rewrite EFs |
+| Smart Job Alert credit debit (1cr) | I | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
+| AI Resume Rewrite credit debit (5cr) | I | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
 | Vendor payout consolidation | H | Low | Post-launch ops (Vercel/Supabase/DataForSEO/Cloudflare/Resend → Stripe) |
 | Phase 3 SMS — Vonage account + 10DLC | I | Medium | Manual: Vonage signup + A2P compliance registration |
 | Phase 3 SMS — Escalation chain | I | Medium | Blocked on Vonage account (I10–I11) |
@@ -572,6 +572,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | I-S2+ | — | **v3.78:** Credit gating wired into Edge Functions. apply-on-notification: 1cr debit (Starter/Pro only, free blocked). rewrite-resume: 5cr debit (free→403, insufficient→402, admin bypass). Closes 2 outstanding H-phase items. |
 | 2026-02-22 | I-S2 | I5–I9 | **v3.77:** Phase 2 Email System verified live. 11 new v2 templates (credit/billing, upgrade, resume intelligence, re-engagement, SEO nurture — 28 total). send-notification v2 with idempotency dedup + cohort tracking. 7 Edge Functions redeployed. Resend domain verified, delivery confirmed. pg_cron all 4 schedules active. |
 | 2026-02-22 | I-S1 | I1–I4 | **v3.76:** Communication Center v2 Phase 1. Migration 006 (7 pref columns, 4 log columns, notification_templates table, 9 default configs). 3 RPCs. Dashboard: 22 notification rows (+8 v2 types). JS: 23 NOTIF_TYPES. |
 | 2026-02-22 | H-ALL | H1–H19 | **v3.75:** Phase H Stripe Monetization complete. 5 sprints: Stripe backend (webhook/checkout/portal EFs), subscription tab UI, admin Revenue tab, credit gating (score 3cr, filter 2cr), auto-refill EF, pay-when-hired (SetupIntent + hire-fee EF + hired stage). All 5 open PRs merged, bundle rebuilt, Edge Functions deployed. |
