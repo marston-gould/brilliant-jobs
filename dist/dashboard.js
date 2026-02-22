@@ -9428,7 +9428,7 @@ async function updatePoorMatchSuggestions() {
         <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
-      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match">✦ Improve</button>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
@@ -13037,7 +13037,7 @@ function renderUrlInspection() {
   if (!el) return;
   var data = _seoData.index_status || [];
   if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;">Run inspection</a></div>';
+    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([&#39;gsc_inspect&#39;]);return false;">Run inspection</a></div>';
     return;
   }
 
@@ -13136,7 +13136,7 @@ function renderDfsAudit() {
   var el = document.getElementById('seo-side-dfs');
   if (!el) return;
   var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
-  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([\'dataforseo\']);return false;">run sync</a></div>'; return; }
+  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([&#39;dataforseo&#39;]);return false;">run sync</a></div>'; return; }
 
   if (_seoUrl) {
     var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
@@ -13241,8 +13241,8 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.55';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — full AI resume pipeline — Phase G complete');
+const BJ_VERSION = 'v3.57';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth
 async function init() {
@@ -13253,14 +13253,21 @@ async function init() {
   localStorage.setItem('bj_has_account', 'true');
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
+  let profile = null;
   try {
-    const { data: profile } = await sb.from('profiles').select('approved,cohort_id,plan').eq('id', currentUser.id).single();
-    if (!profile?.approved) { window.location.href = '/?pending=1'; return; }
-    currentUser._cohortId = profile.cohort_id || null;
-    window._bjUserPlan = profile.plan || 'free';
+    const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
+    profile = p;
+    if (!p?.approved) { window.location.href = '/?pending=1'; return; }
+    currentUser._cohortId = p.cohort_id || null;
+    window._bjUserPlan = p.plan || 'free';
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
+  // Show admin nav immediately — profile already fetched, no extra round trip
+  if (profile && profile.role === 'admin') {
+    var navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+  }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
   if (activeTab && $(`#page-${activeTab}`)) {
@@ -13268,28 +13275,6 @@ async function init() {
     $(`#page-${activeTab}`).classList.add('active');
     $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.page === activeTab));
   }
-  // DEBUG: log full visibility chain
-  const _pa = $('#page-admin');
-  const _main = $('.main');
-  const _app = $('#app');
-  console.log('[DEBUG] #app display:', _app ? getComputedStyle(_app).display : 'N/A', 'size:', _app?.offsetWidth, 'x', _app?.offsetHeight);
-  console.log('[DEBUG] .main display:', _main ? getComputedStyle(_main).display : 'N/A', 'size:', _main?.offsetWidth, 'x', _main?.offsetHeight, 'overflow:', _main ? getComputedStyle(_main).overflow : 'N/A');
-  console.log('[DEBUG] page-admin class:', _pa?.className, 'display:', _pa ? getComputedStyle(_pa).display : 'N/A', 'size:', _pa?.offsetWidth, 'x', _pa?.offsetHeight);
-  console.log('[DEBUG] activeTab:', activeTab);
-  // Force reflow and check again after paint
-  if (_main) _main.scrollTop = 0;
-  setTimeout(() => {
-    const pa2 = $('#page-admin');
-    if (pa2) {
-      console.log('[DEBUG-DEFERRED] page-admin class:', pa2.className, 'display:', getComputedStyle(pa2).display, 'size:', pa2.offsetWidth, 'x', pa2.offsetHeight);
-      console.log('[DEBUG-DEFERRED] page-admin children:', pa2.children.length, 'firstChild tag:', pa2.firstElementChild?.tagName, 'firstChild size:', pa2.firstElementChild?.offsetWidth, 'x', pa2.firstElementChild?.offsetHeight);
-      // Log all siblings to see what IS visible
-      const siblings = Array.from(pa2.parentElement.children).filter(c => c.classList.contains('page'));
-      siblings.forEach(s => {
-        console.log('[DEBUG-SIBLINGS]', s.id, 'class:', s.className, 'size:', s.offsetWidth, 'x', s.offsetHeight);
-      });
-    }
-  }, 2000);
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
   // Sync user data from Supabase → localStorage on login
@@ -13303,8 +13288,6 @@ async function init() {
       bj_plan_id: window._bjUserPlan || 'free'
     });
   }
-  // Check admin access — show admin nav if user has admin role
-  if (typeof checkAdminAccess === 'function') checkAdminAccess();
   // Re-init admin page if it was the active tab (tab restore runs before auth)
   if (typeof initAdminPage === 'function') initAdminPage();
   // Re-hydrate globals from potentially updated localStorage
