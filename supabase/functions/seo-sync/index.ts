@@ -1,7 +1,7 @@
 // supabase/functions/seo-sync/index.ts
-// Daily SEO data sync: GSC performance, URL inspection, PSI, DataForSEO, PostHog
-// Tasks: gsc_performance | gsc_inspect | psi | dataforseo | posthog | all
-// v2 — supports target_url for per-page PSI, collects all 10 URLs
+// Daily SEO data sync — 9 tools
+// Tasks: gsc_performance | gsc_inspect | psi | dataforseo | posthog | yellowlab | crux | knowledge_graph | cloudflare | all
+// v3 — adds Yellow Labs, CrUX API, Knowledge Graph, Cloudflare bot analytics; PSI now collects all 4 categories
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -13,6 +13,8 @@ const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY') || 'AIzaSyDQOEuQlCT3UFP_kW
 const DFS_LOGIN = Deno.env.get('DFS_LOGIN') || 'gould.marston@gmail.com';
 const DFS_API_KEY = Deno.env.get('DFS_API_KEY') || '3e97b94d1f0785c7';
 const POSTHOG_KEY = Deno.env.get('POSTHOG_PERSONAL_KEY') || 'phx_120PUmDpHAOQ93HF25hN0m5pJUgbBhED84aLGDKjddU3FuXU';
+const CF_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN') || 'pVWrYlwO_Yn8LxGGYeqYRpvZgqvoxLFaBC5MqGnl';
+const CF_ZONE = Deno.env.get('CLOUDFLARE_ZONE_ID') || '248eb020d5fcc71444faa7288f2853cf';
 
 const GSC_SITE = 'https://brilliantjobs.io/';
 const SITE_URLS = [
@@ -149,23 +151,28 @@ async function syncInspect(): Promise<{ checked: number }> {
   return { checked: n };
 }
 
-// ─── Task 3: PageSpeed Insights ───
+// ─── Task 3: PageSpeed Insights (all 4 categories) ───
 async function syncPsi(targetUrl?: string): Promise<{ pages: number }> {
   const today = dateStr(0);
-  const urls = targetUrl ? [targetUrl] : SITE_URLS; // All 10 URLs by default
+  const urls = targetUrl ? [targetUrl] : SITE_URLS;
   let n = 0;
   for (const url of urls) {
     try {
       for (const strat of ['mobile','desktop'] as const) {
-        const r = await fetch(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${GOOGLE_API_KEY}&strategy=${strat}&category=performance&category=seo`);
+        const r = await fetch(
+          `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${GOOGLE_API_KEY}&strategy=${strat}&category=performance&category=seo&category=accessibility&category=best-practices`
+        );
         const d = await r.json();
         const lh = d.lighthouseResult;
         if (!lh) continue;
-        const perf = Math.round((lh.categories?.performance?.score||0)*100);
-        const seo = Math.round((lh.categories?.seo?.score||0)*100);
+        const cats = lh.categories || {};
+        const perf = Math.round((cats.performance?.score||0)*100);
+        const seo = Math.round((cats.seo?.score||0)*100);
+        const a11y = Math.round((cats.accessibility?.score||0)*100);
+        const bp = Math.round((cats['best-practices']?.score||0)*100);
         const a = lh.audits||{};
         const metrics = {
-          performance: perf, seo,
+          performance: perf, seo, accessibility: a11y, best_practices: bp,
           fcp: a['first-contentful-paint']?.numericValue,
           lcp: a['largest-contentful-paint']?.numericValue,
           cls: a['cumulative-layout-shift']?.numericValue,
@@ -255,8 +262,13 @@ async function syncPosthog(daysBack = 7): Promise<{ events: number }> {
           grp[u] = (grp[u]||0)+1;
         }
         for (const [url, count] of Object.entries(grp)) {
-          await sb.from('seo_conversions').insert({
+          await sb.from('seo_conversions').upsert({
             date: ds, event_type: ev==='$pageview'?'pageview':ev, landing_url: (url as string).slice(0,500), count,
+          }, { onConflict: 'date,event_type,landing_url' }).then(()=>{}).catch(()=>{
+            // Fallback to insert if no unique constraint
+            sb.from('seo_conversions').insert({
+              date: ds, event_type: ev==='$pageview'?'pageview':ev, landing_url: (url as string).slice(0,500), count,
+            });
           });
         }
         total += evts.length;
@@ -269,6 +281,279 @@ async function syncPosthog(daysBack = 7): Promise<{ events: number }> {
     }
   }
   return { events: total };
+}
+
+// ─── Task 6: Yellow Lab Tools ───
+async function syncYellowLab(): Promise<{ pages: number }> {
+  const today = dateStr(0);
+  let n = 0;
+  for (const url of SITE_URLS) {
+    try {
+      // Launch run with waitForResponse
+      const r = await fetch('https://yellowlab.tools/api/runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, waitForResponse: false }),
+      });
+      const launch = await r.json();
+      const runId = launch.runId;
+      if (!runId) { console.error(`[seo-sync] ylt no runId for ${url}:`, launch); continue; }
+
+      // Poll for result (max 90s)
+      let result = null;
+      for (let i = 0; i < 18; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        const sr = await fetch(`https://yellowlab.tools/api/runs/${runId}`);
+        if (sr.status === 404) continue; // not ready yet
+        const sd = await sr.json();
+        if (sd.status?.statusCode === 'complete') {
+          // Fetch scores
+          const scr = await fetch(`https://yellowlab.tools/api/results/${runId}/generalScores`);
+          if (scr.ok) { result = await scr.json(); }
+          break;
+        }
+        if (sd.status?.statusCode === 'failed') { console.error(`[seo-sync] ylt failed ${url}`); break; }
+      }
+
+      if (result) {
+        const globalScore = result.globalScore || 0;
+        const categories: Record<string, any> = {};
+        if (result.categories) {
+          for (const [k, v] of Object.entries(result.categories as Record<string, any>)) {
+            categories[k] = { score: v.categoryScore, label: v.label };
+          }
+        }
+        await sb.from('seo_tech_audits').upsert({
+          date: today, url, source: 'yellowlab',
+          score: Math.round(globalScore),
+          metrics: { global_score: globalScore, categories },
+          issues: [], // Could fetch /rules for details but keeping lightweight
+        }, { onConflict: 'date,url,source' });
+
+        // Update site daily for homepages
+        if (url.endsWith('/') && (url.includes('brilliantjobs.app') || url.includes('brilliantjobs.io/'))) {
+          await sb.from('seo_site_daily').upsert({ date: today, ylt_score: Math.round(globalScore) }, { onConflict: 'date' });
+        }
+        n++;
+      }
+    } catch(e) { console.error(`[seo-sync] ylt ${url}:`, e); }
+  }
+  return { pages: n };
+}
+
+// ─── Task 7: Chrome UX Report (CrUX) ───
+async function syncCrux(): Promise<{ origins: number }> {
+  const today = dateStr(0);
+  const origins = ['https://brilliantjobs.io', 'https://brilliantjobs.app'];
+  let n = 0;
+  for (const origin of origins) {
+    try {
+      // Origin-level query
+      const r = await fetch(
+        `https://chromeuxreport.googleapis.com/v1/records:queryRecord?key=${GOOGLE_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ origin }),
+        }
+      );
+      const d = await r.json();
+      if (d.error) { console.error(`[seo-sync] crux ${origin}:`, d.error.message); continue; }
+
+      const rec = d.record;
+      if (!rec?.metrics) continue;
+
+      const metrics: Record<string, any> = {};
+      // Extract each metric with its histogram (good/needs-improvement/poor distributions)
+      for (const [key, val] of Object.entries(rec.metrics as Record<string, any>)) {
+        metrics[key] = {
+          p75: val.percentiles?.p75,
+          histogram: val.histogram?.map((h: any) => ({
+            start: h.start, end: h.end, density: h.density,
+          })),
+        };
+      }
+
+      await sb.from('seo_tech_audits').upsert({
+        date: today, url: origin, source: 'crux',
+        score: null, // CrUX doesn't have a single score
+        metrics,
+        issues: [],
+      }, { onConflict: 'date,url,source' });
+      n++;
+
+      // Also try per-URL for key pages
+      for (const pageUrl of SITE_URLS.filter(u => u.startsWith(origin))) {
+        try {
+          const pr = await fetch(
+            `https://chromeuxreport.googleapis.com/v1/records:queryRecord?key=${GOOGLE_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: pageUrl }),
+            }
+          );
+          const pd = await pr.json();
+          if (pd.error || !pd.record?.metrics) continue;
+
+          const pageMetrics: Record<string, any> = {};
+          for (const [key, val] of Object.entries(pd.record.metrics as Record<string, any>)) {
+            pageMetrics[key] = {
+              p75: val.percentiles?.p75,
+              histogram: val.histogram?.map((h: any) => ({
+                start: h.start, end: h.end, density: h.density,
+              })),
+            };
+          }
+          await sb.from('seo_tech_audits').upsert({
+            date: today, url: pageUrl, source: 'crux',
+            score: null, metrics: pageMetrics, issues: [],
+          }, { onConflict: 'date,url,source' });
+        } catch(e) { /* Per-URL CrUX may not have enough data — that's fine */ }
+      }
+    } catch(e) { console.error(`[seo-sync] crux ${origin}:`, e); }
+  }
+  return { origins: n };
+}
+
+// ─── Task 8: Google Knowledge Graph ───
+async function syncKnowledgeGraph(): Promise<{ pages: number }> {
+  const today = dateStr(0);
+  let n = 0;
+
+  // Search for entities related to our brand and key topics
+  const queries = ['Brilliant Jobs', 'brilliantjobs.app', 'job search platform'];
+  const allEntities: any[] = [];
+
+  for (const q of queries) {
+    try {
+      const r = await fetch(
+        `https://kgsearch.googleapis.com/v1/entities:search?query=${encodeURIComponent(q)}&key=${GOOGLE_API_KEY}&limit=5&indent=true`
+      );
+      const d = await r.json();
+      const items = d.itemListElement || [];
+      for (const item of items) {
+        const entity = item.result;
+        if (!entity) continue;
+        allEntities.push({
+          entity_id: entity['@id'],
+          name: entity.name,
+          type: entity['@type']?.join(', '),
+          description: entity.description,
+          detailed_description: entity.detailedDescription?.articleBody?.slice(0, 500),
+          url: entity.url,
+          score: item.resultScore,
+        });
+      }
+    } catch(e) { console.error(`[seo-sync] kg query "${q}":`, e); }
+  }
+
+  // Store as a single audit entry per day
+  if (allEntities.length > 0) {
+    await sb.from('seo_tech_audits').upsert({
+      date: today, url: 'https://brilliantjobs.app/', source: 'knowledge_graph',
+      score: null,
+      metrics: { entities: allEntities, query_count: queries.length },
+      issues: [],
+    }, { onConflict: 'date,url,source' });
+    n = 1;
+  }
+  return { pages: n };
+}
+
+// ─── Task 9: Cloudflare Bot Analytics ───
+async function syncCloudflare(daysBack = 7): Promise<{ days: number }> {
+  const today = dateStr(0);
+  let n = 0;
+
+  // Known bot patterns
+  const botPatterns = [
+    'Googlebot', 'Bingbot', 'YandexBot', 'Baiduspider',
+    'GPTBot', 'ChatGPT-User', 'ClaudeBot', 'Claude-Web', 'Bytespider',
+    'CCBot', 'PerplexityBot', 'Applebot',
+    'AhrefsBot', 'SemrushBot', 'DotBot', 'MJ12bot', 'PetalBot',
+  ];
+
+  const startDate = dateStr(daysBack);
+
+  try {
+    const query = `{
+      viewer {
+        zones(filter: {zoneTag: "${CF_ZONE}"}) {
+          httpRequestsAdaptiveGroups(
+            limit: 500
+            filter: {
+              date_geq: "${startDate}"
+              date_leq: "${today}"
+            }
+            orderBy: [count_DESC]
+          ) {
+            dimensions {
+              date
+              clientRequestHTTPHost
+              userAgent
+              edgeResponseStatus
+            }
+            count
+          }
+        }
+      }
+    }`;
+
+    const r = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${CF_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+    const d = await r.json();
+
+    const groups = d.data?.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups || [];
+    if (!groups.length) { console.log('[seo-sync] cf: no data'); return { days: 0 }; }
+
+    // Group by date, then categorize bots
+    const byDate: Record<string, { bots: Record<string, number>, total: number, status_codes: Record<string, number> }> = {};
+
+    for (const g of groups) {
+      const date = g.dimensions.date;
+      const ua = g.dimensions.userAgent || '';
+      const status = String(g.dimensions.edgeResponseStatus || 0);
+      const count = g.count;
+
+      if (!byDate[date]) byDate[date] = { bots: {}, total: 0, status_codes: {} };
+      byDate[date].total += count;
+      byDate[date].status_codes[status] = (byDate[date].status_codes[status] || 0) + count;
+
+      // Check if this is a known bot
+      for (const bot of botPatterns) {
+        if (ua.toLowerCase().includes(bot.toLowerCase())) {
+          byDate[date].bots[bot] = (byDate[date].bots[bot] || 0) + count;
+          break;
+        }
+      }
+    }
+
+    // Store per-date
+    for (const [date, data] of Object.entries(byDate)) {
+      const botTotal = Object.values(data.bots).reduce((s, c) => s + c, 0);
+      await sb.from('seo_tech_audits').upsert({
+        date, url: `https://${CF_ZONE}`, source: 'cloudflare',
+        score: null,
+        metrics: {
+          total_requests: data.total,
+          bot_requests: botTotal,
+          bots: data.bots,
+          status_codes: data.status_codes,
+          bot_percentage: data.total > 0 ? Math.round(botTotal / data.total * 10000) / 100 : 0,
+        },
+        issues: [],
+      }, { onConflict: 'date,url,source' });
+      n++;
+    }
+  } catch(e) { console.error('[seo-sync] cf:', e); }
+  return { days: n };
 }
 
 // ─── Main ───
@@ -293,11 +578,21 @@ serve(async (req) => {
     }
     const res: Record<string, any> = {};
     const all = tasks.includes('all');
-    // Run PSI + PostHog first (no Google SA required)
+
+    // No-auth tools first (API key only)
     if (all || tasks.includes('psi'))
       try { res.psi = await syncPsi(targetUrl); } catch(e) { res.psi = { error: String(e) }; }
     if (all || tasks.includes('posthog'))
       try { res.posthog = await syncPosthog(); } catch(e) { res.posthog = { error: String(e) }; }
+    if (all || tasks.includes('yellowlab'))
+      try { res.yellowlab = await syncYellowLab(); } catch(e) { res.yellowlab = { error: String(e) }; }
+    if (all || tasks.includes('crux'))
+      try { res.crux = await syncCrux(); } catch(e) { res.crux = { error: String(e) }; }
+    if (all || tasks.includes('knowledge_graph'))
+      try { res.knowledge_graph = await syncKnowledgeGraph(); } catch(e) { res.knowledge_graph = { error: String(e) }; }
+    if (all || tasks.includes('cloudflare'))
+      try { res.cloudflare = await syncCloudflare(); } catch(e) { res.cloudflare = { error: String(e) }; }
+
     // GSC tasks require service account
     if (all || tasks.includes('gsc_performance'))
       try { res.gsc = await syncGsc(); } catch(e) { res.gsc = { error: String(e) }; }
