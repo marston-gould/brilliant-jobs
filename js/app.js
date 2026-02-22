@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.54';
+const BJ_VERSION = 'v3.55';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — full AI resume pipeline — Phase G complete');
 
 // Auth

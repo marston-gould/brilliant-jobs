@@ -1,0 +1,27 @@
+#bj-li-capture-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99999;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, #4d8eff, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(77, 142, 255, 0.3);
+  transition: all 0.2s;
+  font-family: -apple-system, system-ui, sans-serif;
+}
+
+#bj-li-capture-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(77, 142, 255, 0.4);
+}
+
+#bj-li-capture-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
