@@ -10,11 +10,13 @@ async function init() {
   localStorage.setItem('bj_has_account', 'true');
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
+  let profile = null;
   try {
-    const { data: profile } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
-    if (!profile?.approved) { window.location.href = '/?pending=1'; return; }
-    currentUser._cohortId = profile.cohort_id || null;
-    window._bjUserPlan = profile.plan || 'free';
+    const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
+    profile = p;
+    if (!p?.approved) { window.location.href = '/?pending=1'; return; }
+    currentUser._cohortId = p.cohort_id || null;
+    window._bjUserPlan = p.plan || 'free';
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
