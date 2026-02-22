@@ -354,14 +354,13 @@ async function loadSeoTab() {
 
 // ─── Data Fetching (auth-only) ───
 async function fetchSeoData() {
-  var session = null;
-  try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
-  if (!session) {
-    console.warn('[Admin] No session — cannot fetch SEO data');
-    _seoData = {};
-    return;
-  }
-  var authHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
+  var hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+  // Try auth session if available (for RLS-protected tables), fall back to anon key
+  try {
+    var session = (await sb.auth.getSession()).data.session;
+    if (session) hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
+  } catch(e) {}
+  var authHeaders = hdr;
 
   var urlFilter = _seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '';
   var dateFilter = '';
@@ -596,7 +595,7 @@ function renderUrlInspection() {
   var el = document.getElementById('seo-side-inspection');
   if (!el) return;
   var data = _seoData.index_status || [];
-  if (!data.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No inspection data yet. <a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;" style="color:var(--blue);">Run inspection</a></div>'; return; }
+  if (!data.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No inspection data yet. Requires Google Service Account key (GOOGLE_SA_KEY_JSON) to be set as a Supabase secret. <a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;" style="color:var(--blue);">Try running inspection</a></div>'; return; }
 
   if (_seoUrl) {
     var latest = data.find(function(r) { return r.url === _seoUrl; }) || data[0];
