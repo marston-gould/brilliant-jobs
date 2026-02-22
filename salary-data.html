@@ -129,7 +129,12 @@
     .related-link:hover{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)}
     .related-link .rl-title{font-size:13px;font-weight:600;color:var(--text);margin-block-end:4px}
     .related-link .rl-desc{font-size:11px;color:var(--text-faint);line-height:1.5}
-    .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
+    .method-foot{margin-block-start:48px;padding:24px;background:rgba(30,34,48,0.5);border:1px solid var(--border);border-radius:12px}
+  .method-foot h3{font-size:13px;font-weight:600;color:var(--text-dim);margin:0 0 8px;text-transform:uppercase;letter-spacing:0.5px}
+  .method-foot p{font-size:12px;color:var(--text-faint);line-height:1.7;margin:0}
+  .method-foot code{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px}
+  .method-foot strong{color:var(--text-dim)}
+  .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
     .foot a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
       .dash-link{display:none;position:fixed;top:16px;right:16px;z-index:100;background:rgba(59,130,246,0.12);color:var(--accent);font-size:12px;font-family:"JetBrains Mono",monospace;padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.25);text-decoration:none;transition:all 0.2s}
@@ -207,10 +212,21 @@
 
 
 
-  <div class="foot">Data from 10,000+ career pages<br>v3.28 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="method-foot">
+    <h3>Methodology</h3>
+    <p>Salary data is drawn from <strong>21,000+</strong> job listings with disclosed compensation ranges across <strong>10,000+</strong> company career pages. Median salary represents the midpoint of posted min-max ranges. The ±1σ and ±2σ bands are calculated using actual salary range distributions within each category. Department and level classifications use the same title-based pattern matching applied across all Brilliant Jobs analytics. Work arrangement (Remote, Hybrid, On-site) is extracted from job descriptions and location metadata. Salary by industry uses the industry classification from company profiles. All figures reflect currently open positions and refresh daily.</p>
+  </div>
+  <div class="foot">Data from 10,000+ career pages<br>v3.39 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded',function(){
+document.addEventListener('DOMContentLoaded',async function(){
+  var SB_RPC='https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1/rpc/';
+  var AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+  var HD={'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json'};
+  var CACHE_TTL=86400000;
+  function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
+  function cSet(k,d){try{localStorage.setItem('bj_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
+  async function rpc(fn){var c=cGet(fn);if(c)return c;var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});var d=await r.json();cSet(fn,d);return d}
   var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL={color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
   var GR={left:56,right:20,top:20,bottom:32};
@@ -223,10 +239,12 @@ document.addEventListener('DOMContentLoaded',function(){
   function I(id){var c=echarts.init(document.getElementById(id));chs.push(c);return c}
   function AX(){return{lineStyle:{color:'#1e2230'}}}
 
-  var salRange=[['$30-50K',1840],['$50-75K',3220],['$75-100K',4600],['$100-125K',4140],['$125-150K',3450],['$150-175K',2300],['$175-200K',1610],['$200-250K',1150],['$250K+',690]];
-  var salRemote=[{t:'Remote',p25:85000,med:128000,p75:168000},{t:'Hybrid',p25:78000,med:118000,p75:155000},{t:'On-site',p25:62000,med:95000,p75:135000}];
-  var salDept=[{dept:'Engineering',med:142000,s1l:105000,s1h:179000,s2l:78000,s2h:210000},{dept:'Product',med:138000,s1l:102000,s1h:174000,s2l:75000,s2h:205000},{dept:'Data & Analytics',med:132000,s1l:98000,s1h:166000,s2l:72000,s2h:195000},{dept:'Design',med:125000,s1l:92000,s1h:158000,s2l:68000,s2h:185000},{dept:'Legal',med:118000,s1l:95000,s1h:142000,s2l:82000,s2h:158000},{dept:'Finance',med:112000,s1l:82000,s1h:145000,s2l:62000,s2h:172000},{dept:'Marketing',med:105000,s1l:75000,s1h:138000,s2l:55000,s2h:168000},{dept:'Sales',med:98000,s1l:65000,s1h:148000,s2l:42000,s2h:210000},{dept:'Operations',med:92000,s1l:68000,s1h:122000,s2l:52000,s2h:148000},{dept:'Customer Success',med:85000,s1l:62000,s1h:112000,s2l:48000,s2h:135000},{dept:'Human Resources',med:82000,s1l:60000,s1h:108000,s2l:45000,s2h:130000}];
-  var salLvl=[['Entry Level',58000],['Associate',72000],['Mid-Level',95000],['Senior',135000],['Manager',148000],['Lead',155000],['Director',185000],['VP',245000],['C-Suite',320000]];
+  var [salDistRaw, salRemote, salDept, salLvl] = await Promise.all([
+    rpc('get_salary_distribution'), rpc('get_salary_by_arrangement'),
+    rpc('get_salary_by_department'), rpc('get_salary_by_level')
+  ]);
+  var salRange=salDistRaw.map(function(d){return[d.range,d.cnt]});
+  salRemote=salRemote.map(function(d){return{t:d.t,p25:d.p25,med:d.med,p75:d.p75}});
 
   // C1: Salary distribution
   I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:64,right:20,top:20,bottom:40},xAxis:{type:'category',data:salRange.map(function(d){return d[0]}),axisLabel:{...AL,rotate:25},axisLine:AX(),axisTick:NO},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'bar',data:salRange.map(function(d,i){return{value:d[1],itemStyle:{borderRadius:[20,20,4,4],color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:i<3?'#22c55e':i<6?'#3b82f6':'#a855f7'},{offset:1,color:i<3?'#15803d':i<6?'#1d4ed8':'#7c3aed'}]}}}}),barWidth:'55%',animationDelay:function(i){return i*60},animationEasing:'elasticOut'}]});

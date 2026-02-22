@@ -128,7 +128,12 @@
     .related-link:hover{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)}
     .related-link .rl-title{font-size:13px;font-weight:600;color:var(--text);margin-block-end:4px}
     .related-link .rl-desc{font-size:11px;color:var(--text-faint);line-height:1.5}
-    .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
+    .method-foot{margin-block-start:48px;padding:24px;background:rgba(30,34,48,0.5);border:1px solid var(--border);border-radius:12px}
+  .method-foot h3{font-size:13px;font-weight:600;color:var(--text-dim);margin:0 0 8px;text-transform:uppercase;letter-spacing:0.5px}
+  .method-foot p{font-size:12px;color:var(--text-faint);line-height:1.7;margin:0}
+  .method-foot code{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px}
+  .method-foot strong{color:var(--text-dim)}
+  .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
     .foot a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
       .dash-link{display:none;position:fixed;top:16px;right:16px;z-index:100;background:rgba(59,130,246,0.12);color:var(--accent);font-size:12px;font-family:"JetBrains Mono",monospace;padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.25);text-decoration:none;transition:all 0.2s}
@@ -203,10 +208,21 @@
     <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Is it easier to get hired in Financial Services than Tech?<span class="chv">&darr;</span></div><div class="faq-a"><p>Potentially. Financial Services pays nearly the same ($138K vs $142K) but posts far fewer jobs (28,500 vs 68,400), suggesting each posting may receive fewer applications.</p></div></div>
   </div>
 
-  <div class="foot">Data from 10,000+ career pages<br>v3.28 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="method-foot">
+    <h3>Methodology</h3>
+    <p>Industry data covers <strong>285,000+</strong> active job listings from <strong>10,000+</strong> company career pages across Greenhouse, Lever, Ashby, Workable, and Recruitee ATS platforms. Industry classification is derived from company profiles using SIC/NAICS sector mapping enriched with People Data Labs company data. Job department and function classifications are assigned through title and description keyword matching across 15 standardized categories. Salary figures by industry represent medians of disclosed compensation ranges. Weekly job volume trends track new listings by ISO week. All metrics update daily via materialized database views.</p>
+  </div>
+  <div class="foot">Data from 10,000+ career pages<br>v3.39 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded',function(){
+document.addEventListener('DOMContentLoaded',async function(){
+  var SB_RPC='https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1/rpc/';
+  var AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+  var HD={'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json'};
+  var CACHE_TTL=86400000;
+  function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
+  function cSet(k,d){try{localStorage.setItem('bj_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
+  async function rpc(fn){var c=cGet(fn);if(c)return c;var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});var d=await r.json();cSet(fn,d);return d}
   var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL={color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
   var GR={left:56,right:20,top:20,bottom:32};
@@ -219,10 +235,11 @@ document.addEventListener('DOMContentLoaded',function(){
   function I(id){var c=echarts.init(document.getElementById(id));chs.push(c);return c}
   function AX(){return{lineStyle:{color:'#1e2230'}}}
 
-  var industries=[['Technology',68400],['Healthcare',31200],['Financial Services',28500],['Professional Services',22800],['Retail & E-commerce',19200],['Manufacturing',16800],['Education',14400],['Media & Entertainment',12600],['Real Estate',8400],['Energy',7200],['Transport & Logistics',6800],['Government',5600],['Hospitality',5400],['Nonprofit',4800],['Agriculture',3200]];
-  var salInd=[['Technology',142000],['Financial Services',138000],['Energy',128000],['Professional Services',118000],['Media & Entertainment',112000],['Real Estate',105000],['Healthcare',95000],['Manufacturing',88000],['Government',85000],['Retail & E-commerce',82000],['Transport & Logistics',78000],['Education',72000],['Nonprofit',68000],['Hospitality',65000]];
-  var depts=[['Engineering',72800],['Sales',38400],['Marketing',28600],['Operations',24200],['Product',19800],['Finance',16400],['Human Resources',14200],['Data & Analytics',13800],['Customer Success',12400],['Design',11600],['Legal',6200]];
-  var remote=[{n:'On-site',v:156400,co:'#3b82f6'},{n:'Remote',v:72600,co:'#22c55e'},{n:'Hybrid',v:39200,co:'#a855f7'},{n:'Unspecified',v:12618,co:'#4a5068'}];
+  var [industries, salInd, depts, timelineData, remote] = await Promise.all([
+    rpc('get_jobs_by_industry'), rpc('get_salary_by_industry'),
+    rpc('get_jobs_by_department'), rpc('get_jobs_timeline'), rpc('get_remote_breakdown')
+  ]);
+  
 
   var ii=industries.slice().reverse();
   I('c1').setOption({tooltip:{...TT,trigger:'axis',axisPointer:{type:'shadow'},formatter:function(p){return p[0].name+'<br/><b>'+Number(p[0].value).toLocaleString()+'</b> jobs'}},grid:{left:150,right:70,top:8,bottom:8},xAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},yAxis:{type:'category',data:ii.map(function(d){return d[0]}),axisLabel:{...AL,fontSize:11,color:'#8a92a9'},axisLine:NO,axisTick:NO},series:[{type:'bar',data:ii.map(function(d,i){return{value:d[1],itemStyle:{color:PAL[i%PAL.length],borderRadius:[0,4,4,0]}}}),barWidth:'60%',label:{show:true,position:'right',fontSize:10,fontFamily:'JetBrains Mono',color:'#8a92a9',formatter:function(p){return Number(p.value).toLocaleString()}},animationDelay:function(i){return i*40}}]});
