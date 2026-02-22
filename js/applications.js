@@ -238,6 +238,16 @@ const NOTIF_TYPES = [
   { id: 'weekly_summary', label: 'Weekly summary', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
   { id: 'market_stats', label: 'Market stats digest', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
   { id: 'ghost_report', label: 'Ghost report', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
+  // v2: Job intelligence
+  { id: 'company_new_roles', label: 'Company posted more roles', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  { id: 'resume_decay', label: 'Resume readiness drop', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  { id: 'resume_improve', label: 'Resume readiness improved', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  { id: 'exclusion_override', label: 'Excluded company match', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  // v2: Credit / Billing
+  { id: 'credit_low', label: 'Credit balance low', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'autorefill_success', label: 'Auto-refill confirmations', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'autorefill_failed', label: 'Auto-refill failed', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'credit_exhausted', label: 'Credits exhausted mid-month', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
 ];
 
 let notifPrefs = null;   // notification_preferences row
