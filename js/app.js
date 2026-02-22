@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.84';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — client-side caching: cachedQuery utility, ref table pre-warming');
+const BJ_VERSION = 'v3.85';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — storage guards: size limits, quota handling, health monitor, emergency cleanup');
 
 // Auth
 async function init() {
