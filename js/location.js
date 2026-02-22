@@ -1462,6 +1462,11 @@ async function _doAiFilterAnalysis() {
       body: JSON.stringify({ resume_text: resume.extractedText.slice(0, 8000) })
     });
     
+    // Debit 2 credits for AI filter generation (after successful call)
+    if (resp.ok && typeof debitCreditsForAction === 'function') {
+      debitCreditsForAction(2, 'claude', 'AI filter generation');
+    }
+    
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
       var msg = err.error || 'AI generation failed';
