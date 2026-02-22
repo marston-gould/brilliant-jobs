@@ -463,7 +463,51 @@ async function fetchAIScore(params) {
     var data = await res.json();
     if (data.error) { console.log('[BJ] AI score error:', data.error); return null; }
 
-    // Normalize to existing score format for backward compatibility
+    // ─── Premium tier response ───
+    if (data.tier === 'premium' || data.tier === 'basic_fallback') {
+      return {
+        score: data.overall_score || data.match_score,
+        matched: null,
+        total: null,
+        topMissing: (data.gap_analysis || []).map(function(g) { return { term: g.requirement + ' (' + g.severity + ')', count: null }; }),
+        topMatched: (data.strength_map || []).map(function(s) { return { term: s.area, count: null }; }),
+        bigramMatched: [],
+        bigramMissing: [],
+        jdsAnalyzed: data.jds_analyzed,
+        ai: true,
+        premium: data.tier === 'premium',
+        partial: data.partial || false,
+        fitStatus: data.fit_status,
+        summary: data.executive_summary,
+        dimensionScores: data.dimension_scores,
+        strengthMap: data.strength_map,
+        gapAnalysis: data.gap_analysis,
+        resumeProfile: data.resume_profile,
+        jdProfile: data.jd_profile,
+        coaching: data.coaching,
+        coreRequirements: data.jd_profile ? (data.jd_profile.core_requirements || []).map(function(cr) {
+          var hasEvidence = (data.strength_map || []).some(function(s) { return s.area && s.area.toLowerCase().includes(cr.skill.toLowerCase()); });
+          return { skill: cr.skill, prevalence: cr.prevalence_pct, resume_evidence: hasEvidence ? 'strong' : 'missing' };
+        }) : [],
+        recommendations: data.coaching ? {
+          missing_tools: (data.coaching.missing_keyword_injections || []).map(function(k) { return k.keyword; }),
+          title_translation: (data.coaching.title_translations || []).map(function(t) { return t.current_title + ' → ' + t.suggested_title; }),
+          format: data.coaching.format_improvements || [],
+          impact_quantification: (data.coaching.achievement_prompts || []).map(function(a) { return a.weak_bullet; }),
+        } : null,
+        levelFit: data.level_fit,
+        differentialInsight: data.calibration_note,
+        careerTrajectory: data.career_trajectory_assessment,
+        scopeComparison: typeof data.scope_comparison === 'object' ? data.scope_comparison.delta : data.scope_comparison,
+        industryDetected: data.industry_detected,
+        agentsUsed: data.agents_used,
+        passesCompleted: data.passes_completed,
+        timingMs: data.timing_ms,
+        upgradePrompt: data.upgrade_prompt
+      };
+    }
+
+    // ─── Basic tier response (unchanged) ───
     return {
       score: data.match_score,
       matched: null,
@@ -474,6 +518,7 @@ async function fetchAIScore(params) {
       bigramMissing: [],
       jdsAnalyzed: data.jds_analyzed,
       ai: true,
+      premium: false,
       fitStatus: data.fit_status,
       summary: data.analysis_summary,
       coreRequirements: data.core_requirements,
@@ -561,12 +606,14 @@ async function runReadinessAnalysis(opts) {
       // Try AI scoring for Pro users
       var userPlan = window._bjUserPlan || 'free';
       var jdsWithContentAI = jds.filter(function(j){ return j.content; });
+      var analysisTier = opts.tier || 'basic';
       if ((userPlan === 'pro' || userPlan === 'enterprise') && r.extractedText && jdsWithContentAI.length >= 3) {
-        if (statusEl) statusEl.textContent = 'AI scoring for "' + filter.name + '"\u2026';
+        if (statusEl) statusEl.textContent = (analysisTier === 'premium' ? 'Deep AI analysis' : 'AI scoring') + ' for "' + filter.name + '"\u2026';
         filterScore = await fetchAIScore({
           resume_text: r.extractedText,
           resume_keywords: r.keywords,
           mode: 'corpus',
+          tier: analysisTier,
           filter_name: filter.name,
           job_ids: jdsWithContentAI.map(function(j) { return j.greenhouse_id; }),
           max_jds: 20
@@ -799,6 +846,19 @@ function buildReadinessSide(ri, data) {
     if (fs.ai && fs.summary) {
       html += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.6;">' + fs.summary + '</div>';
 
+      // Premium: dimension score bars
+      if (fs.premium && fs.dimensionScores) {
+        html += buildDimensionBarsHtml(fs.dimensionScores);
+      }
+
+      // Premium: industry detected badge
+      if (fs.premium && fs.industryDetected) {
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">';
+        html += '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.1);color:#4d8eff;font-weight:600;">PREMIUM</span>';
+        html += '<span style="font-size:10px;color:var(--text-faint);">' + fs.industryDetected + ' \u00b7 ' + fs.agentsUsed + ' agents \u00b7 ' + (fs.timingMs / 1000).toFixed(1) + 's</span>';
+        html += '</div>';
+      }
+
       // Core requirements (AI)
       if (fs.coreRequirements && fs.coreRequirements.length > 0) {
         html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">';
@@ -878,6 +938,11 @@ function buildReadinessSide(ri, data) {
         html += '<div style="font-size:12px;color:var(--accent);margin-top:8px;font-style:italic;line-height:1.5;">' + fs.differentialInsight + '</div>';
       }
 
+      // Premium: coaching section
+      if (fs.premium && fs.coaching) {
+        html += buildPremiumCoachingHtml(fs);
+      }
+
       html += '</div>'; // close expandable
     } else {
       // ─── Ngram results rendering (fallback) ───
@@ -940,6 +1005,88 @@ function buildReadinessSide(ri, data) {
     html += '</div></div>';
   }
 
+  html += '</div>';
+  return html;
+}
+
+// ─── Premium coaching panel (rendered inside readiness side when premium data exists) ───
+function buildPremiumCoachingHtml(fs) {
+  if (!fs.coaching) return '';
+  var c = fs.coaching;
+  var html = '';
+
+  // Priority actions — the headline feature
+  if (c.priority_actions && c.priority_actions.length > 0) {
+    html += '<div style="margin-top:10px;padding:10px;background:rgba(77,142,255,0.04);border:1px solid rgba(77,142,255,0.15);border-radius:8px;">';
+    html += '<div style="font-size:11px;font-weight:700;color:#4d8eff;margin-bottom:8px;">\u2728 Top 3 Changes</div>';
+    c.priority_actions.forEach(function(pa, idx) {
+      html += '<div style="margin-bottom:8px;padding-bottom:8px;' + (idx < c.priority_actions.length - 1 ? 'border-bottom:1px solid rgba(77,142,255,0.1);' : '') + '">';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.5;">' + (idx + 1) + '. ' + pa.action + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-faint);margin-top:2px;">' + pa.why + '</div>';
+      if (pa.expected_impact) html += '<div style="font-size:10px;color:var(--green);font-weight:600;margin-top:2px;">' + pa.expected_impact + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Rewrite suggestions — before/after
+  if (c.rewrite_suggestions && c.rewrite_suggestions.length > 0) {
+    html += '<div style="margin-top:8px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">\u270f\ufe0f Rewrite Suggestions</div>';
+    c.rewrite_suggestions.forEach(function(rw) {
+      html += '<div style="margin-bottom:8px;padding:8px;background:var(--bg-main);border-radius:6px;border:1px solid var(--border);">';
+      if (rw.original_text) html += '<div style="font-size:11px;color:var(--red);text-decoration:line-through;margin-bottom:4px;line-height:1.5;">' + rw.original_text + '</div>';
+      html += '<div style="font-size:11px;color:var(--green);line-height:1.5;">' + rw.suggested_text + '</div>';
+      if (rw.rationale) html += '<div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-style:italic;">' + rw.rationale + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Gap bridging
+  if (c.gap_bridging && c.gap_bridging.length > 0) {
+    html += '<div style="margin-top:8px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">\u2194 Bridge Gaps</div>';
+    c.gap_bridging.forEach(function(gb) {
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;line-height:1.5;"><strong style="color:var(--warm);">' + gb.gap + ':</strong> ' + gb.bridge_strategy + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Competitive positioning
+  if (c.competitive_positioning) {
+    html += '<div style="margin-top:8px;padding:8px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:6px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:4px;">\u2191 Positioning</div>';
+    html += '<div style="font-size:12px;color:var(--text-dim);line-height:1.5;">' + c.competitive_positioning + '</div>';
+    html += '</div>';
+  }
+
+  return html;
+}
+
+// ─── Premium dimension scores radar (simple bar visualization) ───
+function buildDimensionBarsHtml(ds) {
+  if (!ds) return '';
+  var dims = [
+    { key: 'trajectory', label: 'Trajectory', weight: '25%' },
+    { key: 'impact', label: 'Impact', weight: '25%' },
+    { key: 'skills', label: 'Skills', weight: '20%' },
+    { key: 'alignment', label: 'Alignment', weight: '15%' },
+    { key: 'education', label: 'Education', weight: '5%' },
+    { key: 'presentation', label: 'Presentation', weight: '10%' }
+  ];
+  var html = '<div style="margin:8px 0;">';
+  dims.forEach(function(d) {
+    var val = ds[d.key] || 0;
+    var color = val >= 70 ? 'var(--green)' : val >= 40 ? 'var(--warm)' : 'var(--red)';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">';
+    html += '<span style="font-size:10px;color:var(--text-faint);width:75px;text-align:right;">' + d.label + '</span>';
+    html += '<div style="flex:1;height:6px;background:var(--bg-main);border-radius:3px;overflow:hidden;">';
+    html += '<div style="width:' + val + '%;height:100%;background:' + color + ';border-radius:3px;"></div>';
+    html += '</div>';
+    html += '<span style="font-size:10px;font-family:var(--mono);color:' + color + ';width:28px;font-weight:600;">' + val + '</span>';
+    html += '</div>';
+  });
   html += '</div>';
   return html;
 }
