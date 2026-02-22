@@ -124,7 +124,12 @@ async function loadBoardHealth() {
   try {
     var snapshot = await sb.rpc('get_board_health', { period_hours: adminPeriod });
     console.log('[Admin] RPC data:', snapshot.data);
-    if (snapshot.error) { console.error('[Admin] RPC error:', snapshot.error); return; }
+    if (snapshot.error) {
+      console.error('[Admin] RPC error:', snapshot.error);
+      var healthEl = document.getElementById('admin-health');
+      if (healthEl) healthEl.innerHTML = '<span class="admin-red">⚠ Feed health data unavailable — ' + (snapshot.error.message || 'unknown error') + '</span> <button onclick="_adminTabInit[\'feed-health\']=false;loadBoardHealth()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button>';
+      return;
+    }
     var d = snapshot.data;
     if (!d) return;
 
@@ -202,11 +207,14 @@ async function loadCohortTab() {
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
     var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
     var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
+    var active30d = cohorts.reduce(function(s, c) { return s + (c.active_30d || 0); }, 0);
+    var retention = totalUsers > 0 ? Math.round(active30d / totalUsers * 100) : 0;
 
     setAdminText('ac-total-cohorts', cohorts.length);
     setAdminText('ac-total-users', fmtAdminNum(totalUsers));
     setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
     setAdminText('ac-active-7d', fmtAdminNum(active7d));
+    setAdminText('ac-retention', retention + '%');
 
     var tbody = document.getElementById('admin-cohort-body');
     if (!tbody) return;
@@ -230,9 +238,104 @@ async function loadCohortTab() {
       var cohort = cohorts.find(function(c) { return String(c.id) === cid; });
       if (cohort) loadCohortDetail(cohort);
     });
+
+    renderCohortCharts(cohorts);
   } catch (err) {
     console.error('[Admin] loadCohortTab error:', err);
   }
+}
+
+// ─── Cohort Charts ───
+function renderCohortCharts(cohorts) {
+  // 1. Plan Distribution — stacked bar (Free/Pro per cohort)
+  var planEl = document.getElementById('admin-cohort-plan-chart');
+  if (planEl && typeof echarts !== 'undefined') {
+    var planChart = echarts.init(planEl);
+    var names = cohorts.map(function(c) { return c.slug || c.name; });
+    var t = seoChartTheme();
+    planChart.setOption(Object.assign({}, t, {
+      title: { text: 'Plan Distribution', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      legend: { data: ['Free', 'Pro'], textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: names, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [
+        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#94a3b8' } },
+        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#3b82f6' } }
+      ]
+    }), true);
+    window.addEventListener('resize', function() { planChart.resize(); });
+  }
+
+  // 2. User Growth — cumulative signups over time
+  renderCohortGrowthChart();
+
+  // 3. Sessions per day
+  renderCohortSessionsChart();
+}
+
+async function renderCohortGrowthChart() {
+  var el = document.getElementById('admin-cohort-growth-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var res = await sb.from('profiles').select('created_at').order('created_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'User Growth', subtext: 'No signup data yet', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var weekMap = {};
+    res.data.forEach(function(p) {
+      var d = new Date(p.created_at);
+      var wk = d.toISOString().slice(0, 10);
+      weekMap[wk] = (weekMap[wk] || 0) + 1;
+    });
+    var dates = Object.keys(weekMap).sort();
+    var cumulative = [], sum = 0;
+    dates.forEach(function(d) { sum += weekMap[d]; cumulative.push(sum); });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'User Growth', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#3b82f6', width: 2 }, itemStyle: { color: '#3b82f6' }, areaStyle: { color: 'rgba(59,130,246,0.08)' }, symbol: 'circle', symbolSize: 4 }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Growth chart error:', e); }
+}
+
+async function renderCohortSessionsChart() {
+  var el = document.getElementById('admin-cohort-sessions-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var since = new Date(Date.now() - 30 * 86400000).toISOString();
+    var res = await sb.from('user_sessions').select('started_at').gte('started_at', since).order('started_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'Sessions / Day', subtext: 'Sessions will appear after launch', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var dayMap = {};
+    res.data.forEach(function(s) {
+      var d = new Date(s.started_at).toISOString().slice(0, 10);
+      dayMap[d] = (dayMap[d] || 0) + 1;
+    });
+    var dates = Object.keys(dayMap).sort();
+    var counts = dates.map(function(d) { return dayMap[d]; });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Sessions / Day (30d)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'bar', data: counts, itemStyle: { color: '#22c55e', borderRadius: [3,3,0,0] } }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Sessions chart error:', e); }
 }
 
 async function loadCohortDetail(cohort) {
@@ -531,20 +634,23 @@ function renderPsiChart() {
   function psiLog(v) { if (v == null) return null; return v; }
 
   if (_seoUrl) {
-    // Single URL time series
-    var dates = audits.map(function(r) { return r.date; });
+    // Single URL — bar chart of latest scores (matches all-pages style)
+    var pageAudits = audits.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageAudits.length) pageAudits = audits;
+    var latest = pageAudits[pageAudits.length - 1];
+    var m = latest.metrics || {};
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [m.performance || 0, m.seo || 0, m.accessibility || 0, m.best_practices || 0];
+    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile) — ' + (_seoUrl ? new URL(_seoUrl).pathname : ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
-      series: [
-        { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'Accessibility', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.accessibility; }), lineStyle: { color: '#4d8eff' }, itemStyle: { color: '#4d8eff' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'Best Practices', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.best_practices; }), lineStyle: { color: '#a78bfa' }, itemStyle: { color: '#a78bfa' }, symbol: 'circle', symbolSize: 6 }
-      ]
+      title: { text: 'PSI (Mobile) — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 12 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 700, formatter: function(p) { return p.value; } } }]
     }), true);
   } else {
     // Aggregate — average across all pages for latest date
@@ -570,7 +676,7 @@ function renderPsiChart() {
       title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
-      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
       series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
         barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
         label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700, formatter: function(p) { return p.value; } } }]
@@ -607,25 +713,39 @@ function renderYltChart() {
   if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
 
   if (_seoUrl) {
-    // Single URL: category scores over time
+    // Single URL — radar of latest category scores (matches all-pages style)
     var pageData = yltData.filter(function(r) { return r.url === _seoUrl; });
     if (!pageData.length) { seoNoData(chart, 'YLT — no data for this URL'); return; }
-    var dates = pageData.map(function(r) { return r.date; });
-    var catKeys = pageData[0].metrics && pageData[0].metrics.categories ? Object.keys(pageData[0].metrics.categories) : [];
-    var catColors = ['#eab308','#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6'];
-    var t = seoChartTheme(), ax = seoAxis();
-    var series = catKeys.map(function(k, i) {
-      var label = pageData[0].metrics.categories[k].label || k;
-      return { name: label, type: 'line', data: pageData.map(function(r) {
-        return r.metrics && r.metrics.categories && r.metrics.categories[k] ? r.metrics.categories[k].score : null;
-      }), lineStyle: { color: catColors[i % catColors.length] }, itemStyle: { color: catColors[i % catColors.length] }, symbol: 'circle', symbolSize: 4 };
+    var latest = pageData[pageData.length - 1];
+    var score = latest.score || 0;
+    var cats = latest.metrics && latest.metrics.categories ? latest.metrics.categories : {};
+    var catEntries = Object.values(cats).map(function(c) {
+      return { name: c.label || 'Unknown', value: c.score || 0 };
     });
+    if (!catEntries.length) { seoNoData(chart, 'YLT — no category data'); return; }
+
+    var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'YLT Category Scores', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: series.map(function(s) { return s.name; }), textStyle: { color: '#7b829a', fontSize: 9 }, top: 4, right: 10, type: 'scroll' },
-      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: series
+      title: { text: 'YLT: ' + score + '/100 — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 10 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: new URL(_seoUrl).pathname,
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>' + score + '/100</b><br/>' + lines.join('<br/>');
+      } }
     }), true);
   } else {
     // All Pages: blended average score + category radar
