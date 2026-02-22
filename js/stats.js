@@ -251,18 +251,19 @@ function aggregateStats(rows) {
   rows.forEach(function(r) {
     if (!r.first_seen_at) return;
     var d = new Date(r.first_seen_at);
-    var day = d.getDay();
-    var mon = new Date(d); mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    weekMap[mon.toISOString().slice(0, 10)] = (weekMap[mon.toISOString().slice(0, 10)]||0) + 1;
+    var day = d.getUTCDay();
+    var mon = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - (day === 0 ? 6 : day - 1)));
+    var mk = mon.toISOString().slice(0, 10);
+    weekMap[mk] = (weekMap[mk]||0) + 1;
   });
   var now = new Date();
-  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  var todayDay = today.getDay();
-  var thisMonday = new Date(today); thisMonday.setDate(today.getDate() - (todayDay === 0 ? 6 : todayDay - 1));
+  var todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  var todayDay = todayUTC.getUTCDay();
+  var thisMonday = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), todayUTC.getUTCDate() - (todayDay === 0 ? 6 : todayDay - 1)));
   var isSunday = todayDay === 0;
   // 12 complete past weeks
   for (var w = 12; w >= 1; w--) {
-    var weekStart = new Date(thisMonday); weekStart.setDate(thisMonday.getDate() - (w * 7));
+    var weekStart = new Date(thisMonday.getTime() - (w * 7 * 86400000));
     var wk = weekStart.toISOString().slice(0, 10);
     s.timelineBuckets[wk] = weekMap[wk] || 0;
   }

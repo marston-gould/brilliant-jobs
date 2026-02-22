@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.69';
+const BJ_VERSION = 'v3.70';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth
