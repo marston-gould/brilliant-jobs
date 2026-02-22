@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.48';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
+const BJ_VERSION = 'v3.49';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — premium resume scoring pipeline');
 
 // Auth
 async function init() {
