@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.72';
+const BJ_VERSION = 'v3.73';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — subscription tab, credit system, Stripe checkout');
 
 // Auth

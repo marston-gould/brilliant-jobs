@@ -21,14 +21,14 @@
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <style>
-    .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
+    .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:14px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
     .admin-tab:hover{border-color:var(--accent);color:var(--text)}
     .admin-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .admin-tab.disabled{opacity:.4;cursor:not-allowed}
     .admin-panel{display:none}
     .admin-panel.active{display:block}
-    .admin-table{border-collapse:collapse;font-size:12px;font-family:"JetBrains Mono",monospace}
-    .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+    .admin-table{border-collapse:collapse;font-size:14px;font-family:"JetBrains Mono",monospace}
+    .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
     .admin-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text)}
     .admin-table tr:hover td{background:var(--bg-main)}
     .admin-green{color:var(--green)}
@@ -37,7 +37,7 @@
     .admin-health-dot.green{background:var(--green)}
     .admin-health-dot.yellow{background:var(--warm)}
     .admin-health-dot.red{background:var(--red)}
-    .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:11px;cursor:pointer}
+    .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer}
     .admin-period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
     .admin-platform-name{font-weight:500}
   
@@ -92,7 +92,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.72</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.73</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1900,14 +1900,30 @@
           </div>
 
           <div class="admin-panel" id="admin-panel-cohorts">
+            <!-- KPI Stat Cards -->
+            <div class="stat-grid" style="margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="ac-total-cohorts">&mdash;</div><div class="stat-label">Cohorts</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-total-users">&mdash;</div><div class="stat-label">Total Users</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-pro-pct">&mdash;</div><div class="stat-label">Pro Conversion</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-active-7d">&mdash;</div><div class="stat-label">Active 7d</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-retention">&mdash;</div><div class="stat-label">Retention 30d</div></div>
+            </div>
+            <!-- Cohort Table -->
             <table class="admin-table" style="width:100%">
-              <thead><tr><th>Cohort</th><th>Users</th><th>Free</th><th>Pro</th><th>Created</th></tr></thead>
+              <thead><tr><th>Cohort</th><th>Users</th><th>Free</th><th>Pro</th><th>Active 7d</th><th>Active 30d</th><th>Entitlements</th><th>Status</th></tr></thead>
               <tbody id="admin-cohort-body"></tbody>
             </table>
+            <!-- Charts Row -->
+            <div style="display:flex;gap:16px;margin-top:20px;flex-wrap:wrap">
+              <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:250px"></div>
+            </div>
+            <!-- Entitlement Detail (expanded) -->
             <div id="admin-cohort-detail" style="display:none;margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:8px">
               <h3 id="admin-cohort-detail-title"></h3>
               <table class="admin-table" style="width:100%;margin-top:12px">
-                <thead><tr><th>Entitlement</th><th>Value</th></tr></thead>
+                <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
                 <tbody id="admin-entitlement-body"></tbody>
               </table>
             </div>
