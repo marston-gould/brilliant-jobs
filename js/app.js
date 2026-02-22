@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.79';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — phase 3 SMS live — Vonage toll-free, inbound reply handler, escalation chain');
+const BJ_VERSION = 'v3.80';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — pricing page live — Vonage toll-free, inbound reply handler, escalation chain');
 
 // Auth
 async function init() {
