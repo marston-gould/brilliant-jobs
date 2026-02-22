@@ -768,6 +768,10 @@
   <nav class="site-nav segment-lapsed">
     <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
     <div class="nav-links">
+      <a href="#why">Why</a>
+      <a href="#benefits">Benefits</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#pricing">Pricing</a>
       <a href="/data-lab">Data Lab</a>
       <a href="/dashboard" class="nav-cta" id="nav-login-btn-lapsed" role="button">Log In</a>
     </div>
@@ -802,7 +806,7 @@
     <h1>Welcome back.<br><span class="accent">Your search continues.</span></h1>
     <p class="hero-sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
     <div class="hero-ctas">
-      <a href="/dashboard" class="btn btn-primary">Log In to Dashboard</a>
+      <button class="btn btn-primary" onclick="openModal('login')">Log In to Dashboard</button>
       <a href="/dashboard?reset=1" class="btn btn-ghost">Forgot Password?</a>
     </div>
   </section>
@@ -1255,7 +1259,7 @@
           <div class="auth-tab active" data-form="login">Log In</div>
           <div class="auth-tab" data-form="signup">Sign Up</div>
         </div>
-        <div class="auth-form active" id="form-login">
+        <div class="auth-form active" id="form-login"><form onsubmit="return false;" autocomplete="on">
           <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"></div>
           <div class="field">
             <label>Password</label>
@@ -1266,14 +1270,14 @@
             <span class="forgot-link" id="forgot-trigger">Forgot password?</span>
           </div>
           <button class="btn-auth" id="login-btn">Log In</button>
-          <div class="msg" id="login-msg"></div>
+          <div class="msg" id="login-msg"></div></form>
           <div class="forgot-section" id="forgot-section">
             <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">Enter your email above and click below.</div>
             <button class="btn-auth" id="forgot-btn" style="background:var(--bg-input);color:var(--text-dim);font-size:13px;padding:10px;">Send Password Reset Email</button>
             <div class="msg" id="forgot-msg"></div>
           </div>
         </div>
-        <div class="auth-form" id="form-signup">
+        <div class="auth-form" id="form-signup"><form onsubmit="return false;" autocomplete="on">
           <div class="field"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your full name (as it appears on LinkedIn)"></div>
           <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com"></div>
           <div class="field">
@@ -1304,7 +1308,7 @@
             <label for="signup-optin">Send me product updates and job search tips.</label>
           </div>
           <button class="btn-auth" id="signup-btn">Create Account</button>
-          <div class="msg" id="signup-msg"></div>
+          <div class="msg" id="signup-msg"></div></form>
         </div>
       </div>
       <div class="logged-in-view" id="logged-in-view">
