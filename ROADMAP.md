@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.54
+**Current version:** v3.55
 
 ---
 
@@ -309,29 +309,29 @@
 | G21 | Voice & Polish Auditor agent | v3.52 | ✅ | Sonnet. AI-speak kill list (leveraged, spearheaded, synergized, etc.). Punctuation standardization. Auto-fixes applied to cleaned sections. |
 | G22 | QA reconciliation logic | v3.52 | ✅ | 3 QA agents run in parallel. Voice auditor's cleaned sections used for docx generation. Critical accuracy flags noted for user review. Full QA report in response + rendered in results panel. |
 
-### Sprint 5: Output Integration + LinkedIn (planned)
+### Sprint 5: Output Integration + LinkedIn (v3.55) ✅
 
-| # | Item | Est. | Status | Notes |
-|---|------|------|--------|-------|
-| G23 | Auto-add rewrite to resume library | 2h | 🔲 | Auto-saved, auto-assigned to same filter. Named `{original} — {filter} v{round}`. Source: 'rewrite'. |
-| G24 | `cover_letters` table + RLS | 1h | 🔲 | Structured text (paragraphs JSONB) + storage path. User-scoped RLS. |
-| G25 | Cover letter archive UI | 2h | 🔲 | Resumes page section. Preview, download, delete. Filter-grouped. |
-| G26 | Tier provenance tracking | 1h | 🔲 | `tier_history` on resumes + `tier` on cover_letters. Badges: [AI] Basic / [✨ Premium]. Visible on cards + apply flow. |
-| G27 | `rewrites` Storage bucket | 0.5h | 🔲 | Supabase Storage for generated .docx files. |
-| G28 | Chrome Extension: LI profile capture | 4h | 🔲 | Extend existing extension. User's own profile (titles, companies, dates, education). Consent-gated. |
-| G29 | LinkedIn Alignment Checker agent | 2h | 🔲 | Haiku. Flags title/date/company discrepancies. Runs in QA pass. |
-| G30 | LI alignment UI in QA report | 1h | 🔲 | Discrepancy list with severity + resolution recommendations. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| G23 | Auto-add rewrite to resume library | v3.55 | ✅ | Auto-saved on rewrite complete. Named `{original} — {filter} v{round}`. Source: 'rewrite'. Auto-assigned to same filter. Keywords extracted from sections. |
+| G24 | `cover_letters` table + RLS | v3.55 | ✅ | Table exists. Cover letters saved with structured paragraphs, salutation, closing, word count, storage path, tier. |
+| G25 | Cover letter archive UI | v3.55 | ✅ | Rendered on Resumes page below archives. Preview/download/delete per letter. Tier badge. Filter-grouped. |
+| G26 | Tier provenance tracking | v3.55 | ✅ | `tier_history` array on resumes. Badge on resume cards: "✨ Premium Rewrite" with round number. Hover shows full history. |
+| G27 | `rewrites` Storage bucket | v3.51 | ✅ | Created in Sprint 3. Public bucket for .docx downloads. |
+| G28 | Chrome Extension: LI profile capture | v3.55 | ✅ | Manifest v3. Content script on linkedin.com/in/*. Floating "Sync to Brilliant Jobs" button. Extracts name, headline, experience, education, skills. Stores in chrome.storage.local. Popup with status + clear. |
+| G29 | LinkedIn Alignment Checker agent | v3.52 | ✅ | Haiku agent in rewrite-resume EF. Flags title/date/company discrepancies. Runs conditionally when linkedin_profile provided. |
+| G30 | LI alignment UI in QA report | v3.52 | ✅ | Discrepancy list with severity + field comparison. Integrated in bjShowRewriteResults QA section. |
 
-### Sprint 6: Feedback + Iteration (planned)
+### Sprint 6: Feedback + Iteration (v3.55) ✅
 
-| # | Item | Est. | Status | Notes |
-|---|------|------|--------|-------|
-| G31 | Feedback UI — star ratings | 2h | 🔲 | 5 dimensions (overall, accuracy, relevance, voice, formatting). |
-| G32 | Feedback UI — qualitative input | 1h | 🔲 | Freeform text for specific change requests. |
-| G33 | Revision Assessor agent | 2h | 🔲 | Haiku. Predicts revision value based on feedback specificity. |
-| G34 | Revision loop | 3h | 🔲 | Re-runs pipeline with feedback context. Creates new resume version per round. Each round costs credits. |
-| G35 | `rewrite_sessions` + `rewrite_rounds` tables | 1h | 🔲 | Full session/round history with ratings, feedback, QA reports. |
-| G36 | Entitlement features | 1h | 🔲 | `resume_rewrite`, `resume_rewrite_cover`, `resume_rewrite_revision` in catalog. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| G31 | Feedback UI — star ratings | v3.55 | ✅ | 5 dimensions: overall, accuracy, relevance, voice, formatting. 1-5 star interactive ratings. |
+| G32 | Feedback UI — qualitative input | v3.55 | ✅ | Freeform textarea for specific change requests. Saved to rewrite_rounds table. |
+| G33 | Revision Assessor agent | v3.55 | ✅ | Haiku. `revision-assess` mode on score-resume EF. Evaluates feedback specificity, predicts revision value, estimates per-dimension improvements. |
+| G34 | Revision loop | v3.55 | ✅ | Re-runs full rewrite pipeline with previous_feedback context. New resume version per round. Old results cleared, new results shown inline. |
+| G35 | `rewrite_sessions` + `rewrite_rounds` tables | v3.55 | ✅ | Tables exist. Sessions track user, template, filter. Rounds track ratings, feedback, QA reports, storage paths. |
+| G36 | Entitlement features | v3.55 | ✅ | `resume_rewrite`, `resume_rewrite_cover`, `resume_rewrite_revision` added to feature_flags. Pro/Enterprise gated. |
 
 ### Phase G Summary
 
@@ -341,9 +341,9 @@
 | G-S2 | G7–G12 | — | ✅ Gap interview + acceptance UI (v3.50) |
 | G-S3 | G13–G18 | — | ✅ Templates + rewrite team (v3.51) |
 | G-S4 | G19–G22 | — | ✅ QA team agents (v3.52) |
-| G-S5 | G23–G30 | ~13.5h | Output integration + LinkedIn |
-| G-S6 | G31–G36 | ~10h | Feedback + iteration |
-| **Total** | **36 items** | **~23.5h remaining** | **22 complete, 14 remaining** |
+| G-S5 | G23–G30 | — | ✅ Output integration + LinkedIn (v3.55) |
+| G-S6 | G31–G36 | — | ✅ Feedback + iteration (v3.55) |
+| **Total** | **36 items** | **—** | **✅ Phase G complete** |
 
 **12 agents across 3 Edge Functions:**
 
@@ -368,6 +368,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | G-S5+S6 | G23–G36 | Sprint 5+6: Output integration, LinkedIn extension, feedback & iteration. Auto-save rewrites to library with tier provenance badges. Cover letter archive UI. Chrome Extension for LI profile capture (manifest v3). LinkedIn Alignment Checker in QA pass. 5-dimension star ratings + qualitative feedback. Revision Assessor agent. Full revision loop. rewrite_sessions/rounds tables. Entitlement features (resume_rewrite, resume_rewrite_cover, resume_rewrite_revision). **Phase G complete.** v3.55. |
 | 2026-02-22 | E18-fix | E18 | Improve Filters from Hidden Jobs — frontend wiring. analyze-hidden-job EF existed but had no UI. Added "Improve Filters" button on sort bar (appears after 3+ hidden), batch analysis modal, one-click apply to filter exclusions. v3.53. |
 | 2026-02-22 | G-S4 | G19–G22 | QA team: 3 parallel agents. Accuracy Auditor (Haiku) flags fabrication. Bleed Detector (Haiku) flags cross-job contamination. Voice & Polish Auditor (Sonnet) AI-speak kill list + auto-fixes. Cleaned sections used for docx. QA report in results panel. v3.52. |
 | 2026-02-22 | G-S3 | G13–G18 | Rewrite team: Resume Writer (Sonnet) + Cover Letter Writer (Sonnet, conditional). 3 docx templates (Executive/Modern/Classic). docx-js server-side generation. Supabase Storage `rewrites` bucket. Full rewrite brief from acceptance UI. v3.51. |
