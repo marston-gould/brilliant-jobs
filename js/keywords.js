@@ -1829,11 +1829,18 @@ function handleDeadJob(jobId, bodyEl) {
   // Show message in modal
   if (bodyEl) {
     bodyEl.innerHTML = '<div style="text-align:center;padding:40px;">' +
-      '<div style="font-size:32px;margin-bottom:12px;">🚫</div>' +
-      '<div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:8px;">Job Removed</div>' +
-      '<div style="color:var(--text-faint);font-size:13px;line-height:1.5;">' +
-      'This listing is no longer available on the company\'s careers page.<br>' +
-      'It has been removed from your feed and marked as closed.</div></div>';
+      '<div style="margin-bottom:16px;">' +
+        '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+          '<circle cx="24" cy="20" r="14" stroke="var(--text-faint)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/>' +
+          '<path d="M20 34h8M21 37h6M24 6v2M24 14a4 4 0 0 0-4 4c0 3 2 5 2 7h4c0-2 2-4 2-7a4 4 0 0 0-4-4z" stroke="var(--text-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>' +
+          '<line x1="10" y1="10" x2="38" y2="38" stroke="var(--warm)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>' +
+        '</svg>' +
+      '</div>' +
+      '<div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:6px;">This Brilliant opportunity has dimmed</div>' +
+      '<div style="color:var(--text-faint);font-size:12px;line-height:1.6;max-width:320px;margin:0 auto;">' +
+      'The listing is no longer live on the company\'s careers page. ' +
+      'It\'s been removed from your feed and marked as closed.<br><br>' +
+      '<span style="font-size:11px;opacity:0.7;">Don\'t worry — we\'re tracking 285,000+ jobs. Your next match is out there.</span></div></div>';
   }
 }
 
