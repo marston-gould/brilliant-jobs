@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.75
+**Current version:** v3.77
 
 ---
 
@@ -437,6 +437,53 @@
 
 ---
 
+## Phase I: Communication Center v2 (v3.76–v3.77)
+
+3-phase notification system overhaul: UI preferences, email delivery, SMS escalation.
+
+### Phase 1: Communication Center UI (v3.76) ✅
+
+| # | Item | Version | Status | Details |
+|---|------|---------|--------|---------|
+| I1 | Migration 006 — v2 schema | v3.76 | ✅ | 7 new columns on notification_preferences (digest/credit/auto-refill). 4 new columns on notification_log (idempotency_key, user_plan, user_cohort, template_version) + 3 indexes. 2 new columns on notification_actions (credits_used, notification_tier) + 2 indexes. New notification_templates table with RLS + 9 default configs (3 types × 3 plans × cohort_launch). |
+| I2 | RPCs — preference management | v3.76 | ✅ | get_notification_prefs(), upsert_notification_channel(), save_escalation_settings(). All SECURITY DEFINER. |
+| I3 | Dashboard UI — 8 new notification types | v3.76 | ✅ | 22 total data-notif rows (was 14). Job Intelligence: company_new_roles, resume_decay, resume_improve, exclusion_override. Credit & Billing (Starter/Pro gated): credit_low, autorefill_success, autorefill_failed, credit_exhausted. |
+| I4 | JS — NOTIF_TYPES array update | v3.76 | ✅ | 23 entries (was 14). v2 types with tier='event' and tier='credit'. Existing loadNotifPrefs() + save handler auto-support new rows. |
+
+### Phase 2: Email System (v3.77) ✅
+
+| # | Item | Version | Status | Details |
+|---|------|---------|--------|---------|
+| I5 | 11 new email templates | v3.77 | ✅ | Credit/Billing: creditLow, autoRefillSuccess, autoRefillFailed, creditExhausted. Upgrade: upgradeStarter, upgradePro. Resume Intelligence: resumeDecay, resumeImprove, exclusionOverride. Re-engagement: reengagement. SEO: seoNurture. Total: 28 templates. |
+| I6 | send-notification v2 | v3.77 | ✅ | idempotency_key dedup (check before logging), user_plan/user_cohort/template_version fields logged. |
+| I7 | Edge Function deployments | v3.77 | ✅ | 7 functions redeployed: send-notification v19, account-lifecycle v20, daily-digest v19, weekly-summary v19, escalation-checker v19, job-intelligence v19, apply-on-notification v19. |
+| I8 | Email delivery verified | v3.77 | ✅ | Resend domain (brilliantjobs.app) verified. Welcome email sends. Daily digest sends. Idempotency dedup confirmed (1 log entry, not 2). |
+| I9 | pg_cron schedules active | v3.77 | ✅ | daily-digest (8am ET), weekly-summary (Mon 8am ET), escalation-checker (every 2h), job-intelligence (5am UTC). |
+
+### Phase 3: SMS System — 🔲 Not Started
+
+| # | Item | Est. | Status | Blocker |
+|---|------|------|--------|---------|
+| I10 | Vonage account + US number | 30min | 🔲 | Manual: dashboard.nexmo.com, ~$1/mo |
+| I11 | 10DLC registration (A2P compliance) | 1h | 🔲 | Manual: Required for US SMS delivery. Can take days to approve. |
+| I12 | Supabase Auth → Vonage phone config | 15min | 🔲 | Manual: Dashboard → Auth → Phone Provider → Vonage keys |
+| I13 | 4 SMS templates (≤160 chars) | 1h | 🔲 | apply_alert, interview_scheduled, offer_received, escalation_reminder |
+| I14 | Escalation chain completion | 2h | 🔲 | Email timeout → SMS → 2h wait → mark missed. Wire into escalation-checker. |
+| I15 | Inbound SMS webhook (handle-sms-reply) | 2h | 🔲 | Vonage → Edge Function for Y/N replies. Process apply/pass decisions. |
+| I16 | SMS quiet hours + cost tracking | 1h | 🔲 | Hold during 10pm–7am, pause escalation timers. Track $0.0068/msg. |
+
+### Sprint Log
+
+| Sprint | Items | Summary |
+|--------|-------|---------|
+| I-S1 | I1–I4 | ✅ Phase 1 UI — Migration 006, 3 RPCs, 22 notification rows, NOTIF_TYPES expanded (v3.76) |
+| I-S2 | I5–I9 | ✅ Phase 2 Email — 11 v2 templates, send-notification v2 with idempotency, 7 EFs deployed, delivery verified (v3.77) |
+| I-S3 | I10–I16 | 🔲 Phase 3 SMS — Vonage setup, 10DLC, escalation chain, inbound webhook |
+
+| **Total** | **16 items** | **✅ Phase 1+2 complete (v3.76–v3.77). Phase 3 blocked on Vonage account.** |
+
+---
+
 ## Production Hotfix Log (v3.56–v3.70)
 
 **27 versions across 3 days of production debugging and stabilization.**
@@ -499,8 +546,9 @@
 | **F** Feb 22 Sprint | 15/15 | v3.30–v3.40 | ✅ Complete |
 | **G** AI Resume Pipeline | 36/36 | v3.49–v3.55 | ✅ Complete |
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ✅ Complete |
+| **I** Communication Center v2 | 9/16 | v3.76–v3.77 | ✅ Phase 1+2 done. Phase 3 (SMS) blocked on Vonage. |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **161+ items** | **v2.68–v3.75** | — |
+| **Total built** | **170+ items** | **v2.68–v3.77** | — |
 
 ### Outstanding Items (Not Done)
 
@@ -513,6 +561,8 @@
 | Smart Job Alert credit debit (1cr) | H | Low | Wire into notification EFs |
 | AI Resume Rewrite credit debit (5cr) | H | Low | Wire into rewrite EFs |
 | Vendor payout consolidation | H | Low | Post-launch ops (Vercel/Supabase/DataForSEO/Cloudflare/Resend → Stripe) |
+| Phase 3 SMS — Vonage account + 10DLC | I | Medium | Manual: Vonage signup + A2P compliance registration |
+| Phase 3 SMS — Escalation chain | I | Medium | Blocked on Vonage account (I10–I11) |
 | ATS partner applications (Greenhouse, Lever, Ashby) | — | Medium | Greenhouse deadline March 3 |
 | Remaining ATS customer list (H-Z) | — | Low | Could add significant job inventory |
 
@@ -522,6 +572,8 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | I-S2 | I5–I9 | **v3.77:** Phase 2 Email System verified live. 11 new v2 templates (credit/billing, upgrade, resume intelligence, re-engagement, SEO nurture — 28 total). send-notification v2 with idempotency dedup + cohort tracking. 7 Edge Functions redeployed. Resend domain verified, delivery confirmed. pg_cron all 4 schedules active. |
+| 2026-02-22 | I-S1 | I1–I4 | **v3.76:** Communication Center v2 Phase 1. Migration 006 (7 pref columns, 4 log columns, notification_templates table, 9 default configs). 3 RPCs. Dashboard: 22 notification rows (+8 v2 types). JS: 23 NOTIF_TYPES. |
 | 2026-02-22 | H-ALL | H1–H19 | **v3.75:** Phase H Stripe Monetization complete. 5 sprints: Stripe backend (webhook/checkout/portal EFs), subscription tab UI, admin Revenue tab, credit gating (score 3cr, filter 2cr), auto-refill EF, pay-when-hired (SetupIntent + hire-fee EF + hired stage). All 5 open PRs merged, bundle rebuilt, Edge Functions deployed. |
 | 2026-02-22 | DEPLOY | — | **v3.73:** Admin text sizing, PSI/YLT chart redesign (bar+radar), cohort analytics (5 KPIs + 3 ECharts), Feed Health RPC timeout fix. |
 | 2026-02-22 | HOTFIX | — | **v3.60 metro + map fixes:** Metro table color scheme changed from rainbow (green/blue/purple/gray) to consistent blue gradient. Open Jobs column now color-scaled. Per-capita bubble map: removed duplicate Dallas/Phoenix entries, blue gradient bubbles, sqrt sizing. |
