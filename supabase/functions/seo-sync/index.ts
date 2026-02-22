@@ -16,12 +16,8 @@ const POSTHOG_KEY = Deno.env.get('POSTHOG_PERSONAL_KEY') || '***REDACTED_POSTHOG
 const CF_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN') || '***REDACTED_CF_TOKEN***';
 const CF_ZONE = Deno.env.get('CLOUDFLARE_ZONE_ID') || '***REDACTED_CF_ZONE***';
 
-const GSC_SITE = 'https://brilliantjobs.io/';
+const GSC_SITE = 'https://brilliantjobs.app/';
 const SITE_URLS = [
-  'https://brilliantjobs.io/',
-  'https://brilliantjobs.io/help',
-  'https://brilliantjobs.io/privacy',
-  'https://brilliantjobs.io/terms',
   'https://brilliantjobs.app/',
   'https://brilliantjobs.app/data-lab',
   'https://brilliantjobs.app/salary-data',
@@ -187,7 +183,6 @@ async function syncPsi(targetUrl?: string): Promise<{ pages: number }> {
           date: today, url, source: `psi_${strat}`, score: perf, metrics, issues,
         }, { onConflict: 'date,url,source' });
         // Update site daily for homepage
-        if (url.endsWith('/') && (url.includes('brilliantjobs.app') || url.includes('brilliantjobs.io/'))) {
           const col = strat==='mobile' ? 'psi_mobile_score' : 'psi_desktop_score';
           await sb.from('seo_site_daily').upsert({ date: today, [col]: perf }, { onConflict: 'date' });
         }
@@ -331,7 +326,6 @@ async function syncYellowLab(): Promise<{ pages: number }> {
         }, { onConflict: 'date,url,source' });
 
         // Update site daily for homepages
-        if (url.endsWith('/') && (url.includes('brilliantjobs.app') || url.includes('brilliantjobs.io/'))) {
           await sb.from('seo_site_daily').upsert({ date: today, ylt_score: Math.round(globalScore) }, { onConflict: 'date' });
         }
         n++;
@@ -344,7 +338,6 @@ async function syncYellowLab(): Promise<{ pages: number }> {
 // ─── Task 7: Chrome UX Report (CrUX) ───
 async function syncCrux(): Promise<{ origins: number }> {
   const today = dateStr(0);
-  const origins = ['https://brilliantjobs.io', 'https://brilliantjobs.app'];
   let n = 0;
   for (const origin of origins) {
     try {
