@@ -381,6 +381,158 @@ function initAutoRefillUI() {
   });
 }
 
+// ─── Hire Fee: SetupIntent Flow ───
+async function setupHireFee() {
+  var session = await sb.auth.getSession();
+  var token = session?.data?.session?.access_token;
+  if (!token) { window.location.href = '/'; return; }
+
+  try {
+    showToast('Setting up payment authorization...', 'info');
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setup' }),
+    });
+    var data = await res.json();
+    if (data.client_secret) {
+      // Load Stripe.js and mount card element for SetupIntent confirmation
+      if (!window.Stripe) {
+        var script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = function() { confirmSetupIntent(data.client_secret); };
+        document.head.appendChild(script);
+      } else {
+        confirmSetupIntent(data.client_secret);
+      }
+    } else {
+      showToast('Failed to set up payment: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (e) {
+    showToast('Network error. Please try again.', 'error');
+  }
+}
+
+async function confirmSetupIntent(clientSecret) {
+  var stripe = Stripe('pk_test_51T3TKyAUKPQHZOPaDUiztdazjyngM83dWzztLHDtRXj2JgudeiqMV17HfoLR2fvz2HXeQVIS0xBU73nnq9h1hyy1004jBvtprR');
+
+  // Create a modal with card element
+  var modal = document.createElement('div');
+  modal.id = 'hire-fee-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.2);">' +
+    '<h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">Authorize Payment Method</h3>' +
+    '<p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">This card will only be charged when you confirm a successful hire through Brilliant Jobs.</p>' +
+    '<div id="hire-fee-card-element" style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;"></div>' +
+    '<div id="hire-fee-error" style="color:hsl(0,70%,50%);font-size:12px;margin-bottom:12px;display:none;"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'hire-fee-modal\').remove()" class="btn-secondary btn-sm">Cancel</button>' +
+    '<button id="hire-fee-confirm-btn" class="btn-primary btn-sm">Authorize</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+
+  var elements = stripe.elements();
+  var cardElement = elements.create('card', {
+    style: {
+      base: { fontSize: '14px', color: '#1a1a2e', '::placeholder': { color: '#999' } }
+    }
+  });
+  cardElement.mount('#hire-fee-card-element');
+
+  document.getElementById('hire-fee-confirm-btn').addEventListener('click', async function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Authorizing...';
+    var errorEl = document.getElementById('hire-fee-error');
+
+    var result = await stripe.confirmCardSetup(clientSecret, {
+      payment_method: { card: cardElement }
+    });
+
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Authorize';
+    } else {
+      // SetupIntent succeeded — stripe-webhook will store the payment method
+      showToast('Payment method authorized! You\'re all set for pay-when-hired.', 'success');
+      modal.remove();
+      // Refresh hire fee status after webhook processes
+      setTimeout(function() { loadHireFeeStatus(); }, 2000);
+    }
+  });
+
+  // Close on backdrop click
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+async function loadHireFeeStatus() {
+  if (!currentUser?.id) return;
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'status' }),
+    });
+    var data = await res.json();
+    var noMethodEl = document.getElementById('sub-hire-fee-nomethod');
+    var activeEl = document.getElementById('sub-hire-fee-active');
+    if (noMethodEl && activeEl) {
+      noMethodEl.style.display = data.has_payment_method ? 'none' : '';
+      activeEl.style.display = data.has_payment_method ? '' : 'none';
+    }
+  } catch (e) {
+    console.warn('[Billing] Failed to load hire fee status:', e);
+  }
+}
+
+// Called from pipeline when user marks a job as "hired"
+async function confirmHireFee(jobId, jobTitle, salaryEstimate) {
+  var feeAmountCents = Math.min(500000, Math.max(50000, Math.round((salaryEstimate || 80000) * 0.05 * 100)));
+  var feeDisplay = '$' + (feeAmountCents / 100).toLocaleString();
+
+  if (!confirm('Congratulations on your new role!\n\n' +
+    'Job: ' + (jobTitle || 'Unknown') + '\n' +
+    'Success fee: ' + feeDisplay + '\n\n' +
+    'By confirming, your authorized payment method will be charged ' + feeDisplay + '.')) {
+    return false;
+  }
+
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return false;
+
+    showToast('Processing hire fee...', 'info');
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'charge', amount_cents: feeAmountCents, job_id: jobId }),
+    });
+    var data = await res.json();
+    if (data.charged) {
+      showToast('Hire fee of ' + feeDisplay + ' charged. Thank you and congratulations!', 'success');
+      return true;
+    } else if (data.error === 'no_payment_method') {
+      showToast('No payment method on file. Please authorize a card in your Subscription settings.', 'warning');
+      openPricingModal();
+      return false;
+    } else {
+      showToast('Payment failed: ' + (data.error || 'Unknown error'), 'error');
+      return false;
+    }
+  } catch (e) {
+    showToast('Network error processing hire fee.', 'error');
+    return false;
+  }
+}
+
 // ─── Init ───
 function initBilling() {
   // Check admin status from profile (already fetched in app.js init)
@@ -391,4 +543,5 @@ function initBilling() {
   loadCreditHistory();
   checkPaymentReturn();
   initAutoRefillUI();
+  loadHireFeeStatus();
 }

@@ -1,10 +1,10 @@
 // ============================================================
 // PIPELINE — Table-based stage tracker (redesigned)
 // ============================================================
-const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','rejected'];
+const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected'];
 const PL_STAGE_COLORS = {
   saved: 'var(--text-dim)', applied: 'var(--accent)', posting_closed: 'var(--warm)',
-  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)', rejected: 'var(--red)'
+  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)', hired: 'hsl(142,70%,35%)', rejected: 'var(--red)'
 };
 
 // Pipeline metadata per job — stage, dates, resume
@@ -53,6 +53,15 @@ function movePipelineStage(jobId, newStage) {
   if (newStage === 'responded' && !meta[jobId].respondedAt) meta[jobId].respondedAt = new Date().toISOString();
   if (newStage === 'interview' && !meta[jobId].interviewAt) meta[jobId].interviewAt = new Date().toISOString();
   if (newStage === 'offer' && !meta[jobId].offerAt) meta[jobId].offerAt = new Date().toISOString();
+  if (newStage === 'hired' && !meta[jobId].hiredAt) {
+    meta[jobId].hiredAt = new Date().toISOString();
+    // Trigger hire fee confirmation (async, non-blocking)
+    if (typeof confirmHireFee === 'function') {
+      var jobTitle = meta[jobId].title || jobId;
+      var salary = meta[jobId].salaryEstimate || 80000;
+      confirmHireFee(jobId, jobTitle, salary);
+    }
+  }
   if (newStage === 'rejected' && !meta[jobId].rejectedAt) meta[jobId].rejectedAt = new Date().toISOString();
   savePipelineMeta(meta);
   // Keep legacy arrays in sync
@@ -266,6 +275,9 @@ async function renderPipeline() {
       const m = item.meta;
       const title = j ? (j.title || 'Untitled') : 'Unknown job';
       const company = j ? (j.company_name || '') : '';
+      // Persist job info in meta for hire fee and analytics
+      if (j && !m.title) { m.title = title; m.company = company; }
+      if (j && j.salary_max && !m.salaryEstimate) { m.salaryEstimate = j.salary_max; }
       const discovered = j?.first_seen_at ? new Date(j.first_seen_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
       const appliedDate = m.appliedAt ? new Date(m.appliedAt) : null;
       const dayApplied = appliedDate ? appliedDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
@@ -309,7 +321,7 @@ async function renderPipeline() {
 
       // Stage move dropdown
       let moveOpts = PL_STAGES.filter(s => s !== stage).map(s => {
-        const labels = {saved:'Saved',applied:'Applied',posting_closed:'Posting Closed',responded:'Responded',interview:'Interview',offer:'Offer',rejected:'Rejected/Ghosted'};
+        const labels = {saved:'Saved',applied:'Applied',posting_closed:'Posting Closed',responded:'Responded',interview:'Interview',offer:'Offer',hired:'🎉 Hired!',rejected:'Rejected/Ghosted'};
         return '<option value="' + s + '">' + labels[s] + '</option>';
       }).join('');
 
