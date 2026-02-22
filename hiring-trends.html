@@ -128,7 +128,12 @@
     .related-link:hover{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.04)}
     .related-link .rl-title{font-size:13px;font-weight:600;color:var(--text);margin-block-end:4px}
     .related-link .rl-desc{font-size:11px;color:var(--text-faint);line-height:1.5}
-    .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
+    .method-foot{margin-block-start:48px;padding:24px;background:rgba(30,34,48,0.5);border:1px solid var(--border);border-radius:12px}
+  .method-foot h3{font-size:13px;font-weight:600;color:var(--text-dim);margin:0 0 8px;text-transform:uppercase;letter-spacing:0.5px}
+  .method-foot p{font-size:12px;color:var(--text-faint);line-height:1.7;margin:0}
+  .method-foot code{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:11px}
+  .method-foot strong{color:var(--text-dim)}
+  .foot{margin-block-start:48px;text-align:center;color:var(--text-faint);font-size:11px;font-family:'JetBrains Mono',monospace;line-height:1.8}
     .foot a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:260px!important}.ec.tall{height:360px!important}.ec.xtall{height:420px!important}}
       .dash-link{display:none;position:fixed;top:16px;right:16px;z-index:100;background:rgba(59,130,246,0.12);color:var(--accent);font-size:12px;font-family:"JetBrains Mono",monospace;padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.25);text-decoration:none;transition:all 0.2s}
@@ -207,10 +212,21 @@
     <div class="faq-item"><div class="faq-q" onclick="this.parentElement.classList.toggle('open')">What is the best time to apply?<span class="chv">&darr;</span></div><div class="faq-a"><p>Within the first 14 days of posting. Our closure data shows the 14-30 day window has the highest rate of listings being taken down, suggesting positions are being filled.</p></div></div>
   </div>
 
-  <div class="foot">Data from 10,000+ career pages<br>v3.28 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="method-foot">
+    <h3>Methodology</h3>
+    <p>Hiring trend data is aggregated from <strong>285,000+</strong> live job listings across <strong>10,000+</strong> company career pages. We monitor Greenhouse, Lever, Ashby, Workable, and Recruitee ATS platforms daily. Job growth is measured by <code>first_seen_at</code> timestamp. Weekly velocity counts new listings per ISO week. Top employers reflect current open positions. Listing lifespan measures days between first appearance and closure or removal. All metrics refresh daily via Supabase materialized views and are cached client-side for 24 hours.</p>
+  </div>
+  <div class="foot">Data from 10,000+ career pages<br>v3.39 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded',function(){
+document.addEventListener('DOMContentLoaded',async function(){
+  var SB_RPC='https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1/rpc/';
+  var AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+  var HD={'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json'};
+  var CACHE_TTL=86400000;
+  function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
+  function cSet(k,d){try{localStorage.setItem('bj_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
+  async function rpc(fn){var c=cGet(fn);if(c)return c;var r=await fetch(SB_RPC+fn,{method:'POST',headers:HD,body:'{}'});var d=await r.json();cSet(fn,d);return d}
   var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL={color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
   var GR={left:56,right:20,top:20,bottom:32};
@@ -223,10 +239,11 @@ document.addEventListener('DOMContentLoaded',function(){
   function I(id){var c=echarts.init(document.getElementById(id));chs.push(c);return c}
   function AX(){return{lineStyle:{color:'#1e2230'}}}
 
-  var timeline=[{date:'2025-03-31',daily:59,cum:151},{date:'2025-05-26',daily:57,cum:375},{date:'2025-06-30',daily:106,cum:552},{date:'2025-07-14',daily:59,cum:643},{date:'2025-07-21',daily:4608,cum:5251},{date:'2025-07-28',daily:72,cum:5323},{date:'2025-08-04',daily:54,cum:5377},{date:'2025-08-11',daily:63,cum:5440},{date:'2025-08-18',daily:63,cum:5503},{date:'2025-08-25',daily:176,cum:5679},{date:'2025-09-01',daily:51,cum:5730},{date:'2025-09-08',daily:59,cum:5789},{date:'2025-09-15',daily:118,cum:5907},{date:'2025-09-22',daily:57,cum:5964},{date:'2025-09-29',daily:100,cum:6064},{date:'2025-10-06',daily:162,cum:6226},{date:'2025-10-13',daily:123,cum:6349},{date:'2025-10-20',daily:160,cum:6509},{date:'2025-10-27',daily:273,cum:6782},{date:'2025-11-03',daily:239,cum:7021},{date:'2025-11-10',daily:370,cum:7391},{date:'2025-11-17',daily:765,cum:8156},{date:'2025-11-24',daily:436,cum:8592},{date:'2025-12-01',daily:786,cum:9378},{date:'2025-12-08',daily:1451,cum:10829},{date:'2025-12-15',daily:1794,cum:12623},{date:'2025-12-22',daily:703,cum:13326},{date:'2025-12-29',daily:1152,cum:14478},{date:'2026-01-05',daily:2862,cum:17340},{date:'2026-01-12',daily:4715,cum:22055},{date:'2026-01-19',daily:5287,cum:27342},{date:'2026-01-26',daily:17363,cum:44705},{date:'2026-02-02',daily:21892,cum:66597},{date:'2026-02-09',daily:38805,cum:105402},{date:'2026-02-16',daily:182926,cum:288328}]
-  var weekly=[{w:'Dec 15',c:1794},{w:'Dec 22',c:703},{w:'Dec 29',c:1152},{w:'Jan 05',c:2862},{w:'Jan 12',c:4715},{w:'Jan 19',c:5287},{w:'Jan 26',c:17363},{w:'Feb 02',c:21892},{w:'Feb 09',c:38805},{w:'Feb 16',c:182926}]
-  var companies=[['Amazon',4200],['Deloitte',3100],['Google',2800],['Microsoft',2600],['Meta',2100],['JPMorgan Chase',1900],['Apple',1700],['Accenture',1600],['Salesforce',1400],['Oracle',1300],['IBM',1200],['Goldman Sachs',1100],['Uber',980],['Netflix',920],['Stripe',850]];
-  var lifespan=[['< 7 days',820],['7-14 days',1240],['14-30 days',1680],['30-60 days',960],['60-90 days',480],['90+ days',320]];
+  var [timeline, weekly, companies, lifespan] = await Promise.all([
+    rpc('get_weekly_job_counts'), rpc('get_weekly_velocity'),
+    rpc('get_top_companies'), rpc('get_listing_lifespan')
+  ]);
+  timeline = timeline.map(function(d){return{date:d.week_start,daily:d.new_jobs,cum:d.cumulative}});
 
   I('c1').setOption({tooltip:{...TT,trigger:'axis',formatter:function(p){return'<b>'+p[0].axisValue+'</b><br/>Total: <b>'+Number(p[0].value).toLocaleString()+'</b>'}},grid:{...GR,right:28},xAxis:{type:'category',data:timeline.map(function(d){return d.date}),axisLabel:{...AL,formatter:function(v){return v.slice(5)}},axisLine:AX(),axisTick:NO,boundaryGap:false},yAxis:{type:'value',axisLabel:{...AL,formatter:function(v){return fmt(v)}},splitLine:SP,axisLine:NO,axisTick:NO},series:[{type:'line',data:timeline.map(function(d){return d.cum}),smooth:0.4,symbol:'none',lineStyle:{color:'#3b82f6',width:2.5,shadowColor:'rgba(59,130,246,0.4)',shadowBlur:12},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(59,130,246,0.30)'},{offset:0.7,color:'rgba(59,130,246,0.05)'},{offset:1,color:'transparent'}]}}}]});
 
