@@ -173,8 +173,7 @@ function renderResumes() {
         <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
         ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
         <div style="margin:8px 0;">${levelSelect}</div>
-        <div class="rc-filters-label">Assigned Filters</div>
-        <div class="rc-filter-list">${filterPills}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">${filterPills}</div>
         ${statsLine}
         <div class="rc-actions">
           <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
