@@ -19,26 +19,26 @@ const CORS_HEADERS = {
 
 // Stripe Price IDs — mapped from products created in sandbox
 const SUBSCRIPTION_PRICES: Record<string, string> = {
-  starter: 'price_1T3iIhAUKPQHZOPaB8AaHHsS',
-  pro: 'price_1T3iIiAUKPQHZOPaNLeOULp7',
+  starter: 'price_1T3lhQPKzCZbw3Kz9OoxONgx',
+  pro: 'price_1T3lhRPKzCZbw3KzoLVOrwko',
 };
 
 // Credit pack prices by tier
 const CREDIT_PACK_PRICES: Record<string, Record<number, string>> = {
   free: {
-    10: 'price_1T3iIxAUKPQHZOPabigl0Or7',
-    50: 'price_1T3iIyAUKPQHZOPaCTIn3ie0',
-    100: 'price_1T3iJ0AUKPQHZOPawoeJ1tXn',
+    10: 'price_1T3lhQPKzCZbw3KzKozfO54O',
+    50: 'price_1T3lhVPKzCZbw3KzpVWouDwt',
+    100: 'price_1T3lhRPKzCZbw3KzEQl741il',
   },
   starter: {
-    10: 'price_1T3iIxAUKPQHZOPaelapiaht',
-    50: 'price_1T3iIzAUKPQHZOPayllq62hU',
-    100: 'price_1T3iJ0AUKPQHZOPa7Y2rPLmm',
+    10: 'price_1T3lhQPKzCZbw3KzDsxRAB2V',
+    50: 'price_1T3lhVPKzCZbw3KzAgGq4Krd',
+    100: 'price_1T3lhQPKzCZbw3KzWBBm6GLX',
   },
   pro: {
-    10: 'price_1T3iIyAUKPQHZOPaYbRBOBM0',
-    50: 'price_1T3iIzAUKPQHZOPamzxlFs8e',
-    100: 'price_1T3iJ1AUKPQHZOPaEXRn1mut',
+    10: 'price_1T3lhQPKzCZbw3KzH3Kbsroo',
+    50: 'price_1T3lhVPKzCZbw3Kztihvrdpa',
+    100: 'price_1T3lhQPKzCZbw3KzvmtrKqUy',
   },
 };
 
