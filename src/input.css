@@ -520,6 +520,75 @@
       font-family: var(--sans) !important; font-weight: 600; text-transform: capitalize;
     }
 
+
+    /* ─── SEO Tab ─── */
+    .seo-controls {
+      display: flex; gap: 8px; align-items: center;
+      margin-block-end: 20px; flex-wrap: wrap;
+    }
+    .seo-select {
+      background: var(--bg-card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; font-size: 12px;
+      font-family: var(--mono); min-width: 240px;
+    }
+    .seo-date-input {
+      background: var(--bg-card); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 10px; font-size: 11px;
+      font-family: var(--mono);
+    }
+    .seo-date-label {
+      font-size: 11px; color: var(--text-faint);
+    }
+    .seo-section-label {
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-faint);
+      margin: 28px 0 14px;
+      padding-block-end: 8px;
+      border-block-end: 1px solid var(--border);
+    }
+    .seo-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .seo-detail-grid { grid-template-columns: 1fr; }
+    }
+    .seo-metric-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 5px 0; border-block-end: 1px solid var(--border);
+      font-size: 12px;
+    }
+    .seo-metric-row:last-child { border-block-end: none; }
+    .seo-metric-label {
+      color: var(--text-faint); font-size: 11px;
+    }
+    .seo-metric-value {
+      font-weight: 600; font-family: var(--mono); font-size: 12px;
+    }
+    .seo-issue-item {
+      font-size: 11px; padding: 4px 0;
+      color: var(--text-dim);
+      border-block-end: 1px solid var(--border);
+    }
+    .seo-issue-item:last-child { border-block-end: none; }
+    .seo-loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; min-height: 200px;
+      color: var(--text-faint); font-size: 12px;
+    }
+    .seo-empty {
+      text-align: center; padding: 40px 16px;
+      color: var(--text-faint); font-size: 12px;
+    }
+    .seo-empty a { color: var(--accent); text-decoration: none; }
+    .seo-empty a:hover { text-decoration: underline; }
+    .seo-verdict-pass { color: var(--green); font-weight: 600; }
+    .seo-verdict-fail { color: var(--warm); font-weight: 600; }
+
     /* ======================== SETUP ======================== */
     .download-box {
       background: var(--bg-white); border: 2px dashed var(--border);
