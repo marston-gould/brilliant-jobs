@@ -547,21 +547,10 @@ async function loadCompanyBrowser() {
   list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading companies…</div>';
 
   try {
-    // Load all companies from ats_companies (batched since >1800)
-    let allData = [];
-    let offset = 0;
-    const batchSize = 1000;
-    while (true) {
-      const { data, error } = await sb.from('ats_companies')
-        .select('slug, name, job_count, source')
-        .order('name')
-        .range(offset, offset + batchSize - 1);
-      if (error) { console.warn('[BJ] Load companies error:', error.message); break; }
-      if (!data || data.length === 0) break;
-      allData = allData.concat(data);
-      if (data.length < batchSize) break;
-      offset += batchSize;
-    }
+    // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)
+    let allData = await cachedQuery('ref:companies:list', function() {
+      return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+    }, { ttl: 600000 }) || [];
 
     cbAllCompanies = allData.map(c => ({
       slug: c.slug,

@@ -276,3 +276,72 @@ async function enrichJob(jobId, data) {
     console.warn('[enrich-job] Error:', e.message);
   }
 }
+
+// ============================================================
+// CACHED QUERY — in-memory cache with TTL (v3.84)
+// ============================================================
+// Usage: const data = await cachedQuery('companies', () => sb.from('ats_companies').select('slug, name, job_count, source'), { ttl: 300000 });
+
+var _queryCache = {};
+
+/**
+ * Execute a Supabase query with in-memory caching.
+ * @param {string} key - Unique cache key
+ * @param {function} queryFn - Function that returns a Supabase query promise
+ * @param {object} opts - { ttl: ms (default 5 min), force: boolean }
+ * @returns {Promise<any>} Cached or fresh data
+ */
+async function cachedQuery(key, queryFn, opts) {
+  var ttl = (opts && opts.ttl) || 300000; // 5 min default
+  var force = opts && opts.force;
+  var entry = _queryCache[key];
+
+  if (!force && entry && Date.now() - entry.ts < ttl) {
+    return entry.data;
+  }
+
+  try {
+    var result = await queryFn();
+    if (result.error) {
+      console.warn('[cachedQuery] Error for', key, result.error.message);
+      // Return stale cache if available
+      return entry ? entry.data : null;
+    }
+    _queryCache[key] = { data: result.data, ts: Date.now(), count: result.count };
+    return result.data;
+  } catch (e) {
+    console.warn('[cachedQuery] Failed for', key, e.message);
+    return entry ? entry.data : null;
+  }
+}
+
+/** Get cached count (if query used { count: 'exact' }) */
+function cachedCount(key) {
+  var entry = _queryCache[key];
+  return entry ? entry.count : null;
+}
+
+/** Invalidate a specific cache key or all keys matching a prefix */
+function invalidateCache(keyOrPrefix) {
+  if (!keyOrPrefix) { _queryCache = {}; return; }
+  Object.keys(_queryCache).forEach(function(k) {
+    if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
+  });
+}
+
+/** Pre-warm static ref table caches on app init */
+async function prewarmRefCaches() {
+  try {
+    await Promise.all([
+      cachedQuery('ref:industries', function() {
+        return sb.from('ref_industries').select('name, category').order('name');
+      }, { ttl: 3600000 }), // 1 hour TTL — rarely changes
+      cachedQuery('ref:companies:list', function() {
+        return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+      }, { ttl: 600000 }), // 10 min TTL — job_count updates periodically
+    ]);
+    console.log('[BJ] Ref caches pre-warmed');
+  } catch (e) {
+    console.warn('[BJ] Ref cache pre-warm failed:', e.message);
+  }
+}
