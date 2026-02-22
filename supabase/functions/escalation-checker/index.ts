@@ -7,6 +7,7 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { applyAlertSms } from "../_shared/sms-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -107,7 +108,7 @@ serve(async (req: Request) => {
 
         if (channelPref?.sms) {
           // Send SMS via send-notification
-          const smsText = `Brilliant Jobs: Pending match at ${action.company_name} for ${action.job_title}. Reply Y to apply, N to pass.`;
+          const smsText = applyAlertSms(action.company_name, action.job_title);
 
           await fetch(`${SUPABASE_URL}/functions/v1/send-notification`, {
             method: "POST",
@@ -123,6 +124,11 @@ serve(async (req: Request) => {
               company_name: action.company_name,
               job_title: action.job_title,
               force_channel: "sms",
+              // v2 tracking
+              idempotency_key: `escalation_sms_${action.id}`,
+              user_plan: action.notification_tier || "unknown",
+              user_cohort: "cohort_launch",
+              template_version: "2.0.0",
             }),
           });
 
