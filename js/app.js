@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.75';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — hire fee, hired stage, credit gating');
+const BJ_VERSION = 'v3.76';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — communication center v2, credit/billing notifications');
 
 // Auth
 async function init() {

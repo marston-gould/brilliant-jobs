@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.75 - 2026-02-22 -->
+<!-- Brilliant Jobs Dashboard v3.76 - 2026-02-22 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -92,7 +92,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.75</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.76</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1329,6 +1329,60 @@
                       <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
                       <td><span style="font-size:12px;color:var(--text-faint);">Weekly</span></td>
                     </tr>
+
+                    <!-- Tier: Job Intelligence (event-driven) — v2 -->
+                    <tr class="notif-section-label"><td colspan="4">Job intelligence</td></tr>
+                    <tr data-notif="company_new_roles">
+                      <td>Company posted more roles</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="resume_decay">
+                      <td>Resume readiness drop</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="resume_improve">
+                      <td>Resume readiness improved</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="exclusion_override">
+                      <td>Excluded company match</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+
+                    <!-- Tier: Credit / Billing — v2 -->
+                    <tr class="notif-section-label"><td colspan="4">Credit &amp; billing <span style="font-size:10px;color:var(--warm);font-weight:400;margin-left:6px;">Starter/Pro</span></td></tr>
+                    <tr data-notif="credit_low">
+                      <td>Credit balance low</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                    <tr data-notif="autorefill_success">
+                      <td>Auto-refill confirmations</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                    <tr data-notif="autorefill_failed">
+                      <td>Auto-refill failed</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                    <tr data-notif="credit_exhausted">
+                      <td>Credits exhausted mid-month</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -1542,6 +1596,11 @@
                   <option value="new_jobs_daily">New job matches</option>
                   <option value="ghost_alert">Ghost alert</option>
                   <option value="weekly_summary">Weekly summary</option>
+                  <option value="credit_low">Credit balance low</option>
+                  <option value="autorefill_success">Auto-refill success</option>
+                  <option value="autorefill_failed">Auto-refill failed</option>
+                  <option value="resume_decay">Resume readiness drop</option>
+                  <option value="company_new_roles">Company new roles</option>
                 </select>
                 <select id="nlog-filter-channel">
                   <option value="">All channels</option>
