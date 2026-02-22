@@ -429,7 +429,7 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Live Stripe testing | 🔲 | Products exist in sandbox, no end-to-end test card purchase yet |
+| Live Stripe testing | ✅ | Checkout sessions (subscription + one-time), test card payment (pm_card_visa $20 succeeded), webhook delivered (0 pending), EF auth gating verified |
 | Production Stripe keys | 🔲 | Still on sandbox (`sk_test_*`), need live keys for launch |
 | Smart Job Alert credit debit (1cr) | 🔲 | Defined but not wired into notification Edge Functions |
 | AI Resume Rewrite credit debit (5cr) | 🔲 | Defined but not wired into rewrite feature |
@@ -556,7 +556,7 @@
 |------|-------|----------|---------|
 | D3 — Landing Page interactive preview | D | Medium | 5 screenshot assets from CPO (D7) |
 | D7 — Walkthrough screenshots (5x) | D | Medium | CPO deliverable |
-| Live Stripe end-to-end test | H | **High** | Needs test card purchase in sandbox |
+| Live Stripe end-to-end test | H | ✅ | v3.78: Test card $20 payment succeeded, webhook processed, checkout sessions work, EFs auth-gated |
 | Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
 | Smart Job Alert credit debit (1cr) | I | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
 | AI Resume Rewrite credit debit (5cr) | I | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
