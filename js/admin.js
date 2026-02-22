@@ -385,12 +385,62 @@ async function fetchSeoData() {
 
 // ─── Chart Rendering ───
 function renderSeoCharts() {
-  renderTrafficChart();
+  renderSeoStatCards();
   renderGscChart();
   renderPsiChart();
   renderCruxChart();
   renderYltChart();
   renderCloudflareChart();
+}
+
+
+function renderSeoStatCards() {
+  var el = document.getElementById('seo-stat-cards');
+  if (!el) return;
+
+  // Compute summary stats from data
+  var techAudits = _seoData.tech_audits || [];
+  var indexStatus = _seoData.index_status || [];
+  var siteDailyArr = _seoData.site_daily || [];
+
+  // PSI avg performance (latest mobile)
+  var psiMobile = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
+  var latestPsi = psiMobile.length ? psiMobile[psiMobile.length - 1] : null;
+  var psiPerf = latestPsi && latestPsi.metrics ? latestPsi.metrics.performance : null;
+
+  // YLT avg
+  var yltData = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
+  var yltAvg = yltData.length ? Math.round(yltData.reduce(function(s, r) { return s + (r.score || 0); }, 0) / yltData.length) : null;
+
+  // Indexed pages
+  var indexed = 0, totalInspected = 0;
+  var seen = {};
+  indexStatus.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; totalInspected++; if (r.verdict === 'PASS') indexed++; });
+
+  // CF traffic (latest day)
+  var cfData = techAudits.filter(function(r) { return r.source === 'cloudflare'; });
+  var latestCf = cfData.length ? cfData[cfData.length - 1] : null;
+  var cfRequests = latestCf && latestCf.metrics ? latestCf.metrics.total_requests : null;
+
+  // GSC clicks (latest day)
+  var latestSite = siteDailyArr.length ? siteDailyArr[siteDailyArr.length - 1] : null;
+  var gscClicks = latestSite ? (latestSite.total_clicks || 0) : null;
+
+  function card(label, value, color) {
+    var vc = color || 'var(--text)';
+    return '<div class="stat-card"><div style="font-size:20px;font-weight:700;color:' + vc + ';">' + (value != null ? value : '—') + '</div><div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.3px;margin-top:2px;">' + label + '</div></div>';
+  }
+
+  var psiColor = psiPerf >= 90 ? 'var(--green)' : psiPerf >= 50 ? 'var(--warm)' : 'var(--red)';
+  var yltColor = yltAvg >= 90 ? 'var(--green)' : yltAvg >= 50 ? 'var(--warm)' : 'var(--red)';
+  var idxColor = totalInspected > 0 && indexed === totalInspected ? 'var(--green)' : indexed > 0 ? 'var(--warm)' : 'var(--red)';
+
+  el.innerHTML =
+    card('PSI Performance', psiPerf, psiColor) +
+    card('YLT Score', yltAvg, yltColor) +
+    card('Indexed', totalInspected > 0 ? indexed + '/' + totalInspected : '—', idxColor) +
+    card('CF Requests', cfRequests != null ? cfRequests.toLocaleString() : '—') +
+    card('GSC Clicks', gscClicks != null ? gscClicks.toLocaleString() : '—');
 }
 
 function seoChartTheme() {
