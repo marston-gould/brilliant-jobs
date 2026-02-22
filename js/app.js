@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.83';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — data hygiene automation: weekly cleanup cron, archive closed jobs >90d');
+const BJ_VERSION = 'v3.84';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — client-side caching: cachedQuery utility, ref table pre-warming');
 
 // Auth
 async function init() {
@@ -10,6 +10,9 @@ async function init() {
   localStorage.setItem('bj_has_account', 'true');
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
+
+// Pre-warm static ref table caches (v3.84)
+if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
   let profile = null;
   try {
     const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
