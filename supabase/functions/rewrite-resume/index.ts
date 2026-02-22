@@ -420,6 +420,44 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
+    // Credit check — AI Resume Rewrite costs 5 credits (Starter/Pro only)
+    const { data: profile } = await sb
+      .from("profiles")
+      .select("plan, credit_balance, role")
+      .eq("id", user.id)
+      .single();
+
+    const userPlan = profile?.plan || "free";
+    const isAdmin = profile?.role === "admin";
+
+    if (!isAdmin) {
+      if (userPlan === "free") {
+        return new Response(JSON.stringify({ error: "AI Resume Rewrite requires Starter or Pro plan", code: "PLAN_REQUIRED" }), {
+          status: 403, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      const { data: debitResult, error: debitError } = await sb.rpc("debit_credits", {
+        p_user_id: user.id,
+        p_amount: 5,
+        p_action: "ai_resume_rewrite",
+        p_reference_id: body?.resume_id || "unknown",
+      });
+
+      if (debitError || !debitResult?.success) {
+        return new Response(JSON.stringify({ 
+          error: "Insufficient credits for AI Resume Rewrite (5 credits required)", 
+          code: "INSUFFICIENT_CREDITS",
+          credits_required: 5,
+          credits_available: profile?.credit_balance || 0,
+        }), {
+          status: 402, headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        });
+      }
+
+      console.log(`[rewrite-resume] Debited 5 credits for user ${user.id}, new balance: ${debitResult.new_balance}`);
+    }
+
     // Parse body
     const body = await req.json();
     const {
