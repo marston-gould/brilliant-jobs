@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.82';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — N+1 query fixes: parallelized radius/state/stats/velocity queries');
+const BJ_VERSION = 'v3.83';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — data hygiene automation: weekly cleanup cron, archive closed jobs >90d');
 
 // Auth
 async function init() {
