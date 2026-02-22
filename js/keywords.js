@@ -941,6 +941,12 @@ function buildReadinessSide(ri, data) {
       // Premium: coaching section
       if (fs.premium && fs.coaching) {
         html += buildPremiumCoachingHtml(fs);
+
+        // Gap interview container (populated async after render)
+        html += '<div id="gap-interview-container-' + ri + '-' + fi + '"></div>';
+
+        // Acceptance UI (hidden until gap interview completes or is skipped)
+        html += buildAcceptanceHtml(ri, fi, fs);
       }
 
       html += '</div>'; // close expandable
@@ -1091,6 +1097,456 @@ function buildDimensionBarsHtml(ds) {
   return html;
 }
 
+// ════════════════════════════════════════════════════════════
+// GAP INTERVIEW + ACCEPTANCE UI (G7–G12)
+// ════════════════════════════════════════════════════════════
+
+// State for the rewrite pipeline — stored per resume index
+window._bjRewriteState = {};
+
+// G7: Fetch gap interview questions from Edge Function
+async function fetchGapInterview(gapAnalysis, resumeProfile) {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return null;
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        mode: 'gap-interview',
+        gap_analysis: gapAnalysis,
+        resume_profile: resumeProfile
+      })
+    });
+
+    if (!res.ok) { console.log('[BJ] Gap interview HTTP', res.status); return null; }
+    var data = await res.json();
+    if (data.error) { console.log('[BJ] Gap interview error:', data.error); return null; }
+    return data.gap_questions || [];
+  } catch (e) {
+    console.error('[BJ] Gap interview error:', e);
+    return null;
+  }
+}
+
+// G8: Build the Gap Interview UI
+function buildGapInterviewHtml(ri, fi, gapQuestions) {
+  if (!gapQuestions || gapQuestions.length === 0) return '';
+  var stateKey = ri + '-' + fi;
+
+  var html = '<div class="bj-gap-interview" id="gap-interview-' + stateKey + '" style="margin-top:12px;padding:12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.15);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--warm);margin-bottom:8px;">\ud83d\udd0d Close Your Gaps</div>';
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">We found gaps between your resume and target roles. Answer these questions to uncover experience you may have missed.</div>';
+
+  gapQuestions.forEach(function(gq, gi) {
+    var sevColor = gq.severity === 'critical' ? 'var(--red)' : gq.severity === 'important' ? 'var(--warm)' : 'var(--text-faint)';
+    var sevBg = gq.severity === 'critical' ? 'rgba(239,68,68,0.08)' : gq.severity === 'important' ? 'rgba(245,158,11,0.08)' : 'rgba(128,128,128,0.05)';
+
+    html += '<div style="margin-bottom:10px;padding:8px;background:' + sevBg + ';border-radius:6px;border:1px solid var(--border);">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
+    html += '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:' + sevBg + ';color:' + sevColor + ';font-weight:600;border:1px solid ' + sevColor + ';">' + gq.severity + '</span>';
+    html += '<span style="font-size:12px;font-weight:600;color:var(--text);">' + gq.gap + '</span>';
+    html += '</div>';
+
+    if (gq.hint) {
+      html += '<div style="font-size:10px;color:var(--text-faint);margin-bottom:6px;font-style:italic;">' + gq.hint + '</div>';
+    }
+
+    (gq.questions || []).forEach(function(q, qi) {
+      var inputId = 'gap-answer-' + stateKey + '-' + gi + '-' + qi;
+      html += '<div style="margin-bottom:4px;">';
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">' + q + '</div>';
+      html += '<input type="text" id="' + inputId + '" placeholder="Your answer (optional)" style="width:100%;padding:4px 8px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;" onchange="bjUpdateGapAnswer(\'' + stateKey + '\',' + gi + ',' + qi + ',this.value)">';
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  html += '<div style="display:flex;gap:8px;margin-top:8px;">';
+  html += '<button class="btn btn-sm" onclick="bjSkipGapInterview(\'' + stateKey + '\')" style="font-size:10px;padding:3px 10px;color:var(--text-faint);">Skip</button>';
+  html += '<button class="btn btn-sm" onclick="bjCompleteGapInterview(\'' + stateKey + '\')" style="font-size:10px;padding:3px 12px;background:var(--warm);color:#fff;font-weight:600;">Continue \u2192</button>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+// Gap answer tracking
+function bjUpdateGapAnswer(stateKey, gapIdx, questionIdx, value) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  if (!window._bjRewriteState[stateKey].gapAnswers) window._bjRewriteState[stateKey].gapAnswers = {};
+  var key = gapIdx + '-' + questionIdx;
+  window._bjRewriteState[stateKey].gapAnswers[key] = value;
+}
+
+function bjSkipGapInterview(stateKey) {
+  var el = document.getElementById('gap-interview-' + stateKey);
+  if (el) el.style.display = 'none';
+  bjShowAcceptanceUI(stateKey);
+}
+
+function bjCompleteGapInterview(stateKey) {
+  var el = document.getElementById('gap-interview-' + stateKey);
+  if (el) el.style.display = 'none';
+  bjShowAcceptanceUI(stateKey);
+}
+
+// G9-G12: Build the Acceptance UI
+function bjShowAcceptanceUI(stateKey) {
+  var el = document.getElementById('acceptance-ui-' + stateKey);
+  if (el) el.style.display = '';
+}
+
+function buildAcceptanceHtml(ri, fi, filterScore) {
+  if (!filterScore || !filterScore.premium) return '';
+  var stateKey = ri + '-' + fi;
+
+  // Initialize state
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  var state = window._bjRewriteState[stateKey];
+  state.accepted = state.accepted || {};
+  state.achievementInputs = state.achievementInputs || {};
+  state.userHighlights = state.userHighlights || [];
+  state.userNotes = state.userNotes || '';
+  state.coverLetter = state.coverLetter || false;
+  state.template = state.template || 'executive';
+
+  var coaching = filterScore.coaching || {};
+  var allRecs = [];
+  var recIdx = 0;
+
+  // Collect all recommendations into a flat list with IDs
+  function addRecs(items, type, labelFn) {
+    if (!items || !items.length) return;
+    items.forEach(function(item, i) {
+      var id = type + '-' + i;
+      allRecs.push({ id: id, type: type, data: item, label: labelFn(item) });
+      if (state.accepted[id] === undefined) state.accepted[id] = true; // default to accepted
+    });
+  }
+
+  addRecs(coaching.priority_actions, 'priority', function(p) {
+    return { title: p.action, subtitle: p.why, badge: p.expected_impact };
+  });
+  addRecs(coaching.rewrite_suggestions, 'rewrite', function(r) {
+    return { title: r.suggested_text, subtitle: r.original_text ? 'Currently: ' + r.original_text : '', badge: r.rationale };
+  });
+  addRecs(coaching.missing_keyword_injections, 'keyword', function(k) {
+    return { title: 'Add "' + k.keyword + '"', subtitle: k.where_to_add + ' \u2014 ' + k.how_to_phrase, badge: null };
+  });
+  addRecs(coaching.title_translations, 'title', function(t) {
+    return { title: t.current_title + ' \u2192 ' + t.suggested_title, subtitle: t.reasoning, badge: null };
+  });
+  addRecs(coaching.achievement_prompts, 'achievement', function(a) {
+    return { title: 'Quantify: "' + a.weak_bullet + '"', subtitle: null, questions: a.questions_to_quantify, badge: null };
+  });
+  addRecs(coaching.format_improvements, 'format', function(f) {
+    return { title: typeof f === 'string' ? f : f.description || JSON.stringify(f), subtitle: null, badge: null };
+  });
+  addRecs(coaching.gap_bridging, 'gap', function(g) {
+    return { title: g.gap, subtitle: g.bridge_strategy, badge: null };
+  });
+
+  if (allRecs.length === 0) return '';
+
+  var acceptedCount = Object.keys(state.accepted).filter(function(k) { return state.accepted[k]; }).length;
+
+  var html = '<div class="bj-acceptance-ui" id="acceptance-ui-' + stateKey + '" style="display:none;margin-top:12px;padding:12px;background:rgba(77,142,255,0.03);border:1px solid rgba(77,142,255,0.12);border-radius:8px;">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;color:#4d8eff;">\u2728 Rewrite Your Resume</div>';
+  html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;" id="accept-count-' + stateKey + '">' + acceptedCount + '/' + allRecs.length + ' accepted</span>';
+  html += '</div>';
+
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Accept the recommendations you want applied. Reject any you disagree with.</div>';
+
+  // Select All / Deselect All
+  html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+  html += '<button class="btn btn-sm" onclick="bjToggleAll(\'' + stateKey + '\',true)" style="font-size:9px;padding:2px 8px;">Select All</button>';
+  html += '<button class="btn btn-sm" onclick="bjToggleAll(\'' + stateKey + '\',false)" style="font-size:9px;padding:2px 8px;">Deselect All</button>';
+  html += '</div>';
+
+  // Recommendation cards
+  allRecs.forEach(function(rec) {
+    var isAccepted = state.accepted[rec.id] !== false;
+    var borderColor = isAccepted ? 'rgba(34,197,94,0.3)' : 'rgba(128,128,128,0.15)';
+    var bgColor = isAccepted ? 'rgba(34,197,94,0.03)' : 'var(--bg-main)';
+    var typeColors = { priority: '#4d8eff', rewrite: 'var(--green)', keyword: 'var(--warm)', title: '#7c3aed', achievement: '#f59e0b', format: 'var(--text-faint)', gap: 'var(--warm)' };
+    var typeLabel = rec.type.charAt(0).toUpperCase() + rec.type.slice(1);
+
+    html += '<div id="rec-card-' + stateKey + '-' + rec.id + '" style="margin-bottom:6px;padding:8px 10px;border-radius:6px;border:1px solid ' + borderColor + ';background:' + bgColor + ';transition:all 0.15s;">';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
+
+    // Checkbox
+    html += '<input type="checkbox" ' + (isAccepted ? 'checked' : '') + ' onchange="bjToggleRec(\'' + stateKey + '\',\'' + rec.id + '\',this.checked)" style="margin-top:2px;accent-color:var(--green);cursor:pointer;">';
+
+    // Content
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">';
+    html += '<span style="font-size:9px;padding:1px 4px;border-radius:2px;background:' + (typeColors[rec.type] || 'var(--text-faint)') + ';color:#fff;font-weight:600;">' + typeLabel + '</span>';
+    if (rec.label.badge) html += '<span style="font-size:9px;color:var(--green);font-weight:600;">' + rec.label.badge + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text);line-height:1.5;">' + rec.label.title + '</div>';
+    if (rec.label.subtitle) html += '<div style="font-size:10px;color:var(--text-faint);line-height:1.4;margin-top:1px;">' + rec.label.subtitle + '</div>';
+
+    // Achievement prompt inputs (G10)
+    if (rec.type === 'achievement' && rec.label.questions && isAccepted) {
+      html += '<div style="margin-top:6px;padding:6px;background:rgba(245,158,11,0.05);border-radius:4px;">';
+      rec.label.questions.forEach(function(q, qi) {
+        var inputId = 'ach-input-' + stateKey + '-' + rec.id + '-' + qi;
+        var savedVal = (state.achievementInputs[rec.id] || {})[qi] || '';
+        html += '<div style="margin-bottom:3px;">';
+        html += '<div style="font-size:10px;color:var(--text-dim);">' + q + '</div>';
+        html += '<input type="text" id="' + inputId + '" value="' + savedVal.replace(/"/g, '&quot;') + '" placeholder="Your answer" style="width:100%;padding:3px 6px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:3px;color:var(--text);outline:none;" onchange="bjUpdateAchievement(\'' + stateKey + '\',\'' + rec.id + '\',' + qi + ',this.value)">';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>'; // content
+    html += '</div>'; // flex row
+    html += '</div>'; // card
+  });
+
+  // G11: User highlights & notes
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
+  html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">\ud83d\udcdd Your Additions</div>';
+  html += '<div style="font-size:10px;color:var(--text-faint);margin-bottom:6px;">Anything else you want changed, emphasized, or excluded?</div>';
+  html += '<textarea id="user-notes-' + stateKey + '" placeholder="E.g.: Emphasize my patent from 2024. Don\'t include freelance work from 2019. My title is officially Sr. Engineer but I\'ve been functioning as tech lead." style="width:100%;height:50px;padding:6px 8px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;resize:vertical;font-family:inherit;" onchange="bjUpdateNotes(\'' + stateKey + '\',this.value)">' + (state.userNotes || '') + '</textarea>';
+
+  // Highlight chips
+  html += '<div style="margin-top:6px;">';
+  html += '<div style="font-size:10px;color:var(--text-faint);margin-bottom:3px;">Specific highlights to include:</div>';
+  html += '<div id="highlights-list-' + stateKey + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">';
+  (state.userHighlights || []).forEach(function(h, hi) {
+    html += '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.08);border:1px solid rgba(77,142,255,0.2);color:#4d8eff;">' + h + ' <span onclick="bjRemoveHighlight(\'' + stateKey + '\',' + hi + ')" style="cursor:pointer;opacity:0.6;">\u2717</span></span>';
+  });
+  html += '</div>';
+  html += '<div style="display:flex;gap:4px;">';
+  html += '<input type="text" id="highlight-input-' + stateKey + '" placeholder="Add a highlight" style="flex:1;padding:3px 6px;font-size:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:3px;color:var(--text);outline:none;" onkeydown="if(event.key===\'Enter\')bjAddHighlight(\'' + stateKey + '\')">';
+  html += '<button class="btn btn-sm" onclick="bjAddHighlight(\'' + stateKey + '\')" style="font-size:9px;padding:2px 8px;">+</button>';
+  html += '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // G12: Cover letter opt-in
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;">';
+  html += '<input type="checkbox" id="cover-letter-' + stateKey + '" ' + (state.coverLetter ? 'checked' : '') + ' onchange="bjToggleCoverLetter(\'' + stateKey + '\',this.checked)" style="accent-color:#4d8eff;cursor:pointer;">';
+  html += '<label for="cover-letter-' + stateKey + '" style="font-size:11px;color:var(--text);cursor:pointer;">Include a tailored cover letter</label>';
+  html += '</div>';
+
+  // Template selection
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
+  html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Resume Template</div>';
+  html += '<div style="display:flex;gap:6px;">';
+  var templates = [
+    { id: 'executive', name: 'Executive', desc: 'Clean, minimal', best: 'Senior roles' },
+    { id: 'modern', name: 'Modern', desc: 'Two-column sidebar', best: 'Tech, creative' },
+    { id: 'classic', name: 'Classic', desc: 'Traditional', best: 'Finance, legal' }
+  ];
+  templates.forEach(function(t) {
+    var sel = (state.template || 'executive') === t.id;
+    var border = sel ? '2px solid #4d8eff' : '1px solid var(--border)';
+    var bg = sel ? 'rgba(77,142,255,0.05)' : 'var(--bg-main)';
+    html += '<div onclick="bjSelectTemplate(\'' + stateKey + '\',\'' + t.id + '\')" style="flex:1;padding:8px;border-radius:6px;border:' + border + ';background:' + bg + ';cursor:pointer;text-align:center;">';
+    html += '<div style="font-size:11px;font-weight:600;color:' + (sel ? '#4d8eff' : 'var(--text)') + ';">' + t.name + '</div>';
+    html += '<div style="font-size:9px;color:var(--text-faint);">' + t.desc + '</div>';
+    html += '<div style="font-size:8px;color:var(--text-faint);margin-top:2px;">Best for: ' + t.best + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Generate Rewrite button
+  html += '<div style="margin-top:12px;text-align:center;">';
+  html += '<button class="btn" id="gen-rewrite-' + stateKey + '" onclick="bjGenerateRewrite(\'' + stateKey + '\',' + ri + ',' + fi + ')" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:700;padding:8px 24px;font-size:12px;border-radius:6px;width:100%;">';
+  html += '\u2728 Generate Rewrite</button>';
+  html += '<div style="font-size:9px;color:var(--text-faint);margin-top:4px;">This will use premium credits</div>';
+  html += '</div>';
+
+  html += '</div>'; // close acceptance-ui
+  return html;
+}
+
+// ─── Acceptance UI interaction handlers ───
+
+function bjToggleRec(stateKey, recId, checked) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  if (!window._bjRewriteState[stateKey].accepted) window._bjRewriteState[stateKey].accepted = {};
+  window._bjRewriteState[stateKey].accepted[recId] = checked;
+
+  // Update card visual
+  var card = document.getElementById('rec-card-' + stateKey + '-' + recId);
+  if (card) {
+    card.style.borderColor = checked ? 'rgba(34,197,94,0.3)' : 'rgba(128,128,128,0.15)';
+    card.style.background = checked ? 'rgba(34,197,94,0.03)' : 'var(--bg-main)';
+  }
+
+  // Update count
+  bjUpdateAcceptCount(stateKey);
+}
+
+function bjToggleAll(stateKey, accept) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state || !state.accepted) return;
+  Object.keys(state.accepted).forEach(function(k) {
+    state.accepted[k] = accept;
+    var card = document.getElementById('rec-card-' + stateKey + '-' + k);
+    if (card) {
+      card.style.borderColor = accept ? 'rgba(34,197,94,0.3)' : 'rgba(128,128,128,0.15)';
+      card.style.background = accept ? 'rgba(34,197,94,0.03)' : 'var(--bg-main)';
+      var cb = card.querySelector('input[type=checkbox]');
+      if (cb) cb.checked = accept;
+    }
+  });
+  bjUpdateAcceptCount(stateKey);
+}
+
+function bjUpdateAcceptCount(stateKey) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state || !state.accepted) return;
+  var total = Object.keys(state.accepted).length;
+  var accepted = Object.keys(state.accepted).filter(function(k) { return state.accepted[k]; }).length;
+  var el = document.getElementById('accept-count-' + stateKey);
+  if (el) el.textContent = accepted + '/' + total + ' accepted';
+}
+
+function bjUpdateAchievement(stateKey, recId, qi, value) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state) return;
+  if (!state.achievementInputs) state.achievementInputs = {};
+  if (!state.achievementInputs[recId]) state.achievementInputs[recId] = {};
+  state.achievementInputs[recId][qi] = value;
+}
+
+function bjUpdateNotes(stateKey, value) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  window._bjRewriteState[stateKey].userNotes = value;
+}
+
+function bjAddHighlight(stateKey) {
+  var input = document.getElementById('highlight-input-' + stateKey);
+  if (!input || !input.value.trim()) return;
+  var state = window._bjRewriteState[stateKey];
+  if (!state) return;
+  if (!state.userHighlights) state.userHighlights = [];
+  state.userHighlights.push(input.value.trim());
+  input.value = '';
+  // Re-render highlights list
+  var list = document.getElementById('highlights-list-' + stateKey);
+  if (list) {
+    var html = '';
+    state.userHighlights.forEach(function(h, hi) {
+      html += '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.08);border:1px solid rgba(77,142,255,0.2);color:#4d8eff;">' + h + ' <span onclick="bjRemoveHighlight(\'' + stateKey + '\',' + hi + ')" style="cursor:pointer;opacity:0.6;">\u2717</span></span>';
+    });
+    list.innerHTML = html;
+  }
+}
+
+function bjRemoveHighlight(stateKey, idx) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state || !state.userHighlights) return;
+  state.userHighlights.splice(idx, 1);
+  bjAddHighlight(stateKey); // Trick: re-render by calling with empty (input already cleared)
+  // Actually just re-render the list
+  var list = document.getElementById('highlights-list-' + stateKey);
+  if (list) {
+    var html = '';
+    state.userHighlights.forEach(function(h, hi) {
+      html += '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.08);border:1px solid rgba(77,142,255,0.2);color:#4d8eff;">' + h + ' <span onclick="bjRemoveHighlight(\'' + stateKey + '\',' + hi + ')" style="cursor:pointer;opacity:0.6;">\u2717</span></span>';
+    });
+    list.innerHTML = html;
+  }
+}
+
+function bjToggleCoverLetter(stateKey, checked) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  window._bjRewriteState[stateKey].coverLetter = checked;
+}
+
+function bjSelectTemplate(stateKey, templateId) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  window._bjRewriteState[stateKey].template = templateId;
+  // Re-render template cards to show selection
+  var parent = document.getElementById('acceptance-ui-' + stateKey);
+  if (!parent) return;
+  var cards = parent.querySelectorAll('[onclick^="bjSelectTemplate"]');
+  cards.forEach(function(card) {
+    var isThis = card.getAttribute('onclick').includes("'" + templateId + "'");
+    card.style.border = isThis ? '2px solid #4d8eff' : '1px solid var(--border)';
+    card.style.background = isThis ? 'rgba(77,142,255,0.05)' : 'var(--bg-main)';
+    var nameEl = card.querySelector('div');
+    if (nameEl) nameEl.style.color = isThis ? '#4d8eff' : 'var(--text)';
+  });
+}
+
+// G-S3 placeholder — the actual rewrite call (built in Sprint 3)
+async function bjGenerateRewrite(stateKey, ri, fi) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state) return;
+
+  var btn = document.getElementById('gen-rewrite-' + stateKey);
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating\u2026'; btn.style.opacity = '0.6'; }
+
+  // Collect the rewrite brief
+  var accepted = [];
+  Object.keys(state.accepted || {}).forEach(function(k) {
+    if (state.accepted[k]) accepted.push(k);
+  });
+
+  var brief = {
+    accepted_recommendations: accepted,
+    achievement_inputs: state.achievementInputs || {},
+    gap_answers: state.gapAnswers || {},
+    user_highlights: state.userHighlights || [],
+    user_notes: state.userNotes || '',
+    include_cover_letter: state.coverLetter || false,
+    template_id: state.template || 'executive'
+  };
+
+  console.log('[BJ] Rewrite brief:', JSON.stringify(brief).slice(0, 500));
+
+  // TODO: Sprint 3 — call rewrite-resume Edge Function
+  // For now, show a placeholder
+  if (btn) {
+    btn.textContent = '\u2705 Brief Ready — Rewrite pipeline coming in Sprint 3';
+    btn.style.background = 'var(--green)';
+    btn.style.opacity = '1';
+  }
+}
+
+// ─── Wire Gap Interview + Acceptance into the readiness panel ───
+
+async function bjInitRewriteFlow(ri, fi, filterScore) {
+  var stateKey = ri + '-' + fi;
+
+  // Only for premium results with coaching
+  if (!filterScore || !filterScore.premium || !filterScore.coaching) return;
+
+  // Check if gap interview container exists
+  var gapContainer = document.getElementById('gap-interview-container-' + stateKey);
+  if (!gapContainer) return;
+
+  // Fetch gap interview questions
+  if (filterScore.gapAnalysis && filterScore.gapAnalysis.length > 0) {
+    gapContainer.innerHTML = '<div style="font-size:10px;color:var(--text-faint);padding:8px;">Loading gap questions\u2026</div>';
+    var gapQuestions = await fetchGapInterview(filterScore.gapAnalysis, filterScore.resumeProfile);
+    if (gapQuestions && gapQuestions.length > 0) {
+      gapContainer.innerHTML = buildGapInterviewHtml(ri, fi, gapQuestions);
+      window._bjRewriteState[stateKey] = window._bjRewriteState[stateKey] || {};
+      window._bjRewriteState[stateKey].gapQuestions = gapQuestions;
+    } else {
+      gapContainer.innerHTML = '';
+      bjShowAcceptanceUI(stateKey);
+    }
+  } else {
+    gapContainer.innerHTML = '';
+    bjShowAcceptanceUI(stateKey);
+  }
+}
+
 // Update readiness side panels after analysis completes
 function updateReadinessSidePanels(scores) {
   if (!scores) return;
@@ -1102,6 +1558,18 @@ function updateReadinessSidePanels(scores) {
       var tmp = document.createElement('div');
       tmp.innerHTML = buildReadinessSide(ri, scores[ri]);
       existing.replaceWith(tmp.firstChild);
+    }
+
+    // Initialize gap interview + acceptance UI for premium results
+    var data = scores[ri];
+    if (data && data.filters) {
+      var filterNames = Object.keys(data.filters);
+      for (var fi = 0; fi < filterNames.length; fi++) {
+        var fs = data.filters[filterNames[fi]];
+        if (fs && fs.premium && fs.coaching) {
+          bjInitRewriteFlow(ri, fi, fs);
+        }
+      }
     }
   }
 }
