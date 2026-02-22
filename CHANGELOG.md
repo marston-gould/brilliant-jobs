@@ -4,6 +4,27 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+## v3.48 — 2026-02-22
+- **SEO tab redesign** (Pod 1 spec): Full visual overhaul of Admin Console SEO tab
+  - 13 new CSS classes replacing all inline styles (.seo-controls, .seo-select, .seo-section-label, .seo-detail-grid, .seo-metric-row, .seo-metric-label, .seo-metric-value, .seo-loading, .seo-empty, etc.)
+  - 4-section layout: Controls → Stat Cards (`.stat-grid`) → Charts (`.stats-grid`) → Drilldowns (`.seo-detail-grid`)
+  - DOM-based stat cards via `document.createElement` replacing innerHTML string concatenation
+  - CrUX promoted from Knowledge Graph afterthought to own chart card
+  - Chart heights: 300px (GSC full-width hero), 280px (PSI, CF, YLT, CrUX half-width)
+  - Light-theme ECharts: tooltip `rgba(15,23,42,0.95)`, grid `#e8eaef`, axis `#7b829a`
+  - Section dividers: "PERFORMANCE CHARTS" + "TECHNICAL DETAILS" with uppercase tracking
+  - Loading states in all 9 containers, empty states with styled messaging + sync links
+  - All 5 side panel renders rewritten with `.seo-metric-row` / `.admin-platform-table`
+  - Tailwind CSS built clean with all 13 classes verified in output
+  - All 12 acceptance criteria from Pod 1 handoff spec: PASS
+
+## v3.47 — 2026-02-22
+- **Dead job icon**: Replaced 3D 🚫 emoji with on-brand SVG burned-out lightbulb. Copy: "This Brilliant opportunity has dimmed"
+
+## v3.46 — 2026-02-22
+- **SEO Admin stat cards**: Added summary KPI row (PSI, YLT, Indexed, CF Requests, GSC Clicks) with color thresholds
+- **SEO Admin chart grid**: Restructured to 2×2 card grid with consistent heights
+
 ## v3.45 — 2026-02-22
 - **Visit-based segment detection (Pod 2 Item #1)**: Landing page `index.html` now detects 4 visitor segments via `<head>` script: new, returning, lapsed, active. Sets `data-segment` attribute on `<html>` before body paint (no FOUC). Visit counter (`bj_visits`) increments in localStorage. Deep visit detection (`data-visit-depth="deep"`) for visit 3+ returning visitors.
 - **Segment content variants (Pod 2 Item #2)**: CSS-driven content personalization — all 4 variants in single `index.html`. New visitors see full pitch (current experience, no regression). Returning visitors see shorter hero + auto-expanded preview + compressed benefits. Visit 3+ returning visitors also see objection FAQ (data safety, LinkedIn comparison, free plan, freshness). Lapsed registered users see welcome-back hero with login CTA, no marketing sections. Active users auto-redirect to `/dashboard` with fallback banner.
