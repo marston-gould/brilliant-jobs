@@ -1866,6 +1866,81 @@
 
 }
 
+    /* ─── Billing: Credit Balance Badge ─── */
+    .credit-balance {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; margin: 8px 12px;
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .credit-balance:hover { background: var(--bg-hover); border-color: var(--border-hover); }
+    .credit-icon { flex-shrink: 0; color: var(--text-faint); }
+    .credit-balance-count { font-family: var(--mono); font-weight: 700; font-size: 14px; }
+    .credit-balance-label { font-size: 10px; color: var(--text-faint); }
+    .credit-green { color: hsl(142, 60%, 40%); }
+    .credit-amber { color: hsl(38, 90%, 45%); }
+    .credit-red { color: hsl(0, 70%, 50%); }
+
+    /* ─── Billing: Pricing Modal ─── */
+    .billing-modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.5); align-items: center; justify-content: center;
+    }
+    .billing-modal {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px; max-width: 680px; width: 90%;
+      max-height: 85vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+    }
+    .billing-modal-header { display: flex; justify-content: space-between; align-items: center; margin-block-end: 24px; }
+    .billing-modal-header h2 { font-size: 20px; font-weight: 700; }
+    .billing-modal-close {
+      background: none; border: none; font-size: 24px; color: var(--text-faint);
+      cursor: pointer; padding: 4px 8px; line-height: 1;
+    }
+    .billing-modal-close:hover { color: var(--text); }
+
+    .billing-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-block-end: 24px; }
+    .billing-tier-card {
+      border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+      text-align: center; transition: border-color 0.15s;
+    }
+    .billing-tier-card:hover { border-color: var(--accent); }
+    .billing-tier-card.current { border-color: var(--accent); background: var(--accent-dim); }
+    .billing-tier-name { font-weight: 700; font-size: 16px; margin-block-end: 8px; }
+    .billing-tier-price { font-family: var(--mono); font-size: 28px; font-weight: 700; margin-block-end: 4px; }
+    .billing-tier-credits { font-size: 12px; color: var(--text-dim); margin-block-end: 4px; }
+    .billing-tier-payg { font-size: 11px; color: var(--text-faint); margin-block-end: 16px; }
+    .btn-billing-tier {
+      width: 100%; padding: 8px; border-radius: 8px; border: none;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      background: var(--accent); color: #fff; transition: background 0.15s;
+    }
+    .btn-billing-tier:hover { background: var(--accent-hover); }
+    .btn-billing-tier:disabled { background: var(--bg-input); color: var(--text-faint); cursor: default; }
+    .btn-billing-tier.current { background: var(--accent-dim); color: var(--accent); }
+
+    .billing-section-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--text-faint); margin-block-end: 12px;
+    }
+    .billing-packs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-block-end: 24px; }
+    .billing-pack-card {
+      border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+      text-align: center; cursor: pointer; transition: all 0.15s;
+    }
+    .billing-pack-card:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .billing-pack-qty { font-weight: 700; font-size: 15px; margin-block-end: 4px; }
+    .billing-pack-price { font-family: var(--mono); font-size: 18px; font-weight: 600; margin-block-end: 2px; }
+    .billing-pack-rate { font-size: 11px; color: var(--text-faint); }
+
+    .billing-manage { text-align: center; }
+    .btn-billing-manage {
+      padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg-input); color: var(--text-dim); font-size: 13px;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-billing-manage:hover { background: var(--bg-hover); border-color: var(--border-hover); color: var(--text); }
+
     @media (max-width: 720px) {
       .resume-row { flex-direction: column; }
       .resume-row > .resume-card { flex: 1 1 auto; }
