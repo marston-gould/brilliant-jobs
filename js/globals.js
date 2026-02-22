@@ -430,3 +430,139 @@ async function prewarmRefCaches() {
     console.warn('[BJ] Ref cache pre-warm failed:', e.message);
   }
 }
+
+// ============================================================
+// ERROR RECOVERY & OFFLINE RESILIENCE (v3.87)
+// ============================================================
+
+var _isOnline = navigator.onLine;
+var _offlineBanner = null;
+var _retryQueue = [];
+
+/** Check if the browser is online */
+function isOnline() { return _isOnline; }
+
+/** Initialize offline/online detection */
+function initOfflineDetection() {
+  window.addEventListener('online', function() {
+    _isOnline = true;
+    console.log('[BJ] Back online');
+    _hideOfflineBanner();
+    _drainRetryQueue();
+  });
+  window.addEventListener('offline', function() {
+    _isOnline = false;
+    console.warn('[BJ] Went offline');
+    _showOfflineBanner();
+  });
+}
+
+function _showOfflineBanner() {
+  if (_offlineBanner) return;
+  _offlineBanner = document.createElement('div');
+  _offlineBanner.id = 'bj-offline-banner';
+  _offlineBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f59e0b;color:#000;text-align:center;padding:8px 16px;font-size:14px;font-weight:600;';
+  _offlineBanner.textContent = 'You are offline — changes will sync when connection returns';
+  document.body.prepend(_offlineBanner);
+}
+
+function _hideOfflineBanner() {
+  if (_offlineBanner) { _offlineBanner.remove(); _offlineBanner = null; }
+}
+
+/** Retry a failed async operation with exponential backoff */
+async function withRetry(fn, opts) {
+  var maxRetries = (opts && opts.retries) || 3;
+  var baseDelay = (opts && opts.delay) || 1000;
+  var label = (opts && opts.label) || 'operation';
+
+  for (var attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt === maxRetries) {
+        console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', e.message);
+        throw e;
+      }
+      var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
+      await new Promise(function(resolve) { setTimeout(resolve, delay); });
+    }
+  }
+}
+
+/** Queue a failed write operation for retry when back online */
+function queueForRetry(fn, label) {
+  _retryQueue.push({ fn: fn, label: label || 'queued op', addedAt: Date.now() });
+  console.log('[BJ] Queued for retry: ' + label + ' (' + _retryQueue.length + ' pending)');
+}
+
+/** Drain the retry queue (called when coming back online) */
+async function _drainRetryQueue() {
+  if (_retryQueue.length === 0) return;
+  console.log('[BJ] Draining retry queue: ' + _retryQueue.length + ' items');
+  var queue = _retryQueue.slice();
+  _retryQueue = [];
+  for (var i = 0; i < queue.length; i++) {
+    try {
+      await queue[i].fn();
+      console.log('[BJ] Retry succeeded: ' + queue[i].label);
+    } catch (e) {
+      console.warn('[BJ] Retry failed: ' + queue[i].label, e.message);
+      // Don't re-queue items older than 10 minutes
+      if (Date.now() - queue[i].addedAt < 600000) {
+        _retryQueue.push(queue[i]);
+      }
+    }
+  }
+}
+
+/** Global unhandled error and rejection handlers */
+function initGlobalErrorHandlers() {
+  window.addEventListener('error', function(event) {
+    console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event.reason;
+    var msg = reason && reason.message ? reason.message : String(reason);
+    // Suppress noisy auth/network errors
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+      if (!_isOnline) {
+        event.preventDefault(); // Don't spam console when offline
+        return;
+      }
+    }
+    console.error('[BJ] Unhandled promise rejection:', msg);
+  });
+}
+
+/** Safe Supabase query wrapper — handles offline, retries, fallback */
+async function safeQuery(queryFn, opts) {
+  var label = (opts && opts.label) || 'query';
+  var fallback = opts && opts.fallback;
+  var retry = opts && opts.retry !== false;
+
+  if (!_isOnline) {
+    console.warn('[BJ] Offline — skipping ' + label);
+    return fallback !== undefined ? fallback : null;
+  }
+
+  try {
+    if (retry) {
+      return await withRetry(function() {
+        return queryFn().then(function(result) {
+          if (result.error) throw new Error(result.error.message);
+          return result.data;
+        });
+      }, { retries: 2, delay: 800, label: label });
+    } else {
+      var result = await queryFn();
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
+    }
+  } catch (e) {
+    console.warn('[BJ] ' + label + ' failed:', e.message);
+    return fallback !== undefined ? fallback : null;
+  }
+}
