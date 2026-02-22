@@ -1482,39 +1482,143 @@ function bjSelectTemplate(stateKey, templateId) {
   });
 }
 
-// G-S3 placeholder — the actual rewrite call (built in Sprint 3)
+// G-S3: Call rewrite-resume Edge Function and handle download
 async function bjGenerateRewrite(stateKey, ri, fi) {
   var state = window._bjRewriteState[stateKey];
   if (!state) return;
 
   var btn = document.getElementById('gen-rewrite-' + stateKey);
-  if (btn) { btn.disabled = true; btn.textContent = 'Generating\u2026'; btn.style.opacity = '0.6'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Writing resume\u2026'; btn.style.opacity = '0.6'; }
 
-  // Collect the rewrite brief
-  var accepted = [];
+  // Get the filter score data
+  var filterNames = Object.keys(scores[ri]?.filters || {});
+  var filterScore = scores[ri]?.filters[filterNames[fi]];
+  if (!filterScore || !filterScore.premium) {
+    if (btn) { btn.textContent = 'Error: No premium analysis found'; btn.style.background = 'var(--red)'; }
+    return;
+  }
+
+  // Collect accepted recommendations with their full data
+  var acceptedRecs = [];
   Object.keys(state.accepted || {}).forEach(function(k) {
-    if (state.accepted[k]) accepted.push(k);
+    if (!state.accepted[k]) return;
+    acceptedRecs.push({
+      id: k,
+      type: k.split('-')[0],
+      user_input: (state.achievementInputs || {})[k] || null
+    });
   });
 
-  var brief = {
-    accepted_recommendations: accepted,
-    achievement_inputs: state.achievementInputs || {},
-    gap_answers: state.gapAnswers || {},
-    user_highlights: state.userHighlights || [],
-    user_notes: state.userNotes || '',
-    include_cover_letter: state.coverLetter || false,
-    template_id: state.template || 'executive'
-  };
+  // Get resume data
+  var r = resumes[ri];
+  if (!r) { if (btn) { btn.textContent = 'Error: Resume not found'; } return; }
 
-  console.log('[BJ] Rewrite brief:', JSON.stringify(brief).slice(0, 500));
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { if (btn) { btn.textContent = 'Not logged in'; } return; }
 
-  // TODO: Sprint 3 — call rewrite-resume Edge Function
-  // For now, show a placeholder
-  if (btn) {
-    btn.textContent = '\u2705 Brief Ready — Rewrite pipeline coming in Sprint 3';
-    btn.style.background = 'var(--green)';
-    btn.style.opacity = '1';
+    if (btn) btn.textContent = 'Writing resume\u2026';
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rewrite-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        resume_text: r.extractedText || '',
+        resume_profile: filterScore.resumeProfile,
+        jd_profile: filterScore.jdProfile,
+        accepted_recommendations: acceptedRecs,
+        achievement_inputs: state.achievementInputs || {},
+        gap_answers: state.gapAnswers || {},
+        user_highlights: state.userHighlights || [],
+        user_notes: state.userNotes || '',
+        include_cover_letter: state.coverLetter || false,
+        template_id: state.template || 'executive',
+        filter_name: filterNames[fi] || 'General',
+        coaching: filterScore.coaching
+      })
+    });
+
+    if (!res.ok) {
+      var errData = await res.json().catch(function() { return { error: 'Unknown error' }; });
+      console.error('[BJ] Rewrite error:', errData);
+      if (btn) { btn.textContent = 'Rewrite failed — try again'; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'var(--red)'; }
+      return;
+    }
+
+    var data = await res.json();
+    console.log('[BJ] Rewrite complete:', data.session_id, data.timing);
+
+    // Store the rewrite result
+    state.rewriteResult = data;
+
+    // Show results panel
+    bjShowRewriteResults(stateKey, ri, fi, data);
+
+  } catch (e) {
+    console.error('[BJ] Rewrite exception:', e);
+    if (btn) { btn.textContent = 'Error — try again'; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'var(--red)'; }
   }
+}
+
+// Show rewrite results with download links
+function bjShowRewriteResults(stateKey, ri, fi, data) {
+  var btn = document.getElementById('gen-rewrite-' + stateKey);
+  var container = document.getElementById('acceptance-ui-' + stateKey);
+  if (!container) return;
+
+  // Build results HTML
+  var html = '<div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px;">\u2705 Rewrite Complete</div>';
+
+  // Download buttons
+  if (data.resume_path) {
+    var resumeUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.resume_path;
+    html += '<a href="' + resumeUrl + '" download="resume.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#4d8eff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;margin-right:8px;">\ud83d\udcc4 Download Resume (.docx)</a>';
+  }
+
+  if (data.cover_letter_path) {
+    var coverUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.cover_letter_path;
+    html += '<a href="' + coverUrl + '" download="cover-letter.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#7c3aed;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;">\ud83d\udcc4 Download Cover Letter (.docx)</a>';
+  }
+
+  // Changes summary
+  html += '<div style="margin-top:10px;font-size:11px;color:var(--text-dim);">';
+  html += '<div><strong>Template:</strong> ' + (data.template_used || 'executive') + '</div>';
+  html += '<div><strong>Changes:</strong> ' + (data.changes_made || []).length + ' recommendations applied</div>';
+  if (data.unchanged_sections && data.unchanged_sections.length > 0) {
+    html += '<div><strong>Unchanged:</strong> ' + data.unchanged_sections.join(', ') + '</div>';
+  }
+  html += '<div><strong>Time:</strong> ' + ((data.timing?.total_ms || 0) / 1000).toFixed(1) + 's (' + (data.agents_used || 1) + ' agents)</div>';
+  html += '</div>';
+
+  // Cover letter preview
+  if (data.cover_letter) {
+    html += '<div style="margin-top:10px;padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">Cover Letter Preview</div>';
+    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + data.cover_letter.salutation + '</div>';
+    (data.cover_letter.paragraphs || []).forEach(function(p) {
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + p + '</div>';
+    });
+    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + data.cover_letter.closing + '</div>';
+    html += '<div style="font-size:9px;color:var(--text-faint);margin-top:4px;">' + (data.cover_letter.word_count || '?') + ' words</div>';
+    html += '</div>';
+  }
+
+  // QA placeholder (Sprint 4)
+  html += '<div style="margin-top:10px;padding:8px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15);border-radius:6px;">';
+  html += '<div style="font-size:10px;color:var(--warm);">QA review (accuracy, bleed, voice) coming in next update</div>';
+  html += '</div>';
+
+  html += '</div>';
+
+  // Replace the generate button area with results
+  if (btn) btn.style.display = 'none';
+  var resultsDiv = document.createElement('div');
+  resultsDiv.innerHTML = html;
+  container.appendChild(resultsDiv);
 }
 
 // ─── Wire Gap Interview + Acceptance into the readiness panel ───
