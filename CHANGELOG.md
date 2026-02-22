@@ -11,6 +11,14 @@
 - **SEO redirect diagnosis (Pod 2 Item #3)**: Confirmed `http://brilliantjobs.app` → 308 to `vercel.com`. Requires manual Vercel Dashboard + Cloudflare DNS fix (documented in BLOCKERS).
 - **Version bump**: v3.44 → v3.45 across dashboard.html, app.js, index.html footer
 
+## v3.45 — 2026-02-22
+- **InLinks semantic schemas**: Added WebPage ld+json with `about`/`mentions` entities (Wikipedia sameAs) to all 6 public pages (salary-data, hiring-trends, jobs-by-industry, career-level-data, data-lab, index)
+- **GSC domain property fix**: Changed `siteUrl` from `https://brilliantjobs.app/` to `sc-domain:brilliantjobs.app`. URL Inspection now returns real data — homepage indexed (PASS), 5 data pages discovered/not yet crawled
+- **Removed all brilliantjobs.io references**: Edge Function, dashboard HTML URL dropdown, Supabase secrets. That domain never existed
+- **RLS disabled on SEO tables**: Row Level Security was blocking all frontend reads on 6 SEO tables. Disabled since they contain only aggregate admin metrics
+- **Daily SEO cron**: `trigger_seo_sync()` via pg_cron at 6 AM UTC, calls all 9 tools automatically
+- **SEO Admin single-column layout**: Replaced broken 2-column grid with 9 clearly labeled sections (PostHog, GSC, URL Inspection, PSI, CrUX, Yellow Labs, DataForSEO, Cloudflare, Knowledge Graph)
+
 ## v3.41 — 2026-02-22
 - **SEO Admin redesign**: Complete rebuild of the SEO/Data Coverage admin tab with 9-tool dashboard
 - **seo-sync Edge Function v3**: Added 4 new data sources — Yellow Lab Tools (public API, frontend quality scores), Chrome UX Report API (real-user field data), Google Knowledge Graph Search API (entity detection), Cloudflare Analytics (traffic, page views, uniques, status codes, countries)
