@@ -41,20 +41,20 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
 
   const allIds = new Set();
 
-  // Radius search via RPC
-  for (const pill of radiusPills) {
-    try {
-      const { data, error } = await sb.rpc('find_jobs_within_radius', {
+  // Radius search via RPC — parallelized (N+1 fix v3.82)
+  if (radiusPills.length > 0) {
+    const radiusResults = await Promise.allSettled(radiusPills.map(pill =>
+      sb.rpc('find_jobs_within_radius', {
         p_lat: pill.lat,
         p_lng: pill.lng,
         p_radius_mi: pill.radius_mi,
-      });
-      if (!error && data) {
-        data.forEach(r => allIds.add(r.greenhouse_id));
+      }).then(r => ({ pill, ...r }))
+    ));
+    for (const result of radiusResults) {
+      if (result.status === 'fulfilled' && !result.value.error && result.value.data) {
+        result.value.data.forEach(r => allIds.add(r.greenhouse_id));
+        console.log(`[BJ] Radius search: ${result.value.pill.values[0]} (${result.value.pill.radius_mi}mi) → ${result.value.data.length} jobs`);
       }
-      console.log(`[BJ] Radius search: ${pill.values[0]} (${pill.radius_mi}mi) → ${data?.length || 0} jobs`);
-    } catch (e) {
-      console.warn('[BJ] Radius search failed for', pill.values[0], e);
     }
   }
 
@@ -77,32 +77,44 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
     'MT': ['valletta','malta'],
   };
 
-  for (const pill of statePills) {
+  // State search — batched for non-ambiguous, parallel for ambiguous (N+1 fix v3.82)
+  const simpleCodes = statePills.filter(p => !ambiguousExclusions[p.stateCode]).map(p => p.stateCode);
+  const ambiguousPills = statePills.filter(p => !!ambiguousExclusions[p.stateCode]);
+
+  // Single query for all non-ambiguous states
+  if (simpleCodes.length > 0) {
     try {
-      let query = sb
+      const { data, error } = await sb
         .from('ats_jobs')
         .select('greenhouse_id')
         .eq('status', 'open')
-        .eq('loc_state', pill.stateCode);
-
-      // For ambiguous codes, exclude jobs with known foreign city/country names in location
-      const exclusions = ambiguousExclusions[pill.stateCode];
-      if (exclusions) {
-        for (const excl of exclusions) {
-          query = query.not('location', 'ilike', `%${excl}%`);
-        }
-        // Also exclude if loc_country is set to the state code itself (means the country, not the state)
-        query = query.not('loc_country', 'eq', pill.stateCode);
-        query = query.not('location', 'ilike', 'Remote -%');
-      }
-
-      const { data, error } = await query;
+        .in('loc_state', simpleCodes);
       if (!error && data) {
         data.forEach(r => allIds.add(r.greenhouse_id));
       }
-      console.log(`[BJ] State search: ${pill.stateCode} → ${data?.length || 0} jobs`);
+      console.log(`[BJ] Batched state search: [${simpleCodes.join(',')}] → ${data?.length || 0} jobs`);
     } catch (e) {
-      console.warn('[BJ] State search failed for', pill.stateCode, e);
+      console.warn('[BJ] Batched state search failed', e);
+    }
+  }
+
+  // Parallel queries for ambiguous states (need exclusion filters)
+  if (ambiguousPills.length > 0) {
+    const ambigResults = await Promise.allSettled(ambiguousPills.map(pill => {
+      let query = sb.from('ats_jobs').select('greenhouse_id').eq('status', 'open').eq('loc_state', pill.stateCode);
+      const exclusions = ambiguousExclusions[pill.stateCode];
+      for (const excl of exclusions) {
+        query = query.not('location', 'ilike', `%${excl}%`);
+      }
+      query = query.not('loc_country', 'eq', pill.stateCode);
+      query = query.not('location', 'ilike', 'Remote -%');
+      return query.then(r => ({ pill, ...r }));
+    }));
+    for (const result of ambigResults) {
+      if (result.status === 'fulfilled' && !result.value.error && result.value.data) {
+        result.value.data.forEach(r => allIds.add(r.greenhouse_id));
+        console.log(`[BJ] Ambiguous state search: ${result.value.pill.stateCode} → ${result.value.data.length} jobs`);
+      }
     }
   }
 
@@ -728,32 +740,43 @@ async function updateJobStatsFromFilters(filters) {
       }
     }
 
-    for (const sf of effectiveFilters) {
+    // Parallelize all stats queries across all filters (N+1 fix v3.82)
+    // Before: N filters × 3 sequential queries = 3N round-trips
+    // After: all queries fired in parallel = 1 round-trip (effectively)
+    const statsPromises = effectiveFilters.flatMap(sf => {
       const locIds = sf._statsLocationIds || null;
 
-      // Total count
       let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q = buildFilterQuery(sf, q, locIds);
       q = excludeHidden(q);
-      const { count: c1 } = await q;
-      total += (c1 || 0);
 
-      // Last 24h count
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q2 = buildFilterQuery(sf, q2, locIds);
       q2 = excludeHidden(q2);
       q2 = q2.gte('updated_at', last24h.toISOString());
-      const { count: c2 } = await q2;
-      todayCount += (c2 || 0);
 
-      // New since last login
+      const promises = [
+        q.then(r => ({ type: 'total', count: r.count || 0 })),
+        q2.then(r => ({ type: 'today', count: r.count || 0 })),
+      ];
+
       if (lastViewDate) {
         let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
         qLogin = buildFilterQuery(sf, qLogin, locIds);
         qLogin = excludeHidden(qLogin);
         qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
-        const { count: cLogin } = await qLogin;
-        newSinceLoginCount += (cLogin || 0);
+        promises.push(qLogin.then(r => ({ type: 'login', count: r.count || 0 })));
+      }
+
+      return promises;
+    });
+
+    const statsResults = await Promise.allSettled(statsPromises);
+    for (const r of statsResults) {
+      if (r.status === 'fulfilled') {
+        if (r.value.type === 'total') total += r.value.count;
+        else if (r.value.type === 'today') todayCount += r.value.count;
+        else if (r.value.type === 'login') newSinceLoginCount += r.value.count;
       }
     }
 

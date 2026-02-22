@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.81';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — index maintenance: dropped 7 unused indexes (~104MB), added health monitor');
+const BJ_VERSION = 'v3.82';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — N+1 query fixes: parallelized radius/state/stats/velocity queries');
 
 // Auth
 async function init() {

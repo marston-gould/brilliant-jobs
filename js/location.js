@@ -1202,25 +1202,22 @@ async function updateSavedFilterCounts() {
         locIds = await getLocationMatchIds(wh, whnot, tuningLoc, sf.includeRemote === true);
       }
 
-      // Today (last 24h)
+      // Parallel velocity counts: 24h, 7d, 30d (N+1 fix v3.82)
       let q1 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q1 = buildFilterQuery(sf, q1, locIds);
       q1 = q1.gte('updated_at', last24h.toISOString());
-      const r1 = await q1;
-      const c1 = r1.error ? 0 : (r1.count || 0);
 
-      // 7 days
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q2 = buildFilterQuery(sf, q2, locIds);
       q2 = q2.gte('updated_at', weekAgo.toISOString());
-      const r2 = await q2;
-      const c2 = r2.error ? 0 : (r2.count || 0);
 
-      // 30 days
       let q3 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q3 = buildFilterQuery(sf, q3, locIds);
       q3 = q3.gte('updated_at', monthAgo.toISOString());
-      const r3 = await q3;
+
+      const [r1, r2, r3] = await Promise.all([q1, q2, q3]);
+      const c1 = r1.error ? 0 : (r1.count || 0);
+      const c2 = r2.error ? 0 : (r2.count || 0);
       const c3 = r3.error ? 0 : (r3.count || 0);
 
       console.log(`Filter "${sf.name}": today=${c1}, 7d=${c2}, 30d=${c3}`);
