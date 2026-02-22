@@ -169,7 +169,7 @@
 
   <h2 class="sdiv">Jobs Per Capita</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#22c55e">● Best: 8+</span>&ensp;<span style="color:#3b82f6">● Good: 4-8</span>&ensp;<span style="color:#8b5cf6">● Low: 2-4</span>&ensp;<span style="color:#7884a8">● Sparse: &lt;2</span></div>
+    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#60a5fa">● Best: 8+</span>&ensp;<span style="color:#3b82f6">● Good: 4-8</span>&ensp;<span style="color:#2563eb">● Moderate: 2-4</span>&ensp;<span style="color:#1e40af">● Low: &lt;2</span></div>
     <div id="percapita-map" style="width:100%;height:500px"></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> San Francisco leads with 22.9 open jobs per 10,000 residents &mdash; nearly 5x the national average. Silicon Valley (San Jose: 10.0) and Austin (9.7) round out the top 3, reflecting the concentration of tech hiring in these metros relative to their population.</div>
@@ -487,25 +487,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     var topMetros=[['San Francisco','CA',10289,22.9],['New York','NY',8596,4.4],['Los Angeles','CA',4374,3.4],['Washington','DC',2736,4.3],['Boston','MA',2342,4.8],['Chicago','IL',2337,2.5],['Dallas','TX',2305,2.9],['Austin','TX',2240,9.7],['Seattle','WA',2058,5.1],['San Jose','CA',1904,10.0],['Phoenix','AZ',1869,3.8],['Atlanta','GA',1703,2.8],['Denver','CO',1166,4.0],['Miami','FL',1013,1.7],['Houston','TX',931,1.3],['San Diego','CA',781,2.4],['Charlotte','NC',762,2.9],['Philadelphia','PA',737,1.2],['Las Vegas','NV',684,3.0],['Tampa','FL',585,1.8],['Nashville','TN',576,3.0],['Raleigh','NC',564,4.0],['Minneapolis','MN',548,1.5],['Portland','OR',527,2.1],['Salt Lake City','UT',412,3.4]];
     var tbody = document.getElementById('metro-tbody');
     if (tbody) {
+      var maxJobs = Math.max.apply(null,topMetros.map(function(m){return m[2]}));
       topMetros.forEach(function(m,i) {
         var tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
         var pcText = m[3] !== null ? m[3].toFixed(1) : '—';
-        var pcColor = m[3] >= 8 ? '#22c55e' : m[3] >= 4 ? '#3b82f6' : m[3] >= 2 ? '#8b5cf6' : '#7884a8';
+        // Blue intensity by job count (consistent blue palette)
+        var jobPct = m[2]/maxJobs;
+        var jobAlpha = (0.3 + jobPct * 0.7).toFixed(2);
+        var jobColor = 'rgba(59,130,246,' + jobAlpha + ')';
+        // Per-capita: blue intensity scale (light to bright)
+        var pcColor = m[3] >= 8 ? '#60a5fa' : m[3] >= 4 ? '#3b82f6' : m[3] >= 2 ? '#2563eb' : '#1e40af';
+        var pcAlpha = m[3] >= 8 ? '1' : m[3] >= 4 ? '0.85' : m[3] >= 2 ? '0.65' : '0.45';
         tr.innerHTML = '<td style="padding:6px 12px;color:var(--text-faint)">'+(i+1)+'</td>'
           +'<td style="padding:6px 12px;color:var(--text)">'+m[0]+', '+m[1]+'</td>'
-          +'<td style="padding:6px 12px;text-align:right;color:var(--text);font-weight:600">'+m[2].toLocaleString()+'</td>'
-          +'<td style="padding:6px 12px;text-align:right;color:'+pcColor+';font-weight:600">'+pcText+'</td>';
+          +'<td style="padding:6px 12px;text-align:right;color:'+jobColor+';font-weight:600">'+m[2].toLocaleString()+'</td>'
+          +'<td style="padding:6px 12px;text-align:right;color:'+pcColor+';opacity:'+pcAlpha+';font-weight:600">'+pcText+'</td>';
         tbody.appendChild(tr);
       });
     }
 
     // ── Per-Capita Bubble Map ──
-    var pcMetros=[['San Francisco','CA',37.7749,-122.4194,10289,22.9],['San Jose','CA',37.3382,-121.8863,1904,10.0],['Austin','TX',30.2672,-97.7431,2240,9.7],['Seattle','WA',47.6062,-122.3321,2058,5.1],['Boston','MA',42.3601,-71.0589,2342,4.8],['New York','NY',40.7128,-74.006,8596,4.4],['Washington','DC',38.9072,-77.0369,2736,4.3],['Denver','CO',39.7392,-104.9903,1166,4.0],['Raleigh','NC',35.7796,-78.6382,564,4.0],['Phoenix','AZ',33.4484,-112.074,1869,3.8],['Los Angeles','CA',34.0522,-118.2437,4374,3.4],['Salt Lake City','UT',40.7608,-111.891,412,3.4],['Las Vegas','NV',36.1699,-115.1398,684,3.0],['Nashville','TN',36.1627,-86.7816,576,3.0],['Dallas','TX',32.7767,-96.797,2305,2.9],['Charlotte','NC',35.2271,-80.8431,762,2.9],['Atlanta','GA',33.749,-84.388,1703,2.8],['Chicago','IL',41.8781,-87.6298,2337,2.5],['San Diego','CA',32.7157,-117.1611,781,2.4],['Portland','OR',45.5152,-122.6784,527,2.1],['Dallas','TX',32.7767,-96.797,2305,1.9],['Tampa','FL',27.9506,-82.4572,585,1.8],['Miami','FL',25.7617,-80.1918,1013,1.7],['Phoenix','AZ',33.4484,-112.074,1869,1.7],['Minneapolis','MN',44.9778,-93.265,548,1.5],['Houston','TX',29.7604,-95.3698,931,1.3],['Philadelphia','PA',39.9526,-75.1652,737,1.2]];
-    // Remove duplicates (Dallas appears twice above from city mapping)
-    var pcSeen = {};
-    pcMetros = pcMetros.filter(function(m) { var k=m[0]+m[1]; if(pcSeen[k]) return false; pcSeen[k]=true; return true; });
-
+    var pcMetros=[['San Francisco','CA',37.7749,-122.4194,10289,22.9],['San Jose','CA',37.3382,-121.8863,1904,10.0],['Austin','TX',30.2672,-97.7431,2240,9.7],['Seattle','WA',47.6062,-122.3321,2058,5.1],['Boston','MA',42.3601,-71.0589,2342,4.8],['New York','NY',40.7128,-74.006,8596,4.4],['Washington','DC',38.9072,-77.0369,2736,4.3],['Denver','CO',39.7392,-104.9903,1166,4.0],['Raleigh','NC',35.7796,-78.6382,564,4.0],['Phoenix','AZ',33.4484,-112.074,1869,3.8],['Los Angeles','CA',34.0522,-118.2437,4374,3.4],['Salt Lake City','UT',40.7608,-111.891,412,3.4],['Las Vegas','NV',36.1699,-115.1398,684,3.0],['Nashville','TN',36.1627,-86.7816,576,3.0],['Dallas','TX',32.7767,-96.797,2305,2.9],['Charlotte','NC',35.2271,-80.8431,762,2.9],['Atlanta','GA',33.749,-84.388,1703,2.8],['Chicago','IL',41.8781,-87.6298,2337,2.5],['San Diego','CA',32.7157,-117.1611,781,2.4],['Portland','OR',45.5152,-122.6784,527,2.1],['Tampa','FL',27.9506,-82.4572,585,1.8],['Miami','FL',25.7617,-80.1918,1013,1.7],['Minneapolis','MN',44.9778,-93.265,548,1.5],['Houston','TX',29.7604,-95.3698,931,1.3],['Philadelphia','PA',39.9526,-75.1652,737,1.2]];
     var pcEl = document.getElementById('percapita-map');
     if (pcEl && typeof echarts !== 'undefined') {
       var pcChart = echarts.init(pcEl, null, {renderer:'canvas'});
@@ -531,9 +534,9 @@ document.addEventListener('DOMContentLoaded', async function() {
           formatter:function(p){if(!p.value)return '';return '<b>'+p.name+'</b><br/>'+p.value[2]+' jobs per 10K<br/>'+Number(p.value[3]).toLocaleString()+' total jobs';}},
         series:[{type:'scatter',coordinateSystem:'geo',
           data:pcSeriesData,
-          symbolSize: function(val) { return Math.max(8, Math.min(50, (val[2]/maxPC) * 50)); },
-          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(34,197,94,0.75)':v>=4?'rgba(59,130,246,0.7)':v>=2?'rgba(139,92,246,0.6)':'rgba(120,132,168,0.5)';},
-            borderColor:'rgba(255,255,255,0.3)',borderWidth:1},
+          symbolSize: function(val) { return Math.max(10, Math.min(55, Math.sqrt(val[2]/maxPC) * 55)); },
+          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(96,165,250,0.85)':v>=4?'rgba(59,130,246,0.75)':v>=2?'rgba(37,99,235,0.65)':'rgba(30,64,175,0.50)';},
+            borderColor:'rgba(147,197,253,0.4)',borderWidth:1},
           label:{show:true,position:'right',color:'#8a92a9',fontSize:9,fontFamily:'JetBrains Mono',
             formatter:function(p){return p.name.split(',')[0];}}
         }],

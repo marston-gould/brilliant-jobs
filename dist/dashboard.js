@@ -13237,7 +13237,7 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.59';
+const BJ_VERSION = 'v3.60';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth
