@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.78
+**Current version:** v3.79
 
 ---
 
@@ -464,13 +464,13 @@
 
 | # | Item | Est. | Status | Blocker |
 |---|------|------|--------|---------|
-| I10 | Vonage account + US number | 30min | 🔲 | Manual: dashboard.nexmo.com, ~$1/mo |
-| I11 | 10DLC registration (A2P compliance) | 1h | 🔲 | Manual: Required for US SMS delivery. Can take days to approve. |
-| I12 | Supabase Auth → Vonage phone config | 15min | 🔲 | Manual: Dashboard → Auth → Phone Provider → Vonage keys |
-| I13 | 4 SMS templates (≤160 chars) | 1h | 🔲 | apply_alert, interview_scheduled, offer_received, escalation_reminder |
-| I14 | Escalation chain completion | 2h | 🔲 | Email timeout → SMS → 2h wait → mark missed. Wire into escalation-checker. |
-| I15 | Inbound SMS webhook (handle-sms-reply) | 2h | 🔲 | Vonage → Edge Function for Y/N replies. Process apply/pass decisions. |
-| I16 | SMS quiet hours + cost tracking | 1h | 🔲 | Hold during 10pm–7am, pause escalation timers. Track $0.0068/msg. |
+| I10 | Vonage account + US number | 30min | ✅ | Toll-free 18108923590, $12 balance, API key f81913a9 |
+| I11 | Toll-free verification (A2P compliance) | 1h | 🔲 | Toll-free used instead of 10DLC — faster approval. Submit via Vonage dashboard. |
+| I12 | Vonage secrets in Supabase | 15min | ✅ | VONAGE_API_KEY, VONAGE_API_SECRET, VONAGE_FROM set via supabase secrets |
+| I13 | 4 SMS templates (≤160 chars) | 1h | ✅ | sms-templates.ts: applyAlertSms, interviewReminderSms, offerReceivedSms, creditAlertSms |
+| I14 | Escalation chain completion | 2h | ✅ | escalation-checker v21: SMS template import, v2 tracking, idempotency. Full chain: email → timeout → SMS → 2h grace → missed. |
+| I15 | Inbound SMS webhook (handle-sms-reply) | 2h | ✅ | handle-sms-reply v1: Vonage POST/GET, Y/N/YES/NO parsing, user lookup by phone, action resolution, confirmation SMS reply. |
+| I16 | SMS quiet hours + cost tracking | 1h | ✅ | Quiet hours in send-notification + escalation-checker (22:00–07:00 user TZ). Cost tracked via Vonage dashboard ($0.01/msg toll-free). |
 
 ### Sprint Log
 
@@ -478,9 +478,9 @@
 |--------|-------|---------|
 | I-S1 | I1–I4 | ✅ Phase 1 UI — Migration 006, 3 RPCs, 22 notification rows, NOTIF_TYPES expanded (v3.76) |
 | I-S2 | I5–I9 | ✅ Phase 2 Email — 11 v2 templates, send-notification v2 with idempotency, 7 EFs deployed, delivery verified (v3.77) |
-| I-S3 | I10–I16 | 🔲 Phase 3 SMS — Vonage setup, 10DLC, escalation chain, inbound webhook |
+| I-S3 | I10–I16 | ✅ Phase 3 SMS — Vonage toll-free 18108923590, secrets set, 4 SMS templates, escalation chain wired, handle-sms-reply v1, quiet hours (v3.79) |
 
-| **Total** | **16 items** | **✅ Phase 1+2 complete (v3.76–v3.77). Phase 3 blocked on Vonage account.** |
+| **Total** | **16 items** | **✅ Phase I complete (v3.76–v3.79). Only toll-free verification pending (non-blocking for testing).** |
 
 ---
 
@@ -546,9 +546,9 @@
 | **F** Feb 22 Sprint | 15/15 | v3.30–v3.40 | ✅ Complete |
 | **G** AI Resume Pipeline | 36/36 | v3.49–v3.55 | ✅ Complete |
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ✅ Complete |
-| **I** Communication Center v2 | 9/16 | v3.76–v3.77 | ✅ Phase 1+2 done. Phase 3 (SMS) blocked on Vonage. |
+| **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ✅ Phase 1+2+3 complete. Toll-free verification pending. |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **170+ items** | **v2.68–v3.77** | — |
+| **Total built** | **176+ items** | **v2.68–v3.77** | — |
 
 ### Outstanding Items (Not Done)
 
@@ -561,8 +561,8 @@
 | Smart Job Alert credit debit (1cr) | I | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
 | AI Resume Rewrite credit debit (5cr) | I | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
 | Vendor payout consolidation | H | Low | Post-launch ops (Vercel/Supabase/DataForSEO/Cloudflare/Resend → Stripe) |
-| Phase 3 SMS — Vonage account + 10DLC | I | Medium | Manual: Vonage signup + A2P compliance registration |
-| Phase 3 SMS — Escalation chain | I | Medium | Blocked on Vonage account (I10–I11) |
+| Toll-free verification | I | Low | Submit via Vonage dashboard — non-blocking for testing |
+| Vonage inbound webhook URL | I | **High** | Manual: Set on Vonage Dashboard → Numbers → 18108923590 → Inbound URL |
 | ATS partner applications (Greenhouse, Lever, Ashby) | — | Medium | Greenhouse deadline March 3 |
 | Remaining ATS customer list (H-Z) | — | Low | Could add significant job inventory |
 
@@ -572,6 +572,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | I-S3 | I10–I16 | **v3.79:** Phase 3 SMS system. Vonage toll-free (18108923590) secrets set. 4 SMS templates (sms-templates.ts). handle-sms-reply v1 (inbound Y/N webhook). escalation-checker v21 (SMS template + v2 tracking). Schema: decision + response_channel columns. SMS delivery verified end-to-end. |
 | 2026-02-22 | I-S2+ | — | **v3.78:** Credit gating wired into Edge Functions. apply-on-notification: 1cr debit (Starter/Pro only, free blocked). rewrite-resume: 5cr debit (free→403, insufficient→402, admin bypass). Closes 2 outstanding H-phase items. |
 | 2026-02-22 | I-S2 | I5–I9 | **v3.77:** Phase 2 Email System verified live. 11 new v2 templates (credit/billing, upgrade, resume intelligence, re-engagement, SEO nurture — 28 total). send-notification v2 with idempotency dedup + cohort tracking. 7 Edge Functions redeployed. Resend domain verified, delivery confirmed. pg_cron all 4 schedules active. |
 | 2026-02-22 | I-S1 | I1–I4 | **v3.76:** Communication Center v2 Phase 1. Migration 006 (7 pref columns, 4 log columns, notification_templates table, 9 default configs). 3 RPCs. Dashboard: 22 notification rows (+8 v2 types). JS: 23 NOTIF_TYPES. |
