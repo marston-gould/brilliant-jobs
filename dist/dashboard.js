@@ -1233,6 +1233,13 @@ async function updateJobStatsFromFilters(filters) {
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
     console.error('Stats update error:', e);
+    // Fallback: compute from loaded jobs if available
+    try {
+      var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+      var cos = new Set();
+      jobs.forEach(function(j) { if (j.company_slug) cos.add(j.company_slug); });
+      updateJobStats(jobs.length, cos.size, 0, 0);
+    } catch (e2) {}
   }
 }
 
@@ -2776,12 +2783,20 @@ function buildReadinessSide(ri, data) {
 
   var html = '<div class="readiness-side" id="readiness-side-' + ri + '">';
 
-  // Header with score and re-analyze button
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
-  html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
-  html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
-  html += '</div>';
+  // Header with score and re-analyze button (only if multiple filters to show aggregate)
+  if (filterNames.length > 1) {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+    html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '</div>';
+  } else {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+    html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '</div>';
+  }
 
   // Per-filter breakdown
   for (var fi = 0; fi < filterNames.length; fi++) {
@@ -2792,7 +2807,9 @@ function buildReadinessSide(ri, data) {
 
     html += '<div style="margin-bottom:10px;padding-bottom:10px;' + (fi < filterNames.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
-    html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    if (filterNames.length > 1) {
+      html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    }
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
     if (fs.ai) {
       html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';
@@ -7691,8 +7708,7 @@ function updateResumeFilterCta() {
   var hasResumes = (typeof resumes !== 'undefined' ? resumes : []).some(function(r) {
     return r.extractedText && r.extractedText.length > 100 && !r.archived;
   });
-  var hasFilters = savedFilters.length > 0;
-  cta.style.display = (hasResumes && !hasFilters) ? '' : 'none';
+  cta.style.display = hasResumes ? '' : 'none';
 }
 
 function initAiFilterButton() {
@@ -11985,8 +12001,15 @@ function aggregateStats(rows) {
   // Location aggregation for map + metro list (US only)
   s.stateCounts = {};
   s.cityCounts = {};
+  s.locationCounts = {};
+  s.locationsTotal = 0;
   var US_ST = {AL:1,AK:1,AZ:1,AR:1,CA:1,CO:1,CT:1,DC:1,DE:1,FL:1,GA:1,HI:1,ID:1,IL:1,IN:1,IA:1,KS:1,KY:1,LA:1,ME:1,MD:1,MA:1,MI:1,MN:1,MS:1,MO:1,MT:1,NE:1,NV:1,NH:1,NJ:1,NM:1,NY:1,NC:1,ND:1,OH:1,OK:1,OR:1,PA:1,RI:1,SC:1,SD:1,TN:1,TX:1,UT:1,VT:1,VA:1,WA:1,WV:1,WI:1,WY:1};
   rows.forEach(function(r) {
+    var loc = (r.location || '').trim();
+    if (loc && loc.toLowerCase() !== 'remote') {
+      s.locationsTotal++;
+      s.locationCounts[loc.toLowerCase()] = (s.locationCounts[loc.toLowerCase()]||0) + 1;
+    }
     if (r.loc_state && US_ST[r.loc_state]) {
       s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
       if (r.loc_city) {
@@ -12095,8 +12118,8 @@ function renderSeniorityBars(stats) {
     return;
   }
 
-  // Ordered Entry → C-Suite (correct career ladder: Manager before Lead)
-  var SENIORITY_ORDER = ['Intern','Entry','Mid','Senior','Staff','Manager','Lead','Principal','Director','VP','C-Suite'];
+  // Ordered Entry → C-Suite (correct career ladder)
+  var SENIORITY_ORDER = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Head','Principal','Sr Manager','Manager','Sr Director','Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
@@ -12120,7 +12143,7 @@ function renderSeniorityBars(stats) {
     tooltip: Object.assign({ trigger:'item',
       formatter:function(p){ var pct=stats.total>0?Math.round(p.value/stats.total*100):0; return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+pct+'%)'; }}, ttip()),
     legend: { orient:'vertical', right:4, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:10},
-      formatter:function(name){var d=data.find(function(x){return x.name===name;}); return name+(d?' ('+d.value+')':'');}},
+      formatter:function(name){var d=data.find(function(x){return x.name===name;}); var total=data.reduce(function(a,b){return a+b.value;},0); var pct=d&&total>0?Math.round(d.value/total*100):0; return name+(d?' ('+pct+'%)':'');}},
     series: [{ type:'pie', radius:['38%','68%'], center:['35%','50%'],
       data:data.map(function(d,i){return {name:d.name, value:d.value, itemStyle:{color:senColors[i%senColors.length]}};}),
       label:{show:false},
@@ -13277,7 +13300,7 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.61';
+const BJ_VERSION = 'v3.62';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
 
 // Auth

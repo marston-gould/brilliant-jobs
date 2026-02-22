@@ -766,6 +766,13 @@ async function updateJobStatsFromFilters(filters) {
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
     console.error('Stats update error:', e);
+    // Fallback: compute from loaded jobs if available
+    try {
+      var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+      var cos = new Set();
+      jobs.forEach(function(j) { if (j.company_slug) cos.add(j.company_slug); });
+      updateJobStats(jobs.length, cos.size, 0, 0);
+    } catch (e2) {}
   }
 }
 
