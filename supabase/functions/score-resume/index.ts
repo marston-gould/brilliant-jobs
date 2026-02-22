@@ -1,7 +1,8 @@
 // supabase/functions/score-resume/index.ts
 // Edge Function: AI-powered resume scoring via Anthropic API
+// Tiers: 'basic' (single Haiku call) or 'premium' (multi-agent pipeline)
 // Modes: 'corpus' (resume vs filter JDs) or 'single' (resume vs one JD)
-// Pro users get full analysis; free users get score + summary only
+// Both tiers consume credits via entitlements system
 // Rate limited: 20 AI calls per user per day
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -10,6 +11,9 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+const SONNET_MODEL = 'claude-sonnet-4-5-20250929';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': 'https://brilliantjobs.app',
@@ -40,14 +44,71 @@ function stripHtml(html: string): string {
 }
 
 // ─── Cost estimation ───
-function estimateCost(resumeLen: number, jdLen: number): number {
+function estimateCost(tier: string, resumeLen: number, jdLen: number): number {
   const inputTokens = Math.ceil((resumeLen + jdLen) / 4);
+  if (tier === 'premium') {
+    // Pass 1: 2x Haiku calls (parallel), Pass 2-3: 2x Sonnet calls
+    const haikuCost = (inputTokens * 0.80 / 1000000 + 2000 * 4.0 / 1000000) * 2;
+    // Sonnet 4.5: $3/1M input, $15/1M output
+    const sonnetInput = Math.ceil((4000 + jdLen) / 4); // structured data is smaller
+    const sonnetCost = (sonnetInput * 3.0 / 1000000 + 3000 * 15.0 / 1000000) * 2;
+    return Math.round((haikuCost + sonnetCost) * 10000) / 100;
+  }
+  // Basic: single Haiku call
   const outputTokens = 800;
-  // Haiku 4.5 pricing: $0.80/1M input, $4/1M output
   return Math.round((inputTokens * 0.80 / 1000000 + outputTokens * 4.0 / 1000000) * 10000) / 100;
 }
 
-// ─── System prompts ───
+// ─── Anthropic API caller ───
+async function callAnthropic(
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number = 3000,
+  temperature: number = 0
+): Promise<{ text: string; ok: boolean; error?: string }> {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`[score-resume] Anthropic ${model} error:`, res.status, errBody);
+      return { text: '', ok: false, error: `API error ${res.status}` };
+    }
+
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    return { text, ok: true };
+  } catch (e) {
+    console.error(`[score-resume] Anthropic ${model} exception:`, e);
+    return { text: '', ok: false, error: String(e) };
+  }
+}
+
+// ─── JSON parser with retry ───
+function parseJSON(text: string): any {
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  return JSON.parse(cleaned);
+}
+
+// ════════════════════════════════════════════════════════════
+// BASIC TIER — System Prompts (existing, unchanged)
+// ════════════════════════════════════════════════════════════
+
 const SYSTEM_PROMPT_CORPUS = `You are a Senior Career Strategist and Resume Analyst for Brilliant Jobs. You evaluate resumes with the depth of a hiring manager who has reviewed 10,000+ applications. Your analysis goes far beyond keyword matching.
 
 SCORING FRAMEWORK (weight each dimension):
@@ -129,7 +190,293 @@ Output ONLY a JSON object with these fields:
 
 No markdown, no code fences, no preamble. JSON only.`;
 
-// ─── Main handler ───
+
+// ════════════════════════════════════════════════════════════
+// PREMIUM TIER — Agent System Prompts
+// ════════════════════════════════════════════════════════════
+
+const AGENT_RESUME_STRUCTURER = `You are a Resume Parser. Extract structured data from the resume text below.
+Do NOT evaluate, score, or judge the resume. Only extract and organize.
+
+Output ONLY a JSON object with these fields:
+
+- career_timeline: array of {title: string, company: string, start_date: string, end_date: string|"present", duration_months: int, scope_signals: [string], key_achievements: [string]}
+- skills_inventory: array of {skill: string, category: "technical"|"soft"|"domain"|"tool"|"certification", proficiency_signal: "built"|"architected"|"scaled"|"managed"|"led"|"used"|"familiar", evidence: string}
+- quantified_achievements: array of {metric: string, value: string, context: string} — ONLY items with actual numbers/percentages
+- education: array of {degree: string, institution: string, year: string|null}
+- certifications: array of {name: string, issuer: string|null, year: string|null}
+- tone_profile: {action_verb_quality: "strong"|"mixed"|"weak", quantification_density: "high"|"medium"|"low", seniority_language: "executive"|"senior"|"mid"|"junior", notable_jargon: [string]}
+- red_flags: [string] — gaps >6 months, tenures <1yr, title inconsistencies, scope decreases
+- raw_stats: {total_years_experience: number, number_of_roles: int, longest_tenure_years: number, industries: [string]}
+
+No markdown, no code fences, no preamble. JSON only.`;
+
+const AGENT_JD_SYNTHESIZER = `You are a Job Description Analyst. Analyze the provided job descriptions as a group and extract the composite requirements profile.
+Do NOT compare to any resume. Only analyze the JDs themselves.
+
+Output ONLY a JSON object with these fields:
+
+- core_requirements: array of {skill: string, prevalence_pct: int, category: "technical"|"soft"|"domain"|"tool"|"certification"} — items in >50% of JDs
+- nice_to_haves: array of {skill: string, prevalence_pct: int, category: string} — items in 20-50% of JDs
+- seniority_profile: {expected_level: string, years_experience_range: string, management_expected: boolean, scope_signals: [string]}
+- industry_classification: {primary_industry: string, sub_domain: string, adjacent_industries: [string]}
+- compensation_data: {salary_min_median: number|null, salary_max_median: number|null, sample_size: int}
+- role_archetype: string — 1-2 sentence description of what this cluster really asks for
+- outlier_requirements: array of {skill: string, prevalence_pct: int} — unusual items in <20% of JDs
+- language_patterns: {common_verbs: [string], common_nouns: [string], jargon: [string]}
+
+Ignore EEO/legal boilerplate entirely. Do NOT count diversity statements, equal opportunity language, or accommodation notices as requirements.
+
+No markdown, no code fences, no preamble. JSON only.`;
+
+function buildMatchAnalystPrompt(industryHint: string, goldStandard: string | null): string {
+  const calibrationBlock = goldStandard
+    ? `\n\n<reference_example industry="${industryHint}" score="85">\n${goldStandard}\n</reference_example>\n\nUse this as your calibration anchor. An 85 in ${industryHint} looks like the example above. Score the current candidate relative to this standard.`
+    : `\n\nNo industry calibration reference is available. Score based on your general expertise, noting that scores should reflect: 90+ = exceptional match, 80-89 = strong, 70-79 = good with gaps, 60-69 = partial, below 60 = significant gaps.`;
+
+  return `You are a Senior Hiring Analyst with 15 years of experience reviewing candidates for ${industryHint} roles. You receive the STRUCTURED profile of a candidate and the COMPOSITE requirements of a job cluster. Both have already been parsed — your job is pure analysis.
+
+Score and analyze using these weighted dimensions:
+
+1. CAREER TRAJECTORY (25%): Does the timeline show progression toward this role? Title escalation, scope growth, tenure patterns, industry relevance.
+2. EXPERIENCE & IMPACT (25%): Do quantified achievements match the scope these JDs expect? Revenue/team/budget scale comparison.
+3. SKILLS & TOOLS (20%): Core requirements coverage — how many are present with strong evidence vs. missing entirely?
+4. QUALITATIVE ALIGNMENT (15%): Industry language match, seniority signal alignment, cultural fit indicators.
+5. EDUCATION & CREDENTIALS (5%): Requirements met or exceeded?
+6. PRESENTATION & FORMAT (10%): Action verb quality, quantification density, redundancy.
+${calibrationBlock}
+
+Output ONLY a JSON object with:
+- overall_score: int 0-100 (weighted across all dimensions)
+- dimension_scores: {trajectory: int, impact: int, skills: int, alignment: int, education: int, presentation: int}
+- fit_status: "Strong Match" | "Good Match" | "Partial Match" | "Weak Match"
+- executive_summary: string — 3-4 sentences, the honest assessment
+- strength_map: array of {area: string, evidence: string, relevance: string}
+- gap_analysis: array of {requirement: string, severity: "critical"|"important"|"minor", current_state: string, what_jds_expect: string}
+- career_trajectory_assessment: string — 2-3 sentences
+- scope_comparison: {candidate_scope: string, jd_expected_scope: string, delta: string}
+- level_fit: {best_level: string, reasoning: string}
+- calibration_note: string — contextual note on scoring confidence
+
+No markdown, no code fences, no preamble. JSON only.`;
+}
+
+const AGENT_CAREER_COACH = `You are a Career Coach specializing in resume optimization. You receive the candidate's structured resume, the JD requirements profile, and the gap analysis from the scoring stage.
+
+Your job is to give SPECIFIC, ACTIONABLE recommendations. Every suggestion must reference a specific part of the resume and a specific requirement. No generic advice.
+
+Output ONLY a JSON object with:
+- priority_actions: array (max 3) of {action: string, why: string, expected_impact: string} — "If you only change 3 things"
+- rewrite_suggestions: array of {original_text: string, suggested_text: string, rationale: string} — specific before/after for resume bullets
+- missing_keyword_injections: array of {keyword: string, where_to_add: string, how_to_phrase: string}
+- title_translations: array of {current_title: string, suggested_title: string, reasoning: string}
+- achievement_prompts: array of {weak_bullet: string, questions_to_quantify: [string]} — help add metrics to vague bullets
+- format_improvements: [string] — structural changes
+- gap_bridging: array of {gap: string, bridge_strategy: string} — how to address missing reqs without fabricating
+- competitive_positioning: string — 2-3 sentences on positioning against other candidates
+
+No markdown, no code fences, no preamble. JSON only.`;
+
+
+// ════════════════════════════════════════════════════════════
+// GOLD STANDARD CALIBRATION
+// ════════════════════════════════════════════════════════════
+
+const GOLD_STANDARDS: Record<string, string> = {
+  'software_engineering': JSON.stringify({
+    overall_score: 85,
+    profile: "5+ years shipping production systems. Specific tech stack match to JD requirements. Quantified performance improvements (latency, uptime, throughput). Led team of 3-8 engineers. Progressed from IC to senior/lead. Evidence of system design and architecture decisions.",
+    dimension_scores: { trajectory: 88, impact: 85, skills: 90, alignment: 80, education: 80, presentation: 82 }
+  }),
+  'marketing': JSON.stringify({
+    overall_score: 85,
+    profile: "3+ years with campaign ownership. Metrics include CAC, LTV, ROAS, conversion rates. Tool proficiency across analytics (GA4, Mixpanel), automation (HubSpot, Marketo), and visualization (Tableau, Looker). Content portfolio with measurable engagement. Progressed from specialist to manager/director.",
+    dimension_scores: { trajectory: 82, impact: 88, skills: 85, alignment: 85, education: 75, presentation: 88 }
+  }),
+  'sales': JSON.stringify({
+    overall_score: 85,
+    profile: "3+ years with quota attainment history (>100% avg). Deal size progression visible. CRM proficiency (Salesforce, HubSpot). Territory or segment growth metrics. Client retention and expansion numbers. Progressed from SDR/BDR to AE to senior/enterprise.",
+    dimension_scores: { trajectory: 85, impact: 90, skills: 82, alignment: 85, education: 70, presentation: 85 }
+  }),
+  'data_science': JSON.stringify({
+    overall_score: 85,
+    profile: "3+ years building ML models in production. Specific framework proficiency (PyTorch, TensorFlow, scikit-learn). Statistical methodology knowledge. Business impact of models quantified (revenue lift, cost reduction, accuracy improvements). Published or presented work. SQL and pipeline tool proficiency.",
+    dimension_scores: { trajectory: 82, impact: 85, skills: 92, alignment: 80, education: 90, presentation: 78 }
+  }),
+  'product_management': JSON.stringify({
+    overall_score: 85,
+    profile: "4+ years owning product roadmap. Evidence of user research and data-driven decisions. Launched features with measurable adoption metrics. Cross-functional leadership (eng, design, marketing). Revenue or growth impact quantified. Strategic thinking visible in scope of initiatives.",
+    dimension_scores: { trajectory: 88, impact: 85, skills: 80, alignment: 88, education: 78, presentation: 85 }
+  })
+};
+
+function selectGoldStandard(industryClassification: any): { industry: string; standard: string | null } {
+  if (!industryClassification?.primary_industry) return { industry: 'general', standard: null };
+
+  const industry = industryClassification.primary_industry.toLowerCase();
+  const subDomain = (industryClassification.sub_domain || '').toLowerCase();
+
+  // Map to closest Gold Standard
+  if (industry.includes('software') || industry.includes('engineer') || industry.includes('tech') || subDomain.includes('developer'))
+    return { industry: 'Software Engineering', standard: GOLD_STANDARDS.software_engineering };
+  if (industry.includes('marketing') || industry.includes('growth') || subDomain.includes('seo') || subDomain.includes('content'))
+    return { industry: 'Marketing', standard: GOLD_STANDARDS.marketing };
+  if (industry.includes('sales') || industry.includes('business development') || subDomain.includes('account'))
+    return { industry: 'Sales', standard: GOLD_STANDARDS.sales };
+  if (industry.includes('data') || industry.includes('machine learning') || industry.includes('analytics') || subDomain.includes('ml'))
+    return { industry: 'Data Science', standard: GOLD_STANDARDS.data_science };
+  if (industry.includes('product') || subDomain.includes('product manag'))
+    return { industry: 'Product Management', standard: GOLD_STANDARDS.product_management };
+
+  return { industry: industryClassification.primary_industry, standard: null };
+}
+
+
+// ════════════════════════════════════════════════════════════
+// PREMIUM PIPELINE
+// ════════════════════════════════════════════════════════════
+
+async function runPremiumPipeline(resumeText: string, jdBlock: string, filterName: string, jdCount: number): Promise<any> {
+  const startTime = Date.now();
+
+  // ─── PASS 1: Parallel extraction (Haiku) ───
+  console.log('[score-resume:premium] Pass 1: extraction starting...');
+
+  const resumePrompt = `<resume_text>\n${resumeText.slice(0, 8000)}\n</resume_text>\n\nExtract structured data. Return ONLY JSON.`;
+  const jdPrompt = `<filter_name>${filterName || 'General'}</filter_name>\n\n<job_descriptions count="${jdCount}">\n${jdBlock}\n</job_descriptions>\n\nAnalyze these JDs as a group. Return ONLY JSON.`;
+
+  const [resumeResult, jdResult] = await Promise.all([
+    callAnthropic(HAIKU_MODEL, AGENT_RESUME_STRUCTURER, resumePrompt, 2500, 0),
+    callAnthropic(HAIKU_MODEL, AGENT_JD_SYNTHESIZER, jdPrompt, 2500, 0)
+  ]);
+
+  // If either extraction fails, signal fallback
+  if (!resumeResult.ok || !jdResult.ok) {
+    console.error('[score-resume:premium] Pass 1 failed:', resumeResult.error, jdResult.error);
+    return { fallback: true, reason: 'extraction_failed' };
+  }
+
+  let resumeProfile: any;
+  let jdProfile: any;
+  try {
+    resumeProfile = parseJSON(resumeResult.text);
+    jdProfile = parseJSON(jdResult.text);
+  } catch (e) {
+    console.error('[score-resume:premium] Pass 1 JSON parse failed');
+    return { fallback: true, reason: 'extraction_parse_failed' };
+  }
+
+  const pass1Ms = Date.now() - startTime;
+  console.log(`[score-resume:premium] Pass 1 complete in ${pass1Ms}ms`);
+
+  // ─── PASS 2: Analysis (Sonnet) ───
+  console.log('[score-resume:premium] Pass 2: analysis starting...');
+
+  const { industry, standard } = selectGoldStandard(jdProfile.industry_classification);
+  const matchAnalystPrompt = buildMatchAnalystPrompt(industry, standard);
+
+  const analysisInput = `<candidate_profile>\n${JSON.stringify(resumeProfile)}\n</candidate_profile>\n\n<job_requirements>\n${JSON.stringify(jdProfile)}\n</job_requirements>\n\nAnalyze and score. Return ONLY JSON.`;
+
+  const analysisResult = await callAnthropic(SONNET_MODEL, matchAnalystPrompt, analysisInput, 3000, 0);
+
+  let analysis: any;
+  if (!analysisResult.ok) {
+    console.error('[score-resume:premium] Pass 2 failed:', analysisResult.error);
+    // Return partial result — Pass 1 data only
+    return {
+      tier: 'premium',
+      partial: true,
+      partial_reason: 'analysis_failed',
+      resume_profile: resumeProfile,
+      jd_profile: jdProfile,
+      match_score: null,
+      passes_completed: 1,
+      timing_ms: Date.now() - startTime
+    };
+  }
+
+  try {
+    analysis = parseJSON(analysisResult.text);
+  } catch (e) {
+    console.error('[score-resume:premium] Pass 2 JSON parse failed');
+    return {
+      tier: 'premium',
+      partial: true,
+      partial_reason: 'analysis_parse_failed',
+      resume_profile: resumeProfile,
+      jd_profile: jdProfile,
+      match_score: null,
+      passes_completed: 1,
+      timing_ms: Date.now() - startTime
+    };
+  }
+
+  const pass2Ms = Date.now() - startTime;
+  console.log(`[score-resume:premium] Pass 2 complete in ${pass2Ms}ms`);
+
+  // ─── PASS 3: Coaching (Sonnet) ───
+  console.log('[score-resume:premium] Pass 3: coaching starting...');
+
+  const coachingInput = `<candidate_profile>\n${JSON.stringify(resumeProfile)}\n</candidate_profile>\n\n<job_requirements>\n${JSON.stringify(jdProfile)}\n</job_requirements>\n\n<gap_analysis>\n${JSON.stringify(analysis.gap_analysis || [])}\n</gap_analysis>\n\n<current_score>${analysis.overall_score || 'unknown'}</current_score>\n\nProvide specific, actionable coaching. Return ONLY JSON.`;
+
+  const coachingResult = await callAnthropic(SONNET_MODEL, AGENT_CAREER_COACH, coachingInput, 3000, 0.2);
+
+  let coaching: any = null;
+  if (coachingResult.ok) {
+    try {
+      coaching = parseJSON(coachingResult.text);
+    } catch (e) {
+      console.error('[score-resume:premium] Pass 3 JSON parse failed — returning without coaching');
+    }
+  } else {
+    console.error('[score-resume:premium] Pass 3 failed:', coachingResult.error);
+  }
+
+  const totalMs = Date.now() - startTime;
+  console.log(`[score-resume:premium] Pipeline complete in ${totalMs}ms (p1:${pass1Ms}ms p2:${pass2Ms - pass1Ms}ms p3:${totalMs - pass2Ms}ms)`);
+
+  // ─── Merge final output ───
+  return {
+    tier: 'premium',
+    partial: coaching === null,
+    partial_reason: coaching === null ? 'coaching_failed' : null,
+
+    // Core scoring (from Pass 2)
+    match_score: analysis.overall_score ?? null,
+    overall_score: analysis.overall_score ?? null,
+    dimension_scores: analysis.dimension_scores ?? null,
+    fit_status: analysis.fit_status ?? null,
+    executive_summary: analysis.executive_summary ?? analysis.analysis_summary ?? null,
+
+    // Analysis detail (from Pass 2)
+    strength_map: analysis.strength_map ?? [],
+    gap_analysis: analysis.gap_analysis ?? [],
+    career_trajectory_assessment: analysis.career_trajectory_assessment ?? null,
+    scope_comparison: analysis.scope_comparison ?? null,
+    level_fit: analysis.level_fit ?? null,
+    calibration_note: analysis.calibration_note ?? null,
+
+    // Structured data (from Pass 1)
+    resume_profile: resumeProfile,
+    jd_profile: jdProfile,
+
+    // Coaching (from Pass 3)
+    coaching: coaching,
+
+    // Metadata
+    agents_used: coaching ? 4 : 3,
+    passes_completed: coaching ? 3 : 2,
+    industry_detected: industry,
+    gold_standard_used: standard !== null,
+    timing_ms: totalMs,
+  };
+}
+
+
+// ════════════════════════════════════════════════════════════
+// MAIN HANDLER
+// ════════════════════════════════════════════════════════════
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -162,7 +509,7 @@ serve(async (req) => {
 
     // Parse body
     const body = await req.json();
-    const { resume_text, resume_keywords, mode, filter_name, job_ids, max_jds } = body;
+    const { resume_text, resume_keywords, mode, tier: requestedTier, filter_name, job_ids, max_jds } = body;
 
     if (!resume_text || !mode) {
       return new Response(JSON.stringify({ error: 'Missing resume_text or mode' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
@@ -170,6 +517,14 @@ serve(async (req) => {
 
     if (!['corpus', 'single'].includes(mode)) {
       return new Response(JSON.stringify({ error: 'Invalid mode. Use "corpus" or "single"' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    }
+
+    // Determine tier — default to 'basic', premium requires explicit request
+    const tier = requestedTier === 'premium' ? 'premium' : 'basic';
+
+    // Premium requires corpus mode with multiple JDs
+    if (tier === 'premium' && mode === 'single') {
+      return new Response(JSON.stringify({ error: 'Premium tier requires corpus mode (multiple JDs)' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
     // Fetch JD content
@@ -193,70 +548,72 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'No JDs found with content' }), { status: 404, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
-    // Build prompt
-    const systemPrompt = mode === 'corpus' ? SYSTEM_PROMPT_CORPUS : SYSTEM_PROMPT_SINGLE;
-
+    // Build JD block (shared by both tiers)
     const jdBlock = jds.map((j: any, i: number) =>
       `<jd index="${i + 1}" title="${j.title}" company="${j.company_name || 'Unknown'}" location="${j.location || 'Unspecified'}" salary_min="${j.salary_min || ''}" salary_max="${j.salary_max || ''}">\n${stripHtml(j.content).slice(0, 3000)}\n</jd>`
     ).join('\n\n');
 
-    const userPrompt = `<resume_text>\n${resume_text.slice(0, 8000)}\n</resume_text>\n\n<filter_name>${filter_name || 'General'}</filter_name>\n\n<job_descriptions count="${jds.length}">\n${jdBlock}\n</job_descriptions>\n\n<instructions>\nScore the resume (0-100). Return ONLY a JSON object, no markdown fences, no preamble.\n</instructions>`;
-
-    // Call Anthropic API
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
-        temperature: 0,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
-      })
-    });
-
-    if (!anthropicRes.ok) {
-      const errBody = await anthropicRes.text();
-      console.error('[score-resume] Anthropic API error:', anthropicRes.status, errBody);
-      return new Response(JSON.stringify({ error: 'AI scoring failed', status: anthropicRes.status }), { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
-    }
-
-    const anthropicData = await anthropicRes.json();
-    const responseText = anthropicData.content?.[0]?.text || '';
-
-    // Parse JSON response
     let result: any;
-    try {
-      const cleaned = responseText.replace(/```json|```/g, '').trim();
-      result = JSON.parse(cleaned);
-    } catch (_e) {
-      console.error('[score-resume] Failed to parse AI response:', responseText.slice(0, 200));
-      return new Response(JSON.stringify({ error: 'Failed to parse AI response' }), { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+
+    // ─── PREMIUM TIER ───
+    if (tier === 'premium') {
+      console.log(`[score-resume] PREMIUM pipeline user=${user.id} jds=${jds.length}`);
+
+      result = await runPremiumPipeline(resume_text, jdBlock, filter_name, jds.length);
+
+      // If premium failed, fall back to basic
+      if (result.fallback) {
+        console.log(`[score-resume] Premium fallback to basic: ${result.reason}`);
+        // Fall through to basic below
+        result = null;
+      } else {
+        // Add shared metadata
+        result.jds_analyzed = jds.length;
+        result.cost_cents = estimateCost('premium', resume_text.length, jdBlock.length);
+        result.mode = mode;
+        result.model = 'multi-agent';
+      }
     }
 
-    // Add metadata
-    result.model = 'claude-haiku-4-5-20251001';
-    result.jds_analyzed = jds.length;
-    result.cost_cents = estimateCost(resume_text.length, jdBlock.length);
-    result.mode = mode;
+    // ─── BASIC TIER (or premium fallback) ───
+    if (!result) {
+      const systemPrompt = mode === 'corpus' ? SYSTEM_PROMPT_CORPUS : SYSTEM_PROMPT_SINGLE;
+      const userPrompt = `<resume_text>\n${resume_text.slice(0, 8000)}\n</resume_text>\n\n<filter_name>${filter_name || 'General'}</filter_name>\n\n<job_descriptions count="${jds.length}">\n${jdBlock}\n</job_descriptions>\n\n<instructions>\nScore the resume (0-100). Return ONLY a JSON object, no markdown fences, no preamble.\n</instructions>`;
 
-    // Gate response for free users
-    if (!isPro) {
+      const anthropicRes = await callAnthropic(HAIKU_MODEL, systemPrompt, userPrompt, 3000, 0);
+
+      if (!anthropicRes.ok) {
+        return new Response(JSON.stringify({ error: 'AI scoring failed' }), { status: 502, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+      }
+
+      try {
+        result = parseJSON(anthropicRes.text);
+      } catch (_e) {
+        console.error('[score-resume] Failed to parse AI response:', anthropicRes.text.slice(0, 200));
+        return new Response(JSON.stringify({ error: 'Failed to parse AI response' }), { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+      }
+
+      result.tier = tier === 'premium' ? 'basic_fallback' : 'basic';
+      result.model = HAIKU_MODEL;
+      result.jds_analyzed = jds.length;
+      result.cost_cents = estimateCost('basic', resume_text.length, jdBlock.length);
+      result.mode = mode;
+    }
+
+    // Gate response for free users (basic tier only — premium already gated by credits)
+    if (!isPro && result.tier === 'basic') {
       result = {
         match_score: result.match_score,
         fit_status: result.fit_status,
         analysis_summary: result.analysis_summary,
         jds_analyzed: result.jds_analyzed,
         mode: result.mode,
+        tier: 'basic',
         upgrade_prompt: 'Upgrade to Pro for gap analysis, rewrite suggestions, and level-fit insights.'
       };
     }
 
-    console.log(`[score-resume] user=${user.id} mode=${mode} jds=${jds.length} score=${result.match_score} pro=${isPro}`);
+    console.log(`[score-resume] user=${user.id} tier=${result.tier} mode=${mode} jds=${jds.length} score=${result.match_score || result.overall_score} pro=${isPro}`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
