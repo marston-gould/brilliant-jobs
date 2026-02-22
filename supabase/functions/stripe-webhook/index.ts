@@ -325,6 +325,15 @@ async function handleSetupIntentSucceeded(sb: any, event: any, logger: any) {
 
     logger.info('Hire fee payment method stored', { customerId, paymentMethod });
   }
+
+  if (si.metadata?.type === 'auto_refill') {
+    await sb
+      .from('auto_refill_settings')
+      .update({ stripe_payment_method_id: paymentMethod })
+      .eq('user_id', si.metadata.user_id);
+
+    logger.info('Auto-refill payment method stored', { customerId, paymentMethod });
+  }
 }
 
 // ─── Credit helper ───

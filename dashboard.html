@@ -92,7 +92,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.73</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.74</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1856,6 +1856,37 @@
                   </label>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Pay-When-Hired -->
+          <div class="card" id="sub-hire-fee-section">
+            <div class="card-title">Pay When You're Hired</div>
+            <div class="sub-card-sub">Only pay a success fee when Brilliant Jobs helps you land a job. Authorize a payment method now — we only charge when you confirm a hire.</div>
+            <div class="sub-hire-fee-status" id="sub-hire-fee-status">
+              <div class="sub-hire-fee-nomethod" id="sub-hire-fee-nomethod">
+                <div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--bg-input);border-radius:10px;">
+                  <div style="font-size:24px;">💳</div>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;font-size:13px;">No payment method on file</div>
+                    <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Add a card to enable pay-when-hired. You won't be charged until you confirm a successful hire.</div>
+                  </div>
+                  <button class="btn-primary btn-sm" onclick="setupHireFee()">Authorize Card</button>
+                </div>
+              </div>
+              <div class="sub-hire-fee-active" id="sub-hire-fee-active" style="display:none;">
+                <div style="display:flex;align-items:center;gap:12px;padding:16px;background:hsl(142,50%,96%);border:1px solid hsl(142,40%,85%);border-radius:10px;">
+                  <div style="font-size:24px;">✅</div>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;font-size:13px;color:hsl(142,60%,30%);">Payment method authorized</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">When you mark a job as "Hired" in your pipeline, you'll be asked to confirm the success fee.</div>
+                  </div>
+                  <button class="btn-secondary btn-sm" onclick="openCustomerPortal()">Manage Card</button>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--text-faint);">
+              Success fee: 5% of first-year base salary (min $500, max $5,000). Only charged when you confirm.
             </div>
           </div>
 
