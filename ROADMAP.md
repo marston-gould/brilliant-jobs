@@ -431,8 +431,11 @@
 |------|--------|-------|
 | Live Stripe testing | ✅ | Checkout sessions (subscription + one-time), test card payment (pm_card_visa $20 succeeded), webhook delivered (0 pending), EF auth gating verified |
 | Production Stripe keys | 🔲 | Still on sandbox (`sk_test_*`), need live keys for launch |
-| Smart Job Alert credit debit (1cr) | 🔲 | Defined but not wired into notification Edge Functions |
-| AI Resume Rewrite credit debit (5cr) | 🔲 | Defined but not wired into rewrite feature |
+| Smart Job Alert credit debit (1cr) | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
+| AI Resume Rewrite credit debit (5cr) | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
+| Stripe production webhook registration | 🔲 | Register webhook endpoint URL in Stripe Dashboard for live mode |
+| Public pricing page (`pricing.html`) | 🔲 | No standalone pricing page — pricing logic is backend-only |
+| Stripe Billing Portal configuration | 🔲 | Customer Portal for self-service plan management — EF exists, Portal needs configuration in Stripe Dashboard |
 | Vendor payout consolidation | 🔲 | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe |
 
 ---
@@ -554,12 +557,12 @@
 
 | Item | Phase | Priority | Blocker |
 |------|-------|----------|---------|
+| Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
+| Stripe Billing Portal registration | H | **High — launch blocker** | Register webhook endpoint in Stripe Dashboard for production |
+| Stripe pricing page (`pricing.html`) | H | **Medium** | No public-facing pricing page exists yet — pricing is backend-only |
+| Stripe Billing Portal for self-service | H | **Medium** | Customer Portal for plan changes, cancellation, billing history (EF exists but Portal not configured in Stripe Dashboard) |
 | D3 — Landing Page interactive preview | D | Medium | 5 screenshot assets from CPO (D7) |
 | D7 — Walkthrough screenshots (5x) | D | Medium | CPO deliverable |
-| Live Stripe end-to-end test | H | ✅ | v3.78: Test card $20 payment succeeded, webhook processed, checkout sessions work, EFs auth-gated |
-| Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
-| Smart Job Alert credit debit (1cr) | I | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
-| AI Resume Rewrite credit debit (5cr) | I | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
 | Vendor payout consolidation | H | Low | Post-launch ops (Vercel/Supabase/DataForSEO/Cloudflare/Resend → Stripe) |
 | Toll-free verification | I | Low | Submit via Vonage dashboard — non-blocking for testing |
 | Vonage inbound webhook URL | I | **High** | Manual: Set on Vonage Dashboard → Numbers → 18108923590 → Inbound URL |
@@ -618,3 +621,4 @@
 | 2026-02-19 | B-S3 | B2, B3, B11 | Job queue (claim/complete/dead letter). Queue worker for async notifications. Monitoring alerts (pipeline stale, notification failures, dead jobs). |
 | 2026-02-19 | B-S2 | B1, B4 | Soft deletes on 5 user tables. localStorage sync audit — already complete (saveUserData covers all 11 keys). |
 | 2026-02-19 | S4 | A7, A8, A13 | Structured logger. Health check endpoint. PostHog snippet (gated). |
+
