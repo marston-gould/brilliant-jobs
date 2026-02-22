@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.76';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — communication center v2, credit/billing notifications');
+const BJ_VERSION = 'v3.77';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — phase 2 email system live, 28 templates, idempotency tracking');
 
 // Auth
 async function init() {
