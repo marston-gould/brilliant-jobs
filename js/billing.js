@@ -477,7 +477,7 @@ async function setupHireFee() {
 }
 
 async function confirmSetupIntent(clientSecret) {
-  var stripe = Stripe('pk_test_51T3TKyAUKPQHZOPaDUiztdazjyngM83dWzztLHDtRXj2JgudeiqMV17HfoLR2fvz2HXeQVIS0xBU73nnq9h1hyy1004jBvtprR');
+  var stripe = Stripe('pk_live_51T3TKnPKzCZbw3KzvE3xlxz8Yt9Hx9PTIRewh21Pks8YQt6TgV5urss7w93Hd27vfnZQlMiAvMP9WAgRSHM3dFFz00ufrYmhyI');
 
   // Create a modal with card element
   var modal = document.createElement('div');
