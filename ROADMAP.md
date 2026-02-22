@@ -430,10 +430,10 @@
 | Item | Status | Notes |
 |------|--------|-------|
 | Live Stripe testing | ✅ | Checkout sessions (subscription + one-time), test card payment (pm_card_visa $20 succeeded), webhook delivered (0 pending), EF auth gating verified |
-| Production Stripe keys | 🔲 | Still on sandbox (`sk_test_*`), need live keys for launch |
+| Production Stripe keys | ✅ | Live keys deployed. `sk_live_*` in Supabase secrets. `pk_live_*` in billing.js. |
 | Smart Job Alert credit debit (1cr) | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
 | AI Resume Rewrite credit debit (5cr) | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
-| Stripe production webhook registration | 🔲 | Register webhook endpoint URL in Stripe Dashboard for live mode |
+| Stripe production webhook registration | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — checkout.session.completed + 4 more events |
 | Public pricing page (`pricing.html`) | ✅ | v3.80: Cohort-tied pricing page, monthly/annual toggle, credit packs, FAQ |
 | Stripe Billing Portal configuration | 🔲 | Customer Portal for self-service plan management — EF exists, Portal needs configuration in Stripe Dashboard |
 | Vendor payout consolidation | 🔲 | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe |
@@ -557,8 +557,8 @@
 
 | Item | Phase | Priority | Blocker |
 |------|-------|----------|---------|
-| Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
-| Stripe Billing Portal registration | H | **High — launch blocker** | Register webhook endpoint in Stripe Dashboard for production |
+| Production Stripe keys (`sk_live_*`) | H | ✅ | Live keys set in Supabase secrets + billing.js. Webhook registered. 3 EFs redeployed. |
+| Stripe webhook endpoint (live) | H | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — 5 events, signing secret set |
 | Stripe pricing page (`pricing.html`) | H | ✅ | v3.80: Public pricing page live — cohort-tied (launch_2026), 3-tier (Free/Starter/Pro), credit packs, FAQ |
 | Stripe Billing Portal for self-service | H | **Medium** | Customer Portal for plan changes, cancellation, billing history (EF exists but Portal not configured in Stripe Dashboard) |
 | D3 — Landing Page interactive preview | D | Medium | 5 screenshot assets from CPO (D7) |
@@ -575,6 +575,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | H++ | — | **Stripe LIVE:** Production keys deployed. 11 live price IDs in create-checkout, 3 in auto-refill. Live webhook endpoint registered (`we_1T3lqY`). Supabase secrets updated (STRIPE_SECRET_KEY, PUBLISHABLE_KEY, WEBHOOK_SECRET). billing.js → pk_live. 3 Edge Functions redeployed. |
 | 2026-02-22 | H+ | — | **v3.80:** Public pricing page (`pricing.html`). Cohort-tied (launch_2026). 3-tier: Free/Starter($20)/Pro($40). DB aligned: `starter` plan added, `pro` price updated to $40. 13 starter entitlements seeded. Monthly/annual toggle, credit packs, FAQ. |
 | 2026-02-22 | I-S3 | I10–I16 | **v3.79:** Phase 3 SMS system. Vonage toll-free (18108923590) secrets set. 4 SMS templates (sms-templates.ts). handle-sms-reply v1 (inbound Y/N webhook). escalation-checker v21 (SMS template + v2 tracking). Schema: decision + response_channel columns. SMS delivery verified end-to-end. |
 | 2026-02-22 | I-S2+ | — | **v3.78:** Credit gating wired into Edge Functions. apply-on-notification: 1cr debit (Starter/Pro only, free blocked). rewrite-resume: 5cr debit (free→403, insufficient→402, admin bypass). Closes 2 outstanding H-phase items. |
