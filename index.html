@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v3.45 - 2026-02-22 - Visit-based segment personalization -->
+<!-- Brilliant Jobs Landing Page v3.57 - 2026-02-22 - Prod fixes: segment bleed, version sync -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -570,8 +570,7 @@
       .pricing-grid { gap: 16px; }
     }
 
-    /* ==================== SEGMENT VISIBILITY (v3.45 → v3.56 fix) ==================== */
-    /* Only heroes and nav/footer elements are segmented. All content sections are always visible. */
+    /* ==================== SEGMENT VISIBILITY (v3.57 fix) ==================== */
     .segment-new,
     .segment-returning,
     .segment-lapsed,
@@ -595,6 +594,19 @@
 
     [data-segment="active"] .segment-active { display: block; }
     [data-segment="active"] section.segment-active { display: flex; }
+
+    /* CRITICAL: Hide ALL marketing content for active users (redirect-only) */
+    [data-segment="active"] .stats-bar,
+    [data-segment="active"] #why,
+    [data-segment="active"] #benefits,
+    [data-segment="active"] #how-it-works,
+    [data-segment="active"] #pricing,
+    [data-segment="active"] .section,
+    [data-segment="active"] .pricing-section,
+    [data-segment="active"] .faq-section,
+    [data-segment="active"] .final-cta,
+    [data-segment="active"] .site-footer,
+    [data-segment="active"] .auth-modal-overlay { display: none !important; }
 
     /* Fallback: if no segment set yet (script hasn't run), show new variant */
     html:not([data-segment]) .segment-new { display: block; }
@@ -699,9 +711,10 @@
   }
   </script>
 
-  <!-- Segment detection — runs before body paint to prevent FOUC (v3.45) -->
+  <!-- Segment detection — runs before body paint to prevent FOUC (v3.57) -->
   <script>
   (function() {
+    console.log('[BJ] Landing page v3.57');
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -812,7 +825,7 @@
   </section>
 
   <!-- ==================== HERO: ACTIVE (redirect fallback) ==================== -->
-  <section class="hero segment-active" style="min-height:60vh;display:flex;align-items:center;justify-content:center;">
+  <section class="hero segment-active" style="min-height:60vh;align-items:center;justify-content:center;">
     <div style="text-align:center;">
       <div class="hero-label"><span class="dot"></span> Redirecting...</div>
       <h2>Taking you to your dashboard...</h2>
@@ -1245,7 +1258,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v3.45</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v3.57</p>
   </footer>
 
   <!-- AUTH MODAL -->
@@ -1264,7 +1277,7 @@
           <div class="field">
             <label>Password</label>
             <div class="password-wrap">
-              <input type="password" id="login-password" placeholder="Your password">
+              <input type="password" id="login-password" placeholder="Your password" autocomplete="current-password">
               <button type="button" class="pw-toggle" data-target="login-password">Show</button>
             </div>
             <span class="forgot-link" id="forgot-trigger">Forgot password?</span>
@@ -1283,7 +1296,7 @@
           <div class="field">
             <label>Password</label>
             <div class="password-wrap">
-              <input type="password" id="signup-password" placeholder="Min 6 characters">
+              <input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password">
               <button type="button" class="pw-toggle" data-target="signup-password">Show</button>
             </div>
           </div>
