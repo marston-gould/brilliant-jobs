@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.79
+**Current version:** v3.80
 
 ---
 
@@ -434,7 +434,7 @@
 | Smart Job Alert credit debit (1cr) | ✅ | v3.78: apply-on-notification debits 1cr, free plan blocked, admin bypass |
 | AI Resume Rewrite credit debit (5cr) | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
 | Stripe production webhook registration | 🔲 | Register webhook endpoint URL in Stripe Dashboard for live mode |
-| Public pricing page (`pricing.html`) | 🔲 | No standalone pricing page — pricing logic is backend-only |
+| Public pricing page (`pricing.html`) | ✅ | v3.80: Cohort-tied pricing page, monthly/annual toggle, credit packs, FAQ |
 | Stripe Billing Portal configuration | 🔲 | Customer Portal for self-service plan management — EF exists, Portal needs configuration in Stripe Dashboard |
 | Vendor payout consolidation | 🔲 | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe |
 
@@ -551,7 +551,7 @@
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ✅ Complete |
 | **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ✅ Phase 1+2+3 complete. Toll-free verification pending. |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **176+ items** | **v2.68–v3.77** | — |
+| **Total built** | **176+ items** | **v2.68–v3.80** | — |
 
 ### Outstanding Items (Not Done)
 
@@ -559,7 +559,7 @@
 |------|-------|----------|---------|
 | Production Stripe keys (`sk_live_*`) | H | **High — launch blocker** | Switch from sandbox before go-live |
 | Stripe Billing Portal registration | H | **High — launch blocker** | Register webhook endpoint in Stripe Dashboard for production |
-| Stripe pricing page (`pricing.html`) | H | **Medium** | No public-facing pricing page exists yet — pricing is backend-only |
+| Stripe pricing page (`pricing.html`) | H | ✅ | v3.80: Public pricing page live — cohort-tied (launch_2026), 3-tier (Free/Starter/Pro), credit packs, FAQ |
 | Stripe Billing Portal for self-service | H | **Medium** | Customer Portal for plan changes, cancellation, billing history (EF exists but Portal not configured in Stripe Dashboard) |
 | D3 — Landing Page interactive preview | D | Medium | 5 screenshot assets from CPO (D7) |
 | D7 — Walkthrough screenshots (5x) | D | Medium | CPO deliverable |
@@ -575,6 +575,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | H+ | — | **v3.80:** Public pricing page (`pricing.html`). Cohort-tied (launch_2026). 3-tier: Free/Starter($20)/Pro($40). DB aligned: `starter` plan added, `pro` price updated to $40. 13 starter entitlements seeded. Monthly/annual toggle, credit packs, FAQ. |
 | 2026-02-22 | I-S3 | I10–I16 | **v3.79:** Phase 3 SMS system. Vonage toll-free (18108923590) secrets set. 4 SMS templates (sms-templates.ts). handle-sms-reply v1 (inbound Y/N webhook). escalation-checker v21 (SMS template + v2 tracking). Schema: decision + response_channel columns. SMS delivery verified end-to-end. |
 | 2026-02-22 | I-S2+ | — | **v3.78:** Credit gating wired into Edge Functions. apply-on-notification: 1cr debit (Starter/Pro only, free blocked). rewrite-resume: 5cr debit (free→403, insufficient→402, admin bypass). Closes 2 outstanding H-phase items. |
 | 2026-02-22 | I-S2 | I5–I9 | **v3.77:** Phase 2 Email System verified live. 11 new v2 templates (credit/billing, upgrade, resume intelligence, re-engagement, SEO nurture — 28 total). send-notification v2 with idempotency dedup + cohort tracking. 7 Edge Functions redeployed. Resend domain verified, delivery confirmed. pg_cron all 4 schedules active. |
