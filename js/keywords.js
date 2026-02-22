@@ -441,12 +441,26 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ─── AI-powered resume scoring (Pro feature) ───
+// ─── AI-powered resume scoring (credit-gated) ───
 async function fetchAIScore(params) {
   if (window._aiScoreDisabled) return null;
   try {
+    // Credit gate: require 3 credits for AI scoring (admins bypass)
+    if (typeof requireCredits === 'function') {
+      var hasCredits = await requireCredits(3, 'Resume AI Score');
+      if (!hasCredits) return null;
+    }
+
     var session = await sb.auth.getSession();
     if (!session.data.session) return null;
+
+    // Debit credits before calling (admin gets free pass via RPC)
+    if (typeof debitCreditsForAction === 'function') {
+      var debitResult = await debitCreditsForAction(3, 'claude', 'AI resume score');
+      if (debitResult && !debitResult.success && !debitResult.admin) {
+        return null; // insufficient credits — requireCredits already showed toast
+      }
+    }
 
     var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
       method: 'POST',
