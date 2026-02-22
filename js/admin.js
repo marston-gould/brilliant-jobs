@@ -314,41 +314,29 @@ async function loadUsersTab() {
 // ═══════════════════════════════════════════════════════════
 // TAB 4: SEO / DATA COVERAGE
 // ═══════════════════════════════════════════════════════════
-// v3.29 — 9-tool SEO dashboard with time series + side panel
+// v3.42 — 9-tool SEO dashboard, date range pickers, auth-only fetch
 
-var _seoUrl = ''; // '' = all pages
-var _seoDays = 30;
+var _seoUrl = '';
+var _seoDateFrom = '';
+var _seoDateTo = '';
 var _seoCharts = {};
-var _seoData = {};  // cache fetched data
-
-var SEO_URLS = [
-  { url: 'https://brilliantjobs.app/', label: '/ (app home)' },
-  { url: 'https://brilliantjobs.app/data-lab', label: '/data-lab' },
-  { url: 'https://brilliantjobs.app/salary-data', label: '/salary-data' },
-  { url: 'https://brilliantjobs.app/hiring-trends', label: '/hiring-trends' },
-  { url: 'https://brilliantjobs.app/jobs-by-industry', label: '/jobs-by-industry' },
-  { url: 'https://brilliantjobs.app/career-level-data', label: '/career-level-data' },
-  { url: 'https://brilliantjobs.io/', label: '.io / (landing)' },
-  { url: 'https://brilliantjobs.io/help', label: '.io /help' },
-  { url: 'https://brilliantjobs.io/privacy', label: '.io /privacy' },
-  { url: 'https://brilliantjobs.io/terms', label: '.io /terms' },
-];
+var _seoData = {};
 
 function setSeoUrl(url) {
   _seoUrl = url;
   loadSeoTab();
 }
 
-function setSeoRange(days) {
-  _seoDays = days;
-  document.querySelectorAll('#seo-date-range .admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
-  var btn = document.querySelector('#seo-date-range [data-seodays="' + days + '"]');
-  if (btn) btn.classList.add('active');
+function seoDateChanged() {
+  var from = document.getElementById('seo-date-from');
+  var to = document.getElementById('seo-date-to');
+  _seoDateFrom = from ? from.value : '';
+  _seoDateTo = to ? to.value : '';
   loadSeoTab();
 }
 
 async function loadSeoTab() {
-  console.log('[Admin] loadSeoTab url=' + (_seoUrl || 'ALL') + ' days=' + _seoDays);
+  console.log('[Admin] loadSeoTab url=' + (_seoUrl || 'ALL') + ' from=' + (_seoDateFrom || 'all') + ' to=' + (_seoDateTo || 'now'));
   try {
     await fetchSeoData();
     renderSeoCharts();
@@ -356,44 +344,36 @@ async function loadSeoTab() {
   } catch(err) { console.error('[Admin] SEO load error:', err); }
 }
 
-// ─── Data Fetching ───
+// ─── Data Fetching (auth-only) ───
 async function fetchSeoData() {
-  var cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - _seoDays);
-  var cutoffStr = cutoff.toISOString().slice(0, 10);
-
-  // Fetch all data sources in parallel
-  var urlFilter = _seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '';
-  var dateFilter = '&date=gte.' + cutoffStr;
-  var headers = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-
-  var promises = {
-    site_daily: fetch(SUPABASE_URL + '/rest/v1/seo_site_daily?select=*&order=date.asc' + dateFilter, { headers: headers }).then(function(r) { return r.json(); }),
-    page_daily: fetch(SUPABASE_URL + '/rest/v1/seo_page_daily?select=*&order=date.asc' + dateFilter + urlFilter, { headers: headers }).then(function(r) { return r.json(); }),
-    tech_audits: fetch(SUPABASE_URL + '/rest/v1/seo_tech_audits?select=*&order=date.asc' + dateFilter + urlFilter, { headers: headers }).then(function(r) { return r.json(); }),
-    index_status: fetch(SUPABASE_URL + '/rest/v1/seo_index_status?select=*&order=checked_at.desc' + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '') + '&limit=20', { headers: headers }).then(function(r) { return r.json(); }),
-    conversions: fetch(SUPABASE_URL + '/rest/v1/seo_conversions?select=*&order=date.asc' + dateFilter + (_seoUrl ? '&landing_url=like.*' + encodeURIComponent(new URL(_seoUrl).pathname) + '*' : ''), { headers: headers }).then(function(r) { return r.json(); }),
-    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + urlFilter + '&order=clicks.desc&limit=50', { headers: headers }).then(function(r) { return r.json(); }),
-  };
-
-  // Use auth session if available (admin check), else fallback to service key
   var session = null;
   try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
-  if (session) {
-    var authHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
-    // Re-fetch with auth headers
-    promises.site_daily = fetch(SUPABASE_URL + '/rest/v1/seo_site_daily?select=*&order=date.asc' + dateFilter, { headers: authHeaders }).then(function(r) { return r.json(); });
-    promises.page_daily = fetch(SUPABASE_URL + '/rest/v1/seo_page_daily?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }).then(function(r) { return r.json(); });
-    promises.tech_audits = fetch(SUPABASE_URL + '/rest/v1/seo_tech_audits?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }).then(function(r) { return r.json(); });
-    promises.index_status = fetch(SUPABASE_URL + '/rest/v1/seo_index_status?select=*&order=checked_at.desc' + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '') + '&limit=20', { headers: authHeaders }).then(function(r) { return r.json(); });
-    promises.conversions = fetch(SUPABASE_URL + '/rest/v1/seo_conversions?select=*&order=date.asc' + dateFilter, { headers: authHeaders }).then(function(r) { return r.json(); });
-    promises.gsc_queries = fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + urlFilter + '&order=clicks.desc&limit=50', { headers: authHeaders }).then(function(r) { return r.json(); });
+  if (!session) {
+    console.warn('[Admin] No session — cannot fetch SEO data');
+    _seoData = {};
+    return;
   }
+  var authHeaders = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
 
-  var keys = Object.keys(promises);
-  var vals = await Promise.all(keys.map(function(k) { return promises[k]; }));
+  var urlFilter = _seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '';
+  var dateFilter = '';
+  if (_seoDateFrom) dateFilter += '&date=gte.' + _seoDateFrom;
+  if (_seoDateTo) dateFilter += '&date=lte.' + _seoDateTo;
+
+  var fetches = {
+    site_daily:  fetch(SUPABASE_URL + '/rest/v1/seo_site_daily?select=*&order=date.asc' + dateFilter, { headers: authHeaders }),
+    page_daily:  fetch(SUPABASE_URL + '/rest/v1/seo_page_daily?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }),
+    tech_audits: fetch(SUPABASE_URL + '/rest/v1/seo_tech_audits?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }),
+    index_status:fetch(SUPABASE_URL + '/rest/v1/seo_index_status?select=*&order=checked_at.desc' + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '') + '&limit=20', { headers: authHeaders }),
+    conversions: fetch(SUPABASE_URL + '/rest/v1/seo_conversions?select=*&order=date.asc' + dateFilter, { headers: authHeaders }),
+    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + urlFilter + '&order=clicks.desc&limit=50', { headers: authHeaders }),
+  };
+
+  var keys = Object.keys(fetches);
+  var responses = await Promise.all(keys.map(function(k) { return fetches[k].then(function(r) { return r.json(); }).catch(function() { return []; }); }));
   _seoData = {};
-  keys.forEach(function(k, i) { _seoData[k] = Array.isArray(vals[i]) ? vals[i] : []; });
+  keys.forEach(function(k, i) { _seoData[k] = Array.isArray(responses[i]) ? responses[i] : []; });
+  console.log('[Admin] SEO data loaded:', Object.keys(_seoData).map(function(k) { return k + '=' + _seoData[k].length; }).join(', '));
 }
 
 // ─── Chart Rendering ───
@@ -408,18 +388,31 @@ function renderSeoCharts() {
 
 function seoChartTheme() {
   return {
-    grid: { top: 35, right: 20, bottom: 30, left: 50 },
+    grid: { top: 35, right: 20, bottom: 30, left: 50, containLabel: true },
     tooltip: { trigger: 'axis', backgroundColor: '#1a1d2e', borderColor: '#2a2d3e', textStyle: { color: '#e1e4ed', fontSize: 11 } },
+  };
+}
+
+function seoAxis() {
+  return {
     xAxis: { type: 'category', axisLabel: { color: '#7b829a', fontSize: 10 }, axisLine: { lineStyle: { color: '#2a2d3e' } } },
     yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
   };
 }
 
-function initSeoChart(elId, height) {
+function initSeoChart(elId) {
   var el = document.getElementById(elId);
   if (!el) return null;
-  if (!_seoCharts[elId]) _seoCharts[elId] = echarts.init(el, null, { renderer: 'canvas' });
+  if (_seoCharts[elId]) { _seoCharts[elId].dispose(); }
+  _seoCharts[elId] = echarts.init(el, null, { renderer: 'canvas' });
   return _seoCharts[elId];
+}
+
+function seoNoData(chart, title, msg) {
+  chart.setOption({
+    title: { text: title, textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    graphic: { elements: [{ type: 'text', left: 'center', top: 'middle', style: { text: msg || 'No data yet — run sync', fill: '#555', fontSize: 12 } }] }
+  }, true);
 }
 
 // 1. PostHog Traffic
@@ -427,97 +420,104 @@ function renderTrafficChart() {
   var chart = initSeoChart('seo-chart-traffic');
   if (!chart) return;
   var convs = _seoData.conversions || [];
-  // Group pageviews by date
   var byDate = {};
-  convs.forEach(function(r) {
-    if (r.event_type === 'pageview') {
-      byDate[r.date] = (byDate[r.date] || 0) + (r.count || 0);
-    }
-  });
+  convs.forEach(function(r) { if (r.event_type === 'pageview') byDate[r.date] = (byDate[r.date] || 0) + (r.count || 0); });
   var dates = Object.keys(byDate).sort();
-  var t = seoChartTheme();
-  chart.setOption({
-    tooltip: t.tooltip, grid: t.grid,
+  if (!dates.length) { seoNoData(chart, 'PostHog Traffic', 'No pageview data yet'); return; }
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
     title: { text: 'PostHog Traffic', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-    xAxis: Object.assign({}, t.xAxis, { data: dates }),
-    yAxis: t.yAxis,
+    xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+    yAxis: ax.yAxis,
     series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 16 }]
-  }, true);
+  }), true);
 }
 
-// 2. GSC — Impressions, Clicks, CTR, Avg Rank
+// 2. GSC
 function renderGscChart() {
   var chart = initSeoChart('seo-chart-gsc');
   if (!chart) return;
   var data = _seoUrl ? (_seoData.page_daily || []) : (_seoData.site_daily || []);
-  if (!data.length) { chart.clear(); return; }
+  if (!data.length) { seoNoData(chart, 'Google Search Console'); return; }
   var dates = data.map(function(r) { return r.date; });
-  var t = seoChartTheme();
-  chart.setOption({
-    tooltip: t.tooltip, grid: { top: 35, right: 60, bottom: 30, left: 50 },
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
     title: { text: 'Google Search Console', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
     legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-    xAxis: Object.assign({}, t.xAxis, { data: dates }),
-    yAxis: [
-      Object.assign({}, t.yAxis, { name: 'Clicks' }),
-      { type: 'value', name: 'Impressions', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }
-    ],
+    grid: { top: 35, right: 60, bottom: 30, left: 50 },
+    xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+    yAxis: [ax.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
     series: [
       { name: 'Clicks', type: 'bar', data: data.map(function(r) { return r.clicks || r.total_clicks || 0; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 12 },
       { name: 'Impressions', type: 'line', yAxisIndex: 1, data: data.map(function(r) { return r.impressions || r.total_impressions || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, smooth: true, symbol: 'none' }
     ]
-  }, true);
+  }), true);
 }
 
-// 3. PSI — Performance, Accessibility, Best Practices, SEO
+// 3. PSI 4 categories
 function renderPsiChart() {
   var chart = initSeoChart('seo-chart-psi');
   if (!chart) return;
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
-  if (!audits.length) { chart.clear(); return; }
-  var dates = audits.map(function(r) { return r.date; });
-  var t = seoChartTheme();
-  chart.setOption({
-    tooltip: t.tooltip, grid: t.grid,
-    title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-    legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-    xAxis: Object.assign({}, t.xAxis, { data: dates }),
-    yAxis: Object.assign({}, t.yAxis, { min: 0, max: 100 }),
-    series: [
-      { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics?.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
-      { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics?.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
-      { name: 'Accessibility', type: 'line', data: audits.map(function(r) { return r.metrics?.accessibility; }), lineStyle: { color: '#4d8eff' }, itemStyle: { color: '#4d8eff' }, symbol: 'circle', symbolSize: 6 },
-      { name: 'Best Practices', type: 'line', data: audits.map(function(r) { return r.metrics?.best_practices; }), lineStyle: { color: '#a78bfa' }, itemStyle: { color: '#a78bfa' }, symbol: 'circle', symbolSize: 6 }
-    ]
-  }, true);
+  if (!audits.length) { seoNoData(chart, 'PageSpeed Insights (Mobile)'); return; }
+
+  if (_seoUrl) {
+    // Single URL time series
+    var dates = audits.map(function(r) { return r.date; });
+    var t = seoChartTheme(), ax = seoAxis();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
+      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
+      series: [
+        { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
+        { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
+        { name: 'Accessibility', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.accessibility; }), lineStyle: { color: '#4d8eff' }, itemStyle: { color: '#4d8eff' }, symbol: 'circle', symbolSize: 6 },
+        { name: 'Best Practices', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.best_practices; }), lineStyle: { color: '#a78bfa' }, itemStyle: { color: '#a78bfa' }, symbol: 'circle', symbolSize: 6 }
+      ]
+    }), true);
+  } else {
+    // Aggregate — latest scores by page
+    var latestDate = audits[audits.length - 1].date;
+    var latest = audits.filter(function(r) { return r.date === latestDate; });
+    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
+    var t = seoChartTheme(), ax = seoAxis();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      legend: { data: ['Performance', 'SEO', 'A11y', 'BP'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
+      grid: { top: 35, right: 20, bottom: 60, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 35 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
+      series: [
+        { name: 'Performance', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.performance; }), itemStyle: { color: '#f59e0b' }, barMaxWidth: 14 },
+        { name: 'SEO', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.seo; }), itemStyle: { color: '#34d399' }, barMaxWidth: 14 },
+        { name: 'A11y', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.accessibility; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 14 },
+        { name: 'BP', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.best_practices; }), itemStyle: { color: '#a78bfa' }, barMaxWidth: 14 }
+      ]
+    }), true);
+  }
 }
 
-// 4. CrUX — LCP, INP, CLS, FCP, TTFB distributions
+// 4. CrUX
 function renderCruxChart() {
   var chart = initSeoChart('seo-chart-crux');
   if (!chart) return;
   var cruxData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'crux'; });
-  if (!cruxData.length) {
-    chart.setOption({
-      title: { text: 'Chrome UX Report (CrUX)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-      graphic: { elements: [{ type: 'text', left: 'center', top: 'middle', style: { text: 'Not enough traffic for CrUX data yet', fill: '#7b829a', fontSize: 12 } }] }
-    }, true);
-    return;
-  }
-  // Show latest CrUX as a bar chart of p75 values
+  if (!cruxData.length) { seoNoData(chart, 'Chrome UX Report', 'Not enough traffic for CrUX data yet'); return; }
   var latest = cruxData[cruxData.length - 1];
   var m = latest.metrics || {};
   var metricNames = Object.keys(m);
   var labels = metricNames.map(function(k) { return k.replace(/_/g, ' ').toUpperCase(); });
-  var p75s = metricNames.map(function(k) { return m[k]?.p75 || 0; });
-  var t = seoChartTheme();
-  chart.setOption({
-    tooltip: t.tooltip, grid: { top: 35, right: 20, bottom: 50, left: 60 },
+  var p75s = metricNames.map(function(k) { return m[k] && m[k].p75 ? m[k].p75 : 0; });
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
     title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
-    yAxis: t.yAxis,
+    yAxis: ax.yAxis,
     series: [{ type: 'bar', data: p75s, itemStyle: { color: function(p) { return ['#34d399','#4d8eff','#f59e0b','#a78bfa','#ef4444'][p.dataIndex % 5]; } }, barMaxWidth: 30 }]
-  }, true);
+  }), true);
 }
 
 // 5. Yellow Lab Tools
@@ -525,69 +525,54 @@ function renderYltChart() {
   var chart = initSeoChart('seo-chart-ylt');
   if (!chart) return;
   var yltData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'yellowlab'; });
-  if (!yltData.length) {
-    chart.setOption({
-      title: { text: 'Yellow Lab Tools', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-      graphic: { elements: [{ type: 'text', left: 'center', top: 'middle', style: { text: 'No Yellow Labs data yet — run sync', fill: '#7b829a', fontSize: 12 } }] }
-    }, true);
-    return;
-  }
+  if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
 
   if (_seoUrl) {
-    // Single URL — show score over time
     var dates = yltData.map(function(r) { return r.date; });
     var scores = yltData.map(function(r) { return r.score; });
-    var t = seoChartTheme();
-    chart.setOption({
-      tooltip: t.tooltip, grid: t.grid,
+    var t = seoChartTheme(), ax = seoAxis();
+    chart.setOption(Object.assign({}, t, {
       title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-      xAxis: Object.assign({}, t.xAxis, { data: dates }),
-      yAxis: Object.assign({}, t.yAxis, { min: 0, max: 100 }),
+      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
       series: [{ type: 'line', data: scores, lineStyle: { color: '#eab308' }, itemStyle: { color: '#eab308' }, symbol: 'circle', symbolSize: 6, areaStyle: { color: 'rgba(234,179,8,0.1)' } }]
-    }, true);
+    }), true);
   } else {
-    // Aggregate — show distribution across pages (latest date)
     var latestDate = yltData[yltData.length - 1].date;
     var latest = yltData.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { var u = new URL(r.url); return u.pathname || '/'; });
+    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
     var scores = latest.map(function(r) { return r.score || 0; });
-    var t = seoChartTheme();
-    chart.setOption({
-      tooltip: t.tooltip, grid: { top: 35, right: 20, bottom: 50, left: 50 },
+    var t = seoChartTheme(), ax = seoAxis();
+    chart.setOption(Object.assign({}, t, {
       title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 50, left: 50 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
-      yAxis: Object.assign({}, t.yAxis, { min: 0, max: 100 }),
+      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
       series: [{ type: 'bar', data: scores, itemStyle: { color: function(p) { var v = p.value; return v >= 80 ? '#34d399' : v >= 50 ? '#f59e0b' : '#ef4444'; } }, barMaxWidth: 30 }]
-    }, true);
+    }), true);
   }
 }
 
-// 6. Cloudflare Traffic
+// 6. Cloudflare
 function renderCloudflareChart() {
   var chart = initSeoChart('seo-chart-cf');
   if (!chart) return;
   var cfData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'cloudflare'; });
-  if (!cfData.length) {
-    chart.setOption({
-      title: { text: 'Cloudflare Traffic', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-      graphic: { elements: [{ type: 'text', left: 'center', top: 'middle', style: { text: 'No Cloudflare data yet — run sync', fill: '#7b829a', fontSize: 12 } }] }
-    }, true);
-    return;
-  }
+  if (!cfData.length) { seoNoData(chart, 'Cloudflare Traffic'); return; }
   var dates = cfData.map(function(r) { return r.date; });
-  var t = seoChartTheme();
-  chart.setOption({
-    tooltip: t.tooltip, grid: { top: 35, right: 60, bottom: 30, left: 50 },
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
     title: { text: 'Cloudflare', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
     legend: { data: ['Requests', 'Page Views', 'Uniques'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-    xAxis: Object.assign({}, t.xAxis, { data: dates }),
-    yAxis: [t.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
+    grid: { top: 35, right: 60, bottom: 30, left: 50 },
+    xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+    yAxis: [ax.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
     series: [
-      { name: 'Requests', type: 'bar', data: cfData.map(function(r) { return r.metrics?.total_requests || 0; }), itemStyle: { color: 'rgba(77,142,255,0.3)' }, barMaxWidth: 16 },
-      { name: 'Page Views', type: 'line', data: cfData.map(function(r) { return r.metrics?.page_views || 0; }), lineStyle: { color: '#f97316' }, itemStyle: { color: '#f97316' }, symbol: 'circle', symbolSize: 5 },
-      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics?.unique_visitors || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 5 }
+      { name: 'Requests', type: 'bar', data: cfData.map(function(r) { return r.metrics && r.metrics.total_requests || 0; }), itemStyle: { color: 'rgba(77,142,255,0.3)' }, barMaxWidth: 16 },
+      { name: 'Page Views', type: 'line', data: cfData.map(function(r) { return r.metrics && r.metrics.page_views || 0; }), lineStyle: { color: '#f97316' }, itemStyle: { color: '#f97316' }, symbol: 'circle', symbolSize: 5 },
+      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics && r.metrics.unique_visitors || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 5 }
     ]
-  }, true);
+  }), true);
 }
 
 // ─── Side Panel ───
@@ -605,36 +590,21 @@ function renderUrlInspection() {
   if (!data.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No inspection data yet. <a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;" style="color:var(--blue);">Run inspection</a></div>'; return; }
 
   if (_seoUrl) {
-    // Single URL
     var latest = data.find(function(r) { return r.url === _seoUrl; }) || data[0];
-    var verdictCls = latest.verdict === 'PASS' ? 'color:var(--green)' : latest.verdict === 'NEUTRAL' ? 'color:var(--amber,#f59e0b)' : 'color:var(--red)';
-    el.innerHTML =
-      '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">' +
-      '<div><span style="color:var(--text-faint);">Verdict:</span> <strong style="' + verdictCls + '">' + (latest.verdict || '—') + '</strong></div>' +
+    var vc = latest.verdict === 'PASS' ? 'color:var(--green)' : latest.verdict === 'NEUTRAL' ? 'color:#f59e0b' : 'color:var(--red)';
+    el.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">' +
+      '<div><span style="color:var(--text-faint);">Verdict:</span> <strong style="' + vc + '">' + (latest.verdict || '—') + '</strong></div>' +
       '<div><span style="color:var(--text-faint);">Coverage:</span> ' + (latest.coverage_state || '—') + '</div>' +
       '<div><span style="color:var(--text-faint);">Indexing:</span> ' + (latest.indexing_state || '—') + '</div>' +
       '<div><span style="color:var(--text-faint);">Last Crawl:</span> ' + (latest.last_crawl_time ? new Date(latest.last_crawl_time).toLocaleDateString() : '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Mobile:</span> ' + (latest.mobile_usability || '—') + '</div>' +
-      '</div>';
+      '<div><span style="color:var(--text-faint);">Mobile:</span> ' + (latest.mobile_usability || '—') + '</div></div>';
   } else {
-    // Aggregate — show distribution
-    var pass = 0, fail = 0, other = 0;
-    var seen = {};
-    data.forEach(function(r) {
-      if (seen[r.url]) return;
-      seen[r.url] = true;
-      if (r.verdict === 'PASS') pass++;
-      else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++;
-      else other++;
-    });
-    var total = pass + fail + other;
-    el.innerHTML =
-      '<div style="display:flex;gap:16px;font-size:12px;">' +
+    var pass = 0, fail = 0, other = 0, seen = {};
+    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
+    el.innerHTML = '<div style="display:flex;gap:16px;font-size:12px;">' +
       '<div><span style="color:var(--green);font-weight:600;">' + pass + '</span> indexed</div>' +
       '<div><span style="color:var(--red);font-weight:600;">' + fail + '</span> failed</div>' +
-      '<div><span style="color:var(--text-faint);font-weight:600;">' + other + '</span> other</div>' +
-      '<div style="color:var(--text-faint);">(' + total + ' total)</div>' +
-      '</div>';
+      '<div><span style="color:var(--text-faint);font-weight:600;">' + other + '</span> other</div></div>';
   }
 }
 
@@ -643,79 +613,44 @@ function renderGscQueries() {
   if (!el) return;
   var queries = _seoData.gsc_queries || [];
   if (!queries.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No search queries yet</div>'; return; }
-
-  // Dedupe and aggregate
   var qMap = {};
-  queries.forEach(function(r) {
-    if (!r.query) return;
-    if (!qMap[r.query]) qMap[r.query] = { clicks: 0, impressions: 0, ctr: 0, position: 0, count: 0 };
-    qMap[r.query].clicks += r.clicks || 0;
-    qMap[r.query].impressions += r.impressions || 0;
-    qMap[r.query].position += r.position || 0;
-    qMap[r.query].count++;
-  });
-
-  var sorted = Object.entries(qMap).sort(function(a, b) { return b[1].clicks - a[1].clicks; }).slice(0, 20);
-  el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
-    '<tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Query</th><th>Clicks</th><th>Impr.</th><th>Pos</th></tr>' +
-    sorted.map(function(entry) {
-      var q = entry[0], d = entry[1];
-      var avgPos = d.count > 0 ? (d.position / d.count).toFixed(1) : '—';
-      return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + q + '</td>' +
-        '<td style="text-align:center;color:var(--blue);">' + d.clicks + '</td>' +
-        '<td style="text-align:center;">' + d.impressions + '</td>' +
-        '<td style="text-align:center;">' + avgPos + '</td></tr>';
-    }).join('') + '</table>';
+  queries.forEach(function(r) { if (!r.query) return; if (!qMap[r.query]) qMap[r.query] = { clicks:0, impressions:0, position:0, count:0 }; qMap[r.query].clicks += r.clicks||0; qMap[r.query].impressions += r.impressions||0; qMap[r.query].position += r.position||0; qMap[r.query].count++; });
+  var sorted = Object.entries(qMap).sort(function(a,b) { return b[1].clicks - a[1].clicks; }).slice(0,20);
+  el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;"><tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Query</th><th>Clicks</th><th>Impr</th><th>Pos</th></tr>' +
+    sorted.map(function(e) { var q=e[0],d=e[1]; return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+q+'</td><td style="text-align:center;color:var(--blue);">'+d.clicks+'</td><td style="text-align:center;">'+d.impressions+'</td><td style="text-align:center;">'+(d.count>0?(d.position/d.count).toFixed(1):'—')+'</td></tr>'; }).join('') + '</table>';
 }
 
 function renderKnowledgeGraph() {
   var el = document.getElementById('seo-side-kg');
   if (!el) return;
   var kgData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
-  if (!kgData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No Knowledge Graph data yet</div>'; return; }
-  var latest = kgData[kgData.length - 1];
-  var entities = latest.metrics?.entities || [];
+  if (!kgData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No Knowledge Graph data yet</div>'; return; }
+  var entities = (kgData[kgData.length-1].metrics && kgData[kgData.length-1].metrics.entities) || [];
   if (!entities.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No entities found</div>'; return; }
-
   el.innerHTML = entities.map(function(e) {
-    return '<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;">' +
-      '<span style="color:var(--text);font-weight:500;">' + (e.name || '—') + '</span>' +
-      '<span style="color:var(--text-faint);font-size:10px;">' + (e.type || '') + '</span>' +
-      (e.score ? '<span style="margin-left:auto;color:var(--text-faint);font-size:10px;">' + e.score.toFixed(1) + '</span>' : '') +
-      '</div>';
+    return '<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--text);font-weight:500;">'+(e.name||'—')+'</span><span style="color:var(--text-faint);font-size:10px;">'+(e.type||'')+'</span>'+(e.score?'<span style="margin-left:auto;color:var(--text-faint);font-size:10px;">'+e.score.toFixed(1)+'</span>':'')+'</div>';
   }).join('');
 }
 
 function renderPsiDrilldown() {
   var el = document.getElementById('seo-side-psi');
   if (!el) return;
-  // Show latest PSI issues for selected URL or all
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
   if (!audits.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No PSI data yet</div>'; return; }
-
-  var latest = audits[audits.length - 1];
+  var latest = audits[audits.length-1];
   var issues = latest.issues || [];
   var m = latest.metrics || {};
-
-  var cwvHtml = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">';
   var vitals = [
-    { label: 'FCP', val: m.fcp ? (m.fcp/1000).toFixed(2) + 's' : '—', good: m.fcp < 1800 },
-    { label: 'LCP', val: m.lcp ? (m.lcp/1000).toFixed(2) + 's' : '—', good: m.lcp < 2500 },
-    { label: 'CLS', val: m.cls != null ? m.cls.toFixed(3) : '—', good: m.cls < 0.1 },
-    { label: 'TBT', val: m.tbt != null ? Math.round(m.tbt) + 'ms' : '—', good: m.tbt < 200 },
+    { label:'FCP', val:m.fcp?(m.fcp/1000).toFixed(2)+'s':'—', good:m.fcp<1800 },
+    { label:'LCP', val:m.lcp?(m.lcp/1000).toFixed(2)+'s':'—', good:m.lcp<2500 },
+    { label:'CLS', val:m.cls!=null?m.cls.toFixed(3):'—', good:m.cls<0.1 },
+    { label:'TBT', val:m.tbt!=null?Math.round(m.tbt)+'ms':'—', good:m.tbt<200 },
   ];
-  vitals.forEach(function(v) {
-    cwvHtml += '<div style="text-align:center;"><div style="font-size:14px;font-weight:700;color:' + (v.good ? 'var(--green)' : 'var(--red)') + ';">' + v.val + '</div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;">' + v.label + '</div></div>';
-  });
-  cwvHtml += '</div>';
-
-  var issuesHtml = issues.length > 0
-    ? issues.slice(0, 8).map(function(i) {
-        return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● ' + (i.title || i.id) + '</div>';
-      }).join('')
-    : '<div style="color:var(--green);font-size:11px;">✓ No issues flagged</div>';
-
-  el.innerHTML = cwvHtml + issuesHtml;
+  var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">';
+  vitals.forEach(function(v) { html += '<div style="text-align:center;"><div style="font-size:14px;font-weight:700;color:'+(v.good?'var(--green)':'var(--red)')+';">'+v.val+'</div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;">'+v.label+'</div></div>'; });
+  html += '</div>';
+  html += issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● '+(i.title||i.id)+'</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues flagged</div>';
+  el.innerHTML = html;
 }
 
 // ─── Sync Trigger ───
@@ -727,11 +662,7 @@ async function triggerSeoSync(tasks) {
     if (!session) { alert('Sign in required'); return; }
     var resp = await fetch(SUPABASE_URL + '/functions/v1/seo-sync', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + session.access_token,
-        'apikey': SUPABASE_KEY
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_KEY },
       body: JSON.stringify({ tasks: tasks || ['all'] })
     });
     var data = await resp.json();
