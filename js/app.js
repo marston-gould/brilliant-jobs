@@ -25,6 +25,10 @@ async function init() {
   if (profile && profile.role === 'admin') {
     var navAdmin = document.getElementById('nav-admin');
     if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] \u2713 Nav shown'); }
+    var navRoadmap = document.getElementById('nav-roadmap');
+    if (navRoadmap) { navRoadmap.style.display = ''; }
+    var navParkinglot = document.getElementById('nav-parkinglot');
+    if (navParkinglot) { navParkinglot.style.display = ''; }
   }
   // Re-apply active page (tab restore ran while #app was hidden)
   const activeTab = localStorage.getItem('bj_active_tab');
