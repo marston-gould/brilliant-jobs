@@ -648,7 +648,7 @@ function renderUrlInspection() {
   if (!el) return;
   var data = _seoData.index_status || [];
   if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;">Run inspection</a></div>';
+    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([&#39;gsc_inspect&#39;]);return false;">Run inspection</a></div>';
     return;
   }
 
@@ -747,7 +747,7 @@ function renderDfsAudit() {
   var el = document.getElementById('seo-side-dfs');
   if (!el) return;
   var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
-  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([\'dataforseo\']);return false;">run sync</a></div>'; return; }
+  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([&#39;dataforseo&#39;]);return false;">run sync</a></div>'; return; }
 
   if (_seoUrl) {
     var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
