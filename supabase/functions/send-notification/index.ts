@@ -34,6 +34,11 @@ interface NotificationRequest {
   payload?: Record<string, unknown>;
   // Override channel (skip preference check)
   force_channel?: "email" | "sms" | "both";
+  // v2: Cohort/plan tracking
+  idempotency_key?: string;
+  user_plan?: string;
+  user_cohort?: string;
+  template_version?: string;
 }
 
 interface NotificationResult {
@@ -161,6 +166,19 @@ async function logNotification(
   error?: string
 ) {
   try {
+    // v2: Check idempotency key to prevent duplicate sends
+    if (req.idempotency_key) {
+      const { data: existing } = await sb
+        .from("notification_log")
+        .select("id")
+        .eq("idempotency_key", req.idempotency_key)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        console.log(`[send-notification] Duplicate detected: ${req.idempotency_key}`);
+        return;
+      }
+    }
+
     await sb.from("notification_log").insert({
       user_id: userId,
       notification_type: notificationType,
@@ -174,6 +192,11 @@ async function logNotification(
         ...(error ? { error } : {}),
         job_title: req.job_title || null,
       },
+      // v2 fields
+      idempotency_key: req.idempotency_key || null,
+      user_plan: req.user_plan || null,
+      user_cohort: req.user_cohort || null,
+      template_version: req.template_version || null,
     });
   } catch (e) {
     console.error("[send-notification] Failed to log notification:", e);
