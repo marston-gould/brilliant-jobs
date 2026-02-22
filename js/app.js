@@ -45,11 +45,6 @@ async function init() {
       bj_plan_id: window._bjUserPlan || 'free'
     });
   }
-  // Show admin nav immediately if user has admin role (already fetched in profile query)
-  if (profile && profile.role === 'admin') {
-    var navAdmin = document.getElementById('nav-admin');
-    if (navAdmin) { navAdmin.style.display = ''; console.log('[Admin] ✓ Nav shown (inline)'); }
-  }
   // Re-init admin page if it was the active tab (tab restore runs before auth)
   if (typeof initAdminPage === 'function') initAdminPage();
   // Re-hydrate globals from potentially updated localStorage
