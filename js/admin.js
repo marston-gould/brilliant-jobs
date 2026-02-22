@@ -385,8 +385,6 @@ async function fetchSeoData() {
 
 // ─── Chart Rendering ───
 function renderSeoCharts() {
-  // Clear loading states
-  document.querySelectorAll('.seo-loading').forEach(function(el) { el.remove(); });
   renderSeoStatCards();
   renderGscChart();
   renderPsiChart();
@@ -397,10 +395,6 @@ function renderSeoCharts() {
 
 
 function renderSeoStatCards() {
-  var el = document.getElementById('seo-stat-cards');
-  if (!el) return;
-  el.innerHTML = '';
-
   var techAudits = _seoData.tech_audits || [];
   var indexStatus = _seoData.index_status || [];
   var siteDailyArr = _seoData.site_daily || [];
@@ -419,49 +413,47 @@ function renderSeoStatCards() {
   var seen = {};
   indexStatus.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; totalInspected++; if (r.verdict === 'PASS') indexed++; });
 
-  // CF traffic
+  // CF traffic (latest day)
   var cfData = techAudits.filter(function(r) { return r.source === 'cloudflare'; });
   var latestCf = cfData.length ? cfData[cfData.length - 1] : null;
   var cfRequests = latestCf && latestCf.metrics ? latestCf.metrics.total_requests : null;
 
-  // GSC clicks
+  // GSC clicks (latest day)
   var latestSite = siteDailyArr.length ? siteDailyArr[siteDailyArr.length - 1] : null;
   var gscClicks = latestSite ? (latestSite.total_clicks || 0) : null;
 
-  function makeCard(label, value, colorClass) {
-    var card = document.createElement('div');
-    card.className = 'stat-card';
-    var valEl = document.createElement('div');
-    valEl.className = 'stat-val';
-    if (colorClass) valEl.classList.add(colorClass);
-    valEl.textContent = value != null ? value : '—';
-    var labelEl = document.createElement('div');
-    labelEl.className = 'stat-label';
-    labelEl.textContent = label;
-    card.appendChild(valEl);
-    card.appendChild(labelEl);
-    return card;
+  // Set values via DOM
+  function setKpi(id, value, colorClass) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value != null ? String(value) : '\u2014';
+    el.className = 'stat-val';
+    if (colorClass) el.classList.add(colorClass);
   }
 
-  function scoreColor(v) { return v >= 90 ? 'admin-green' : v >= 50 ? 'admin-amber' : 'admin-red'; }
+  var psiColor = psiPerf >= 90 ? 'admin-green' : psiPerf >= 50 ? 'admin-amber' : psiPerf != null ? 'admin-red' : '';
+  var yltColor = yltAvg >= 90 ? 'admin-green' : yltAvg >= 50 ? 'admin-amber' : yltAvg != null ? 'admin-red' : '';
+  var idxColor = totalInspected > 0 && indexed === totalInspected ? 'admin-green' : indexed > 0 ? 'admin-amber' : totalInspected > 0 ? 'admin-red' : '';
 
-  el.appendChild(makeCard('PSI Performance', psiPerf, psiPerf != null ? scoreColor(psiPerf) : ''));
-  el.appendChild(makeCard('YLT Score', yltAvg, yltAvg != null ? scoreColor(yltAvg) : ''));
-  el.appendChild(makeCard('Indexed', totalInspected > 0 ? indexed + '/' + totalInspected : '—', totalInspected > 0 ? (indexed === totalInspected ? 'admin-green' : indexed > 0 ? 'admin-amber' : 'admin-red') : ''));
-  el.appendChild(makeCard('CF Requests', cfRequests != null ? cfRequests.toLocaleString() : '—', ''));
-  el.appendChild(makeCard('GSC Clicks', gscClicks != null ? gscClicks.toLocaleString() : '—', ''));
+  setKpi('seo-kpi-psi', psiPerf, psiColor);
+  setKpi('seo-kpi-ylt', yltAvg, yltColor);
+  setKpi('seo-kpi-indexed', totalInspected > 0 ? indexed + '/' + totalInspected : null, idxColor);
+  setKpi('seo-kpi-cf', cfRequests != null ? cfRequests.toLocaleString() : null);
+  setKpi('seo-kpi-gsc', gscClicks != null ? gscClicks.toLocaleString() : null);
 }
-
 
 function seoChartTheme() {
   return {
-    tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
-    grid: { left: 50, right: 20, top: 16, bottom: 36 },
-    legend: { textStyle: { fontFamily: 'Outfit', fontSize: 11, color: '#7b829a' }, icon: 'roundRect', itemWidth: 12, itemHeight: 8, top: 0 }
+    grid: { top: 35, right: 20, bottom: 30, left: 50, containLabel: true },
+    tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
   };
 }
-function seoAxis(type, labelFmt) {
-  return { type: type || 'category', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: labelFmt }, splitLine: { lineStyle: { color: '#e8eaef' } }, axisLine: { lineStyle: { color: '#e8eaef' } } };
+
+function seoAxis() {
+  return {
+    xAxis: { type: 'category', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, axisLine: { lineStyle: { color: '#e8eaef' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+  };
 }
 
 function initSeoChart(elId) {
@@ -474,8 +466,11 @@ function initSeoChart(elId) {
 
 function seoNoData(chart, title, msg) {
   chart.setOption({
-    title: { text: title, textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-    graphic: { elements: [{ type: 'text', left: 'center', top: 'middle', style: { text: msg || 'No data yet — run sync', fill: '#555', fontSize: 12 } }] }
+    title: { text: title, textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+    graphic: { elements: [{ type: 'group', left: 'center', top: 'middle', children: [
+      { type: 'text', left: 'center', top: -10, style: { text: msg || 'No data yet', fill: '#9ca3af', fontSize: 13, fontFamily: 'Outfit' } },
+      { type: 'text', left: 'center', top: 12, style: { text: 'Run sync to populate', fill: '#d1d5db', fontSize: 11, fontFamily: 'Outfit' } }
+    ] }] }
   }, true);
 }
 
@@ -490,7 +485,7 @@ function renderTrafficChart() {
   if (!dates.length) { seoNoData(chart, 'PostHog Traffic', 'No pageview data yet'); return; }
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'PostHog Traffic', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'PostHog Traffic', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
     yAxis: ax.yAxis,
     series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 16 }]
@@ -506,7 +501,7 @@ function renderGscChart() {
   var dates = data.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Google Search Console', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'Google Search Console', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -530,7 +525,7 @@ function renderPsiChart() {
     var dates = audits.map(function(r) { return r.date; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
@@ -548,7 +543,7 @@ function renderPsiChart() {
     var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       legend: { data: ['Performance', 'SEO', 'A11y', 'BP'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
       grid: { top: 35, right: 20, bottom: 60, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 35 } },
@@ -576,7 +571,7 @@ function renderCruxChart() {
   var p75s = metricNames.map(function(k) { return m[k] && m[k].p75 ? m[k].p75 : 0; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
     yAxis: ax.yAxis,
@@ -596,7 +591,7 @@ function renderYltChart() {
     var scores = yltData.map(function(r) { return r.score; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
       series: [{ type: 'line', data: scores, lineStyle: { color: '#eab308' }, itemStyle: { color: '#eab308' }, symbol: 'circle', symbolSize: 6, areaStyle: { color: 'rgba(234,179,8,0.1)' } }]
@@ -608,7 +603,7 @@ function renderYltChart() {
     var scores = latest.map(function(r) { return r.score || 0; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 50, left: 50 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
@@ -626,7 +621,7 @@ function renderCloudflareChart() {
   var dates = cfData.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Cloudflare', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'Cloudflare', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     legend: { data: ['Requests', 'Page Views', 'Uniques'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -653,85 +648,96 @@ function renderUrlInspection() {
   if (!el) return;
   var data = _seoData.index_status || [];
   if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No inspection data yet.<br><a href="#" onclick="triggerSeoSync(['gsc_inspect']);return false;">Run inspection</a></div>';
+    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;">Run inspection</a></div>';
     return;
   }
-  var seen = {};
-  var rows = data.filter(function(r) { if (seen[r.url]) return false; seen[r.url] = true; return true; });
-  var html = '';
-  rows.forEach(function(r) {
-    var path = r.url.replace('https://brilliantjobs.app', '') || '/';
-    var pass = r.verdict === 'PASS';
-    html += '<div class="seo-metric-row">';
-    html += '<span class="seo-metric-label">' + path + '</span>';
-    html += '<span class="seo-metric-value ' + (pass ? 'seo-verdict-pass' : 'seo-verdict-fail') + '">' + (pass ? '✓ Indexed' : r.coverage_state || 'Not indexed') + '</span>';
-    html += '</div>';
-  });
-  el.innerHTML = html;
-}
 
+  if (_seoUrl) {
+    var latest = data.find(function(r) { return r.url === _seoUrl; }) || data[0];
+    var vc = latest.verdict === 'PASS' ? 'admin-green' : latest.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Verdict</span> <span class="seo-metric-value ' + vc + '">' + (latest.verdict || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Coverage</span> <span class="seo-metric-value">' + (latest.coverage_state || '\u2014') + '</span></div>' +
+      '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Indexing</span> <span class="seo-metric-value">' + (latest.indexing_state || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Last Crawl</span> <span class="seo-metric-value">' + (latest.last_crawl_time ? new Date(latest.last_crawl_time).toLocaleDateString() : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Mobile</span> <span class="seo-metric-value">' + (latest.mobile_usability || '\u2014') + '</span></div>' +
+      '</div>';
+  } else {
+    var pass = 0, fail = 0, other = 0, seen = {};
+    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-value admin-green">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-value admin-red">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-value">' + other + '</span> <span class="seo-metric-label">other</span></div>' +
+      '</div>';
+  }
+}
 
 function renderGscQueries() {
   var el = document.getElementById('seo-side-queries');
   if (!el) return;
-  var data = _seoData.gsc_daily || [];
-  if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No search query data yet. Site needs impressions in Google Search.</div>';
-    return;
-  }
-  var sorted = data.slice().sort(function(a, b) { return (b.clicks || 0) - (a.clicks || 0); }).slice(0, 20);
-  var html = '<table class="admin-platform-table"><thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>Avg Position</th></tr></thead><tbody>';
-  sorted.forEach(function(r) {
-    html += '<tr><td class="admin-platform-name">' + (r.query || '—') + '</td>';
-    html += '<td>' + (r.clicks || 0) + '</td>';
-    html += '<td>' + (r.impressions || 0) + '</td>';
-    html += '<td>' + (r.position ? r.position.toFixed(1) : '—') + '</td></tr>';
-  });
-  html += '</tbody></table>';
-  el.innerHTML = html;
+  var queries = _seoData.gsc_queries || [];
+  if (!queries.length) { el.innerHTML = '<div class="seo-empty">No search queries yet</div>'; return; }
+  var qMap = {};
+  queries.forEach(function(r) { if (!r.query) return; if (!qMap[r.query]) qMap[r.query] = { clicks:0, impressions:0, position:0, count:0 }; qMap[r.query].clicks += r.clicks||0; qMap[r.query].impressions += r.impressions||0; qMap[r.query].position += r.position||0; qMap[r.query].count++; });
+  var sorted = Object.entries(qMap).sort(function(a,b) { return b[1].clicks - a[1].clicks; }).slice(0,20);
+  el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>Avg Position</th></tr></thead><tbody>' +
+    sorted.map(function(e) {
+      var q = e[0], d = e[1];
+      var pos = d.count > 0 ? (d.position / d.count).toFixed(1) : '\u2014';
+      return '<tr><td class="admin-platform-name" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + q + '</td>' +
+        '<td class="admin-green">' + d.clicks + '</td>' +
+        '<td>' + d.impressions + '</td>' +
+        '<td>' + pos + '</td></tr>';
+    }).join('') + '</tbody></table>';
 }
-
 
 function renderKnowledgeGraph() {
   var el = document.getElementById('seo-side-kg');
   if (!el) return;
-  var data = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
-  if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No Knowledge Graph data yet.</div>';
-    return;
-  }
-  var html = '';
-  var latest = data[data.length - 1];
-  var entities = latest.metrics ? (latest.metrics.entities || []) : [];
-  if (entities.length) {
-    entities.forEach(function(e) {
-      html += '<div class="seo-metric-row"><span class="seo-metric-label">' + (e.name || '—') + '</span><span class="seo-metric-value">' + (e.type || '') + (e.score ? ' · ' + Math.round(e.score * 100) + '%' : '') + '</span></div>';
-    });
-  } else {
-    html = '<div class="seo-empty">No entities found in Knowledge Graph.</div>';
-  }
-  el.innerHTML = html;
+  var kgData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
+  if (!kgData.length) { el.innerHTML = '<div class="seo-empty">No Knowledge Graph data yet</div>'; return; }
+  var entities = (kgData[kgData.length-1].metrics && kgData[kgData.length-1].metrics.entities) || [];
+  if (!entities.length) { el.innerHTML = '<div class="seo-empty">No entities found</div>'; return; }
+  el.innerHTML = entities.map(function(e) {
+    return '<div class="seo-entity-row">' +
+      '<span class="seo-entity-name">' + (e.name || '\u2014') + '</span>' +
+      '<span class="seo-entity-type">' + (e.type || '') + '</span>' +
+      (e.score ? '<span class="seo-entity-score">' + e.score.toFixed(1) + '</span>' : '') +
+    '</div>';
+  }).join('');
 }
-
 
 function renderPsiDrilldown() {
   var el = document.getElementById('seo-side-psi');
   if (!el) return;
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
-  if (!audits.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No PSI data yet</div>'; return; }
+  if (!audits.length) { el.innerHTML = '<div class="seo-empty">No PSI data yet</div>'; return; }
   var latest = audits[audits.length-1];
   var issues = latest.issues || [];
   var m = latest.metrics || {};
   var vitals = [
-    { label:'FCP', val:m.fcp?(m.fcp/1000).toFixed(2)+'s':'—', good:m.fcp<1800 },
-    { label:'LCP', val:m.lcp?(m.lcp/1000).toFixed(2)+'s':'—', good:m.lcp<2500 },
-    { label:'CLS', val:m.cls!=null?m.cls.toFixed(3):'—', good:m.cls<0.1 },
-    { label:'TBT', val:m.tbt!=null?Math.round(m.tbt)+'ms':'—', good:m.tbt<200 },
+    { label:'FCP', val:m.fcp?(m.fcp/1000).toFixed(2)+'s':'\u2014', good:m.fcp<1800 },
+    { label:'LCP', val:m.lcp?(m.lcp/1000).toFixed(2)+'s':'\u2014', good:m.lcp<2500 },
+    { label:'CLS', val:m.cls!=null?m.cls.toFixed(3):'\u2014', good:m.cls<0.1 },
+    { label:'TBT', val:m.tbt!=null?Math.round(m.tbt)+'ms':'\u2014', good:m.tbt<200 },
   ];
-  var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">';
-  vitals.forEach(function(v) { html += '<div style="text-align:center;"><div style="font-size:14px;font-weight:700;color:'+(v.good?'var(--green)':'var(--red)')+';">'+v.val+'</div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;">'+v.label+'</div></div>'; });
+  var html = '<div class="seo-metric-row" style="gap:24px;">';
+  vitals.forEach(function(v) {
+    html += '<div class="seo-vital"><div class="seo-vital-value ' + (v.good ? 'admin-green' : 'admin-red') + '">' + v.val + '</div><div class="seo-vital-label">' + v.label + '</div></div>';
+  });
   html += '</div>';
-  html += issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● '+(i.title||i.id)+'</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues flagged</div>';
+  if (issues.length > 0) {
+    html += '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) {
+      return '<div class="seo-issue-item">' + (i.title || i.id) + '</div>';
+    }).join('') + '</div>';
+  } else {
+    html += '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues flagged</span></div>';
+  }
   el.innerHTML = html;
 }
 
@@ -740,22 +746,106 @@ function renderPsiDrilldown() {
 function renderDfsAudit() {
   var el = document.getElementById('seo-side-dfs');
   if (!el) return;
-  var data = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
-  if (!data.length) {
-    el.innerHTML = '<div class="seo-empty">No DataForSEO data yet.<br><a href="#" onclick="triggerSeoSync(['dataforseo']);return false;">Run audit</a></div>';
-    return;
+  var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
+  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([\'dataforseo\']);return false;">run sync</a></div>'; return; }
+
+  if (_seoUrl) {
+    var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
+    latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
+    var m = latest.metrics || {};
+    var issues = latest.issues || [];
+    var sc = latest.score || 0;
+    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Score</span> <span class="seo-metric-value ' + scColor + '">' + (sc || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value">' + (m.title_length || '\u2014') + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || '\u2014') + ' chars</span></div>' +
+      '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">H1s</span> <span class="seo-metric-value">' + (m.h1_count || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Load</span> <span class="seo-metric-value">' + (m.load_time ? m.load_time.toFixed(2) + 's' : '\u2014') + '</span></div>' +
+      '</div>' +
+      (issues.length > 0 ? '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) { return '<div class="seo-issue-item">' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues</span></div>');
+  } else {
+    // Aggregate — show table of latest scores
+    var latestDate = dfsData[dfsData.length - 1].date;
+    var latest = dfsData.filter(function(r) { return r.date === latestDate; });
+    el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
+      latest.map(function(r) {
+        var m = r.metrics || {};
+        var path = '/';
+        try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+        var sc = r.score || 0;
+        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+        return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
+          '<td class="' + scColor + '" style="font-weight:600;">' + sc + '</td>' +
+          '<td>' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</td>' +
+          '<td>' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
+          '<td>' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
-  var html = '';
-  data.forEach(function(r) {
-    var m = r.metrics || {};
-    var path = r.url.replace('https://brilliantjobs.app', '') || '/';
-    html += '<div class="seo-metric-row"><span class="seo-metric-label">' + path + '</span><span class="seo-metric-value">' + (r.score != null ? r.score : '—') + '</span></div>';
-    if (m.h1_count != null) html += '<div class="seo-metric-row"><span class="seo-metric-label">H1 tags</span><span class="seo-metric-value">' + m.h1_count + '</span></div>';
-    if (m.title_length) html += '<div class="seo-metric-row"><span class="seo-metric-label">Title length</span><span class="seo-metric-value">' + m.title_length + '</span></div>';
-    if (m.internal_links) html += '<div class="seo-metric-row"><span class="seo-metric-label">Internal links</span><span class="seo-metric-value">' + m.internal_links + '</span></div>';
-    if (m.external_links) html += '<div class="seo-metric-row"><span class="seo-metric-label">External links</span><span class="seo-metric-value">' + m.external_links + '</span></div>';
-  });
-  el.innerHTML = html;
+}
+
+// ─── Sync Trigger ───
+async function triggerSeoSync(tasks) {
+  var btn = document.getElementById('seo-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing\u2026'; }
+  try {
+    var session = (await sb.auth.getSession()).data.session;
+    if (!session) { alert('Sign in required'); return; }
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/seo-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ tasks: tasks || ['all'] })
+    });
+    var data = await resp.json();
+    console.log('[Admin] SEO sync result:', data);
+    if (btn) btn.textContent = 'Done \u2713';
+    setTimeout(function() { if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; } }, 2000);
+    _adminTabInit['seo'] = false;
+    loadSeoTab();
+  } catch(err) {
+    console.error('[Admin] SEO sync error:', err);
+    if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; }
+    alert('Sync failed: ' + err.message);
+  }
 }
 
 
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// TAB 5: REVENUE
+// ═══════════════════════════════════════════════════════════
+
+async function loadRevenueTab() {
+  console.log('[Admin] loadRevenueTab');
+  try {
+    var res = await sb.rpc('get_revenue_overview');
+    if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); return; }
+    var d = res.data;
+    if (!d) return;
+
+    setAdminText('ar-total', fmtAdminNum(d.total_users));
+    setAdminText('ar-pro', fmtAdminNum(d.pro_users));
+    setAdminText('ar-conversion', d.conversion_rate != null ? d.conversion_rate + '%' : '0%');
+    var mrr = (d.pro_users || 0) * 29;
+    setAdminText('ar-mrr', '$' + fmtAdminNum(mrr));
+
+    var plans = d.plan_distribution || [];
+    var total = d.total_users || 1;
+    var tbody = document.getElementById('admin-plan-body');
+    if (tbody) {
+      tbody.innerHTML = plans.map(function(p) {
+        return '<tr><td class="admin-platform-name">' + (p.plan || 'free') + '</td>' +
+          '<td>' + fmtAdminNum(p.count) + '</td>' +
+          '<td>' + Math.round(p.count / total * 100) + '%</td></tr>';
+      }).join('');
+    }
+  } catch (err) {
+    console.error('[Admin] loadRevenueTab error:', err);
+  }
+}
