@@ -385,6 +385,8 @@ async function fetchSeoData() {
 
 // ─── Chart Rendering ───
 function renderSeoCharts() {
+  // Clear loading states
+  document.querySelectorAll('.seo-loading').forEach(function(el) { el.remove(); });
   renderSeoStatCards();
   renderGscChart();
   renderPsiChart();
@@ -397,8 +399,8 @@ function renderSeoCharts() {
 function renderSeoStatCards() {
   var el = document.getElementById('seo-stat-cards');
   if (!el) return;
+  el.innerHTML = '';
 
-  // Compute summary stats from data
   var techAudits = _seoData.tech_audits || [];
   var indexStatus = _seoData.index_status || [];
   var siteDailyArr = _seoData.site_daily || [];
@@ -417,44 +419,49 @@ function renderSeoStatCards() {
   var seen = {};
   indexStatus.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; totalInspected++; if (r.verdict === 'PASS') indexed++; });
 
-  // CF traffic (latest day)
+  // CF traffic
   var cfData = techAudits.filter(function(r) { return r.source === 'cloudflare'; });
   var latestCf = cfData.length ? cfData[cfData.length - 1] : null;
   var cfRequests = latestCf && latestCf.metrics ? latestCf.metrics.total_requests : null;
 
-  // GSC clicks (latest day)
+  // GSC clicks
   var latestSite = siteDailyArr.length ? siteDailyArr[siteDailyArr.length - 1] : null;
   var gscClicks = latestSite ? (latestSite.total_clicks || 0) : null;
 
-  function card(label, value, color) {
-    var vc = color || 'var(--text)';
-    return '<div class="stat-card"><div style="font-size:20px;font-weight:700;color:' + vc + ';">' + (value != null ? value : '—') + '</div><div style="font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.3px;margin-top:2px;">' + label + '</div></div>';
+  function makeCard(label, value, colorClass) {
+    var card = document.createElement('div');
+    card.className = 'stat-card';
+    var valEl = document.createElement('div');
+    valEl.className = 'stat-val';
+    if (colorClass) valEl.classList.add(colorClass);
+    valEl.textContent = value != null ? value : '—';
+    var labelEl = document.createElement('div');
+    labelEl.className = 'stat-label';
+    labelEl.textContent = label;
+    card.appendChild(valEl);
+    card.appendChild(labelEl);
+    return card;
   }
 
-  var psiColor = psiPerf >= 90 ? 'var(--green)' : psiPerf >= 50 ? 'var(--warm)' : 'var(--red)';
-  var yltColor = yltAvg >= 90 ? 'var(--green)' : yltAvg >= 50 ? 'var(--warm)' : 'var(--red)';
-  var idxColor = totalInspected > 0 && indexed === totalInspected ? 'var(--green)' : indexed > 0 ? 'var(--warm)' : 'var(--red)';
+  function scoreColor(v) { return v >= 90 ? 'admin-green' : v >= 50 ? 'admin-amber' : 'admin-red'; }
 
-  el.innerHTML =
-    card('PSI Performance', psiPerf, psiColor) +
-    card('YLT Score', yltAvg, yltColor) +
-    card('Indexed', totalInspected > 0 ? indexed + '/' + totalInspected : '—', idxColor) +
-    card('CF Requests', cfRequests != null ? cfRequests.toLocaleString() : '—') +
-    card('GSC Clicks', gscClicks != null ? gscClicks.toLocaleString() : '—');
+  el.appendChild(makeCard('PSI Performance', psiPerf, psiPerf != null ? scoreColor(psiPerf) : ''));
+  el.appendChild(makeCard('YLT Score', yltAvg, yltAvg != null ? scoreColor(yltAvg) : ''));
+  el.appendChild(makeCard('Indexed', totalInspected > 0 ? indexed + '/' + totalInspected : '—', totalInspected > 0 ? (indexed === totalInspected ? 'admin-green' : indexed > 0 ? 'admin-amber' : 'admin-red') : ''));
+  el.appendChild(makeCard('CF Requests', cfRequests != null ? cfRequests.toLocaleString() : '—', ''));
+  el.appendChild(makeCard('GSC Clicks', gscClicks != null ? gscClicks.toLocaleString() : '—', ''));
 }
+
 
 function seoChartTheme() {
   return {
-    grid: { top: 35, right: 20, bottom: 30, left: 50, containLabel: true },
-    tooltip: { trigger: 'axis', backgroundColor: '#1a1d2e', borderColor: '#2a2d3e', textStyle: { color: '#e1e4ed', fontSize: 11 } },
+    tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+    grid: { left: 50, right: 20, top: 16, bottom: 36 },
+    legend: { textStyle: { fontFamily: 'Outfit', fontSize: 11, color: '#7b829a' }, icon: 'roundRect', itemWidth: 12, itemHeight: 8, top: 0 }
   };
 }
-
-function seoAxis() {
-  return {
-    xAxis: { type: 'category', axisLabel: { color: '#7b829a', fontSize: 10 }, axisLine: { lineStyle: { color: '#2a2d3e' } } },
-    yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
-  };
+function seoAxis(type, labelFmt) {
+  return { type: type || 'category', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: labelFmt }, splitLine: { lineStyle: { color: '#e8eaef' } }, axisLine: { lineStyle: { color: '#e8eaef' } } };
 }
 
 function initSeoChart(elId) {
@@ -645,50 +652,67 @@ function renderUrlInspection() {
   var el = document.getElementById('seo-side-inspection');
   if (!el) return;
   var data = _seoData.index_status || [];
-  if (!data.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No inspection data yet. Requires Google Service Account key (GOOGLE_SA_KEY_JSON) to be set as a Supabase secret. <a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;" style="color:var(--blue);">Try running inspection</a></div>'; return; }
-
-  if (_seoUrl) {
-    var latest = data.find(function(r) { return r.url === _seoUrl; }) || data[0];
-    var vc = latest.verdict === 'PASS' ? 'color:var(--green)' : latest.verdict === 'NEUTRAL' ? 'color:#f59e0b' : 'color:var(--red)';
-    el.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">' +
-      '<div><span style="color:var(--text-faint);">Verdict:</span> <strong style="' + vc + '">' + (latest.verdict || '—') + '</strong></div>' +
-      '<div><span style="color:var(--text-faint);">Coverage:</span> ' + (latest.coverage_state || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Indexing:</span> ' + (latest.indexing_state || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Last Crawl:</span> ' + (latest.last_crawl_time ? new Date(latest.last_crawl_time).toLocaleDateString() : '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Mobile:</span> ' + (latest.mobile_usability || '—') + '</div></div>';
-  } else {
-    var pass = 0, fail = 0, other = 0, seen = {};
-    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
-    el.innerHTML = '<div style="display:flex;gap:16px;font-size:12px;">' +
-      '<div><span style="color:var(--green);font-weight:600;">' + pass + '</span> indexed</div>' +
-      '<div><span style="color:var(--red);font-weight:600;">' + fail + '</span> failed</div>' +
-      '<div><span style="color:var(--text-faint);font-weight:600;">' + other + '</span> other</div></div>';
+  if (!data.length) {
+    el.innerHTML = '<div class="seo-empty">No inspection data yet.<br><a href="#" onclick="triggerSeoSync(['gsc_inspect']);return false;">Run inspection</a></div>';
+    return;
   }
+  var seen = {};
+  var rows = data.filter(function(r) { if (seen[r.url]) return false; seen[r.url] = true; return true; });
+  var html = '';
+  rows.forEach(function(r) {
+    var path = r.url.replace('https://brilliantjobs.app', '') || '/';
+    var pass = r.verdict === 'PASS';
+    html += '<div class="seo-metric-row">';
+    html += '<span class="seo-metric-label">' + path + '</span>';
+    html += '<span class="seo-metric-value ' + (pass ? 'seo-verdict-pass' : 'seo-verdict-fail') + '">' + (pass ? '✓ Indexed' : r.coverage_state || 'Not indexed') + '</span>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
 }
+
 
 function renderGscQueries() {
   var el = document.getElementById('seo-side-queries');
   if (!el) return;
-  var queries = _seoData.gsc_queries || [];
-  if (!queries.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No search queries yet</div>'; return; }
-  var qMap = {};
-  queries.forEach(function(r) { if (!r.query) return; if (!qMap[r.query]) qMap[r.query] = { clicks:0, impressions:0, position:0, count:0 }; qMap[r.query].clicks += r.clicks||0; qMap[r.query].impressions += r.impressions||0; qMap[r.query].position += r.position||0; qMap[r.query].count++; });
-  var sorted = Object.entries(qMap).sort(function(a,b) { return b[1].clicks - a[1].clicks; }).slice(0,20);
-  el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;"><tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Query</th><th>Clicks</th><th>Impr</th><th>Pos</th></tr>' +
-    sorted.map(function(e) { var q=e[0],d=e[1]; return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+q+'</td><td style="text-align:center;color:var(--blue);">'+d.clicks+'</td><td style="text-align:center;">'+d.impressions+'</td><td style="text-align:center;">'+(d.count>0?(d.position/d.count).toFixed(1):'—')+'</td></tr>'; }).join('') + '</table>';
+  var data = _seoData.gsc_daily || [];
+  if (!data.length) {
+    el.innerHTML = '<div class="seo-empty">No search query data yet. Site needs impressions in Google Search.</div>';
+    return;
+  }
+  var sorted = data.slice().sort(function(a, b) { return (b.clicks || 0) - (a.clicks || 0); }).slice(0, 20);
+  var html = '<table class="admin-platform-table"><thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>Avg Position</th></tr></thead><tbody>';
+  sorted.forEach(function(r) {
+    html += '<tr><td class="admin-platform-name">' + (r.query || '—') + '</td>';
+    html += '<td>' + (r.clicks || 0) + '</td>';
+    html += '<td>' + (r.impressions || 0) + '</td>';
+    html += '<td>' + (r.position ? r.position.toFixed(1) : '—') + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
+
 
 function renderKnowledgeGraph() {
   var el = document.getElementById('seo-side-kg');
   if (!el) return;
-  var kgData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
-  if (!kgData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No Knowledge Graph data yet</div>'; return; }
-  var entities = (kgData[kgData.length-1].metrics && kgData[kgData.length-1].metrics.entities) || [];
-  if (!entities.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No entities found</div>'; return; }
-  el.innerHTML = entities.map(function(e) {
-    return '<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--text);font-weight:500;">'+(e.name||'—')+'</span><span style="color:var(--text-faint);font-size:10px;">'+(e.type||'')+'</span>'+(e.score?'<span style="margin-left:auto;color:var(--text-faint);font-size:10px;">'+e.score.toFixed(1)+'</span>':'')+'</div>';
-  }).join('');
+  var data = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
+  if (!data.length) {
+    el.innerHTML = '<div class="seo-empty">No Knowledge Graph data yet.</div>';
+    return;
+  }
+  var html = '';
+  var latest = data[data.length - 1];
+  var entities = latest.metrics ? (latest.metrics.entities || []) : [];
+  if (entities.length) {
+    entities.forEach(function(e) {
+      html += '<div class="seo-metric-row"><span class="seo-metric-label">' + (e.name || '—') + '</span><span class="seo-metric-value">' + (e.type || '') + (e.score ? ' · ' + Math.round(e.score * 100) + '%' : '') + '</span></div>';
+    });
+  } else {
+    html = '<div class="seo-empty">No entities found in Knowledge Graph.</div>';
+  }
+  el.innerHTML = html;
 }
+
 
 function renderPsiDrilldown() {
   var el = document.getElementById('seo-side-psi');
@@ -716,102 +740,22 @@ function renderPsiDrilldown() {
 function renderDfsAudit() {
   var el = document.getElementById('seo-side-dfs');
   if (!el) return;
-  var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
-  if (!dfsData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No DataForSEO data yet — run sync</div>'; return; }
-
-  if (_seoUrl) {
-    var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
-    latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
-    var m = latest.metrics || {};
-    var issues = latest.issues || [];
-    el.innerHTML =
-      '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:8px;">' +
-      '<div><span style="color:var(--text-faint);">Score:</span> <strong style="color:' + (latest.score >= 90 ? 'var(--green)' : latest.score >= 50 ? '#f59e0b' : 'var(--red)') + ';">' + (latest.score || '—') + '</strong></div>' +
-      '<div><span style="color:var(--text-faint);">Title:</span> ' + (m.title_length || '—') + ' chars</div>' +
-      '<div><span style="color:var(--text-faint);">Desc:</span> ' + (m.description_length || '—') + ' chars</div>' +
-      '<div><span style="color:var(--text-faint);">H1s:</span> ' + (m.h1_count || 0) + '</div>' +
-      '<div><span style="color:var(--text-faint);">Int links:</span> ' + (m.internal_links || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Ext links:</span> ' + (m.external_links || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Size:</span> ' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Load:</span> ' + (m.load_time ? m.load_time.toFixed(2) + 's' : '—') + '</div>' +
-      '</div>' +
-      (issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● ' + (i.message || i.check || '—') + '</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues</div>');
-  } else {
-    // Aggregate — show table of latest scores
-    var latestDate = dfsData[dfsData.length - 1].date;
-    var latest = dfsData.filter(function(r) { return r.date === latestDate; });
-    el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
-      '<tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr>' +
-      latest.map(function(r) {
-        var m = r.metrics || {};
-        var path = '/';
-        try { path = new URL(r.url).pathname || '/'; } catch(e) {}
-        var sc = r.score || 0;
-        var scColor = sc >= 90 ? 'var(--green)' : sc >= 50 ? '#f59e0b' : 'var(--red)';
-        return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;font-family:var(--mono);">' + path + '</td>' +
-          '<td style="text-align:center;color:' + scColor + ';font-weight:600;">' + sc + '</td>' +
-          '<td style="text-align:center;">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '—') + '</td>' +
-          '<td style="text-align:center;">' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
-          '<td style="text-align:center;">' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
-      }).join('') + '</table>';
+  var data = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
+  if (!data.length) {
+    el.innerHTML = '<div class="seo-empty">No DataForSEO data yet.<br><a href="#" onclick="triggerSeoSync(['dataforseo']);return false;">Run audit</a></div>';
+    return;
   }
-}
-
-// ─── Sync Trigger ───
-async function triggerSeoSync(tasks) {
-  var btn = document.getElementById('seo-sync-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
-  try {
-    var session = (await sb.auth.getSession()).data.session;
-    if (!session) { alert('Sign in required'); return; }
-    var resp = await fetch(SUPABASE_URL + '/functions/v1/seo-sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_KEY },
-      body: JSON.stringify({ tasks: tasks || ['all'] })
-    });
-    var data = await resp.json();
-    console.log('[Admin] SEO sync result:', data);
-    if (btn) btn.textContent = 'Done ✓';
-    setTimeout(function() { if (btn) { btn.disabled = false; btn.textContent = '↻ Sync All'; } }, 2000);
-    loadSeoTab();
-  } catch(err) {
-    console.error('[Admin] SEO sync error:', err);
-    if (btn) { btn.disabled = false; btn.textContent = '↻ Sync All'; }
-    alert('Sync failed: ' + err.message);
-  }
+  var html = '';
+  data.forEach(function(r) {
+    var m = r.metrics || {};
+    var path = r.url.replace('https://brilliantjobs.app', '') || '/';
+    html += '<div class="seo-metric-row"><span class="seo-metric-label">' + path + '</span><span class="seo-metric-value">' + (r.score != null ? r.score : '—') + '</span></div>';
+    if (m.h1_count != null) html += '<div class="seo-metric-row"><span class="seo-metric-label">H1 tags</span><span class="seo-metric-value">' + m.h1_count + '</span></div>';
+    if (m.title_length) html += '<div class="seo-metric-row"><span class="seo-metric-label">Title length</span><span class="seo-metric-value">' + m.title_length + '</span></div>';
+    if (m.internal_links) html += '<div class="seo-metric-row"><span class="seo-metric-label">Internal links</span><span class="seo-metric-value">' + m.internal_links + '</span></div>';
+    if (m.external_links) html += '<div class="seo-metric-row"><span class="seo-metric-label">External links</span><span class="seo-metric-value">' + m.external_links + '</span></div>';
+  });
+  el.innerHTML = html;
 }
 
 
-// ═══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════
-// TAB 5: REVENUE
-// ═══════════════════════════════════════════════════════════
-
-async function loadRevenueTab() {
-  console.log('[Admin] loadRevenueTab');
-  try {
-    var res = await sb.rpc('get_revenue_overview');
-    if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); return; }
-    var d = res.data;
-    if (!d) return;
-
-    setAdminText('ar-total', fmtAdminNum(d.total_users));
-    setAdminText('ar-pro', fmtAdminNum(d.pro_users));
-    setAdminText('ar-conversion', d.conversion_rate != null ? d.conversion_rate + '%' : '0%');
-    var mrr = (d.pro_users || 0) * 29;
-    setAdminText('ar-mrr', '$' + fmtAdminNum(mrr));
-
-    var plans = d.plan_distribution || [];
-    var total = d.total_users || 1;
-    var tbody = document.getElementById('admin-plan-body');
-    if (tbody) {
-      tbody.innerHTML = plans.map(function(p) {
-        return '<tr><td class="admin-platform-name">' + (p.plan || 'free') + '</td>' +
-          '<td>' + fmtAdminNum(p.count) + '</td>' +
-          '<td>' + Math.round(p.count / total * 100) + '%</td></tr>';
-      }).join('');
-    }
-  } catch (err) {
-    console.error('[Admin] loadRevenueTab error:', err);
-  }
-}
