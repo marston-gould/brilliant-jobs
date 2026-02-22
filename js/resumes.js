@@ -92,6 +92,11 @@ function renderResumes() {
       ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
       : '';
 
+    // G26: Tier provenance badge
+    const tierBadge = r.source === 'rewrite'
+      ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '">✨ Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
+      : '';
+
     // Readiness grade from cache — shown inline on card
     let gradeHtml = '';
     if (!isPlaceholder) {
@@ -140,7 +145,7 @@ function renderResumes() {
             <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
             ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
           </div>
-          ${gdriveIcon}
+          ${gdriveIcon}${tierBadge}
         </div>
         ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
         <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -261,6 +266,9 @@ function renderResumeArchive(archivedResumes) {
       <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
     </div>`;
   }).join('');
+
+  // G25: Render cover letter archive
+  if (typeof bjRenderCoverLetterArchive === 'function') bjRenderCoverLetterArchive();
 }
 
 // Nav dot updates

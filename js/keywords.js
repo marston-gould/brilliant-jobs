@@ -1596,8 +1596,13 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
       ],
       storagePath: data.resume_path, size: 0, lastModified: Date.now(), archived: false
     });
-    if (typeof saveUserData === 'function') saveUserData();
+    if (typeof saveResumes === 'function') saveResumes();
     console.log('[BJ] Auto-saved rewritten resume:', newName);
+  }
+
+  // G24: Save cover letter to database
+  if (data.cover_letter && data.cover_letter_path) {
+    bjSaveCoverLetter(data, fname);
   }
 
   var html = '<div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:8px;">';
@@ -3437,4 +3442,152 @@ function bjApplyImproveSuggestions() {
 
   // Refresh the feed with new exclusions
   if (typeof refreshFeed === 'function') refreshFeed();
+}
+
+// ════════════════════════════════════════════════════════════
+// G23: AUTO-ADD REWRITE TO RESUME LIBRARY
+// G26: TIER PROVENANCE TRACKING
+// ════════════════════════════════════════════════════════════
+
+function bjAddRewriteToLibrary(ri, fi, data, filterName) {
+  var original = resumes[ri];
+  if (!original) return;
+
+  var round = 1;
+  resumes.forEach(function(r) {
+    if (r.source === 'rewrite' && r.basedOn === original.id) {
+      round = Math.max(round, (r.rewrite_round || 0) + 1);
+    }
+  });
+
+  var id = 'res_rw_' + data.session_id.slice(0, 8) + '_' + round;
+  var name = (original.name || 'Resume') + ' \u2014 ' + (filterName || 'Rewrite') + ' v' + round;
+
+  var newResume = {
+    id: id,
+    name: name,
+    fileName: name + '.docx',
+    size: '',
+    filterIds: filterName ? [filterName] : (original.filterIds || []).slice(),
+    uploadedAt: new Date().toLocaleDateString(),
+    levelLabel: original.levelLabel || '',
+    levelColor: original.levelColor || '',
+    archived: false,
+    extractedText: '',
+    keywords: original.keywords || [],
+    textStatus: 'ready',
+    source: 'rewrite',
+    basedOn: original.id,
+    rewrite_session_id: data.session_id,
+    rewrite_round: round,
+    analysis_tier: 'premium',
+    rewrite_tier: 'premium',
+    tier_history: [
+      { action: 'analyzed', tier: 'premium', timestamp: new Date().toISOString() },
+      { action: 'rewritten', tier: 'premium', round: round, timestamp: new Date().toISOString() }
+    ],
+    resume_path: data.resume_path,
+    qa_clean: data.qa_report ? (data.qa_report.accuracy?.clean && data.qa_report.bleed?.clean) : null,
+    changes_count: (data.changes_made || []).length,
+    template_used: data.template_used
+  };
+
+  // Extract text from resume sections for keyword analysis
+  if (data.resume_sections) {
+    var textParts = [];
+    (data.resume_sections || []).forEach(function(section) {
+      (section.items || []).forEach(function(item) {
+        if (item.content) {
+          if (item.content.text) textParts.push(item.content.text);
+          if (item.content.title) textParts.push(item.content.title);
+          if (item.content.company) textParts.push(item.content.company);
+          if (item.content.bullets) textParts.push(item.content.bullets.join(' '));
+          if (item.content.skills) textParts.push(item.content.skills.join(', '));
+          if (item.content.degree) textParts.push(item.content.degree);
+        }
+      });
+    });
+    newResume.extractedText = textParts.join('\n');
+    if (typeof extractResumeKeywords === 'function') {
+      newResume.keywords = extractResumeKeywords(newResume.extractedText);
+    }
+  }
+
+  resumes.push(newResume);
+  saveResumes();
+  if (typeof renderResumes === 'function') renderResumes();
+  console.log('[BJ] Rewrite added to library:', id, name);
+  return id;
+}
+
+// ════════════════════════════════════════════════════════════
+// G24-G25: COVER LETTER SAVE + ARCHIVE
+// ════════════════════════════════════════════════════════════
+
+async function bjSaveCoverLetter(data, filterName) {
+  if (!data.cover_letter || !data.cover_letter_path) return;
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+    var { error } = await sb.from('cover_letters').insert({
+      user_id: session.data.session.user.id,
+      session_id: data.session_id,
+      round_number: 1,
+      filter_name: filterName || '',
+      paragraphs: data.cover_letter.paragraphs || [],
+      salutation: data.cover_letter.salutation || '',
+      closing: data.cover_letter.closing || '',
+      word_count: data.cover_letter.word_count || 0,
+      storage_path: data.cover_letter_path,
+      tier: 'premium',
+      analysis_tier: 'premium'
+    });
+    if (error) console.error('[BJ] Cover letter save error:', error);
+    else console.log('[BJ] Cover letter saved');
+  } catch (e) { console.error('[BJ] Cover letter save exception:', e); }
+}
+
+async function bjRenderCoverLetterArchive() {
+  var container = document.getElementById('cover-letter-archive');
+  if (!container) return;
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { container.style.display = 'none'; return; }
+    var { data: covers, error } = await sb.from('cover_letters')
+      .select('*').eq('user_id', session.data.session.user.id)
+      .order('created_at', { ascending: false }).limit(20);
+    if (error || !covers || covers.length === 0) { container.style.display = 'none'; return; }
+
+    container.style.display = '';
+    var html = '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">Cover Letters (' + covers.length + ')</div>';
+    covers.forEach(function(cl) {
+      var date = cl.created_at ? new Date(cl.created_at).toLocaleDateString() : '';
+      var tierBadge = cl.tier === 'premium'
+        ? '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.2);color:#4d8eff;font-weight:600;">\u2728 Premium</span>'
+        : '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(148,163,184,0.1);color:#94a3b8;font-weight:600;">AI Basic</span>';
+      var downloadUrl = SUPABASE_URL + '/storage/v1/object/public/' + cl.storage_path;
+      html += '<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg-input);">';
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">';
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + (cl.filter_name || 'General') + '</span>' + tierBadge;
+      html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;">' + date + ' \u00b7 ' + (cl.word_count || '?') + ' words</span></div>';
+      html += '<div id="cl-preview-' + cl.id + '" style="display:none;font-size:11px;color:var(--text-dim);margin:6px 0;padding:8px;background:var(--bg-main);border-radius:4px;line-height:1.5;">';
+      html += '<div style="font-style:italic;margin-bottom:4px;">' + (cl.salutation || '') + '</div>';
+      (cl.paragraphs || []).forEach(function(p) { html += '<div style="margin-bottom:6px;">' + p + '</div>'; });
+      html += '<div>' + (cl.closing || '') + '</div></div>';
+      html += '<div style="display:flex;gap:6px;">';
+      html += '<button class="btn btn-sm" onclick="var e=document.getElementById(\'cl-preview-' + cl.id + '\');e.style.display=e.style.display===\'none\'?\'\':\'none\';" style="font-size:9px;padding:2px 8px;">Preview</button>';
+      html += '<a href="' + downloadUrl + '" download class="btn btn-sm" style="font-size:9px;padding:2px 8px;text-decoration:none;">Download</a>';
+      html += '<button class="btn btn-sm" onclick="bjDeleteCoverLetter(\'' + cl.id + '\')" style="font-size:9px;padding:2px 8px;color:var(--red);">Delete</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) { console.error('[BJ] Cover letter archive error:', e); container.style.display = 'none'; }
+}
+
+async function bjDeleteCoverLetter(id) {
+  if (!confirm('Delete this cover letter?')) return;
+  try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
+  catch (e) { console.error('[BJ] Delete cover letter error:', e); }
 }

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Brilliant Jobs — LinkedIn Profile Sync",
+  "version": "1.0.0",
+  "description": "Capture your LinkedIn profile data to improve resume alignment checking in Brilliant Jobs.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://www.linkedin.com/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/in/*"],
+      "js": ["content.js"],
+      "css": ["inject.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
