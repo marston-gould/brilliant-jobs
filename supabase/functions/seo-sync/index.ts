@@ -183,6 +183,7 @@ async function syncPsi(targetUrl?: string): Promise<{ pages: number }> {
           date: today, url, source: `psi_${strat}`, score: perf, metrics, issues,
         }, { onConflict: 'date,url,source' });
         // Update site daily for homepage
+        if (url.endsWith('/') && url.includes('brilliantjobs.app')) {
           const col = strat==='mobile' ? 'psi_mobile_score' : 'psi_desktop_score';
           await sb.from('seo_site_daily').upsert({ date: today, [col]: perf }, { onConflict: 'date' });
         }
@@ -326,6 +327,7 @@ async function syncYellowLab(): Promise<{ pages: number }> {
         }, { onConflict: 'date,url,source' });
 
         // Update site daily for homepages
+        if (url.endsWith('/') && url.includes('brilliantjobs.app')) {
           await sb.from('seo_site_daily').upsert({ date: today, ylt_score: Math.round(globalScore) }, { onConflict: 'date' });
         }
         n++;
