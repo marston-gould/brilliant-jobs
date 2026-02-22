@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.85';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — storage guards: size limits, quota handling, health monitor, emergency cleanup');
+const BJ_VERSION = 'v3.86';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — backup & DR: dr_health_check(), recovery runbook');
 
 // Auth
 async function init() {
