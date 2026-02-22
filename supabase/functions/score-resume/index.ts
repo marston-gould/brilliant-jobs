@@ -563,13 +563,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Missing resume_text' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
-    if (!['corpus', 'single', 'gap-interview'].includes(mode)) {
-      return new Response(JSON.stringify({ error: 'Invalid mode. Use "corpus", "single", or "gap-interview"' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+    if (!['corpus', 'single', 'gap-interview', 'revision-assess'].includes(mode)) {
+      return new Response(JSON.stringify({ error: 'Invalid mode. Use "corpus", "single", "gap-interview", or "revision-assess"' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
     // ─── GAP INTERVIEW MODE ───
-    // Lightweight mode: takes gap_analysis + resume_profile from a previous premium analysis
-    // and generates targeted questions to close gaps
     if (mode === 'gap-interview') {
       const { gap_analysis, resume_profile } = body;
       if (!gap_analysis || !Array.isArray(gap_analysis)) {
@@ -582,6 +580,72 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         mode: 'gap-interview',
         ...gapResult,
+        model: HAIKU_MODEL
+      }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // ─── REVISION ASSESS MODE (G33) ───
+    if (mode === 'revision-assess') {
+      const { resume_sections, feedback } = body;
+      if (!feedback) {
+        return new Response(JSON.stringify({ error: 'revision-assess mode requires feedback object' }), { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
+      }
+
+      console.log(`[score-resume] REVISION ASSESS user=${user.id}`);
+
+      const assessPrompt = `You are a Revision Advisor. Evaluate user feedback on a resume rewrite and predict whether a revision will meaningfully improve the output.
+
+You receive:
+1. Star ratings (overall, accuracy, relevance, voice, formatting) — each 1-5
+2. Qualitative feedback text
+
+Assess:
+- Is the feedback specific enough to act on? (references specific bullets, sections, concrete changes)
+- What dimensions would improve most from a revision?
+- Is another round worth the cost?
+
+Be honest. If the resume is strong and feedback is minor, say so. If feedback suggests fundamental issues, say that too.
+
+Output ONLY JSON:
+{
+  "revision_recommended": boolean,
+  "confidence": "high" | "medium" | "low",
+  "confidence_reason": "string",
+  "estimated_improvements": [{ "area": "string", "current_rating": int, "estimated_after": int }],
+  "feedback_quality": "specific" | "moderate" | "vague",
+  "suggestion_to_user": "string — if feedback is vague, suggest how to make it more actionable"
+}
+
+No markdown, no code fences. JSON only.`;
+
+      const assessInput = `<ratings>
+Overall: ${feedback.overall || '?'}/5
+Accuracy: ${feedback.accuracy || '?'}/5
+Relevance: ${feedback.relevance || '?'}/5
+Voice: ${feedback.voice || '?'}/5
+Formatting: ${feedback.formatting || '?'}/5
+</ratings>
+
+<feedback_text>
+${feedback.text || 'No specific feedback provided'}
+</feedback_text>
+
+${resume_sections ? '<resume_sections_summary>' + JSON.stringify(resume_sections).slice(0, 2000) + '</resume_sections_summary>' : ''}
+
+Assess. Return ONLY JSON.`;
+
+      const assessResult = await callAnthropic(HAIKU_MODEL, assessPrompt, assessInput, 1500, 0);
+
+      let assessment = { revision_recommended: true, confidence: 'medium', confidence_reason: 'Unable to assess' };
+      if (assessResult.ok) {
+        try { assessment = parseJSON(assessResult.text); } catch (e) {}
+      }
+
+      return new Response(JSON.stringify({
+        mode: 'revision-assess',
+        ...assessment,
         model: HAIKU_MODEL
       }), {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
