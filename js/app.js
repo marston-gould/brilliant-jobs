@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.73';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — subscription tab, credit system, Stripe checkout');
+const BJ_VERSION = 'v3.74';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — hire fee, hired stage, credit gating');
 
 // Auth
 async function init() {
