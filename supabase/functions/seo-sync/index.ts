@@ -16,7 +16,7 @@ const POSTHOG_KEY = Deno.env.get('POSTHOG_PERSONAL_KEY') || '***REDACTED_POSTHOG
 const CF_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN') || '***REDACTED_CF_TOKEN***';
 const CF_ZONE = Deno.env.get('CLOUDFLARE_ZONE_ID') || '***REDACTED_CF_ZONE***';
 
-const GSC_SITE = 'https://brilliantjobs.app/';
+const GSC_SITE = 'sc-domain:brilliantjobs.app';
 const SITE_URLS = [
   'https://brilliantjobs.app/',
   'https://brilliantjobs.app/data-lab',
@@ -133,6 +133,7 @@ async function syncInspect(): Promise<{ checked: number }> {
         body: JSON.stringify({ inspectionUrl: url, siteUrl: GSC_SITE }),
       });
       const d = await r.json();
+      console.log(`[seo-sync] inspect ${url}: status=${r.status}`, JSON.stringify(d).slice(0, 500));
       const idx = d.inspectionResult?.indexStatusResult || {};
       const mob = d.inspectionResult?.mobileUsabilityResult || {};
       await sb.from('seo_index_status').insert({
