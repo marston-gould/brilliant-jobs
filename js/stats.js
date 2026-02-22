@@ -34,8 +34,8 @@ var STATS_THEME = {
 };
 var STATS_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#8b5cf6','#ef4444','#f97316','#14b8a6','#a855f7'];
 var DEFAULT_LEVEL_HIERARCHY = [
-  {label:'Intern', keywords:'intern,internship,co-op,coop'},
-  {label:'Entry', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
+  {label:'Entry Level', keywords:'entry level,entry-level,junior,jr,new grad,graduate'},
+  {label:'Associate', keywords:'associate,assoc'},
   {label:'Mid', keywords:'mid level,mid-level,intermediate'},
   {label:'Senior', keywords:'senior,sr'},
   {label:'Staff', keywords:'staff'},
@@ -545,9 +545,7 @@ function renderSalaryByLevel(stats) {
     series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
       barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
       label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
-        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}},
-      markLine:{ silent:true, symbol:'none', lineStyle:{color:'#ef4444',type:'dashed',width:1.5},
-        data:[{yAxis:overallAvg, label:{formatter:'Avg: $'+Math.round(overallAvg/1000)+'K',color:'#ef4444',fontFamily:_T.mono,fontSize:10}}]}}],
+        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}}}],
     animation:true, animationDuration:600,
   }, true);
 }

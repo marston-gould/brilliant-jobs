@@ -816,12 +816,11 @@ function renderPayPills() {
 $('#qb-input-pay-min').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    if ($('#qb-input-pay-max').value || $('#qb-input-pay-min').value) {
-      if (!$('#qb-input-pay-max').value && $('#qb-input-pay-min').value) {
-        applyPayFilter();
-      } else {
-        applyPayFilter();
-      }
+    if ($('#qb-input-pay-min').value && !$('#qb-input-pay-max').value) {
+      // Min only — focus max to let user set a range, or press Enter again to apply as min+
+      $('#qb-input-pay-max').focus();
+    } else if ($('#qb-input-pay-min').value || $('#qb-input-pay-max').value) {
+      applyPayFilter();
     }
   }
 });
