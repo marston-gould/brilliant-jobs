@@ -47,8 +47,8 @@
 
 | # | Action | Owner | Status |
 |---|--------|-------|--------|
-| M1 | Deploy `health-check` Edge Function: `supabase functions deploy health-check --no-verify-jwt` | CEO | 🔲 |
-| M2 | Deploy updated `send-notification`, `refresh-jobs`, `validate-signup` Edge Functions | CEO | 🔲 |
+| M1 | Deploy `health-check` Edge Function: `supabase functions deploy health-check --no-verify-jwt` | CEO | ✅ |
+| M2 | Deploy updated `send-notification`, `refresh-jobs`, `validate-signup` Edge Functions | CEO | ✅ |
 | M3 | Create PostHog project → set `window.POSTHOG_API_KEY` in globals.js | CEO | 🔲 |
 | M4 | Verify Vercel deploy completed (security headers + DOMPurify live) | CEO | 🔲 |
 
@@ -223,7 +223,14 @@
 | F12 | PostHog plan_id fix | v3.40 | ✅ | Changed from hardcoded 'free' to window._bjUserPlan (read from profiles.plan at auth). |
 | F13 | behavior_category defaults | v3.40 | ✅ | Updated entitlement_features: filters/resumes → fixed, 8 others → off. Matches feature brief catalog. |
 
-**Phase F total: 13 items across 3 sprints, all complete. Version range: v3.30 → v3.40.**
+### Sprint 4: Infrastructure Cleanup (post v3.40)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| F14 | Edge Function bulk deploy | — | ✅ | Installed Supabase CLI in automation environment. Deployed 10 stale functions (resilience module + AI filter updates). All 22 functions now current. CLI deploy capability permanent. |
+| F15 | pg_cron: materialized view refresh | — | ✅ | Scheduled refresh_materialized_views() every 10 minutes (job 10). Refreshes mv_landing_stats, mv_jobs_by_source, mv_jobs_by_day. 8 total cron jobs active. |
+
+**Phase F total: 15 items across 4 sprints, all complete. Version range: v3.30 → v3.40.**
 
 ### Cohort Experience System — Final Status
 
@@ -247,6 +254,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | F-S4 | F14, F15 | Supabase CLI installed in automation. 10 stale Edge Functions deployed. pg_cron job added for materialized view refresh (every 10 min). |
 | 2026-02-22 | F-S3 | F8–F13 | Cohort client wiring: checkEntitlement() helper, feature gates on filters/resumes, upgrade toast UI, PostHog plan_id fix, behavior_category defaults. v3.40. |
 | 2026-02-22 | F-S2 | F5–F7 | Data pages live: 5 pages converted to Supabase RPCs with localStorage caching + methodology footers. v3.39. |
 | 2026-02-22 | F-S1 | F1–F4 | Admin panel fix, Cohort Phase A database (cohorts, CPE, check_entitlement v2, auto-assign trigger, catalog adjustments). v3.30–v3.38. |
