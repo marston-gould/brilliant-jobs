@@ -301,8 +301,15 @@ function aggregateStats(rows) {
   // Location aggregation for map + metro list (US only)
   s.stateCounts = {};
   s.cityCounts = {};
+  s.locationCounts = {};
+  s.locationsTotal = 0;
   var US_ST = {AL:1,AK:1,AZ:1,AR:1,CA:1,CO:1,CT:1,DC:1,DE:1,FL:1,GA:1,HI:1,ID:1,IL:1,IN:1,IA:1,KS:1,KY:1,LA:1,ME:1,MD:1,MA:1,MI:1,MN:1,MS:1,MO:1,MT:1,NE:1,NV:1,NH:1,NJ:1,NM:1,NY:1,NC:1,ND:1,OH:1,OK:1,OR:1,PA:1,RI:1,SC:1,SD:1,TN:1,TX:1,UT:1,VT:1,VA:1,WA:1,WV:1,WI:1,WY:1};
   rows.forEach(function(r) {
+    var loc = (r.location || '').trim();
+    if (loc && loc.toLowerCase() !== 'remote') {
+      s.locationsTotal++;
+      s.locationCounts[loc.toLowerCase()] = (s.locationCounts[loc.toLowerCase()]||0) + 1;
+    }
     if (r.loc_state && US_ST[r.loc_state]) {
       s.stateCounts[r.loc_state] = (s.stateCounts[r.loc_state]||0) + 1;
       if (r.loc_city) {
@@ -411,8 +418,8 @@ function renderSeniorityBars(stats) {
     return;
   }
 
-  // Ordered Entry → C-Suite (correct career ladder: Manager before Lead)
-  var SENIORITY_ORDER = ['Intern','Entry','Mid','Senior','Staff','Manager','Lead','Principal','Director','VP','C-Suite'];
+  // Ordered Entry → C-Suite (correct career ladder)
+  var SENIORITY_ORDER = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Head','Principal','Sr Manager','Manager','Sr Director','Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
@@ -436,7 +443,7 @@ function renderSeniorityBars(stats) {
     tooltip: Object.assign({ trigger:'item',
       formatter:function(p){ var pct=stats.total>0?Math.round(p.value/stats.total*100):0; return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+pct+'%)'; }}, ttip()),
     legend: { orient:'vertical', right:4, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:10},
-      formatter:function(name){var d=data.find(function(x){return x.name===name;}); return name+(d?' ('+d.value+')':'');}},
+      formatter:function(name){var d=data.find(function(x){return x.name===name;}); var total=data.reduce(function(a,b){return a+b.value;},0); var pct=d&&total>0?Math.round(d.value/total*100):0; return name+(d?' ('+pct+'%)':'');}},
     series: [{ type:'pie', radius:['38%','68%'], center:['35%','50%'],
       data:data.map(function(d,i){return {name:d.name, value:d.value, itemStyle:{color:senColors[i%senColors.length]}};}),
       label:{show:false},

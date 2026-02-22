@@ -1288,8 +1288,7 @@ function updateResumeFilterCta() {
   var hasResumes = (typeof resumes !== 'undefined' ? resumes : []).some(function(r) {
     return r.extractedText && r.extractedText.length > 100 && !r.archived;
   });
-  var hasFilters = savedFilters.length > 0;
-  cta.style.display = (hasResumes && !hasFilters) ? '' : 'none';
+  cta.style.display = hasResumes ? '' : 'none';
 }
 
 function initAiFilterButton() {
