@@ -196,8 +196,11 @@
 | E27 | RLS disable on SEO tables | v3.44 | ✅ | Disabled Row Level Security on all 6 SEO tables (seo_tech_audits, seo_site_daily, seo_page_daily, seo_gsc_daily, seo_index_status, seo_conversions). Data is admin-only aggregate metrics, RLS was blocking all frontend reads. |
 | E28 | InLinks semantic schemas | v3.45 | ✅ | Added WebPage ld+json schemas with `about` and `mentions` entities (Wikipedia sameAs links) to all 6 public pages: salary-data, hiring-trends, jobs-by-industry, career-level-data, data-lab, index. 3 from InLinks, 3 generated to match. |
 | E29 | Daily SEO cron job | v3.44 | ✅ | `trigger_seo_sync()` PL/pgSQL function calls seo-sync Edge Function via pg_net. Scheduled via pg_cron as `daily-seo-sync` at 6 AM UTC. |
+| E30 | SEO tab redesign | v3.48 | ✅ | Full visual redesign per Pod 1 handoff spec. 13 new CSS classes (.seo-controls, .seo-select, .seo-section-label, .seo-detail-grid, .seo-metric-row, etc.). 4-section layout: Controls → Stat Cards → Charts → Drilldowns. DOM-based stat cards replacing innerHTML. CrUX promoted to own card. Chart heights 300/280px. Light-theme ECharts. Loading + empty states. All 12 acceptance criteria pass. |
+| E31 | Dead job lightbulb icon | v3.47 | ✅ | Replaced 3D 🚫 emoji with on-brand SVG burned-out lightbulb for job removal modal. Copy: "This Brilliant opportunity has dimmed." |
+| E32 | InLinks semantic schemas | v3.45 | ✅ | WebPage ld+json with about/mentions entities (Wikipedia sameAs) on all 6 public pages. 3 from InLinks, 3 generated to match pattern. |
 
-**Phase E total: 43 items across 6 sprints, all complete. Version range: v2.68 → v3.45.**
+**Phase E total: 46 items across 6 sprints, all complete. Version range: v2.68 → v3.48.**
 
 ---
 
@@ -370,6 +373,7 @@
 | 2026-02-22 | G-S3 | G13–G18 | Rewrite team: Resume Writer (Sonnet) + Cover Letter Writer (Sonnet, conditional). 3 docx templates (Executive/Modern/Classic). docx-js server-side generation. Supabase Storage `rewrites` bucket. Full rewrite brief from acceptance UI. v3.51. |
 | 2026-02-22 | G-S2 | G7–G12 | Gap Interview + Acceptance UI. Gap Interviewer agent (Haiku) with lateral questioning. Toggleable recommendation cards. Achievement prompt inputs. User highlights/notes/exclusions. Cover letter opt-in. Template picker. v3.50. |
 | 2026-02-22 | G-S1 | G1–G6 | Premium multi-agent resume scoring pipeline. 4 agents (2 Haiku + 2 Sonnet), 3-pass architecture, 5 industry Gold Standards. Deep Analysis button. Dimension bars + coaching renderer. v3.49. |
+| 2026-02-22 | E-S4+++ | E30–E32 | SEO tab full redesign per Pod 1 spec (13 CSS classes, 4-section layout, DOM stat cards, light-theme charts, loading/empty states). Dead job lightbulb icon. InLinks schemas on 6 pages. v3.45–v3.48. |
 | 2026-02-22 | E-S4++ | E26–E29 | GSC sc-domain fix (URL Inspection working). RLS disabled on SEO tables (charts render). InLinks semantic schemas on 6 pages. Daily seo-sync cron job. v3.44–v3.45. |
 | 2026-02-22 | E-S4+ | E22–E25 | SEO Admin v3.41: seo-sync v3 (9 tools — added Yellow Labs, CrUX, Knowledge Graph, Cloudflare). PSI 4-category. Dashboard redesign (6 charts + side panel). Credential consolidation. |
 | 2026-02-22 | F-S4 | F14, F15 | Supabase CLI installed in automation. 10 stale Edge Functions deployed. pg_cron job added for materialized view refresh (every 10 min). |
