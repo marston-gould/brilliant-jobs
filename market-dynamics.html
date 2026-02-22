@@ -169,7 +169,7 @@
 
   <h2 class="sdiv">Jobs Per Capita</h2>
   <div class="card">
-    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#22c55e">● Best: 8+</span>&ensp;<span style="color:#3b82f6">● Good: 4-8</span>&ensp;<span style="color:#8b5cf6">● Low: 2-4</span>&ensp;<span style="color:#7884a8">● Sparse: &lt;2</span></div>
+    <div class="ch"><div><div class="cl">Market Density</div><div class="ct">Open Jobs per 10,000 Residents by Metro</div></div><span class="badge b-cyan">Map</span></div><div style="font-size:11px;color:var(--text-faint);margin-bottom:12px">Each bubble = one metro. Size &amp; color = <strong style="color:var(--text)">jobs per 10K residents</strong> (higher is better): <span style="color:#4ade80">● Best: 8+</span>&ensp;<span style="color:#22d3ee">● Good: 4-8</span>&ensp;<span style="color:#fbbf24">● Moderate: 2-4</span>&ensp;<span style="color:#94a3b8">● Low: &lt;2</span></div>
     <div id="percapita-map" style="width:100%;height:500px"></div>
   </div>
   <div class="takeaway"><strong>Key insight:</strong> San Francisco leads with 22.9 open jobs per 10,000 residents &mdash; nearly 5x the national average. Silicon Valley (San Jose: 10.0) and Austin (9.7) round out the top 3, reflecting the concentration of tech hiring in these metros relative to their population.</div>
@@ -178,7 +178,7 @@
     <h3>Methodology</h3>
     <p>Market dynamics data visualizes weekly trends across <strong>285,000+</strong> active job listings from <strong>10,000+</strong> company career pages. Industry × Department and Department × Level heatmaps show job volume by category per ISO week, with departments classified by title keyword matching and industries assigned via company profile enrichment. Geographic visualizations use state-level location data extracted from job listings (<strong>174,000+</strong> with US state codes). Velocity metrics measure week-over-week growth rates by state. All aggregations are pre-computed in Supabase materialized views and cached client-side for 24 hours.</p>
   </div>
-  <div class="foot">Data from 10,000+ career pages<br>v3.39 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 10,000+ career pages<br>v3.57 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
 </div>
 </main>
 <!-- v3.28 -->
@@ -194,9 +194,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_md_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
   function cSet(k,d){try{localStorage.setItem('bj_md_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
   async function q(table) {
-    var c=cGet(table);if(c)return c;
-    var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
-    var d = await r.json();cSet(table,d);return d;
+    var c=cGet(table);if(c&&Array.isArray(c)&&c.length>0)return c;
+    try{var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
+    if(!r.ok)return[];var d = await r.json();if(Array.isArray(d)&&d.length>0)cSet(table,d);return d||[];}catch(e){return[];}
   }
 
   // Load all 3 datasets in parallel
@@ -308,14 +308,17 @@ document.addEventListener('DOMContentLoaded', async function() {
   var velMax = Math.max.apply(null,velData.map(function(d){return d.job_count}));
 
   // Color interpolation
-  var MAP_COLORS = [[15,41,34],[6,78,59],[4,120,87],[16,185,129],[52,211,153],[110,231,183]];
-  function mapColor(val, max) {
+  var MAP_COLORS = [[20,30,48],[30,64,120],[59,130,246],[96,165,250],[147,197,253],[219,234,254]];
+  var VEL_COLORS = [[25,45,40],[16,120,70],[22,163,74],[52,211,153],[110,231,183],[167,243,208]];
+  function mapColor(val, max, colors) {
     if (!val || !max) return '#1a1f2e';
-    var t = Math.min(val / max, 1);
-    var idx = t * (MAP_COLORS.length - 1);
-    var lo = Math.floor(idx), hi = Math.min(lo + 1, MAP_COLORS.length - 1);
+    var ratio = Math.min(val / max, 1);
+    var t = 0.15 + 0.85 * Math.sqrt(ratio);
+    var pal = colors || MAP_COLORS;
+    var idx = t * (pal.length - 1);
+    var lo = Math.floor(idx), hi = Math.min(lo + 1, pal.length - 1);
     var f = idx - lo;
-    return 'rgb(' + Math.round(MAP_COLORS[lo][0]+(MAP_COLORS[hi][0]-MAP_COLORS[lo][0])*f) + ',' + Math.round(MAP_COLORS[lo][1]+(MAP_COLORS[hi][1]-MAP_COLORS[lo][1])*f) + ',' + Math.round(MAP_COLORS[lo][2]+(MAP_COLORS[hi][2]-MAP_COLORS[lo][2])*f) + ')';
+    return 'rgb(' + Math.round(pal[lo][0]+(pal[hi][0]-pal[lo][0])*f) + ',' + Math.round(pal[lo][1]+(pal[hi][1]-pal[lo][1])*f) + ',' + Math.round(pal[lo][2]+(pal[hi][2]-pal[lo][2])*f) + ')';
   }
 
   try {
@@ -331,13 +334,17 @@ document.addEventListener('DOMContentLoaded', async function() {
       return [x, y];
     }
     function projectAK(lon, lat) {
-      var x = (lon + 187) * 0.55 + 10;
-      var y = (72 - lat) * 1.6 + mapH * 0.63;
+      // Inset box: bottom-left, well below continental US
+      var bx = 10, by = mapH * 0.68, bw = 200, bh = mapH * 0.28;
+      var x = bx + ((lon + 190) / 65) * bw;
+      var y = by + ((72 - lat) / 20) * bh;
       return [x, y];
     }
     function projectHI(lon, lat) {
-      var x = (lon + 161.5) * 5.5 + 235;
-      var y = (22.5 - lat) * 5.5 + mapH * 0.80;
+      // Inset box: to the right of AK
+      var bx = 220, by = mapH * 0.82, bw = 120, bh = mapH * 0.15;
+      var x = bx + ((lon + 161) / 6) * bw;
+      var y = by + ((22.5 - lat) / 3.5) * bh;
       return [x, y];
     }
     function getProj(name) {
@@ -368,10 +375,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     mapEl.appendChild(svg);
     mapEl.appendChild(tip);
 
-    // Inset boxes
-    var svgBox = function(x,y,w,h) { var b=document.createElementNS(svgNS,'rect'); b.setAttribute('x',x);b.setAttribute('y',y);b.setAttribute('width',w);b.setAttribute('height',h); b.setAttribute('fill','none');b.setAttribute('stroke','#1e2230');b.setAttribute('stroke-width','1');b.setAttribute('rx','4'); svg.appendChild(b); };
-    svgBox(5, mapH*0.58, 225, mapH*0.40);
-    svgBox(235, mapH*0.78, 120, mapH*0.20);
+    // Inset boxes for Alaska and Hawaii
+    var svgBox = function(x,y,w,h) { var b=document.createElementNS(svgNS,'rect'); b.setAttribute('x',x);b.setAttribute('y',y);b.setAttribute('width',w);b.setAttribute('height',h); b.setAttribute('fill','none');b.setAttribute('stroke','#2d3348');b.setAttribute('stroke-width','1.5');b.setAttribute('rx','4'); svg.appendChild(b); };
+    svgBox(2, mapH*0.66, 218, mapH*0.32);
+    svgBox(222, mapH*0.80, 128, mapH*0.18);
+    // Labels
+    var addLabel = function(x,y,text) { var t=document.createElementNS(svgNS,'text');t.setAttribute('x',x);t.setAttribute('y',y);t.setAttribute('fill','#4a5270');t.setAttribute('font-size','10');t.setAttribute('font-family','Outfit,sans-serif');t.setAttribute('font-weight','600');t.textContent=text;svg.appendChild(t); };
+    addLabel(8, mapH*0.66 + 14, 'ALASKA');
+    addLabel(228, mapH*0.80 + 14, 'HAWAII');
 
     // State paths
     var statePaths = {};
@@ -401,7 +412,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         tip.style.top = (e.clientY - rect.top - 30) + 'px';
       });
       path.addEventListener('mouseleave', function() {
-        path.setAttribute('stroke', '#2d3348'); path.setAttribute('stroke-width', '0.5');
+        path.setAttribute('stroke', 'rgba(255,255,255,0.2)'); path.setAttribute('stroke-width', '0.8');
         tip.style.display = 'none';
       });
       svg.appendChild(path);
@@ -415,10 +426,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     legend.style.cssText = 'position:absolute;top:50%;right:12px;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;font-family:JetBrains Mono,monospace;font-size:9px;color:#7884a8';
     legend.innerHTML = '<span id="leg-hi" style="font-size:8px"></span><canvas id="leg-bar" width="10" height="140" style="border-radius:3px"></canvas><span style="font-size:8px">0 jobs</span>';
     mapEl.appendChild(legend);
-    function drawLegend(maxVal) {
+    function drawLegend(maxVal, isVel) {
       var rounded = roundScale(maxVal);
       var c = document.getElementById('leg-bar');
-      if (c) { var ctx = c.getContext('2d'); for (var y=0;y<140;y++) { ctx.fillStyle = mapColor(139-y,139); ctx.fillRect(0,y,10,1); } }
+      if (c) { var ctx = c.getContext('2d'); for (var y=0;y<140;y++) { ctx.fillStyle = mapColor(139-y,139, isVel ? VEL_COLORS : MAP_COLORS); ctx.fillRect(0,y,10,1); } }
       var el = document.getElementById('leg-hi');
       if (el) el.textContent = rounded.toLocaleString() + ' jobs';
     }
@@ -427,11 +438,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     function renderOpen() {
       Object.keys(statePaths).forEach(function(code) {
         var val = openByState[code] || 0;
-        statePaths[code].setAttribute('fill', val ? mapColor(val, openMax) : '#1a1f2e');
+        statePaths[code].setAttribute('fill', val ? mapColor(val, openMax, MAP_COLORS) : '#1a1f2e');
         statePaths[code]._val = val;
         statePaths[code]._mode = 'open';
       });
-      drawLegend(openMax);
+      drawLegend(openMax, false);
     }
 
     // Render velocity for a given week
@@ -440,11 +451,11 @@ document.addEventListener('DOMContentLoaded', async function() {
       var data = velByWeek[w] || {};
       Object.keys(statePaths).forEach(function(code) {
         var val = data[code] || 0;
-        statePaths[code].setAttribute('fill', val ? mapColor(val, velMax) : '#1a1f2e');
+        statePaths[code].setAttribute('fill', val ? mapColor(val, velMax, VEL_COLORS) : '#1a1f2e');
         statePaths[code]._val = val;
         statePaths[code]._mode = 'vel';
       });
-      drawLegend(velMax);
+      drawLegend(velMax, true);
     }
 
     // Mode toggle
@@ -485,53 +496,67 @@ document.addEventListener('DOMContentLoaded', async function() {
     var topMetros=[['San Francisco','CA',10289,22.9],['New York','NY',8596,4.4],['Los Angeles','CA',4374,3.4],['Washington','DC',2736,4.3],['Boston','MA',2342,4.8],['Chicago','IL',2337,2.5],['Dallas','TX',2305,2.9],['Austin','TX',2240,9.7],['Seattle','WA',2058,5.1],['San Jose','CA',1904,10.0],['Phoenix','AZ',1869,3.8],['Atlanta','GA',1703,2.8],['Denver','CO',1166,4.0],['Miami','FL',1013,1.7],['Houston','TX',931,1.3],['San Diego','CA',781,2.4],['Charlotte','NC',762,2.9],['Philadelphia','PA',737,1.2],['Las Vegas','NV',684,3.0],['Tampa','FL',585,1.8],['Nashville','TN',576,3.0],['Raleigh','NC',564,4.0],['Minneapolis','MN',548,1.5],['Portland','OR',527,2.1],['Salt Lake City','UT',412,3.4]];
     var tbody = document.getElementById('metro-tbody');
     if (tbody) {
+      var maxJobs = Math.max.apply(null,topMetros.map(function(m){return m[2]}));
       topMetros.forEach(function(m,i) {
         var tr = document.createElement('tr');
         tr.style.borderBottom = '1px solid var(--border)';
         var pcText = m[3] !== null ? m[3].toFixed(1) : '—';
-        var pcColor = m[3] >= 8 ? '#22c55e' : m[3] >= 4 ? '#3b82f6' : m[3] >= 2 ? '#8b5cf6' : '#7884a8';
+        // Blue intensity by job count (consistent blue palette)
+        var jobPct = m[2]/maxJobs;
+        var jobAlpha = (0.3 + jobPct * 0.7).toFixed(2);
+        var jobColor = 'rgba(59,130,246,' + jobAlpha + ')';
+        // Per-capita: blue intensity scale (light to bright)
+        var pcColor = m[3] >= 8 ? '#4ade80' : m[3] >= 4 ? '#22d3ee' : m[3] >= 2 ? '#fbbf24' : '#94a3b8';
+        var pcAlpha = m[3] >= 8 ? '1' : m[3] >= 4 ? '0.85' : m[3] >= 2 ? '0.65' : '0.45';
         tr.innerHTML = '<td style="padding:6px 12px;color:var(--text-faint)">'+(i+1)+'</td>'
           +'<td style="padding:6px 12px;color:var(--text)">'+m[0]+', '+m[1]+'</td>'
-          +'<td style="padding:6px 12px;text-align:right;color:var(--text);font-weight:600">'+m[2].toLocaleString()+'</td>'
-          +'<td style="padding:6px 12px;text-align:right;color:'+pcColor+';font-weight:600">'+pcText+'</td>';
+          +'<td style="padding:6px 12px;text-align:right;color:'+jobColor+';font-weight:600">'+m[2].toLocaleString()+'</td>'
+          +'<td style="padding:6px 12px;text-align:right;color:'+pcColor+';opacity:'+pcAlpha+';font-weight:600">'+pcText+'</td>';
         tbody.appendChild(tr);
       });
     }
 
     // ── Per-Capita Bubble Map ──
-    var pcMetros=[['San Francisco','CA',37.7749,-122.4194,10289,22.9],['San Jose','CA',37.3382,-121.8863,1904,10.0],['Austin','TX',30.2672,-97.7431,2240,9.7],['Seattle','WA',47.6062,-122.3321,2058,5.1],['Boston','MA',42.3601,-71.0589,2342,4.8],['New York','NY',40.7128,-74.006,8596,4.4],['Washington','DC',38.9072,-77.0369,2736,4.3],['Denver','CO',39.7392,-104.9903,1166,4.0],['Raleigh','NC',35.7796,-78.6382,564,4.0],['Phoenix','AZ',33.4484,-112.074,1869,3.8],['Los Angeles','CA',34.0522,-118.2437,4374,3.4],['Salt Lake City','UT',40.7608,-111.891,412,3.4],['Las Vegas','NV',36.1699,-115.1398,684,3.0],['Nashville','TN',36.1627,-86.7816,576,3.0],['Dallas','TX',32.7767,-96.797,2305,2.9],['Charlotte','NC',35.2271,-80.8431,762,2.9],['Atlanta','GA',33.749,-84.388,1703,2.8],['Chicago','IL',41.8781,-87.6298,2337,2.5],['San Diego','CA',32.7157,-117.1611,781,2.4],['Portland','OR',45.5152,-122.6784,527,2.1],['Dallas','TX',32.7767,-96.797,2305,1.9],['Tampa','FL',27.9506,-82.4572,585,1.8],['Miami','FL',25.7617,-80.1918,1013,1.7],['Phoenix','AZ',33.4484,-112.074,1869,1.7],['Minneapolis','MN',44.9778,-93.265,548,1.5],['Houston','TX',29.7604,-95.3698,931,1.3],['Philadelphia','PA',39.9526,-75.1652,737,1.2]];
-    // Remove duplicates (Dallas appears twice above from city mapping)
-    var pcSeen = {};
-    pcMetros = pcMetros.filter(function(m) { var k=m[0]+m[1]; if(pcSeen[k]) return false; pcSeen[k]=true; return true; });
-
+    var pcMetros=[['San Francisco','CA',37.7749,-122.4194,10289,22.9],['San Jose','CA',37.3382,-121.8863,1904,10.0],['Austin','TX',30.2672,-97.7431,2240,9.7],['Seattle','WA',47.6062,-122.3321,2058,5.1],['Boston','MA',42.3601,-71.0589,2342,4.8],['New York','NY',40.7128,-74.006,8596,4.4],['Washington','DC',38.9072,-77.0369,2736,4.3],['Denver','CO',39.7392,-104.9903,1166,4.0],['Raleigh','NC',35.7796,-78.6382,564,4.0],['Phoenix','AZ',33.4484,-112.074,1869,3.8],['Los Angeles','CA',34.0522,-118.2437,4374,3.4],['Salt Lake City','UT',40.7608,-111.891,412,3.4],['Las Vegas','NV',36.1699,-115.1398,684,3.0],['Nashville','TN',36.1627,-86.7816,576,3.0],['Dallas','TX',32.7767,-96.797,2305,2.9],['Charlotte','NC',35.2271,-80.8431,762,2.9],['Atlanta','GA',33.749,-84.388,1703,2.8],['Chicago','IL',41.8781,-87.6298,2337,2.5],['San Diego','CA',32.7157,-117.1611,781,2.4],['Portland','OR',45.5152,-122.6784,527,2.1],['Tampa','FL',27.9506,-82.4572,585,1.8],['Miami','FL',25.7617,-80.1918,1013,1.7],['Minneapolis','MN',44.9778,-93.265,548,1.5],['Houston','TX',29.7604,-95.3698,931,1.3],['Philadelphia','PA',39.9526,-75.1652,737,1.2]];
     var pcEl = document.getElementById('percapita-map');
     if (pcEl && typeof echarts !== 'undefined') {
       var pcChart = echarts.init(pcEl, null, {renderer:'canvas'});
-      // Project to simple US map coordinates
-      var mapW = pcEl.offsetWidth || 800;
-      var mapH = pcEl.offsetHeight || 500;
-      function projPC(lat,lng) {
-        var x = ((lng + 125) / 60) * mapW;
-        var y = ((50 - lat) / 26) * mapH;
-        return [Math.max(20,Math.min(mapW-20,x)), Math.max(20,Math.min(mapH-20,y))];
-      }
+
+      // Register US map for state outlines
+      if (usGeo) { echarts.registerMap('USA', usGeo); }
+
+      // Also register inset version for per-capita bubble map
+      var insetRes = await fetch('/js/vendor/us-states-inset.json');
+      var usGeoInset = await insetRes.json();
+      echarts.registerMap('USA_INSET', usGeoInset);
+
       var maxPC = Math.max.apply(null, pcMetros.map(function(m){return m[5];}));
-      var pcData = pcMetros.map(function(m) {
-        var p = projPC(m[2],m[3]);
-        var r = Math.max(8, Math.min(55, (m[5]/maxPC) * 55));
-        return { name:m[0]+', '+m[1], value:[p[0],p[1],m[5],m[4]], symbolSize:r };
+      var pcSeriesData = pcMetros.map(function(m) {
+        return { name:m[0]+', '+m[1], value:[m[3],m[2],m[5],m[4]] };
       });
+
       pcChart.setOption({
+        geo: {
+          map: 'USA_INSET',
+          roam: false,
+          silent: true,
+          itemStyle: { areaColor: '#12141a', borderColor: 'rgba(255,255,255,0.2)', borderWidth: 0.8 },
+          emphasis: { disabled: true },
+          left: 80, right: 20, top: 20, bottom: 20,
+          regions: [
+            { name: 'Alaska', itemStyle: { areaColor: '#12141a' } },
+            { name: 'Hawaii', itemStyle: { areaColor: '#12141a' } }
+          ]
+        },
         tooltip:{trigger:'item',backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12},
-          formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value[2]+' jobs per 10K<br/>'+Number(p.value[3]).toLocaleString()+' total jobs';}},
-        xAxis:{show:false,min:0,max:mapW},
-        yAxis:{show:false,min:0,max:mapH,inverse:true},
-        series:[{type:'scatter',coordinateSystem:'cartesian2d',
-          data:pcData,
-          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(34,197,94,0.75)':v>=4?'rgba(59,130,246,0.7)':v>=2?'rgba(139,92,246,0.6)':'rgba(120,132,168,0.5)';},
-            borderColor:'rgba(255,255,255,0.3)',borderWidth:1},
+          formatter:function(p){if(!p.value)return '';return '<b>'+p.name+'</b><br/>'+p.value[2]+' jobs per 10K<br/>'+Number(p.value[3]).toLocaleString()+' total jobs';}},
+        series:[{type:'scatter',coordinateSystem:'geo',
+          data:pcSeriesData,
+          symbolSize: function(val) { return Math.max(10, Math.min(55, Math.sqrt(val[2]/maxPC) * 55)); },
+          itemStyle:{color:function(p){var v=p.value[2]; return v>=8?'rgba(74,222,128,0.9)':v>=4?'rgba(34,211,238,0.85)':v>=2?'rgba(251,191,36,0.8)':'rgba(148,163,184,0.6)';},
+            borderColor:'rgba(147,197,253,0.4)',borderWidth:1},
           label:{show:true,position:'right',color:'#8a92a9',fontSize:9,fontFamily:'JetBrains Mono',
-            formatter:function(p){return p.value[2]>=2?p.name.split(',')[0]:'';}}
+            formatter:function(p){return p.name.split(',')[0];}}
         }],
         animation:true,animationDuration:800
       });

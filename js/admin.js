@@ -124,7 +124,12 @@ async function loadBoardHealth() {
   try {
     var snapshot = await sb.rpc('get_board_health', { period_hours: adminPeriod });
     console.log('[Admin] RPC data:', snapshot.data);
-    if (snapshot.error) { console.error('[Admin] RPC error:', snapshot.error); return; }
+    if (snapshot.error) {
+      console.error('[Admin] RPC error:', snapshot.error);
+      var healthEl = document.getElementById('admin-health');
+      if (healthEl) healthEl.innerHTML = '<span class="admin-red">⚠ Feed health data unavailable — ' + (snapshot.error.message || 'unknown error') + '</span> <button onclick="_adminTabInit[\'feed-health\']=false;loadBoardHealth()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button>';
+      return;
+    }
     var d = snapshot.data;
     if (!d) return;
 
@@ -202,11 +207,14 @@ async function loadCohortTab() {
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
     var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
     var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
+    var active30d = cohorts.reduce(function(s, c) { return s + (c.active_30d || 0); }, 0);
+    var retention = totalUsers > 0 ? Math.round(active30d / totalUsers * 100) : 0;
 
     setAdminText('ac-total-cohorts', cohorts.length);
     setAdminText('ac-total-users', fmtAdminNum(totalUsers));
     setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
     setAdminText('ac-active-7d', fmtAdminNum(active7d));
+    setAdminText('ac-retention', retention + '%');
 
     var tbody = document.getElementById('admin-cohort-body');
     if (!tbody) return;
@@ -230,9 +238,104 @@ async function loadCohortTab() {
       var cohort = cohorts.find(function(c) { return String(c.id) === cid; });
       if (cohort) loadCohortDetail(cohort);
     });
+
+    renderCohortCharts(cohorts);
   } catch (err) {
     console.error('[Admin] loadCohortTab error:', err);
   }
+}
+
+// ─── Cohort Charts ───
+function renderCohortCharts(cohorts) {
+  // 1. Plan Distribution — stacked bar (Free/Pro per cohort)
+  var planEl = document.getElementById('admin-cohort-plan-chart');
+  if (planEl && typeof echarts !== 'undefined') {
+    var planChart = echarts.init(planEl);
+    var names = cohorts.map(function(c) { return c.slug || c.name; });
+    var t = seoChartTheme();
+    planChart.setOption(Object.assign({}, t, {
+      title: { text: 'Plan Distribution', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      legend: { data: ['Free', 'Pro'], textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: names, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [
+        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#94a3b8' } },
+        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#3b82f6' } }
+      ]
+    }), true);
+    window.addEventListener('resize', function() { planChart.resize(); });
+  }
+
+  // 2. User Growth — cumulative signups over time
+  renderCohortGrowthChart();
+
+  // 3. Sessions per day
+  renderCohortSessionsChart();
+}
+
+async function renderCohortGrowthChart() {
+  var el = document.getElementById('admin-cohort-growth-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var res = await sb.from('profiles').select('created_at').order('created_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'User Growth', subtext: 'No signup data yet', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var weekMap = {};
+    res.data.forEach(function(p) {
+      var d = new Date(p.created_at);
+      var wk = d.toISOString().slice(0, 10);
+      weekMap[wk] = (weekMap[wk] || 0) + 1;
+    });
+    var dates = Object.keys(weekMap).sort();
+    var cumulative = [], sum = 0;
+    dates.forEach(function(d) { sum += weekMap[d]; cumulative.push(sum); });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'User Growth', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#3b82f6', width: 2 }, itemStyle: { color: '#3b82f6' }, areaStyle: { color: 'rgba(59,130,246,0.08)' }, symbol: 'circle', symbolSize: 4 }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Growth chart error:', e); }
+}
+
+async function renderCohortSessionsChart() {
+  var el = document.getElementById('admin-cohort-sessions-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var since = new Date(Date.now() - 30 * 86400000).toISOString();
+    var res = await sb.from('user_sessions').select('started_at').gte('started_at', since).order('started_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'Sessions / Day', subtext: 'Sessions will appear after launch', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var dayMap = {};
+    res.data.forEach(function(s) {
+      var d = new Date(s.started_at).toISOString().slice(0, 10);
+      dayMap[d] = (dayMap[d] || 0) + 1;
+    });
+    var dates = Object.keys(dayMap).sort();
+    var counts = dates.map(function(d) { return dayMap[d]; });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Sessions / Day (30d)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'bar', data: counts, itemStyle: { color: '#22c55e', borderRadius: [3,3,0,0] } }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Sessions chart error:', e); }
 }
 
 async function loadCohortDetail(cohort) {
@@ -399,10 +502,16 @@ function renderSeoStatCards() {
   var indexStatus = _seoData.index_status || [];
   var siteDailyArr = _seoData.site_daily || [];
 
-  // PSI avg performance (latest mobile)
+  // PSI avg performance (latest mobile) — average across ALL pages
   var psiMobile = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
-  var latestPsi = psiMobile.length ? psiMobile[psiMobile.length - 1] : null;
-  var psiPerf = latestPsi && latestPsi.metrics ? latestPsi.metrics.performance : null;
+  var psiPerf = null;
+  if (psiMobile.length) {
+    var latestPsiDate = psiMobile[psiMobile.length - 1].date;
+    var latestPsiPages = psiMobile.filter(function(r) { return r.date === latestPsiDate; });
+    var perfSum = 0;
+    latestPsiPages.forEach(function(r) { if (r.metrics) perfSum += r.metrics.performance || 0; });
+    psiPerf = latestPsiPages.length ? Math.round(perfSum / latestPsiPages.length) : null;
+  }
 
   // YLT avg
   var yltData = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
@@ -520,40 +629,57 @@ function renderPsiChart() {
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
   if (!audits.length) { seoNoData(chart, 'PageSpeed Insights (Mobile)'); return; }
 
+  // Logarithmic transform: compress 0-100 scale to show detail in 80-100 range
+  // Use log10(101-v) inverted so higher scores get more visual space
+  function psiLog(v) { if (v == null) return null; return v; }
+
   if (_seoUrl) {
-    // Single URL time series
-    var dates = audits.map(function(r) { return r.date; });
+    // Single URL — bar chart of latest scores (matches all-pages style)
+    var pageAudits = audits.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageAudits.length) pageAudits = audits;
+    var latest = pageAudits[pageAudits.length - 1];
+    var m = latest.metrics || {};
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [m.performance || 0, m.seo || 0, m.accessibility || 0, m.best_practices || 0];
+    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [
-        { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'Accessibility', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.accessibility; }), lineStyle: { color: '#4d8eff' }, itemStyle: { color: '#4d8eff' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'Best Practices', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.best_practices; }), lineStyle: { color: '#a78bfa' }, itemStyle: { color: '#a78bfa' }, symbol: 'circle', symbolSize: 6 }
-      ]
+      title: { text: 'PSI (Mobile) — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 12 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 700, formatter: function(p) { return p.value; } } }]
     }), true);
   } else {
-    // Aggregate — latest scores by page
+    // Aggregate — average across all pages for latest date
     var latestDate = audits[audits.length - 1].date;
     var latest = audits.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
+    var avgMetrics = { performance: 0, seo: 0, accessibility: 0, best_practices: 0 };
+    latest.forEach(function(r) {
+      if (r.metrics) {
+        avgMetrics.performance += r.metrics.performance || 0;
+        avgMetrics.seo += r.metrics.seo || 0;
+        avgMetrics.accessibility += r.metrics.accessibility || 0;
+        avgMetrics.best_practices += r.metrics.best_practices || 0;
+      }
+    });
+    var n = latest.length || 1;
+    Object.keys(avgMetrics).forEach(function(k) { avgMetrics[k] = Math.round(avgMetrics[k] / n); });
+    
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [avgMetrics.performance, avgMetrics.seo, avgMetrics.accessibility, avgMetrics.best_practices];
+    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: ['Performance', 'SEO', 'A11y', 'BP'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-      grid: { top: 35, right: 20, bottom: 60, left: 40 },
-      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 35 } },
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [
-        { name: 'Performance', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.performance; }), itemStyle: { color: '#f59e0b' }, barMaxWidth: 14 },
-        { name: 'SEO', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.seo; }), itemStyle: { color: '#34d399' }, barMaxWidth: 14 },
-        { name: 'A11y', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.accessibility; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 14 },
-        { name: 'BP', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.best_practices; }), itemStyle: { color: '#a78bfa' }, barMaxWidth: 14 }
-      ]
+      title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700, formatter: function(p) { return p.value; } } }]
     }), true);
   }
 }
@@ -587,27 +713,86 @@ function renderYltChart() {
   if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
 
   if (_seoUrl) {
-    var dates = yltData.map(function(r) { return r.date; });
-    var scores = yltData.map(function(r) { return r.score; });
-    var t = seoChartTheme(), ax = seoAxis();
+    // Single URL — radar of latest category scores (matches all-pages style)
+    var pageData = yltData.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageData.length) { seoNoData(chart, 'YLT — no data for this URL'); return; }
+    var latest = pageData[pageData.length - 1];
+    var score = latest.score || 0;
+    var cats = latest.metrics && latest.metrics.categories ? latest.metrics.categories : {};
+    var catEntries = Object.values(cats).map(function(c) {
+      return { name: c.label || 'Unknown', value: c.score || 0 };
+    });
+    if (!catEntries.length) { seoNoData(chart, 'YLT — no category data'); return; }
+
+    var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [{ type: 'line', data: scores, lineStyle: { color: '#eab308' }, itemStyle: { color: '#eab308' }, symbol: 'circle', symbolSize: 6, areaStyle: { color: 'rgba(234,179,8,0.1)' } }]
+      title: { text: 'YLT: ' + score + '/100 — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 10 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: new URL(_seoUrl).pathname,
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>' + score + '/100</b><br/>' + lines.join('<br/>');
+      } }
     }), true);
   } else {
+    // All Pages: blended average score + category radar
     var latestDate = yltData[yltData.length - 1].date;
     var latest = yltData.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
-    var scores = latest.map(function(r) { return r.score || 0; });
-    var t = seoChartTheme(), ax = seoAxis();
+    var avgScore = Math.round(latest.reduce(function(s, r) { return s + (r.score || 0); }, 0) / (latest.length || 1));
+    
+    // Aggregate categories across all pages
+    var catTotals = {}, catCount = 0;
+    latest.forEach(function(r) {
+      if (r.metrics && r.metrics.categories) {
+        catCount++;
+        Object.keys(r.metrics.categories).forEach(function(k) {
+          var cat = r.metrics.categories[k];
+          if (!catTotals[k]) catTotals[k] = { label: cat.label || k, total: 0, count: 0 };
+          catTotals[k].total += cat.score || 0;
+          catTotals[k].count++;
+        });
+      }
+    });
+    
+    var catEntries = Object.values(catTotals).map(function(c) {
+      return { name: c.label, value: Math.round(c.total / c.count) };
+    });
+    
+    var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      grid: { top: 35, right: 20, bottom: 50, left: 50 },
-      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [{ type: 'bar', data: scores, itemStyle: { color: function(p) { var v = p.value; return v >= 80 ? '#34d399' : v >= 50 ? '#f59e0b' : '#ef4444'; } }, barMaxWidth: 30 }]
+      title: { text: 'YLT Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 9 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: 'Avg Score',
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>Avg across ' + catCount + ' pages</b><br/>' + lines.join('<br/>');
+      } }
     }), true);
   }
 }
@@ -666,14 +851,32 @@ function renderUrlInspection() {
         '<div class="seo-metric-item"><span class="seo-metric-label">Mobile</span> <span class="seo-metric-value">' + (latest.mobile_usability || '\u2014') + '</span></div>' +
       '</div>';
   } else {
-    var pass = 0, fail = 0, other = 0, seen = {};
-    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
-    el.innerHTML =
-      '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-value admin-green">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-value admin-red">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-value">' + other + '</span> <span class="seo-metric-label">other</span></div>' +
-      '</div>';
+    // All pages: show horizontal bar chart of verdict per URL
+    var seen = {}, rows = [];
+    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; rows.push(r); });
+    
+    var pass = 0, fail = 0, other = 0;
+    rows.forEach(function(r) { if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
+    
+    var chartHtml = '<div style="margin-bottom:12px;display:flex;gap:16px;">' +
+      '<div><span class="seo-metric-value admin-green" style="font-size:18px;">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
+      '<div><span class="seo-metric-value admin-amber" style="font-size:18px;">' + other + '</span> <span class="seo-metric-label">pending</span></div>' +
+      '<div><span class="seo-metric-value admin-red" style="font-size:18px;">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
+    '</div>';
+    
+    // Per-URL status table
+    chartHtml += '<div style="max-height:200px;overflow-y:auto;">';
+    chartHtml += '<table class="admin-platform-table" style="font-size:11px;"><thead><tr><th>URL</th><th>Status</th><th>Coverage</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var path = '/';
+      try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+      var vc = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+      chartHtml += '<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + path + '</td>' +
+        '<td class="' + vc + '">' + (r.verdict || '—') + '</td>' +
+        '<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + (r.coverage_state || '—') + '</td></tr>';
+    });
+    chartHtml += '</tbody></table></div>';
+    el.innerHTML = chartHtml;
   }
 }
 
@@ -754,36 +957,46 @@ function renderDfsAudit() {
     latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
     var m = latest.metrics || {};
     var issues = latest.issues || [];
-    var sc = latest.score || 0;
-    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+    var sc = latest.score;
+    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
+    var scDisplay = sc != null ? sc : '\u2014';
     el.innerHTML =
       '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Score</span> <span class="seo-metric-value ' + scColor + '">' + (sc || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value">' + (m.title_length || '\u2014') + ' chars</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || '\u2014') + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">On-Page Score</span> <span class="seo-metric-value ' + scColor + '" style="font-size:22px;">' + scDisplay + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Checks</span> <span class="seo-metric-value"><span class="admin-green">' + (m.checks_passed || 0) + '</span>/<span>' + (m.checks_total || 0) + '</span></span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Status</span> <span class="seo-metric-value">' + (m.status_code || '\u2014') + '</span></div>' +
       '</div>' +
       '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">H1s</span> <span class="seo-metric-value">' + (m.h1_count || 0) + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-label">Load</span> <span class="seo-metric-value">' + (m.load_time ? m.load_time.toFixed(2) + 's' : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value" title="' + (m.title || '').replace(/"/g, '&quot;') + '">' + (m.title_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">H1/H2/H3</span> <span class="seo-metric-value">' + (m.h1_count||0) + '/' + (m.h2_count||0) + '/' + (m.h3_count||0) + '</span></div>' +
       '</div>' +
-      (issues.length > 0 ? '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) { return '<div class="seo-issue-item">' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues</span></div>');
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Images</span> <span class="seo-metric-value">' + (m.images_count || 0) + (m.images_without_alt ? ' <span class="admin-amber">(' + m.images_without_alt + ' no alt)</span>' : '') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
+      '</div>' +
+      (issues.length > 0 ? '<div style="margin-top:8px;font-size:10px;text-transform:uppercase;color:var(--text-faint);font-weight:600;letter-spacing:0.5px;">Failed Checks (' + issues.length + ')</div><div class="seo-issue-list">' + issues.slice(0,10).map(function(i) { return '<div class="seo-issue-item">\u2717 ' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row" style="margin-top:4px;"><span class="seo-metric-value admin-green">\u2713 All checks passed</span></div>');
   } else {
-    // Aggregate — show table of latest scores
+    // Aggregate — table of all pages with scores
     var latestDate = dfsData[dfsData.length - 1].date;
     var latest = dfsData.filter(function(r) { return r.date === latestDate; });
-    el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
+    var avgScore = latest.reduce(function(s, r) { return s + (r.score || 0); }, 0);
+    avgScore = latest.length ? Math.round(avgScore / latest.length) : 0;
+    var avgColor = avgScore >= 90 ? 'admin-green' : avgScore >= 50 ? 'admin-amber' : 'admin-red';
+    el.innerHTML = '<div style="margin-bottom:8px;"><span class="seo-metric-label">Avg On-Page Score</span> <span class="seo-metric-value ' + avgColor + '" style="font-size:18px;margin-left:6px;">' + avgScore + '</span></div>' +
+      '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Title</th><th>H1s</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
       latest.map(function(r) {
         var m = r.metrics || {};
         var path = '/';
         try { path = new URL(r.url).pathname || '/'; } catch(e) {}
-        var sc = r.score || 0;
-        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+        var sc = r.score;
+        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
         return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
-          '<td class="' + scColor + '" style="font-weight:600;">' + sc + '</td>' +
-          '<td>' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</td>' +
+          '<td class="' + scColor + '" style="font-weight:600;">' + (sc != null ? sc : '\u2014') + '</td>' +
+          '<td>' + (m.title_length || 0) + '</td>' +
+          '<td>' + (m.h1_count || 0) + '</td>' +
           '<td>' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
           '<td>' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
       }).join('') + '</tbody></table>';

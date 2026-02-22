@@ -204,15 +204,14 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Load global tuning settings
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-  // WHAT — title matching via word-boundary regex + full-text search
+  // WHAT — title matching via ilike + full-text search (ilike uses trigram index)
   // All What pills are OR'd together (each pill is one keyword)
   const allWhatClauses = w.flatMap(pill => {
     return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
-      const rxSafe = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return [
-        `title.imatch.\\m${rxSafe}\\M`,
+        `title.ilike.%${safe}%`,
         `search_vector.wfts(english).${safe}`,
       ];
     });
@@ -425,17 +424,22 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
 }
 
 function parseWhenValue(v) {
-  const lower = v.toLowerCase();
+  const lower = v.toLowerCase().trim();
   const now = new Date();
   if (lower.includes('today') || lower === '1d') {
     const d = new Date(now); d.setDate(d.getDate() - 1); return d;
-  } else if (lower.includes('week') || lower === '7d') {
+  } else if (lower === 'week' || lower === '7d' || lower === '7 days' || lower === 'this week' || lower === '1 week') {
     const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-  } else if (lower.includes('month') || lower === '30d') {
+  } else if (lower.includes('month') && !lower.includes('3')) {
     const d = new Date(now); d.setDate(d.getDate() - 30); return d;
   } else if (lower.includes('3 month') || lower === '90d') {
     const d = new Date(now); d.setDate(d.getDate() - 90); return d;
   }
+  // Generic "N days" / "Nd" / "last N days" / "N weeks"
+  var m = lower.match(/(\d+)\s*d(?:ays?)?/);
+  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1])); return d; }
+  m = lower.match(/(\d+)\s*w(?:eeks?)?/);
+  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1]) * 7); return d; }
   return null;
 }
 
@@ -767,6 +771,13 @@ async function updateJobStatsFromFilters(filters) {
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
     console.error('Stats update error:', e);
+    // Fallback: compute from loaded jobs if available
+    try {
+      var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+      var cos = new Set();
+      jobs.forEach(function(j) { if (j.company_slug) cos.add(j.company_slug); });
+      updateJobStats(jobs.length, cos.size, 0, 0);
+    } catch (e2) {}
   }
 }
 

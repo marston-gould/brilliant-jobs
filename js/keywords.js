@@ -443,6 +443,7 @@ document.addEventListener('click', function(e) {
 
 // ─── AI-powered resume scoring (Pro feature) ───
 async function fetchAIScore(params) {
+  if (window._aiScoreDisabled) return null;
   try {
     var session = await sb.auth.getSession();
     if (!session.data.session) return null;
@@ -458,6 +459,10 @@ async function fetchAIScore(params) {
 
     if (!res.ok) {
       console.log('[BJ] AI score HTTP', res.status);
+      if (res.status === 406 || res.status === 404) {
+        window._aiScoreDisabled = true;
+        console.warn('[BJ] AI scoring disabled — Edge Function returned ' + res.status + '. Redeploy with: supabase functions deploy score-resume --no-verify-jwt');
+      }
       return null;
     }
     var data = await res.json();
@@ -815,12 +820,20 @@ function buildReadinessSide(ri, data) {
 
   var html = '<div class="readiness-side" id="readiness-side-' + ri + '">';
 
-  // Header with score and re-analyze button
-  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
-  html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
-  html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
-  html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
-  html += '</div>';
+  // Header with score and re-analyze button (only if multiple filters to show aggregate)
+  if (filterNames.length > 1) {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+    html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '</div>';
+  } else {
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
+    html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
+    html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '</div>';
+  }
 
   // Per-filter breakdown
   for (var fi = 0; fi < filterNames.length; fi++) {
@@ -831,7 +844,9 @@ function buildReadinessSide(ri, data) {
 
     html += '<div style="margin-bottom:10px;padding-bottom:10px;' + (fi < filterNames.length - 1 ? 'border-bottom:1px solid var(--border);' : '') + '">';
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
-    html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    if (filterNames.length > 1) {
+      html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
+    }
     html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
     if (fs.ai) {
       html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';

@@ -1144,7 +1144,7 @@ async function updatePoorMatchSuggestions() {
         <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
-      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match">✦ Improve</button>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
