@@ -2425,7 +2425,51 @@ async function fetchAIScore(params) {
     var data = await res.json();
     if (data.error) { console.log('[BJ] AI score error:', data.error); return null; }
 
-    // Normalize to existing score format for backward compatibility
+    // ─── Premium tier response ───
+    if (data.tier === 'premium' || data.tier === 'basic_fallback') {
+      return {
+        score: data.overall_score || data.match_score,
+        matched: null,
+        total: null,
+        topMissing: (data.gap_analysis || []).map(function(g) { return { term: g.requirement + ' (' + g.severity + ')', count: null }; }),
+        topMatched: (data.strength_map || []).map(function(s) { return { term: s.area, count: null }; }),
+        bigramMatched: [],
+        bigramMissing: [],
+        jdsAnalyzed: data.jds_analyzed,
+        ai: true,
+        premium: data.tier === 'premium',
+        partial: data.partial || false,
+        fitStatus: data.fit_status,
+        summary: data.executive_summary,
+        dimensionScores: data.dimension_scores,
+        strengthMap: data.strength_map,
+        gapAnalysis: data.gap_analysis,
+        resumeProfile: data.resume_profile,
+        jdProfile: data.jd_profile,
+        coaching: data.coaching,
+        coreRequirements: data.jd_profile ? (data.jd_profile.core_requirements || []).map(function(cr) {
+          var hasEvidence = (data.strength_map || []).some(function(s) { return s.area && s.area.toLowerCase().includes(cr.skill.toLowerCase()); });
+          return { skill: cr.skill, prevalence: cr.prevalence_pct, resume_evidence: hasEvidence ? 'strong' : 'missing' };
+        }) : [],
+        recommendations: data.coaching ? {
+          missing_tools: (data.coaching.missing_keyword_injections || []).map(function(k) { return k.keyword; }),
+          title_translation: (data.coaching.title_translations || []).map(function(t) { return t.current_title + ' → ' + t.suggested_title; }),
+          format: data.coaching.format_improvements || [],
+          impact_quantification: (data.coaching.achievement_prompts || []).map(function(a) { return a.weak_bullet; }),
+        } : null,
+        levelFit: data.level_fit,
+        differentialInsight: data.calibration_note,
+        careerTrajectory: data.career_trajectory_assessment,
+        scopeComparison: typeof data.scope_comparison === 'object' ? data.scope_comparison.delta : data.scope_comparison,
+        industryDetected: data.industry_detected,
+        agentsUsed: data.agents_used,
+        passesCompleted: data.passes_completed,
+        timingMs: data.timing_ms,
+        upgradePrompt: data.upgrade_prompt
+      };
+    }
+
+    // ─── Basic tier response (unchanged) ───
     return {
       score: data.match_score,
       matched: null,
@@ -2436,6 +2480,7 @@ async function fetchAIScore(params) {
       bigramMissing: [],
       jdsAnalyzed: data.jds_analyzed,
       ai: true,
+      premium: false,
       fitStatus: data.fit_status,
       summary: data.analysis_summary,
       coreRequirements: data.core_requirements,
@@ -2523,12 +2568,14 @@ async function runReadinessAnalysis(opts) {
       // Try AI scoring for Pro users
       var userPlan = window._bjUserPlan || 'free';
       var jdsWithContentAI = jds.filter(function(j){ return j.content; });
+      var analysisTier = opts.tier || 'basic';
       if ((userPlan === 'pro' || userPlan === 'enterprise') && r.extractedText && jdsWithContentAI.length >= 3) {
-        if (statusEl) statusEl.textContent = 'AI scoring for "' + filter.name + '"\u2026';
+        if (statusEl) statusEl.textContent = (analysisTier === 'premium' ? 'Deep AI analysis' : 'AI scoring') + ' for "' + filter.name + '"\u2026';
         filterScore = await fetchAIScore({
           resume_text: r.extractedText,
           resume_keywords: r.keywords,
           mode: 'corpus',
+          tier: analysisTier,
           filter_name: filter.name,
           job_ids: jdsWithContentAI.map(function(j) { return j.greenhouse_id; }),
           max_jds: 20
@@ -2761,6 +2808,19 @@ function buildReadinessSide(ri, data) {
     if (fs.ai && fs.summary) {
       html += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.6;">' + fs.summary + '</div>';
 
+      // Premium: dimension score bars
+      if (fs.premium && fs.dimensionScores) {
+        html += buildDimensionBarsHtml(fs.dimensionScores);
+      }
+
+      // Premium: industry detected badge
+      if (fs.premium && fs.industryDetected) {
+        html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">';
+        html += '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.1);color:#4d8eff;font-weight:600;">PREMIUM</span>';
+        html += '<span style="font-size:10px;color:var(--text-faint);">' + fs.industryDetected + ' \u00b7 ' + fs.agentsUsed + ' agents \u00b7 ' + (fs.timingMs / 1000).toFixed(1) + 's</span>';
+        html += '</div>';
+      }
+
       // Core requirements (AI)
       if (fs.coreRequirements && fs.coreRequirements.length > 0) {
         html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">';
@@ -2840,6 +2900,17 @@ function buildReadinessSide(ri, data) {
         html += '<div style="font-size:12px;color:var(--accent);margin-top:8px;font-style:italic;line-height:1.5;">' + fs.differentialInsight + '</div>';
       }
 
+      // Premium: coaching section
+      if (fs.premium && fs.coaching) {
+        html += buildPremiumCoachingHtml(fs);
+
+        // Gap interview container (populated async after render)
+        html += '<div id="gap-interview-container-' + ri + '-' + fi + '"></div>';
+
+        // Acceptance UI (hidden until gap interview completes or is skipped)
+        html += buildAcceptanceHtml(ri, fi, fs);
+      }
+
       html += '</div>'; // close expandable
     } else {
       // ─── Ngram results rendering (fallback) ───
@@ -2906,6 +2977,944 @@ function buildReadinessSide(ri, data) {
   return html;
 }
 
+// ─── Premium coaching panel (rendered inside readiness side when premium data exists) ───
+function buildPremiumCoachingHtml(fs) {
+  if (!fs.coaching) return '';
+  var c = fs.coaching;
+  var html = '';
+
+  // Priority actions — the headline feature
+  if (c.priority_actions && c.priority_actions.length > 0) {
+    html += '<div style="margin-top:10px;padding:10px;background:rgba(77,142,255,0.04);border:1px solid rgba(77,142,255,0.15);border-radius:8px;">';
+    html += '<div style="font-size:11px;font-weight:700;color:#4d8eff;margin-bottom:8px;">\u2728 Top 3 Changes</div>';
+    c.priority_actions.forEach(function(pa, idx) {
+      html += '<div style="margin-bottom:8px;padding-bottom:8px;' + (idx < c.priority_actions.length - 1 ? 'border-bottom:1px solid rgba(77,142,255,0.1);' : '') + '">';
+      html += '<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.5;">' + (idx + 1) + '. ' + pa.action + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-faint);margin-top:2px;">' + pa.why + '</div>';
+      if (pa.expected_impact) html += '<div style="font-size:10px;color:var(--green);font-weight:600;margin-top:2px;">' + pa.expected_impact + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Rewrite suggestions — before/after
+  if (c.rewrite_suggestions && c.rewrite_suggestions.length > 0) {
+    html += '<div style="margin-top:8px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">\u270f\ufe0f Rewrite Suggestions</div>';
+    c.rewrite_suggestions.forEach(function(rw) {
+      html += '<div style="margin-bottom:8px;padding:8px;background:var(--bg-main);border-radius:6px;border:1px solid var(--border);">';
+      if (rw.original_text) html += '<div style="font-size:11px;color:var(--red);text-decoration:line-through;margin-bottom:4px;line-height:1.5;">' + rw.original_text + '</div>';
+      html += '<div style="font-size:11px;color:var(--green);line-height:1.5;">' + rw.suggested_text + '</div>';
+      if (rw.rationale) html += '<div style="font-size:10px;color:var(--text-faint);margin-top:4px;font-style:italic;">' + rw.rationale + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Gap bridging
+  if (c.gap_bridging && c.gap_bridging.length > 0) {
+    html += '<div style="margin-top:8px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">\u2194 Bridge Gaps</div>';
+    c.gap_bridging.forEach(function(gb) {
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;line-height:1.5;"><strong style="color:var(--warm);">' + gb.gap + ':</strong> ' + gb.bridge_strategy + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Competitive positioning
+  if (c.competitive_positioning) {
+    html += '<div style="margin-top:8px;padding:8px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:6px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:4px;">\u2191 Positioning</div>';
+    html += '<div style="font-size:12px;color:var(--text-dim);line-height:1.5;">' + c.competitive_positioning + '</div>';
+    html += '</div>';
+  }
+
+  return html;
+}
+
+// ─── Premium dimension scores radar (simple bar visualization) ───
+function buildDimensionBarsHtml(ds) {
+  if (!ds) return '';
+  var dims = [
+    { key: 'trajectory', label: 'Trajectory', weight: '25%' },
+    { key: 'impact', label: 'Impact', weight: '25%' },
+    { key: 'skills', label: 'Skills', weight: '20%' },
+    { key: 'alignment', label: 'Alignment', weight: '15%' },
+    { key: 'education', label: 'Education', weight: '5%' },
+    { key: 'presentation', label: 'Presentation', weight: '10%' }
+  ];
+  var html = '<div style="margin:8px 0;">';
+  dims.forEach(function(d) {
+    var val = ds[d.key] || 0;
+    var color = val >= 70 ? 'var(--green)' : val >= 40 ? 'var(--warm)' : 'var(--red)';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">';
+    html += '<span style="font-size:10px;color:var(--text-faint);width:75px;text-align:right;">' + d.label + '</span>';
+    html += '<div style="flex:1;height:6px;background:var(--bg-main);border-radius:3px;overflow:hidden;">';
+    html += '<div style="width:' + val + '%;height:100%;background:' + color + ';border-radius:3px;"></div>';
+    html += '</div>';
+    html += '<span style="font-size:10px;font-family:var(--mono);color:' + color + ';width:28px;font-weight:600;">' + val + '</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+// ════════════════════════════════════════════════════════════
+// GAP INTERVIEW + ACCEPTANCE UI (G7–G12)
+// ════════════════════════════════════════════════════════════
+
+// State for the rewrite pipeline — stored per resume index
+window._bjRewriteState = {};
+
+// G7: Fetch gap interview questions from Edge Function
+async function fetchGapInterview(gapAnalysis, resumeProfile) {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return null;
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        mode: 'gap-interview',
+        gap_analysis: gapAnalysis,
+        resume_profile: resumeProfile
+      })
+    });
+
+    if (!res.ok) { console.log('[BJ] Gap interview HTTP', res.status); return null; }
+    var data = await res.json();
+    if (data.error) { console.log('[BJ] Gap interview error:', data.error); return null; }
+    return data.gap_questions || [];
+  } catch (e) {
+    console.error('[BJ] Gap interview error:', e);
+    return null;
+  }
+}
+
+// G8: Build the Gap Interview UI
+function buildGapInterviewHtml(ri, fi, gapQuestions) {
+  if (!gapQuestions || gapQuestions.length === 0) return '';
+  var stateKey = ri + '-' + fi;
+
+  var html = '<div class="bj-gap-interview" id="gap-interview-' + stateKey + '" style="margin-top:12px;padding:12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.15);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--warm);margin-bottom:8px;">\ud83d\udd0d Close Your Gaps</div>';
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">We found gaps between your resume and target roles. Answer these questions to uncover experience you may have missed.</div>';
+
+  gapQuestions.forEach(function(gq, gi) {
+    var sevColor = gq.severity === 'critical' ? 'var(--red)' : gq.severity === 'important' ? 'var(--warm)' : 'var(--text-faint)';
+    var sevBg = gq.severity === 'critical' ? 'rgba(239,68,68,0.08)' : gq.severity === 'important' ? 'rgba(245,158,11,0.08)' : 'rgba(128,128,128,0.05)';
+
+    html += '<div style="margin-bottom:10px;padding:8px;background:' + sevBg + ';border-radius:6px;border:1px solid var(--border);">';
+    html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">';
+    html += '<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:' + sevBg + ';color:' + sevColor + ';font-weight:600;border:1px solid ' + sevColor + ';">' + gq.severity + '</span>';
+    html += '<span style="font-size:12px;font-weight:600;color:var(--text);">' + gq.gap + '</span>';
+    html += '</div>';
+
+    if (gq.hint) {
+      html += '<div style="font-size:10px;color:var(--text-faint);margin-bottom:6px;font-style:italic;">' + gq.hint + '</div>';
+    }
+
+    (gq.questions || []).forEach(function(q, qi) {
+      var inputId = 'gap-answer-' + stateKey + '-' + gi + '-' + qi;
+      html += '<div style="margin-bottom:4px;">';
+      html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">' + q + '</div>';
+      html += '<input type="text" id="' + inputId + '" placeholder="Your answer (optional)" style="width:100%;padding:4px 8px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;" onchange="bjUpdateGapAnswer(\'' + stateKey + '\',' + gi + ',' + qi + ',this.value)">';
+      html += '</div>';
+    });
+
+    html += '</div>';
+  });
+
+  html += '<div style="display:flex;gap:8px;margin-top:8px;">';
+  html += '<button class="btn btn-sm" onclick="bjSkipGapInterview(\'' + stateKey + '\')" style="font-size:10px;padding:3px 10px;color:var(--text-faint);">Skip</button>';
+  html += '<button class="btn btn-sm" onclick="bjCompleteGapInterview(\'' + stateKey + '\')" style="font-size:10px;padding:3px 12px;background:var(--warm);color:#fff;font-weight:600;">Continue \u2192</button>';
+  html += '</div>';
+  html += '</div>';
+  return html;
+}
+
+// Gap answer tracking
+function bjUpdateGapAnswer(stateKey, gapIdx, questionIdx, value) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  if (!window._bjRewriteState[stateKey].gapAnswers) window._bjRewriteState[stateKey].gapAnswers = {};
+  var key = gapIdx + '-' + questionIdx;
+  window._bjRewriteState[stateKey].gapAnswers[key] = value;
+}
+
+function bjSkipGapInterview(stateKey) {
+  var el = document.getElementById('gap-interview-' + stateKey);
+  if (el) el.style.display = 'none';
+  bjShowAcceptanceUI(stateKey);
+}
+
+function bjCompleteGapInterview(stateKey) {
+  var el = document.getElementById('gap-interview-' + stateKey);
+  if (el) el.style.display = 'none';
+  bjShowAcceptanceUI(stateKey);
+}
+
+// G9-G12: Build the Acceptance UI
+function bjShowAcceptanceUI(stateKey) {
+  var el = document.getElementById('acceptance-ui-' + stateKey);
+  if (el) el.style.display = '';
+}
+
+function buildAcceptanceHtml(ri, fi, filterScore) {
+  if (!filterScore || !filterScore.premium) return '';
+  var stateKey = ri + '-' + fi;
+
+  // Initialize state
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  var state = window._bjRewriteState[stateKey];
+  state.accepted = state.accepted || {};
+  state.achievementInputs = state.achievementInputs || {};
+  state.userHighlights = state.userHighlights || [];
+  state.userNotes = state.userNotes || '';
+  state.coverLetter = state.coverLetter || false;
+  state.template = state.template || 'executive';
+
+  var coaching = filterScore.coaching || {};
+  var allRecs = [];
+  var recIdx = 0;
+
+  // Collect all recommendations into a flat list with IDs
+  function addRecs(items, type, labelFn) {
+    if (!items || !items.length) return;
+    items.forEach(function(item, i) {
+      var id = type + '-' + i;
+      allRecs.push({ id: id, type: type, data: item, label: labelFn(item) });
+      if (state.accepted[id] === undefined) state.accepted[id] = true; // default to accepted
+    });
+  }
+
+  addRecs(coaching.priority_actions, 'priority', function(p) {
+    return { title: p.action, subtitle: p.why, badge: p.expected_impact };
+  });
+  addRecs(coaching.rewrite_suggestions, 'rewrite', function(r) {
+    return { title: r.suggested_text, subtitle: r.original_text ? 'Currently: ' + r.original_text : '', badge: r.rationale };
+  });
+  addRecs(coaching.missing_keyword_injections, 'keyword', function(k) {
+    return { title: 'Add "' + k.keyword + '"', subtitle: k.where_to_add + ' \u2014 ' + k.how_to_phrase, badge: null };
+  });
+  addRecs(coaching.title_translations, 'title', function(t) {
+    return { title: t.current_title + ' \u2192 ' + t.suggested_title, subtitle: t.reasoning, badge: null };
+  });
+  addRecs(coaching.achievement_prompts, 'achievement', function(a) {
+    return { title: 'Quantify: "' + a.weak_bullet + '"', subtitle: null, questions: a.questions_to_quantify, badge: null };
+  });
+  addRecs(coaching.format_improvements, 'format', function(f) {
+    return { title: typeof f === 'string' ? f : f.description || JSON.stringify(f), subtitle: null, badge: null };
+  });
+  addRecs(coaching.gap_bridging, 'gap', function(g) {
+    return { title: g.gap, subtitle: g.bridge_strategy, badge: null };
+  });
+
+  if (allRecs.length === 0) return '';
+
+  var acceptedCount = Object.keys(state.accepted).filter(function(k) { return state.accepted[k]; }).length;
+
+  var html = '<div class="bj-acceptance-ui" id="acceptance-ui-' + stateKey + '" style="display:none;margin-top:12px;padding:12px;background:rgba(77,142,255,0.03);border:1px solid rgba(77,142,255,0.12);border-radius:8px;">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;color:#4d8eff;">\u2728 Rewrite Your Resume</div>';
+  html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;" id="accept-count-' + stateKey + '">' + acceptedCount + '/' + allRecs.length + ' accepted</span>';
+  html += '</div>';
+
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">Accept the recommendations you want applied. Reject any you disagree with.</div>';
+
+  // Select All / Deselect All
+  html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+  html += '<button class="btn btn-sm" onclick="bjToggleAll(\'' + stateKey + '\',true)" style="font-size:9px;padding:2px 8px;">Select All</button>';
+  html += '<button class="btn btn-sm" onclick="bjToggleAll(\'' + stateKey + '\',false)" style="font-size:9px;padding:2px 8px;">Deselect All</button>';
+  html += '</div>';
+
+  // Recommendation cards
+  allRecs.forEach(function(rec) {
+    var isAccepted = state.accepted[rec.id] !== false;
+    var borderColor = isAccepted ? 'rgba(34,197,94,0.3)' : 'rgba(128,128,128,0.15)';
+    var bgColor = isAccepted ? 'rgba(34,197,94,0.03)' : 'var(--bg-main)';
+    var typeColors = { priority: '#4d8eff', rewrite: 'var(--green)', keyword: 'var(--warm)', title: '#7c3aed', achievement: '#f59e0b', format: 'var(--text-faint)', gap: 'var(--warm)' };
+    var typeLabel = rec.type.charAt(0).toUpperCase() + rec.type.slice(1);
+
+    html += '<div id="rec-card-' + stateKey + '-' + rec.id + '" style="margin-bottom:6px;padding:8px 10px;border-radius:6px;border:1px solid ' + borderColor + ';background:' + bgColor + ';transition:all 0.15s;">';
+    html += '<div style="display:flex;align-items:flex-start;gap:8px;">';
+
+    // Checkbox
+    html += '<input type="checkbox" ' + (isAccepted ? 'checked' : '') + ' onchange="bjToggleRec(\'' + stateKey + '\',\'' + rec.id + '\',this.checked)" style="margin-top:2px;accent-color:var(--green);cursor:pointer;">';
+
+    // Content
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;">';
+    html += '<span style="font-size:9px;padding:1px 4px;border-radius:2px;background:' + (typeColors[rec.type] || 'var(--text-faint)') + ';color:#fff;font-weight:600;">' + typeLabel + '</span>';
+    if (rec.label.badge) html += '<span style="font-size:9px;color:var(--green);font-weight:600;">' + rec.label.badge + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--text);line-height:1.5;">' + rec.label.title + '</div>';
+    if (rec.label.subtitle) html += '<div style="font-size:10px;color:var(--text-faint);line-height:1.4;margin-top:1px;">' + rec.label.subtitle + '</div>';
+
+    // Achievement prompt inputs (G10)
+    if (rec.type === 'achievement' && rec.label.questions && isAccepted) {
+      html += '<div style="margin-top:6px;padding:6px;background:rgba(245,158,11,0.05);border-radius:4px;">';
+      rec.label.questions.forEach(function(q, qi) {
+        var inputId = 'ach-input-' + stateKey + '-' + rec.id + '-' + qi;
+        var savedVal = (state.achievementInputs[rec.id] || {})[qi] || '';
+        html += '<div style="margin-bottom:3px;">';
+        html += '<div style="font-size:10px;color:var(--text-dim);">' + q + '</div>';
+        html += '<input type="text" id="' + inputId + '" value="' + savedVal.replace(/"/g, '&quot;') + '" placeholder="Your answer" style="width:100%;padding:3px 6px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:3px;color:var(--text);outline:none;" onchange="bjUpdateAchievement(\'' + stateKey + '\',\'' + rec.id + '\',' + qi + ',this.value)">';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>'; // content
+    html += '</div>'; // flex row
+    html += '</div>'; // card
+  });
+
+  // G11: User highlights & notes
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
+  html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">\ud83d\udcdd Your Additions</div>';
+  html += '<div style="font-size:10px;color:var(--text-faint);margin-bottom:6px;">Anything else you want changed, emphasized, or excluded?</div>';
+  html += '<textarea id="user-notes-' + stateKey + '" placeholder="E.g.: Emphasize my patent from 2024. Don\'t include freelance work from 2019. My title is officially Sr. Engineer but I\'ve been functioning as tech lead." style="width:100%;height:50px;padding:6px 8px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;resize:vertical;font-family:inherit;" onchange="bjUpdateNotes(\'' + stateKey + '\',this.value)">' + (state.userNotes || '') + '</textarea>';
+
+  // Highlight chips
+  html += '<div style="margin-top:6px;">';
+  html += '<div style="font-size:10px;color:var(--text-faint);margin-bottom:3px;">Specific highlights to include:</div>';
+  html += '<div id="highlights-list-' + stateKey + '" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">';
+  (state.userHighlights || []).forEach(function(h, hi) {
+    html += '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.08);border:1px solid rgba(77,142,255,0.2);color:#4d8eff;">' + h + ' <span onclick="bjRemoveHighlight(\'' + stateKey + '\',' + hi + ')" style="cursor:pointer;opacity:0.6;">\u2717</span></span>';
+  });
+  html += '</div>';
+  html += '<div style="display:flex;gap:4px;">';
+  html += '<input type="text" id="highlight-input-' + stateKey + '" placeholder="Add a highlight" style="flex:1;padding:3px 6px;font-size:10px;background:var(--bg-main);border:1px solid var(--border);border-radius:3px;color:var(--text);outline:none;" onkeydown="if(event.key===\'Enter\')bjAddHighlight(\'' + stateKey + '\')">';
+  html += '<button class="btn btn-sm" onclick="bjAddHighlight(\'' + stateKey + '\')" style="font-size:9px;padding:2px 8px;">+</button>';
+  html += '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // G12: Cover letter opt-in
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;">';
+  html += '<input type="checkbox" id="cover-letter-' + stateKey + '" ' + (state.coverLetter ? 'checked' : '') + ' onchange="bjToggleCoverLetter(\'' + stateKey + '\',this.checked)" style="accent-color:#4d8eff;cursor:pointer;">';
+  html += '<label for="cover-letter-' + stateKey + '" style="font-size:11px;color:var(--text);cursor:pointer;">Include a tailored cover letter</label>';
+  html += '</div>';
+
+  // Template selection
+  html += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">';
+  html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Resume Template</div>';
+  html += '<div style="display:flex;gap:6px;">';
+  var templates = [
+    { id: 'executive', name: 'Executive', desc: 'Clean, minimal', best: 'Senior roles' },
+    { id: 'modern', name: 'Modern', desc: 'Two-column sidebar', best: 'Tech, creative' },
+    { id: 'classic', name: 'Classic', desc: 'Traditional', best: 'Finance, legal' }
+  ];
+  templates.forEach(function(t) {
+    var sel = (state.template || 'executive') === t.id;
+    var border = sel ? '2px solid #4d8eff' : '1px solid var(--border)';
+    var bg = sel ? 'rgba(77,142,255,0.05)' : 'var(--bg-main)';
+    html += '<div onclick="bjSelectTemplate(\'' + stateKey + '\',\'' + t.id + '\')" style="flex:1;padding:8px;border-radius:6px;border:' + border + ';background:' + bg + ';cursor:pointer;text-align:center;">';
+    html += '<div style="font-size:11px;font-weight:600;color:' + (sel ? '#4d8eff' : 'var(--text)') + ';">' + t.name + '</div>';
+    html += '<div style="font-size:9px;color:var(--text-faint);">' + t.desc + '</div>';
+    html += '<div style="font-size:8px;color:var(--text-faint);margin-top:2px;">Best for: ' + t.best + '</div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // Generate Rewrite button
+  html += '<div style="margin-top:12px;text-align:center;">';
+  html += '<button class="btn" id="gen-rewrite-' + stateKey + '" onclick="bjGenerateRewrite(\'' + stateKey + '\',' + ri + ',' + fi + ')" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:700;padding:8px 24px;font-size:12px;border-radius:6px;width:100%;">';
+  html += '\u2728 Generate Rewrite</button>';
+  html += '<div style="font-size:9px;color:var(--text-faint);margin-top:4px;">This will use premium credits</div>';
+  html += '</div>';
+
+  html += '</div>'; // close acceptance-ui
+  return html;
+}
+
+// ─── Acceptance UI interaction handlers ───
+
+function bjToggleRec(stateKey, recId, checked) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  if (!window._bjRewriteState[stateKey].accepted) window._bjRewriteState[stateKey].accepted = {};
+  window._bjRewriteState[stateKey].accepted[recId] = checked;
+
+  // Update card visual
+  var card = document.getElementById('rec-card-' + stateKey + '-' + recId);
+  if (card) {
+    card.style.borderColor = checked ? 'rgba(34,197,94,0.3)' : 'rgba(128,128,128,0.15)';
+    card.style.background = checked ? 'rgba(34,197,94,0.03)' : 'var(--bg-main)';
+  }
+
+  // Update count
+  bjUpdateAcceptCount(stateKey);
+}
+
+function bjToggleAll(stateKey, accept) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state || !state.accepted) return;
+  Object.keys(state.accepted).forEach(function(k) {
+    state.accepted[k] = accept;
+    var card = document.getElementById('rec-card-' + stateKey + '-' + k);
+    if (card) {
+      card.style.borderColor = accept ? 'rgba(34,197,94,0.3)' : 'rgba(128,128,128,0.15)';
+      card.style.background = accept ? 'rgba(34,197,94,0.03)' : 'var(--bg-main)';
+      var cb = card.querySelector('input[type=checkbox]');
+      if (cb) cb.checked = accept;
+    }
+  });
+  bjUpdateAcceptCount(stateKey);
+}
+
+function bjUpdateAcceptCount(stateKey) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state || !state.accepted) return;
+  var total = Object.keys(state.accepted).length;
+  var accepted = Object.keys(state.accepted).filter(function(k) { return state.accepted[k]; }).length;
+  var el = document.getElementById('accept-count-' + stateKey);
+  if (el) el.textContent = accepted + '/' + total + ' accepted';
+}
+
+function bjUpdateAchievement(stateKey, recId, qi, value) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state) return;
+  if (!state.achievementInputs) state.achievementInputs = {};
+  if (!state.achievementInputs[recId]) state.achievementInputs[recId] = {};
+  state.achievementInputs[recId][qi] = value;
+}
+
+function bjUpdateNotes(stateKey, value) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  window._bjRewriteState[stateKey].userNotes = value;
+}
+
+function bjAddHighlight(stateKey) {
+  var input = document.getElementById('highlight-input-' + stateKey);
+  if (!input || !input.value.trim()) return;
+  var state = window._bjRewriteState[stateKey];
+  if (!state) return;
+  if (!state.userHighlights) state.userHighlights = [];
+  state.userHighlights.push(input.value.trim());
+  input.value = '';
+  // Re-render highlights list
+  var list = document.getElementById('highlights-list-' + stateKey);
+  if (list) {
+    var html = '';
+    state.userHighlights.forEach(function(h, hi) {
+      html += '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.08);border:1px solid rgba(77,142,255,0.2);color:#4d8eff;">' + h + ' <span onclick="bjRemoveHighlight(\'' + stateKey + '\',' + hi + ')" style="cursor:pointer;opacity:0.6;">\u2717</span></span>';
+    });
+    list.innerHTML = html;
+  }
+}
+
+function bjRemoveHighlight(stateKey, idx) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state || !state.userHighlights) return;
+  state.userHighlights.splice(idx, 1);
+  bjAddHighlight(stateKey); // Trick: re-render by calling with empty (input already cleared)
+  // Actually just re-render the list
+  var list = document.getElementById('highlights-list-' + stateKey);
+  if (list) {
+    var html = '';
+    state.userHighlights.forEach(function(h, hi) {
+      html += '<span style="font-size:10px;padding:2px 6px;border-radius:3px;background:rgba(77,142,255,0.08);border:1px solid rgba(77,142,255,0.2);color:#4d8eff;">' + h + ' <span onclick="bjRemoveHighlight(\'' + stateKey + '\',' + hi + ')" style="cursor:pointer;opacity:0.6;">\u2717</span></span>';
+    });
+    list.innerHTML = html;
+  }
+}
+
+function bjToggleCoverLetter(stateKey, checked) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  window._bjRewriteState[stateKey].coverLetter = checked;
+}
+
+function bjSelectTemplate(stateKey, templateId) {
+  if (!window._bjRewriteState[stateKey]) window._bjRewriteState[stateKey] = {};
+  window._bjRewriteState[stateKey].template = templateId;
+  // Re-render template cards to show selection
+  var parent = document.getElementById('acceptance-ui-' + stateKey);
+  if (!parent) return;
+  var cards = parent.querySelectorAll('[onclick^="bjSelectTemplate"]');
+  cards.forEach(function(card) {
+    var isThis = card.getAttribute('onclick').includes("'" + templateId + "'");
+    card.style.border = isThis ? '2px solid #4d8eff' : '1px solid var(--border)';
+    card.style.background = isThis ? 'rgba(77,142,255,0.05)' : 'var(--bg-main)';
+    var nameEl = card.querySelector('div');
+    if (nameEl) nameEl.style.color = isThis ? '#4d8eff' : 'var(--text)';
+  });
+}
+
+// G-S3: Call rewrite-resume Edge Function and handle download
+async function bjGenerateRewrite(stateKey, ri, fi) {
+  var state = window._bjRewriteState[stateKey];
+  if (!state) return;
+
+  var btn = document.getElementById('gen-rewrite-' + stateKey);
+  if (btn) { btn.disabled = true; btn.textContent = 'Writing resume\u2026'; btn.style.opacity = '0.6'; }
+
+  // Get the filter score data
+  var filterNames = Object.keys(scores[ri]?.filters || {});
+  var filterScore = scores[ri]?.filters[filterNames[fi]];
+  if (!filterScore || !filterScore.premium) {
+    if (btn) { btn.textContent = 'Error: No premium analysis found'; btn.style.background = 'var(--red)'; }
+    return;
+  }
+
+  // Collect accepted recommendations with their full data
+  var acceptedRecs = [];
+  Object.keys(state.accepted || {}).forEach(function(k) {
+    if (!state.accepted[k]) return;
+    acceptedRecs.push({
+      id: k,
+      type: k.split('-')[0],
+      user_input: (state.achievementInputs || {})[k] || null
+    });
+  });
+
+  // Get resume data
+  var r = resumes[ri];
+  if (!r) { if (btn) { btn.textContent = 'Error: Resume not found'; } return; }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { if (btn) { btn.textContent = 'Not logged in'; } return; }
+
+    if (btn) btn.textContent = 'Writing resume\u2026';
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rewrite-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        resume_text: r.extractedText || '',
+        resume_profile: filterScore.resumeProfile,
+        jd_profile: filterScore.jdProfile,
+        accepted_recommendations: acceptedRecs,
+        achievement_inputs: state.achievementInputs || {},
+        gap_answers: state.gapAnswers || {},
+        user_highlights: state.userHighlights || [],
+        user_notes: state.userNotes || '',
+        include_cover_letter: state.coverLetter || false,
+        template_id: state.template || 'executive',
+        filter_name: filterNames[fi] || 'General',
+        coaching: filterScore.coaching
+      })
+    });
+
+    if (!res.ok) {
+      var errData = await res.json().catch(function() { return { error: 'Unknown error' }; });
+      console.error('[BJ] Rewrite error:', errData);
+      if (btn) { btn.textContent = 'Rewrite failed — try again'; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'var(--red)'; }
+      return;
+    }
+
+    var data = await res.json();
+    console.log('[BJ] Rewrite complete:', data.session_id, data.timing);
+
+    // Store the rewrite result
+    state.rewriteResult = data;
+
+    // Show results panel
+    bjShowRewriteResults(stateKey, ri, fi, data);
+
+  } catch (e) {
+    console.error('[BJ] Rewrite exception:', e);
+    if (btn) { btn.textContent = 'Error — try again'; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'var(--red)'; }
+  }
+}
+
+// Show rewrite results with download links
+function bjShowRewriteResults(stateKey, ri, fi, data) {
+  var btn = document.getElementById('gen-rewrite-' + stateKey);
+  var container = document.getElementById('acceptance-ui-' + stateKey);
+  if (!container) return;
+
+  // G23: Auto-add rewritten resume to library
+  var filterNames = Object.keys(scores[ri]?.filters || {});
+  var fname = filterNames[fi] || 'General';
+  var originalResume = resumes[ri];
+  if (originalResume && data.resume_sections) {
+    var roundNum = data.round_number || 1;
+    var newName = (originalResume.name || 'Resume') + ' \u2014 ' + fname + ' v' + roundNum;
+    var extractedText = '';
+    (data.resume_sections || []).forEach(function(sec) {
+      (sec.items || []).forEach(function(item) {
+        if (item.content) {
+          if (item.content.text) extractedText += item.content.text + ' ';
+          if (item.content.bullets) extractedText += item.content.bullets.join(' ') + ' ';
+          if (item.content.skills) extractedText += item.content.skills.join(' ') + ' ';
+        }
+      });
+    });
+    resumes.push({
+      name: newName, source: 'rewrite', rewrite_session_id: data.session_id,
+      rewrite_round: roundNum, filterIds: [fname], levelLabel: originalResume.levelLabel || '',
+      extractedText: extractedText.trim(), textStatus: 'ready', tier: 'premium',
+      tier_history: [
+        { action: 'analyzed', tier: 'premium', timestamp: new Date().toISOString() },
+        { action: 'rewritten', tier: 'premium', round: roundNum, timestamp: new Date().toISOString() }
+      ],
+      storagePath: data.resume_path, size: 0, lastModified: Date.now(), archived: false
+    });
+    if (typeof saveResumes === 'function') saveResumes();
+    console.log('[BJ] Auto-saved rewritten resume:', newName);
+  }
+
+  // G24: Save cover letter to database
+  if (data.cover_letter && data.cover_letter_path) {
+    bjSaveCoverLetter(data, fname);
+  }
+
+  var html = '<div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:8px;">';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;color:var(--green);">\u2705 Rewrite Complete</div>';
+  html += '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;">\u2728 Premium</span>';
+  html += '</div>';
+
+  if (data.resume_path) {
+    var resumeUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.resume_path;
+    html += '<a href="' + resumeUrl + '" download="resume.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#4d8eff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;margin-right:8px;">\ud83d\udcc4 Download Resume</a>';
+  }
+  if (data.cover_letter_path) {
+    var coverUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.cover_letter_path;
+    html += '<a href="' + coverUrl + '" download="cover-letter.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#7c3aed;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;">\ud83d\udcc4 Cover Letter</a>';
+  }
+
+  html += '<div style="font-size:10px;color:var(--green);margin:6px 0;">\u2713 Resume auto-saved to library and assigned to "' + fname + '"</div>';
+  html += '<div style="margin-top:6px;font-size:11px;color:var(--text-dim);"><strong>Template:</strong> ' + (data.template_used || 'executive') + ' \u00b7 <strong>Changes:</strong> ' + (data.changes_made || []).length + ' \u00b7 <strong>Time:</strong> ' + ((data.timing?.total_ms || 0) / 1000).toFixed(1) + 's (' + (data.agents_used || 1) + ' agents)</div>';
+
+  if (data.qa_report) {
+    html += '<div style="margin-top:10px;padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">\ud83d\udd0d QA Review</div>';
+    var acc = data.qa_report.accuracy;
+    if (acc) {
+      html += '<div style="font-size:11px;color:' + (acc.clean ? 'var(--green)' : 'var(--warm)') + ';">' + (acc.clean ? '\u2713' : '\u26a0') + ' Accuracy: ' + (acc.clean ? 'Clean' : acc.flag_count + ' issue(s)') + '</div>';
+      if (!acc.clean && acc.flags) acc.flags.forEach(function(f) { html += '<div style="font-size:10px;color:' + (f.severity==='critical'?'var(--red)':'var(--warm)') + ';padding-left:14px;">\u2022 ' + f.issue + '</div>'; });
+    }
+    var bl = data.qa_report.bleed;
+    if (bl) html += '<div style="font-size:11px;color:' + (bl.clean?'var(--green)':'var(--warm)') + ';">' + (bl.clean?'\u2713':'\u26a0') + ' Consistency: ' + (bl.clean?'Clean':bl.flag_count+' issue(s)') + '</div>';
+    var vo = data.qa_report.voice;
+    if (vo) html += '<div style="font-size:11px;color:var(--green);">\u2713 Polish: ' + (vo.auto_fixes_applied||0) + ' AI-speak fixes</div>';
+    var li = data.qa_report.linkedin || data.linkedin_alignment;
+    if (li) {
+      html += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
+      html += '<div style="font-size:11px;color:' + (li.aligned?'var(--green)':'var(--warm)') + ';">' + (li.aligned?'\u2713':'\u26a0') + ' LinkedIn: ' + (li.aligned?'Aligned':li.discrepancy_count+' discrepancy(s)') + '</div>';
+      if (!li.aligned && li.discrepancies) li.discrepancies.forEach(function(d) {
+        html += '<div style="font-size:10px;color:' + (d.severity==='critical'?'var(--red)':'var(--warm)') + ';padding-left:14px;">\u2022 ' + d.field + ': "' + (d.resume_value||'') + '" vs "' + (d.linkedin_value||'') + '"</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  if (data.cover_letter) {
+    html += '<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;">Cover Letter Preview (' + (data.cover_letter.word_count||'?') + ' words)</summary>';
+    html += '<div style="padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:0 0 6px 6px;">';
+    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (data.cover_letter.salutation||'') + '</div>';
+    (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + p + '</div>'; });
+    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + (data.cover_letter.closing||'') + '</div>';
+    html += '</div></details>';
+  }
+
+  // G31: Feedback button
+  html += '<div style="margin-top:12px;text-align:center;">';
+  html += '<button class="btn btn-sm" onclick="bjShowFeedbackUI(\'' + stateKey + '\')" style="font-size:11px;padding:6px 16px;border:1px solid var(--border);">\u2b50 Rate & Request Revision</button>';
+  html += '</div>';
+
+  // Feedback UI container (hidden initially)
+  html += '<div id="feedback-ui-' + stateKey + '" style="display:none;"></div>';
+
+  html += '</div>';
+  if (btn) btn.style.display = 'none';
+  var resultsDiv = document.createElement('div');
+  resultsDiv.innerHTML = html;
+  container.appendChild(resultsDiv);
+  if (typeof renderResumeCards === 'function') setTimeout(function() { renderResumeCards(); }, 500);
+}
+
+// ════════════════════════════════════════════════════════════
+// FEEDBACK + ITERATION (G31–G36)
+// ════════════════════════════════════════════════════════════
+
+function bjShowFeedbackUI(stateKey) {
+  var el = document.getElementById('feedback-ui-' + stateKey);
+  if (!el) return;
+
+  var state = window._bjRewriteState[stateKey] || {};
+  var fb = state.feedback || { overall: 0, accuracy: 0, relevance: 0, voice: 0, formatting: 0, text: '' };
+
+  var html = '<div style="margin-top:10px;padding:12px;background:rgba(245,158,11,0.04);border:1px solid rgba(245,158,11,0.15);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--warm);margin-bottom:8px;">How did we do?</div>';
+
+  // Star ratings for 5 dimensions
+  var dims = [
+    { key: 'overall', label: 'Overall quality' },
+    { key: 'accuracy', label: 'Accuracy' },
+    { key: 'relevance', label: 'Relevance' },
+    { key: 'voice', label: 'Voice & tone' },
+    { key: 'formatting', label: 'Formatting' }
+  ];
+
+  dims.forEach(function(dim) {
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">';
+    html += '<span style="font-size:11px;color:var(--text-dim);width:90px;">' + dim.label + '</span>';
+    for (var s = 1; s <= 5; s++) {
+      var filled = s <= (fb[dim.key] || 0);
+      html += '<span onclick="bjSetRating(\'' + stateKey + '\',\'' + dim.key + '\',' + s + ')" style="cursor:pointer;font-size:16px;color:' + (filled ? '#f59e0b' : 'var(--border)') + ';" id="star-' + stateKey + '-' + dim.key + '-' + s + '">\u2605</span>';
+    }
+    html += '<span style="font-size:10px;color:var(--text-faint);" id="star-val-' + stateKey + '-' + dim.key + '">' + (fb[dim.key] || '-') + '/5</span>';
+    html += '</div>';
+  });
+
+  // Qualitative feedback
+  html += '<div style="margin-top:8px;">';
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">What would you change?</div>';
+  html += '<textarea id="feedback-text-' + stateKey + '" placeholder="E.g.: The skills section feels too generic. I want more emphasis on my AWS work. The second bullet under Company B sounds robotic." style="width:100%;height:60px;padding:6px 8px;font-size:11px;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;color:var(--text);outline:none;resize:vertical;font-family:inherit;">' + (fb.text || '') + '</textarea>';
+  html += '</div>';
+
+  html += '<div style="display:flex;gap:8px;margin-top:10px;">';
+  html += '<button class="btn btn-sm" onclick="bjSubmitFeedback(\'' + stateKey + '\')" style="font-size:11px;padding:6px 16px;background:var(--warm);color:#fff;font-weight:600;">Submit Feedback</button>';
+  html += '<button class="btn btn-sm" onclick="document.getElementById(\'feedback-ui-' + stateKey + '\').style.display=\'none\'" style="font-size:11px;padding:6px 12px;color:var(--text-faint);">Cancel</button>';
+  html += '</div>';
+
+  html += '</div>';
+  el.innerHTML = html;
+  el.style.display = '';
+}
+
+function bjSetRating(stateKey, dim, value) {
+  var state = window._bjRewriteState[stateKey] || {};
+  if (!state.feedback) state.feedback = {};
+  state.feedback[dim] = value;
+  window._bjRewriteState[stateKey] = state;
+
+  // Update stars visual
+  for (var s = 1; s <= 5; s++) {
+    var star = document.getElementById('star-' + stateKey + '-' + dim + '-' + s);
+    if (star) star.style.color = s <= value ? '#f59e0b' : 'var(--border)';
+  }
+  var valEl = document.getElementById('star-val-' + stateKey + '-' + dim);
+  if (valEl) valEl.textContent = value + '/5';
+}
+
+async function bjSubmitFeedback(stateKey) {
+  var state = window._bjRewriteState[stateKey] || {};
+  var textEl = document.getElementById('feedback-text-' + stateKey);
+  if (textEl) state.feedback.text = textEl.value;
+
+  if (!state.feedback.overall) {
+    alert('Please rate overall quality before submitting.');
+    return;
+  }
+
+  // Save feedback to database
+  if (state.rewriteResult && state.rewriteResult.session_id) {
+    try {
+      var session = await sb.auth.getSession();
+      if (session.data.session) {
+        var SRK = session.data.session.access_token;
+        await sb.from('rewrite_rounds')
+          .update({
+            rating_overall: state.feedback.overall,
+            rating_accuracy: state.feedback.accuracy,
+            rating_relevance: state.feedback.relevance,
+            rating_voice: state.feedback.voice,
+            rating_formatting: state.feedback.formatting,
+            feedback_text: state.feedback.text
+          })
+          .eq('session_id', state.rewriteResult.session_id)
+          .eq('round_number', state.rewriteResult.round_number || 1);
+      }
+    } catch (e) { console.error('[BJ] Feedback save error:', e); }
+  }
+
+  // G33: Call Revision Assessor
+  var feedbackEl = document.getElementById('feedback-ui-' + stateKey);
+  if (feedbackEl) feedbackEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:11px;color:var(--text-faint);">Analyzing your feedback\u2026</div>';
+
+  try {
+    var assessSession = await sb.auth.getSession();
+    if (!assessSession.data.session) return;
+
+    var assessRes = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + assessSession.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        mode: 'revision-assess',
+        resume_sections: state.rewriteResult?.resume_sections,
+        feedback: state.feedback
+      })
+    });
+
+    var assessment = null;
+    if (assessRes.ok) {
+      var assessData = await assessRes.json();
+      assessment = assessData;
+    }
+
+    // Show assessment
+    bjShowRevisionAssessment(stateKey, state.feedback, assessment);
+
+  } catch (e) {
+    console.error('[BJ] Revision assessment error:', e);
+    bjShowRevisionAssessment(stateKey, state.feedback, null);
+  }
+}
+
+function bjShowRevisionAssessment(stateKey, feedback, assessment) {
+  var feedbackEl = document.getElementById('feedback-ui-' + stateKey);
+  if (!feedbackEl) return;
+
+  var html = '<div style="margin-top:10px;padding:12px;background:rgba(77,142,255,0.04);border:1px solid rgba(77,142,255,0.15);border-radius:8px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#4d8eff;margin-bottom:6px;">\ud83d\udcca Revision Assessment</div>';
+
+  html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:3px;">Your ratings: ';
+  ['overall','accuracy','relevance','voice','formatting'].forEach(function(d) {
+    if (feedback[d]) html += d + ': ' + feedback[d] + '/5  ';
+  });
+  html += '</div>';
+
+  if (assessment && assessment.revision_recommended !== undefined) {
+    var confColor = assessment.confidence === 'high' ? 'var(--green)' : assessment.confidence === 'medium' ? 'var(--warm)' : 'var(--text-faint)';
+    html += '<div style="margin-top:8px;padding:8px;background:var(--bg-main);border-radius:6px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:' + (assessment.revision_recommended ? 'var(--green)' : 'var(--text-faint)') + ';">';
+    html += assessment.revision_recommended ? '\u2713 A revision is likely to improve your resume' : '\u2014 A revision may not meaningfully improve the result';
+    html += '</div>';
+    html += '<div style="font-size:10px;color:' + confColor + ';margin-top:2px;">Confidence: ' + (assessment.confidence || 'unknown') + '</div>';
+    if (assessment.confidence_reason) html += '<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">' + assessment.confidence_reason + '</div>';
+    if (assessment.suggestion_to_user) html += '<div style="font-size:10px;color:var(--warm);margin-top:4px;">\ud83d\udca1 ' + assessment.suggestion_to_user + '</div>';
+    if (assessment.estimated_improvements) {
+      html += '<div style="margin-top:6px;">';
+      assessment.estimated_improvements.forEach(function(imp) {
+        html += '<div style="font-size:10px;color:var(--text-dim);">' + imp.area + ': ' + imp.current_rating + '/5 \u2192 ~' + imp.estimated_after + '/5</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  html += '<div style="display:flex;gap:8px;margin-top:10px;">';
+  html += '<button class="btn btn-sm" onclick="bjRequestRevision(\'' + stateKey + '\')" style="font-size:11px;padding:6px 16px;background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;">\u2728 Request Revision</button>';
+  html += '<button class="btn btn-sm" onclick="document.getElementById(\'feedback-ui-' + stateKey + '\').innerHTML=\'<div style=padding:8px;font-size:11px;color:var(--green);text-align:center>\u2713 Feedback saved. Thanks!</div>\'" style="font-size:11px;padding:6px 12px;color:var(--text-faint);">I\'m satisfied</button>';
+  html += '</div>';
+  html += '</div>';
+
+  feedbackEl.innerHTML = html;
+}
+
+// G34: Revision loop — re-runs rewrite pipeline with feedback
+async function bjRequestRevision(stateKey) {
+  var state = window._bjRewriteState[stateKey] || {};
+  if (!state.rewriteResult) return;
+
+  // Update feedback context for the next round
+  state.previousFeedback = {
+    ratings: state.feedback,
+    previous_sections: state.rewriteResult.resume_sections,
+    round_number: (state.rewriteResult.round_number || 1) + 1
+  };
+
+  // Re-trigger the rewrite with feedback context injected
+  var parts = stateKey.split('-');
+  var ri = parseInt(parts[0]);
+  var fi = parseInt(parts[1]);
+
+  var btn = document.getElementById('feedback-ui-' + stateKey);
+  if (btn) btn.innerHTML = '<div style="padding:12px;text-align:center;font-size:11px;color:var(--warm);">Generating revision\u2026 This may take 30-60 seconds.</div>';
+
+  var filterNames = Object.keys(scores[ri]?.filters || {});
+  var filterScore = scores[ri]?.filters[filterNames[fi]];
+  if (!filterScore) return;
+
+  var acceptedRecs = [];
+  Object.keys(state.accepted || {}).forEach(function(k) {
+    if (state.accepted[k]) acceptedRecs.push({ id: k, type: k.split('-')[0], user_input: (state.achievementInputs||{})[k] || null });
+  });
+
+  var r = resumes[ri];
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rewrite-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        resume_text: r?.extractedText || '',
+        resume_profile: filterScore.resumeProfile,
+        jd_profile: filterScore.jdProfile,
+        accepted_recommendations: acceptedRecs,
+        achievement_inputs: state.achievementInputs || {},
+        gap_answers: state.gapAnswers || {},
+        user_highlights: state.userHighlights || [],
+        user_notes: state.userNotes || '',
+        include_cover_letter: state.coverLetter || false,
+        template_id: state.template || 'executive',
+        filter_name: filterNames[fi] || 'General',
+        coaching: filterScore.coaching,
+        previous_feedback: state.previousFeedback,
+        round_number: (state.rewriteResult.round_number || 1) + 1
+      })
+    });
+
+    if (!res.ok) {
+      if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Revision failed. Try again.</div>';
+      return;
+    }
+
+    var data = await res.json();
+    state.rewriteResult = data;
+
+    // Clear old results and show new ones
+    var container = document.getElementById('acceptance-ui-' + stateKey);
+    if (container) {
+      var oldResults = container.querySelectorAll('div[style*="rgba(34,197,94"]');
+      oldResults.forEach(function(el) { el.remove(); });
+    }
+    bjShowRewriteResults(stateKey, ri, fi, data);
+
+  } catch (e) {
+    console.error('[BJ] Revision error:', e);
+    if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Error: ' + e.message + '</div>';
+  }
+}
+
+async function bjInitRewriteFlow(ri, fi, filterScore) {
+  var stateKey = ri + '-' + fi;
+
+  // Only for premium results with coaching
+  if (!filterScore || !filterScore.premium || !filterScore.coaching) return;
+
+  // Check if gap interview container exists
+  var gapContainer = document.getElementById('gap-interview-container-' + stateKey);
+  if (!gapContainer) return;
+
+  // Fetch gap interview questions
+  if (filterScore.gapAnalysis && filterScore.gapAnalysis.length > 0) {
+    gapContainer.innerHTML = '<div style="font-size:10px;color:var(--text-faint);padding:8px;">Loading gap questions\u2026</div>';
+    var gapQuestions = await fetchGapInterview(filterScore.gapAnalysis, filterScore.resumeProfile);
+    if (gapQuestions && gapQuestions.length > 0) {
+      gapContainer.innerHTML = buildGapInterviewHtml(ri, fi, gapQuestions);
+      window._bjRewriteState[stateKey] = window._bjRewriteState[stateKey] || {};
+      window._bjRewriteState[stateKey].gapQuestions = gapQuestions;
+    } else {
+      gapContainer.innerHTML = '';
+      bjShowAcceptanceUI(stateKey);
+    }
+  } else {
+    gapContainer.innerHTML = '';
+    bjShowAcceptanceUI(stateKey);
+  }
+}
+
 // Update readiness side panels after analysis completes
 function updateReadinessSidePanels(scores) {
   if (!scores) return;
@@ -2917,6 +3926,18 @@ function updateReadinessSidePanels(scores) {
       var tmp = document.createElement('div');
       tmp.innerHTML = buildReadinessSide(ri, scores[ri]);
       existing.replaceWith(tmp.firstChild);
+    }
+
+    // Initialize gap interview + acceptance UI for premium results
+    var data = scores[ri];
+    if (data && data.filters) {
+      var filterNames = Object.keys(data.filters);
+      for (var fi = 0; fi < filterNames.length; fi++) {
+        var fs = data.filters[filterNames[fi]];
+        if (fs && fs.premium && fs.coaching) {
+          bjInitRewriteFlow(ri, fi, fs);
+        }
+      }
     }
   }
 }
@@ -3791,11 +4812,18 @@ function handleDeadJob(jobId, bodyEl) {
   // Show message in modal
   if (bodyEl) {
     bodyEl.innerHTML = '<div style="text-align:center;padding:40px;">' +
-      '<div style="font-size:32px;margin-bottom:12px;">🚫</div>' +
-      '<div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:8px;">Job Removed</div>' +
-      '<div style="color:var(--text-faint);font-size:13px;line-height:1.5;">' +
-      'This listing is no longer available on the company\'s careers page.<br>' +
-      'It has been removed from your feed and marked as closed.</div></div>';
+      '<div style="margin-bottom:16px;">' +
+        '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+          '<circle cx="24" cy="20" r="14" stroke="var(--text-faint)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/>' +
+          '<path d="M20 34h8M21 37h6M24 6v2M24 14a4 4 0 0 0-4 4c0 3 2 5 2 7h4c0-2 2-4 2-7a4 4 0 0 0-4-4z" stroke="var(--text-faint)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>' +
+          '<line x1="10" y1="10" x2="38" y2="38" stroke="var(--warm)" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>' +
+        '</svg>' +
+      '</div>' +
+      '<div style="color:var(--text);font-size:14px;font-weight:600;margin-bottom:6px;">This Brilliant opportunity has dimmed</div>' +
+      '<div style="color:var(--text-faint);font-size:12px;line-height:1.6;max-width:320px;margin:0 auto;">' +
+      'The listing is no longer live on the company\'s careers page. ' +
+      'It\'s been removed from your feed and marked as closed.<br><br>' +
+      '<span style="font-size:11px;opacity:0.7;">Don\'t worry — we\'re tracking 285,000+ jobs. Your next match is out there.</span></div></div>';
   }
 }
 
@@ -4093,6 +5121,7 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
       saveUserData('bj_hidden_jobs', JSON.stringify(hiddenJobIds));
       popup.remove();
       if (afterHide) afterHide();
+      bjUpdateImproveButton();
     });
   });
 
@@ -4132,6 +5161,398 @@ function toggleSaveJob(jobId, btn) {
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
 }
 
+
+// ════════════════════════════════════════════════════════════
+// IMPROVE FILTERS FROM HIDDEN JOBS (E18 — frontend wiring)
+// ════════════════════════════════════════════════════════════
+
+// Show/hide the Improve Filters button based on hidden job count
+function bjUpdateImproveButton() {
+  var btn = document.getElementById('improve-filters-btn');
+  if (!btn) return;
+  var count = (typeof hiddenJobIds !== 'undefined' ? hiddenJobIds : []).length;
+  if (count >= 3) {
+    btn.style.display = '';
+    btn.textContent = '\ud83d\udd27 Improve Filters (' + count + ' hidden)';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+// Call on page load and after every hide
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(bjUpdateImproveButton, 500);
+});
+
+// Main handler — batch analyze recent hidden jobs
+async function bjImproveFiltersFromHidden() {
+  var btn = document.getElementById('improve-filters-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyzing\u2026'; btn.style.opacity = '0.7'; }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { alert('Please sign in to use AI features.'); return; }
+
+    // Get resume text (most recent non-archived)
+    var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+      return r.extractedText && r.extractedText.length > 100 && !r.archived;
+    });
+    if (resumesWithText.length === 0) {
+      alert('Upload a resume first (Resumes tab) for AI to compare against.');
+      if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
+      return;
+    }
+    var resume = resumesWithText[resumesWithText.length - 1];
+
+    // Get recent hidden jobs (last 10)
+    var recent = hiddenJobIds.slice(-10);
+    if (recent.length === 0) { return; }
+
+    // Get current filter pills for context
+    var filterPills = null;
+    if (typeof savedFilters !== 'undefined' && savedFilters.length > 0) {
+      filterPills = savedFilters[0]; // use first saved filter as context
+    }
+
+    // Batch analyze — call for each hidden job in parallel (up to 5 concurrent)
+    var allSuggestions = { what_not: [], where_not: [], who_not: [] };
+    var batch = recent.slice(0, 5);
+
+    var promises = batch.map(function(hj) {
+      return fetch(SUPABASE_URL + '/functions/v1/analyze-hidden-job', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + session.data.session.access_token,
+          'apikey': SUPABASE_KEY
+        },
+        body: JSON.stringify({
+          job_id: hj.id,
+          resume_text: resume.extractedText.slice(0, 6000),
+          filter_pills: filterPills
+        })
+      }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+    });
+
+    var results = await Promise.all(promises);
+
+    // Aggregate and deduplicate suggestions
+    var seenWhat = new Set();
+    var seenWhere = new Set();
+    var seenWho = new Set();
+
+    results.forEach(function(r) {
+      if (!r) return;
+      (r.what_not || []).forEach(function(s) {
+        var key = s.term.toLowerCase();
+        if (!seenWhat.has(key)) { seenWhat.add(key); allSuggestions.what_not.push(s); }
+      });
+      (r.where_not || []).forEach(function(s) {
+        var key = s.term.toLowerCase();
+        if (!seenWhere.has(key)) { seenWhere.add(key); allSuggestions.where_not.push(s); }
+      });
+      (r.who_not || []).forEach(function(s) {
+        var key = s.term.toLowerCase();
+        if (!seenWho.has(key)) { seenWho.add(key); allSuggestions.who_not.push(s); }
+      });
+    });
+
+    var totalSuggestions = allSuggestions.what_not.length + allSuggestions.where_not.length + allSuggestions.who_not.length;
+
+    if (totalSuggestions === 0) {
+      if (btn) { btn.disabled = false; btn.textContent = 'No suggestions found'; setTimeout(bjUpdateImproveButton, 2000); }
+      return;
+    }
+
+    // Show results in a modal
+    bjShowImproveSuggestions(allSuggestions, batch.length);
+
+    if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
+
+  } catch (e) {
+    console.error('[BJ] Improve filters error:', e);
+    if (btn) { btn.disabled = false; bjUpdateImproveButton(); }
+  }
+}
+
+function bjShowImproveSuggestions(suggestions, jobsAnalyzed) {
+  // Remove any existing modal
+  var existing = document.getElementById('improve-suggestions-modal');
+  if (existing) existing.remove();
+
+  var total = suggestions.what_not.length + suggestions.where_not.length + suggestions.who_not.length;
+
+  var html = '<div id="improve-suggestions-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">';
+  html += '<div style="background:var(--bg-card);border-radius:12px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;padding:24px;">';
+
+  html += '<div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">\ud83d\udd27 Filter Improvement Suggestions</div>';
+  html += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;">Based on analysis of ' + jobsAnalyzed + ' hidden jobs \u00b7 ' + total + ' suggestions</div>';
+
+  // What NOT
+  if (suggestions.what_not.length > 0) {
+    html += '<div style="margin-bottom:12px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:6px;">WHAT NOT \u2014 Title exclusions</div>';
+    suggestions.what_not.forEach(function(s) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.15);border-radius:6px;margin-bottom:4px;">';
+      html += '<input type="checkbox" checked data-type="what_not" data-term="' + s.term.replace(/"/g, '&quot;') + '" style="accent-color:var(--red);cursor:pointer;">';
+      html += '<div><div style="font-size:12px;font-weight:600;color:var(--text);">' + s.term + '</div>';
+      html += '<div style="font-size:10px;color:var(--text-faint);">' + s.reason + '</div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Where NOT
+  if (suggestions.where_not.length > 0) {
+    html += '<div style="margin-bottom:12px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:var(--warm);margin-bottom:6px;">WHERE NOT \u2014 Location exclusions</div>';
+    suggestions.where_not.forEach(function(s) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15);border-radius:6px;margin-bottom:4px;">';
+      html += '<input type="checkbox" checked data-type="where_not" data-term="' + s.term.replace(/"/g, '&quot;') + '" style="accent-color:var(--warm);cursor:pointer;">';
+      html += '<div><div style="font-size:12px;font-weight:600;color:var(--text);">' + s.term + '</div>';
+      html += '<div style="font-size:10px;color:var(--text-faint);">' + s.reason + '</div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Who NOT
+  if (suggestions.who_not.length > 0) {
+    html += '<div style="margin-bottom:12px;">';
+    html += '<div style="font-size:12px;font-weight:600;color:#7c3aed;margin-bottom:6px;">WHO NOT \u2014 Company exclusions</div>';
+    suggestions.who_not.forEach(function(s) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(124,58,237,0.05);border:1px solid rgba(124,58,237,0.15);border-radius:6px;margin-bottom:4px;">';
+      html += '<input type="checkbox" checked data-type="who_not" data-term="' + s.term.replace(/"/g, '&quot;') + '" style="accent-color:#7c3aed;cursor:pointer;">';
+      html += '<div><div style="font-size:12px;font-weight:600;color:var(--text);">' + s.term + '</div>';
+      html += '<div style="font-size:10px;color:var(--text-faint);">' + s.reason + '</div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<div style="display:flex;gap:8px;margin-top:16px;">';
+  html += '<button onclick="bjApplyImproveSuggestions()" style="flex:1;padding:10px;background:var(--green);color:#fff;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;">Apply Selected</button>';
+  html += '<button onclick="document.getElementById(\'improve-suggestions-modal\').remove()" style="padding:10px 16px;background:var(--bg-main);color:var(--text-faint);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;">Cancel</button>';
+  html += '</div>';
+
+  html += '</div></div>';
+
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function bjApplyImproveSuggestions() {
+  var modal = document.getElementById('improve-suggestions-modal');
+  if (!modal) return;
+
+  var checkboxes = modal.querySelectorAll('input[type=checkbox]:checked');
+  if (checkboxes.length === 0) { modal.remove(); return; }
+
+  // Collect selected suggestions
+  var whatNot = [];
+  var whereNot = [];
+  var whoNot = [];
+
+  checkboxes.forEach(function(cb) {
+    var type = cb.dataset.type;
+    var term = cb.dataset.term;
+    if (type === 'what_not') whatNot.push(term);
+    if (type === 'where_not') whereNot.push(term);
+    if (type === 'who_not') whoNot.push(term);
+  });
+
+  // Apply to the first saved filter's tuning config
+  // This integrates with the existing Search Tuning system
+  if (typeof savedFilters !== 'undefined' && savedFilters.length > 0) {
+    var filter = savedFilters[0];
+
+    // Add to title exclusions
+    if (whatNot.length > 0) {
+      if (!filter.titleExclusions) filter.titleExclusions = [];
+      whatNot.forEach(function(term) {
+        if (!filter.titleExclusions.includes(term)) filter.titleExclusions.push(term);
+      });
+    }
+
+    // Add to location exclusions
+    if (whereNot.length > 0) {
+      if (!filter.locationExclusions) filter.locationExclusions = [];
+      whereNot.forEach(function(term) {
+        if (!filter.locationExclusions.includes(term)) filter.locationExclusions.push(term);
+      });
+    }
+
+    // Add to company exclusions
+    if (whoNot.length > 0) {
+      if (!filter.companyExclusions) filter.companyExclusions = [];
+      whoNot.forEach(function(term) {
+        if (!filter.companyExclusions.includes(term)) filter.companyExclusions.push(term);
+      });
+    }
+
+    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+    console.log('[BJ] Applied NOT suggestions:', { whatNot, whereNot, whoNot });
+  }
+
+  modal.remove();
+
+  // Show confirmation and refresh feed
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:10000;';
+  toast.textContent = '\u2713 ' + checkboxes.length + ' exclusion(s) applied to your filter';
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 3000);
+
+  // Refresh the feed with new exclusions
+  if (typeof refreshFeed === 'function') refreshFeed();
+}
+
+// ════════════════════════════════════════════════════════════
+// G23: AUTO-ADD REWRITE TO RESUME LIBRARY
+// G26: TIER PROVENANCE TRACKING
+// ════════════════════════════════════════════════════════════
+
+function bjAddRewriteToLibrary(ri, fi, data, filterName) {
+  var original = resumes[ri];
+  if (!original) return;
+
+  var round = 1;
+  resumes.forEach(function(r) {
+    if (r.source === 'rewrite' && r.basedOn === original.id) {
+      round = Math.max(round, (r.rewrite_round || 0) + 1);
+    }
+  });
+
+  var id = 'res_rw_' + data.session_id.slice(0, 8) + '_' + round;
+  var name = (original.name || 'Resume') + ' \u2014 ' + (filterName || 'Rewrite') + ' v' + round;
+
+  var newResume = {
+    id: id,
+    name: name,
+    fileName: name + '.docx',
+    size: '',
+    filterIds: filterName ? [filterName] : (original.filterIds || []).slice(),
+    uploadedAt: new Date().toLocaleDateString(),
+    levelLabel: original.levelLabel || '',
+    levelColor: original.levelColor || '',
+    archived: false,
+    extractedText: '',
+    keywords: original.keywords || [],
+    textStatus: 'ready',
+    source: 'rewrite',
+    basedOn: original.id,
+    rewrite_session_id: data.session_id,
+    rewrite_round: round,
+    analysis_tier: 'premium',
+    rewrite_tier: 'premium',
+    tier_history: [
+      { action: 'analyzed', tier: 'premium', timestamp: new Date().toISOString() },
+      { action: 'rewritten', tier: 'premium', round: round, timestamp: new Date().toISOString() }
+    ],
+    resume_path: data.resume_path,
+    qa_clean: data.qa_report ? (data.qa_report.accuracy?.clean && data.qa_report.bleed?.clean) : null,
+    changes_count: (data.changes_made || []).length,
+    template_used: data.template_used
+  };
+
+  // Extract text from resume sections for keyword analysis
+  if (data.resume_sections) {
+    var textParts = [];
+    (data.resume_sections || []).forEach(function(section) {
+      (section.items || []).forEach(function(item) {
+        if (item.content) {
+          if (item.content.text) textParts.push(item.content.text);
+          if (item.content.title) textParts.push(item.content.title);
+          if (item.content.company) textParts.push(item.content.company);
+          if (item.content.bullets) textParts.push(item.content.bullets.join(' '));
+          if (item.content.skills) textParts.push(item.content.skills.join(', '));
+          if (item.content.degree) textParts.push(item.content.degree);
+        }
+      });
+    });
+    newResume.extractedText = textParts.join('\n');
+    if (typeof extractResumeKeywords === 'function') {
+      newResume.keywords = extractResumeKeywords(newResume.extractedText);
+    }
+  }
+
+  resumes.push(newResume);
+  saveResumes();
+  if (typeof renderResumes === 'function') renderResumes();
+  console.log('[BJ] Rewrite added to library:', id, name);
+  return id;
+}
+
+// ════════════════════════════════════════════════════════════
+// G24-G25: COVER LETTER SAVE + ARCHIVE
+// ════════════════════════════════════════════════════════════
+
+async function bjSaveCoverLetter(data, filterName) {
+  if (!data.cover_letter || !data.cover_letter_path) return;
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+    var { error } = await sb.from('cover_letters').insert({
+      user_id: session.data.session.user.id,
+      session_id: data.session_id,
+      round_number: 1,
+      filter_name: filterName || '',
+      paragraphs: data.cover_letter.paragraphs || [],
+      salutation: data.cover_letter.salutation || '',
+      closing: data.cover_letter.closing || '',
+      word_count: data.cover_letter.word_count || 0,
+      storage_path: data.cover_letter_path,
+      tier: 'premium',
+      analysis_tier: 'premium'
+    });
+    if (error) console.error('[BJ] Cover letter save error:', error);
+    else console.log('[BJ] Cover letter saved');
+  } catch (e) { console.error('[BJ] Cover letter save exception:', e); }
+}
+
+async function bjRenderCoverLetterArchive() {
+  var container = document.getElementById('cover-letter-archive');
+  if (!container) return;
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { container.style.display = 'none'; return; }
+    var { data: covers, error } = await sb.from('cover_letters')
+      .select('*').eq('user_id', session.data.session.user.id)
+      .order('created_at', { ascending: false }).limit(20);
+    if (error || !covers || covers.length === 0) { container.style.display = 'none'; return; }
+
+    container.style.display = '';
+    var html = '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">Cover Letters (' + covers.length + ')</div>';
+    covers.forEach(function(cl) {
+      var date = cl.created_at ? new Date(cl.created_at).toLocaleDateString() : '';
+      var tierBadge = cl.tier === 'premium'
+        ? '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.2);color:#4d8eff;font-weight:600;">\u2728 Premium</span>'
+        : '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(148,163,184,0.1);color:#94a3b8;font-weight:600;">AI Basic</span>';
+      var downloadUrl = SUPABASE_URL + '/storage/v1/object/public/' + cl.storage_path;
+      html += '<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg-input);">';
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">';
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + (cl.filter_name || 'General') + '</span>' + tierBadge;
+      html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;">' + date + ' \u00b7 ' + (cl.word_count || '?') + ' words</span></div>';
+      html += '<div id="cl-preview-' + cl.id + '" style="display:none;font-size:11px;color:var(--text-dim);margin:6px 0;padding:8px;background:var(--bg-main);border-radius:4px;line-height:1.5;">';
+      html += '<div style="font-style:italic;margin-bottom:4px;">' + (cl.salutation || '') + '</div>';
+      (cl.paragraphs || []).forEach(function(p) { html += '<div style="margin-bottom:6px;">' + p + '</div>'; });
+      html += '<div>' + (cl.closing || '') + '</div></div>';
+      html += '<div style="display:flex;gap:6px;">';
+      html += '<button class="btn btn-sm" onclick="var e=document.getElementById(\'cl-preview-' + cl.id + '\');e.style.display=e.style.display===\'none\'?\'\':\'none\';" style="font-size:9px;padding:2px 8px;">Preview</button>';
+      html += '<a href="' + downloadUrl + '" download class="btn btn-sm" style="font-size:9px;padding:2px 8px;text-decoration:none;">Download</a>';
+      html += '<button class="btn btn-sm" onclick="bjDeleteCoverLetter(\'' + cl.id + '\')" style="font-size:9px;padding:2px 8px;color:var(--red);">Delete</button>';
+      html += '</div></div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) { console.error('[BJ] Cover letter archive error:', e); container.style.display = 'none'; }
+}
+
+async function bjDeleteCoverLetter(id) {
+  if (!confirm('Delete this cover letter?')) return;
+  try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
+  catch (e) { console.error('[BJ] Delete cover letter error:', e); }
+}
 
 
 // === js/browsers.js ===
@@ -4986,6 +6407,30 @@ const qbInputWhere = $('#qb-input-where');
 const locationDropdown = $('#location-dropdown');
 let locationSearchTimeout;
 
+// ─── US-only location filter (used when tuning "United States" is checked) ───
+const US_STATE_NAMES_SET = new Set([
+  'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
+  'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
+  'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
+  'minnesota','mississippi','missouri','montana','nebraska','nevada',
+  'new hampshire','new jersey','new mexico','new york','north carolina',
+  'north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
+  'south carolina','south dakota','tennessee','texas','utah','vermont',
+  'virginia','washington','west virginia','wisconsin','wyoming',
+  'district of columbia',
+]);
+function isUSLocation(normalized) {
+  // normalized is lowercase, e.g. "new york, new york" or "berlin, germany"
+  // Check if the last part (after last comma) is a US state name
+  const parts = normalized.split(',');
+  if (parts.length < 2) return false;
+  const last = parts[parts.length - 1].trim();
+  if (US_STATE_NAMES_SET.has(last)) return true;
+  // Also allow "united states" or "us" or "usa" as the suffix
+  if (last === 'united states' || last === 'us' || last === 'usa') return true;
+  return false;
+}
+
 // ─── Cached ref_city_radius (static JSON, avoids Supabase query per keystroke) ───
 let _refCityCache = null;
 async function getRefCityRadius() {
@@ -5156,6 +6601,8 @@ async function searchLocations(query) {
         const norm = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
         // Skip remote variants (already handled above)
         if (norm.startsWith('remote')) continue;
+        // When US-only tuning is on, skip non-US locations from cache
+        if (tuningSettings.usOnly && !isUSLocation(norm)) continue;
         // Skip if already covered by ref table (check if any ref result city name is in this cache entry)
         const coveredByRef = results.some(r =>
           (r.type === 'city' || r.type === 'metro') && r.city &&
@@ -5371,6 +6818,8 @@ async function searchLocationsForNot(query) {
         const display = loc.normalized || loc.raw_input;
         const key = display.toLowerCase();
         if (!seenKeys.has(key) && !key.startsWith('remote')) {
+          // When US-only tuning is on, skip non-US locations from cache
+          if (tuningSettings.usOnly && !isUSLocation(key)) continue;
           seenKeys.add(key);
           results.push({ display, badge: 'pin' });
         }
@@ -8399,6 +9848,11 @@ function renderResumes() {
       ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(66,133,244,0.1);color:#4285F4;">Drive</span>'
       : '';
 
+    // G26: Tier provenance badge
+    const tierBadge = r.source === 'rewrite'
+      ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '">✨ Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
+      : '';
+
     // Readiness grade from cache — shown inline on card
     let gradeHtml = '';
     if (!isPlaceholder) {
@@ -8447,7 +9901,7 @@ function renderResumes() {
             <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
             ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
           </div>
-          ${gdriveIcon}
+          ${gdriveIcon}${tierBadge}
         </div>
         ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
         <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -8467,7 +9921,7 @@ function renderResumes() {
         !isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]
           ? buildReadinessSide(i, readinessCache.scores[i])
           : (assignedIds.length > 0 && !isPlaceholder
-              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button></div>'
+              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;gap:8px;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep</button></div>'
               : '<div class="readiness-side" id="readiness-side-' + i + '"></div>')
       }</div>
     </div>`;
@@ -8568,6 +10022,9 @@ function renderResumeArchive(archivedResumes) {
       <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
     </div>`;
   }).join('');
+
+  // G25: Render cover letter archive
+  if (typeof bjRenderCoverLetterArchive === 'function') bjRenderCoverLetterArchive();
 }
 
 // Nav dot updates
@@ -11317,7 +12774,7 @@ async function fetchSeoData() {
 
 // ─── Chart Rendering ───
 function renderSeoCharts() {
-  renderTrafficChart();
+  renderSeoStatCards();
   renderGscChart();
   renderPsiChart();
   renderCruxChart();
@@ -11325,17 +12782,66 @@ function renderSeoCharts() {
   renderCloudflareChart();
 }
 
+
+function renderSeoStatCards() {
+  var techAudits = _seoData.tech_audits || [];
+  var indexStatus = _seoData.index_status || [];
+  var siteDailyArr = _seoData.site_daily || [];
+
+  // PSI avg performance (latest mobile)
+  var psiMobile = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
+  var latestPsi = psiMobile.length ? psiMobile[psiMobile.length - 1] : null;
+  var psiPerf = latestPsi && latestPsi.metrics ? latestPsi.metrics.performance : null;
+
+  // YLT avg
+  var yltData = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
+  var yltAvg = yltData.length ? Math.round(yltData.reduce(function(s, r) { return s + (r.score || 0); }, 0) / yltData.length) : null;
+
+  // Indexed pages
+  var indexed = 0, totalInspected = 0;
+  var seen = {};
+  indexStatus.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; totalInspected++; if (r.verdict === 'PASS') indexed++; });
+
+  // CF traffic (latest day)
+  var cfData = techAudits.filter(function(r) { return r.source === 'cloudflare'; });
+  var latestCf = cfData.length ? cfData[cfData.length - 1] : null;
+  var cfRequests = latestCf && latestCf.metrics ? latestCf.metrics.total_requests : null;
+
+  // GSC clicks (latest day)
+  var latestSite = siteDailyArr.length ? siteDailyArr[siteDailyArr.length - 1] : null;
+  var gscClicks = latestSite ? (latestSite.total_clicks || 0) : null;
+
+  // Set values via DOM
+  function setKpi(id, value, colorClass) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value != null ? String(value) : '\u2014';
+    el.className = 'stat-val';
+    if (colorClass) el.classList.add(colorClass);
+  }
+
+  var psiColor = psiPerf >= 90 ? 'admin-green' : psiPerf >= 50 ? 'admin-amber' : psiPerf != null ? 'admin-red' : '';
+  var yltColor = yltAvg >= 90 ? 'admin-green' : yltAvg >= 50 ? 'admin-amber' : yltAvg != null ? 'admin-red' : '';
+  var idxColor = totalInspected > 0 && indexed === totalInspected ? 'admin-green' : indexed > 0 ? 'admin-amber' : totalInspected > 0 ? 'admin-red' : '';
+
+  setKpi('seo-kpi-psi', psiPerf, psiColor);
+  setKpi('seo-kpi-ylt', yltAvg, yltColor);
+  setKpi('seo-kpi-indexed', totalInspected > 0 ? indexed + '/' + totalInspected : null, idxColor);
+  setKpi('seo-kpi-cf', cfRequests != null ? cfRequests.toLocaleString() : null);
+  setKpi('seo-kpi-gsc', gscClicks != null ? gscClicks.toLocaleString() : null);
+}
+
 function seoChartTheme() {
   return {
     grid: { top: 35, right: 20, bottom: 30, left: 50, containLabel: true },
-    tooltip: { trigger: 'axis', backgroundColor: '#1a1d2e', borderColor: '#2a2d3e', textStyle: { color: '#e1e4ed', fontSize: 11 } },
+    tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
   };
 }
 
 function seoAxis() {
   return {
-    xAxis: { type: 'category', axisLabel: { color: '#7b829a', fontSize: 10 }, axisLine: { lineStyle: { color: '#2a2d3e' } } },
-    yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { lineStyle: { color: '#1e2130' } } },
+    xAxis: { type: 'category', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, axisLine: { lineStyle: { color: '#e8eaef' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
   };
 }
 
@@ -11349,8 +12855,11 @@ function initSeoChart(elId) {
 
 function seoNoData(chart, title, msg) {
   chart.setOption({
-    title: { text: title, textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
-    graphic: { elements: [{ type: 'text', left: 'center', top: 'middle', style: { text: msg || 'No data yet — run sync', fill: '#555', fontSize: 12 } }] }
+    title: { text: title, textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+    graphic: { elements: [{ type: 'group', left: 'center', top: 'middle', children: [
+      { type: 'text', left: 'center', top: -10, style: { text: msg || 'No data yet', fill: '#9ca3af', fontSize: 13, fontFamily: 'Outfit' } },
+      { type: 'text', left: 'center', top: 12, style: { text: 'Run sync to populate', fill: '#d1d5db', fontSize: 11, fontFamily: 'Outfit' } }
+    ] }] }
   }, true);
 }
 
@@ -11365,7 +12874,7 @@ function renderTrafficChart() {
   if (!dates.length) { seoNoData(chart, 'PostHog Traffic', 'No pageview data yet'); return; }
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'PostHog Traffic', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'PostHog Traffic', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
     yAxis: ax.yAxis,
     series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 16 }]
@@ -11381,7 +12890,7 @@ function renderGscChart() {
   var dates = data.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Google Search Console', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'Google Search Console', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -11405,7 +12914,7 @@ function renderPsiChart() {
     var dates = audits.map(function(r) { return r.date; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
@@ -11423,7 +12932,7 @@ function renderPsiChart() {
     var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       legend: { data: ['Performance', 'SEO', 'A11y', 'BP'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
       grid: { top: 35, right: 20, bottom: 60, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 35 } },
@@ -11451,7 +12960,7 @@ function renderCruxChart() {
   var p75s = metricNames.map(function(k) { return m[k] && m[k].p75 ? m[k].p75 : 0; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
     yAxis: ax.yAxis,
@@ -11471,7 +12980,7 @@ function renderYltChart() {
     var scores = yltData.map(function(r) { return r.score; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
       series: [{ type: 'line', data: scores, lineStyle: { color: '#eab308' }, itemStyle: { color: '#eab308' }, symbol: 'circle', symbolSize: 6, areaStyle: { color: 'rgba(234,179,8,0.1)' } }]
@@ -11483,7 +12992,7 @@ function renderYltChart() {
     var scores = latest.map(function(r) { return r.score || 0; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 50, left: 50 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
@@ -11501,7 +13010,7 @@ function renderCloudflareChart() {
   var dates = cfData.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Cloudflare', textStyle: { color: '#9ba1b4', fontSize: 12, fontWeight: 600 }, left: 4, top: 4 },
+    title: { text: 'Cloudflare', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     legend: { data: ['Requests', 'Page Views', 'Uniques'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -11527,24 +13036,33 @@ function renderUrlInspection() {
   var el = document.getElementById('seo-side-inspection');
   if (!el) return;
   var data = _seoData.index_status || [];
-  if (!data.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No inspection data yet. Requires Google Service Account key (GOOGLE_SA_KEY_JSON) to be set as a Supabase secret. <a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;" style="color:var(--blue);">Try running inspection</a></div>'; return; }
+  if (!data.length) {
+    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([\'gsc_inspect\']);return false;">Run inspection</a></div>';
+    return;
+  }
 
   if (_seoUrl) {
     var latest = data.find(function(r) { return r.url === _seoUrl; }) || data[0];
-    var vc = latest.verdict === 'PASS' ? 'color:var(--green)' : latest.verdict === 'NEUTRAL' ? 'color:#f59e0b' : 'color:var(--red)';
-    el.innerHTML = '<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">' +
-      '<div><span style="color:var(--text-faint);">Verdict:</span> <strong style="' + vc + '">' + (latest.verdict || '—') + '</strong></div>' +
-      '<div><span style="color:var(--text-faint);">Coverage:</span> ' + (latest.coverage_state || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Indexing:</span> ' + (latest.indexing_state || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Last Crawl:</span> ' + (latest.last_crawl_time ? new Date(latest.last_crawl_time).toLocaleDateString() : '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Mobile:</span> ' + (latest.mobile_usability || '—') + '</div></div>';
+    var vc = latest.verdict === 'PASS' ? 'admin-green' : latest.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Verdict</span> <span class="seo-metric-value ' + vc + '">' + (latest.verdict || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Coverage</span> <span class="seo-metric-value">' + (latest.coverage_state || '\u2014') + '</span></div>' +
+      '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Indexing</span> <span class="seo-metric-value">' + (latest.indexing_state || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Last Crawl</span> <span class="seo-metric-value">' + (latest.last_crawl_time ? new Date(latest.last_crawl_time).toLocaleDateString() : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Mobile</span> <span class="seo-metric-value">' + (latest.mobile_usability || '\u2014') + '</span></div>' +
+      '</div>';
   } else {
     var pass = 0, fail = 0, other = 0, seen = {};
     data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
-    el.innerHTML = '<div style="display:flex;gap:16px;font-size:12px;">' +
-      '<div><span style="color:var(--green);font-weight:600;">' + pass + '</span> indexed</div>' +
-      '<div><span style="color:var(--red);font-weight:600;">' + fail + '</span> failed</div>' +
-      '<div><span style="color:var(--text-faint);font-weight:600;">' + other + '</span> other</div></div>';
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-value admin-green">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-value admin-red">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-value">' + other + '</span> <span class="seo-metric-label">other</span></div>' +
+      '</div>';
   }
 }
 
@@ -11552,23 +13070,34 @@ function renderGscQueries() {
   var el = document.getElementById('seo-side-queries');
   if (!el) return;
   var queries = _seoData.gsc_queries || [];
-  if (!queries.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px 0;">No search queries yet</div>'; return; }
+  if (!queries.length) { el.innerHTML = '<div class="seo-empty">No search queries yet</div>'; return; }
   var qMap = {};
   queries.forEach(function(r) { if (!r.query) return; if (!qMap[r.query]) qMap[r.query] = { clicks:0, impressions:0, position:0, count:0 }; qMap[r.query].clicks += r.clicks||0; qMap[r.query].impressions += r.impressions||0; qMap[r.query].position += r.position||0; qMap[r.query].count++; });
   var sorted = Object.entries(qMap).sort(function(a,b) { return b[1].clicks - a[1].clicks; }).slice(0,20);
-  el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;"><tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Query</th><th>Clicks</th><th>Impr</th><th>Pos</th></tr>' +
-    sorted.map(function(e) { var q=e[0],d=e[1]; return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+q+'</td><td style="text-align:center;color:var(--blue);">'+d.clicks+'</td><td style="text-align:center;">'+d.impressions+'</td><td style="text-align:center;">'+(d.count>0?(d.position/d.count).toFixed(1):'—')+'</td></tr>'; }).join('') + '</table>';
+  el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>Avg Position</th></tr></thead><tbody>' +
+    sorted.map(function(e) {
+      var q = e[0], d = e[1];
+      var pos = d.count > 0 ? (d.position / d.count).toFixed(1) : '\u2014';
+      return '<tr><td class="admin-platform-name" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + q + '</td>' +
+        '<td class="admin-green">' + d.clicks + '</td>' +
+        '<td>' + d.impressions + '</td>' +
+        '<td>' + pos + '</td></tr>';
+    }).join('') + '</tbody></table>';
 }
 
 function renderKnowledgeGraph() {
   var el = document.getElementById('seo-side-kg');
   if (!el) return;
   var kgData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
-  if (!kgData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No Knowledge Graph data yet</div>'; return; }
+  if (!kgData.length) { el.innerHTML = '<div class="seo-empty">No Knowledge Graph data yet</div>'; return; }
   var entities = (kgData[kgData.length-1].metrics && kgData[kgData.length-1].metrics.entities) || [];
-  if (!entities.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No entities found</div>'; return; }
+  if (!entities.length) { el.innerHTML = '<div class="seo-empty">No entities found</div>'; return; }
   el.innerHTML = entities.map(function(e) {
-    return '<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;"><span style="color:var(--text);font-weight:500;">'+(e.name||'—')+'</span><span style="color:var(--text-faint);font-size:10px;">'+(e.type||'')+'</span>'+(e.score?'<span style="margin-left:auto;color:var(--text-faint);font-size:10px;">'+e.score.toFixed(1)+'</span>':'')+'</div>';
+    return '<div class="seo-entity-row">' +
+      '<span class="seo-entity-name">' + (e.name || '\u2014') + '</span>' +
+      '<span class="seo-entity-type">' + (e.type || '') + '</span>' +
+      (e.score ? '<span class="seo-entity-score">' + e.score.toFixed(1) + '</span>' : '') +
+    '</div>';
   }).join('');
 }
 
@@ -11576,20 +13105,28 @@ function renderPsiDrilldown() {
   var el = document.getElementById('seo-side-psi');
   if (!el) return;
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
-  if (!audits.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No PSI data yet</div>'; return; }
+  if (!audits.length) { el.innerHTML = '<div class="seo-empty">No PSI data yet</div>'; return; }
   var latest = audits[audits.length-1];
   var issues = latest.issues || [];
   var m = latest.metrics || {};
   var vitals = [
-    { label:'FCP', val:m.fcp?(m.fcp/1000).toFixed(2)+'s':'—', good:m.fcp<1800 },
-    { label:'LCP', val:m.lcp?(m.lcp/1000).toFixed(2)+'s':'—', good:m.lcp<2500 },
-    { label:'CLS', val:m.cls!=null?m.cls.toFixed(3):'—', good:m.cls<0.1 },
-    { label:'TBT', val:m.tbt!=null?Math.round(m.tbt)+'ms':'—', good:m.tbt<200 },
+    { label:'FCP', val:m.fcp?(m.fcp/1000).toFixed(2)+'s':'\u2014', good:m.fcp<1800 },
+    { label:'LCP', val:m.lcp?(m.lcp/1000).toFixed(2)+'s':'\u2014', good:m.lcp<2500 },
+    { label:'CLS', val:m.cls!=null?m.cls.toFixed(3):'\u2014', good:m.cls<0.1 },
+    { label:'TBT', val:m.tbt!=null?Math.round(m.tbt)+'ms':'\u2014', good:m.tbt<200 },
   ];
-  var html = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">';
-  vitals.forEach(function(v) { html += '<div style="text-align:center;"><div style="font-size:14px;font-weight:700;color:'+(v.good?'var(--green)':'var(--red)')+';">'+v.val+'</div><div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;">'+v.label+'</div></div>'; });
+  var html = '<div class="seo-metric-row" style="gap:24px;">';
+  vitals.forEach(function(v) {
+    html += '<div class="seo-vital"><div class="seo-vital-value ' + (v.good ? 'admin-green' : 'admin-red') + '">' + v.val + '</div><div class="seo-vital-label">' + v.label + '</div></div>';
+  });
   html += '</div>';
-  html += issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● '+(i.title||i.id)+'</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues flagged</div>';
+  if (issues.length > 0) {
+    html += '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) {
+      return '<div class="seo-issue-item">' + (i.title || i.id) + '</div>';
+    }).join('') + '</div>';
+  } else {
+    html += '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues flagged</span></div>';
+  }
   el.innerHTML = html;
 }
 
@@ -11599,50 +13136,53 @@ function renderDfsAudit() {
   var el = document.getElementById('seo-side-dfs');
   if (!el) return;
   var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
-  if (!dfsData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No DataForSEO data yet — run sync</div>'; return; }
+  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([\'dataforseo\']);return false;">run sync</a></div>'; return; }
 
   if (_seoUrl) {
     var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
     latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
     var m = latest.metrics || {};
     var issues = latest.issues || [];
+    var sc = latest.score || 0;
+    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
     el.innerHTML =
-      '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:8px;">' +
-      '<div><span style="color:var(--text-faint);">Score:</span> <strong style="color:' + (latest.score >= 90 ? 'var(--green)' : latest.score >= 50 ? '#f59e0b' : 'var(--red)') + ';">' + (latest.score || '—') + '</strong></div>' +
-      '<div><span style="color:var(--text-faint);">Title:</span> ' + (m.title_length || '—') + ' chars</div>' +
-      '<div><span style="color:var(--text-faint);">Desc:</span> ' + (m.description_length || '—') + ' chars</div>' +
-      '<div><span style="color:var(--text-faint);">H1s:</span> ' + (m.h1_count || 0) + '</div>' +
-      '<div><span style="color:var(--text-faint);">Int links:</span> ' + (m.internal_links || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Ext links:</span> ' + (m.external_links || '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Size:</span> ' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '—') + '</div>' +
-      '<div><span style="color:var(--text-faint);">Load:</span> ' + (m.load_time ? m.load_time.toFixed(2) + 's' : '—') + '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Score</span> <span class="seo-metric-value ' + scColor + '">' + (sc || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value">' + (m.title_length || '\u2014') + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || '\u2014') + ' chars</span></div>' +
       '</div>' +
-      (issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● ' + (i.message || i.check || '—') + '</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues</div>');
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">H1s</span> <span class="seo-metric-value">' + (m.h1_count || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Load</span> <span class="seo-metric-value">' + (m.load_time ? m.load_time.toFixed(2) + 's' : '\u2014') + '</span></div>' +
+      '</div>' +
+      (issues.length > 0 ? '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) { return '<div class="seo-issue-item">' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues</span></div>');
   } else {
     // Aggregate — show table of latest scores
     var latestDate = dfsData[dfsData.length - 1].date;
     var latest = dfsData.filter(function(r) { return r.date === latestDate; });
-    el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
-      '<tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr>' +
+    el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
       latest.map(function(r) {
         var m = r.metrics || {};
         var path = '/';
         try { path = new URL(r.url).pathname || '/'; } catch(e) {}
         var sc = r.score || 0;
-        var scColor = sc >= 90 ? 'var(--green)' : sc >= 50 ? '#f59e0b' : 'var(--red)';
-        return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;font-family:var(--mono);">' + path + '</td>' +
-          '<td style="text-align:center;color:' + scColor + ';font-weight:600;">' + sc + '</td>' +
-          '<td style="text-align:center;">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '—') + '</td>' +
-          '<td style="text-align:center;">' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
-          '<td style="text-align:center;">' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
-      }).join('') + '</table>';
+        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : 'admin-red';
+        return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
+          '<td class="' + scColor + '" style="font-weight:600;">' + sc + '</td>' +
+          '<td>' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</td>' +
+          '<td>' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
+          '<td>' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
 }
 
 // ─── Sync Trigger ───
 async function triggerSeoSync(tasks) {
   var btn = document.getElementById('seo-sync-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing\u2026'; }
   try {
     var session = (await sb.auth.getSession()).data.session;
     if (!session) { alert('Sign in required'); return; }
@@ -11653,12 +13193,13 @@ async function triggerSeoSync(tasks) {
     });
     var data = await resp.json();
     console.log('[Admin] SEO sync result:', data);
-    if (btn) btn.textContent = 'Done ✓';
-    setTimeout(function() { if (btn) { btn.disabled = false; btn.textContent = '↻ Sync All'; } }, 2000);
+    if (btn) btn.textContent = 'Done \u2713';
+    setTimeout(function() { if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; } }, 2000);
+    _adminTabInit['seo'] = false;
     loadSeoTab();
   } catch(err) {
     console.error('[Admin] SEO sync error:', err);
-    if (btn) { btn.disabled = false; btn.textContent = '↻ Sync All'; }
+    if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; }
     alert('Sync failed: ' + err.message);
   }
 }
@@ -11700,8 +13241,8 @@ async function loadRevenueTab() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.45';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
+const BJ_VERSION = 'v3.55';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — full AI resume pipeline — Phase G complete');
 
 // Auth
 async function init() {
