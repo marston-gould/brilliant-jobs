@@ -92,7 +92,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.71</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.72</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1721,13 +1721,153 @@
       <div class="page" id="page-subscription">
         <div class="page-header">
           <h2>Subscription</h2>
-          <p>Manage your plan, billing, and referral discounts <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('subscription')">How this works →</a></p>
+          <p>Manage your plan, credits, and billing <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('subscription')">How this works →</a></p>
         </div>
         <div class="page-body">
-          <div class="empty-state">
-            <h3>Coming Soon</h3>
-            <p>Plan selection, upgrade/downgrade, referral rewards, and billing management will appear here.</p>
+
+          <!-- Low Credit Alert Banner (hidden by default) -->
+          <div class="sub-alert" id="sub-credit-alert" style="display:none;">
+            <div class="sub-alert-icon">⚡</div>
+            <div class="sub-alert-text">
+              <strong>Running low on credits</strong>
+              <span id="sub-alert-msg">You have <span id="sub-alert-count">0</span> credits remaining.</span>
+            </div>
+            <button class="btn-primary btn-sm" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Get More Credits</button>
           </div>
+
+          <!-- Current Plan + Credit Balance Cards -->
+          <div class="sub-summary-grid">
+            <div class="card sub-plan-card">
+              <div class="card-title">Current Plan</div>
+              <div class="sub-plan-name" id="sub-plan-name">Free</div>
+              <div class="sub-plan-price" id="sub-plan-price">$0/mo</div>
+              <div class="sub-plan-detail" id="sub-plan-credits-included">0 credits included/month</div>
+              <div class="sub-plan-detail" id="sub-plan-payg">PAYG rate: $0.25/credit</div>
+              <div class="sub-plan-detail" id="sub-plan-period" style="display:none;">Renews: <span id="sub-plan-renew-date">—</span></div>
+              <button class="btn-secondary btn-sm" style="margin-top:12px;" onclick="openCustomerPortal()" id="sub-manage-btn" title="Payment method, invoices, cancel">Manage Billing</button>
+            </div>
+
+            <div class="card sub-balance-card">
+              <div class="card-title">Credit Balance</div>
+              <div class="sub-balance-number" id="sub-balance-number">0</div>
+              <div class="sub-balance-label">credits available</div>
+              <div class="sub-burn-rate" id="sub-burn-rate" style="display:none;">
+                At your current usage (~<span id="sub-daily-burn">0</span>/day), you have <strong><span id="sub-days-left">—</span> days</strong> of credits remaining
+              </div>
+              <button class="btn-primary btn-sm" style="margin-top:12px;" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Buy Credits</button>
+            </div>
+
+            <div class="card sub-usage-card">
+              <div class="card-title">Credit Usage (30d)</div>
+              <div class="sub-usage-chart" id="sub-usage-chart" style="height:120px;"></div>
+              <div class="sub-usage-breakdown" id="sub-usage-breakdown">
+                <div class="sub-usage-row"><span>Resume Scoring</span><span id="sub-usage-scoring">0</span></div>
+                <div class="sub-usage-row"><span>AI Rewrites</span><span id="sub-usage-rewrites">0</span></div>
+                <div class="sub-usage-row"><span>Job Alerts</span><span id="sub-usage-alerts">0</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- What Uses Credits -->
+          <div class="card sub-credits-explainer">
+            <div class="card-title">What Uses Credits</div>
+            <div class="sub-credit-costs">
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">📄</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">Resume Score</div>
+                  <div class="sub-cost-desc">AI analysis of your resume against a job description</div>
+                </div>
+                <div class="sub-cost-amount">3 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">✏️</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Resume Rewrite</div>
+                  <div class="sub-cost-desc">Tailored resume rewrite optimized for a specific role</div>
+                </div>
+                <div class="sub-cost-amount">5 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">🔔</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">Smart Job Alert</div>
+                  <div class="sub-cost-desc">AI-filtered alerts matching your preferences</div>
+                </div>
+                <div class="sub-cost-amount">1 credit</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">🔍</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Filter Suggest</div>
+                  <div class="sub-cost-desc">Generate optimized search filters from your resume</div>
+                </div>
+                <div class="sub-cost-amount">2 credits</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tier Comparison -->
+          <div class="card">
+            <div class="card-title">Plans</div>
+            <div class="sub-card-sub">Upgrade for more credits and lower PAYG rates</div>
+            <div class="sub-tiers" id="sub-tiers">
+              <!-- Rendered by billing.js -->
+            </div>
+          </div>
+
+          <!-- Credit Packs -->
+          <div class="card" id="sub-packs-section">
+            <div class="card-title">Buy Credit Packs</div>
+            <div class="sub-card-sub">One-time purchase at your plan's rate. Credits never expire.</div>
+            <div class="sub-packs" id="sub-packs">
+              <!-- Rendered by billing.js -->
+            </div>
+          </div>
+
+          <!-- Auto-Refill -->
+          <div class="card">
+            <div class="card-title">Auto-Refill</div>
+            <div class="sub-card-sub">Never run out — automatically top up when your balance gets low</div>
+            <div class="sub-refill-options" id="sub-refill-options">
+              <label class="sub-refill-toggle">
+                <input type="checkbox" id="sub-refill-enabled"> Enable auto-refill
+              </label>
+              <div class="sub-refill-levels" id="sub-refill-levels" style="display:none;">
+                <div class="sub-refill-level" data-level="low">
+                  <input type="radio" name="refill-level" value="low" id="refill-low">
+                  <label for="refill-low">
+                    <strong>$1</strong> <span class="sub-refill-discount">5% off</span>
+                    <div class="sub-refill-detail">~10 credits when balance hits 0</div>
+                  </label>
+                </div>
+                <div class="sub-refill-level" data-level="medium">
+                  <input type="radio" name="refill-level" value="medium" id="refill-medium">
+                  <label for="refill-medium">
+                    <strong>$5</strong> <span class="sub-refill-discount">10% off</span>
+                    <div class="sub-refill-detail">~55 credits when balance hits 0</div>
+                  </label>
+                </div>
+                <div class="sub-refill-level" data-level="high">
+                  <input type="radio" name="refill-level" value="high" id="refill-high">
+                  <label for="refill-high">
+                    <strong>$10</strong> <span class="sub-refill-discount">15% off</span>
+                    <div class="sub-refill-detail">~117 credits when balance hits 0</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upgrade CTA (shown for free/starter users) -->
+          <div class="sub-upgrade-banner" id="sub-upgrade-banner" style="display:none;">
+            <div class="sub-upgrade-text">
+              <strong id="sub-upgrade-headline">Unlock more with Pro</strong>
+              <span id="sub-upgrade-detail">300 credits/month, $0.10/credit PAYG, 15% auto-refill discount</span>
+            </div>
+            <button class="btn-primary" onclick="startCheckout('subscription','pro')">Upgrade to Pro</button>
+          </div>
+
         </div>
       </div>
 

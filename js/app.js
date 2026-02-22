@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.71';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — billing: credit balance, pricing modal, Stripe checkout');
+const BJ_VERSION = 'v3.72';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — subscription tab: plan/credits/usage/pricing/packs/auto-refill/upgrade CTAs');
 
 // Auth
 async function init() {
