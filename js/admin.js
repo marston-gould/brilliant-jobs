@@ -339,8 +339,16 @@ async function loadSeoTab() {
   console.log('[Admin] loadSeoTab url=' + (_seoUrl || 'ALL') + ' from=' + (_seoDateFrom || 'all') + ' to=' + (_seoDateTo || 'now'));
   try {
     await fetchSeoData();
+    // Small delay to ensure panel is visible before chart init
+    await new Promise(function(r) { setTimeout(r, 50); });
     renderSeoCharts();
     renderSeoSidePanel();
+    // Resize all charts after render (handles hidden panel → visible transition)
+    setTimeout(function() {
+      Object.keys(_seoCharts).forEach(function(k) {
+        if (_seoCharts[k]) _seoCharts[k].resize();
+      });
+    }, 200);
   } catch(err) { console.error('[Admin] SEO load error:', err); }
 }
 
@@ -579,8 +587,9 @@ function renderCloudflareChart() {
 function renderSeoSidePanel() {
   renderUrlInspection();
   renderGscQueries();
-  renderKnowledgeGraph();
   renderPsiDrilldown();
+  renderDfsAudit();
+  renderKnowledgeGraph();
 }
 
 function renderUrlInspection() {
@@ -651,6 +660,52 @@ function renderPsiDrilldown() {
   html += '</div>';
   html += issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● '+(i.title||i.id)+'</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues flagged</div>';
   el.innerHTML = html;
+}
+
+
+// ─── DataForSEO On-Page Audit ───
+function renderDfsAudit() {
+  var el = document.getElementById('seo-side-dfs');
+  if (!el) return;
+  var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
+  if (!dfsData.length) { el.innerHTML = '<div style="color:var(--text-faint);font-size:12px;">No DataForSEO data yet — run sync</div>'; return; }
+
+  if (_seoUrl) {
+    var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
+    latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
+    var m = latest.metrics || {};
+    var issues = latest.issues || [];
+    el.innerHTML =
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:8px;">' +
+      '<div><span style="color:var(--text-faint);">Score:</span> <strong style="color:' + (latest.score >= 90 ? 'var(--green)' : latest.score >= 50 ? '#f59e0b' : 'var(--red)') + ';">' + (latest.score || '—') + '</strong></div>' +
+      '<div><span style="color:var(--text-faint);">Title:</span> ' + (m.title_length || '—') + ' chars</div>' +
+      '<div><span style="color:var(--text-faint);">Desc:</span> ' + (m.description_length || '—') + ' chars</div>' +
+      '<div><span style="color:var(--text-faint);">H1s:</span> ' + (m.h1_count || 0) + '</div>' +
+      '<div><span style="color:var(--text-faint);">Int links:</span> ' + (m.internal_links || '—') + '</div>' +
+      '<div><span style="color:var(--text-faint);">Ext links:</span> ' + (m.external_links || '—') + '</div>' +
+      '<div><span style="color:var(--text-faint);">Size:</span> ' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '—') + '</div>' +
+      '<div><span style="color:var(--text-faint);">Load:</span> ' + (m.load_time ? m.load_time.toFixed(2) + 's' : '—') + '</div>' +
+      '</div>' +
+      (issues.length > 0 ? issues.slice(0,8).map(function(i) { return '<div style="font-size:11px;padding:3px 0;color:var(--text-dim);border-bottom:1px solid var(--border);">● ' + (i.message || i.check || '—') + '</div>'; }).join('') : '<div style="color:var(--green);font-size:11px;">✓ No issues</div>');
+  } else {
+    // Aggregate — show table of latest scores
+    var latestDate = dfsData[dfsData.length - 1].date;
+    var latest = dfsData.filter(function(r) { return r.date === latestDate; });
+    el.innerHTML = '<table style="width:100%;font-size:11px;border-collapse:collapse;">' +
+      '<tr style="color:var(--text-faint);"><th style="text-align:left;padding:4px;">Page</th><th>Score</th><th>Size</th><th>Links</th><th>Issues</th></tr>' +
+      latest.map(function(r) {
+        var m = r.metrics || {};
+        var path = '/';
+        try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+        var sc = r.score || 0;
+        var scColor = sc >= 90 ? 'var(--green)' : sc >= 50 ? '#f59e0b' : 'var(--red)';
+        return '<tr style="border-top:1px solid var(--border);"><td style="padding:4px;font-family:var(--mono);">' + path + '</td>' +
+          '<td style="text-align:center;color:' + scColor + ';font-weight:600;">' + sc + '</td>' +
+          '<td style="text-align:center;">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '—') + '</td>' +
+          '<td style="text-align:center;">' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
+          '<td style="text-align:center;">' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
+      }).join('') + '</table>';
+  }
 }
 
 // ─── Sync Trigger ───
