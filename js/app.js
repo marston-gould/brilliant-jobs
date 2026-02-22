@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.74';
+const BJ_VERSION = 'v3.75';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — hire fee, hired stage, credit gating');
 
 // Auth

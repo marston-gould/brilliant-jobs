@@ -2414,12 +2414,26 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// ─── AI-powered resume scoring (Pro feature) ───
+// ─── AI-powered resume scoring (credit-gated) ───
 async function fetchAIScore(params) {
   if (window._aiScoreDisabled) return null;
   try {
+    // Credit gate: require 3 credits for AI scoring (admins bypass)
+    if (typeof requireCredits === 'function') {
+      var hasCredits = await requireCredits(3, 'Resume AI Score');
+      if (!hasCredits) return null;
+    }
+
     var session = await sb.auth.getSession();
     if (!session.data.session) return null;
+
+    // Debit credits before calling (admin gets free pass via RPC)
+    if (typeof debitCreditsForAction === 'function') {
+      var debitResult = await debitCreditsForAction(3, 'claude', 'AI resume score');
+      if (debitResult && !debitResult.success && !debitResult.admin) {
+        return null; // insufficient credits — requireCredits already showed toast
+      }
+    }
 
     var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
       method: 'POST',
@@ -7892,6 +7906,11 @@ async function _doAiFilterAnalysis() {
       body: JSON.stringify({ resume_text: resume.extractedText.slice(0, 8000) })
     });
     
+    // Debit 2 credits for AI filter generation (after successful call)
+    if (resp.ok && typeof debitCreditsForAction === 'function') {
+      debitCreditsForAction(2, 'claude', 'AI filter generation');
+    }
+    
     if (!resp.ok) {
       var err = await resp.json().catch(function() { return { error: 'Request failed' }; });
       var msg = err.error || 'AI generation failed';
@@ -8083,10 +8102,10 @@ if (document.readyState === 'loading') {
 // ============================================================
 // PIPELINE — Table-based stage tracker (redesigned)
 // ============================================================
-const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','rejected'];
+const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected'];
 const PL_STAGE_COLORS = {
   saved: 'var(--text-dim)', applied: 'var(--accent)', posting_closed: 'var(--warm)',
-  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)', rejected: 'var(--red)'
+  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)', hired: 'hsl(142,70%,35%)', rejected: 'var(--red)'
 };
 
 // Pipeline metadata per job — stage, dates, resume
@@ -8135,6 +8154,15 @@ function movePipelineStage(jobId, newStage) {
   if (newStage === 'responded' && !meta[jobId].respondedAt) meta[jobId].respondedAt = new Date().toISOString();
   if (newStage === 'interview' && !meta[jobId].interviewAt) meta[jobId].interviewAt = new Date().toISOString();
   if (newStage === 'offer' && !meta[jobId].offerAt) meta[jobId].offerAt = new Date().toISOString();
+  if (newStage === 'hired' && !meta[jobId].hiredAt) {
+    meta[jobId].hiredAt = new Date().toISOString();
+    // Trigger hire fee confirmation (async, non-blocking)
+    if (typeof confirmHireFee === 'function') {
+      var jobTitle = meta[jobId].title || jobId;
+      var salary = meta[jobId].salaryEstimate || 80000;
+      confirmHireFee(jobId, jobTitle, salary);
+    }
+  }
   if (newStage === 'rejected' && !meta[jobId].rejectedAt) meta[jobId].rejectedAt = new Date().toISOString();
   savePipelineMeta(meta);
   // Keep legacy arrays in sync
@@ -8348,6 +8376,9 @@ async function renderPipeline() {
       const m = item.meta;
       const title = j ? (j.title || 'Untitled') : 'Unknown job';
       const company = j ? (j.company_name || '') : '';
+      // Persist job info in meta for hire fee and analytics
+      if (j && !m.title) { m.title = title; m.company = company; }
+      if (j && j.salary_max && !m.salaryEstimate) { m.salaryEstimate = j.salary_max; }
       const discovered = j?.first_seen_at ? new Date(j.first_seen_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
       const appliedDate = m.appliedAt ? new Date(m.appliedAt) : null;
       const dayApplied = appliedDate ? appliedDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
@@ -8391,7 +8422,7 @@ async function renderPipeline() {
 
       // Stage move dropdown
       let moveOpts = PL_STAGES.filter(s => s !== stage).map(s => {
-        const labels = {saved:'Saved',applied:'Applied',posting_closed:'Posting Closed',responded:'Responded',interview:'Interview',offer:'Offer',rejected:'Rejected/Ghosted'};
+        const labels = {saved:'Saved',applied:'Applied',posting_closed:'Posting Closed',responded:'Responded',interview:'Interview',offer:'Offer',hired:'🎉 Hired!',rejected:'Rejected/Ghosted'};
         return '<option value="' + s + '">' + labels[s] + '</option>';
       }).join('');
 
@@ -12698,6 +12729,19 @@ function initAdminTabs() {
     });
   }
 
+  // Period toggle for Revenue tab
+  var revPeriod = document.getElementById('admin-rev-period');
+  if (revPeriod) {
+    revPeriod.addEventListener('click', function(e) {
+      var btn = e.target.closest('.admin-period-btn');
+      if (!btn) return;
+      revPeriod.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      _adminTabInit['revenue'] = false;
+      loadRevenueTab(parseInt(btn.dataset.revDays));
+    });
+  }
+
   switchAdminTab(adminActiveTab);
 }
 
@@ -12750,7 +12794,12 @@ async function loadBoardHealth() {
   try {
     var snapshot = await sb.rpc('get_board_health', { period_hours: adminPeriod });
     console.log('[Admin] RPC data:', snapshot.data);
-    if (snapshot.error) { console.error('[Admin] RPC error:', snapshot.error); return; }
+    if (snapshot.error) {
+      console.error('[Admin] RPC error:', snapshot.error);
+      var healthEl = document.getElementById('admin-health');
+      if (healthEl) healthEl.innerHTML = '<span class="admin-red">⚠ Feed health data unavailable — ' + (snapshot.error.message || 'unknown error') + '</span> <button onclick="_adminTabInit[\'feed-health\']=false;loadBoardHealth()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button>';
+      return;
+    }
     var d = snapshot.data;
     if (!d) return;
 
@@ -12828,11 +12877,14 @@ async function loadCohortTab() {
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
     var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
     var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
+    var active30d = cohorts.reduce(function(s, c) { return s + (c.active_30d || 0); }, 0);
+    var retention = totalUsers > 0 ? Math.round(active30d / totalUsers * 100) : 0;
 
     setAdminText('ac-total-cohorts', cohorts.length);
     setAdminText('ac-total-users', fmtAdminNum(totalUsers));
     setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
     setAdminText('ac-active-7d', fmtAdminNum(active7d));
+    setAdminText('ac-retention', retention + '%');
 
     var tbody = document.getElementById('admin-cohort-body');
     if (!tbody) return;
@@ -12856,9 +12908,104 @@ async function loadCohortTab() {
       var cohort = cohorts.find(function(c) { return String(c.id) === cid; });
       if (cohort) loadCohortDetail(cohort);
     });
+
+    renderCohortCharts(cohorts);
   } catch (err) {
     console.error('[Admin] loadCohortTab error:', err);
   }
+}
+
+// ─── Cohort Charts ───
+function renderCohortCharts(cohorts) {
+  // 1. Plan Distribution — stacked bar (Free/Pro per cohort)
+  var planEl = document.getElementById('admin-cohort-plan-chart');
+  if (planEl && typeof echarts !== 'undefined') {
+    var planChart = echarts.init(planEl);
+    var names = cohorts.map(function(c) { return c.slug || c.name; });
+    var t = seoChartTheme();
+    planChart.setOption(Object.assign({}, t, {
+      title: { text: 'Plan Distribution', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      legend: { data: ['Free', 'Pro'], textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: names, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [
+        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#94a3b8' } },
+        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#3b82f6' } }
+      ]
+    }), true);
+    window.addEventListener('resize', function() { planChart.resize(); });
+  }
+
+  // 2. User Growth — cumulative signups over time
+  renderCohortGrowthChart();
+
+  // 3. Sessions per day
+  renderCohortSessionsChart();
+}
+
+async function renderCohortGrowthChart() {
+  var el = document.getElementById('admin-cohort-growth-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var res = await sb.from('profiles').select('created_at').order('created_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'User Growth', subtext: 'No signup data yet', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var weekMap = {};
+    res.data.forEach(function(p) {
+      var d = new Date(p.created_at);
+      var wk = d.toISOString().slice(0, 10);
+      weekMap[wk] = (weekMap[wk] || 0) + 1;
+    });
+    var dates = Object.keys(weekMap).sort();
+    var cumulative = [], sum = 0;
+    dates.forEach(function(d) { sum += weekMap[d]; cumulative.push(sum); });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'User Growth', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#3b82f6', width: 2 }, itemStyle: { color: '#3b82f6' }, areaStyle: { color: 'rgba(59,130,246,0.08)' }, symbol: 'circle', symbolSize: 4 }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Growth chart error:', e); }
+}
+
+async function renderCohortSessionsChart() {
+  var el = document.getElementById('admin-cohort-sessions-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var since = new Date(Date.now() - 30 * 86400000).toISOString();
+    var res = await sb.from('user_sessions').select('started_at').gte('started_at', since).order('started_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'Sessions / Day', subtext: 'Sessions will appear after launch', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var dayMap = {};
+    res.data.forEach(function(s) {
+      var d = new Date(s.started_at).toISOString().slice(0, 10);
+      dayMap[d] = (dayMap[d] || 0) + 1;
+    });
+    var dates = Object.keys(dayMap).sort();
+    var counts = dates.map(function(d) { return dayMap[d]; });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Sessions / Day (30d)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'bar', data: counts, itemStyle: { color: '#22c55e', borderRadius: [3,3,0,0] } }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Sessions chart error:', e); }
 }
 
 async function loadCohortDetail(cohort) {
@@ -13157,20 +13304,23 @@ function renderPsiChart() {
   function psiLog(v) { if (v == null) return null; return v; }
 
   if (_seoUrl) {
-    // Single URL time series
-    var dates = audits.map(function(r) { return r.date; });
+    // Single URL — bar chart of latest scores (matches all-pages style)
+    var pageAudits = audits.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageAudits.length) pageAudits = audits;
+    var latest = pageAudits[pageAudits.length - 1];
+    var m = latest.metrics || {};
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [m.performance || 0, m.seo || 0, m.accessibility || 0, m.best_practices || 0];
+    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile) — ' + (_seoUrl ? new URL(_seoUrl).pathname : ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
-      series: [
-        { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'Accessibility', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.accessibility; }), lineStyle: { color: '#4d8eff' }, itemStyle: { color: '#4d8eff' }, symbol: 'circle', symbolSize: 6 },
-        { name: 'Best Practices', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.best_practices; }), lineStyle: { color: '#a78bfa' }, itemStyle: { color: '#a78bfa' }, symbol: 'circle', symbolSize: 6 }
-      ]
+      title: { text: 'PSI (Mobile) — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 12 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 700, formatter: function(p) { return p.value; } } }]
     }), true);
   } else {
     // Aggregate — average across all pages for latest date
@@ -13196,7 +13346,7 @@ function renderPsiChart() {
       title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
-      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
       series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
         barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
         label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700, formatter: function(p) { return p.value; } } }]
@@ -13233,25 +13383,39 @@ function renderYltChart() {
   if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
 
   if (_seoUrl) {
-    // Single URL: category scores over time
+    // Single URL — radar of latest category scores (matches all-pages style)
     var pageData = yltData.filter(function(r) { return r.url === _seoUrl; });
     if (!pageData.length) { seoNoData(chart, 'YLT — no data for this URL'); return; }
-    var dates = pageData.map(function(r) { return r.date; });
-    var catKeys = pageData[0].metrics && pageData[0].metrics.categories ? Object.keys(pageData[0].metrics.categories) : [];
-    var catColors = ['#eab308','#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6'];
-    var t = seoChartTheme(), ax = seoAxis();
-    var series = catKeys.map(function(k, i) {
-      var label = pageData[0].metrics.categories[k].label || k;
-      return { name: label, type: 'line', data: pageData.map(function(r) {
-        return r.metrics && r.metrics.categories && r.metrics.categories[k] ? r.metrics.categories[k].score : null;
-      }), lineStyle: { color: catColors[i % catColors.length] }, itemStyle: { color: catColors[i % catColors.length] }, symbol: 'circle', symbolSize: 4 };
+    var latest = pageData[pageData.length - 1];
+    var score = latest.score || 0;
+    var cats = latest.metrics && latest.metrics.categories ? latest.metrics.categories : {};
+    var catEntries = Object.values(cats).map(function(c) {
+      return { name: c.label || 'Unknown', value: c.score || 0 };
     });
+    if (!catEntries.length) { seoNoData(chart, 'YLT — no category data'); return; }
+
+    var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'YLT Category Scores', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: series.map(function(s) { return s.name; }), textStyle: { color: '#7b829a', fontSize: 9 }, top: 4, right: 10, type: 'scroll' },
-      xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: series
+      title: { text: 'YLT: ' + score + '/100 — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 10 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: new URL(_seoUrl).pathname,
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>' + score + '/100</b><br/>' + lines.join('<br/>');
+      } }
     }), true);
   } else {
     // All Pages: blended average score + category radar
@@ -13540,39 +13704,714 @@ async function triggerSeoSync(tasks) {
 // TAB 5: REVENUE
 // ═══════════════════════════════════════════════════════════
 
-async function loadRevenueTab() {
-  console.log('[Admin] loadRevenueTab');
+async function loadRevenueTab(daysBack) {
+  daysBack = daysBack || 30;
+  console.log('[Admin] loadRevenueTab', daysBack, 'days');
   try {
-    var res = await sb.rpc('get_revenue_overview');
+    var res = await sb.rpc('get_admin_revenue', { p_days_back: daysBack });
     if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); return; }
     var d = res.data;
     if (!d) return;
 
-    setAdminText('ar-total', fmtAdminNum(d.total_users));
-    setAdminText('ar-pro', fmtAdminNum(d.pro_users));
-    setAdminText('ar-conversion', d.conversion_rate != null ? d.conversion_rate + '%' : '0%');
-    var mrr = (d.pro_users || 0) * 29;
-    setAdminText('ar-mrr', '$' + fmtAdminNum(mrr));
+    // KPI Cards
+    setAdminText('ar-total-users', fmtAdminNum(d.total_users));
+    var paidCount = (d.tier_distribution || []).filter(function(t) { return t.tier !== 'free'; }).reduce(function(s, t) { return s + t.user_count; }, 0);
+    setAdminText('ar-paid-subs', fmtAdminNum(paidCount));
+    var cs = d.credit_stats || {};
+    setAdminText('ar-credits-granted', fmtAdminNum(cs.total_credits_granted || 0));
+    setAdminText('ar-credits-used', fmtAdminNum(cs.total_credits_used || 0));
+    setAdminText('ar-active-users', fmtAdminNum(cs.unique_users || 0));
+    var totalCost = (d.cost_breakdown || []).reduce(function(s, c) { return s + (c.total_cost_cents || 0); }, 0);
+    setAdminText('ar-platform-cost', '$' + (totalCost / 100).toFixed(2));
 
-    var plans = d.plan_distribution || [];
-    var total = d.total_users || 1;
-    var tbody = document.getElementById('admin-plan-body');
-    if (tbody) {
-      tbody.innerHTML = plans.map(function(p) {
-        return '<tr><td class="admin-platform-name">' + (p.plan || 'free') + '</td>' +
-          '<td>' + fmtAdminNum(p.count) + '</td>' +
-          '<td>' + Math.round(p.count / total * 100) + '%</td></tr>';
-      }).join('');
+    // Tier Distribution Pie Chart
+    var tierData = (d.tier_distribution || []).map(function(t) {
+      return { name: (t.tier || 'free').charAt(0).toUpperCase() + (t.tier || 'free').slice(1), value: t.user_count };
+    });
+    if (tierData.length === 0) tierData = [{ name: 'Free', value: d.total_users || 0 }];
+    var tierChart = echarts.init(document.getElementById('ar-chart-tiers'));
+    tierChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      series: [{
+        type: 'pie', radius: ['40%', '70%'], center: ['50%', '55%'],
+        label: { show: true, formatter: '{b}\n{c}', fontSize: 11 },
+        data: tierData,
+        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 }
+      }]
+    });
+
+    // Daily Credit Activity Bar Chart
+    var dailyData = d.daily_activity || [];
+    var dailyChart = echarts.init(document.getElementById('ar-chart-daily'));
+    dailyChart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: 40, right: 16, top: 20, bottom: 28 },
+      xAxis: { type: 'category', data: dailyData.map(function(r) { return r.day; }), axisLabel: { fontSize: 10, rotate: 45 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      series: [
+        { name: 'Granted', type: 'bar', stack: 'credits', data: dailyData.map(function(r) { return r.credits_in; }), itemStyle: { color: 'hsl(142, 60%, 50%)' } },
+        { name: 'Used', type: 'bar', stack: 'used', data: dailyData.map(function(r) { return r.credits_out; }), itemStyle: { color: 'hsl(0, 70%, 55%)' } }
+      ]
+    });
+
+    // Revenue by Type Table
+    var typeBody = document.getElementById('ar-type-body');
+    if (typeBody) {
+      typeBody.innerHTML = (d.revenue_by_type || []).map(function(r) {
+        return '<tr><td class="admin-platform-name">' + r.type + '</td>' +
+          '<td>' + fmtAdminNum(r.tx_count) + '</td>' +
+          '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(r.credits_in) + '</td>' +
+          '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(r.credits_out) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">No transactions yet</td></tr>';
     }
+
+    // Cost Breakdown Table
+    var costBody = document.getElementById('ar-cost-body');
+    if (costBody) {
+      costBody.innerHTML = (d.cost_breakdown || []).map(function(r) {
+        return '<tr><td class="admin-platform-name">' + (r.cost_category || '—').toUpperCase() + '</td>' +
+          '<td>' + fmtAdminNum(r.tx_count) + '</td>' +
+          '<td>$' + (r.total_cost_cents / 100).toFixed(2) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No cost data yet</td></tr>';
+    }
+
+    // Top Users Table
+    var usersBody = document.getElementById('ar-users-body');
+    if (usersBody) {
+      usersBody.innerHTML = (d.top_users || []).map(function(u) {
+        var email = u.email || u.user_id.substring(0, 8) + '...';
+        return '<tr><td class="admin-platform-name">' + email + '</td>' +
+          '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(u.credits_used) + '</td>' +
+          '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(u.credits_granted) + '</td>' +
+          '<td>' + fmtAdminNum(u.tx_count) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">No credit usage yet</td></tr>';
+    }
+
+    // Resize charts on window resize
+    window.addEventListener('resize', function() { tierChart.resize(); dailyChart.resize(); });
+
   } catch (err) {
     console.error('[Admin] loadRevenueTab error:', err);
   }
 }
 
 
+// === js/billing.js ===
+// js/billing.js — Subscription page, credit balance, pricing, checkout flows
+// v3.72: Full subscription tab + credit merchandising
+
+const SUPABASE_FUNCTIONS_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1';
+
+// ─── State ───
+let _creditBalance = 0;
+let _userPricing = null;
+let _userSubscription = null;
+let _creditHistory = [];
+let _isAdmin = false;
+
+// ─── Credit Balance + Pricing Loaders ───
+async function loadCreditBalance() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+    if (!error && data !== null) {
+      _creditBalance = data;
+      renderCreditBadge(data);
+      renderSubscriptionBalance(data);
+      checkLowCreditAlert(data);
+    }
+  } catch (e) {
+    console.warn('[Billing] Failed to load credit balance:', e.message);
+  }
+}
+
+async function loadUserPricing() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.rpc('get_effective_pricing', { p_user_id: currentUser.id });
+    if (!error && data) {
+      _userPricing = data;
+      renderPlanBadge(data);
+      renderSubscriptionPlan(data);
+      renderTierComparison(data);
+      renderCreditPacks(data);
+      renderUpgradeBanner(data);
+    }
+  } catch (e) {
+    console.warn('[Billing] Failed to load pricing:', e.message);
+  }
+}
+
+async function loadUserSubscription() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .single();
+    if (!error && data) {
+      _userSubscription = data;
+      renderSubscriptionPeriod(data);
+    }
+  } catch (e) {}
+}
+
+async function loadCreditHistory() {
+  if (!currentUser?.id) return;
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+    const { data, error } = await sb
+      .from('credit_ledger')
+      .select('amount,type,cost_category,description,created_at')
+      .eq('user_id', currentUser.id)
+      .gte('created_at', thirtyDaysAgo)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      _creditHistory = data;
+      renderUsageBreakdown(data);
+      renderBurnRate(data);
+    }
+  } catch (e) {
+    console.warn('[Billing] Failed to load credit history:', e.message);
+  }
+}
+
+// ─── Nav Badge ───
+function renderCreditBadge(balance) {
+  const el = document.getElementById('credit-balance-badge');
+  if (!el) return;
+  if (_isAdmin) {
+    el.textContent = '∞';
+    el.className = 'credit-balance-count credit-green';
+    return;
+  }
+  el.textContent = balance.toLocaleString();
+  el.className = 'credit-balance-count';
+  if (balance > 50) el.classList.add('credit-green');
+  else if (balance >= 10) el.classList.add('credit-amber');
+  else el.classList.add('credit-red');
+}
+
+function renderPlanBadge(pricing) {
+  const el = document.querySelector('.nav-user-plan');
+  if (!el) return;
+  if (_isAdmin) {
+    el.textContent = 'ADMIN';
+    el.style.color = '#f59e0b';
+    el.style.fontWeight = '700';
+    el.style.letterSpacing = '1px';
+    return;
+  }
+  const tierNames = { free: 'Free Plan', starter: 'Starter Plan', pro: 'Pro Plan' };
+  el.textContent = tierNames[pricing.tier] || 'Free Plan';
+  el.style.color = '';
+  el.style.fontWeight = '';
+  el.style.letterSpacing = '';
+}
+
+// ─── Subscription Page Renderers ───
+function renderSubscriptionPlan(pricing) {
+  const tierNames = { free: 'Free', starter: 'Starter', pro: 'Pro' };
+  const el = (id) => document.getElementById(id);
+  if (_isAdmin) {
+    if (el('sub-plan-name')) el('sub-plan-name').textContent = 'Admin';
+    if (el('sub-plan-price')) el('sub-plan-price').textContent = 'Unlimited';
+    if (el('sub-plan-credits-included')) el('sub-plan-credits-included').textContent = 'Unlimited credits';
+    if (el('sub-plan-payg')) el('sub-plan-payg').textContent = 'All features unlocked';
+    return;
+  }
+  if (el('sub-plan-name')) el('sub-plan-name').textContent = tierNames[pricing.tier] || 'Free';
+  if (el('sub-plan-price')) el('sub-plan-price').textContent = pricing.subscription_price_cents === 0 ? '$0/mo' : '$' + (pricing.subscription_price_cents / 100).toFixed(0) + '/mo';
+  if (el('sub-plan-credits-included')) el('sub-plan-credits-included').textContent = pricing.included_credits + ' credits included/month';
+  if (el('sub-plan-payg')) el('sub-plan-payg').textContent = 'PAYG rate: $' + (pricing.payg_rate_cents / 100).toFixed(2) + '/credit';
+}
+
+function renderSubscriptionPeriod(sub) {
+  if (!sub?.current_period_end) return;
+  const periodEl = document.getElementById('sub-plan-period');
+  const dateEl = document.getElementById('sub-plan-renew-date');
+  if (periodEl && dateEl) {
+    const date = new Date(sub.current_period_end);
+    dateEl.textContent = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    periodEl.style.display = '';
+  }
+}
+
+function renderSubscriptionBalance(balance) {
+  const el = document.getElementById('sub-balance-number');
+  if (el) {
+    if (_isAdmin) {
+      el.textContent = '∞';
+      el.className = 'sub-balance-number credit-green';
+      return;
+    }
+    el.textContent = balance.toLocaleString();
+    el.className = 'sub-balance-number';
+    if (balance > 50) el.classList.add('credit-green');
+    else if (balance >= 10) el.classList.add('credit-amber');
+    else el.classList.add('credit-red');
+  }
+}
+
+function renderBurnRate(history) {
+  const debits = history.filter(h => h.amount < 0);
+  if (debits.length === 0) return;
+  const totalUsed = debits.reduce((sum, h) => sum + Math.abs(h.amount), 0);
+  const firstDebit = new Date(debits[debits.length - 1].created_at);
+  const daySpan = Math.max(1, (Date.now() - firstDebit.getTime()) / 86400000);
+  const dailyBurn = totalUsed / daySpan;
+  const daysLeft = dailyBurn > 0 ? Math.floor(_creditBalance / dailyBurn) : Infinity;
+
+  const burnEl = document.getElementById('sub-burn-rate');
+  const dailyEl = document.getElementById('sub-daily-burn');
+  const daysEl = document.getElementById('sub-days-left');
+  if (burnEl && dailyEl && daysEl) {
+    dailyEl.textContent = dailyBurn.toFixed(1);
+    daysEl.textContent = daysLeft === Infinity ? '∞' : daysLeft.toString();
+    burnEl.style.display = '';
+  }
+}
+
+function renderUsageBreakdown(history) {
+  const debits = history.filter(h => h.amount < 0);
+  let scoring = 0, rewrites = 0, alerts = 0;
+  debits.forEach(d => {
+    const desc = (d.description || '').toLowerCase();
+    const amt = Math.abs(d.amount);
+    if (desc.includes('score') || desc.includes('scoring')) scoring += amt;
+    else if (desc.includes('rewrite')) rewrites += amt;
+    else if (desc.includes('alert')) alerts += amt;
+  });
+  const el = (id) => document.getElementById(id);
+  if (el('sub-usage-scoring')) el('sub-usage-scoring').textContent = scoring + ' credits';
+  if (el('sub-usage-rewrites')) el('sub-usage-rewrites').textContent = rewrites + ' credits';
+  if (el('sub-usage-alerts')) el('sub-usage-alerts').textContent = alerts + ' credits';
+}
+
+// ─── Low Credit Alert ───
+function checkLowCreditAlert(balance) {
+  const alertEl = document.getElementById('sub-credit-alert');
+  const countEl = document.getElementById('sub-alert-count');
+  if (!alertEl) return;
+  if (_isAdmin) { alertEl.style.display = 'none'; return; }
+  if (balance === 0) {
+    if (countEl) countEl.textContent = '0';
+    const msgEl = document.getElementById('sub-alert-msg');
+    if (msgEl) msgEl.innerHTML = "You're out of credits. <strong>Buy more to continue using AI features.</strong>";
+    alertEl.style.display = 'flex';
+    alertEl.classList.add('sub-alert-critical');
+  } else if (balance <= 10) {
+    if (countEl) countEl.textContent = balance;
+    alertEl.style.display = 'flex';
+    alertEl.classList.remove('sub-alert-critical');
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+// ─── Tier Comparison ───
+function renderTierComparison(pricing) {
+  const container = document.getElementById('sub-tiers');
+  if (!container) return;
+  const currentTier = pricing.tier;
+  const tiers = [
+    { id: 'free', name: 'Free', price: 0, credits: 0, payg: 25, features: ['1 saved filter', '1 resume', 'Basic job feed'] },
+    { id: 'starter', name: 'Starter', price: 2000, credits: 100, payg: 15, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'SMS notifications', 'Boolean search'] },
+    { id: 'pro', name: 'Pro', price: 4000, credits: 300, payg: 10, features: ['10 saved filters', '5 resumes', 'AI resume scoring', 'AI resume rewrites', 'SMS notifications', 'Boolean search', 'Auto-apply', 'Network intelligence'] },
+  ];
+  container.innerHTML = tiers.map(t => {
+    const isCurrent = t.id === currentTier;
+    const priceStr = t.price === 0 ? '$0' : '$' + (t.price / 100);
+    return `
+      <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}">
+        ${isCurrent ? '<div class="sub-tier-badge">Current</div>' : ''}
+        <div class="sub-tier-name">${t.name}</div>
+        <div class="sub-tier-price">${priceStr}<span class="sub-tier-interval">/mo</span></div>
+        <div class="sub-tier-credits">${t.credits > 0 ? t.credits + ' credits/mo' : 'No included credits'}</div>
+        <div class="sub-tier-payg">$${(t.payg / 100).toFixed(2)}/credit PAYG</div>
+        <ul class="sub-tier-features">${t.features.map(f => '<li>' + f + '</li>').join('')}</ul>
+        ${isCurrent
+          ? '<button class="btn-secondary btn-sm" disabled>Current Plan</button>'
+          : t.id === 'free'
+            ? ''
+            : `<button class="btn-primary btn-sm" onclick="startCheckout('subscription','${t.id}')">${currentTier === 'free' || t.price > (pricing.subscription_price_cents || 0) ? 'Upgrade' : 'Switch'}</button>`
+        }
+      </div>`;
+  }).join('');
+}
+
+// ─── Credit Packs ───
+function renderCreditPacks(pricing) {
+  const container = document.getElementById('sub-packs');
+  if (!container) return;
+  const rate = pricing.payg_rate_cents;
+  container.innerHTML = [10, 50, 100].map(qty => {
+    const total = (qty * rate / 100).toFixed(2);
+    return `
+      <div class="sub-pack-card" onclick="startCheckout('credit_pack', null, ${qty})">
+        <div class="sub-pack-qty">${qty}</div>
+        <div class="sub-pack-label">credits</div>
+        <div class="sub-pack-price">$${total}</div>
+        <div class="sub-pack-rate">$${(rate / 100).toFixed(2)}/credit</div>
+      </div>`;
+  }).join('');
+}
+
+// ─── Upgrade Banner ───
+function renderUpgradeBanner(pricing) {
+  const banner = document.getElementById('sub-upgrade-banner');
+  if (!banner) return;
+  if (_isAdmin || pricing.tier === 'pro') { banner.style.display = 'none'; return; }
+  const headline = document.getElementById('sub-upgrade-headline');
+  const detail = document.getElementById('sub-upgrade-detail');
+  const btn = banner.querySelector('button');
+  if (pricing.tier === 'free') {
+    if (headline) headline.textContent = 'Get started with Starter';
+    if (detail) detail.textContent = '100 credits/month, $0.15/credit PAYG, AI resume scoring, SMS alerts — $20/mo';
+    if (btn) { btn.textContent = 'Upgrade to Starter'; btn.setAttribute('onclick', "startCheckout('subscription','starter')"); }
+  } else {
+    if (headline) headline.textContent = 'Unlock everything with Pro';
+    if (detail) detail.textContent = '300 credits/month, $0.10/credit PAYG, AI rewrites, auto-apply, network intelligence — $40/mo';
+  }
+  banner.style.display = 'flex';
+}
+
+// ─── Pricing Modal (nav badge click → navigate to subscription tab) ───
+function openPricingModal() {
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.page === 'subscription'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const subPage = document.getElementById('page-subscription');
+  if (subPage) subPage.classList.add('active');
+  localStorage.setItem('bj_active_tab', 'subscription');
+}
+
+// ─── Checkout Flow ───
+async function startCheckout(mode, tier, packQty) {
+  const session = await sb.auth.getSession();
+  const token = session?.data?.session?.access_token;
+  if (!token) { window.location.href = '/'; return; }
+  const body = { mode };
+  if (mode === 'subscription') body.tier = tier;
+  if (mode === 'credit_pack') body.pack_qty = packQty;
+  try {
+    const res = await fetch(SUPABASE_FUNCTIONS_URL + '/create-checkout', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.url) { window.location.href = data.url; }
+    else { showToast('Failed to start checkout. Please try again.', 'error'); }
+  } catch (e) { showToast('Network error. Please try again.', 'error'); }
+}
+
+async function openCustomerPortal() {
+  const session = await sb.auth.getSession();
+  const token = session?.data?.session?.access_token;
+  if (!token) { window.location.href = '/'; return; }
+  try {
+    const res = await fetch(SUPABASE_FUNCTIONS_URL + '/manage-subscription', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (data.url) { window.open(data.url, '_blank'); }
+    else { showToast('Unable to open billing portal. You may need to subscribe first.', 'warning'); }
+  } catch (e) { showToast('Network error. Please try again.', 'error'); }
+}
+
+// ─── Credit Gate (call before credit-consuming actions) ───
+async function requireCredits(amount, description) {
+  if (_isAdmin) return true;
+  if (_creditBalance >= amount) return true;
+  showToast('You need ' + amount + ' credits for ' + description + '. You have ' + _creditBalance + '.', 'warning');
+  openPricingModal();
+  return false;
+}
+
+// ─── Debit Credits (call to actually debit after action) ───
+async function debitCreditsForAction(amount, costCategory, description, costCents) {
+  if (!currentUser?.id) return null;
+  try {
+    var result = await sb.rpc('debit_credits', {
+      p_user_id: currentUser.id,
+      p_amount: amount,
+      p_cost_category: costCategory || 'claude',
+      p_description: description || 'AI action',
+      p_cost_cents: costCents || 0
+    });
+    if (result.error) {
+      console.error('[Billing] debit_credits error:', result.error);
+      return { success: false, error: result.error.message };
+    }
+    var data = result.data;
+    if (data.success) {
+      // Update local balance
+      if (data.admin) {
+        _creditBalance = 999999;
+      } else {
+        _creditBalance = data.balance;
+      }
+      renderCreditBadge(_creditBalance);
+      renderSubscriptionBalance(_creditBalance);
+      // Check if auto-refill should fire
+      if (data.trigger_refill) {
+        triggerAutoRefill();
+      }
+    }
+    return data;
+  } catch (e) {
+    console.error('[Billing] debitCreditsForAction error:', e);
+    return { success: false, error: e.message };
+  }
+}
+
+// ─── Auto-Refill Trigger ───
+async function triggerAutoRefill() {
+  if (!currentUser?.id) return;
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+    console.log('[Billing] Triggering auto-refill');
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/auto-refill', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.id }),
+    });
+    var data = await res.json();
+    if (data.refilled) {
+      showToast('Auto-refill: $' + (data.amount_cents / 100).toFixed(2) + ' charged. Credits incoming!', 'success');
+      // Credits will be granted by Stripe webhook — refresh balance after delay
+      setTimeout(function() { loadCreditBalance(); }, 5000);
+    } else if (data.reason === 'payment_failed') {
+      showToast('Auto-refill failed: ' + (data.error || 'payment declined') + '. Check your payment method.', 'error');
+    }
+  } catch (e) {
+    console.warn('[Billing] Auto-refill trigger error:', e);
+  }
+}
+
+// ─── Payment Return Detection ───
+function checkPaymentReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('payment') === 'success') {
+    showToast('Payment successful! Your credits will update shortly.', 'success');
+    window.history.replaceState({}, '', window.location.pathname);
+    setTimeout(function() { loadCreditBalance(); loadUserPricing(); loadUserSubscription(); }, 2000);
+  } else if (params.get('payment') === 'canceled') {
+    showToast('Payment canceled.', 'info');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+// ─── Auto-Refill Toggle ───
+function initAutoRefillUI() {
+  const toggle = document.getElementById('sub-refill-enabled');
+  const levels = document.getElementById('sub-refill-levels');
+  if (!toggle || !levels) return;
+  toggle.addEventListener('change', function() {
+    levels.style.display = toggle.checked ? '' : 'none';
+    if (!toggle.checked && currentUser?.id) {
+      sb.from('auto_refill_settings').upsert({
+        user_id: currentUser.id, enabled: false, refill_level: 'low', threshold_credits: 0
+      }, { onConflict: 'user_id' });
+    }
+  });
+  if (currentUser?.id) {
+    sb.from('auto_refill_settings').select('*').eq('user_id', currentUser.id).single()
+      .then(function(resp) {
+        if (resp.data) {
+          toggle.checked = resp.data.enabled;
+          levels.style.display = resp.data.enabled ? '' : 'none';
+          var radio = document.getElementById('refill-' + resp.data.refill_level);
+          if (radio) radio.checked = true;
+        }
+      });
+  }
+  document.querySelectorAll('input[name="refill-level"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      if (!currentUser?.id) return;
+      sb.from('auto_refill_settings').upsert({
+        user_id: currentUser.id, enabled: true, refill_level: radio.value, threshold_credits: 0
+      }, { onConflict: 'user_id' });
+      showToast('Auto-refill updated.', 'success');
+    });
+  });
+}
+
+// ─── Hire Fee: SetupIntent Flow ───
+async function setupHireFee() {
+  var session = await sb.auth.getSession();
+  var token = session?.data?.session?.access_token;
+  if (!token) { window.location.href = '/'; return; }
+
+  try {
+    showToast('Setting up payment authorization...', 'info');
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setup' }),
+    });
+    var data = await res.json();
+    if (data.client_secret) {
+      // Load Stripe.js and mount card element for SetupIntent confirmation
+      if (!window.Stripe) {
+        var script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = function() { confirmSetupIntent(data.client_secret); };
+        document.head.appendChild(script);
+      } else {
+        confirmSetupIntent(data.client_secret);
+      }
+    } else {
+      showToast('Failed to set up payment: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (e) {
+    showToast('Network error. Please try again.', 'error');
+  }
+}
+
+async function confirmSetupIntent(clientSecret) {
+  var stripe = Stripe('pk_test_51T3TKyAUKPQHZOPaDUiztdazjyngM83dWzztLHDtRXj2JgudeiqMV17HfoLR2fvz2HXeQVIS0xBU73nnq9h1hyy1004jBvtprR');
+
+  // Create a modal with card element
+  var modal = document.createElement('div');
+  modal.id = 'hire-fee-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+  modal.innerHTML = '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:32px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.2);">' +
+    '<h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">Authorize Payment Method</h3>' +
+    '<p style="font-size:12px;color:var(--text-dim);margin-bottom:20px;">This card will only be charged when you confirm a successful hire through Brilliant Jobs.</p>' +
+    '<div id="hire-fee-card-element" style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:16px;"></div>' +
+    '<div id="hire-fee-error" style="color:hsl(0,70%,50%);font-size:12px;margin-bottom:12px;display:none;"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+    '<button onclick="document.getElementById(\'hire-fee-modal\').remove()" class="btn-secondary btn-sm">Cancel</button>' +
+    '<button id="hire-fee-confirm-btn" class="btn-primary btn-sm">Authorize</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+
+  var elements = stripe.elements();
+  var cardElement = elements.create('card', {
+    style: {
+      base: { fontSize: '14px', color: '#1a1a2e', '::placeholder': { color: '#999' } }
+    }
+  });
+  cardElement.mount('#hire-fee-card-element');
+
+  document.getElementById('hire-fee-confirm-btn').addEventListener('click', async function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Authorizing...';
+    var errorEl = document.getElementById('hire-fee-error');
+
+    var result = await stripe.confirmCardSetup(clientSecret, {
+      payment_method: { card: cardElement }
+    });
+
+    if (result.error) {
+      errorEl.textContent = result.error.message;
+      errorEl.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Authorize';
+    } else {
+      // SetupIntent succeeded — stripe-webhook will store the payment method
+      showToast('Payment method authorized! You\'re all set for pay-when-hired.', 'success');
+      modal.remove();
+      // Refresh hire fee status after webhook processes
+      setTimeout(function() { loadHireFeeStatus(); }, 2000);
+    }
+  });
+
+  // Close on backdrop click
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+async function loadHireFeeStatus() {
+  if (!currentUser?.id) return;
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'status' }),
+    });
+    var data = await res.json();
+    var noMethodEl = document.getElementById('sub-hire-fee-nomethod');
+    var activeEl = document.getElementById('sub-hire-fee-active');
+    if (noMethodEl && activeEl) {
+      noMethodEl.style.display = data.has_payment_method ? 'none' : '';
+      activeEl.style.display = data.has_payment_method ? '' : 'none';
+    }
+  } catch (e) {
+    console.warn('[Billing] Failed to load hire fee status:', e);
+  }
+}
+
+// Called from pipeline when user marks a job as "hired"
+async function confirmHireFee(jobId, jobTitle, salaryEstimate) {
+  var feeAmountCents = Math.min(500000, Math.max(50000, Math.round((salaryEstimate || 80000) * 0.05 * 100)));
+  var feeDisplay = '$' + (feeAmountCents / 100).toLocaleString();
+
+  if (!confirm('Congratulations on your new role!\n\n' +
+    'Job: ' + (jobTitle || 'Unknown') + '\n' +
+    'Success fee: ' + feeDisplay + '\n\n' +
+    'By confirming, your authorized payment method will be charged ' + feeDisplay + '.')) {
+    return false;
+  }
+
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return false;
+
+    showToast('Processing hire fee...', 'info');
+    var res = await fetch(SUPABASE_FUNCTIONS_URL + '/hire-fee', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'charge', amount_cents: feeAmountCents, job_id: jobId }),
+    });
+    var data = await res.json();
+    if (data.charged) {
+      showToast('Hire fee of ' + feeDisplay + ' charged. Thank you and congratulations!', 'success');
+      return true;
+    } else if (data.error === 'no_payment_method') {
+      showToast('No payment method on file. Please authorize a card in your Subscription settings.', 'warning');
+      openPricingModal();
+      return false;
+    } else {
+      showToast('Payment failed: ' + (data.error || 'Unknown error'), 'error');
+      return false;
+    }
+  } catch (e) {
+    showToast('Network error processing hire fee.', 'error');
+    return false;
+  }
+}
+
+// ─── Init ───
+function initBilling() {
+  // Check admin status from profile (already fetched in app.js init)
+  _isAdmin = (window._bjUserRole === 'admin');
+  loadCreditBalance();
+  loadUserPricing();
+  loadUserSubscription();
+  loadCreditHistory();
+  checkPaymentReturn();
+  initAutoRefillUI();
+  loadHireFeeStatus();
+}
+
+
 // === js/app.js ===
-const BJ_VERSION = 'v3.70';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — perf: deferred scripts, inline admin check');
+const BJ_VERSION = 'v3.75';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — hire fee, hired stage, credit gating');
 
 // Auth
 async function init() {
@@ -13590,6 +14429,7 @@ async function init() {
     if (!p?.approved) { window.location.href = '/?pending=1'; return; }
     currentUser._cohortId = p.cohort_id || null;
     window._bjUserPlan = p.plan || 'free';
+    window._bjUserRole = p.role || 'user';
   } catch (e) {}
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
@@ -13607,6 +14447,26 @@ async function init() {
   }
   $('#nav-email').textContent = currentUser.email;
   $('#nav-avatar').textContent = currentUser.email.charAt(0).toUpperCase();
+  // Update nav tier badge based on profile role/plan
+  const navPlanEl = document.querySelector('.nav-user-plan');
+  if (navPlanEl && profile) {
+    if (profile.role === 'admin') {
+      navPlanEl.textContent = 'ADMIN';
+      navPlanEl.style.color = '#f59e0b';
+      navPlanEl.style.fontWeight = '700';
+      navPlanEl.style.letterSpacing = '1px';
+    } else if ((profile.plan || 'free') === 'pro') {
+      navPlanEl.textContent = 'Pro Plan';
+      navPlanEl.style.color = '#3b82f6';
+      navPlanEl.style.fontWeight = '600';
+    } else if ((profile.plan || 'free') === 'enterprise') {
+      navPlanEl.textContent = 'Enterprise';
+      navPlanEl.style.color = '#8b5cf6';
+      navPlanEl.style.fontWeight = '600';
+    } else {
+      navPlanEl.textContent = 'Free Plan';
+    }
+  }
   // Sync user data from Supabase → localStorage on login
   await loadUserData(currentUser.id);
   // Session analytics — Phase B
@@ -13634,6 +14494,8 @@ async function init() {
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
+  // Initialize billing (credit balance, pricing, payment return check)
+  if (typeof initBilling === 'function') initBilling();
   loadStats();
   checkExtensionStatus();
   loadCollections();
@@ -13917,6 +14779,7 @@ $('#download-btn').addEventListener('click', async () => {
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
 
 
 
