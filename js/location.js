@@ -1138,6 +1138,9 @@ function renderSavedFilters() {
   });
   updateSfActiveCount();
 
+  // Show/hide resume→filter CTA
+  updateResumeFilterCta();
+
   // Auto-run search on initial render if filters exist
   if (savedFilters.length > 0 && !window._initialSearchDone) {
     window._initialSearchDone = true;
@@ -1278,6 +1281,16 @@ function applyButton(sources, urls, jobId) {
 // ─── Feature 3: AI Resume-to-Filter Generator ───
 
 var _aiFilterData = null;
+
+function updateResumeFilterCta() {
+  var cta = document.getElementById('resume-filter-cta');
+  if (!cta) return;
+  var hasResumes = (typeof resumes !== 'undefined' ? resumes : []).some(function(r) {
+    return r.extractedText && r.extractedText.length > 100 && !r.archived;
+  });
+  var hasFilters = savedFilters.length > 0;
+  cta.style.display = (hasResumes && !hasFilters) ? '' : 'none';
+}
 
 function initAiFilterButton() {
   var btn = document.getElementById('ai-suggest-filter-btn');

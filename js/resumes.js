@@ -24,6 +24,28 @@ function renderResumes() {
   countEl.textContent = activeResumes.length;
   archivedEl.textContent = archivedResumes.length;
 
+  // Collapse upload zone when resumes exist
+  const uploadZone = $('#resume-upload-zone');
+  if (uploadZone) {
+    if (activeResumes.length > 0) {
+      uploadZone.style.padding = '8px 16px';
+      uploadZone.style.minHeight = '0';
+      uploadZone.style.cursor = 'pointer';
+      uploadZone.innerHTML = '<input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span style="font-size:11px;color:var(--text-faint);">Add another resume</span></div>';
+      uploadZone.onclick = function() { $('#resume-file-input').click(); };
+    } else {
+      uploadZone.style.padding = '';
+      uploadZone.style.minHeight = '';
+      uploadZone.style.cursor = '';
+      uploadZone.innerHTML = '<input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>' +
+        '<h4>Drop resumes here or click to upload</h4><p>PDF, DOC, or DOCX — up to 5MB each</p>';
+      uploadZone.onclick = function() { $('#resume-file-input').click(); };
+    }
+    // Re-bind file input change handler
+    $('#resume-file-input').addEventListener('change', handleResumeFileInput);
+  }
+
   // Level count
   const uniqueLevels = new Set(activeResumes.map(r => r.levelLabel).filter(Boolean));
   levelsEl.textContent = uniqueLevels.size;
@@ -690,6 +712,14 @@ window.reUploadResume = function(idx) {
 };
 
 // Resume file input handler
+function handleResumeFileInput() {
+  var inp = $('#resume-file-input');
+  if (inp && inp.files) {
+    Array.from(inp.files).forEach(f => addResume(f));
+    inp.value = '';
+  }
+}
+
 const resumeInput = $('#resume-file-input');
 const resumeZone = $('#resume-upload-zone');
 if (resumeZone) {
@@ -703,10 +733,7 @@ if (resumeZone) {
   });
 }
 if (resumeInput) {
-  resumeInput.addEventListener('change', () => {
-    Array.from(resumeInput.files).forEach(f => addResume(f));
-    resumeInput.value = '';
-  });
+  resumeInput.addEventListener('change', handleResumeFileInput);
 }
 
 renderResumes();

@@ -695,6 +695,17 @@
           </div>
 
           <!-- Sort bar -->
+          <!-- Resume → Filter CTA (shown when resumes exist but no filters) -->
+          <div id="resume-filter-cta" style="display:none;margin-bottom:12px;padding:12px 16px;background:linear-gradient(135deg,rgba(77,142,255,0.06),rgba(167,139,250,0.06));border:1px solid rgba(77,142,255,0.15);border-radius:10px;cursor:pointer;" onclick="document.getElementById('ai-suggest-filter-btn').click()">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">✦</span>
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:600;color:var(--accent);">Generate a search filter from your resume</div>
+                <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">AI will analyze your resume and suggest job titles, locations, and keywords to search for.</div>
+              </div>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
           <div class="sort-bar" id="sort-bar">
             <span class="sort-bar-label">Sort by:</span>
             <div class="sort-pills" id="sort-pills"></div>
