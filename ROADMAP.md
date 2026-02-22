@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.40
+**Current version:** v3.49
 
 ---
 
@@ -258,10 +258,114 @@
 
 ---
 
+## Phase G: AI Resume Pipeline (v3.49+)
+
+**Goal:** Two-tier AI resume scoring → guided rewrite → QA → output integration. The premium feature set that justifies credit-based monetization.
+
+**Specs:** `docs/PREMIUM_RESUME_SCORING_SPEC.md`, `docs/RESUME_REWRITE_PIPELINE_SPEC.md`, `docs/RESUME_SCORING_AUDIT.md`
+
+### Sprint 1: Premium Scoring Pipeline (v3.49) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| G1 | Premium multi-agent scoring Edge Function | v3.49 | ✅ | 3-pass pipeline: Pass 1 parallel Haiku extraction (Resume Structurer + JD Synthesizer), Pass 2 Sonnet analysis with Gold Standard calibration, Pass 3 Sonnet career coaching. 4 agents total. `tier` parameter (basic/premium). Graceful fallback to basic on failure. |
+| G2 | 5 industry Gold Standards | v3.49 | ✅ | Calibration anchors for Software Engineering, Marketing, Sales, Data Science, Product Management. Injected into Match Analyst prompt based on JD Synthesizer industry classification. |
+| G3 | Frontend: fetchAIScore premium handling | v3.49 | ✅ | Handles both basic and premium response formats. Normalizes dimension scores, gap analysis, coaching, strength map, industry detection. |
+| G4 | Frontend: dimension score bars | v3.49 | ✅ | 6-dimension weighted bar visualization (trajectory, impact, skills, alignment, education, presentation). Color-coded by threshold. |
+| G5 | Frontend: premium coaching renderer | v3.49 | ✅ | Priority actions panel, before/after rewrite suggestions, gap bridging, competitive positioning. Inline in readiness side panel. |
+| G6 | Frontend: Deep Analysis button | v3.49 | ✅ | "✨ Deep" button on resume cards alongside "Analyze". Gradient background. Triggers `tier: 'premium'`. |
+
+### Sprint 2: Gap Interview + Acceptance UI (planned)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| G7 | Gap Interviewer agent | 2h | 🔲 | Haiku agent generates targeted questions per gap. Lateral questioning (K8s gap → asks about Docker, ECS, cloud). |
+| G8 | Gap Interview UI | 3h | 🔲 | Card-per-gap with expandable question fields. Skip option. Answers feed into rewrite brief. |
+| G9 | Acceptance UI — recommendation toggles | 4h | 🔲 | Accept/reject per recommendation. Select All/Deselect All. Counter. Categories: rewrites, keywords, titles, achievements, format, gaps. |
+| G10 | Acceptance UI — achievement prompt inputs | 2h | 🔲 | Expandable text inputs when user accepts achievement prompt. User provides real metrics. |
+| G11 | User highlights & notes section | 2h | 🔲 | Freeform additions, specific highlights to include, explicit exclusions. |
+| G12 | Cover letter opt-in checkbox | 0.5h | 🔲 | Toggle on acceptance UI. |
+
+### Sprint 3: Templates + Rewrite Team (planned)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| G13 | 3 resume template configs | 3h | 🔲 | Executive (clean/minimal), Modern (two-column sidebar), Classic (traditional). docx-js configs. |
+| G14 | Template thumbnail previews | 2h | 🔲 | Static PNG previews for template picker. |
+| G15 | Template selection UI | 1h | 🔲 | 3-card picker with preview + description + "best for" label. |
+| G16 | `rewrite-resume` Edge Function — Resume Writer | 4h | 🔲 | Sonnet. Rewrites only accepted items. No fabrication, no cross-job bleed, no AI-speak. User highlights honored. |
+| G17 | Cover Letter Writer agent | 2h | 🔲 | Sonnet. Conditional on opt-in. 3-4 paragraphs, <350 words. Company-specific hook. |
+| G18 | Document generation (docx-js) | 4h | 🔲 | Server-side .docx rendering. Upload to Supabase Storage. |
+
+### Sprint 4: QA Team (planned)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| G19 | Accuracy Auditor agent | 2h | 🔲 | Haiku. Flags fabricated metrics, inflated scope, added skills. |
+| G20 | Bleed Detector agent | 2h | 🔲 | Haiku. Ensures bullets stay with correct jobs. |
+| G21 | Voice & Polish Auditor agent | 3h | 🔲 | Sonnet. AI-speak kill list. Punctuation standardization. Auto-fixes. |
+| G22 | QA reconciliation logic | 2h | 🔲 | Critical flags → auto-revert. Voice fixes → auto-apply. Aggregate report. |
+
+### Sprint 5: Output Integration + LinkedIn (planned)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| G23 | Auto-add rewrite to resume library | 2h | 🔲 | Auto-saved, auto-assigned to same filter. Named `{original} — {filter} v{round}`. Source: 'rewrite'. |
+| G24 | `cover_letters` table + RLS | 1h | 🔲 | Structured text (paragraphs JSONB) + storage path. User-scoped RLS. |
+| G25 | Cover letter archive UI | 2h | 🔲 | Resumes page section. Preview, download, delete. Filter-grouped. |
+| G26 | Tier provenance tracking | 1h | 🔲 | `tier_history` on resumes + `tier` on cover_letters. Badges: [AI] Basic / [✨ Premium]. Visible on cards + apply flow. |
+| G27 | `rewrites` Storage bucket | 0.5h | 🔲 | Supabase Storage for generated .docx files. |
+| G28 | Chrome Extension: LI profile capture | 4h | 🔲 | Extend existing extension. User's own profile (titles, companies, dates, education). Consent-gated. |
+| G29 | LinkedIn Alignment Checker agent | 2h | 🔲 | Haiku. Flags title/date/company discrepancies. Runs in QA pass. |
+| G30 | LI alignment UI in QA report | 1h | 🔲 | Discrepancy list with severity + resolution recommendations. |
+
+### Sprint 6: Feedback + Iteration (planned)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| G31 | Feedback UI — star ratings | 2h | 🔲 | 5 dimensions (overall, accuracy, relevance, voice, formatting). |
+| G32 | Feedback UI — qualitative input | 1h | 🔲 | Freeform text for specific change requests. |
+| G33 | Revision Assessor agent | 2h | 🔲 | Haiku. Predicts revision value based on feedback specificity. |
+| G34 | Revision loop | 3h | 🔲 | Re-runs pipeline with feedback context. Creates new resume version per round. Each round costs credits. |
+| G35 | `rewrite_sessions` + `rewrite_rounds` tables | 1h | 🔲 | Full session/round history with ratings, feedback, QA reports. |
+| G36 | Entitlement features | 1h | 🔲 | `resume_rewrite`, `resume_rewrite_cover`, `resume_rewrite_revision` in catalog. |
+
+### Phase G Summary
+
+| Sprint | Items | Est. | Theme |
+|--------|-------|------|-------|
+| G-S1 | G1–G6 | — | ✅ Premium scoring pipeline (v3.49) |
+| G-S2 | G7–G12 | ~13.5h | Gap interview + acceptance UI |
+| G-S3 | G13–G18 | ~16h | Templates + rewrite team |
+| G-S4 | G19–G22 | ~9h | QA team agents |
+| G-S5 | G23–G30 | ~13.5h | Output integration + LinkedIn |
+| G-S6 | G31–G36 | ~10h | Feedback + iteration |
+| **Total** | **36 items** | **~62h** | **Full AI resume pipeline** |
+
+**12 agents across 3 Edge Functions:**
+
+| # | Agent | Model | Stage |
+|---|-------|-------|-------|
+| 1 | Resume Structurer | Haiku | Premium Analysis (Pass 1) |
+| 2 | JD Synthesizer | Haiku | Premium Analysis (Pass 1) |
+| 3 | Match Analyst | Sonnet | Premium Analysis (Pass 2) |
+| 4 | Career Coach | Sonnet | Premium Analysis (Pass 3) |
+| 5 | Gap Interviewer | Haiku | Pre-Rewrite |
+| 6 | Resume Writer | Sonnet | Rewrite |
+| 7 | Cover Letter Writer | Sonnet | Rewrite (conditional) |
+| 8 | Accuracy Auditor | Haiku | QA |
+| 9 | Bleed Detector | Haiku | QA |
+| 10 | Voice & Polish Auditor | Sonnet | QA |
+| 11 | LinkedIn Alignment Checker | Haiku | QA (conditional) |
+| 12 | Revision Assessor | Haiku | Feedback |
+
+---
+
 ## Changelog
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | G-S1 | G1–G6 | Premium multi-agent resume scoring pipeline. 4 agents (2 Haiku + 2 Sonnet), 3-pass architecture, 5 industry Gold Standards. Deep Analysis button. Dimension bars + coaching renderer. v3.49. |
 | 2026-02-22 | E-S4++ | E26–E29 | GSC sc-domain fix (URL Inspection working). RLS disabled on SEO tables (charts render). InLinks semantic schemas on 6 pages. Daily seo-sync cron job. v3.44–v3.45. |
 | 2026-02-22 | E-S4+ | E22–E25 | SEO Admin v3.41: seo-sync v3 (9 tools — added Yellow Labs, CrUX, Knowledge Graph, Cloudflare). PSI 4-category. Dashboard redesign (6 charts + side panel). Credential consolidation. |
 | 2026-02-22 | F-S4 | F14, F15 | Supabase CLI installed in automation. 10 stale Edge Functions deployed. pg_cron job added for materialized view refresh (every 10 min). |
