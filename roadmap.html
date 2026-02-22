@@ -537,8 +537,8 @@ const features = [
   { s: 'done', n: 'Admin dashboard', d: 'View pending approvals, user stats, and system health', p: 6 },
 
   // Phase 6 — Monetization & Growth
-  { s: 'todo', n: 'Stripe integration', d: 'Payment processing for subscription model', p: 7 },
-  { s: 'todo', n: 'Pricing tiers: Free / $29 Pro / $149 Success Fee', d: 'Dual pricing model with referral discount engine', p: 7 },
+  { s: 'progress', n: 'Stripe integration', d: 'Stripe sandbox live (acct_1T3TKyAUKPQHZOPa). 9 products + 14 prices created via API: Free/Starter ($20)/Pro ($40) subscriptions, 3 credit packs (10/50/100) with tier-based pricing, 3 auto-refill levels ($1/$5/$10). Prebuilt Checkout model. Next: SQL migrations, webhook Edge Function, Checkout Session Edge Function.', p: 7 },
+  { s: 'progress', n: 'Pricing tiers: Free / $20 Starter / $40 Pro + credit system', d: 'Credit-based monetization. 3 tiers with included credits (0/100/300) + PAYG at tier-discounted rates ($0.25/$0.15/$0.10 per credit). Auto-refill at 3 levels with 5-15%% discounts. Pay-when-hired via SetupIntent (fee TBD). All products/prices created in Stripe sandbox.', p: 7 },
   { s: 'todo', n: 'Double-sided referral program', d: 'Dropbox model: referrer AND referred both get a reward on signup. Both parties benefit immediately — drives viral growth without ad spend.', p: 7 },
   { s: 'todo', n: 'Referral reward options', d: 'Reward possibilities: free month of Pro, extended trial, XP bonus, feature unlock, additional saved filters, extra application slots. Test which incentive drives highest conversion.', p: 7 },
   { s: 'todo', n: 'Referral link and tracking system', d: 'Unique shareable link per user. Track: clicks, signups, conversions to paid. Attribution persists across sessions (cookie + URL param). Dashboard showing referral performance.', p: 7 },
@@ -548,6 +548,7 @@ const features = [
   { s: 'todo', n: 'Referral fraud prevention', d: 'Detect fake signups from same IP/device, accounts that never activate, self-referral attempts. Require referred user to complete profile + first search before reward triggers.', p: 7 },
   { s: 'todo', n: 'Application source branding', d: 'Ensure Brilliant Jobs attribution visible to hiring teams — UTM params on ATS links, "How did you hear about us?" auto-fill. Organic employer awareness as candidates apply.', p: 7 },
   { s: 'todo', n: 'Archive status for inactive users', d: 'When user stops actively searching: 90-day grace period to maintain data. After that, quarterly sustenance fee to keep account, data, and history alive. Auto-transition to archive if no login/activity. Reactivation restores full access.', p: 7 },
+  { s: 'todo', n: 'Consolidate vendor payouts + centralize accounting', d: 'Route all vendor billing (Vercel, Supabase, DataForSEO, Cloudflare) through Stripe for unified revenue/cost tracking. Options: Stripe Issuing virtual card for all vendors, or reconciliation system pulling invoice data from each vendor API into cost_tracking table. Enables single-dashboard margin analysis in admin Revenue tab.', p: 7 },
 
   // Phase 7 — Anti-detection
   { s: 'done', n: 'AI-driven resume scoring', d: 'Replace ngram-based keyword matching with LLM-powered scoring. Send resume text + JD text to Claude API, get semantic match score + specific gap analysis + rewrite suggestions. Handles synonyms (\"SEO\" vs \"search engine optimization\"), contextual relevance (management experience vs IC skills), and seniority alignment that ngrams miss. Could run per-job on demand (modal click) or batch via Edge Function. Estimated cost: ~$0.01-0.03 per JD comparison at Haiku tier. Would replace both the corpus readiness score and per-job match score with a single AI grade.', p: 7 },
