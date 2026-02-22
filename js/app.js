@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.49';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — premium resume scoring pipeline');
+const BJ_VERSION = 'v3.50';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — gap interview + acceptance UI');
 
 // Auth
 async function init() {
