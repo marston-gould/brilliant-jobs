@@ -204,15 +204,14 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Load global tuning settings
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
 
-  // WHAT — title matching via word-boundary regex + full-text search
+  // WHAT — title matching via ilike + full-text search (ilike uses trigram index)
   // All What pills are OR'd together (each pill is one keyword)
   const allWhatClauses = w.flatMap(pill => {
     return pill.values.flatMap(v => {
       const safe = v.replace(/[,()]/g, '').trim();
       if (!safe) return [];
-      const rxSafe = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       return [
-        `title.imatch.\\m${rxSafe}\\M`,
+        `title.ilike.%${safe}%`,
         `search_vector.wfts(english).${safe}`,
       ];
     });
