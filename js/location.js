@@ -1308,47 +1308,125 @@ async function startAiFilterSuggest() {
     return;
   }
   
-  // If multiple resumes, show picker; otherwise use the only one
-  var resume;
-  if (resumesWithText.length > 1) {
-    var pickerHtml = '<div style="padding:12px;"><div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">Choose a resume to analyze:</div>';
+  // Show modal
+  var modal = document.getElementById('ai-filter-modal');
+  var body = document.getElementById('ai-filter-body');
+  var footer = document.getElementById('ai-filter-footer');
+  var meta = document.getElementById('ai-filter-meta');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  footer.style.display = 'none';
+
+  // Build resume picker with upload option
+  var pickerHtml = '<div style="padding:16px;">';
+  
+  if (resumesWithText.length > 0) {
+    meta.textContent = 'Choose a resume to analyze';
+    pickerHtml += '<div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select a resume for AI to analyze and generate job filters:</div>';
     resumesWithText.forEach(function(r, idx) {
-      pickerHtml += '<div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.1s;" ' +
+      pickerHtml += '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all 0.1s;display:flex;align-items:center;gap:10px;" ' +
         'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'var(--accent-glow)\'" ' +
         'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
-        'onclick="window._aiResumeChoice=' + idx + ';document.getElementById(\'ai-resume-picker\').style.display=\'none\';continueAiFilterSuggest();">' +
-        '<div style="font-size:13px;font-weight:600;">' + (r.name || 'Resume ' + (idx+1)) + '</div>' +
-        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + ' · ' + (r.uploadedAt || '') + '</div></div>';
+        'onclick="window._aiResumeChoice=' + idx + ';_doAiFilterAnalysis();">' +
+        '<div style="width:32px;height:32px;border-radius:6px;background:hsla(var(--accent-hsl),0.1);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;">' + (r.name.match(/\.pdf$/i) ? 'PDF' : 'DOC') + '</div>' +
+        '<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (r.name || 'Resume') + '</div>' +
+        '<div style="font-size:10px;color:var(--text-faint);">' + (r.size || '') + (r.uploadedAt ? ' · ' + r.uploadedAt : '') + '</div></div>' +
+        '<span style="font-size:18px;color:var(--accent);opacity:0.5;">→</span></div>';
     });
-    pickerHtml += '</div>';
-    var modal = document.getElementById('ai-filter-modal');
-    var body = document.getElementById('ai-filter-body');
-    var footer = document.getElementById('ai-filter-footer');
-    var meta = document.getElementById('ai-filter-meta');
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    footer.style.display = 'none';
-    meta.textContent = 'Select a resume';
-    body.innerHTML = '<div id="ai-resume-picker">' + pickerHtml + '</div>';
-    return;
+    pickerHtml += '<div style="margin:16px 0 8px;border-top:1px solid var(--border);padding-top:12px;font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Or upload a new resume</div>';
   } else {
-    resume = resumesWithText[0];
+    meta.textContent = 'Upload a resume to get started';
+    pickerHtml += '<div style="text-align:center;margin-bottom:16px;">' +
+      '<div style="font-size:32px;margin-bottom:8px;opacity:0.3;">📄</div>' +
+      '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:4px;">No resumes yet</div>' +
+      '<div style="font-size:12px;color:var(--text-faint);max-width:280px;margin:0 auto;line-height:1.5;">Upload your resume and AI will analyze it to generate optimized job search filters.</div></div>';
   }
   
-  _doAiFilterAnalysis(resume);
+  // Upload zone always shown
+  pickerHtml += '<div id="ai-resume-upload-zone" style="border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:all 0.15s;" ' +
+    'onmouseenter="this.style.borderColor=\'var(--accent)\';this.style.background=\'hsla(var(--accent-hsl),0.04)\'" ' +
+    'onmouseleave="this.style.borderColor=\'var(--border)\';this.style.background=\'none\'" ' +
+    'onclick="document.getElementById(\'ai-resume-file-input\').click();">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:4px;">+ Upload Resume</div>' +
+    '<div style="font-size:11px;color:var(--text-faint);">PDF, DOC, DOCX · Will be saved to your Resumes library</div></div>' +
+    '<input type="file" id="ai-resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleAiResumeUpload(this.files[0]);">';
+  
+  pickerHtml += '</div>';
+  body.innerHTML = pickerHtml;
+  
+  // If only one resume, skip picker
+  if (resumesWithText.length === 1) {
+    window._aiResumeChoice = 0;
+    _doAiFilterAnalysis();
+    return;
+  }
+}
+
+async function handleAiResumeUpload(file) {
+  if (!file) return;
+  var body = document.getElementById('ai-filter-body');
+  var meta = document.getElementById('ai-filter-meta');
+  meta.textContent = 'Uploading & extracting text…';
+  body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+    '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+    '<div style="color:var(--text-dim);font-size:13px;">Uploading ' + file.name + '…</div>' +
+    '<div style="color:var(--text-faint);font-size:11px;margin-top:4px;">Extracting text and saving to your resume library</div></div>';
+  
+  try {
+    // Use the existing resume upload flow
+    if (typeof handleResumeFiles === 'function') {
+      await handleResumeFiles([file]);
+      // Wait a moment for text extraction
+      await new Promise(function(r) { setTimeout(r, 2000); });
+    }
+    
+    // Find the newly uploaded resume
+    var newResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+      return r.extractedText && r.extractedText.length > 100 && !r.archived;
+    });
+    
+    if (newResumes.length === 0) {
+      // Text extraction might still be in progress
+      meta.textContent = 'Extracting text…';
+      body.innerHTML = '<div style="text-align:center;padding:60px 20px;">' +
+        '<div class="loading-spinner" style="margin:0 auto 16px;"></div>' +
+        '<div style="color:var(--text-dim);font-size:13px;">Extracting text from resume…</div>' +
+        '<div style="color:var(--text-faint);font-size:11px;margin-top:4px;">This may take a moment for PDF files</div></div>';
+      // Poll for text extraction
+      for (var attempt = 0; attempt < 10; attempt++) {
+        await new Promise(function(r) { setTimeout(r, 2000); });
+        newResumes = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
+          return r.extractedText && r.extractedText.length > 100 && !r.archived;
+        });
+        if (newResumes.length > 0) break;
+      }
+    }
+    
+    if (newResumes.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Could not extract text from resume. Try a different file format (PDF or DOCX).</div>';
+      return;
+    }
+    
+    window._aiResumeChoice = newResumes.length - 1;
+    _doAiFilterAnalysis();
+    
+  } catch (err) {
+    console.error('[AI Filter Upload]', err);
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Upload failed: ' + err.message + '</div>';
+  }
 }
 
 function continueAiFilterSuggest() {
+  _doAiFilterAnalysis();
+}
+
+async function _doAiFilterAnalysis() {
   var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
     return r.extractedText && r.extractedText.length > 100 && !r.archived;
   });
   var idx = window._aiResumeChoice || 0;
   var resume = resumesWithText[idx];
   if (!resume) return;
-  _doAiFilterAnalysis(resume);
-}
-
-async function _doAiFilterAnalysis(resume) {
   
   // Show modal with loading state
   var modal = document.getElementById('ai-filter-modal');
@@ -1531,6 +1609,18 @@ function acceptAiFilter() {
   
   // Refresh UI
   renderSavedFilters();
+  
+  // Auto-assign filter to the resume that was analyzed
+  var resumeIdx = window._aiResumeChoice;
+  if (typeof resumeIdx === 'number' && typeof resumes !== 'undefined' && resumes[resumeIdx]) {
+    var r = resumes[resumeIdx];
+    if (!r.assignedFilters) r.assignedFilters = [];
+    if (r.assignedFilters.indexOf(name) === -1) {
+      r.assignedFilters.push(name);
+      saveUserData('bj_resumes', JSON.stringify(resumes));
+      if (typeof renderResumes === 'function') renderResumes();
+    }
+  }
   
   // Load the new filter into the query builder
   if (typeof loadFilterIntoBuilder === 'function') {
