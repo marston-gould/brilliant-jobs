@@ -1607,10 +1607,46 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
     html += '</div>';
   }
 
-  // QA placeholder (Sprint 4)
-  html += '<div style="margin-top:10px;padding:8px;background:rgba(245,158,11,0.05);border:1px solid rgba(245,158,11,0.15);border-radius:6px;">';
-  html += '<div style="font-size:10px;color:var(--warm);">QA review (accuracy, bleed, voice) coming in next update</div>';
-  html += '</div>';
+  // QA Report
+  if (data.qa_report) {
+    html += '<div style="margin-top:10px;padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">';
+    html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">\ud83d\udd0d QA Review</div>';
+
+    // Accuracy
+    var acc = data.qa_report.accuracy;
+    if (acc) {
+      var accIcon = acc.clean ? '\u2713' : '\u26a0';
+      var accColor = acc.clean ? 'var(--green)' : 'var(--warm)';
+      html += '<div style="font-size:11px;color:' + accColor + ';margin-bottom:3px;">' + accIcon + ' Accuracy: ' + (acc.clean ? 'Clean \u2014 no fabricated claims' : acc.flag_count + ' issue(s) found') + '</div>';
+      if (!acc.clean && acc.flags) {
+        acc.flags.forEach(function(f) {
+          var fc = f.severity === 'critical' ? 'var(--red)' : 'var(--warm)';
+          html += '<div style="font-size:10px;color:' + fc + ';padding-left:14px;margin-bottom:2px;">\u2022 ' + f.issue + '</div>';
+        });
+      }
+    }
+
+    // Bleed
+    var bl = data.qa_report.bleed;
+    if (bl) {
+      var blIcon = bl.clean ? '\u2713' : '\u26a0';
+      var blColor = bl.clean ? 'var(--green)' : 'var(--warm)';
+      html += '<div style="font-size:11px;color:' + blColor + ';margin-bottom:3px;">' + blIcon + ' Consistency: ' + (bl.clean ? 'Clean \u2014 no cross-job bleed' : bl.flag_count + ' issue(s) found') + '</div>';
+      if (!bl.clean && bl.flags) {
+        bl.flags.forEach(function(f) {
+          html += '<div style="font-size:10px;color:var(--warm);padding-left:14px;margin-bottom:2px;">\u2022 ' + f.issue + '</div>';
+        });
+      }
+    }
+
+    // Voice
+    var vo = data.qa_report.voice;
+    if (vo) {
+      html += '<div style="font-size:11px;color:var(--green);margin-bottom:3px;">\u2713 Polish: ' + (vo.auto_fixes_applied || 0) + ' AI phrases fixed, ' + ((vo.flags || []).filter(function(f) { return f.category === 'punctuation'; }).length) + ' punctuation fixes</div>';
+    }
+
+    html += '</div>';
+  }
 
   html += '</div>';
 
