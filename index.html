@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v3.60 - 2026-02-22 -->
+<!-- Brilliant Jobs Landing Page v3.61 - 2026-02-22 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -820,7 +820,7 @@
     <p class="hero-sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
     <div class="hero-ctas">
       <button class="btn btn-primary" onclick="openModal('login')">Log In to Dashboard</button>
-      <a href="/dashboard?reset=1" class="btn btn-ghost">Forgot Password?</a>
+      <a href="#" class="btn btn-ghost" onclick="event.preventDefault();openModal('login');setTimeout(function(){var fs=document.getElementById('forgot-section');if(fs&&!fs.classList.contains('active'))fs.classList.add('active');},100);">Forgot Password?</a>
     </div>
   </section>
 
