@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.49
+**Current version:** v3.54
 
 ---
 
@@ -179,7 +179,7 @@
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
 | E17 | Dead job auto-removal | v3.26 | ✅ | Detect 404/410 + dead content. Close in DB, fade from feed. enrich-job v6 accepts status. |
-| E18 | AI filter from hidden jobs | v3.27 | ✅ | "Improve" button → Claude Haiku suggests WHAT NOT/WHERE NOT/WHO NOT terms. |
+| E18 | AI filter from hidden jobs | v3.27, v3.53 | ✅ | "Improve" button → Claude Haiku suggests WHAT NOT/WHERE NOT/WHO NOT terms. **v3.53:** Frontend wiring added — analyze-hidden-job EF existed but had no UI trigger. Batch analysis of 5 hidden jobs, suggestion modal, one-click apply to filter exclusions. |
 | E19 | AI filter from resume | v3.27 | ✅ | generate-filter Edge Function extracts titles, locations, salary, exclusions. Preview modal. |
 
 ### Sprint 4: SEO Admin Dashboard (v3.28–v3.29, expanded v3.41)
@@ -275,36 +275,36 @@
 | G5 | Frontend: premium coaching renderer | v3.49 | ✅ | Priority actions panel, before/after rewrite suggestions, gap bridging, competitive positioning. Inline in readiness side panel. |
 | G6 | Frontend: Deep Analysis button | v3.49 | ✅ | "✨ Deep" button on resume cards alongside "Analyze". Gradient background. Triggers `tier: 'premium'`. |
 
-### Sprint 2: Gap Interview + Acceptance UI (planned)
+### Sprint 2: Gap Interview + Acceptance UI (v3.50) ✅
 
-| # | Item | Est. | Status | Notes |
-|---|------|------|--------|-------|
-| G7 | Gap Interviewer agent | 2h | 🔲 | Haiku agent generates targeted questions per gap. Lateral questioning (K8s gap → asks about Docker, ECS, cloud). |
-| G8 | Gap Interview UI | 3h | 🔲 | Card-per-gap with expandable question fields. Skip option. Answers feed into rewrite brief. |
-| G9 | Acceptance UI — recommendation toggles | 4h | 🔲 | Accept/reject per recommendation. Select All/Deselect All. Counter. Categories: rewrites, keywords, titles, achievements, format, gaps. |
-| G10 | Acceptance UI — achievement prompt inputs | 2h | 🔲 | Expandable text inputs when user accepts achievement prompt. User provides real metrics. |
-| G11 | User highlights & notes section | 2h | 🔲 | Freeform additions, specific highlights to include, explicit exclusions. |
-| G12 | Cover letter opt-in checkbox | 0.5h | 🔲 | Toggle on acceptance UI. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| G7 | Gap Interviewer agent | v3.50 | ✅ | New `gap-interview` mode on score-resume EF. Haiku agent generates lateral questions per gap (K8s → asks about Docker, ECS, cloud). |
+| G8 | Gap Interview UI | v3.50 | ✅ | Card-per-gap with severity badges, per-question input fields. Skip + Continue buttons. Answers feed into rewrite brief. |
+| G9 | Acceptance UI — recommendation toggles | v3.50 | ✅ | Accept/reject per recommendation with checkboxes. Select All/Deselect All. Live counter. 7 categories: priority, rewrite, keyword, title, achievement, format, gap. |
+| G10 | Acceptance UI — achievement prompt inputs | v3.50 | ✅ | Expandable text inputs when user accepts achievement prompt. Prevents fabrication — user provides real metrics. |
+| G11 | User highlights & notes section | v3.50 | ✅ | Freeform notes + structured highlight chips with add/remove. Exclusion support. |
+| G12 | Cover letter opt-in checkbox | v3.50 | ✅ | Toggle on acceptance UI. Template selector (3 options). |
 
-### Sprint 3: Templates + Rewrite Team (planned)
+### Sprint 3: Templates + Rewrite Team (v3.51) ✅
 
-| # | Item | Est. | Status | Notes |
-|---|------|------|--------|-------|
-| G13 | 3 resume template configs | 3h | 🔲 | Executive (clean/minimal), Modern (two-column sidebar), Classic (traditional). docx-js configs. |
-| G14 | Template thumbnail previews | 2h | 🔲 | Static PNG previews for template picker. |
-| G15 | Template selection UI | 1h | 🔲 | 3-card picker with preview + description + "best for" label. |
-| G16 | `rewrite-resume` Edge Function — Resume Writer | 4h | 🔲 | Sonnet. Rewrites only accepted items. No fabrication, no cross-job bleed, no AI-speak. User highlights honored. |
-| G17 | Cover Letter Writer agent | 2h | 🔲 | Sonnet. Conditional on opt-in. 3-4 paragraphs, <350 words. Company-specific hook. |
-| G18 | Document generation (docx-js) | 4h | 🔲 | Server-side .docx rendering. Upload to Supabase Storage. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| G13 | 3 resume template configs | v3.51 | ✅ | Executive (Georgia/Calibri, navy), Modern (Calibri, blue), Classic (Times, black). Full docx-js configs with margins, spacing, bullet indent. |
+| G14 | Template thumbnail previews | v3.50 | ✅ | Visual card selector with "best for" labels (Senior roles / Tech+creative / Finance+legal). |
+| G15 | Template selection UI | v3.50 | ✅ | 3-card picker integrated into Acceptance UI with active state highlighting. |
+| G16 | `rewrite-resume` Edge Function — Resume Writer | v3.51 | ✅ | Sonnet agent. Strict rules: no fabrication, no cross-job bleed, no AI-speak kill list. Honors accepted recs, user highlights, gap answers, exclusions. Structured JSON output for docx generation. |
+| G17 | Cover Letter Writer agent | v3.51 | ✅ | Sonnet, conditional. 3-4 paragraphs, <350 words. Company-specific hook. No resume regurgitation. |
+| G18 | Document generation (docx-js) | v3.51 | ✅ | Server-side .docx rendering with section-aware formatting (jobs with tab-stop dates, education, skills groups, certifications). Uploaded to Supabase Storage `rewrites` bucket. |
 
-### Sprint 4: QA Team (planned)
+### Sprint 4: QA Team (v3.52) ✅
 
-| # | Item | Est. | Status | Notes |
-|---|------|------|--------|-------|
-| G19 | Accuracy Auditor agent | 2h | 🔲 | Haiku. Flags fabricated metrics, inflated scope, added skills. |
-| G20 | Bleed Detector agent | 2h | 🔲 | Haiku. Ensures bullets stay with correct jobs. |
-| G21 | Voice & Polish Auditor agent | 3h | 🔲 | Sonnet. AI-speak kill list. Punctuation standardization. Auto-fixes. |
-| G22 | QA reconciliation logic | 2h | 🔲 | Critical flags → auto-revert. Voice fixes → auto-apply. Aggregate report. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| G19 | Accuracy Auditor agent | v3.52 | ✅ | Haiku. Cross-references original vs rewritten. Flags fabricated metrics, inflated scope, added skills. Critical/warning/note severity. |
+| G20 | Bleed Detector agent | v3.52 | ✅ | Haiku. Ensures bullets stay with correct jobs. Flags cross-job contamination + date misalignment. |
+| G21 | Voice & Polish Auditor agent | v3.52 | ✅ | Sonnet. AI-speak kill list (leveraged, spearheaded, synergized, etc.). Punctuation standardization. Auto-fixes applied to cleaned sections. |
+| G22 | QA reconciliation logic | v3.52 | ✅ | 3 QA agents run in parallel. Voice auditor's cleaned sections used for docx generation. Critical accuracy flags noted for user review. Full QA report in response + rendered in results panel. |
 
 ### Sprint 5: Output Integration + LinkedIn (planned)
 
@@ -335,12 +335,12 @@
 | Sprint | Items | Est. | Theme |
 |--------|-------|------|-------|
 | G-S1 | G1–G6 | — | ✅ Premium scoring pipeline (v3.49) |
-| G-S2 | G7–G12 | ~13.5h | Gap interview + acceptance UI |
-| G-S3 | G13–G18 | ~16h | Templates + rewrite team |
-| G-S4 | G19–G22 | ~9h | QA team agents |
+| G-S2 | G7–G12 | — | ✅ Gap interview + acceptance UI (v3.50) |
+| G-S3 | G13–G18 | — | ✅ Templates + rewrite team (v3.51) |
+| G-S4 | G19–G22 | — | ✅ QA team agents (v3.52) |
 | G-S5 | G23–G30 | ~13.5h | Output integration + LinkedIn |
 | G-S6 | G31–G36 | ~10h | Feedback + iteration |
-| **Total** | **36 items** | **~62h** | **Full AI resume pipeline** |
+| **Total** | **36 items** | **~23.5h remaining** | **22 complete, 14 remaining** |
 
 **12 agents across 3 Edge Functions:**
 
@@ -365,6 +365,10 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | E18-fix | E18 | Improve Filters from Hidden Jobs — frontend wiring. analyze-hidden-job EF existed but had no UI. Added "Improve Filters" button on sort bar (appears after 3+ hidden), batch analysis modal, one-click apply to filter exclusions. v3.53. |
+| 2026-02-22 | G-S4 | G19–G22 | QA team: 3 parallel agents. Accuracy Auditor (Haiku) flags fabrication. Bleed Detector (Haiku) flags cross-job contamination. Voice & Polish Auditor (Sonnet) AI-speak kill list + auto-fixes. Cleaned sections used for docx. QA report in results panel. v3.52. |
+| 2026-02-22 | G-S3 | G13–G18 | Rewrite team: Resume Writer (Sonnet) + Cover Letter Writer (Sonnet, conditional). 3 docx templates (Executive/Modern/Classic). docx-js server-side generation. Supabase Storage `rewrites` bucket. Full rewrite brief from acceptance UI. v3.51. |
+| 2026-02-22 | G-S2 | G7–G12 | Gap Interview + Acceptance UI. Gap Interviewer agent (Haiku) with lateral questioning. Toggleable recommendation cards. Achievement prompt inputs. User highlights/notes/exclusions. Cover letter opt-in. Template picker. v3.50. |
 | 2026-02-22 | G-S1 | G1–G6 | Premium multi-agent resume scoring pipeline. 4 agents (2 Haiku + 2 Sonnet), 3-pass architecture, 5 industry Gold Standards. Deep Analysis button. Dimension bars + coaching renderer. v3.49. |
 | 2026-02-22 | E-S4++ | E26–E29 | GSC sc-domain fix (URL Inspection working). RLS disabled on SEO tables (charts render). InLinks semantic schemas on 6 pages. Daily seo-sync cron job. v3.44–v3.45. |
 | 2026-02-22 | E-S4+ | E22–E25 | SEO Admin v3.41: seo-sync v3 (9 tools — added Yellow Labs, CrUX, Knowledge Graph, Cloudflare). PSI 4-category. Dashboard redesign (6 charts + side panel). Credential consolidation. |
