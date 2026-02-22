@@ -483,7 +483,12 @@ function extractResumeKeywords(text) {
   return Object.entries(counts).filter(([_, c]) => c >= 2).sort((a, b) => b[1] - a[1]).slice(0, 50);
 }
 
-function addResume(file) {
+async function addResume(file) {
+  // Check entitlement — count only active (non-archived) resumes
+  var activeCount = resumes.filter(function(r) { return !r.archived; }).length;
+  var ent = await checkEntitlement('resumes', activeCount);
+  if (!ent.allowed) { showUpgradePrompt('Resume Uploads', ent); return; }
+
   const id = 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   const sizeStr = file.size < 1024 * 1024
     ? (file.size / 1024).toFixed(0) + ' KB'
@@ -504,6 +509,7 @@ function addResume(file) {
   };
   resumes.push(resume);
   saveResumes();
+  clearEntitlementCache('resumes');
   renderResumes();
   // Store file blob in IndexedDB for downloads
   bjFileStore.put(id, file).catch(e => console.warn('[BJ] File store error:', e));
@@ -698,7 +704,7 @@ if (resumeInput) {
 renderResumes();
 
 // Create by Level — scaffold resume placeholders for each level in the hierarchy
-$('#resume-from-level-btn')?.addEventListener('click', () => {
+$('#resume-from-level-btn')?.addEventListener('click', async () => {
   const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
   if (levels.length === 0) {
     alert('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.');
@@ -712,6 +718,11 @@ $('#resume-from-level-btn')?.addEventListener('click', () => {
     alert('You already have resume placeholders for all configured levels.');
     return;
   }
+
+  // Check entitlement for total resumes after adding
+  var activeCount = resumes.filter(r => !r.archived).length;
+  var ent = await checkEntitlement('resumes', activeCount + newLevels.length - 1);
+  if (!ent.allowed) { showUpgradePrompt('Resume Uploads', ent); return; }
 
   if (!confirm(`Create ${newLevels.length} resume placeholder${newLevels.length > 1 ? 's' : ''} for:\n\n${newLevels.map((l, i) => `${i+1}. ${l.label}`).join('\n')}\n\nUpload the actual files to each card after.`)) return;
 

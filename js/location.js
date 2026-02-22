@@ -653,9 +653,17 @@ $('#clear-filters-btn').addEventListener('click', () => {
 });
 
 // Save filter — always-visible inline input
-function commitSaveFilter() {
+async function commitSaveFilter() {
   const name = $('#save-filter-name').value.trim().toLowerCase();
   if (!name || allPills() === 0) return;
+
+  // Check if this is a new filter (not updating existing)
+  const existingCheck = savedFilters.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
+  if (existingCheck < 0) {
+    // New filter — check entitlement limit
+    var ent = await checkEntitlement('filters', savedFilters.length);
+    if (!ent.allowed) { showUpgradePrompt('Saved Filters', ent); return; }
+  }
 
   // Warn if no WHERE filter set AND US-only tuning is off
   const tuningCheck = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
@@ -715,6 +723,7 @@ function commitSaveFilter() {
     savedFilters.push(filterData);
   }
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  clearEntitlementCache('filters');
   // Only clear the name if it was a new filter
   if (existingIdx < 0) {
     $('#save-filter-name').value = '';
@@ -1049,8 +1058,11 @@ function renderSavedFilters() {
 
   // Bind duplicate
   list.querySelectorAll('.sf-dup').forEach(el => {
-    el.addEventListener('click', e => {
+    el.addEventListener('click', async e => {
       e.stopPropagation();
+      // Check entitlement before duplicating
+      var ent = await checkEntitlement('filters', savedFilters.length);
+      if (!ent.allowed) { showUpgradePrompt('Saved Filters', ent); return; }
       const idx = parseInt(el.dataset.dupidx);
       const original = savedFilters[idx];
       if (!original) return;
@@ -1064,6 +1076,7 @@ function renderSavedFilters() {
       copy.jobsMonth = null;
       savedFilters.push(copy);
       saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+      clearEntitlementCache('filters');
       renderSavedFilters();
     });
   });
