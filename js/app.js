@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.39';
+const BJ_VERSION = 'v3.40';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -55,7 +55,7 @@ async function init() {
     posthog.register({
       bj_session_id: bjSessionId,
       bj_cohort_id: currentUser._cohortId || null,
-      bj_plan_id: 'free' // updated when subscriptions go live
+      bj_plan_id: window._bjUserPlan || 'free'
     });
   }
   // Check admin access — show admin nav if user has admin role

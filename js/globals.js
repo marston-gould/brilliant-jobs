@@ -140,6 +140,75 @@ async function loadUserData(userId) {
   }
 }
 
+// ============================================================
+// ENTITLEMENT SYSTEM — Cohort-aware feature gating
+// Calls check_entitlement() RPC with client-side caching
+// ============================================================
+
+var _entitlementCache = {};
+var _entitlementCacheTTL = 5 * 60 * 1000; // 5 min cache
+
+/**
+ * Check if user can use a feature. Returns { allowed, effective_limit, remaining, behavior, ... }
+ * @param {string} feature - Feature ID (e.g. 'filters', 'resumes', 'resume_grading')
+ * @param {number} [usageCount=0] - Current usage count to check against
+ * @returns {Promise<object>} Entitlement result from server
+ */
+async function checkEntitlement(feature, usageCount) {
+  if (!currentUser) return { allowed: false, behavior: 'off', effective_limit: 0, remaining: 0 };
+  if (typeof usageCount === 'undefined') usageCount = 0;
+  var cacheKey = feature + ':' + usageCount;
+  var cached = _entitlementCache[cacheKey];
+  if (cached && Date.now() - cached._ts < _entitlementCacheTTL) return cached;
+  try {
+    var { data, error } = await sb.rpc('check_entitlement', {
+      p_user_id: currentUser.id,
+      p_feature: feature,
+      p_usage_count: usageCount
+    });
+    if (error) { console.warn('[entitlement]', feature, error.message); return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 }; }
+    data._ts = Date.now();
+    _entitlementCache[cacheKey] = data;
+    return data;
+  } catch (e) {
+    console.warn('[entitlement] Error:', e.message);
+    return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
+  }
+}
+
+/** Clear entitlement cache (call after usage changes) */
+function clearEntitlementCache(feature) {
+  if (feature) {
+    Object.keys(_entitlementCache).forEach(function(k) { if (k.startsWith(feature + ':')) delete _entitlementCache[k]; });
+  } else {
+    _entitlementCache = {};
+  }
+}
+
+/**
+ * Show upgrade prompt when a feature is gated.
+ * @param {string} featureName - Human-readable feature name
+ * @param {object} ent - Entitlement result from checkEntitlement()
+ * @returns {boolean} true if blocked (caller should abort)
+ */
+function showUpgradePrompt(featureName, ent) {
+  var msg = ent.behavior === 'off'
+    ? featureName + ' is a Pro feature. Upgrade to unlock it.'
+    : 'You\'ve reached the ' + featureName + ' limit (' + ent.effective_limit + '). Upgrade to Pro for more.';
+  // Create a toast-style notification
+  var toast = document.createElement('div');
+  toast.className = 'upgrade-toast';
+  toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg>' +
+    '<div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings → Subscription to upgrade.</div></div>' +
+    '</div>';
+  document.body.appendChild(toast);
+  requestAnimationFrame(function() { toast.classList.add('show'); });
+  setTimeout(function() { toast.classList.remove('show'); setTimeout(function() { toast.remove(); }, 300); }, 4000);
+  return true;
+}
+
 // Saved filters
 var savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
