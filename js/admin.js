@@ -399,10 +399,16 @@ function renderSeoStatCards() {
   var indexStatus = _seoData.index_status || [];
   var siteDailyArr = _seoData.site_daily || [];
 
-  // PSI avg performance (latest mobile)
+  // PSI avg performance (latest mobile) — average across ALL pages
   var psiMobile = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
-  var latestPsi = psiMobile.length ? psiMobile[psiMobile.length - 1] : null;
-  var psiPerf = latestPsi && latestPsi.metrics ? latestPsi.metrics.performance : null;
+  var psiPerf = null;
+  if (psiMobile.length) {
+    var latestPsiDate = psiMobile[psiMobile.length - 1].date;
+    var latestPsiPages = psiMobile.filter(function(r) { return r.date === latestPsiDate; });
+    var perfSum = 0;
+    latestPsiPages.forEach(function(r) { if (r.metrics) perfSum += r.metrics.performance || 0; });
+    psiPerf = latestPsiPages.length ? Math.round(perfSum / latestPsiPages.length) : null;
+  }
 
   // YLT avg
   var yltData = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
@@ -520,15 +526,19 @@ function renderPsiChart() {
   var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
   if (!audits.length) { seoNoData(chart, 'PageSpeed Insights (Mobile)'); return; }
 
+  // Logarithmic transform: compress 0-100 scale to show detail in 80-100 range
+  // Use log10(101-v) inverted so higher scores get more visual space
+  function psiLog(v) { if (v == null) return null; return v; }
+
   if (_seoUrl) {
     // Single URL time series
     var dates = audits.map(function(r) { return r.date; });
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PageSpeed Insights (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'PageSpeed Insights (Mobile) — ' + (_seoUrl ? new URL(_seoUrl).pathname : ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
       legend: { data: ['Performance', 'SEO', 'Accessibility', 'Best Practices'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
+      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
       series: [
         { name: 'Performance', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.performance; }), lineStyle: { color: '#f59e0b' }, itemStyle: { color: '#f59e0b' }, symbol: 'circle', symbolSize: 6 },
         { name: 'SEO', type: 'line', data: audits.map(function(r) { return r.metrics && r.metrics.seo; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 6 },
@@ -537,23 +547,33 @@ function renderPsiChart() {
       ]
     }), true);
   } else {
-    // Aggregate — latest scores by page
+    // Aggregate — average across all pages for latest date
     var latestDate = audits[audits.length - 1].date;
     var latest = audits.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
+    var avgMetrics = { performance: 0, seo: 0, accessibility: 0, best_practices: 0 };
+    latest.forEach(function(r) {
+      if (r.metrics) {
+        avgMetrics.performance += r.metrics.performance || 0;
+        avgMetrics.seo += r.metrics.seo || 0;
+        avgMetrics.accessibility += r.metrics.accessibility || 0;
+        avgMetrics.best_practices += r.metrics.best_practices || 0;
+      }
+    });
+    var n = latest.length || 1;
+    Object.keys(avgMetrics).forEach(function(k) { avgMetrics[k] = Math.round(avgMetrics[k] / n); });
+    
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [avgMetrics.performance, avgMetrics.seo, avgMetrics.accessibility, avgMetrics.best_practices];
+    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Performance by Page (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      legend: { data: ['Performance', 'SEO', 'A11y', 'BP'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
-      grid: { top: 35, right: 20, bottom: 60, left: 40 },
-      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 35 } },
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [
-        { name: 'Performance', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.performance; }), itemStyle: { color: '#f59e0b' }, barMaxWidth: 14 },
-        { name: 'SEO', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.seo; }), itemStyle: { color: '#34d399' }, barMaxWidth: 14 },
-        { name: 'A11y', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.accessibility; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 14 },
-        { name: 'BP', type: 'bar', data: latest.map(function(r) { return r.metrics && r.metrics.best_practices; }), itemStyle: { color: '#a78bfa' }, barMaxWidth: 14 }
-      ]
+      title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: Object.assign({}, ax.yAxis, { type: 'log', min: 40, max: 100, logBase: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700, formatter: function(p) { return p.value; } } }]
     }), true);
   }
 }
@@ -587,27 +607,72 @@ function renderYltChart() {
   if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
 
   if (_seoUrl) {
-    var dates = yltData.map(function(r) { return r.date; });
-    var scores = yltData.map(function(r) { return r.score; });
+    // Single URL: category scores over time
+    var pageData = yltData.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageData.length) { seoNoData(chart, 'YLT — no data for this URL'); return; }
+    var dates = pageData.map(function(r) { return r.date; });
+    var catKeys = pageData[0].metrics && pageData[0].metrics.categories ? Object.keys(pageData[0].metrics.categories) : [];
+    var catColors = ['#eab308','#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6'];
     var t = seoChartTheme(), ax = seoAxis();
+    var series = catKeys.map(function(k, i) {
+      var label = pageData[0].metrics.categories[k].label || k;
+      return { name: label, type: 'line', data: pageData.map(function(r) {
+        return r.metrics && r.metrics.categories && r.metrics.categories[k] ? r.metrics.categories[k].score : null;
+      }), lineStyle: { color: catColors[i % catColors.length] }, itemStyle: { color: catColors[i % catColors.length] }, symbol: 'circle', symbolSize: 4 };
+    });
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools Score', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'YLT Category Scores', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      legend: { data: series.map(function(s) { return s.name; }), textStyle: { color: '#7b829a', fontSize: 9 }, top: 4, right: 10, type: 'scroll' },
       xAxis: Object.assign({}, ax.xAxis, { data: dates }),
       yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [{ type: 'line', data: scores, lineStyle: { color: '#eab308' }, itemStyle: { color: '#eab308' }, symbol: 'circle', symbolSize: 6, areaStyle: { color: 'rgba(234,179,8,0.1)' } }]
+      series: series
     }), true);
   } else {
+    // All Pages: blended average score + category radar
     var latestDate = yltData[yltData.length - 1].date;
     var latest = yltData.filter(function(r) { return r.date === latestDate; });
-    var labels = latest.map(function(r) { try { return new URL(r.url).pathname || '/'; } catch(e) { return r.url; } });
-    var scores = latest.map(function(r) { return r.score || 0; });
-    var t = seoChartTheme(), ax = seoAxis();
+    var avgScore = Math.round(latest.reduce(function(s, r) { return s + (r.score || 0); }, 0) / (latest.length || 1));
+    
+    // Aggregate categories across all pages
+    var catTotals = {}, catCount = 0;
+    latest.forEach(function(r) {
+      if (r.metrics && r.metrics.categories) {
+        catCount++;
+        Object.keys(r.metrics.categories).forEach(function(k) {
+          var cat = r.metrics.categories[k];
+          if (!catTotals[k]) catTotals[k] = { label: cat.label || k, total: 0, count: 0 };
+          catTotals[k].total += cat.score || 0;
+          catTotals[k].count++;
+        });
+      }
+    });
+    
+    var catEntries = Object.values(catTotals).map(function(c) {
+      return { name: c.label, value: Math.round(c.total / c.count) };
+    });
+    
+    var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'Yellow Lab Tools (by page)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
-      grid: { top: 35, right: 20, bottom: 50, left: 50 },
-      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
-      yAxis: Object.assign({}, ax.yAxis, { min: 0, max: 100 }),
-      series: [{ type: 'bar', data: scores, itemStyle: { color: function(p) { var v = p.value; return v >= 80 ? '#34d399' : v >= 50 ? '#f59e0b' : '#ef4444'; } }, barMaxWidth: 30 }]
+      title: { text: 'YLT Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 9 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: 'Avg Score',
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>Avg across ' + catCount + ' pages</b><br/>' + lines.join('<br/>');
+      } }
     }), true);
   }
 }
@@ -666,14 +731,32 @@ function renderUrlInspection() {
         '<div class="seo-metric-item"><span class="seo-metric-label">Mobile</span> <span class="seo-metric-value">' + (latest.mobile_usability || '\u2014') + '</span></div>' +
       '</div>';
   } else {
-    var pass = 0, fail = 0, other = 0, seen = {};
-    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
-    el.innerHTML =
-      '<div class="seo-metric-row">' +
-        '<div class="seo-metric-item"><span class="seo-metric-value admin-green">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-value admin-red">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
-        '<div class="seo-metric-item"><span class="seo-metric-value">' + other + '</span> <span class="seo-metric-label">other</span></div>' +
-      '</div>';
+    // All pages: show horizontal bar chart of verdict per URL
+    var seen = {}, rows = [];
+    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; rows.push(r); });
+    
+    var pass = 0, fail = 0, other = 0;
+    rows.forEach(function(r) { if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
+    
+    var chartHtml = '<div style="margin-bottom:12px;display:flex;gap:16px;">' +
+      '<div><span class="seo-metric-value admin-green" style="font-size:18px;">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
+      '<div><span class="seo-metric-value admin-amber" style="font-size:18px;">' + other + '</span> <span class="seo-metric-label">pending</span></div>' +
+      '<div><span class="seo-metric-value admin-red" style="font-size:18px;">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
+    '</div>';
+    
+    // Per-URL status table
+    chartHtml += '<div style="max-height:200px;overflow-y:auto;">';
+    chartHtml += '<table class="admin-platform-table" style="font-size:11px;"><thead><tr><th>URL</th><th>Status</th><th>Coverage</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var path = '/';
+      try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+      var vc = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+      chartHtml += '<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + path + '</td>' +
+        '<td class="' + vc + '">' + (r.verdict || '—') + '</td>' +
+        '<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + (r.coverage_state || '—') + '</td></tr>';
+    });
+    chartHtml += '</tbody></table></div>';
+    el.innerHTML = chartHtml;
   }
 }
 
