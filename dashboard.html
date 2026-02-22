@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.54 - 2026-02-22 - Visit-based segment personalization + bj_has_account flag -->
+<!-- Brilliant Jobs Dashboard v3.45 - 2026-02-22 - Visit-based segment personalization + bj_has_account flag -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -92,7 +92,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.54</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.45</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -708,7 +708,6 @@
                 <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
               </div>
             </div>
-            <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
           </div>
 
           <!-- Job results table -->
@@ -1758,7 +1757,8 @@
             <div id="admin-signup-chart" style="height:200px;margin-bottom:20px"></div>
           </div>
 
-                    <div class="admin-panel" id="admin-panel-seo">
+          <div class="admin-panel" id="admin-panel-seo">
+
             <!-- Section A: Controls -->
             <div class="seo-controls">
               <select id="seo-url-select" class="seo-select" onchange="setSeoUrl(this.value)">
@@ -1774,61 +1774,97 @@
               <input type="date" id="seo-date-from" class="seo-date-input" onchange="seoDateChanged()">
               <span class="seo-date-label">To</span>
               <input type="date" id="seo-date-to" class="seo-date-input" onchange="seoDateChanged()">
-              <button class="btn btn-secondary btn-sm" id="seo-sync-btn" onclick="triggerSeoSync(['all'])" style="margin-inline-start:auto;">&#8635; Sync All</button>
+              <button class="seo-sync-btn" id="seo-sync-btn" onclick="triggerSeoSync(['all'])">&#8635; Sync All</button>
             </div>
 
-            <!-- Section B: Stat Cards -->
+            <!-- Section B: Summary KPI Cards -->
             <div class="stat-grid" id="seo-stat-cards">
-              <!-- 5x .stat-card rendered by JS -->
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-psi">&mdash;</div>
+                <div class="stat-label">PSI Performance</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-ylt">&mdash;</div>
+                <div class="stat-label">YLT Score</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-indexed">&mdash;</div>
+                <div class="stat-label">Indexed</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-cf">&mdash;</div>
+                <div class="stat-label">CF Requests</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-gsc">&mdash;</div>
+                <div class="stat-label">GSC Clicks</div>
+              </div>
             </div>
 
-            <!-- Section C: Charts -->
+            <!-- Section C: Performance Charts -->
             <div class="seo-section-label">Performance Charts</div>
             <div class="stats-grid">
-              <div class="stats-chart-card full">
-                <div class="stats-chart-title">Google Search Console</div>
-                <div id="seo-chart-gsc" class="ec"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card full">
+                <div class="seo-chart-label">Search Performance</div>
+                <div class="seo-chart-title">Google Search Console</div>
+                <div id="seo-chart-gsc" class="seo-chart-area"></div>
               </div>
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">PageSpeed Insights · Mobile</div>
-                <div id="seo-chart-psi" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Core Web Vitals</div>
+                <div class="seo-chart-title">PageSpeed Insights &middot; Mobile</div>
+                <div id="seo-chart-psi" class="seo-chart-area compact"></div>
               </div>
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">Cloudflare Traffic</div>
-                <div id="seo-chart-cf" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Edge Analytics</div>
+                <div class="seo-chart-title">Cloudflare Traffic</div>
+                <div id="seo-chart-cf" class="seo-chart-area compact"></div>
               </div>
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">Yellow Lab Tools</div>
-                <div id="seo-chart-ylt" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Page Quality</div>
+                <div class="seo-chart-title">Yellow Lab Tools</div>
+                <div id="seo-chart-ylt" class="seo-chart-area compact"></div>
               </div>
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">Chrome UX Report</div>
-                <div id="seo-chart-crux" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Real User Metrics</div>
+                <div class="seo-chart-title">Chrome UX Report</div>
+                <div id="seo-chart-crux" class="seo-chart-area compact"></div>
               </div>
             </div>
 
-            <!-- Section D: Drilldowns -->
+            <!-- Section D: Technical Details -->
             <div class="seo-section-label">Technical Details</div>
             <div class="seo-detail-grid">
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">URL Inspection</div>
-                <div id="seo-side-inspection"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Google Indexing</div>
+                <div class="seo-chart-title">URL Inspection</div>
+                <div id="seo-side-inspection"></div>
               </div>
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">DataForSEO On-Page</div>
-                <div id="seo-side-dfs"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">On-Page Audit</div>
+                <div class="seo-chart-title">DataForSEO</div>
+                <div id="seo-side-dfs"></div>
               </div>
-              <div class="stats-chart-card">
-                <div class="stats-chart-title">Knowledge Graph</div>
-                <div id="seo-side-kg"><div class="seo-loading">Loading…</div></div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Entity Recognition</div>
+                <div class="seo-chart-title">Knowledge Graph</div>
+                <div id="seo-side-kg"></div>
               </div>
             </div>
 
-            <!-- GSC Queries full-width -->
-            <div class="stats-chart-card" style="margin-block-start:16px;">
-              <div class="stats-chart-title">Search Queries</div>
-              <div id="seo-side-queries"><div class="seo-loading">Loading…</div></div>
+            <!-- PSI Drilldown (full width) -->
+            <div class="seo-chart-card" style="margin-block-start:16px;">
+              <div class="seo-chart-label">Core Web Vitals Detail</div>
+              <div class="seo-chart-title">PSI Drilldown</div>
+              <div id="seo-side-psi"></div>
             </div>
+
+            <!-- GSC Top Queries (full width) -->
+            <div class="seo-chart-card" style="margin-block-start:16px;">
+              <div class="seo-chart-label">Organic Search</div>
+              <div class="seo-chart-title">Search Queries</div>
+              <div id="seo-side-queries" style="max-height:300px;overflow-y:auto;"></div>
+            </div>
+
           </div>
 
           <div class="admin-panel" id="admin-panel-revenue">
