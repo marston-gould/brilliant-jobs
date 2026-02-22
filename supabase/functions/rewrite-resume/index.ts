@@ -692,7 +692,6 @@ No markdown, no code fences. JSON only.`;
 
     if (uploadErr) {
       console.error('[rewrite-resume] Resume upload failed:', uploadErr);
-      // Still return the data even if upload fails — client can retry
     }
 
     let coverPath: string | null = null;
@@ -704,13 +703,111 @@ No markdown, no code fences. JSON only.`;
       if (coverUpErr) console.error('[rewrite-resume] Cover letter upload failed:', coverUpErr);
     }
 
+    // ─── LINKEDIN ALIGNMENT CHECK (conditional) ───
+    let linkedinAlignment: any = null;
+    const { linkedin_profile } = body;
+
+    if (linkedin_profile) {
+      console.log('[rewrite-resume] LinkedIn Alignment Checker starting...');
+      const liPrompt = `You are a Profile Consistency Auditor. Compare the rewritten resume against the candidate's LinkedIn profile.
+
+Flag ANY discrepancies:
+1. Title differences (resume says "Director", LinkedIn says "Senior Manager")
+2. Date mismatches (resume says "2021-2023", LinkedIn says "2020-2022")
+3. Company name variations that look inconsistent (not just abbreviations)
+4. Missing roles — jobs on LinkedIn not on resume or vice versa
+5. Education differences
+6. Skills on resume not reflected in LinkedIn skills section
+
+For each: { field: "title"|"dates"|"company"|"role_missing"|"education"|"skills", resume_value: string, linkedin_value: string, severity: "critical"|"warning"|"note", recommendation: string }
+
+Output JSON: { discrepancies: [...], aligned: boolean, discrepancy_count: int }
+No markdown, no code fences. JSON only.`;
+
+      const liInput = `<rewritten_resume>\n${JSON.stringify(cleanedSections || resumeData.sections)}\n</rewritten_resume>\n\n<linkedin_profile>\n${JSON.stringify(linkedin_profile)}\n</linkedin_profile>\n\nCheck alignment. Return ONLY JSON.`;
+
+      const liRes = await callAnthropic('claude-haiku-4-5-20251001', liPrompt, liInput, 2000, 0);
+      if (liRes.ok) {
+        try { linkedinAlignment = parseJSON(liRes.text); } catch (e) { console.error('[rewrite-resume] LI alignment parse failed'); }
+      }
+      qaReport.linkedin = linkedinAlignment;
+    }
+
+    // ─── PERSIST TO DATABASE ───
     const totalMs = Date.now() - startTime;
-    console.log(`[rewrite-resume] Complete: user=${user.id} template=${template.id} cover=${!!coverLetterData} agents=${agentsMs}ms docx=${docxMs - agentsMs}ms total=${totalMs}ms`);
+    const agentCount = (coverLetterData ? 2 : 1) + 3 + (linkedinAlignment ? 1 : 0);
+
+    // Save session
+    const { data: sessionRow, error: sessErr } = await sb
+      .from('rewrite_sessions')
+      .insert({
+        id: sessionId,
+        user_id: user.id,
+        resume_id: body.resume_id || 'unknown',
+        filter_name: filter_name || null,
+        template_id: template.id,
+        include_cover_letter: !!include_cover_letter,
+        status: 'complete'
+      })
+      .select('id')
+      .single();
+
+    if (sessErr) console.error('[rewrite-resume] Session insert failed:', sessErr);
+
+    // Save round
+    const roundNumber = body.round_number || 1;
+    const { error: roundErr } = await sb
+      .from('rewrite_rounds')
+      .insert({
+        session_id: sessionId,
+        round_number: roundNumber,
+        accepted_recommendations: accepted_recommendations,
+        user_highlights: user_highlights || [],
+        user_notes: user_notes || null,
+        gap_interview_answers: gap_answers || null,
+        previous_feedback: previous_feedback || null,
+        resume_url: resumePath,
+        cover_letter_url: coverPath,
+        qa_report: qaReport,
+        linkedin_alignment: linkedinAlignment,
+        changes_summary: resumeData.changes_made || [],
+        agents_used: agentCount,
+        timing_ms: totalMs,
+        tier: 'premium'
+      });
+
+    if (roundErr) console.error('[rewrite-resume] Round insert failed:', roundErr);
+
+    // Save cover letter if generated
+    if (coverLetterData && coverPath) {
+      const { error: coverErr } = await sb
+        .from('cover_letters')
+        .insert({
+          user_id: user.id,
+          session_id: sessionId,
+          round_number: roundNumber,
+          filter_name: filter_name || null,
+          target_company: jd_profile?.company || null,
+          target_role: jd_profile?.title || null,
+          paragraphs: coverLetterData.paragraphs || [],
+          salutation: coverLetterData.salutation || null,
+          closing: coverLetterData.closing || null,
+          word_count: coverLetterData.word_count || null,
+          storage_path: coverPath,
+          tier: 'premium',
+          analysis_tier: 'premium'
+        });
+
+      if (coverErr) console.error('[rewrite-resume] Cover letter insert failed:', coverErr);
+    }
+
+    console.log(`[rewrite-resume] Complete: user=${user.id} session=${sessionId} template=${template.id} cover=${!!coverLetterData} li=${!!linkedinAlignment} agents=${agentCount} total=${totalMs}ms`);
 
     // ─── RESPONSE ───
     return new Response(JSON.stringify({
       status: 'complete',
       session_id: sessionId,
+      round_number: roundNumber,
       resume_path: resumePath,
       cover_letter_path: coverPath,
       template_used: template.id,
@@ -719,7 +816,9 @@ No markdown, no code fences. JSON only.`;
       unchanged_sections: resumeData.unchanged_sections || [],
       cover_letter: coverLetterData,
       qa_report: qaReport,
-      agents_used: (coverLetterData ? 2 : 1) + 3, // rewrite team + QA team
+      linkedin_alignment: linkedinAlignment,
+      agents_used: agentCount,
+      tier: 'premium',
       timing: {
         writer_ms: writerMs,
         cover_ms: coverLetterData ? agentsMs - writerMs : 0,
