@@ -204,8 +204,10 @@ function aggregateStats(rows) {
   });
   s.seniorPct = rows.length > 0 ? Math.round((seniorN / rows.length) * 100) : 0;
   Object.keys(salByLvl).forEach(function(label) {
-    var arr = salByLvl[label];
-    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / arr.length), count: arr.length };
+    var arr = salByLvl[label].sort(function(a,b){return a-b;});
+    var n = arr.length;
+    var p = function(pct) { var i = Math.floor(pct * (n - 1)); var f = pct * (n - 1) - i; return Math.round(arr[i] + (arr[Math.min(i+1,n-1)] - arr[i]) * f); };
+    s.salaryByLevel[label] = { avg: Math.round(arr.reduce(function(a,b){return a+b;},0) / n), p15: p(0.15), median: p(0.5), p85: p(0.85), count: n };
   });
 
   // Remote
@@ -530,29 +532,36 @@ function renderSalaryByLevel(stats) {
   var chart = getOrCreateChart('#chart-salary-level'); if (!chart) return;
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var ordered = hier.map(function(l){return l.label;}).filter(function(l){return salLvl[l] && salLvl[l].count>=5;})
-    .map(function(l){return {label:l, avg:salLvl[l].avg, count:salLvl[l].count};});
-  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, count:salLvl['Other'].count});
+    .map(function(l){return {label:l, avg:salLvl[l].avg, p15:salLvl[l].p15, median:salLvl[l].median, p85:salLvl[l].p85, count:salLvl[l].count};});
+  if (salLvl['Other'] && salLvl['Other'].count >= 5) ordered.push({label:'Other', avg:salLvl['Other'].avg, p15:salLvl['Other'].p15, median:salLvl['Other'].median, p85:salLvl['Other'].p85, count:salLvl['Other'].count});
 
   var overallAvg = 0, totalCount = 0;
   ordered.forEach(function(d){overallAvg += d.avg * d.count; totalCount += d.count;});
   overallAvg = totalCount > 0 ? Math.round(overallAvg / totalCount) : 0;
 
   var barColors = ['#6366f1','#818cf8','#a78bfa','#22c55e','#34d399','#f59e0b','#fbbf24','#ec4899','#f97316','#ef4444','#06b6d4','#8b5cf6'];
+  var fK = function(v){return '$'+Math.round(v/1000)+'K';};
 
   chart.setOption({
     graphic:[],
     tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'},
-      formatter:function(p){ var d=ordered.filter(function(x){return x.label===p[0].name;})[0]; return '<b>'+p[0].name+'</b><br/>Avg: $'+Math.round(p[0].value/1000)+'K'+(d?' ('+d.count+' data points)':''); }}, ttip()),
+      formatter:function(p){ var idx=p[0].dataIndex; var d=ordered[idx]; if(!d)return ''; return '<b>'+d.label+'</b> ('+d.count+' jobs)<br/>P85: '+fK(d.p85)+'<br/>Median: <b>'+fK(d.median)+'</b><br/>P15: '+fK(d.p15); }}, ttip()),
     grid: { top:30, right:30, bottom:40, left:60 },
     xAxis: { type:'category', data:ordered.map(function(d){return d.label;}),
       axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11, rotate:ordered.length>8?30:0 },
       axisLine:STATS_THEME.axisLine },
     yAxis: { type:'value', axisLabel:{ color:_T.dim, fontFamily:_T.mono, fontSize:10,
-      formatter:function(v){return '$'+Math.round(v/1000)+'K';}}, splitLine:STATS_THEME.splitLine },
-    series: [{ type:'bar', data:ordered.map(function(d,i){return {value:d.avg, itemStyle:{color:barColors[i%barColors.length]}};  }),
-      barMaxWidth:40, itemStyle:{borderRadius:[4,4,0,0]},
-      label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
-        formatter:function(p){return '$'+Math.round(p.value/1000)+'K';}}}],
+      formatter:function(v){return fK(v);}}, splitLine:STATS_THEME.splitLine },
+    series: [
+      { name:'P15 base', type:'bar', stack:'range', data:ordered.map(function(d){return {value:d.p15, itemStyle:{color:'transparent'}};}),
+        barMaxWidth:40, itemStyle:{borderRadius:0} },
+      { name:'Range', type:'bar', stack:'range', data:ordered.map(function(d,i){return {value:d.p85-d.p15, itemStyle:{color:barColors[i%barColors.length],opacity:0.35,borderRadius:[4,4,0,0]}};}),
+        barMaxWidth:40 },
+      { name:'Median', type:'scatter', symbol:'rect', symbolSize:function(v,p){return [36,3];},
+        data:ordered.map(function(d,i){return {value:d.median, itemStyle:{color:barColors[i%barColors.length]}};}),
+        z:10, label:{ show:ordered.length<=8, position:'top', color:_T.dim, fontFamily:_T.mono, fontSize:10,
+          formatter:function(p){return fK(p.value);}}}
+    ],
     animation:true, animationDuration:600,
   }, true);
 }
