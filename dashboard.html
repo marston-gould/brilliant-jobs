@@ -1758,9 +1758,9 @@
           </div>
 
                     <div class="admin-panel" id="admin-panel-seo">
-            <!-- Controls -->
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-              <select id="seo-url-select" onchange="setSeoUrl(this.value)" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;min-width:240px;">
+            <!-- Section A: Controls -->
+            <div class="seo-controls">
+              <select id="seo-url-select" class="seo-select" onchange="setSeoUrl(this.value)">
                 <option value="">All Pages</option>
                 <option value="https://brilliantjobs.app/">/ (homepage)</option>
                 <option value="https://brilliantjobs.app/data-lab">/data-lab</option>
@@ -1769,65 +1769,64 @@
                 <option value="https://brilliantjobs.app/jobs-by-industry">/jobs-by-industry</option>
                 <option value="https://brilliantjobs.app/career-level-data">/career-level-data</option>
               </select>
-              <span style="font-size:11px;color:var(--text-faint);">From</span>
-              <input type="date" id="seo-date-from" onchange="seoDateChanged()" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;">
-              <span style="font-size:11px;color:var(--text-faint);">To</span>
-              <input type="date" id="seo-date-to" onchange="seoDateChanged()" style="background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;">
-              <button class="admin-period-btn" id="seo-sync-btn" onclick="triggerSeoSync(['all'])" style="margin-left:auto;background:linear-gradient(135deg,rgba(52,211,153,0.12),rgba(77,142,255,0.12));color:var(--green);border:1px solid rgba(52,211,153,0.25);">↻ Sync All</button>
+              <span class="seo-date-label">From</span>
+              <input type="date" id="seo-date-from" class="seo-date-input" onchange="seoDateChanged()">
+              <span class="seo-date-label">To</span>
+              <input type="date" id="seo-date-to" class="seo-date-input" onchange="seoDateChanged()">
+              <button class="btn btn-secondary btn-sm" id="seo-sync-btn" onclick="triggerSeoSync(['all'])" style="margin-inline-start:auto;">&#8635; Sync All</button>
             </div>
 
-            <!-- Stat Cards Row -->
-            <div id="seo-stat-cards" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;"></div>
-
-            <!-- Charts Grid: 2 columns -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-              <!-- GSC -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Google Search Console</div>
-                <div id="seo-chart-gsc" style="height:200px;"></div>
-              </div>
-              <!-- PSI -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">PageSpeed Insights · Mobile</div>
-                <div id="seo-chart-psi" style="height:200px;"></div>
-              </div>
-              <!-- Cloudflare -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Cloudflare Traffic</div>
-                <div id="seo-chart-cf" style="height:200px;"></div>
-              </div>
-              <!-- Yellow Lab Tools -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Yellow Lab Tools</div>
-                <div id="seo-chart-ylt" style="height:200px;"></div>
-              </div>
+            <!-- Section B: Stat Cards -->
+            <div class="stat-grid" id="seo-stat-cards">
+              <!-- 5x .stat-card rendered by JS -->
             </div>
 
-            <!-- Tables Row: 3 columns -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-              <!-- URL Inspection -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">URL Inspection</div>
-                <div id="seo-side-inspection"></div>
+            <!-- Section C: Charts -->
+            <div class="seo-section-label">Performance Charts</div>
+            <div class="stats-grid">
+              <div class="stats-chart-card full">
+                <div class="stats-chart-title">Google Search Console</div>
+                <div id="seo-chart-gsc" class="ec"><div class="seo-loading">Loading…</div></div>
               </div>
-              <!-- DataForSEO -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">DataForSEO On-Page</div>
-                <div id="seo-side-dfs"></div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">PageSpeed Insights · Mobile</div>
+                <div id="seo-chart-psi" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
               </div>
-              <!-- Knowledge Graph + CrUX -->
-              <div class="stat-card" style="padding:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Knowledge Graph</div>
-                <div id="seo-side-kg" style="margin-bottom:12px;"></div>
-                <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;border-top:1px solid var(--border);padding-top:10px;">Chrome UX Report</div>
-                <div id="seo-chart-crux"></div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">Cloudflare Traffic</div>
+                <div id="seo-chart-cf" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">Yellow Lab Tools</div>
+                <div id="seo-chart-ylt" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">Chrome UX Report</div>
+                <div id="seo-chart-crux" class="ec" style="height:280px;"><div class="seo-loading">Loading…</div></div>
               </div>
             </div>
 
-            <!-- GSC Top Queries (full width) -->
-            <div class="stat-card" style="padding:12px;margin-top:16px;">
-              <div style="font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Search Queries</div>
-              <div id="seo-side-queries" style="max-height:250px;overflow-y:auto;"></div>
+            <!-- Section D: Drilldowns -->
+            <div class="seo-section-label">Technical Details</div>
+            <div class="seo-detail-grid">
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">URL Inspection</div>
+                <div id="seo-side-inspection"><div class="seo-loading">Loading…</div></div>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">DataForSEO On-Page</div>
+                <div id="seo-side-dfs"><div class="seo-loading">Loading…</div></div>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">Knowledge Graph</div>
+                <div id="seo-side-kg"><div class="seo-loading">Loading…</div></div>
+              </div>
+            </div>
+
+            <!-- GSC Queries full-width -->
+            <div class="stats-chart-card" style="margin-block-start:16px;">
+              <div class="stats-chart-title">Search Queries</div>
+              <div id="seo-side-queries"><div class="seo-loading">Loading…</div></div>
             </div>
           </div>
 
