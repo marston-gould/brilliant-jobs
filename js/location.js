@@ -3,6 +3,30 @@ const qbInputWhere = $('#qb-input-where');
 const locationDropdown = $('#location-dropdown');
 let locationSearchTimeout;
 
+// ─── US-only location filter (used when tuning "United States" is checked) ───
+const US_STATE_NAMES_SET = new Set([
+  'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
+  'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
+  'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
+  'minnesota','mississippi','missouri','montana','nebraska','nevada',
+  'new hampshire','new jersey','new mexico','new york','north carolina',
+  'north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
+  'south carolina','south dakota','tennessee','texas','utah','vermont',
+  'virginia','washington','west virginia','wisconsin','wyoming',
+  'district of columbia',
+]);
+function isUSLocation(normalized) {
+  // normalized is lowercase, e.g. "new york, new york" or "berlin, germany"
+  // Check if the last part (after last comma) is a US state name
+  const parts = normalized.split(',');
+  if (parts.length < 2) return false;
+  const last = parts[parts.length - 1].trim();
+  if (US_STATE_NAMES_SET.has(last)) return true;
+  // Also allow "united states" or "us" or "usa" as the suffix
+  if (last === 'united states' || last === 'us' || last === 'usa') return true;
+  return false;
+}
+
 // ─── Cached ref_city_radius (static JSON, avoids Supabase query per keystroke) ───
 let _refCityCache = null;
 async function getRefCityRadius() {
@@ -173,6 +197,8 @@ async function searchLocations(query) {
         const norm = loc.normalized?.toLowerCase() || loc.raw_input?.toLowerCase();
         // Skip remote variants (already handled above)
         if (norm.startsWith('remote')) continue;
+        // When US-only tuning is on, skip non-US locations from cache
+        if (tuningSettings.usOnly && !isUSLocation(norm)) continue;
         // Skip if already covered by ref table (check if any ref result city name is in this cache entry)
         const coveredByRef = results.some(r =>
           (r.type === 'city' || r.type === 'metro') && r.city &&
@@ -388,6 +414,8 @@ async function searchLocationsForNot(query) {
         const display = loc.normalized || loc.raw_input;
         const key = display.toLowerCase();
         if (!seenKeys.has(key) && !key.startsWith('remote')) {
+          // When US-only tuning is on, skip non-US locations from cache
+          if (tuningSettings.usOnly && !isUSLocation(key)) continue;
           seenKeys.add(key);
           results.push({ display, badge: 'pin' });
         }
