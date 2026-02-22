@@ -2,6 +2,14 @@
 
 ## BLOCKERS
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
+- **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
+
+## v3.45 — 2026-02-22
+- **Visit-based segment detection (Pod 2 Item #1)**: Landing page `index.html` now detects 4 visitor segments via `<head>` script: new, returning, lapsed, active. Sets `data-segment` attribute on `<html>` before body paint (no FOUC). Visit counter (`bj_visits`) increments in localStorage. Deep visit detection (`data-visit-depth="deep"`) for visit 3+ returning visitors.
+- **Segment content variants (Pod 2 Item #2)**: CSS-driven content personalization — all 4 variants in single `index.html`. New visitors see full pitch (current experience, no regression). Returning visitors see shorter hero + auto-expanded preview + compressed benefits. Visit 3+ returning visitors also see objection FAQ (data safety, LinkedIn comparison, free plan, freshness). Lapsed registered users see welcome-back hero with login CTA, no marketing sections. Active users auto-redirect to `/dashboard` with fallback banner.
+- **bj_has_account flag**: Dashboard `app.js` sets `localStorage.setItem('bj_has_account', 'true')` on successful auth, persists after logout for lapsed user detection on landing page.
+- **SEO redirect diagnosis (Pod 2 Item #3)**: Confirmed `http://brilliantjobs.app` → 308 to `vercel.com`. Requires manual Vercel Dashboard + Cloudflare DNS fix (documented in BLOCKERS).
+- **Version bump**: v3.44 → v3.45 across dashboard.html, app.js, index.html footer
 
 ## v3.41 — 2026-02-22
 - **SEO Admin redesign**: Complete rebuild of the SEO/Data Coverage admin tab with 9-tool dashboard

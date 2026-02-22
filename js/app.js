@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v3.44';
+const BJ_VERSION = 'v3.45';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
@@ -6,6 +6,8 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { window.location.href = '/'; return; }
   currentUser = session.user;
+  // Persist account flag for landing page segment detection (survives logout)
+  localStorage.setItem('bj_has_account', 'true');
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
   try {
