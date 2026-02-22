@@ -114,7 +114,7 @@
 | D8 | Admin panel fixes | 0.5d | 30min | ✅ | RPC auth fix (service_role + auth.uid), query optimization (304K rows → indexed single-pass), platform RPC fixed. 3 indexes added (status, first_seen, closed_at). Admin panel now shows live data. |
 | D9 | Version unification | 0.25d | 10min | ✅ | Single BJ_VERSION constant in app.js drives console + nav. No more hardcoded version in HTML. v2.91. |
 | D10 | Data pages: CTAs + Data Lab link + level fix | 0.5d | 20min | ✅ | Signup CTA on all 6 data pages + hub. Eyebrow "Data Lab" now links to /data-lab. Salary level order fixed: Manager before Lead. |
-| D11 | Data pages: live data + security | 4d | 2h | ✅ | All 5 data pages converted to live Supabase RPC calls with localStorage caching (24h TTL). Methodology footers on all pages. 15 RPCs already existed; wired hiring-trends, career-level-data, salary-data, jobs-by-industry, market-dynamics. v3.39. |
+| D11 | Data pages: live data + security | 4d | 2h | ✅ | Planning + initial wiring. Actual deployment completed in F5–F7 (v3.39). |
 
 **Phase D status:** 10/11 complete. D3 blocked on screenshots (CPO). D7 blocked on screenshots (CPO).
 
@@ -198,7 +198,6 @@
 | E29 | Daily SEO cron job | v3.44 | ✅ | `trigger_seo_sync()` PL/pgSQL function calls seo-sync Edge Function via pg_net. Scheduled via pg_cron as `daily-seo-sync` at 6 AM UTC. |
 | E30 | SEO tab redesign | v3.48 | ✅ | Full visual redesign per Pod 1 handoff spec. 13 new CSS classes (.seo-controls, .seo-select, .seo-section-label, .seo-detail-grid, .seo-metric-row, etc.). 4-section layout: Controls → Stat Cards → Charts → Drilldowns. DOM-based stat cards replacing innerHTML. CrUX promoted to own card. Chart heights 300/280px. Light-theme ECharts. Loading + empty states. All 12 acceptance criteria pass. |
 | E31 | Dead job lightbulb icon | v3.47 | ✅ | Replaced 3D 🚫 emoji with on-brand SVG burned-out lightbulb for job removal modal. Copy: "This Brilliant opportunity has dimmed." |
-| E32 | InLinks semantic schemas | v3.45 | ✅ | WebPage ld+json with about/mentions entities (Wikipedia sameAs) on all 6 public pages. 3 from InLinks, 3 generated to match pattern. |
 
 **Phase E total: 46 items across 6 sprints, all complete. Version range: v2.68 → v3.48.**
 
@@ -309,28 +308,28 @@
 | G21 | Voice & Polish Auditor agent | v3.52 | ✅ | Sonnet. AI-speak kill list (leveraged, spearheaded, synergized, etc.). Punctuation standardization. Auto-fixes applied to cleaned sections. |
 | G22 | QA reconciliation logic | v3.52 | ✅ | 3 QA agents run in parallel. Voice auditor's cleaned sections used for docx generation. Critical accuracy flags noted for user review. Full QA report in response + rendered in results panel. |
 
-### Sprint 5: Output Integration + LinkedIn (v3.55) ✅
+### Sprint 5: Output Integration + LinkedIn (v3.53–v3.55) ✅
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| G23 | Auto-add rewrite to resume library | v3.55 | ✅ | Auto-saved on rewrite complete. Named `{original} — {filter} v{round}`. Source: 'rewrite'. Auto-assigned to same filter. Keywords extracted from sections. |
-| G24 | `cover_letters` table + RLS | v3.55 | ✅ | Table exists. Cover letters saved with structured paragraphs, salutation, closing, word count, storage path, tier. |
+| G23 | Auto-add rewrite to resume library | v3.53 | ✅ | Auto-saved on rewrite complete. Named `{original} — {filter} v{round}`. Source: 'rewrite'. Auto-assigned to same filter. Keywords extracted from sections. |
+| G24 | `cover_letters` table + RLS | v3.53 | ✅ | Table pre-existed. Cover letters saved with structured paragraphs, salutation, closing, word count, storage path, tier. |
 | G25 | Cover letter archive UI | v3.55 | ✅ | Rendered on Resumes page below archives. Preview/download/delete per letter. Tier badge. Filter-grouped. |
-| G26 | Tier provenance tracking | v3.55 | ✅ | `tier_history` array on resumes. Badge on resume cards: "✨ Premium Rewrite" with round number. Hover shows full history. |
+| G26 | Tier provenance tracking | v3.53 | ✅ | `tier_history` array on resumes. Badge on resume cards: "✨ Premium Rewrite" with round number. Hover shows full history. |
 | G27 | `rewrites` Storage bucket | v3.51 | ✅ | Created in Sprint 3. Public bucket for .docx downloads. |
 | G28 | Chrome Extension: LI profile capture | v3.55 | ✅ | Manifest v3. Content script on linkedin.com/in/*. Floating "Sync to Brilliant Jobs" button. Extracts name, headline, experience, education, skills. Stores in chrome.storage.local. Popup with status + clear. |
-| G29 | LinkedIn Alignment Checker agent | v3.52 | ✅ | Haiku agent in rewrite-resume EF. Flags title/date/company discrepancies. Runs conditionally when linkedin_profile provided. |
-| G30 | LI alignment UI in QA report | v3.52 | ✅ | Discrepancy list with severity + field comparison. Integrated in bjShowRewriteResults QA section. |
+| G29 | LinkedIn Alignment Checker agent | v3.52 | ✅ | Haiku agent in rewrite-resume EF. Flags title/date/company discrepancies. Runs conditionally when linkedin_profile provided. Shipped with Sprint 4 EF commit. |
+| G30 | LI alignment UI in QA report | v3.52 | ✅ | Discrepancy list with severity + field comparison. Integrated in bjShowRewriteResults QA section. Shipped with Sprint 4 frontend commit. |
 
-### Sprint 6: Feedback + Iteration (v3.55) ✅
+### Sprint 6: Feedback + Iteration (v3.54–v3.55) ✅
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| G31 | Feedback UI — star ratings | v3.55 | ✅ | 5 dimensions: overall, accuracy, relevance, voice, formatting. 1-5 star interactive ratings. |
-| G32 | Feedback UI — qualitative input | v3.55 | ✅ | Freeform textarea for specific change requests. Saved to rewrite_rounds table. |
-| G33 | Revision Assessor agent | v3.55 | ✅ | Haiku. `revision-assess` mode on score-resume EF. Evaluates feedback specificity, predicts revision value, estimates per-dimension improvements. |
-| G34 | Revision loop | v3.55 | ✅ | Re-runs full rewrite pipeline with previous_feedback context. New resume version per round. Old results cleared, new results shown inline. |
-| G35 | `rewrite_sessions` + `rewrite_rounds` tables | v3.55 | ✅ | Tables exist. Sessions track user, template, filter. Rounds track ratings, feedback, QA reports, storage paths. |
+| G31 | Feedback UI — star ratings | v3.54 | ✅ | 5 dimensions: overall, accuracy, relevance, voice, formatting. 1-5 star interactive ratings. |
+| G32 | Feedback UI — qualitative input | v3.54 | ✅ | Freeform textarea for specific change requests. Saved to rewrite_rounds table. |
+| G33 | Revision Assessor agent | v3.54 | ✅ | Haiku. `revision-assess` mode on score-resume EF. Evaluates feedback specificity, predicts revision value, estimates per-dimension improvements. |
+| G34 | Revision loop | v3.54 | ✅ | Re-runs full rewrite pipeline with previous_feedback context. New resume version per round. Old results cleared, new results shown inline. |
+| G35 | `rewrite_sessions` + `rewrite_rounds` tables | v3.54 | ✅ | Tables pre-existed. Sessions track user, template, filter. Rounds track ratings, feedback, QA reports, storage paths. DB persistence wired in rewrite-resume EF. |
 | G36 | Entitlement features | v3.55 | ✅ | `resume_rewrite`, `resume_rewrite_cover`, `resume_rewrite_revision` added to feature_flags. Pro/Enterprise gated. |
 
 ### Phase G Summary
@@ -341,9 +340,9 @@
 | G-S2 | G7–G12 | — | ✅ Gap interview + acceptance UI (v3.50) |
 | G-S3 | G13–G18 | — | ✅ Templates + rewrite team (v3.51) |
 | G-S4 | G19–G22 | — | ✅ QA team agents (v3.52) |
-| G-S5 | G23–G30 | — | ✅ Output integration + LinkedIn (v3.55) |
-| G-S6 | G31–G36 | — | ✅ Feedback + iteration (v3.55) |
-| **Total** | **36 items** | **—** | **✅ Phase G complete** |
+| G-S5 | G23–G30 | — | ✅ Output integration + LinkedIn (v3.52–v3.55) |
+| G-S6 | G31–G36 | — | ✅ Feedback + iteration (v3.54–v3.55) |
+| **Total** | **36 items** | **—** | **✅ Phase G complete (v3.49–v3.55)** |
 
 **12 agents across 3 Edge Functions:**
 
@@ -368,13 +367,13 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
-| 2026-02-22 | G-S5+S6 | G23–G36 | Sprint 5+6: Output integration, LinkedIn extension, feedback & iteration. Auto-save rewrites to library with tier provenance badges. Cover letter archive UI. Chrome Extension for LI profile capture (manifest v3). LinkedIn Alignment Checker in QA pass. 5-dimension star ratings + qualitative feedback. Revision Assessor agent. Full revision loop. rewrite_sessions/rounds tables. Entitlement features (resume_rewrite, resume_rewrite_cover, resume_rewrite_revision). **Phase G complete.** v3.55. |
-| 2026-02-22 | E18-fix | E18 | Improve Filters from Hidden Jobs — frontend wiring. analyze-hidden-job EF existed but had no UI. Added "Improve Filters" button on sort bar (appears after 3+ hidden), batch analysis modal, one-click apply to filter exclusions. v3.53. |
+| 2026-02-22 | G-S5+S6 | G23–G36 | Sprint 5+6: Output integration + feedback + iteration. Auto-save rewrites to library with tier provenance badges (v3.53). Cover letter archive UI (v3.55). Chrome Extension for LI profile capture (v3.55). Feedback UI with 5-dimension star ratings + qualitative text (v3.54). Revision Assessor agent + revision loop (v3.54). Entitlement features (v3.55). G29/G30 (LI checker + UI) shipped with Sprint 4 EF. **Phase G complete: v3.49–v3.55.** |
+| 2026-02-22 | E18-fix | E18 | Improve Filters from Hidden Jobs — frontend wiring. analyze-hidden-job EF existed but had no UI. Added "Improve Filters" button on sort bar (appears after 3+ hidden), batch analysis modal, one-click apply to filter exclusions. v3.53. **Note:** Button was lost from dashboard.html when G-S5+S6 tree commit overwrote file; re-added at v3.55. |
 | 2026-02-22 | G-S4 | G19–G22 | QA team: 3 parallel agents. Accuracy Auditor (Haiku) flags fabrication. Bleed Detector (Haiku) flags cross-job contamination. Voice & Polish Auditor (Sonnet) AI-speak kill list + auto-fixes. Cleaned sections used for docx. QA report in results panel. v3.52. |
 | 2026-02-22 | G-S3 | G13–G18 | Rewrite team: Resume Writer (Sonnet) + Cover Letter Writer (Sonnet, conditional). 3 docx templates (Executive/Modern/Classic). docx-js server-side generation. Supabase Storage `rewrites` bucket. Full rewrite brief from acceptance UI. v3.51. |
 | 2026-02-22 | G-S2 | G7–G12 | Gap Interview + Acceptance UI. Gap Interviewer agent (Haiku) with lateral questioning. Toggleable recommendation cards. Achievement prompt inputs. User highlights/notes/exclusions. Cover letter opt-in. Template picker. v3.50. |
 | 2026-02-22 | G-S1 | G1–G6 | Premium multi-agent resume scoring pipeline. 4 agents (2 Haiku + 2 Sonnet), 3-pass architecture, 5 industry Gold Standards. Deep Analysis button. Dimension bars + coaching renderer. v3.49. |
-| 2026-02-22 | E-S4+++ | E30–E32 | SEO tab full redesign per Pod 1 spec (13 CSS classes, 4-section layout, DOM stat cards, light-theme charts, loading/empty states). Dead job lightbulb icon. InLinks schemas on 6 pages. v3.45–v3.48. |
+| 2026-02-22 | E-S4+++ | E30–E31 | SEO tab full redesign per Pod 1 spec (13 CSS classes, 4-section layout, DOM stat cards, light-theme charts, loading/empty states). Dead job lightbulb icon. v3.46–v3.48. |
 | 2026-02-22 | E-S4++ | E26–E29 | GSC sc-domain fix (URL Inspection working). RLS disabled on SEO tables (charts render). InLinks semantic schemas on 6 pages. Daily seo-sync cron job. v3.44–v3.45. |
 | 2026-02-22 | E-S4+ | E22–E25 | SEO Admin v3.41: seo-sync v3 (9 tools — added Yellow Labs, CrUX, Knowledge Graph, Cloudflare). PSI 4-category. Dashboard redesign (6 charts + side panel). Credential consolidation. |
 | 2026-02-22 | F-S4 | F14, F15 | Supabase CLI installed in automation. 10 stale Edge Functions deployed. pg_cron job added for materialized view refresh (every 10 min). |
