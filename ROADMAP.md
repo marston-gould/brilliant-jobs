@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-21
+**Last updated:** 2026-02-22
 **Target launch:** March 2026
-**Current version:** v3.29
+**Current version:** v3.40
 
 ---
 
@@ -107,16 +107,16 @@
 | D1 | Stats Page Redesign | 2d | 1h | ✅ | Theme tokens extracted (_T object), 15+ hardcoded colors/fonts → STATS_THEME. Loading state via CSS class. Inline styles removed from HTML. |
 | D2 | ATS Board Health (Admin Panel) | 2d | 1h | ✅ | Migration 004: last_http_status + last_refresh_at on ats_companies. Admin RPCs (get_board_health, get_board_health_by_platform). Admin page with 5 stat cards, delta badges, period toggle, platform table. |
 | D3 | Landing Page Phase 1 | 4d | 1h | ⏳ | Interactive preview (replaces static demo), hero ghost CTA, walkthrough carousel (6 slides), 8 PostHog events. **Blocked:** 5 screenshot assets. |
-| D4 | Cohort Phase B — Session Analytics | 2d | 30min | ✅ | Migration 005: user_sessions table + RLS. create_session/session_heartbeat RPCs. PostHog bridge (bj_session_id, bj_cohort_id, bj_plan_id super properties). sessionStorage-scoped, 5-min heartbeat. |
+| D4 | Cohort Phase B — Session Analytics | 2d | 30min | ✅ | Migration 005: user_sessions table + RLS. create_session/session_heartbeat RPCs. PostHog bridge (bj_session_id, bj_cohort_id, bj_plan_id super properties). sessionStorage-scoped, 5-min heartbeat. Client-side wiring complete in v3.40. |
 | D5 | Edge Function: refresh-jobs v12 | 0.5d | 10min | ✅ | Records last_http_status + last_refresh_at on every board fetch. Timeout → status 0. Deployed. |
 | D6 | Edge Function: preview-jobs | 0.5d | 5min | ✅ | New function for landing page preview. Deployed via Supabase CLI. |
 | D7 | Walkthrough screenshots (5x) | 0.5d | — | 🔲 | CPO: feed.webp, match.webp, stats.webp, pipeline.webp, notifications.webp → /img/walkthrough/ |
 | D8 | Admin panel fixes | 0.5d | 30min | ✅ | RPC auth fix (service_role + auth.uid), query optimization (304K rows → indexed single-pass), platform RPC fixed. 3 indexes added (status, first_seen, closed_at). Admin panel now shows live data. |
 | D9 | Version unification | 0.25d | 10min | ✅ | Single BJ_VERSION constant in app.js drives console + nav. No more hardcoded version in HTML. v2.91. |
 | D10 | Data pages: CTAs + Data Lab link + level fix | 0.5d | 20min | ✅ | Signup CTA on all 6 data pages + hub. Eyebrow "Data Lab" now links to /data-lab. Salary level order fixed: Manager before Lead. |
-| D11 | Data pages: live data + security | 4d | 1h | ⏳ | market-dynamics security fix done (SECURITY DEFINER RPC). Live weekly job counts RPC done. Remaining: 12 more RPCs, wire 5 pages to live data. Blocked: career_level column missing, industry column empty (0 rows). |
+| D11 | Data pages: live data + security | 4d | 2h | ✅ | All 5 data pages converted to live Supabase RPC calls with localStorage caching (24h TTL). Methodology footers on all pages. 15 RPCs already existed; wired hiring-trends, career-level-data, salary-data, jobs-by-industry, market-dynamics. v3.39. |
 
-**Phase D status:** 9/11 complete. D3 blocked on screenshots (CPO). D7 blocked on screenshots (CPO). D11 partially done (security + 1 RPC live).
+**Phase D status:** 10/11 complete. D3 blocked on screenshots (CPO). D7 blocked on screenshots (CPO).
 
 ---
 
@@ -193,10 +193,63 @@
 
 ---
 
+## Phase F: Feb 22 Sprint (v3.30 → v3.40)
+
+### Sprint 1: Admin Panel Fix + Cohort Phase A Database (v3.30–v3.38)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| F1 | Admin panel display fix | v3.30–v3.38 | ✅ | Unclosed div nesting in page-stats caused page-settings/subscription/admin to not render. Multi-version debug cycle with deferred logging. |
+| F2 | Cohort Phase A — Database layer | v3.38 | ✅ | cohorts table + launch_2026 seed. cohort_plan_entitlements (30 rows: 10 features × 3 plans). profiles: cohort_id + cohort_assigned_at columns. Auto-assignment trigger (trg_assign_cohort). Both users backfilled. |
+| F3 | check_entitlement() v2 RPC | v3.38 | ✅ | Cohort-aware entitlement engine. Resolution: user override → trial → cohort-specific → plan default → feature default. Returns plan, cohort, behavior, source, allowed, limits, remaining. |
+| F4 | Entitlement catalog adjustments | v3.38 | ✅ | Free resumes: 1→2. Free data_export: 1→0. Pro resume_grading: 50→-1 (unlimited). behavior_category defaults set (fixed/off per feature). |
+
+### Sprint 2: Data Pages Live RPC + Caching (v3.39)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| F5 | Data pages: live Supabase RPCs | v3.39 | ✅ | All 5 data pages (hiring-trends, career-level-data, salary-data, jobs-by-industry, market-dynamics) converted from hardcoded arrays to live RPC calls. 15 existing RPCs wired. |
+| F6 | Data page caching | v3.39 | ✅ | localStorage caching with 24h TTL on all data pages. Cache key per RPC function name. |
+| F7 | Methodology footers | v3.39 | ✅ | All 5 data pages now include methodology section explaining data sources, classification methods, and refresh frequency. |
+
+### Sprint 3: Cohort Experience — Client Wiring (v3.40)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| F8 | checkEntitlement() client helper | v3.40 | ✅ | Client-side wrapper in globals.js with 5-min cache. Calls check_entitlement() RPC. Graceful fallback (fail-open) on errors. |
+| F9 | Feature gates — filters | v3.40 | ✅ | Entitlement check on filter save (new filters only) and filter duplicate. clearEntitlementCache() after mutations. |
+| F10 | Feature gates — resumes | v3.40 | ✅ | Entitlement check on resume upload (active count) and create-by-level scaffolding. |
+| F11 | Upgrade toast UI | v3.40 | ✅ | showUpgradePrompt() with smooth slide-up toast. Distinguishes 'off' (Pro feature) vs 'fixed' (limit reached) messaging. |
+| F12 | PostHog plan_id fix | v3.40 | ✅ | Changed from hardcoded 'free' to window._bjUserPlan (read from profiles.plan at auth). |
+| F13 | behavior_category defaults | v3.40 | ✅ | Updated entitlement_features: filters/resumes → fixed, 8 others → off. Matches feature brief catalog. |
+
+**Phase F total: 13 items across 3 sprints, all complete. Version range: v3.30 → v3.40.**
+
+### Cohort Experience System — Final Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| cohorts table + seed | ✅ | launch_2026 cohort active |
+| cohort_plan_entitlements (30 rows) | ✅ | 10 features × 3 plans |
+| check_entitlement() v2 RPC | ✅ | Cohort-aware, 5-priority resolution |
+| Auto-assignment trigger | ✅ | trg_assign_cohort on profiles |
+| RLS on cohorts + CPE + user_sessions | ✅ | Read policies + insert/update guards |
+| Client checkEntitlement() helper | ✅ | 5-min cache, fail-open |
+| Feature gates (filters, resumes) | ✅ | Save, duplicate, upload, scaffold |
+| Upgrade toast UI | ✅ | Slide-up notification |
+| Session init + heartbeat | ✅ | create_session() + 5-min heartbeat |
+| PostHog super properties | ✅ | bj_session_id, bj_cohort_id, bj_plan_id |
+| behavior_category defaults | ✅ | All 10 features categorized |
+
+---
+
 ## Changelog
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-22 | F-S3 | F8–F13 | Cohort client wiring: checkEntitlement() helper, feature gates on filters/resumes, upgrade toast UI, PostHog plan_id fix, behavior_category defaults. v3.40. |
+| 2026-02-22 | F-S2 | F5–F7 | Data pages live: 5 pages converted to Supabase RPCs with localStorage caching + methodology footers. v3.39. |
+| 2026-02-22 | F-S1 | F1–F4 | Admin panel fix, Cohort Phase A database (cohorts, CPE, check_entitlement v2, auto-assign trigger, catalog adjustments). v3.30–v3.38. |
 | 2026-02-21 | E-S4 | E20, E21 | SEO admin dashboard (6 tables, 7 RPCs, 4 sub-tabs, seo-sync EF). Page drilldown with PSI trends, CWV, index status. v3.28–v3.29. |
 | 2026-02-21 | E-S3 | E17, E18, E19 | Dead job auto-removal. AI filter from hidden jobs (Improve button). AI filter from resume (generate-filter EF). v3.26–v3.27. |
 | 2026-02-21 | E-S2 | E10–E16 | Real DB data for charts. Flipped map fix. Stats reorder + 2×2 grid. Count mismatch fix. Geo chart list view. v3.20–v3.25. |
