@@ -1569,92 +1569,94 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
   var container = document.getElementById('acceptance-ui-' + stateKey);
   if (!container) return;
 
-  // Build results HTML
+  // G23: Auto-add rewritten resume to library
+  var filterNames = Object.keys(scores[ri]?.filters || {});
+  var fname = filterNames[fi] || 'General';
+  var originalResume = resumes[ri];
+  if (originalResume && data.resume_sections) {
+    var roundNum = data.round_number || 1;
+    var newName = (originalResume.name || 'Resume') + ' \u2014 ' + fname + ' v' + roundNum;
+    var extractedText = '';
+    (data.resume_sections || []).forEach(function(sec) {
+      (sec.items || []).forEach(function(item) {
+        if (item.content) {
+          if (item.content.text) extractedText += item.content.text + ' ';
+          if (item.content.bullets) extractedText += item.content.bullets.join(' ') + ' ';
+          if (item.content.skills) extractedText += item.content.skills.join(' ') + ' ';
+        }
+      });
+    });
+    resumes.push({
+      name: newName, source: 'rewrite', rewrite_session_id: data.session_id,
+      rewrite_round: roundNum, filterIds: [fname], levelLabel: originalResume.levelLabel || '',
+      extractedText: extractedText.trim(), textStatus: 'ready', tier: 'premium',
+      tier_history: [
+        { action: 'analyzed', tier: 'premium', timestamp: new Date().toISOString() },
+        { action: 'rewritten', tier: 'premium', round: roundNum, timestamp: new Date().toISOString() }
+      ],
+      storagePath: data.resume_path, size: 0, lastModified: Date.now(), archived: false
+    });
+    if (typeof saveUserData === 'function') saveUserData();
+    console.log('[BJ] Auto-saved rewritten resume:', newName);
+  }
+
   var html = '<div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.04);border:1px solid rgba(34,197,94,0.15);border-radius:8px;">';
-  html += '<div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px;">\u2705 Rewrite Complete</div>';
-
-  // Download buttons
-  if (data.resume_path) {
-    var resumeUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.resume_path;
-    html += '<a href="' + resumeUrl + '" download="resume.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#4d8eff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;margin-right:8px;">\ud83d\udcc4 Download Resume (.docx)</a>';
-  }
-
-  if (data.cover_letter_path) {
-    var coverUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.cover_letter_path;
-    html += '<a href="' + coverUrl + '" download="cover-letter.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#7c3aed;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;">\ud83d\udcc4 Download Cover Letter (.docx)</a>';
-  }
-
-  // Changes summary
-  html += '<div style="margin-top:10px;font-size:11px;color:var(--text-dim);">';
-  html += '<div><strong>Template:</strong> ' + (data.template_used || 'executive') + '</div>';
-  html += '<div><strong>Changes:</strong> ' + (data.changes_made || []).length + ' recommendations applied</div>';
-  if (data.unchanged_sections && data.unchanged_sections.length > 0) {
-    html += '<div><strong>Unchanged:</strong> ' + data.unchanged_sections.join(', ') + '</div>';
-  }
-  html += '<div><strong>Time:</strong> ' + ((data.timing?.total_ms || 0) / 1000).toFixed(1) + 's (' + (data.agents_used || 1) + ' agents)</div>';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+  html += '<div style="font-size:13px;font-weight:700;color:var(--green);">\u2705 Rewrite Complete</div>';
+  html += '<span style="font-size:9px;padding:2px 6px;border-radius:3px;background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;">\u2728 Premium</span>';
   html += '</div>';
 
-  // Cover letter preview
-  if (data.cover_letter) {
-    html += '<div style="margin-top:10px;padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">';
-    html += '<div style="font-size:11px;font-weight:600;color:var(--text-faint);margin-bottom:4px;">Cover Letter Preview</div>';
-    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + data.cover_letter.salutation + '</div>';
-    (data.cover_letter.paragraphs || []).forEach(function(p) {
-      html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + p + '</div>';
-    });
-    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + data.cover_letter.closing + '</div>';
-    html += '<div style="font-size:9px;color:var(--text-faint);margin-top:4px;">' + (data.cover_letter.word_count || '?') + ' words</div>';
-    html += '</div>';
+  if (data.resume_path) {
+    var resumeUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.resume_path;
+    html += '<a href="' + resumeUrl + '" download="resume.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#4d8eff;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;margin-right:8px;">\ud83d\udcc4 Download Resume</a>';
+  }
+  if (data.cover_letter_path) {
+    var coverUrl = SUPABASE_URL + '/storage/v1/object/public/' + data.cover_letter_path;
+    html += '<a href="' + coverUrl + '" download="cover-letter.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#7c3aed;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;">\ud83d\udcc4 Cover Letter</a>';
   }
 
-  // QA Report
+  html += '<div style="font-size:10px;color:var(--green);margin:6px 0;">\u2713 Resume auto-saved to library and assigned to "' + fname + '"</div>';
+  html += '<div style="margin-top:6px;font-size:11px;color:var(--text-dim);"><strong>Template:</strong> ' + (data.template_used || 'executive') + ' \u00b7 <strong>Changes:</strong> ' + (data.changes_made || []).length + ' \u00b7 <strong>Time:</strong> ' + ((data.timing?.total_ms || 0) / 1000).toFixed(1) + 's (' + (data.agents_used || 1) + ' agents)</div>';
+
   if (data.qa_report) {
     html += '<div style="margin-top:10px;padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:6px;">';
     html += '<div style="font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">\ud83d\udd0d QA Review</div>';
-
-    // Accuracy
     var acc = data.qa_report.accuracy;
     if (acc) {
-      var accIcon = acc.clean ? '\u2713' : '\u26a0';
-      var accColor = acc.clean ? 'var(--green)' : 'var(--warm)';
-      html += '<div style="font-size:11px;color:' + accColor + ';margin-bottom:3px;">' + accIcon + ' Accuracy: ' + (acc.clean ? 'Clean \u2014 no fabricated claims' : acc.flag_count + ' issue(s) found') + '</div>';
-      if (!acc.clean && acc.flags) {
-        acc.flags.forEach(function(f) {
-          var fc = f.severity === 'critical' ? 'var(--red)' : 'var(--warm)';
-          html += '<div style="font-size:10px;color:' + fc + ';padding-left:14px;margin-bottom:2px;">\u2022 ' + f.issue + '</div>';
-        });
-      }
+      html += '<div style="font-size:11px;color:' + (acc.clean ? 'var(--green)' : 'var(--warm)') + ';">' + (acc.clean ? '\u2713' : '\u26a0') + ' Accuracy: ' + (acc.clean ? 'Clean' : acc.flag_count + ' issue(s)') + '</div>';
+      if (!acc.clean && acc.flags) acc.flags.forEach(function(f) { html += '<div style="font-size:10px;color:' + (f.severity==='critical'?'var(--red)':'var(--warm)') + ';padding-left:14px;">\u2022 ' + f.issue + '</div>'; });
     }
-
-    // Bleed
     var bl = data.qa_report.bleed;
-    if (bl) {
-      var blIcon = bl.clean ? '\u2713' : '\u26a0';
-      var blColor = bl.clean ? 'var(--green)' : 'var(--warm)';
-      html += '<div style="font-size:11px;color:' + blColor + ';margin-bottom:3px;">' + blIcon + ' Consistency: ' + (bl.clean ? 'Clean \u2014 no cross-job bleed' : bl.flag_count + ' issue(s) found') + '</div>';
-      if (!bl.clean && bl.flags) {
-        bl.flags.forEach(function(f) {
-          html += '<div style="font-size:10px;color:var(--warm);padding-left:14px;margin-bottom:2px;">\u2022 ' + f.issue + '</div>';
-        });
-      }
-    }
-
-    // Voice
+    if (bl) html += '<div style="font-size:11px;color:' + (bl.clean?'var(--green)':'var(--warm)') + ';">' + (bl.clean?'\u2713':'\u26a0') + ' Consistency: ' + (bl.clean?'Clean':bl.flag_count+' issue(s)') + '</div>';
     var vo = data.qa_report.voice;
-    if (vo) {
-      html += '<div style="font-size:11px;color:var(--green);margin-bottom:3px;">\u2713 Polish: ' + (vo.auto_fixes_applied || 0) + ' AI phrases fixed, ' + ((vo.flags || []).filter(function(f) { return f.category === 'punctuation'; }).length) + ' punctuation fixes</div>';
+    if (vo) html += '<div style="font-size:11px;color:var(--green);">\u2713 Polish: ' + (vo.auto_fixes_applied||0) + ' AI-speak fixes</div>';
+    var li = data.qa_report.linkedin || data.linkedin_alignment;
+    if (li) {
+      html += '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">';
+      html += '<div style="font-size:11px;color:' + (li.aligned?'var(--green)':'var(--warm)') + ';">' + (li.aligned?'\u2713':'\u26a0') + ' LinkedIn: ' + (li.aligned?'Aligned':li.discrepancy_count+' discrepancy(s)') + '</div>';
+      if (!li.aligned && li.discrepancies) li.discrepancies.forEach(function(d) {
+        html += '<div style="font-size:10px;color:' + (d.severity==='critical'?'var(--red)':'var(--warm)') + ';padding-left:14px;">\u2022 ' + d.field + ': "' + (d.resume_value||'') + '" vs "' + (d.linkedin_value||'') + '"</div>';
+      });
+      html += '</div>';
     }
-
     html += '</div>';
   }
 
-  html += '</div>';
+  if (data.cover_letter) {
+    html += '<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;">Cover Letter Preview (' + (data.cover_letter.word_count||'?') + ' words)</summary>';
+    html += '<div style="padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:0 0 6px 6px;">';
+    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (data.cover_letter.salutation||'') + '</div>';
+    (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + p + '</div>'; });
+    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + (data.cover_letter.closing||'') + '</div>';
+    html += '</div></details>';
+  }
 
-  // Replace the generate button area with results
+  html += '</div>';
   if (btn) btn.style.display = 'none';
   var resultsDiv = document.createElement('div');
   resultsDiv.innerHTML = html;
   container.appendChild(resultsDiv);
+  if (typeof renderResumeCards === 'function') setTimeout(function() { renderResumeCards(); }, 500);
 }
 
 // ─── Wire Gap Interview + Acceptance into the readiness panel ───
