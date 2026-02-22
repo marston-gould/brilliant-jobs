@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.50';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — gap interview + acceptance UI');
+const BJ_VERSION = 'v3.51';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — rewrite pipeline + docx generation');
 
 // Auth
 async function init() {
