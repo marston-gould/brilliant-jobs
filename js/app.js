@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.86';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — DR plan, error recovery docs');
+const BJ_VERSION = 'v3.87';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — error recovery: offline detection, retry queue, global error handlers, safeQuery');
 
 // Auth
 async function init() {
@@ -13,6 +13,10 @@ async function init() {
 
 // Pre-warm static ref table caches (v3.84)
 if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
+
+// Error recovery & offline resilience (v3.87)
+if (typeof initOfflineDetection === 'function') initOfflineDetection();
+if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
   let profile = null;
   try {
     const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
