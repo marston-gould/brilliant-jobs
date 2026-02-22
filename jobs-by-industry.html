@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded',async function(){
 
   I('c3').setOption({tooltip:{...TT,formatter:function(p){return p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> jobs'}},series:[{type:'treemap',data:depts.map(function(d,i){return{name:d[0],value:d[1],itemStyle:{color:PAL[i],borderColor:'#12141a',borderWidth:2}}}),label:{fontSize:12,fontFamily:'Outfit',fontWeight:500,color:'#fff'},breadcrumb:NO,roam:false,nodeClick:false,levels:[{itemStyle:{borderRadius:8}}],animationDuration:800}]});
 
-  I('c4').setOption({tooltip:{...TT,formatter:function(p){return p.marker+' '+p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> ('+p.percent+'%)'}},series:[{type:'pie',radius:['48%','72%'],center:['50%','50%'],data:remote.map(function(d){return{name:d.n,value:d.v,itemStyle:{color:d.co}}}),label:{color:'#8a92a9',fontSize:11,fontFamily:'Outfit',formatter:'{b}\n{d}%'},labelLine:{lineStyle:{color:'#2a2d3a'}},emphasis:{itemStyle:{shadowBlur:20,shadowColor:'rgba(0,0,0,0.4)'}}}]});
+  I('c4').setOption({tooltip:{...TT,formatter:function(p){return p.marker+' '+p.name+'<br/><b>'+Number(p.value).toLocaleString()+'</b> ('+p.percent+'%)'}},series:[{type:'pie',radius:['48%','72%'],center:['50%','50%'],data:remote.filter(function(d){return d.n!=='Unspecified'}).map(function(d){return{name:d.n,value:d.v,itemStyle:{color:d.co}}}),label:{color:'#8a92a9',fontSize:11,fontFamily:'Outfit',formatter:'{b}\n{d}%'},labelLine:{lineStyle:{color:'#2a2d3a'}},emphasis:{itemStyle:{shadowBlur:20,shadowColor:'rgba(0,0,0,0.4)'}}}]});
 
   window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
 });
