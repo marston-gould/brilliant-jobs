@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.02 - 2026-02-23 — Roadmap blocked-reason tags -->
+<!-- Brilliant Jobs Dashboard v3.99 - 2026-02-23 — Roadmap blocked-reason tags -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2020,11 +2020,12 @@
         <div class="page-body">
           <div id="admin-tabs" style="display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap">
             <button class="admin-tab active" data-tab="feed-health">Feed Health</button>
-            <button class="admin-tab" data-tab="cohorts">Cohorts</button>
-            <button class="admin-tab" data-tab="users">Users</button>
             <button class="admin-tab" data-tab="seo">SEO</button>
-            <button class="admin-tab" data-tab="revenue">Revenue</button>
+            <button class="admin-tab" data-tab="cohorts">Cohorts</button>
+            <button class="admin-tab" data-tab="entitlements">Entitlements</button>
+            <button class="admin-tab" data-tab="users">Users</button>
             <button class="admin-tab" data-tab="surveys">Surveys</button>
+            <button class="admin-tab" data-tab="revenue">Revenue</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -2076,27 +2077,38 @@
               <div class="stat-card"><div class="stat-val" id="ac-total-users">&mdash;</div><div class="stat-label">Total Users</div></div>
               <div class="stat-card"><div class="stat-val" id="ac-pro-pct">&mdash;</div><div class="stat-label">Pro Conversion</div></div>
               <div class="stat-card"><div class="stat-val" id="ac-active-7d">&mdash;</div><div class="stat-label">Active 7d</div></div>
-              <div class="stat-card"><div class="stat-val" id="ac-retention">&mdash;</div><div class="stat-label">Retention 30d</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-churned">&mdash;</div><div class="stat-label">Churned 28d</div></div>
+            </div>
+            <!-- Charts First (more scalable) -->
+            <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+              <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:280px"></div>
+              <div id="admin-cohort-revenue-chart" style="flex:1;min-width:280px;height:280px"></div>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+              <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
             </div>
             <!-- Cohort Table -->
             <table class="admin-table" style="width:100%">
-              <thead><tr><th>Cohort</th><th>Users</th><th>Free</th><th>Pro</th><th>Active 7d</th><th>Active 30d</th><th>Entitlements</th><th>Status</th></tr></thead>
+              <thead><tr>
+                <th>ID</th><th>Cohort</th><th>Age</th><th>Enrollment</th>
+                <th>Users</th><th>Active 7d</th><th>Churned</th>
+                <th>Plans</th><th>Revenue/mo</th><th>LTV</th><th>ARPU</th>
+              </tr></thead>
               <tbody id="admin-cohort-body"></tbody>
             </table>
-            <!-- Charts Row -->
-            <div style="display:flex;gap:16px;margin-top:20px;flex-wrap:wrap">
-              <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
-              <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
-              <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:250px"></div>
+          </div>
+
+          <!-- Entitlements Tab (split from Cohorts) -->
+          <div class="admin-panel" id="admin-panel-entitlements">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <label style="font-size:13px;color:var(--text-dim)">Cohort:</label>
+              <select id="entitlement-cohort-select" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px"></select>
             </div>
-            <!-- Entitlement Detail (expanded) -->
-            <div id="admin-cohort-detail" style="display:none;margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:8px">
-              <h3 id="admin-cohort-detail-title"></h3>
-              <table class="admin-table" style="width:100%;margin-top:12px">
-                <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
-                <tbody id="admin-entitlement-body"></tbody>
-              </table>
-            </div>
+            <table class="admin-table" style="width:100%">
+              <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
+              <tbody id="admin-entitlement-body"></tbody>
+            </table>
           </div>
 
           <div class="admin-panel" id="admin-panel-users">
