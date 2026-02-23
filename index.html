@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v3.95 - 2026-02-23 -->
+<!-- Brilliant Jobs Landing Page v3.96 - 2026-02-23 — P13-11 social proof bar -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -171,6 +171,25 @@
     .stat-label {
       font-size: 13px; color: #7884a8; margin-top: 6px;
       text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    }
+
+    /* ======================== SOCIAL PROOF BAR (P13-11) ======================== */
+    .social-proof-bar { padding: 32px 32px 0; text-align: center; }
+    .social-proof-bar.hidden { display: none; }
+    .social-proof-inner {
+      display: inline-flex; align-items: center; gap: 24px;
+      background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);
+      border-radius: 12px; padding: 14px 28px; flex-wrap: wrap; justify-content: center;
+    }
+    .sp-stars { color: #f59e0b; font-size: 18px; letter-spacing: 2px; }
+    .sp-rating { font-size: 22px; font-weight: 700; color: var(--heading); font-family: var(--mono); }
+    .sp-divider { width: 1px; height: 28px; background: rgba(59,130,246,0.2); }
+    .sp-text { font-size: 14px; color: #7884a8; }
+    .sp-text strong { color: var(--heading); font-weight: 600; }
+    .sp-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #22c55e; font-weight: 600;
     }
 
     /* ======================== SECTIONS ======================== */
@@ -851,6 +870,20 @@
       <div class="stat-item">
         <div class="stat-num">Daily</div>
         <div class="stat-label">Refresh Cycle</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SOCIAL PROOF (P13-11) ==================== -->
+  <div class="social-proof-bar hidden fade-up" id="social-proof-bar">
+    <div class="social-proof-inner">
+      <div class="sp-stars" id="sp-stars">★★★★★</div>
+      <div class="sp-rating" id="sp-rating">—</div>
+      <div class="sp-divider"></div>
+      <div class="sp-text"><strong id="sp-count">—</strong> job seekers rated their experience</div>
+      <div class="sp-divider"></div>
+      <div class="sp-badge" id="sp-nps-badge">
+        <span>↑</span> <span id="sp-nps-pct">—</span> would recommend
       </div>
     </div>
   </div>
@@ -1719,6 +1752,44 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.stat-num').forEach(el => {
           el.classList.remove('loading'); el.classList.add('loaded');
         });
+      }
+    })();
+
+    // ============================================================
+    // SOCIAL PROOF — Survey results (P13-11)
+    // ============================================================
+    (async () => {
+      const MIN_RESPONSES = 20;
+      try {
+        await loadSupabase();
+        const { data, error } = await sb.from('survey_social_proof').select('*').single();
+        if (error || !data || data.total_respondents < MIN_RESPONSES) return;
+
+        const bar = document.getElementById('social-proof-bar');
+        if (!bar) return;
+
+        const rating = parseFloat(data.avg_rating);
+        if (rating > 0) {
+          const full = Math.floor(rating);
+          const half = rating - full >= 0.3;
+          let stars = '\u2605'.repeat(full) + (half ? '\u2605' : '') + '\u2606'.repeat(5 - full - (half ? 1 : 0));
+          document.getElementById('sp-stars').textContent = stars;
+          document.getElementById('sp-rating').textContent = rating.toFixed(1) + ' / 5';
+        }
+
+        document.getElementById('sp-count').textContent = data.total_respondents.toLocaleString();
+
+        const totalNps = (data.promoters || 0) + (data.passives || 0) + (data.detractors || 0);
+        if (totalNps > 0) {
+          const recommendPct = Math.round(((data.promoters + data.passives) / totalNps) * 100);
+          document.getElementById('sp-nps-pct').textContent = recommendPct + '%';
+        } else {
+          document.getElementById('sp-nps-badge').style.display = 'none';
+        }
+
+        bar.classList.remove('hidden');
+      } catch (e) {
+        console.log('[BJ] Social proof skipped:', e.message);
       }
     })();
 

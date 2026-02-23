@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.95';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13-10 survey analytics admin tab');
+const BJ_VERSION = 'v3.96';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13-11 landing page social proof');
 
 // Auth
 async function init() {
