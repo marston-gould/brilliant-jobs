@@ -3,7 +3,9 @@
 > **Status:** In Progress (Gmail OAuth + Pipeline Ghost Engine)
 > **Owner:** Pod 2 (Architecture & Data)
 > **Created:** February 23, 2026
+> **Updated:** February 23, 2026 (v2 — CPO review corrections)
 > **Depends on:** Gmail OAuth integration, Pipeline system, Notification system
+> **Launch-blocking?** No — Phase 1 (time-only scoring) ships independently. Gmail integration (Phases 2–4) is a post-launch enhancement due to Google OAuth verification timeline (4–8 weeks for restricted scope approval).
 
 ---
 
@@ -36,6 +38,7 @@ The combination of both signals creates a high-confidence ghost score that power
 │  3. Classify: response / interview / │
 │     rejection / scheduling / silence │
 │  4. Write to email_signals table     │
+│  Batch: 50 users/invocation (cursor) │
 └──────────────┬───────────────────────┘
                │
                ▼
@@ -64,9 +67,97 @@ The combination of both signals creates a high-confidence ghost score that power
 
 ---
 
-## 3. Gmail OAuth Integration
+## 3. User Pipeline Table
 
-### 3.1 GCP Setup (Manual Steps)
+> **This table is the foundation for ghost detection.** It replaces the current localStorage-based pipeline tracking with a Supabase-native schema. All ghost scoring, email signal matching, and aggregate company stats depend on this table existing.
+
+### 3.1 Schema
+
+```sql
+CREATE TABLE user_pipeline (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  job_id text,                          -- greenhouse_id from ats_jobs
+  ats_source text,                      -- matches ats_jobs.ats_source
+  company_slug text NOT NULL,
+  company_domain text,                  -- for Gmail matching (e.g., "stripe.com")
+  job_title text NOT NULL,
+  job_url text,
+  stage text NOT NULL DEFAULT 'saved'
+    CHECK (stage IN ('saved', 'applied', 'responded', 'interview', 'offer', 'rejected', 'archived')),
+  saved_at timestamptz DEFAULT now(),
+  applied_at timestamptz,
+  responded_at timestamptz,
+  interview_at timestamptz,
+  offer_at timestamptz,
+  rejected_at timestamptz,
+  archived_at timestamptz,
+  auto_advanced boolean DEFAULT false,   -- was stage change triggered automatically?
+  auto_advanced_source text              -- 'gmail', 'listing_closed', 'manual'
+    CHECK (auto_advanced_source IN ('gmail', 'listing_closed', 'manual', NULL)),
+  notes text,
+  filter_id uuid,                        -- which saved filter found this job
+  resume_id uuid,                        -- which resume was submitted
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, job_id, ats_source)
+);
+
+CREATE INDEX idx_pipeline_user_stage ON user_pipeline (user_id, stage);
+CREATE INDEX idx_pipeline_company ON user_pipeline (company_slug);
+CREATE INDEX idx_pipeline_applied ON user_pipeline (applied_at) WHERE stage = 'applied';
+
+ALTER TABLE user_pipeline ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own pipeline"
+  ON user_pipeline FOR ALL USING (auth.uid() = user_id);
+```
+
+### 3.2 localStorage Migration
+
+The existing pipeline data in localStorage needs a one-time migration to Supabase. This runs client-side on first login after the migration deploys:
+
+```javascript
+async function migratePipelineToSupabase() {
+  const localPipeline = JSON.parse(localStorage.getItem('pipeline') || '[]');
+  if (!localPipeline.length) return;
+
+  const { data: existing } = await sb
+    .from('user_pipeline')
+    .select('id')
+    .limit(1);
+
+  // Skip if already migrated
+  if (existing?.length) return;
+
+  const rows = localPipeline.map(entry => ({
+    user_id: currentUser.id,
+    job_id: entry.greenhouse_id || entry.job_id,
+    ats_source: entry.ats_source || 'greenhouse',
+    company_slug: entry.company_slug || entry.company,
+    company_domain: entry.company_domain || null,
+    job_title: entry.title || entry.job_title,
+    job_url: entry.url || null,
+    stage: entry.stage || 'saved',
+    applied_at: entry.applied_at || null,
+    notes: entry.notes || null,
+  }));
+
+  const { error } = await sb.from('user_pipeline').upsert(rows, {
+    onConflict: 'user_id, job_id, ats_source',
+  });
+
+  if (!error) {
+    localStorage.removeItem('pipeline');
+    console.log(`Migrated ${rows.length} pipeline entries to Supabase`);
+  }
+}
+```
+
+---
+
+## 4. Gmail OAuth Integration
+
+### 4.1 GCP Setup (Manual Steps)
 
 The GCP project `brilliant-jobs` (ID: `27086315974`) already exists with the service account for GSC/BigQuery. Gmail OAuth requires a separate **OAuth 2.0 Client ID** (user-facing consent flow):
 
@@ -79,11 +170,13 @@ The GCP project `brilliant-jobs` (ID: `27086315974`) already exists with the ser
    - Test users: add your own email while in Testing mode
 3. **Create OAuth Client ID**:
    - Application type: Web application
-   - Name: "BJ Gmail Integration"
+   - Name: "Brilliant Jobs Gmail Integration"
    - Authorized redirect URI: `https://brilliantjobs.app/api/auth/gmail/callback`
    - Download the client JSON → store Client ID and Client Secret as Supabase secrets
 
-### 3.2 Scopes
+> **⚠️ Google Verification Timeline:** The `gmail.readonly` scope is classified as "restricted" by Google. Production use requires OAuth verification including a potential CASA Tier 2 security assessment. This process typically takes **4–8 weeks**. Submit the verification application as soon as GCP setup is complete (Task 2.2), even if Gmail scanning code isn't ready yet. During verification, the integration works for up to 100 test users added in the OAuth consent screen.
+
+### 4.2 Scopes
 
 | Scope | Purpose | Classification |
 |-------|---------|---------------|
@@ -91,7 +184,7 @@ The GCP project `brilliant-jobs` (ID: `27086315974`) already exists with the ser
 
 We intentionally use the narrowest scope possible. We never need to send, modify, or delete emails.
 
-### 3.3 OAuth Flow
+### 4.3 OAuth Flow
 
 ```
 User clicks "Connect Gmail" on Setup page
@@ -127,7 +220,12 @@ gmail-auth Edge Function:
   5. Redirect user back to Setup page with success indicator
 ```
 
-### 3.4 Token Management
+> **Note on redirect URI routing:** The callback URL `brilliantjobs.app/api/auth/gmail/callback` must route to the Supabase Edge Function. Add a Vercel rewrite rule in `vercel.json`:
+> ```json
+> { "source": "/api/auth/gmail/callback", "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-auth" }
+> ```
+
+### 4.4 Token Management
 
 ```sql
 CREATE TABLE gmail_connections (
@@ -193,17 +291,95 @@ async function getAccessToken(connection: GmailConnection): Promise<string> {
 }
 ```
 
----
+### 4.5 Gmail Disconnect Flow
 
-## 4. Email Signal Scanning
-
-### 4.1 gmail-scan Edge Function
-
-**Schedule:** pg_cron every 6 hours
-**Batch:** Process all users with active `gmail_connections`
-**Rate limits:** Gmail API allows 250 quota units/second per user. `messages.list` = 5 units, `messages.get` = 5 units.
+Users can disconnect Gmail at any time from the Setup page. This deletes all stored tokens and email signals, and revokes the OAuth token on Google's side:
 
 ```typescript
+// gmail-disconnect Edge Function
+async function disconnectGmail(userId: string) {
+  // 1. Get the connection to retrieve refresh token
+  const { data: connection } = await sb
+    .from('gmail_connections')
+    .select('refresh_token_enc')
+    .eq('user_id', userId)
+    .single();
+
+  if (!connection) return { success: false, error: 'No Gmail connection found' };
+
+  // 2. Revoke token on Google's side
+  try {
+    const refreshToken = decrypt(connection.refresh_token_enc);
+    await fetch(`https://oauth2.googleapis.com/revoke?token=${refreshToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+  } catch (e) {
+    // Token may already be invalid — continue cleanup anyway
+    console.warn('Google revoke failed (token may be expired):', e);
+  }
+
+  // 3. Delete email signals (cascade won't handle this — different FK)
+  await sb.from('email_signals').delete().eq('user_id', userId);
+
+  // 4. Delete ghost alerts sent
+  await sb.from('ghost_alerts_sent').delete().eq('user_id', userId);
+
+  // 5. Delete the connection itself
+  await sb.from('gmail_connections').delete().eq('user_id', userId);
+
+  return { success: true };
+}
+```
+
+**Setup page UI:** The "Connect Gmail" button becomes a "Disconnect Gmail" button when a connection exists, with a confirmation modal explaining that email signals and ghost confidence data will be reset.
+
+---
+
+## 5. Email Signal Scanning
+
+### 5.1 gmail-scan Edge Function
+
+**Schedule:** pg_cron every 6 hours
+**Batch:** Process up to 50 users per invocation using cursor-based pagination. If more users exist, the function stores a cursor in a `scan_state` table and picks up on the next invocation.
+**Rate limits:** Gmail API allows 250 quota units/second per user. `messages.list` = 5 units, `messages.get` = 5 units.
+**Timeout:** Supabase Edge Functions have a 150s timeout. At ~2 API calls per pipeline entry and ~10 entries per user, each user takes ~2-3s. 50 users ≈ 100-150s, staying within limits.
+
+```typescript
+const BATCH_SIZE = 50;
+
+async function processGmailScanBatch() {
+  // Get next batch of users to scan
+  const { data: connections } = await sb
+    .from('gmail_connections')
+    .select('*')
+    .eq('sync_status', 'active')
+    .order('last_sync_at', { ascending: true, nullsFirst: true })
+    .limit(BATCH_SIZE);
+
+  if (!connections?.length) return;
+
+  for (const connection of connections) {
+    try {
+      const accessToken = await getAccessToken(connection);
+      await scanUserGmail(connection.user_id, accessToken);
+
+      // Update last_sync_at
+      await sb.from('gmail_connections')
+        .update({ last_sync_at: new Date().toISOString() })
+        .eq('id', connection.id);
+    } catch (err) {
+      // Mark connection as errored but don't stop batch
+      await sb.from('gmail_connections')
+        .update({
+          sync_status: 'error',
+          error_message: err.message?.substring(0, 500),
+        })
+        .eq('id', connection.id);
+    }
+  }
+}
+
 // Core scanning logic per user
 async function scanUserGmail(userId: string, accessToken: string) {
   // Get all companies in user's pipeline at 'applied' stage or later
@@ -258,7 +434,7 @@ async function scanUserGmail(userId: string, accessToken: string) {
 }
 ```
 
-### 4.2 Email Classification
+### 5.2 Email Classification
 
 ```typescript
 type EmailClassification =
@@ -307,13 +483,15 @@ function classifyEmail(msg: GmailMessage): EmailClassification {
 }
 ```
 
-### 4.3 Email Signals Table
+> **Future enhancement (Phase 5+):** The keyword-based classifier works for English-language emails with common HR phrasing but will miss internationalized emails, ambiguous wording, and non-standard HR platform templates. Evaluate using Claude API classification for uncertain cases — keyword classify first, then send ambiguous snippets to Claude for a second opinion. This leverages the existing Anthropic API integration and would improve accuracy toward the 85% target. Cost: ~$0.001/classification at Haiku tier.
+
+### 5.3 Email Signals Table
 
 ```sql
 CREATE TABLE email_signals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
-  pipeline_entry_id uuid NOT NULL,
+  pipeline_entry_id uuid REFERENCES user_pipeline(id) ON DELETE CASCADE NOT NULL,
   company_domain text NOT NULL,
   last_email_at timestamptz,
   email_count int DEFAULT 0,
@@ -336,9 +514,9 @@ CREATE POLICY "Users see own signals"
 
 ---
 
-## 5. Ghost Engine (Scoring)
+## 6. Ghost Engine (Scoring)
 
-### 5.1 Ghost Score Formula
+### 6.1 Ghost Score Formula
 
 The ghost score is 0–100, where 100 = definitely ghosted. It combines four weighted factors:
 
@@ -429,7 +607,7 @@ END;
 $$;
 ```
 
-### 5.2 Ghost Status Enum
+### 6.2 Ghost Status Enum
 
 | Status | Score Range | Description | UI |
 |--------|-----------|-------------|-----|
@@ -438,7 +616,9 @@ $$;
 | `likely_ghosted` | 50–79 | Past average response time, no signal | Red dot, pulsing |
 | `ghosted` | 80–100 | High confidence ghost — listing closed, email silence, past 2× avg | Red dot, solid, alert triggered |
 
-### 5.3 User Pipeline Ghost View
+### 6.3 User Pipeline Ghost View
+
+> **Fixed from v1:** The original RPC called `compute_ghost_score()` three times per row and had invalid `...` placeholders. This version computes once via a CTE lateral join.
 
 ```sql
 CREATE OR REPLACE FUNCTION get_pipeline_ghost_status(p_user_id uuid)
@@ -458,74 +638,76 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   RETURN QUERY
+  WITH pipeline_data AS (
+    SELECT
+      p.id AS p_id,
+      p.company_slug AS p_company_slug,
+      COALESCE(c.company_name, p.company_slug) AS p_company_name,
+      p.job_title AS p_job_title,
+      p.applied_at AS p_applied_at,
+      EXTRACT(DAY FROM now() - p.applied_at)::int AS p_days,
+      COALESCE(es.classification, 'unknown') AS p_email_class,
+      COALESCE(j.status, 'unknown') AS p_listing_status,
+      COALESCE(cg.avg_response_days, 7) AS p_avg_days,
+      cg.ghost_rate AS p_ghost_rate
+    FROM user_pipeline p
+    LEFT JOIN email_signals es ON es.pipeline_entry_id = p.id AND es.user_id = p.user_id
+    LEFT JOIN ats_jobs j ON j.greenhouse_id = p.job_id AND j.ats_source = p.ats_source
+    LEFT JOIN ats_companies c ON c.slug = p.company_slug AND c.source = p.ats_source
+    LEFT JOIN company_ghost_stats cg ON cg.company_slug = p.company_slug
+    WHERE p.user_id = p_user_id
+      AND p.stage = 'applied'
+  ),
+  scored AS (
+    SELECT
+      pd.*,
+      compute_ghost_score(
+        pd.p_days,
+        pd.p_avg_days,
+        pd.p_email_class,
+        pd.p_listing_status,
+        pd.p_ghost_rate
+      ) AS ghost_result
+    FROM pipeline_data pd
+  )
   SELECT
-    p.id,
-    p.company_slug,
-    COALESCE(c.company_name, p.company_slug),
-    p.job_title,
-    p.applied_at,
-    EXTRACT(DAY FROM now() - p.applied_at)::int,
-    COALESCE(es.classification, 'unknown'),
-    COALESCE(j.status, 'unknown'),
-    (compute_ghost_score(
-      EXTRACT(DAY FROM now() - p.applied_at)::int,
-      COALESCE(cg.avg_response_days, 7),
-      es.classification,
-      j.status,
-      cg.ghost_rate
-    )->>'score')::int,
-    compute_ghost_score(
-      EXTRACT(DAY FROM now() - p.applied_at)::int,
-      COALESCE(cg.avg_response_days, 7),
-      es.classification,
-      j.status,
-      cg.ghost_rate
-    )->>'status',
-    compute_ghost_score(
-      EXTRACT(DAY FROM now() - p.applied_at)::int,
-      COALESCE(cg.avg_response_days, 7),
-      es.classification,
-      j.status,
-      cg.ghost_rate
-    )->>'confidence',
-    CASE
-      WHEN (compute_ghost_score(...))->>'status' = 'ghosted'
-        THEN 'Move on. Follow up one last time or archive.'
-      WHEN (compute_ghost_score(...))->>'status' = 'likely_ghosted'
-        THEN 'Send a polite follow-up email.'
-      WHEN (compute_ghost_score(...))->>'status' = 'waiting'
-        THEN 'Still within normal response window.'
+    s.p_id,
+    s.p_company_slug,
+    s.p_company_name,
+    s.p_job_title,
+    s.p_applied_at,
+    s.p_days,
+    s.p_email_class,
+    s.p_listing_status,
+    (s.ghost_result->>'score')::int,
+    s.ghost_result->>'status',
+    s.ghost_result->>'confidence',
+    CASE (s.ghost_result->>'status')
+      WHEN 'ghosted' THEN 'Move on. Follow up one last time or archive.'
+      WHEN 'likely_ghosted' THEN 'Send a polite follow-up email.'
+      WHEN 'waiting' THEN 'Still within normal response window.'
       ELSE 'No action needed.'
     END
-  FROM user_pipeline p
-  LEFT JOIN email_signals es ON es.pipeline_entry_id = p.id AND es.user_id = p.user_id
-  LEFT JOIN ats_jobs j ON j.greenhouse_id = p.job_id AND j.ats_source = p.ats_source
-  LEFT JOIN ats_companies c ON c.slug = p.company_slug AND c.source = p.ats_source
-  LEFT JOIN company_ghost_stats cg ON cg.company_slug = p.company_slug
-  WHERE p.user_id = p_user_id
-    AND p.stage = 'applied'
-  ORDER BY applied_at ASC;
+  FROM scored s
+  ORDER BY s.p_applied_at ASC;
 END;
 $$;
 ```
 
 ---
 
-## 6. Company Ghost Aggregate Stats
+## 7. Company Ghost Aggregate Stats
 
-Track ghost rates per company across all BJ users to power the employer accountability features:
+Track ghost rates per company across all BJ users to power the employer accountability features.
+
+> **Fixed from v1:** Removed `ghost_rate` from the generated column definition. A `GENERATED ALWAYS AS` stored column cannot be included in INSERT/upsert statements. Instead, `ghost_rate` is now a regular column computed during the upsert.
 
 ```sql
 CREATE TABLE company_ghost_stats (
   company_slug text PRIMARY KEY,
   total_applications int DEFAULT 0,
   total_ghosted int DEFAULT 0,
-  ghost_rate numeric GENERATED ALWAYS AS (
-    CASE WHEN total_applications > 0
-      THEN total_ghosted::numeric / total_applications
-      ELSE 0
-    END
-  ) STORED,
+  ghost_rate numeric DEFAULT 0,          -- computed during upsert, not a generated column
   avg_response_days int DEFAULT 7,
   last_computed_at timestamptz DEFAULT now()
 );
@@ -534,15 +716,23 @@ CREATE TABLE company_ghost_stats (
 CREATE OR REPLACE FUNCTION recompute_company_ghost_stats()
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-  INSERT INTO company_ghost_stats (company_slug, total_applications, total_ghosted, avg_response_days, last_computed_at)
+  INSERT INTO company_ghost_stats (company_slug, total_applications, total_ghosted, ghost_rate, avg_response_days, last_computed_at)
   SELECT
     p.company_slug,
-    count(*),
+    count(*) AS total_apps,
     count(*) FILTER (WHERE
       EXTRACT(DAY FROM now() - p.applied_at) > 21
       AND p.stage = 'applied'
       AND COALESCE(es.classification, 'silence') IN ('silence', 'auto_reply')
-    ),
+    ) AS total_ghost,
+    CASE WHEN count(*) > 0
+      THEN count(*) FILTER (WHERE
+        EXTRACT(DAY FROM now() - p.applied_at) > 21
+        AND p.stage = 'applied'
+        AND COALESCE(es.classification, 'silence') IN ('silence', 'auto_reply')
+      )::numeric / count(*)
+      ELSE 0
+    END AS computed_ghost_rate,
     COALESCE(
       AVG(EXTRACT(DAY FROM p.responded_at - p.applied_at))
         FILTER (WHERE p.responded_at IS NOT NULL),
@@ -556,6 +746,7 @@ BEGIN
   ON CONFLICT (company_slug) DO UPDATE SET
     total_applications = EXCLUDED.total_applications,
     total_ghosted = EXCLUDED.total_ghosted,
+    ghost_rate = EXCLUDED.ghost_rate,
     avg_response_days = EXCLUDED.avg_response_days,
     last_computed_at = now();
 END;
@@ -564,12 +755,12 @@ $$;
 
 ---
 
-## 7. Pipeline Auto-Update from Email
+## 8. Pipeline Auto-Update from Email
 
 When gmail-scan detects a meaningful email signal, it can auto-advance the pipeline:
 
 | Email Classification | Pipeline Action |
-|---------------------|-----------------|
+|---------------------|-----------------| 
 | `interview` | Move to `interview` stage, set `responded_at` if not set |
 | `scheduling` | Move to `interview` stage, set `responded_at` if not set |
 | `rejection` | Move to `rejected` stage |
@@ -607,14 +798,22 @@ async function autoAdvancePipeline(
   const newIdx = stageOrder.indexOf(newStage);
 
   if (newIdx > currentIdx) {
+    const updatePayload: Record<string, any> = {
+      stage: newStage,
+      [`${newStage}_at`]: new Date().toISOString(),
+      auto_advanced: true,
+      auto_advanced_source: 'gmail',
+      updated_at: new Date().toISOString(),
+    };
+
+    // Also set responded_at if advancing to interview from applied
+    if (newStage === 'interview' && currentIdx <= 1) {
+      updatePayload.responded_at = new Date().toISOString();
+    }
+
     await sb
       .from('user_pipeline')
-      .update({
-        stage: newStage,
-        [`${newStage}_at`]: new Date().toISOString(),
-        auto_advanced: true,
-        auto_advanced_source: 'gmail',
-      })
+      .update(updatePayload)
       .eq('id', entryId);
 
     // Send notification about the stage change
@@ -629,11 +828,11 @@ async function autoAdvancePipeline(
 
 ---
 
-## 8. Ghost Monitor Dashboard Page
+## 9. Ghost Monitor Dashboard Page
 
 The existing Ghost Monitor nav page becomes the primary UI for ghost data:
 
-### 8.1 KPI Cards (top row)
+### 9.1 KPI Cards (top row)
 
 | Metric | Source |
 |--------|--------|
@@ -643,7 +842,7 @@ The existing Ghost Monitor nav page becomes the primary UI for ghost data:
 | Confirmed Ghosted | Count where ghost_status = 'ghosted' |
 | Gmail Connected | Boolean — shows "Connect Gmail" CTA if not |
 
-### 8.2 Ghost Table
+### 9.2 Ghost Table
 
 | Column | Source |
 |--------|--------|
@@ -651,40 +850,42 @@ The existing Ghost Monitor nav page becomes the primary UI for ghost data:
 | Role | job_title from pipeline |
 | Applied | applied_at formatted |
 | Days | days_since_applied |
-| Email Signal | Icon: ✅ response, 📧 auto-reply, ❌ silence, 🔒 no Gmail |
+| Email Signal | CSS icon: green check (response), mail icon (auto-reply), red X (silence), lock (no Gmail) |
 | Ghost Score | 0–100 with color bar |
 | Status | Badge: Active / Waiting / Likely Ghosted / Ghosted |
 | Action | Button: "Follow Up" / "Archive" / "Move On" |
 
-### 8.3 Ghost Score Distribution Chart (ECharts)
+> **Design note:** Use CSS-rendered icons from the existing icon system, not literal emoji characters. This maintains design system consistency with the rest of the dashboard.
+
+### 9.3 Ghost Score Distribution Chart (ECharts)
 
 Stacked bar chart showing the user's applications by ghost status bucket. Helps visualize how many applications are in each stage.
 
 ---
 
-## 9. Notifications
+## 10. Notifications
 
-### 9.1 Ghost Alert (Individual)
+### 10.1 Ghost Alert (Individual)
 
 Triggered by `job-intelligence` Edge Function when ghost_score crosses 80 for the first time:
 
 **Email subject:** "No response from [Company] after [X] days"
 **Body:** Ghost score breakdown, recommended action, one-click archive button.
 
-### 9.2 Weekly Ghost Report
+### 10.2 Weekly Ghost Report
 
 Part of the weekly summary email. Aggregates:
 - New ghosts this week
 - Companies past average response time
 - Overall ghost rate across user's applications
 
-### 9.3 Ghost Alert Dedup
+### 10.3 Ghost Alert Dedup
 
 ```sql
 -- Prevent duplicate ghost alerts for the same pipeline entry
 CREATE TABLE ghost_alerts_sent (
-  user_id uuid REFERENCES profiles(id),
-  pipeline_entry_id uuid NOT NULL,
+  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
+  pipeline_entry_id uuid REFERENCES user_pipeline(id) ON DELETE CASCADE NOT NULL,
   ghost_status text NOT NULL,
   sent_at timestamptz DEFAULT now(),
   PRIMARY KEY (user_id, pipeline_entry_id, ghost_status)
@@ -695,93 +896,112 @@ Only send a `ghost_alert` notification if no row exists in `ghost_alerts_sent` f
 
 ---
 
-## 10. Build Order
+## 11. Build Order
 
-### Phase 1: Foundation (no Gmail needed)
+### Phase 1: Foundation (no Gmail needed) — LAUNCH-BLOCKING
 
 | # | Task | Depends On | Estimate |
 |---|------|-----------|----------|
-| 1.1 | Create `user_pipeline` table (migrate from localStorage) | — | 2h |
-| 1.2 | Create `company_ghost_stats` table + nightly recompute RPC | 1.1 | 1h |
-| 1.3 | Create `ghost_alerts_sent` dedup table | — | 30m |
-| 1.4 | Implement `compute_ghost_score()` RPC (time + listing factors only, no email) | 1.1 | 1h |
-| 1.5 | Update `job-intelligence` Edge Function to use new ghost scoring | 1.4 | 2h |
-| 1.6 | Ghost Monitor page: KPI cards + table with time-only ghost scores | 1.4 | 3h |
+| 1.1 | Create `user_pipeline` table + schema (see Section 3) | — | 2h |
+| 1.2 | localStorage → Supabase pipeline migration script | 1.1 | 3h |
+| 1.3 | Update all JS modules touching pipeline state (`pipeline.js`, `app.js`) | 1.2 | 4h |
+| 1.4 | Create `company_ghost_stats` table + nightly recompute RPC | 1.1 | 1h |
+| 1.5 | Create `ghost_alerts_sent` dedup table | 1.1 | 30m |
+| 1.6 | Implement `compute_ghost_score()` RPC (time + listing factors only, no email) | 1.1 | 1h |
+| 1.7 | Update `job-intelligence` Edge Function to use new ghost scoring | 1.6 | 2h |
+| 1.8 | Ghost Monitor page: KPI cards + table with time-only ghost scores | 1.6 | 3h |
 
-### Phase 2: Gmail OAuth
+**Phase 1 total: ~16.5h (2-3 dev days)**
+
+### Phase 2: Gmail OAuth — START VERIFICATION IMMEDIATELY
 
 | # | Task | Depends On | Estimate |
 |---|------|-----------|----------|
 | 2.1 | Enable Gmail API in GCP Console | — | 10m |
 | 2.2 | Create OAuth Client ID + configure consent screen | 2.1 | 30m |
-| 2.3 | Store GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET as Supabase secrets | 2.2 | 10m |
-| 2.4 | Create `gmail_connections` table | — | 30m |
-| 2.5 | Build `gmail-auth` Edge Function (OAuth callback handler) | 2.3, 2.4 | 3h |
-| 2.6 | Setup page: "Connect Gmail" button + connection status display | 2.5 | 2h |
-| 2.7 | Token refresh utility function | 2.5 | 1h |
+| 2.3 | **Submit Google OAuth verification application** | 2.2 | 2h paperwork |
+| 2.4 | Store GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET as Supabase secrets | 2.2 | 10m |
+| 2.5 | Create `gmail_connections` table | — | 30m |
+| 2.6 | Add Vercel rewrite rule for OAuth callback | — | 15m |
+| 2.7 | Build `gmail-auth` Edge Function (OAuth callback handler) | 2.4, 2.5, 2.6 | 3h |
+| 2.8 | Build `gmail-disconnect` Edge Function (see Section 4.5) | 2.5 | 1.5h |
+| 2.9 | Setup page: "Connect Gmail" / "Disconnect Gmail" button + connection status | 2.7, 2.8 | 2h |
+| 2.10 | Token refresh utility function | 2.7 | 1h |
+
+**Phase 2 total: ~11h (1.5-2 dev days)**
 
 ### Phase 3: Email Scanning
 
 | # | Task | Depends On | Estimate |
 |---|------|-----------|----------|
-| 3.1 | Create `email_signals` table | — | 30m |
-| 3.2 | Build `gmail-scan` Edge Function | 2.7, 3.1 | 4h |
+| 3.1 | Create `email_signals` table | 1.1 | 30m |
+| 3.2 | Build `gmail-scan` Edge Function (with batch/cursor support) | 2.10, 3.1 | 5h |
 | 3.3 | Email classification logic | 3.2 | 2h |
 | 3.4 | pg_cron schedule for gmail-scan (every 6h) | 3.2 | 15m |
-| 3.5 | Pipeline auto-advance from email signals | 3.3 | 2h |
+| 3.5 | Pipeline auto-advance from email signals | 3.3, 1.3 | 2h |
+
+**Phase 3 total: ~10h (1.5 dev days)**
 
 ### Phase 4: Full Ghost Engine
 
 | # | Task | Depends On | Estimate |
 |---|------|-----------|----------|
 | 4.1 | Update `compute_ghost_score()` to include email factor | 3.1 | 1h |
-| 4.2 | `get_pipeline_ghost_status()` RPC | 4.1 | 2h |
+| 4.2 | `get_pipeline_ghost_status()` RPC (see Section 6.3) | 4.1 | 2h |
 | 4.3 | Ghost Monitor page: add email signal column, confidence indicator | 4.2 | 2h |
 | 4.4 | Ghost score distribution chart (ECharts) | 4.2 | 1h |
-| 4.5 | Company ghost rate in Company Browser | 1.2 | 1h |
+| 4.5 | Company ghost rate in Company Browser | 1.4 | 1h |
+
+**Phase 4 total: ~7h (1 dev day)**
 
 ### Phase 5: Polish & Verification
 
 | # | Task | Depends On | Estimate |
 |---|------|-----------|----------|
-| 5.1 | Google OAuth verification application (restricted scope) | 2.6 tested | 2h paperwork |
-| 5.2 | Privacy policy update (Gmail data usage disclosure) | 5.1 | 1h |
+| 5.1 | Google OAuth verification follow-up (respond to Google's questions) | 2.3 | Ongoing |
+| 5.2 | Privacy policy update (Gmail data usage disclosure) | 2.7 | 1h |
 | 5.3 | Ghost alert email template (dark theme, matches existing 18 templates) | 4.1 | 1h |
 | 5.4 | Weekly ghost report section in weekly-summary Edge Function | 4.2 | 1h |
-| 5.5 | Admin console: ghost stats overview (aggregate ghost rates) | 1.2 | 2h |
+| 5.5 | Admin console: ghost stats overview (aggregate ghost rates) | 1.4 | 2h |
+| 5.6 | pg_cron job: purge email_signals older than 90 days | 3.1 | 30m |
+
+**Phase 5 total: ~5.5h (1 dev day)**
 
 ---
 
-## 11. Database Migration Summary
+## 12. Database Migration Summary
 
 ```sql
 -- Run in order:
--- 1. gmail_connections
--- 2. email_signals
--- 3. company_ghost_stats
--- 4. ghost_alerts_sent
--- 5. compute_ghost_score() function
--- 6. get_pipeline_ghost_status() function
--- 7. recompute_company_ghost_stats() function
--- 8. pg_cron jobs:
+-- 1. user_pipeline (Section 3.1)
+-- 2. gmail_connections (Section 4.4)
+-- 3. email_signals (Section 5.3)
+-- 4. company_ghost_stats (Section 7)
+-- 5. ghost_alerts_sent (Section 10.3)
+-- 6. compute_ghost_score() function (Section 6.1)
+-- 7. get_pipeline_ghost_status() function (Section 6.3)
+-- 8. recompute_company_ghost_stats() function (Section 7)
+-- 9. pg_cron jobs:
 --    - gmail-scan: every 6 hours
 --    - recompute_company_ghost_stats: nightly at 3am UTC
+--    - purge_old_email_signals: weekly, DELETE FROM email_signals WHERE updated_at < now() - interval '90 days'
 ```
 
 ---
 
-## 12. Edge Functions Summary
+## 13. Edge Functions Summary
 
 | Function | Trigger | Purpose |
-|----------|---------|---------|
+|----------|---------|---------| 
 | `gmail-auth` | HTTP (OAuth callback) | Exchange auth code for tokens, store connection |
-| `gmail-scan` | pg_cron every 6h | Scan Gmail for pipeline company emails |
+| `gmail-disconnect` | HTTP (user-initiated) | Revoke token, delete connection + signals |
+| `gmail-scan` | pg_cron every 6h | Scan Gmail for pipeline company emails (batched, 50 users/run) |
 | `job-intelligence` | pg_cron daily (existing, updated) | Ghost scoring + alerts using new engine |
 | `ghost-stats` | pg_cron nightly | Recompute company-level ghost rates |
 
 ---
 
-## 13. Supabase Secrets Required
+## 14. Supabase Secrets Required
 
 | Secret | Source |
 |--------|--------|
@@ -797,18 +1017,18 @@ supabase secrets set GMAIL_REDIRECT_URI=https://brilliantjobs.app/api/auth/gmail
 
 ---
 
-## 14. Privacy & Security
+## 15. Privacy & Security
 
 - **Minimal scope:** `gmail.readonly` only — we never send, modify, or delete emails
 - **Encrypted storage:** Refresh tokens encrypted at rest in `gmail_connections`
 - **No email content stored:** We only store classification, snippet (200 chars), and timestamp — never full email bodies
-- **User control:** Users can disconnect Gmail at any time from the Setup page, which deletes all stored tokens and email signals
-- **Data retention:** Email signals older than 90 days are purged automatically
-- **Google verification:** Required before production launch (restricted scope). Includes security assessment.
+- **User control:** Users can disconnect Gmail at any time from the Setup page, which deletes all stored tokens and email signals and revokes the OAuth token on Google's side
+- **Data retention:** Email signals older than 90 days are purged automatically via weekly pg_cron job
+- **Google verification:** Required before production launch of Gmail features (restricted scope). Includes security assessment. Phase 1 ghost scoring works without Gmail.
 
 ---
 
-## 15. Success Metrics
+## 16. Success Metrics
 
 | Metric | Target |
 |--------|--------|
@@ -817,3 +1037,22 @@ supabase secrets set GMAIL_REDIRECT_URI=https://brilliantjobs.app/api/auth/gmail
 | Pipeline auto-advance accuracy | >90% correct stage classification |
 | Ghost alert → user action rate | >60% archive or follow up within 48h |
 | Avg ghost detection latency | <24h from email signal to pipeline update |
+
+---
+
+## Appendix: Changes from v1
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | `get_pipeline_ghost_status()` called `compute_ghost_score()` 3x per row with `...` placeholders | Refactored to CTE with single computation per row |
+| 2 | `company_ghost_stats.ghost_rate` was `GENERATED ALWAYS AS` but also in INSERT | Changed to regular column computed during upsert |
+| 3 | `user_pipeline` table referenced but never defined | Added full schema definition (Section 3) with migration script |
+| 4 | `auto_advanced`, `auto_advanced_source`, `responded_at` columns used but undefined | Included in `user_pipeline` schema |
+| 5 | No rate limiting on gmail-scan for large user bases | Added batch processing with 50-user limit and cursor pagination |
+| 6 | No Gmail disconnect/revoke flow | Added `gmail-disconnect` Edge Function (Section 4.5) |
+| 7 | Google verification timeline understated (2h estimate) | Flagged as 4-8 week process, added as Phase 2 priority |
+| 8 | 90-day email signal purge mentioned but no pg_cron defined | Added to Section 12 cron jobs and Phase 5 build order |
+| 9 | OAuth redirect URI routing not specified | Added Vercel rewrite rule note (Section 4.3) |
+| 10 | Emoji in Ghost Monitor table (✅ 📧 ❌ 🔒) | Noted to use CSS-rendered icons from design system |
+| 11 | Email classifier limitations unacknowledged | Added future enhancement note for Claude API fallback (Section 5.2) |
+| 12 | Phase 1 pipeline migration estimated at 2h | Re-estimated at ~9.5h across three tasks (schema + migration + JS updates) |
