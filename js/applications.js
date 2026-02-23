@@ -525,7 +525,7 @@ function populateOverrideFilterSelect() {
   if (!sel) return;
   sel.innerHTML = '<option value="">Select a saved filter...</option>';
   savedFilters.forEach(f => {
-    sel.innerHTML += `<option value="${f.name}">${f.name}</option>`;
+    sel.innerHTML += `<option value="${escapeHtml(f.name)}">${escapeHtml(f.name)}</option>`;
   });
 }
 populateOverrideFilterSelect();

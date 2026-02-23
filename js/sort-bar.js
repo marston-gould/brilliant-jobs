@@ -28,8 +28,8 @@ function renderSortPills() {
     pill.style.color = colors.text;
     pill.innerHTML = `
       <span class="sort-num" style="background:${colors.dot};">${i + 1}</span>
-      ${label}
-      <span class="sort-dir" title="${dirTitle}" data-idx="${i}">${dirLabel}</span>
+      ${escapeHtml(label)}
+      <span class="sort-dir" title="${escapeHtml(dirTitle)}" data-idx="${i}">${dirLabel}</span>
       <span class="sort-remove" title="Remove" data-idx="${i}">✕</span>
     `;
     container.appendChild(pill);

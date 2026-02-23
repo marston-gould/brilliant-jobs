@@ -164,7 +164,7 @@ function renderResumes() {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div class="rc-icon-sm ${icon.cls}" style="font-size:9px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
           <div style="min-width:0;flex:1;">
-            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}</div>
             ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
           </div>
           ${gdriveIcon}${tierBadge}
@@ -408,6 +408,7 @@ async function extractTextFromPDF(file) {
     return fullText.trim();
   } catch (e) {
     console.error('[BJ] PDF text extraction failed:', e);
+    if (typeof toastWarning === 'function') toastWarning('Could not extract text from PDF. Try re-uploading or use a different file format.');
     return '';
   }
 }
