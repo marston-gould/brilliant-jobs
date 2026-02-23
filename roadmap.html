@@ -348,6 +348,10 @@
       <h1>Brilliant Jobs</h1>
     </div>
     <h2>Product Roadmap</h2>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <a href="/dashboard.html#admin" style="font-size:12px;color:#6b7280;text-decoration:none;padding:3px 10px;border:1px solid #374151;border-radius:4px">← Dashboard</a>
+      <a href="/parkinglot.html" style="font-size:12px;color:#6b7280;text-decoration:none;padding:3px 10px;border:1px solid #374151;border-radius:4px">Parking Lot →</a>
+    </div>
     <p>Everything we're building — from the features already shipped to the ideas on the horizon. Sorted by status so you can see exactly where we are.</p>
     <div class="header-meta">
       <div class="header-stat"><span class="val" id="count-done">0</span><span class="lbl">Done</span></div>
@@ -364,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v4.01 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
+    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
   </div>
 
 </div>
@@ -1357,6 +1361,12 @@ function render() {
 }
 
 render();
+
+// Inject version from app.js (single source of truth)
+fetch('/js/app.js').then(r => r.text()).then(t => {
+  var m = t.match(/BJ_VERSION\s*=\s*'([^']+)'/);
+  if (m) document.getElementById('rm-version').textContent = m[1];
+}).catch(function(){});
 </script>
 
 </body>
