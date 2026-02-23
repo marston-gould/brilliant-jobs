@@ -1,0 +1,2516 @@
+<!DOCTYPE html>
+<!-- Brilliant Jobs Dashboard v4.07 - 2026-02-23 — Ghost Build Phase 1: Supabase pipeline, ghost scoring engine -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="Brilliant Jobs dashboard — manage your job search, filters, resumes, and application pipeline.">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+  <meta http-equiv="Pragma" content="no-cache">
+  <title>Brilliant Jobs — Dashboard</title>
+  <script src="/js/vendor/supabase.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="dist/dashboard.min.js" defer></script>
+  <script src="js/canny.js" defer></script>
+  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <style>/* P13 micro-survey styles */
+  .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
+  .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
+  .micro-survey-card.micro-survey-out{animation:microFadeOut .3s ease-in forwards}
+  .micro-survey-inner{position:relative}
+  .micro-survey-close{position:absolute;inset-block-start:-4px;inset-inline-end:-4px;background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px}
+  .micro-survey-close:hover{color:var(--text);background:var(--bg-input)}
+  .micro-survey-q{font-size:14px;font-weight:600;color:var(--text);margin-block-end:12px;padding-inline-end:24px}
+  .micro-survey-q2{font-weight:500;margin-block-start:12px}
+  .micro-survey-opts{display:flex;gap:8px;flex-wrap:wrap}
+  .micro-survey-opt{background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text-dim);font-size:13px;font-family:var(--sans,'Outfit',sans-serif);cursor:pointer;transition:all .15s}
+  .micro-survey-opt:hover{border-color:var(--accent);color:var(--text)}
+  .micro-survey-opt.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .micro-survey-rating{display:flex;gap:6px}
+  .micro-survey-star{width:36px;height:36px;border-radius:8px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+  .micro-survey-star:hover{border-color:var(--accent);color:var(--text)}
+  .micro-survey-star.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .micro-survey-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);margin-block-start:4px}
+  .micro-survey-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .micro-survey-chip{background:var(--bg-input);border:1px solid var(--border);border-radius:16px;padding:6px 12px;color:var(--text-dim);font-size:12px;font-family:var(--sans,'Outfit',sans-serif);cursor:pointer;transition:all .15s}
+  .micro-survey-chip:hover{border-color:var(--accent);color:var(--text)}
+  .micro-survey-chip.selected{background:rgba(59,130,246,.15);color:var(--accent);border-color:var(--accent)}
+  .micro-survey-thanks{color:var(--green);font-size:14px;font-weight:500;text-align:center;padding:8px 0}
+  @keyframes microFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes microFadeOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(8px)}}
+  @media(max-width:480px){.micro-survey-card.micro-survey-toast{inset-inline-start:12px;inset-inline-end:12px;width:auto}}
+  </style>
+  <style>
+    .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:14px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
+    .admin-tab:hover{border-color:var(--accent);color:var(--text)}
+    .admin-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .admin-tab.disabled{opacity:.4;cursor:not-allowed}
+    .admin-panel{display:none}
+    .admin-panel.active{display:block}
+    .admin-table{border-collapse:collapse;font-size:14px;font-family:"JetBrains Mono",monospace}
+    .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+    .admin-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+    .admin-table tr:hover td{background:var(--bg-main)}
+    .admin-green{color:var(--green)}
+    .admin-red{color:var(--red)}
+    .admin-health-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+    .admin-health-dot.green{background:var(--green)}
+    .admin-health-dot.yellow{background:var(--warm)}
+    .admin-health-dot.red{background:var(--red)}
+    .admin-period-btn{padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer}
+    .admin-period-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .admin-platform-name{font-weight:500}
+  
+    /* SEO sub-panels */
+    .seo-subpanel { display: none; }
+    .seo-subpanel.active { display: block; }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      text-align: center;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+    }
+
+    .upgrade-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-card);border:1px solid var(--accent);border-radius:12px;padding:14px 20px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.2);opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;max-width:480px}
+    .upgrade-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+    </style>
+  <!-- CSS extracted to styles.css in v3.28 -->
+  <!-- A13: PostHog analytics -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init ns hs wi ls ds rs os capture calculateEventProperties fs register register_once register_for_session unregister unregister_for_session bs getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty gs cs createPersonProfile setInternalOrTestUser ts ys opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing vs debug M ps getPageViewId captureTraceFeedback captureTraceMetric Xr".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww', {
+        api_host: 'https://us.i.posthog.com',
+        person_profiles: 'identified_only',
+    })
+  </script>
+</head>
+<body>
+
+  <div class="auth-gate" id="auth-gate">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <div class="app" id="app" style="display:none;">
+
+    <nav class="nav">
+      <div class="nav-brand" id="nav-brand">
+        <div class="mark">B</div>
+        <div class="nav-brand-text">
+          <h1>Brilliant Jobs</h1>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.79</span></span>
+        </div>
+        <div class="sparkle s1"></div>
+        <div class="sparkle s2"></div>
+        <div class="sparkle s3"></div>
+        <div class="sparkle s4"></div>
+        <div class="sparkle s5"></div>
+        <div class="sparkle s6"></div>
+        <div class="sparkle s7"></div>
+        <div class="sparkle s8"></div>
+        <div class="sparkle-star st1">✦</div>
+        <div class="sparkle-star st2">✧</div>
+        <div class="sparkle-star st3">✦</div>
+      </div>
+
+      <div class="nav-menu">
+        <div class="nav-item active" data-page="brilliant">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
+          <span>Be Brilliant</span>
+        </div>
+        <div class="nav-item" data-page="setup">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+          <span>Setup</span>
+          <div class="ext-status-dot" id="ext-status-dot" title="Extension not detected"></div>
+        </div>
+
+        <div class="nav-section-label">Search</div>
+        <div class="nav-item" data-page="jobs">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
+          <span>Jobs Feed</span>
+          <div class="nav-badge" id="nav-jobs-count" style="display:none;">0</div>
+          <div class="ext-status-dot" id="sf-status-dot" title="No saved filters"></div>
+        </div>
+        <div class="nav-item" data-page="tuning">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
+          <span>Tuning</span>
+          <div class="ext-status-dot warning" id="tuning-status-dot" title="Default settings"></div>
+        </div>
+        <div class="nav-item" data-page="resumes">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+          <span>Resumes</span>
+          <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
+          <div class="ext-status-dot" id="resume-status-dot" title="No resumes"></div>
+        </div>
+        <div class="nav-item" data-page="applications">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+          <span>Applications</span>
+          <div class="nav-badge" id="nav-app-count" style="display:none;">0</div>
+          <div class="ext-status-dot" id="app-status-dot" title="Application status"></div>
+        </div>
+        <div class="nav-item" data-page="pipeline">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+          <span>Pipeline</span>
+          <div class="ext-status-dot" id="pipeline-status-dot" title="Pipeline status"></div>
+        </div>
+
+        <div class="nav-section-label">Intelligence</div>
+        <div class="nav-item" data-page="ghost">
+          <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 10h.01M15 10h.01M12 2a8 8 0 00-8 8v12l3-3 2 3 3-3 3 3 2-3 3 3V10a8 8 0 00-8-8z"/></svg></div>
+          <span>Ghost Monitor</span>
+        </div>
+        <div class="nav-item" data-page="stats">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+          <span>Stats</span>
+        </div>
+
+        <div class="nav-section-label">Account</div>
+        <div class="nav-item" data-page="settings">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+          <span>Settings</span>
+        </div>
+        <div class="nav-item" data-page="subscription">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div>
+          <span>Subscription</span>
+        </div>
+        <div class="nav-item" data-page="feedback">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+          <span>Feedback</span>
+        </div>
+        <div class="nav-item" data-page="admin" id="nav-admin" style="display:none">
+          <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
+          <span>Admin</span>
+        </div>
+      </div>
+
+      <div class="nav-footer">
+        <div class="nav-user">
+          <div class="nav-avatar" id="nav-avatar">?</div>
+          <div class="nav-user-info">
+            <div class="nav-user-email" id="nav-email">loading...</div>
+            <div class="nav-user-plan">Free Plan</div>
+          </div>
+        </div>
+        <div class="credit-balance" id="credit-balance" onclick="openPricingModal()" title="Click to purchase credits">
+          <svg class="credit-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h6"/></svg>
+          <span class="credit-balance-count credit-green" id="credit-balance-badge">0</span>
+          <span class="credit-balance-label">credits</span>
+        </div>
+        <button class="btn-logout" id="logout-btn">Log Out</button>
+      </div>
+    </nav>
+
+    <div class="main">
+
+      <!-- Help Panel -->
+      <div id="page-help-panel" style="display:none;position:fixed;bottom:80px;right:24px;width:340px;max-height:60vh;overflow-y:auto;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.25);z-index:9998;padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div id="help-panel-title" class="card-title" style="margin-bottom:0;"></div>
+          <button onclick="togglePageHelp(null)" style="background:none;border:none;font-size:16px;color:var(--text-faint);cursor:pointer;padding:2px 6px;">✕</button>
+        </div>
+        <div id="help-panel-body" style="font-size:12px;color:var(--text-dim);line-height:1.7;"></div>
+      </div>
+
+      <!-- Feedback button -->
+      <div class="feedback-btn" id="feedback-btn" title="Squash a bug or pitch an idea!">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span style="font-size:11px;font-weight:600;letter-spacing:0.2px;">Feedback</span>
+      </div>
+
+      <!-- Feedback modal -->
+      <div class="feedback-overlay" id="feedback-overlay" onclick="if(event.target===this)closeFeedback()">
+        <div class="feedback-modal" id="feedback-modal">
+          <div id="fb-form-view" style="flex:1;display:flex;flex-direction:column;">
+            <h3 id="fb-heading" style="display:flex;align-items:center;gap:8px;">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="fb-heading-icon"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="fb-heading-text">Report a Bug</span>
+            </h3>
+            <div class="fb-sub" id="fb-subheading">Found something off? Help us fix it.</div>
+
+            <label>What brings you here?</label>
+            <div class="fb-type-toggle">
+              <button class="fb-type-btn bug active" data-type="bug" onclick="setFbType('bug')">Bug Report</button>
+              <button class="fb-type-btn" data-type="feature" onclick="setFbType('feature')">Feature Request</button>
+            </div>
+
+            <label>Page</label>
+            <select id="fb-page">
+              <option value="">Auto-detected</option>
+              <option value="brilliant">Be Brilliant</option>
+              <option value="setup">Setup</option>
+              <option value="jobs">Jobs Feed</option>
+              <option value="tuning">Tuning</option>
+              <option value="pipeline">Pipeline</option>
+              <option value="resumes">Resumes</option>
+              <option value="applications">Applications</option>
+              <option value="ghost">Ghost Monitor</option>
+              <option value="stats">Stats</option>
+              <option value="settings">Settings</option>
+              <option value="other">Other</option>
+            </select>
+
+            <label id="fb-title-label">What happened?</label>
+            <input type="text" id="fb-title" placeholder="Brief description of the issue…">
+
+            <label>Details</label>
+            <textarea id="fb-details" placeholder="Steps to reproduce, expected vs actual behavior…"></textarea>
+
+            <!-- Screenshot & console instructions (bug only) -->
+            <div id="fb-bug-help" style="margin-bottom:14px;">
+              <label>Screenshots &amp; Console</label>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.6;background:var(--bg-input);border-radius:8px;padding:10px 12px;border:1px solid var(--border);">
+                <div style="margin-bottom:6px;font-weight:600;color:var(--text);">Take a screenshot:</div>
+                <div style="padding-left:12px;margin-bottom:8px;">
+                  <strong>Mac:</strong> ⌘⇧4 → drag to select → saves to Desktop<br>
+                  <strong>Windows:</strong> Win+Shift+S → drag to select → copies to clipboard
+                </div>
+                <div style="margin-bottom:6px;font-weight:600;color:var(--text);">Check the console for errors:</div>
+                <div style="padding-left:12px;">
+                  <strong>Mac:</strong> ⌘⌥J (Chrome) or ⌘⌥C (Safari)<br>
+                  <strong>Windows:</strong> Ctrl+Shift+J (Chrome) or F12<br>
+                  Screenshot any red errors you see
+                </div>
+              </div>
+
+              <label style="margin-top:12px;">Attach files</label>
+              <div id="fb-upload-zone" style="border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:4px;" onclick="$('#fb-file-input').click()">
+                <div style="font-size:13px;color:var(--text-dim);">Drop files here or <span style="color:var(--accent);font-weight:600;">click to browse</span></div>
+                <div style="font-size:10px;color:var(--text-faint);margin-top:4px;">PNG, JPG, GIF up to 5MB each · max 3 files</div>
+                <input type="file" id="fb-file-input" accept="image/*" multiple style="display:none;" onchange="handleFbFiles(this.files)">
+              </div>
+              <div id="fb-file-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
+            </div>
+
+            <label>Priority</label>
+            <select id="fb-priority">
+              <option value="low">Low — minor annoyance</option>
+              <option value="medium" selected>Medium — impacts workflow</option>
+              <option value="high">High — something's broken</option>
+            </select>
+
+            <div class="feedback-actions">
+              <button class="fb-cancel" onclick="closeFeedback()">Cancel</button>
+              <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Submit</button>
+            </div>
+          </div>
+          <div id="fb-success-view" style="display:none;flex:1;align-items:center;justify-content:center;">
+            <div class="fb-success">
+              <div class="fb-check" id="fb-success-icon" style="color:var(--green);">✓</div>
+              <h4 id="fb-success-title">Bug report submitted!</h4>
+              <p id="fb-success-msg">We'll investigate and keep you posted.</p>
+              <button class="fb-submit" style="margin-top:18px;" onclick="closeFeedback()">Done</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ BE BRILLIANT ============ -->
+      <div class="page active" id="page-brilliant">
+        <div class="page-header">
+          <h2>Be Brilliant</h2>
+          <p>Find a Brilliant Job</p>
+        </div>
+        <div class="page-body" style="max-width:800px;">
+
+          <!-- Hero -->
+          <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%); border:1px solid rgba(99,102,241,0.12); border-radius:12px; padding:32px; margin-bottom:24px;">
+            <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">Brilliant Jobs is not another job board.</div>
+            <div style="font-size:14px;color:var(--text-dim);line-height:1.7;">
+              It's an intelligence platform that scans company hiring pages directly, bypasses job board noise, and gives you a real-time feed of exactly what matches your criteria — before most applicants even know the role exists.
+            </div>
+          </div>
+
+          <!-- Step 1 -->
+          <div class="card" style="border-left:3px solid var(--accent);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--accent);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">1</span>
+              <div class="card-title" style="margin:0;">Install Your Extension</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Head to <strong>Setup</strong> and download your personalized Chrome extension. It's unique to your account — your own stealth scanner that harvests your LinkedIn network connections and maps them to companies hiring right now. The extension runs in the background while you browse, visiting profiles during business hours at human-like intervals.
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="card" style="border-left:3px solid var(--warm);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--warm);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
+              <div class="card-title" style="margin:0;">Build Your Filters</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Go to <strong>Jobs Feed</strong> and open the filter builder. Think of it like building a search radar:
+            </div>
+            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div style="background:rgba(61,126,255,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">What</div>
+                <div style="font-size:12px;color:var(--text-dim);">Job titles and keywords. "director of marketing", "growth", "SEO"</div>
+              </div>
+              <div style="background:rgba(148,163,184,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Not</div>
+                <div style="font-size:12px;color:var(--text-dim);">Exclude noise. "intern", "assistant", "part-time"</div>
+              </div>
+              <div style="background:rgba(245,158,11,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:var(--warm);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Where</div>
+                <div style="font-size:12px;color:var(--text-dim);">Locations and work styles. "United States", "remote", "Seattle"</div>
+              </div>
+              <div style="background:rgba(236,72,153,0.06);border-radius:8px;padding:10px 14px;">
+                <div style="font-size:11px;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Who</div>
+                <div style="font-size:12px;color:var(--text-dim);">Target or exclude companies. "Stripe", "Google"</div>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
+              <strong>Pro tip:</strong> Type <kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">or</kbd> before a term to OR it with the previous pill. "director" then "or VP" matches either. Save each search as a named filter — they run in parallel.
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="card" style="border-left:3px solid var(--purple);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--purple);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">3</span>
+              <div class="card-title" style="margin:0;">Tune Your Results</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Getting noise? Head to <strong>Tuning</strong> to set global rules that apply across all your filters:
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:var(--text-dim);line-height:1.8;">
+              <span style="font-weight:600;color:var(--accent);">Location lock</span> — restrict everything to US-only with one checkbox<br>
+              <span style="font-weight:600;color:var(--accent);">Global exclusions</span> — block titles, companies, or locations forever<br>
+              <span style="font-weight:600;color:var(--accent);">Level matching</span> — check "Director" and "VP" to soft-match both seniority levels<br>
+              <span style="font-weight:600;color:var(--accent);">Poor match analysis</span> — hidden jobs get analyzed for patterns to suggest exclusions
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="card" style="border-left:3px solid var(--green);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--green);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">4</span>
+              <div class="card-title" style="margin:0;">Work Your Feed Daily</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Each row in your feed has three actions:
+            </div>
+            <div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="job-action-btn" style="pointer-events:none;font-size:10px;">Save</span>
+                <span style="font-size:12px;color:var(--text-faint);">Bookmark for later — appears in Pipeline</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="apply-btn apply-btn-default" style="pointer-events:none;font-size:10px;padding:4px 10px;">Apply →</span>
+                <span style="font-size:12px;color:var(--text-faint);">Opens the ATS page and tracks it as Applied</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span class="job-action-btn hide-btn" style="pointer-events:none;font-size:10px;padding:2px 6px;">✕</span>
+                <span style="font-size:12px;color:var(--text-faint);">Hide irrelevant jobs — helps tune future results</span>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
+              Colored number badges next to titles show which saved filter matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="card" style="border-left:3px solid var(--pink);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <span style="background:var(--pink);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">5</span>
+              <div class="card-title" style="margin:0;">Track Everything in Pipeline</div>
+            </div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Saved jobs land in the <strong>Pipeline</strong> Saved column. When you apply, they move to Applied. From there, track Responded → Interview → Offer or Rejected/Ghosted. The stat cards at the top show your response rate and average days to response — the numbers that actually matter.
+            </div>
+          </div>
+
+          <!-- Data advantage -->
+          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:12px;padding:24px;margin-top:8px;">
+            <div class="card-title" style="margin-bottom:6px;">Your data advantage</div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
+              Brilliant Jobs currently indexes <strong>110,000+ open positions</strong> across <strong>1,900+ companies</strong> using Greenhouse ATS — with Lever, Workday, and Ashby coming next. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============ SETUP ============ -->
+      <div class="page" id="page-setup">
+        <div class="page-header">
+          <h2>Setup</h2>
+          <p>Connect your network and integrations <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('setup')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+
+          <!-- ============ SECTION 1: Chrome Extension ============ -->
+          <div class="card card-flush">
+            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(99,102,241,0.08);display:flex;align-items:center;justify-content:center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+              </div>
+              <div style="flex:1;">
+                <div class="card-title" style="margin-bottom:0;">Chrome Extension</div>
+                <div style="font-size:11px;color:var(--text-faint);">Scans your LinkedIn network to find jobs at companies where you have connections</div>
+              </div>
+              <div class="ext-dot off" id="ext-dot"></div>
+            </div>
+            <div style="padding:20px 24px;">
+              <div class="ext-status" id="ext-status-bar" style="margin-bottom:16px;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
+                  <div style="font-size:11px;color:var(--text-faint);" id="ext-status-detail">Download and install below</div>
+                </div>
+              </div>
+
+              <div class="download-box" id="download-box">
+                <h3>Download Your Extension</h3>
+                <p>Your extension is personalized to your account with unique security parameters and behavioral profile.</p>
+                <button class="btn btn-primary btn-lg" id="download-btn">Download Extension</button>
+                <div class="download-status" id="download-status"></div>
+              </div>
+
+              <div class="card" id="instance-card" style="display:none;margin-top:16px;">
+                <div class="card-title">Your Extension Instance</div>
+                <div class="card-sub">Unique parameters for this build</div>
+                <div class="instance-info">
+                  <div>Instance ID: <span id="ext-instance-id">—</span></div>
+                  <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
+                </div>
+              </div>
+
+              <details style="margin-top:16px;">
+                <summary style="font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;padding:4px 0;">Installation Guide</summary>
+                <div class="install-steps" style="margin-top:12px;">
+                  <div class="install-step">
+                    <div class="step-num-circle">1</div>
+                    <div class="step-content">
+                      <h4>Unzip the download</h4>
+                      <p>Extract the file to a permanent folder on your computer. Don't delete this folder — Chrome needs it.</p>
+                    </div>
+                  </div>
+                  <div class="install-step">
+                    <div class="step-num-circle">2</div>
+                    <div class="step-content">
+                      <h4>Open Chrome Extensions</h4>
+                      <p>Navigate to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> using the toggle in the top right.</p>
+                    </div>
+                  </div>
+                  <div class="install-step">
+                    <div class="step-num-circle">3</div>
+                    <div class="step-content">
+                      <h4>Load the extension</h4>
+                      <p>Click <strong>Load unpacked</strong> and select the unzipped folder. The extension will appear in your toolbar.</p>
+                    </div>
+                  </div>
+                  <div class="install-step">
+                    <div class="step-num-circle">4</div>
+                    <div class="step-content">
+                      <h4>Pin and open</h4>
+                      <p>Click the puzzle piece icon in Chrome's toolbar and pin the extension for easy access. Then open it to get started.</p>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+
+          <!-- ============ SECTION 2: Google Drive ============ -->
+          <div class="card card-flush">
+            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
+              </div>
+              <div style="flex:1;">
+                <div class="card-title" style="margin-bottom:0;">Google Drive</div>
+                <div style="font-size:11px;color:var(--text-faint);">Store and sync resumes from Google Docs or Drive files</div>
+              </div>
+              <div class="setup-dot" id="gdrive-dot"></div>
+            </div>
+            <div style="padding:20px 24px;">
+              <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
+                <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
+              </div>
+              <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+                <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
+                <div id="gdrive-file-list"></div>
+                <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
+              </div>
+              <div style="margin-top:12px;font-size:12px;color:var(--text-faint);line-height:1.6;">
+                Linked docs stay in sync — edit in Drive, and Brilliant Jobs always has the latest version when applying.
+              </div>
+            </div>
+          </div>
+
+          <!-- ============ SECTION 3: Gmail ============ -->
+          <div class="card card-flush">
+            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+              </div>
+              <div style="flex:1;">
+                <div class="card-title" style="margin-bottom:0;">Gmail — Ghost Monitor</div>
+                <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
+              </div>
+              <span class="badge-soon">Coming Soon</span>
+              <div class="setup-dot" id="gmail-dot"></div>
+            </div>
+            <div style="padding:20px 24px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <button class="btn btn-sm" style="opacity:0.5;cursor:not-allowed;" disabled>Connect Gmail</button>
+              </div>
+              <div style="font-size:12px;color:var(--text-faint);line-height:1.6;">
+                When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============ JOBS ============ -->
+      <div class="page" id="page-jobs">
+        <div class="page-header">
+          <h2>Jobs Feed</h2>
+          <p>Openings aggregated from multiple sources <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('feed')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="j-total">0</div><div class="stat-label">Total Jobs</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-companies">0</div><div class="stat-label">Companies</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-new-login" style="color:var(--accent);">0</div><div class="stat-label">New Since Last Login</div></div>
+            <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New 1D</div></div>
+            <div class="stat-card" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
+          </div>
+
+          <!-- Collapsible query builder -->
+          <div class="qb-collapse-header" id="qb-toggle">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="qb-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <span>Job Filter Builder</span>
+            <span class="qb-active-count" id="qb-active-count"></span>
+            <button class="btn btn-sm" id="clear-filters-btn" style="display:none;margin-left:auto;padding:2px 10px;font-size:10px;background:transparent;color:var(--text-faint);border:1px solid var(--border);cursor:pointer;">Clear All</button>
+          </div>
+          <div class="qb-collapse-body" id="qb-collapse-body">
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">What</label>
+              <div class="query-builder" id="query-builder-what">
+                <input type="text" class="qb-input" id="qb-input-what" placeholder="title, keyword, dept…">
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">Not</label>
+              <div class="query-builder" id="query-builder-what-not" style="border-color:rgba(148,163,184,0.2);">
+                <input type="text" class="qb-input" id="qb-input-what-not" placeholder="exclude titles…">
+              </div>
+            </div>
+          </div>
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">Where</label>
+              <div class="query-builder" id="query-builder-where" style="position:relative;">
+                <input type="text" class="qb-input" id="qb-input-where" placeholder="city, state, remote…" autocomplete="off">
+                <div id="location-dropdown" class="company-dropdown"></div>
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">Not</label>
+              <div class="query-builder" id="query-builder-where-not" style="border-color:rgba(148,163,184,0.2);position:relative;">
+                <input type="text" class="qb-input" id="qb-input-where-not" placeholder="exclude locations…" autocomplete="off">
+                <div id="location-not-dropdown" class="company-dropdown"></div>
+              </div>
+            </div>
+          </div>
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">Who</label>
+              <div class="query-builder" id="query-builder-who" style="position:relative;">
+                <input type="text" class="qb-input" id="qb-input-who" placeholder="company name…" autocomplete="off" style="padding-right:70px;">
+                <div id="company-dropdown" class="company-dropdown"></div>
+                <span class="browse-companies-btn" id="browse-who-btn" title="Browse all companies">Browse</span>
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">Not</label>
+              <div class="query-builder" id="query-builder-who-not" style="border-color:rgba(148,163,184,0.2);position:relative;">
+                <input type="text" class="qb-input" id="qb-input-who-not" placeholder="exclude companies…" autocomplete="off" style="padding-right:70px;">
+                <div id="company-not-dropdown" class="company-dropdown"></div>
+                <span class="browse-companies-btn" id="browse-who-not-btn" title="Browse companies to exclude">Browse</span>
+              </div>
+            </div>
+          </div>
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">When</label>
+              <div class="query-builder" id="query-builder-when">
+                <input type="text" class="qb-input" id="qb-input-when" placeholder="today, 7 days, month…">
+              </div>
+            </div>
+            <div class="qb-row">
+              <!-- empty right column -->
+            </div>
+          </div>
+          <div class="qb-row-pair">
+            <div class="qb-row">
+              <label class="qb-row-label">How Much</label>
+              <div class="qb-salary-field" style="flex:1;">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
+              </div>
+            </div>
+            <div class="qb-row">
+              <label class="qb-row-label not-label">TO</label>
+              <div class="qb-salary-field" style="flex:1;">
+                <span class="qb-salary-prefix">$</span>
+                <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
+              </div>
+              <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;margin-left:8px;"></div>
+            </div>
+          </div>
+          <div class="qb-hint">
+            <kbd>Enter</kbd> to add filter &nbsp; <kbd>or</kbd> before a term to OR it &nbsp; Click a pill to add OR options &nbsp; <kbd>Backspace</kbd> to remove last
+          </div>
+
+          <div class="filter-toolbar">
+            <div class="save-filter-row" id="save-filter-row" style="display:none;">
+              <label class="save-label">Save Filter:</label>
+              <input type="text" class="save-filter-name" id="save-filter-name" placeholder="name this filter…" maxlength="40">
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-faint);cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="save-filter-include-remote"> Include remote jobs
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-faint);cursor:pointer;white-space:nowrap;">
+                <input type="checkbox" id="save-filter-include-no-salary" checked> Include jobs without salary
+              </label>
+              <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
+            </div>
+            <div class="filter-count" id="filter-count"></div>
+          </div>
+          </div>
+
+          <!-- Saved filters list -->
+          <div class="sf-collapse-header" id="sf-toggle">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="sf-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+            <span>Saved Filters</span>
+            <span class="sf-active-count" id="sf-active-count" style="display:none;"></span>
+          </div>
+          <div class="sf-collapse-body" id="sf-collapse-body">
+          <div class="saved-filters-section" id="saved-filters-section" style="display:none;">
+            <div class="sf-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="sf-select-all" style="margin:0;cursor:pointer;" title="Select all">
+                <span class="sf-title">Select / Deselect All</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);border-radius:4px;cursor:pointer;white-space:nowrap;" title="Generate filter from your resume using AI">✦ AI Suggest</button>
+                <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:4px;cursor:pointer;">Delete Selected</button>
+                <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
+              </div>
+            </div>
+            <div class="sf-list" id="sf-list"></div>
+          </div>
+          </div>
+
+          <!-- Sort bar -->
+          <!-- Resume → Filter CTA (shown when resumes exist but no filters) -->
+          <div id="resume-filter-cta" style="display:none;margin-bottom:12px;padding:12px 16px;background:linear-gradient(135deg,rgba(77,142,255,0.06),rgba(167,139,250,0.06));border:1px solid rgba(77,142,255,0.15);border-radius:10px;cursor:pointer;" onclick="document.getElementById('ai-suggest-filter-btn').click()">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:18px;">✦</span>
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:600;color:var(--accent);">Generate a search filter from your resume</div>
+                <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">AI will analyze your resume and suggest job titles, locations, and keywords to search for.</div>
+              </div>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </div>
+          </div>
+          <div class="sort-bar" id="sort-bar">
+            <span class="sort-bar-label">Sort by:</span>
+            <div class="sort-pills" id="sort-pills"></div>
+            <div class="sort-add-wrap">
+              <button class="sort-add-btn" id="sort-add-btn">+ Add sort</button>
+              <div class="sort-dropdown" id="sort-dropdown" style="display:none;">
+                <div class="sort-opt" data-field="updated_at" data-label="Days">Days (newest)</div>
+                <div class="sort-opt" data-field="level" data-label="Level">Level (highest)</div>
+                <div class="sort-opt" data-field="title" data-label="Title">Title (A→Z)</div>
+                <div class="sort-opt" data-field="company_name" data-label="Company">Company (A→Z)</div>
+                <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
+              </div>
+            </div>
+            <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
+          </div>
+
+          <!-- Job results table -->
+          <div style="overflow-x:auto;">
+            <table class="job-table" id="job-table">
+              <thead>
+                <tr>
+                  <th style="width:36px;cursor:default;"></th>
+                  <th data-sort="title" style="width:22%;">Title <span class="sort-arrow">↕</span></th>
+                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
+                  <th data-sort="company" style="width:12%;">Company <span class="sort-arrow">↕</span></th>
+                  <th data-sort="ghost" style="width:7%;">Ghost Rate <span class="sort-arrow">↕</span></th>
+                  <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
+                  <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
+                  <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
+                  <th data-sort="match" style="width:5%;">Match <span class="sort-arrow">↕</span></th>
+                  <th style="width:140px;cursor:default;">
+                    <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
+                      <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
+                    </label>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="job-table-body">
+                <tr>
+                  <td colspan="11" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                    <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
+                    <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+                      Check one or more saved filters above, or use the filter builder.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TUNING ============ -->
+      <div class="page" id="page-tuning">
+        <div class="page-header">
+          <h2>Search Tuning</h2>
+          <p>Global filters, title matching, and exclusion rules that apply across all saved filters <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+
+          <!-- Global Location -->
+          <div class="tuning-card" id="tc-location">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="tuning-card-title">Location Rules</span>
+              <span class="tuning-card-badge empty" id="tc-loc-badge"></span>
+            </div>
+            <div class="tuning-card-sub">applied globally to every search</div>
+            <div class="tuning-card-body">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
+                <input type="checkbox" id="tuning-us-only" style="margin:0;"> only show jobs in the united states
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
+                <input type="checkbox" id="tuning-exclude-hourly" style="margin:0;"> exclude hourly-rate jobs
+              </label>
+              <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">global location exclusions</label>
+              <div class="query-builder" id="tuning-location-exclude" style="margin-top:6px;min-height:40px;position:relative;">
+                <input type="text" class="qb-input" id="tuning-loc-excl-input" placeholder="add locations to always exclude… e.g. india, philippines" autocomplete="off" style="padding-right:70px;">
+                <div id="tuning-location-dropdown" class="company-dropdown" style="max-height:240px;"></div>
+                <span class="browse-companies-btn" id="browse-tuning-loc-btn" title="Browse locations">Browse</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Company Exclusions -->
+          <div class="tuning-card" id="tc-company">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="tuning-card-title">Company Exclusions</span>
+              <span class="tuning-card-badge empty" id="tc-co-badge"></span>
+            </div>
+            <div class="tuning-card-sub">jobs from these companies will be hidden from all filters</div>
+            <div class="tuning-card-body">
+              <div class="query-builder" id="tuning-company-exclude" style="min-height:40px;position:relative;">
+                <input type="text" class="qb-input" id="tuning-co-excl-input" placeholder="add companies to always exclude… e.g. staffing corp, recruiting agency" autocomplete="off" style="padding-right:70px;">
+                <div id="tuning-company-dropdown" class="company-dropdown" style="max-height:240px;"></div>
+                <span class="browse-companies-btn" id="browse-tuning-co-btn" title="Browse companies">Browse</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Global Industry Exclusions -->
+          <div class="tuning-card" id="tc-industry">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="tuning-card-title">Industry Exclusions</span>
+              <span class="tuning-card-badge empty" id="tc-ind-badge"></span>
+            </div>
+            <div class="tuning-card-sub">jobs from companies in these industries will be hidden from all filters</div>
+            <div class="tuning-card-body">
+              <div class="query-builder" id="tuning-industry-exclude" style="min-height:40px;position:relative;">
+                <input type="text" class="qb-input" id="tuning-ind-excl-input" placeholder="type to search industries… e.g. staffing, insurance, military" autocomplete="off" style="padding-right:70px;">
+                <div id="industry-dropdown" class="company-dropdown" style="max-height:240px;"></div>
+                <span class="browse-companies-btn" id="browse-tuning-ind-btn" title="Browse industries">Browse</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Title Rules — Hierarchy + Exclusions -->
+          <div class="tuning-card" id="tc-title">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="tuning-card-title">Title Rules</span>
+              <span class="tuning-card-badge empty" id="tc-title-badge"></span>
+            </div>
+            <div class="tuning-card-sub">default seniority levels (each saved filter can override via the ⚙ icon) and global title exclusions</div>
+            <div class="tuning-card-body">
+
+              <!-- Default Level Hierarchy -->
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">default level hierarchy</label>
+                  <span style="font-size:10px;color:var(--text-faint);font-style:italic;">each saved filter can override this with its own hierarchy</span>
+                </div>
+                <table class="level-table" id="level-table">
+                  <thead>
+                    <tr>
+                      <th style="width:36px;">#</th>
+                      <th style="width:140px;">Level</th>
+                      <th>Match Keywords (comma-separated)</th>
+                      <th style="width:56px;text-align:center;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="level-table-body"></tbody>
+                </table>
+                <button class="btn btn-sm" id="level-add-btn" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;">+ add level</button>
+              </div>
+
+              <!-- Global Title Exclusions -->
+              <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">global title exclusions</label>
+                <div style="font-size:11px;color:var(--text-faint);margin:4px 0 8px;">titles containing these terms will be hidden from all filters</div>
+                <div class="query-builder" id="tuning-title-exclude" style="min-height:40px;">
+                  <input type="text" class="qb-input" id="tuning-title-excl-input" placeholder="add title keywords to always exclude… e.g. intern, volunteer, part-time">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Match Quality Suggestions -->
+          <div class="tuning-card" id="tc-poor">
+            <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              <span class="tuning-card-title">Recent Poor Matches</span>
+              <span class="tuning-card-badge empty" id="tc-poor-badge"></span>
+            </div>
+            <div class="tuning-card-sub">jobs you've hidden from the feed — unhide or use patterns to refine exclusions</div>
+            <div class="tuning-card-body">
+              <div id="tuning-poor-matches"></div>
+              <div id="tuning-suggestions" style="margin-top:16px;"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============ PIPELINE ============ -->
+      <div class="page" id="page-pipeline">
+        <div class="page-header">
+          <h2>Pipeline</h2>
+          <p>Track your applications from saved through offer <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('pipeline')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
+            <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
+            <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
+            <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
+          </div>
+
+          <!-- Filter by saved filter tags -->
+          <div class="pl-filter-bar">
+            <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</label>
+            <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
+              <option value="all">All Filters</option>
+            </select>
+          </div>
+
+          <!-- Stage sections -->
+          <div id="pl-stages-container">
+            <div class="pl-stage-section" data-stage="saved">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Saved</span>
+                <span class="pl-stage-count" id="pc-saved">0</span>
+                <span class="pl-stage-match-summary" id="pm-saved"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-saved"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="applied">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Applied</span>
+                <span class="pl-stage-count" id="pc-applied">0</span>
+                <span class="pl-stage-match-summary" id="pm-applied"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-applied"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="posting_closed">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Posting Closed</span>
+                <span class="pl-stage-count" id="pc-posting_closed">0</span>
+                <span class="pl-stage-match-summary" id="pm-posting_closed"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-posting_closed"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="responded">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Responded</span>
+                <span class="pl-stage-count" id="pc-responded">0</span>
+                <span class="pl-stage-match-summary" id="pm-responded"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-responded"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="interview">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Interview</span>
+                <span class="pl-stage-count" id="pc-interview">0</span>
+                <span class="pl-stage-match-summary" id="pm-interview"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-interview"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="offer">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Offer</span>
+                <span class="pl-stage-count" id="pc-offer">0</span>
+                <span class="pl-stage-match-summary" id="pm-offer"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-offer"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="rejected">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text);">Rejected / Ghosted</span>
+                <span class="pl-stage-count" id="pc-rejected">0</span>
+                <span class="pl-stage-match-summary" id="pm-rejected"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-rejected"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="hired">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:hsl(142,70%,35%);">Hired!</span>
+                <span class="pl-stage-count" id="pc-hired">0</span>
+                <span class="pl-stage-match-summary" id="pm-hired"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-hired"></div>
+            </div>
+            <div class="pl-stage-section" data-stage="archived">
+              <div class="pl-stage-header" onclick="togglePipelineStage(this)">
+                <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <span class="pl-stage-name" style="color:var(--text-faint);">Archived</span>
+                <span class="pl-stage-count" id="pc-archived">0</span>
+                <span class="pl-stage-match-summary" id="pm-archived"></span>
+              </div>
+              <div class="pl-stage-body" id="pb-archived"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ RESUMES ============ -->
+      <div class="page" id="page-resumes">
+        <div class="page-header">
+          <h2>Resumes</h2>
+          <p>Every filter needs a resume. Match the right version to the right search. <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('resumes')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+
+          <!-- Stats -->
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-levels">0</div><div class="stat-label">Levels Covered</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
+            <div class="stat-card" id="r-coverage-card"><div class="stat-val" id="r-coverage">—</div><div class="stat-label">Filter Coverage</div></div>
+            <div class="stat-card"><div class="stat-val" id="r-archived">0</div><div class="stat-label">Archived</div></div>
+          </div>
+
+          <!-- Coverage Alert -->
+          <div id="resume-coverage-alert" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
+            <strong>Unassigned filters:</strong> <span id="resume-unassigned-list"></span>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:4px;">These filters have no resume assigned. Jobs from unassigned filters cannot be auto-applied.</div>
+          </div>
+
+          <!-- Readiness Analysis Bar -->
+          <div class="card" id="readiness-panel" style="display:none;padding:12px 18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="font-size:12px;color:var(--text-dim);">Resume readiness scores appear beside each resume card below.</div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span id="readiness-status" style="font-size:10px;color:var(--text-faint);"></span>
+                <button class="btn btn-sm btn-secondary" id="readiness-run-btn" onclick="runReadinessAnalysis()">Re-analyze</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload Zone -->
+          <div class="resume-upload-zone" id="resume-upload-zone" style="margin-bottom:20px;">
+              <input type="file" id="resume-file-input" accept=".pdf,.doc,.docx" style="display:none;" multiple>
+              <h4>Drop resumes here or click to upload</h4>
+              <p>PDF, DOC, or DOCX — up to 5MB each</p>
+          </div>
+
+          <!-- Resume Cards Grid -->
+          <div class="resume-grid" id="resume-grid">
+            <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
+              <h3>No resumes uploaded</h3>
+              <p>Upload your first resume to get started.</p>
+            </div>
+          </div>
+
+          <!-- Resume Archive -->
+          <div id="resume-archive-section" style="display:none;margin-top:24px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div class="card-title">Archived Resumes</div>
+              <span style="font-size:11px;color:var(--text-faint);" id="archive-count-label">0 archived</span>
+            </div>
+            <div id="resume-archive-list"></div>
+          </div>
+
+          <!-- Cover Letter Archive (G25) -->
+          <div id="cover-letter-archive" style="display:none;margin-top:24px;"></div>
+        </div>
+      </div>
+
+      <!-- ============ APPLICATIONS ============ -->
+      <div class="page" id="page-applications">
+        <div class="page-header">
+          <h2>Applications</h2>
+          <p>Manage how jobs get applied to — manual, automatic, or via notification <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('applications')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
+            <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
+            <div class="stat-card"><div class="stat-val" id="a-submitted">0</div><div class="stat-label">Submitted</div></div>
+            <div class="stat-card"><div class="stat-val" id="a-failed">0</div><div class="stat-label">Failed</div></div>
+          </div>
+
+          <!-- Application mode tabs -->
+          <div class="app-flow-tabs">
+            <div class="app-flow-tab active" data-panel="queue">Queue</div>
+            <div class="app-flow-tab" data-panel="rules">Rules &amp; Settings</div>
+            <div class="app-flow-tab" data-panel="notifications">Notifications</div>
+            <div class="app-flow-tab" data-panel="history">History</div>
+          </div>
+
+          <!-- QUEUE PANEL -->
+          <div class="app-flow-panel active" id="panel-queue">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin:0;">Application Queue</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="a-add-manual">+ Manual Add</button>
+                <button class="btn btn-primary btn-sm" id="a-process-queue" disabled>Process Queue</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="app-queue-table" id="app-queue-table">
+                <thead>
+                  <tr>
+                    <th style="width:28px;"><input type="checkbox" id="a-select-all"></th>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Added</th>
+                    <th style="width:60px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="app-queue-body">
+                  <tr>
+                    <td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
+                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
+                      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+                        Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RULES PANEL -->
+          <div class="app-flow-panel" id="panel-rules">
+            <div class="card">
+              <div class="card-title">Default Application Mode</div>
+              <div class="card-sub">Controls how saved/matched jobs get processed</div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button class="btn btn-sm app-mode-select active" data-mode="manual" style="border:2px solid var(--accent);">
+                  Manual — I review &amp; click Apply
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="notify">
+                  Notify — Send me email/SMS, I approve to submit
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto">
+                  Auto — Apply automatically when matched
+                </button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Notification Settings</div>
+              <div class="card-sub">Configure how you get notified about queued applications</div>
+              <div class="notify-config">
+                <div class="notify-config-row">
+                  <label>Email notifications</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notify-email" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notify-config-row">
+                  <label>SMS notifications</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="notify-sms">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notify-config-row">
+                  <label>Notification email</label>
+                  <input type="email" id="notify-email-addr" class="save-filter-name" style="width:240px;" placeholder="your@email.com">
+                </div>
+                <div class="notify-config-row">
+                  <label>Phone for SMS</label>
+                  <input type="tel" id="notify-phone" class="save-filter-name" style="width:180px;" placeholder="+1 555-0123">
+                </div>
+                <div class="notify-config-row">
+                  <label>Batch digest (group notifications)</label>
+                  <select id="notify-batch" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                    <option value="instant">Instant — each job immediately</option>
+                    <option value="hourly">Hourly digest</option>
+                    <option value="daily" selected>Daily digest</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Auto-Apply Rules</div>
+              <div class="card-sub">When in Auto mode, jobs matching these rules are submitted without approval</div>
+              <div id="auto-rules-list">
+                <div class="app-rule-card">
+                  <div class="app-rule-header">
+                    <h4>High-match jobs at network companies</h4>
+                    <label class="toggle-switch">
+                      <input type="checkbox" class="rule-toggle" data-rule="high-match">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="app-rule-desc">Auto-apply when resume match score is 80%+ AND you have a 1st-degree connection at the company</div>
+                </div>
+                <div class="app-rule-card">
+                  <div class="app-rule-header">
+                    <h4>Saved filter matches</h4>
+                    <label class="toggle-switch">
+                      <input type="checkbox" class="rule-toggle" data-rule="saved-filter">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="app-rule-desc">Auto-apply to new jobs matching any of your saved search filters</div>
+                </div>
+                <div class="app-rule-card">
+                  <div class="app-rule-header">
+                    <h4>Re-posts from ghosting companies</h4>
+                    <label class="toggle-switch">
+                      <input type="checkbox" class="rule-toggle" data-rule="repost">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <div class="app-rule-desc">Auto-apply when a company re-posts a role you previously applied to (they may have lost your application)</div>
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" id="add-rule-btn" style="margin-top:12px;">+ Add Custom Rule</button>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Resume Assignment</div>
+              <div class="card-sub">Which resume gets sent for each application type</div>
+              <div class="notify-config">
+                <div class="notify-config-row">
+                  <label>Default resume for all applications</label>
+                  <select id="resume-assign-default" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                    <option value="">— Upload a resume first —</option>
+                  </select>
+                </div>
+                <div class="notify-config-row">
+                  <label>Auto-select best-match resume per job</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="resume-auto-match" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- NOTIFICATIONS PANEL -->
+          <div class="app-flow-panel" id="panel-notifications">
+
+            <!-- Section 2: Notification Preferences Matrix -->
+            <div class="card">
+              <div class="card-title">Notification Preferences</div>
+              <div class="card-sub">Choose how and when you receive each type of alert</div>
+              <div style="overflow-x:auto;">
+                <table class="notif-matrix" id="notif-pref-matrix">
+                  <thead>
+                    <tr>
+                      <th style="min-width:200px;">Type</th>
+                      <th style="width:70px;">Email</th>
+                      <th style="width:70px;">SMS</th>
+                      <th style="width:120px;">Frequency</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Tier 1: Real-time -->
+                    <tr class="notif-section-label"><td colspan="4">Real-time alerts</td></tr>
+                    <tr data-notif="auto_apply_confirm">
+                      <td>Auto-apply confirmations</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Real-time</span></td>
+                    </tr>
+                    <tr data-notif="apply_alert">
+                      <td>Apply-on-notification alerts</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Real-time</span></td>
+                    </tr>
+                    <tr data-notif="pipeline_response">
+                      <td>Pipeline changes</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Real-time</span></td>
+                    </tr>
+                    <tr data-notif="pipeline_interview">
+                      <td>Interview / Offer alerts</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Real-time</span></td>
+                    </tr>
+                    <tr data-notif="listing_closed">
+                      <td>Listing closed</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Real-time</span></td>
+                    </tr>
+
+                    <!-- Tier 2: Daily -->
+                    <tr class="notif-section-label"><td colspan="4">Daily digest</td></tr>
+                    <tr data-notif="pipeline_stale">
+                      <td>Stale application reminders</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="new_jobs_daily">
+                      <td>New job matches</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="realtime">Real-time</option><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="company_hiring_surge">
+                      <td>Company hiring surge</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="ghost_alert">
+                      <td>Ghost alerts</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="salary_change">
+                      <td>Salary range changes</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+
+                    <!-- Tier 5: Network -->
+                    <tr class="notif-section-label"><td colspan="4">Network intelligence</td></tr>
+                    <tr data-notif="connections_at_company">
+                      <td>Network match alerts</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="realtime" selected>Real-time</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+
+                    <!-- Tier 3: Weekly -->
+                    <tr class="notif-section-label"><td colspan="4">Weekly summary</td></tr>
+                    <tr data-notif="weekly_summary">
+                      <td>Weekly summary</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Weekly</span></td>
+                    </tr>
+                    <tr data-notif="market_stats">
+                      <td>Market stats digest</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Weekly</span></td>
+                    </tr>
+                    <tr data-notif="ghost_report">
+                      <td>Ghost report</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Weekly</span></td>
+                    </tr>
+
+                    <!-- Tier: Job Intelligence (event-driven) — v2 -->
+                    <tr class="notif-section-label"><td colspan="4">Job intelligence</td></tr>
+                    <tr data-notif="company_new_roles">
+                      <td>Company posted more roles</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="resume_decay">
+                      <td>Resume readiness drop</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="resume_improve">
+                      <td>Resume readiness improved</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+                    <tr data-notif="exclusion_override">
+                      <td>Excluded company match</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><select class="freq-select nch-freq"><option value="daily" selected>Daily</option><option value="weekly">Weekly</option></select></td>
+                    </tr>
+
+                    <!-- Tier: Credit / Billing — v2 -->
+                    <tr class="notif-section-label"><td colspan="4">Credit &amp; billing <span style="font-size:10px;color:var(--warm);font-weight:400;margin-left:6px;">Starter/Pro</span></td></tr>
+                    <tr data-notif="credit_low">
+                      <td>Credit balance low</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                    <tr data-notif="autorefill_success">
+                      <td>Auto-refill confirmations</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                    <tr data-notif="autorefill_failed">
+                      <td>Auto-refill failed</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                    <tr data-notif="credit_exhausted">
+                      <td>Credits exhausted mid-month</td>
+                      <td><label class="toggle-switch"><input type="checkbox" class="nch-email" checked><span class="toggle-slider"></span></label></td>
+                      <td><label class="toggle-switch disabled" title="Verify phone to enable SMS"><input type="checkbox" class="nch-sms" disabled><span class="toggle-slider"></span></label></td>
+                      <td><span style="font-size:12px;color:var(--text-faint);">Event</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                <button class="btn btn-primary btn-sm" id="notif-save-prefs">Save Preferences</button>
+              </div>
+            </div>
+
+            <!-- Section 3: Phone Setup -->
+            <div class="card">
+              <div class="card-title">Phone Verification</div>
+              <div class="card-sub">Verify your phone to enable SMS notifications and apply-on-notification escalation</div>
+
+              <div id="phone-setup-unverified">
+                <div class="notify-config">
+                  <div class="notify-config-row">
+                    <label>Phone number</label>
+                    <div class="phone-setup-row">
+                      <select class="phone-country-select" id="phone-country">
+                        <option value="+1">+1 US</option>
+                        <option value="+44">+44 UK</option>
+                        <option value="+61">+61 AU</option>
+                        <option value="+1">+1 CA</option>
+                        <option value="+49">+49 DE</option>
+                        <option value="+33">+33 FR</option>
+                        <option value="+91">+91 IN</option>
+                      </select>
+                      <input type="tel" class="phone-input" id="phone-number" placeholder="555-123-4567">
+                      <button class="btn btn-primary btn-sm" id="phone-send-otp">Send Verification Code</button>
+                    </div>
+                  </div>
+                  <div class="notify-config-row" id="otp-row" style="display:none;">
+                    <label>Verification code</label>
+                    <div class="phone-setup-row">
+                      <input type="text" class="otp-input" id="otp-code" placeholder="000000" maxlength="6">
+                      <button class="btn btn-primary btn-sm" id="phone-verify-otp">Verify</button>
+                      <span id="otp-status" style="font-size:12px;color:var(--text-faint);"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="phone-setup-verified" style="display:none;">
+                <div class="notify-config">
+                  <div class="notify-config-row">
+                    <label>Phone number</label>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <span id="verified-phone-display" style="font-family:var(--mono);font-size:13px;color:var(--text);"></span>
+                      <span class="phone-verified-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Verified
+                      </span>
+                      <button class="btn btn-secondary btn-sm" id="phone-change" style="font-size:11px;">Change</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Escalation Rules -->
+            <div class="card">
+              <div class="card-title">Escalation Rules</div>
+              <div class="card-sub">Controls how apply-on-notification alerts escalate when you don't respond</div>
+
+              <div class="escalation-timeline">
+                <div class="esc-node">
+                  <div class="esc-icon email">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  </div>
+                  <div class="esc-label">Email sent</div>
+                </div>
+                <div class="esc-connector"></div>
+                <div class="esc-node">
+                  <div class="esc-icon wait">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  </div>
+                  <div class="esc-label">Wait <span id="esc-hours-label">4</span>h</div>
+                </div>
+                <div class="esc-connector"></div>
+                <div class="esc-node">
+                  <div class="esc-icon sms">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  </div>
+                  <div class="esc-label">SMS reminder</div>
+                </div>
+                <div class="esc-connector"></div>
+                <div class="esc-node">
+                  <div class="esc-icon wait">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  </div>
+                  <div class="esc-label">Wait 2h</div>
+                </div>
+                <div class="esc-connector"></div>
+                <div class="esc-node">
+                  <div class="esc-icon skip">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  </div>
+                  <div class="esc-label">Marked missed</div>
+                </div>
+              </div>
+
+              <div class="notify-config" style="margin-top:8px;">
+                <div class="notify-config-row">
+                  <label>Email-to-SMS escalation timeout</label>
+                  <div class="escalation-slider-row">
+                    <input type="range" min="1" max="12" value="4" id="esc-timeout-slider">
+                    <span class="esc-val" id="esc-timeout-val">4 hours</span>
+                  </div>
+                </div>
+                <div class="notify-config-row">
+                  <label>Quiet hours</label>
+                  <div class="quiet-hours-row">
+                    <input type="time" value="22:00" id="quiet-start">
+                    <span>to</span>
+                    <input type="time" value="07:00" id="quiet-end">
+                    <span style="font-size:11px;color:var(--text-faint);">Notifications held until quiet hours end. Timers pause.</span>
+                  </div>
+                </div>
+                <div class="notify-config-row">
+                  <label>Timezone</label>
+                  <select class="tz-select" id="notif-timezone"></select>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                <button class="btn btn-primary btn-sm" id="notif-save-escalation">Save Escalation Rules</button>
+              </div>
+            </div>
+
+            <!-- Section 5: Filter-Specific Overrides -->
+            <div class="card">
+              <div class="card-title">Filter-Specific Overrides</div>
+              <div class="card-sub">Override global notification settings for individual saved filters</div>
+              <div style="margin-bottom:14px;">
+                <select id="override-filter-select" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:13px;min-width:200px;">
+                  <option value="">Select a saved filter...</option>
+                </select>
+              </div>
+              <div id="override-matrix-wrap" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <div style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;">
+                    <span id="override-filter-name"></span>
+                    <span class="override-badge">Custom</span>
+                  </div>
+                  <button class="btn btn-secondary btn-sm" id="override-clear" style="font-size:11px;">Clear Overrides</button>
+                </div>
+                <div style="overflow-x:auto;">
+                  <table class="notif-matrix" id="override-matrix">
+                    <thead>
+                      <tr>
+                        <th style="min-width:200px;">Type</th>
+                        <th style="width:70px;">Email</th>
+                        <th style="width:70px;">SMS</th>
+                        <th style="width:120px;">Frequency</th>
+                      </tr>
+                    </thead>
+                    <tbody id="override-matrix-body"></tbody>
+                  </table>
+                </div>
+                <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+                  <button class="btn btn-primary btn-sm" id="override-save">Save Overrides</button>
+                </div>
+              </div>
+              <div id="override-empty" style="text-align:center;color:var(--text-faint);padding:24px;font-size:13px;">
+                Select a saved filter above to customize its notification settings.
+              </div>
+            </div>
+          </div>
+
+          <!-- HISTORY PANEL -->
+          <div class="app-flow-panel" id="panel-history">
+            <div style="overflow-x:auto;">
+              <table class="app-queue-table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume Used</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="app-history-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No application history yet</div>
+                      <div style="font-size:12px;">Completed applications will appear here with full audit trail.</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Notification Log -->
+            <div style="margin-top:28px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <div>
+                  <div class="card-title" style="margin:0;">Notification Log</div>
+                  <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status and actions taken</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="notif-export-csv" style="font-size:11px;">Export CSV</button>
+              </div>
+              <div class="notif-log-filters">
+                <select id="nlog-filter-type">
+                  <option value="">All types</option>
+                  <option value="auto_apply_confirm">Auto-apply confirm</option>
+                  <option value="apply_alert">Apply alert</option>
+                  <option value="pipeline_response">Pipeline change</option>
+                  <option value="pipeline_interview">Interview/Offer</option>
+                  <option value="new_jobs_daily">New job matches</option>
+                  <option value="ghost_alert">Ghost alert</option>
+                  <option value="weekly_summary">Weekly summary</option>
+                  <option value="credit_low">Credit balance low</option>
+                  <option value="autorefill_success">Auto-refill success</option>
+                  <option value="autorefill_failed">Auto-refill failed</option>
+                  <option value="resume_decay">Resume readiness drop</option>
+                  <option value="company_new_roles">Company new roles</option>
+                </select>
+                <select id="nlog-filter-channel">
+                  <option value="">All channels</option>
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                </select>
+                <select id="nlog-filter-status">
+                  <option value="">All statuses</option>
+                  <option value="sent">Sent</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="opened">Opened</option>
+                  <option value="applied">Applied</option>
+                  <option value="passed">Passed</option>
+                  <option value="missed">Missed</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="notif-log-table" id="notif-log-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Type</th>
+                      <th style="width:50px;">Channel</th>
+                      <th>Job / Company</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="notif-log-body">
+                    <tr>
+                      <td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                        <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications sent yet</div>
+                        <div style="font-size:12px;">Notification history will appear here once the system is active.</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div id="notif-log-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ GHOST MONITOR ============ -->
+      <div class="page" id="page-ghost">
+        <div class="page-header">
+          <h2>Ghost Monitor</h2>
+          <p>Track response rates and expose companies that ghost applicants <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('ghost')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+          <div class="stat-grid">
+            <div class="stat-card"><div class="stat-val" id="g-active">0</div><div class="stat-label">Active Applications</div></div>
+            <div class="stat-card"><div class="stat-val" id="g-avg-wait">—</div><div class="stat-label">Avg Days Waiting</div></div>
+            <div class="stat-card"><div class="stat-val" id="g-likely">0</div><div class="stat-label">Likely Ghosted</div></div>
+            <div class="stat-card"><div class="stat-val" id="g-ghosted">0</div><div class="stat-label">Confirmed Ghosted</div></div>
+            <div class="stat-card" id="g-gmail-card">
+              <div class="stat-val" style="font-size:14px;color:var(--text-dim);">Not Connected</div>
+              <div class="stat-label">Gmail Status</div>
+            </div>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div>
+                <div class="card-title" style="margin:0;">Ghost Detection</div>
+                <div class="card-sub" style="margin:0;">Applications scored by response likelihood — powered by time elapsed, listing status, and company history</div>
+              </div>
+              <button class="btn btn-outline btn-sm" onclick="renderGhostMonitor()" title="Refresh ghost scores">Refresh</button>
+            </div>
+            <table class="ghost-table">
+              <thead><tr>
+                <th>Company</th><th>Role</th><th>Applied</th><th>Days</th>
+                <th>Listing</th><th>Score</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody id="ghost-table-body">
+                <tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:32px;">Loading ghost data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">Gmail Integration</div>
+            <div class="card-sub">Connect Gmail to boost ghost detection accuracy from Low to High confidence</div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">
+              When connected, we scan for emails from company domains you've applied to. We detect responses, rejections, and interview invitations automatically. Only metadata is accessed — we never read your email content.
+            </div>
+            <button class="btn btn-primary btn-sm" id="gmail-connect-btn" disabled>Connect Gmail (Coming Soon)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ STATS ============ -->
+      <div class="page" id="page-stats">
+        <div class="page-header">
+          <h2>Stats</h2>
+          <p>Your data filtered, visualized <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('stats')">How this works →</a> · <a class="page-how-link" href="/data-lab" target="_blank" style="color:var(--accent)">Explore Data Lab →</a></p>
+        </div>
+        <div class="page-body">
+          <!-- Filter selector -->
+          <div id="stats-filter-bar" class="stats-filter-bar">
+            <div id="stats-filter-pills"></div>
+            <div class="stats-mode-dropdown">
+              <select disabled title="Compare mode coming soon — compare two filters side by side">
+                <option selected>Aggregate</option>
+                <option disabled>Compare (coming soon)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Stat cards -->
+          <div class="stat-grid" id="stats-cards">
+            <div class="stat-card"><div class="stat-val" id="sc-total">—</div><div class="stat-label">Matching Jobs</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-salary">—</div><div class="stat-label">Median Salary</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-senior">—</div><div class="stat-label">Senior+ Level</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-remote">—</div><div class="stat-label">Remote Jobs</div></div>
+            <div class="stat-card"><div class="stat-val" id="sc-companies">—</div><div class="stat-label">Companies</div></div>
+          </div>
+
+          <div id="stats-cap-notice" class="stats-cap-notice" style="display:none"></div>
+          <div id="stats-empty" class="stats-empty" style="display:none"></div>
+
+          <!-- Charts grid -->
+          <div class="stats-grid" id="stats-charts-grid">
+            <div class="stats-chart-card full">
+              <div class="stats-chart-title">Job Count Over Time</div>
+              <div class="ec" id="chart-timeline" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card full">
+              <div class="stats-chart-title">Posting Age</div>
+              <div class="ec" id="chart-posting-age" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Salary Distribution</div>
+              <div class="stats-chart-sub" id="chart-salary-sub"></div>
+              <div class="ec" id="chart-salary" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Seniority Breakdown</div>
+              <div class="ec" id="chart-funnel" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Jobs by Industry</div>
+              <div class="ec" id="chart-companies" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Work Arrangement</div>
+              <div class="ec" id="chart-location" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card full">
+              <div class="stats-chart-title">Salary Ladder</div>
+              <div class="ec tall" id="chart-salary-level" style="width:100%;height:380px"></div>
+            </div>
+            <div class="stats-chart-card full">
+              <div class="stats-chart-title" id="chart-geo-title">Where Are the Jobs</div>
+              <div style="display:flex;gap:16px;width:100%">
+                <div id="chart-geo-map" style="flex:1;min-width:0;height:400px"></div>
+                <div id="chart-geo-list" style="width:260px;max-height:400px;overflow-y:auto;font-size:12px;font-family:'JetBrains Mono',monospace"></div>
+              </div>
+            </div>
+            <div class="stats-chart-card">
+
+        </div>
+      </div>
+      </div>
+      </div>
+
+      <!-- ============ SETTINGS ============ -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <h2>Settings</h2>
+          <p>Account and preferences <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('settings')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+          <div class="card">
+            <div class="card-title">Account</div>
+            <div class="card-sub">Manage your account</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" id="st-change-pw">Change Password</button>
+              <button class="btn btn-secondary btn-sm" id="st-export">Export Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SUBSCRIPTION ============ -->
+      <div class="page" id="page-subscription">
+        <div class="page-header">
+          <h2>Subscription</h2>
+          <p>Manage your plan, credits, and billing <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('subscription')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+
+          <!-- Low Credit Alert Banner (hidden by default) -->
+          <div class="sub-alert" id="sub-credit-alert" style="display:none;">
+            <div class="sub-alert-icon">⚡</div>
+            <div class="sub-alert-text">
+              <strong>Running low on credits</strong>
+              <span id="sub-alert-msg">You have <span id="sub-alert-count">0</span> credits remaining.</span>
+            </div>
+            <button class="btn-primary btn-sm" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Get More Credits</button>
+          </div>
+
+          <!-- Current Plan + Credit Balance Cards -->
+          <div class="sub-summary-grid">
+            <div class="card sub-plan-card">
+              <div class="card-title">Current Plan</div>
+              <div class="sub-plan-name" id="sub-plan-name">Free</div>
+              <div class="sub-plan-price" id="sub-plan-price">$0/mo</div>
+              <div class="sub-plan-detail" id="sub-plan-credits-included">0 credits included/month</div>
+              <div class="sub-plan-detail" id="sub-plan-payg">PAYG rate: $0.25/credit</div>
+              <div class="sub-plan-detail" id="sub-plan-period" style="display:none;">Renews: <span id="sub-plan-renew-date">—</span></div>
+              <button class="btn-secondary btn-sm" style="margin-top:12px;" onclick="openCustomerPortal()" id="sub-manage-btn" title="Payment method, invoices, cancel">Manage Billing</button>
+            </div>
+
+            <div class="card sub-balance-card">
+              <div class="card-title">Credit Balance</div>
+              <div class="sub-balance-number" id="sub-balance-number">0</div>
+              <div class="sub-balance-label">credits available</div>
+              <div class="sub-burn-rate" id="sub-burn-rate" style="display:none;">
+                At your current usage (~<span id="sub-daily-burn">0</span>/day), you have <strong><span id="sub-days-left">—</span> days</strong> of credits remaining
+              </div>
+              <button class="btn-primary btn-sm" style="margin-top:12px;" onclick="document.getElementById('sub-packs-section').scrollIntoView({behavior:'smooth'})">Buy Credits</button>
+            </div>
+
+            <div class="card sub-usage-card">
+              <div class="card-title">Credit Usage (30d)</div>
+              <div class="sub-usage-chart" id="sub-usage-chart" style="height:120px;"></div>
+              <div class="sub-usage-breakdown" id="sub-usage-breakdown">
+                <div class="sub-usage-row"><span>Resume Scoring</span><span id="sub-usage-scoring">0</span></div>
+                <div class="sub-usage-row"><span>AI Rewrites</span><span id="sub-usage-rewrites">0</span></div>
+                <div class="sub-usage-row"><span>Job Alerts</span><span id="sub-usage-alerts">0</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- What Uses Credits -->
+          <div class="card sub-credits-explainer">
+            <div class="card-title">What Uses Credits</div>
+            <div class="sub-credit-costs">
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">📄</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">Resume Score</div>
+                  <div class="sub-cost-desc">AI analysis of your resume against a job description</div>
+                </div>
+                <div class="sub-cost-amount">3 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">✏️</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Resume Rewrite</div>
+                  <div class="sub-cost-desc">Tailored resume rewrite optimized for a specific role</div>
+                </div>
+                <div class="sub-cost-amount">5 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">🔔</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">Smart Job Alert</div>
+                  <div class="sub-cost-desc">AI-filtered alerts matching your preferences</div>
+                </div>
+                <div class="sub-cost-amount">1 credit</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon">🔍</div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Filter Suggest</div>
+                  <div class="sub-cost-desc">Generate optimized search filters from your resume</div>
+                </div>
+                <div class="sub-cost-amount">2 credits</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tier Comparison -->
+          <div class="card">
+            <div class="card-title">Plans</div>
+            <div class="sub-card-sub">Upgrade for more credits and lower PAYG rates</div>
+            <div class="sub-tiers" id="sub-tiers">
+              <!-- Rendered by billing.js -->
+            </div>
+          </div>
+
+          <!-- Credit Packs -->
+          <div class="card" id="sub-packs-section">
+            <div class="card-title">Buy Credit Packs</div>
+            <div class="sub-card-sub">One-time purchase at your plan's rate. Credits never expire.</div>
+            <div class="sub-packs" id="sub-packs">
+              <!-- Rendered by billing.js -->
+            </div>
+          </div>
+
+          <!-- Auto-Refill -->
+          <div class="card">
+            <div class="card-title">Auto-Refill</div>
+            <div class="sub-card-sub">Never run out — automatically top up when your balance gets low</div>
+            <div class="sub-refill-options" id="sub-refill-options">
+              <label class="sub-refill-toggle">
+                <input type="checkbox" id="sub-refill-enabled"> Enable auto-refill
+              </label>
+              <div class="sub-refill-levels" id="sub-refill-levels" style="display:none;">
+                <div class="sub-refill-level" data-level="low">
+                  <input type="radio" name="refill-level" value="low" id="refill-low">
+                  <label for="refill-low">
+                    <strong>$1</strong> <span class="sub-refill-discount">5% off</span>
+                    <div class="sub-refill-detail">~10 credits when balance hits 0</div>
+                  </label>
+                </div>
+                <div class="sub-refill-level" data-level="medium">
+                  <input type="radio" name="refill-level" value="medium" id="refill-medium">
+                  <label for="refill-medium">
+                    <strong>$5</strong> <span class="sub-refill-discount">10% off</span>
+                    <div class="sub-refill-detail">~55 credits when balance hits 0</div>
+                  </label>
+                </div>
+                <div class="sub-refill-level" data-level="high">
+                  <input type="radio" name="refill-level" value="high" id="refill-high">
+                  <label for="refill-high">
+                    <strong>$10</strong> <span class="sub-refill-discount">15% off</span>
+                    <div class="sub-refill-detail">~117 credits when balance hits 0</div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pay-When-Hired -->
+          <div class="card" id="sub-hire-fee-section">
+            <div class="card-title">Pay When You're Hired</div>
+            <div class="sub-card-sub">Only pay a success fee when Brilliant Jobs helps you land a job. Authorize a payment method now — we only charge when you confirm a hire.</div>
+            <div class="sub-hire-fee-status" id="sub-hire-fee-status">
+              <div class="sub-hire-fee-nomethod" id="sub-hire-fee-nomethod">
+                <div style="display:flex;align-items:center;gap:12px;padding:16px;background:var(--bg-input);border-radius:10px;">
+                  <div style="font-size:24px;">💳</div>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;font-size:13px;">No payment method on file</div>
+                    <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Add a card to enable pay-when-hired. You won't be charged until you confirm a successful hire.</div>
+                  </div>
+                  <button class="btn-primary btn-sm" onclick="setupHireFee()">Authorize Card</button>
+                </div>
+              </div>
+              <div class="sub-hire-fee-active" id="sub-hire-fee-active" style="display:none;">
+                <div style="display:flex;align-items:center;gap:12px;padding:16px;background:hsl(142,50%,96%);border:1px solid hsl(142,40%,85%);border-radius:10px;">
+                  <div style="font-size:24px;">✅</div>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;font-size:13px;color:hsl(142,60%,30%);">Payment method authorized</div>
+                    <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">When you mark a job as "Hired" in your pipeline, you'll be asked to confirm the success fee.</div>
+                  </div>
+                  <button class="btn-secondary btn-sm" onclick="openCustomerPortal()">Manage Card</button>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;font-size:11px;color:var(--text-faint);">
+              Success fee: 5% of first-year base salary (min $500, max $5,000). Only charged when you confirm.
+            </div>
+          </div>
+
+          <!-- Upgrade CTA (shown for free/starter users) -->
+          <div class="sub-upgrade-banner" id="sub-upgrade-banner" style="display:none;">
+            <div class="sub-upgrade-text">
+              <strong id="sub-upgrade-headline">Unlock more with Pro</strong>
+              <span id="sub-upgrade-detail">300 credits/month, $0.10/credit PAYG, 15% auto-refill discount</span>
+            </div>
+            <button class="btn-primary" onclick="startCheckout('subscription','pro')">Upgrade to Pro</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============ FEEDBACK (P13-13 Canny) ============ -->
+      <div class="page" id="page-feedback">
+        <div class="page-header">
+          <h2>Feedback</h2>
+          <p>Request features, report bugs, and vote on what we build next</p>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <button class="admin-period-btn active" id="canny-tab-features" onclick="switchCannyBoard('features')">Feature Requests</button>
+          <button class="admin-period-btn" id="canny-tab-bugs" onclick="switchCannyBoard('bugs')">Bug Reports</button>
+          <a href="https://brilliant-jobs.canny.io/changelog" target="_blank" rel="noopener" style="margin-left:auto;font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:4px;">
+            Changelog <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+        <div id="canny-widget-container" style="min-height:400px;">
+          <div data-canny id="canny-embed"></div>
+        </div>
+      </div>
+
+      <!-- ============ ADMIN CONSOLE ============ -->
+      <div class="page" id="page-admin">
+        <div class="page-header">
+          <h2>Admin Console</h2>
+          <p>System health, cohorts, users, SEO coverage, and revenue</p>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <a href="/roadmap.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Roadmap ↗</a>
+            <a href="/parkinglot.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Parking Lot ↗</a>
+          </div>
+        </div>
+        <div class="page-body">
+          <div id="admin-tabs" style="display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap">
+            <button class="admin-tab active" data-tab="feed-health">Feed Health</button>
+            <button class="admin-tab" data-tab="seo">SEO</button>
+            <button class="admin-tab" data-tab="cohorts">Cohorts</button>
+            <button class="admin-tab" data-tab="entitlements">Entitlements</button>
+            <button class="admin-tab" data-tab="users">Users</button>
+            <button class="admin-tab" data-tab="surveys">Surveys</button>
+            <button class="admin-tab" data-tab="revenue">Revenue</button>
+          </div>
+
+          <div class="admin-panel active" id="admin-panel-feed-health">
+            <div id="admin-health" style="margin-bottom:16px;font-size:14px"></div>
+
+            <!-- Refresh Cycle Status -->
+            <div id="admin-cycle" style="margin-bottom:20px;padding:16px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Refresh Cycle</span>
+                <span id="ac-cycle-pct" style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent)"></span>
+              </div>
+              <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:12px">
+                <div id="ac-cycle-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--accent));transition:width 1s ease;width:0"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;font-size:12px">
+                <div><span style="color:var(--text-faint)">Total boards</span><br><strong id="ac-cycle-total" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Refreshed</span><br><strong id="ac-cycle-refreshed" style="font-family:var(--mono);color:var(--green)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Pending</span><br><strong id="ac-cycle-pending" style="font-family:var(--mono);color:var(--warm)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Rate</span><br><strong id="ac-cycle-rate" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Cycle started</span><br><strong id="ac-cycle-start" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Est. completion</span><br><strong id="ac-cycle-eta" style="font-family:var(--mono)">—</strong></div>
+              </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px">
+              <div class="stat-card"><div class="stat-val" id="ah-total">&mdash;</div><div class="stat-label">Total Boards</div><div class="stat-delta" id="ah-total-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-with-jobs">&mdash;</div><div class="stat-label">With Jobs</div><div class="stat-delta" id="ah-with-jobs-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-4xx">&mdash;</div><div class="stat-label">4xx Errors</div><div class="stat-delta" id="ah-4xx-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-jobs">&mdash;</div><div class="stat-label">Total Jobs</div><div class="stat-delta" id="ah-jobs-delta"></div></div>
+              <div class="stat-card"><div class="stat-val" id="ah-net">&mdash;</div><div class="stat-label">Net Change</div><div class="stat-delta" id="ah-net-delta"></div></div>
+            </div>
+
+            <table class="admin-table" style="width:100%">
+              <thead><tr><th>Platform</th><th>Boards</th><th>Active %</th><th>4xx</th><th>Jobs</th><th>Jobs/Board</th></tr></thead>
+              <tbody id="admin-platform-body"></tbody>
+              <tfoot id="admin-platform-foot"></tfoot>
+            </table>
+
+            <!-- Feed Health Charts -->
+            <div style="margin-top:24px">
+              <div id="fh-chart-total-boards" style="width:100%;height:260px;margin-bottom:16px"></div>
+              <div id="fh-chart-active-boards" style="width:100%;height:260px;margin-bottom:16px"></div>
+              <div id="fh-chart-jobs" style="width:100%;height:260px"></div>
+            </div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-cohorts">
+            <!-- Cohort Selector -->
+            <div id="ac-cohort-filter" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap"></div>
+            <!-- KPI Stat Cards -->
+            <div class="stat-grid" style="margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="ac-total-cohorts">&mdash;</div><div class="stat-label">Cohorts</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-total-users">&mdash;</div><div class="stat-label">Total Users</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-pro-pct">&mdash;</div><div class="stat-label">Pro Conversion</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-active-7d">&mdash;</div><div class="stat-label">Active 7d</div></div>
+              <div class="stat-card"><div class="stat-val" id="ac-churned">&mdash;</div><div class="stat-label">Churned 28d</div></div>
+            </div>
+            <!-- Charts First (more scalable) -->
+            <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+              <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:280px"></div>
+              <div id="admin-cohort-revenue-chart" style="flex:1;min-width:280px;height:280px"></div>
+            </div>
+            <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+              <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
+              <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
+            </div>
+            <!-- Cohort Table -->
+            <table class="admin-table" style="width:100%">
+              <thead><tr>
+                <th>ID</th><th>Age</th><th>Enrollment</th>
+                <th>Users</th><th>Active 7d</th><th>Churned</th>
+                <th>Free</th><th>Pro</th>
+                <th>Revenue/mo</th><th>LTV</th><th>ARPU</th>
+              </tr></thead>
+              <tbody id="admin-cohort-body"></tbody>
+            </table>
+          </div>
+
+          <!-- Entitlements Tab (split from Cohorts) -->
+          <div class="admin-panel" id="admin-panel-entitlements">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+              <label style="font-size:13px;color:var(--text-dim)">Cohort:</label>
+              <select id="entitlement-cohort-select" style="padding:6px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px"></select>
+            </div>
+            <table class="admin-table" style="width:100%">
+              <thead><tr><th>Feature</th><th>Plan</th><th>Behavior</th><th>Limit</th><th>Bonus Max</th></tr></thead>
+              <tbody id="admin-entitlement-body"></tbody>
+            </table>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-users">
+            <div id="admin-signup-chart" style="height:200px;margin-bottom:20px"></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-seo">
+
+            <!-- Section A: Controls -->
+            <div class="seo-controls">
+              <select id="seo-url-select" class="seo-select" onchange="setSeoUrl(this.value)">
+                <option value="">All Pages</option>
+                <option value="https://brilliantjobs.app/">/ (homepage)</option>
+                <option value="https://brilliantjobs.app/data-lab">/data-lab</option>
+                <option value="https://brilliantjobs.app/salary-data">/salary-data</option>
+                <option value="https://brilliantjobs.app/hiring-trends">/hiring-trends</option>
+                <option value="https://brilliantjobs.app/jobs-by-industry">/jobs-by-industry</option>
+                <option value="https://brilliantjobs.app/career-level-data">/career-level-data</option>
+              </select>
+              <span class="seo-date-label">From</span>
+              <input type="date" id="seo-date-from" class="seo-date-input" onchange="seoDateChanged()">
+              <span class="seo-date-label">To</span>
+              <input type="date" id="seo-date-to" class="seo-date-input" onchange="seoDateChanged()">
+              <button class="seo-sync-btn" id="seo-sync-btn" onclick="triggerSeoSync(['all'])">&#8635; Sync All</button>
+            </div>
+
+            <!-- Section B: Summary KPI Cards -->
+            <div class="stat-grid" id="seo-stat-cards">
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-psi">&mdash;</div>
+                <div class="stat-label">PSI Performance</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-ylt">&mdash;</div>
+                <div class="stat-label">YLT Score</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-indexed">&mdash;</div>
+                <div class="stat-label">Indexed</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-cf">&mdash;</div>
+                <div class="stat-label">CF Requests</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-val" id="seo-kpi-gsc">&mdash;</div>
+                <div class="stat-label">GSC Clicks</div>
+              </div>
+            </div>
+
+            <!-- Section C: Performance Charts -->
+            <div class="seo-section-label">Performance Charts</div>
+            <div class="stats-grid">
+              <div class="seo-chart-card full">
+                <div class="seo-chart-label">Search Performance</div>
+                <div class="seo-chart-title">Google Search Console</div>
+                <div id="seo-chart-gsc" class="seo-chart-area"></div>
+              </div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Core Web Vitals</div>
+                <div class="seo-chart-title">PageSpeed Insights &middot; Mobile</div>
+                <div id="seo-chart-psi" class="seo-chart-area compact"></div>
+              </div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Edge Analytics</div>
+                <div class="seo-chart-title">Cloudflare Traffic</div>
+                <div id="seo-chart-cf" class="seo-chart-area compact"></div>
+              </div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Page Quality</div>
+                <div class="seo-chart-title">Yellow Lab Tools</div>
+                <div id="seo-chart-ylt" class="seo-chart-area compact"></div>
+              </div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Real User Metrics</div>
+                <div class="seo-chart-title">Chrome UX Report</div>
+                <div id="seo-chart-crux" class="seo-chart-area compact"></div>
+              </div>
+            </div>
+
+            <!-- Section D: Technical Details -->
+            <div class="seo-section-label">Technical Details</div>
+            <div class="seo-detail-grid">
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Google Indexing</div>
+                <div class="seo-chart-title">URL Inspection</div>
+                <div id="seo-side-inspection"></div>
+              </div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">On-Page Audit</div>
+                <div class="seo-chart-title">DataForSEO</div>
+                <div id="seo-side-dfs"></div>
+              </div>
+              <div class="seo-chart-card">
+                <div class="seo-chart-label">Entity Recognition</div>
+                <div class="seo-chart-title">Knowledge Graph</div>
+                <div id="seo-side-kg"></div>
+              </div>
+            </div>
+
+            <!-- PSI Drilldown (full width) -->
+            <div class="seo-chart-card" style="margin-block-start:16px;">
+              <div class="seo-chart-label">Core Web Vitals Detail</div>
+              <div class="seo-chart-title">PSI Drilldown</div>
+              <div id="seo-side-psi"></div>
+            </div>
+
+            <!-- GSC Top Queries (full width) -->
+            <div class="seo-chart-card" style="margin-block-start:16px;">
+              <div class="seo-chart-label">Organic Search</div>
+              <div class="seo-chart-title">Search Queries</div>
+              <div id="seo-side-queries" style="max-height:300px;overflow-y:auto;"></div>
+            </div>
+
+          </div>
+
+          <div class="admin-panel" id="admin-panel-revenue">
+            <div id="admin-rev-period" style="display:flex;gap:4px;margin-bottom:16px">
+              <button class="admin-period-btn active" data-rev-days="7">7d</button>
+              <button class="admin-period-btn" data-rev-days="30">30d</button>
+              <button class="admin-period-btn" data-rev-days="90">90d</button>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="stat-grid" id="admin-rev-kpis" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-val" id="ar-total-users">—</div></div>
+              <div class="stat-card"><div class="stat-label">Paid Subscribers</div><div class="stat-val" id="ar-paid-subs">—</div></div>
+              <div class="stat-card"><div class="stat-label">Credits Granted</div><div class="stat-val" id="ar-credits-granted">—</div></div>
+              <div class="stat-card"><div class="stat-label">Credits Used</div><div class="stat-val" id="ar-credits-used">—</div></div>
+              <div class="stat-card"><div class="stat-label">Active Credit Users</div><div class="stat-val" id="ar-active-users">—</div></div>
+              <div class="stat-card"><div class="stat-label">Platform Cost</div><div class="stat-val" id="ar-platform-cost">—</div></div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Tier Distribution</div>
+                <div id="ar-chart-tiers" style="height:200px;"></div>
+              </div>
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Daily Credit Activity</div>
+                <div id="ar-chart-daily" style="height:200px;"></div>
+              </div>
+            </div>
+
+            <!-- Revenue by Type -->
+            <div class="card" style="padding:16px;margin-bottom:20px;">
+              <div class="card-title">Credit Transactions by Type</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Type</th><th>Transactions</th><th>Credits In</th><th>Credits Out</th></tr></thead>
+                <tbody id="ar-type-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Cost Breakdown -->
+            <div class="card" style="padding:16px;margin-bottom:20px;">
+              <div class="card-title">Platform Cost Breakdown</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Category</th><th>Transactions</th><th>Total Cost</th></tr></thead>
+                <tbody id="ar-cost-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Top Users Table -->
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Top Users by Credit Usage</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>User</th><th>Credits Used</th><th>Credits Granted</th><th>Transactions</th></tr></thead>
+                <tbody id="ar-users-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ─── SURVEYS PANEL (P13-10) ─── -->
+          <div class="admin-panel" id="admin-panel-surveys">
+            <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap" id="survey-period-toggle">
+              <button class="admin-period-btn active" data-survey-days="30">30d</button>
+              <button class="admin-period-btn" data-survey-days="90">90d</button>
+              <button class="admin-period-btn" data-survey-days="365">1y</button>
+              <button class="admin-period-btn" data-survey-days="0">All</button>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="stat-grid" id="survey-kpis" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Responses</div><div class="stat-val" id="sv-total">—</div></div>
+              <div class="stat-card"><div class="stat-label">Unique Respondents</div><div class="stat-val" id="sv-respondents">—</div></div>
+              <div class="stat-card"><div class="stat-label">Avg Completion</div><div class="stat-val" id="sv-completion">—</div></div>
+              <div class="stat-card"><div class="stat-label">Avg NPS</div><div class="stat-val" id="sv-nps">—</div></div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Responses by Version</div>
+                <div id="sv-chart-versions" style="height:260px;"></div>
+              </div>
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Completion Funnel</div>
+                <div id="sv-chart-funnel" style="height:260px;"></div>
+              </div>
+            </div>
+
+            <!-- Daily Trend + NPS Trend -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Daily Response Volume</div>
+                <div id="sv-chart-daily" style="height:220px;"></div>
+              </div>
+              <div class="card" style="padding:16px;">
+                <div class="card-title">NPS Trend</div>
+                <div id="sv-chart-nps" style="height:220px;"></div>
+              </div>
+            </div>
+
+            <!-- Response Details Table -->
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Recent Responses</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Date</th><th>Version</th><th>User</th><th>Questions</th><th>NPS</th><th>Rating</th></tr></thead>
+                <tbody id="sv-responses-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ LOCATION BROWSER ============ -->
+      <div class="page" id="page-location-browser">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="cb-back-btn" id="lb-back-btn">← Back to Tuning</button>
+            <div>
+              <h2>Location Browser</h2>
+              <p>Browse and exclude locations from all your searches</p>
+            </div>
+          </div>
+        </div>
+        <div class="page-body">
+          <div class="cb-header">
+            <input type="text" class="cb-search" id="lb-search" placeholder="Search locations…" autocomplete="off">
+            <div class="cb-mode-toggle">
+              <button class="cb-mode-btn active" data-mode="all" data-browser="loc">All</button>
+              <button class="cb-mode-btn" data-mode="states" data-browser="loc">States</button>
+              <button class="cb-mode-btn" data-mode="metros" data-browser="loc">Metros</button>
+              <button class="cb-mode-btn" data-mode="excluded" data-browser="loc">✗ Excluded</button>
+            </div>
+          </div>
+          <div class="cb-alpha-nav" id="lb-alpha-nav-1"></div>
+          <div class="cb-alpha-nav" id="lb-alpha-nav-2" style="margin-bottom:14px;"></div>
+          <div class="cb-list-container" id="lb-list"></div>
+        </div>
+      </div>
+
+      <!-- ============ INDUSTRY BROWSER ============ -->
+      <div class="page" id="page-industry-browser">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="cb-back-btn" id="ib-back-btn">← Back to Tuning</button>
+            <div>
+              <h2>Industry Browser</h2>
+              <p>Browse and exclude industries from all your searches</p>
+            </div>
+          </div>
+        </div>
+        <div class="page-body">
+          <div class="cb-header">
+            <input type="text" class="cb-search" id="ib-search" placeholder="Search industries…" autocomplete="off">
+            <div class="cb-mode-toggle">
+              <button class="cb-mode-btn active" data-mode="all" data-browser="ind">All</button>
+              <button class="cb-mode-btn" data-mode="excluded" data-browser="ind">✗ Excluded</button>
+            </div>
+          </div>
+          <div class="cb-alpha-nav" id="ib-alpha-nav-1"></div>
+          <div class="cb-alpha-nav" id="ib-alpha-nav-2" style="margin-bottom:14px;"></div>
+          <div class="cb-list-container" id="ib-list"></div>
+        </div>
+      </div>
+
+      <!-- ============ COMPANY BROWSER ============ -->
+      <div class="page" id="page-company-browser">
+        <div class="page-header">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="cb-back-btn" id="cb-back-btn">← Back to Jobs</button>
+            <div>
+              <h2>Company Browser</h2>
+              <p>Explore companies and build collections for your filters</p>
+            </div>
+          </div>
+        </div>
+        <div class="page-body">
+          <div class="cb-header">
+            <input type="text" class="cb-search" id="cb-search" placeholder="Search companies…" autocomplete="off">
+            <div class="cb-mode-toggle">
+              <button class="cb-mode-btn active" data-mode="all">All</button>
+              <button class="cb-mode-btn" data-mode="included">✓ Included</button>
+              <button class="cb-mode-btn" data-mode="excluded">✗ Excluded</button>
+            </div>
+          </div>
+          <div class="cb-save-bar">
+            <span class="cb-selected-count" id="cb-selected-count">0 selected</span>
+            <input type="text" id="cb-collection-name" placeholder="Collection name…">
+            <button class="cb-save-btn" id="cb-save-btn" disabled>Save Collection</button>
+          </div>
+          <div class="cb-alpha-nav" id="cb-alpha-nav-1"></div>
+          <div class="cb-alpha-nav" id="cb-alpha-nav-2" style="margin-bottom:14px;"></div>
+          <div class="cb-list-container" id="cb-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <!-- Resume picker popup -->
+  <div class="resume-picker-overlay" id="resume-picker-overlay" onclick="if(event.target===this)closeResumePicker()">
+    <div class="resume-picker">
+      <h4>Which resume did you use?</h4>
+      <div class="rp-sub">Select the resume you submitted for this application</div>
+      <div id="rp-options"></div>
+      <div class="rp-actions">
+        <span class="rp-skip" onclick="closeResumePicker(true)">Skip — I'll add it later</span>
+        <button class="btn btn-primary btn-sm" id="rp-confirm" onclick="confirmResumePick()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="job-modal-overlay" id="job-modal-overlay" style="display:none;" onclick="closeJobModal(event)">
+    <div class="job-modal" onclick="event.stopPropagation()">
+      <div class="job-modal-header">
+        <div class="job-modal-title-wrap">
+          <h3 class="job-modal-title" id="job-modal-title">Loading…</h3>
+          <div class="job-modal-meta" id="job-modal-meta"></div>
+        </div>
+        <div class="job-modal-actions">
+          <a class="btn btn-sm" id="job-modal-external" href="#" target="_blank" rel="noopener" style="font-size:11px;padding:5px 12px;text-decoration:none;">Open on ATS ↗</a>
+          <button class="job-modal-close" onclick="closeJobModal()">&times;</button>
+        </div>
+      </div>
+      <div class="job-modal-body" id="job-modal-body">
+        <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading job details…</div>
+      </div>
+      <div class="job-modal-footer" id="job-modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- AI Filter Suggest Modal -->
+  <div class="job-modal-overlay" id="ai-filter-modal" style="display:none;" onclick="closeAiFilterModal(event)">
+    <div class="job-modal" onclick="event.stopPropagation()" style="max-width:560px;">
+      <div class="job-modal-header">
+        <div class="job-modal-title-wrap">
+          <h3 class="job-modal-title">✦ AI Filter Suggestions</h3>
+          <div class="job-modal-meta" id="ai-filter-meta">Based on your resume</div>
+        </div>
+        <div class="job-modal-actions">
+          <button class="job-modal-close" onclick="closeAiFilterModal()">&times;</button>
+        </div>
+      </div>
+      <div class="job-modal-body" id="ai-filter-body" style="padding:20px;">
+        <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading…</div>
+      </div>
+      <div class="job-modal-footer" id="ai-filter-footer" style="display:none;">
+        <button class="btn btn-primary btn-sm" id="ai-filter-accept" onclick="acceptAiFilter()">Create Filter</button>
+        <button class="btn btn-sm" onclick="closeAiFilterModal()" style="background:var(--bg-card-hover);color:var(--text-dim);border:1px solid var(--border);">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+    
