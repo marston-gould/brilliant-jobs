@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.92';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13 survey expansion');
+const BJ_VERSION = 'v3.93';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13 NPS + paywall friction + micro-surveys');
 
 // Auth
 async function init() {
