@@ -114,6 +114,12 @@ function _completeMarkApplied(jobId, btn, resumeName) {
   const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
   dates[jobId] = new Date().toISOString();
   saveUserData('bj_applied_dates', JSON.stringify(dates));
+
+  // P13-05: Post-application confidence micro-survey
+  if (typeof showApplyConfidence === 'function') {
+    var pm = meta[jobId] || {};
+    showApplyConfidence(jobId, pm.companyName || '');
+  }
 }
 
 function markAppliedFromPipeline(jobId, btn) {

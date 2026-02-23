@@ -57,6 +57,9 @@ function initStatsPage() {
   renderFilterPills();
   fetchAndRenderStats();
   window.addEventListener('resize', statsResizeAll);
+
+  // P13-06: Start data value assessment timer (shows after 10s viewing)
+  if (typeof startDataViewTimer === 'function') startDataViewTimer('stats_charts');
 }
 
 // ─── Filter Pills (CSS classes only, no inline styles) ───
