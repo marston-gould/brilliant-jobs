@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-22
+**Last updated:** 2026-02-23
 **Target launch:** March 2026
-**Current version:** v3.80
+**Current version:** v3.98
 
 ---
 
@@ -106,17 +106,17 @@
 |---|------|------|--------|--------|-------|
 | D1 | Stats Page Redesign | 2d | 1h | ✅ | Theme tokens extracted (_T object), 15+ hardcoded colors/fonts → STATS_THEME. Loading state via CSS class. Inline styles removed from HTML. |
 | D2 | ATS Board Health (Admin Panel) | 2d | 1h | ✅ | Migration 004: last_http_status + last_refresh_at on ats_companies. Admin RPCs (get_board_health, get_board_health_by_platform). Admin page with 5 stat cards, delta badges, period toggle, platform table. |
-| D3 | Landing Page Phase 1 | 4d | 1h | ⏳ | Interactive preview (replaces static demo), hero ghost CTA, walkthrough carousel (6 slides), 8 PostHog events. **Blocked:** 5 screenshot assets. |
+| D3 | Landing Page Phase 1 | 4d | 1h | 🚫 BLOCKED | Interactive preview (replaces static demo), hero ghost CTA, walkthrough carousel (6 slides), 8 PostHog events. **⛔ Blocked on:** D7 screenshot assets from CPO. Cannot complete walkthrough carousel without 5 images. |
 | D4 | Cohort Phase B — Session Analytics | 2d | 30min | ✅ | Migration 005: user_sessions table + RLS. create_session/session_heartbeat RPCs. PostHog bridge (bj_session_id, bj_cohort_id, bj_plan_id super properties). sessionStorage-scoped, 5-min heartbeat. Client-side wiring complete in v3.40. |
 | D5 | Edge Function: refresh-jobs v12 | 0.5d | 10min | ✅ | Records last_http_status + last_refresh_at on every board fetch. Timeout → status 0. Deployed. |
 | D6 | Edge Function: preview-jobs | 0.5d | 5min | ✅ | New function for landing page preview. Deployed via Supabase CLI. |
-| D7 | Walkthrough screenshots (5x) | 0.5d | — | 🔲 | CPO: feed.webp, match.webp, stats.webp, pipeline.webp, notifications.webp → /img/walkthrough/ |
+| D7 | Walkthrough screenshots (5x) | 0.5d | — | 🚫 BLOCKED | CPO: feed.webp, match.webp, stats.webp, pipeline.webp, notifications.webp → /img/walkthrough/. **⛔ Blocked on:** CPO deliverable — no ETA. Blocks D3 landing page completion. |
 | D8 | Admin panel fixes | 0.5d | 30min | ✅ | RPC auth fix (service_role + auth.uid), query optimization (304K rows → indexed single-pass), platform RPC fixed. 3 indexes added (status, first_seen, closed_at). Admin panel now shows live data. |
 | D9 | Version unification | 0.25d | 10min | ✅ | Single BJ_VERSION constant in app.js drives console + nav. No more hardcoded version in HTML. v2.91. |
 | D10 | Data pages: CTAs + Data Lab link + level fix | 0.5d | 20min | ✅ | Signup CTA on all 6 data pages + hub. Eyebrow "Data Lab" now links to /data-lab. Salary level order fixed: Manager before Lead. |
 | D11 | Data pages: live data + security | 4d | 2h | ✅ | Planning + initial wiring. Actual deployment completed in F5–F7 (v3.39). |
 
-**Phase D status:** 10/11 complete. D3 blocked on screenshots (CPO). D7 blocked on screenshots (CPO).
+**Phase D status:** 10/11 complete. 🚫 D3 blocked on screenshots (CPO). 🚫 D7 blocked on screenshots (CPO).
 
 ---
 
@@ -435,8 +435,8 @@
 | AI Resume Rewrite credit debit (5cr) | ✅ | v3.78: rewrite-resume debits 5cr, free plan 403, insufficient 402, admin bypass |
 | Stripe production webhook registration | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — checkout.session.completed + 4 more events |
 | Public pricing page (`pricing.html`) | ✅ | v3.80: Cohort-tied pricing page, monthly/annual toggle, credit packs, FAQ |
-| Stripe Billing Portal configuration | 🔲 | Customer Portal for self-service plan management — EF exists, Portal needs configuration in Stripe Dashboard |
-| Vendor payout consolidation | 🔲 | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe |
+| Stripe Billing Portal configuration | 🚫 BLOCKED | Customer Portal for self-service plan management — EF exists, Portal needs configuration in Stripe Dashboard. **⛔ Blocked on:** CEO action in Stripe Dashboard. |
+| Vendor payout consolidation | 🚫 BLOCKED | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe. **⛔ Blocked on:** Post-launch ops — need active revenue + vendor billing cycles aligned. Low priority. |
 
 ---
 
@@ -468,7 +468,7 @@
 | # | Item | Est. | Status | Blocker |
 |---|------|------|--------|---------|
 | I10 | Vonage account + US number | 30min | ✅ | Toll-free 18108923590, $12 balance, API key f81913a9 |
-| I11 | Toll-free verification (A2P compliance) | 1h | 🔲 | Toll-free used instead of 10DLC — faster approval. Submit via Vonage dashboard. |
+| I11 | Toll-free verification (A2P compliance) | 1h | 🚫 BLOCKED | Toll-free used instead of 10DLC — faster approval. **⛔ Blocked on:** CEO action — submit via Vonage dashboard. Non-blocking for testing but required for production SMS. |
 | I12 | Vonage secrets in Supabase | 15min | ✅ | VONAGE_API_KEY, VONAGE_API_SECRET, VONAGE_FROM set via supabase secrets |
 | I13 | 4 SMS templates (≤160 chars) | 1h | ✅ | sms-templates.ts: applyAlertSms, interviewReminderSms, offerReceivedSms, creditAlertSms |
 | I14 | Escalation chain completion | 2h | ✅ | escalation-checker v21: SMS template import, v2 tracking, idempotency. Full chain: email → timeout → SMS → 2h grace → missed. |
@@ -544,14 +544,37 @@
 | **A** Pre-Launch Critical | 13/13 | — | ✅ Complete |
 | **B** Post-Launch Foundation | 12/12 | — | ✅ Complete |
 | **C** Scale Readiness | 10/10 | — | ✅ Complete |
-| **D** Product Features | 10/11 | v3.30–v3.40 | ✅ (D3/D7 blocked on screenshots) |
+| **D** Product Features | 10/11 | v3.30–v3.40 | ⚠️ D3/D7 🚫 blocked on CPO screenshots |
 | **E** Feb 21 Feature Sprint | 46/46 | v2.68–v3.48 | ✅ Complete |
 | **F** Feb 22 Sprint | 15/15 | v3.30–v3.40 | ✅ Complete |
 | **G** AI Resume Pipeline | 36/36 | v3.49–v3.55 | ✅ Complete |
-| **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ✅ Complete |
-| **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ✅ Phase 1+2+3 complete. Toll-free verification pending. |
+| **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ⚠️ Billing Portal 🚫 blocked on CEO Stripe config |
+| **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ⚠️ Toll-free verification 🚫 blocked on CEO Vonage action |
+| **J** Infrastructure Hardening | 12/13 | v3.81–v3.88 | ⚠️ J13 🚫 blocked on Greenhouse API partnership |
+| **M** Surveys & User Intelligence | 13/25 | v3.92–v3.97 | ⚠️ 12 items 🚫 blocked — need launch + user volume |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **176+ items** | **v2.68–v3.80** | — |
+| **Total built** | **176+ items** | **v2.68–v3.97** | **17 items 🚫 BLOCKED** |
+
+### 🚫 Blocked Items Quick Reference
+
+| Item | Blocked On | Owner | Category |
+|------|-----------|-------|----------|
+| D3 — Landing Page interactive preview | D7 screenshots from CPO | CPO | **CEO/CPO Action** |
+| D7 — Walkthrough screenshots (5x) | CPO deliverable — no ETA | CPO | **CEO/CPO Action** |
+| Stripe Billing Portal configuration | Configure in Stripe Dashboard | CEO | **CEO/CPO Action** |
+| Vonage inbound webhook URL | Set in Vonage Dashboard | CEO | **CEO/CPO Action** |
+| Toll-free verification (I11) | Submit via Vonage Dashboard | CEO | **CEO/CPO Action** |
+| VACUUM ANALYZE + REINDEX | Run in Supabase SQL Editor | CEO | **CEO/CPO Action** |
+| 32K ungeocoded locations export | External geocoding service | CEO | **CEO/CPO Action** |
+| J13 — Enrich ~555 companies | Greenhouse API partnership (Mar 3) | External | **External Dependency** |
+| ATS partner applications | Greenhouse/Lever/Ashby partner programs | External | **External Dependency** |
+| Remaining ATS customer list (H-Z) | ATS partnerships + capacity | External | **External Dependency** |
+| Vendor payout consolidation | Active revenue + post-launch ops | Launch | **Post-Launch** |
+| P13-12 — Feature prioritization | User volume | Launch | **Post-Launch** |
+| P13-14 — Ghost Job flagship survey | 1K+ users for target | Launch | **Post-Launch** |
+| P13-15–17 — Market/employer/referral surveys | P13-14 + user volume | Launch | **Post-Launch** |
+| P13-18 — Survey → content pipeline | P13-14/15-17 survey data | Launch | **Post-Launch** |
+| P13-19–25 — User Intelligence System (7 items) | Launch + months of user data | Launch | **Post-Launch** |
 
 ### Outstanding Items (Not Done)
 
@@ -560,14 +583,14 @@
 | Production Stripe keys (`sk_live_*`) | H | ✅ | Live keys set in Supabase secrets + billing.js. Webhook registered. 3 EFs redeployed. |
 | Stripe webhook endpoint (live) | H | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — 5 events, signing secret set |
 | Stripe pricing page (`pricing.html`) | H | ✅ | v3.80: Public pricing page live — cohort-tied (launch_2026), 3-tier (Free/Starter/Pro), credit packs, FAQ |
-| Stripe Billing Portal for self-service | H | **Medium** | Customer Portal for plan changes, cancellation, billing history (EF exists but Portal not configured in Stripe Dashboard) |
-| D3 — Landing Page interactive preview | D | Medium | 5 screenshot assets from CPO (D7) |
-| D7 — Walkthrough screenshots (5x) | D | Medium | CPO deliverable |
-| Vendor payout consolidation | H | Low | Post-launch ops (Vercel/Supabase/DataForSEO/Cloudflare/Resend → Stripe) |
-| Toll-free verification | I | Low | Submit via Vonage dashboard — non-blocking for testing |
-| Vonage inbound webhook URL | I | **High** | Manual: Set on Vonage Dashboard → Numbers → 18108923590 → Inbound URL |
-| ATS partner applications (Greenhouse, Lever, Ashby) | — | Medium | Greenhouse deadline March 3 |
-| Remaining ATS customer list (H-Z) | — | Low | Could add significant job inventory |
+| 🚫 Stripe Billing Portal for self-service | H | **Medium** | ⛔ CEO action — configure Customer Portal in Stripe Dashboard (EF exists) |
+| 🚫 D3 — Landing Page interactive preview | D | Medium | ⛔ Blocked on D7 — 5 screenshot assets from CPO (no ETA) |
+| 🚫 D7 — Walkthrough screenshots (5x) | D | Medium | ⛔ Blocked on CPO deliverable (no ETA) |
+| 🚫 Vendor payout consolidation | H | Low | ⛔ Post-launch ops — need active revenue first |
+| 🚫 Toll-free verification | I | Low | ⛔ CEO action — submit via Vonage dashboard. Non-blocking for testing. |
+| 🚫 Vonage inbound webhook URL | I | **High** | ⛔ CEO action — set on Vonage Dashboard → Numbers → 18108923590 → Inbound URL |
+| 🚫 ATS partner applications (Greenhouse, Lever, Ashby) | — | Medium | ⛔ External — Greenhouse deadline March 3. Blocks J13 company enrichment. |
+| 🚫 Remaining ATS customer list (H-Z) | — | Low | ⛔ Depends on ATS partnerships + data team capacity |
 
 ---
 
@@ -575,6 +598,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-23 | ROADMAP | — | **v3.98:** Roadmap blocked item audit. 17 in-progress/planned items annotated with 🚫 BLOCKED status + specific blocker reason. Quick-reference table added. Categorized: 7 CEO/CPO actions, 3 external dependencies, 7 post-launch. |
 | 2026-02-22 | H++ | — | **Stripe LIVE:** Production keys deployed. 11 live price IDs in create-checkout, 3 in auto-refill. Live webhook endpoint registered (`we_1T3lqY`). Supabase secrets updated (STRIPE_SECRET_KEY, PUBLISHABLE_KEY, WEBHOOK_SECRET). billing.js → pk_live. 3 Edge Functions redeployed. |
 | 2026-02-22 | H+ | — | **v3.80:** Public pricing page (`pricing.html`). Cohort-tied (launch_2026). 3-tier: Free/Starter($20)/Pro($40). DB aligned: `starter` plan added, `pro` price updated to $40. 13 starter entitlements seeded. Monthly/annual toggle, credit packs, FAQ. |
 | 2026-02-22 | I-S3 | I10–I16 | **v3.79:** Phase 3 SMS system. Vonage toll-free (18108923590) secrets set. 4 SMS templates (sms-templates.ts). handle-sms-reply v1 (inbound Y/N webhook). escalation-checker v21 (SMS template + v2 tracking). Schema: decision + response_channel columns. SMS delivery verified end-to-end. |
@@ -655,9 +679,9 @@
 |---|------|---------|--------|-------|
 | J11 | Geocode remaining jobs | v3.88 | ✅ | **+127,277 lat/lng** (18,463→145,740, +689%) via `location_cache` exact-match join. **+145,740 location_normalized** backfilled from zero. 32K unique unmatched locations (143K jobs) exported for external geocoding. |
 | J12 | Catch unparsed salary formats | v3.88 | ✅ | **+698 salary records** (20,579→21,277, +3.4%) via `backfill_salary_batch()` regex on content. Handles en-dash/em-dash ranges, hourly→annual conversion, K notation. Remaining 267K genuinely have no salary in content. |
-| J13 | Enrich ~555 unmatched companies | — | ⏭️ Deferred | Needs Greenhouse API partnership (March 3 deadline) or PDL paid tier. External dependency. |
+| J13 | Enrich ~555 unmatched companies | — | 🚫 BLOCKED | **⛔ Blocked on:** Greenhouse API partnership (March 3 deadline) or PDL paid tier. External dependency — no internal workaround. |
 
-**Phase J total:** 13 items | 8 versions | 12/13 complete, 1 deferred on external dependency.
+**Phase J total:** 13 items | 8 versions | 12/13 complete, 1 🚫 blocked on external dependency (Greenhouse API).
 
 ---
 
@@ -679,41 +703,41 @@
 
 **Infrastructure:** Baseline migration fixed (v3.92) — added CREATE TABLE for 9 missing tables so Supabase Preview branches pass. New question types: scale, nps (0-10), dropdown. Micro-survey card component with choice/rating/chips, session rate-limiting.
 
-### Sprint 2: Tier 2 — Admin & Analytics (planned)
+### Sprint 2: Tier 2 — Admin & Analytics (1/4 🚫 BLOCKED)
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
 | P13-10 | Survey completion rate dashboard | v3.95 | ✅ | Admin Surveys tab: 4 ECharts, KPI cards, recent responses, period toggle. get_survey_analytics() RPC. |
 | P13-11 | Landing page survey social proof | v3.96 | ✅ | Social proof bar: star rating, respondent count, NPS recommend %. Min 20 threshold. survey_social_proof view. |
-| P13-12 | Quarterly feature prioritization | — | 🔲 | Drag-and-drop ranking. New rank question type. Quarterly cron. Deferred — needs user volume. |
+| P13-12 | Quarterly feature prioritization | — | 🚫 BLOCKED | Drag-and-drop ranking. New rank question type. Quarterly cron. **⛔ Blocked on:** User volume — needs active users to make ranking data meaningful. |
 | P13-13 | Public changelog + feedback board | v3.97 | ✅ | Canny widget in dashboard Feedback page. Feature Requests + Bug Reports boards. Identify SSO. GitHub auto-complete. |
 
-### Sprint 3: Tier 3 — Flagship Content Surveys (planned)
+### Sprint 3: Tier 3 — Flagship Content Surveys (ALL 🚫 BLOCKED — needs user volume)
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| P13-14 | Ghost Job Reality Check flagship survey | 🔲 | 10 questions, public access, 1K+ target. /ghost-report results page. |
-| P13-15–17 | Market, employer, referral surveys | 🔲 | Same pattern as ghost survey. |
-| P13-18 | Survey → content pipeline | 🔲 | Results aggregation RPC, auto-generated charts, OG meta tags. |
+| P13-14 | Ghost Job Reality Check flagship survey | 🚫 BLOCKED | 10 questions, public access, 1K+ target. /ghost-report results page. **⛔ Blocked on:** Launch + user acquisition — needs traffic to hit 1K response target. |
+| P13-15–17 | Market, employer, referral surveys | 🚫 BLOCKED | Same pattern as ghost survey. **⛔ Blocked on:** P13-14 completion — same dependency on user volume. |
+| P13-18 | Survey → content pipeline | 🚫 BLOCKED | Results aggregation RPC, auto-generated charts, OG meta tags. **⛔ Blocked on:** P13-14/15-17 — needs survey data to aggregate. |
 
-### Sprint 4: Tier 4 — User Intelligence System (planned)
+### Sprint 4: Tier 4 — User Intelligence System (ALL 🚫 BLOCKED — needs launch + user data)
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| P13-19 | Explicit user attribute capture | 🔲 | profile_v1 survey. Stored in profiles.user_data. |
-| P13-20 | Behavioral activity tracking | 🔲 | PostHog structured events. Daily Edge Function aggregation. |
-| P13-21 | Merged user intelligence profiles | 🔲 | build_user_profile() RPC. Depends on P13-19 + P13-20. |
-| P13-22 | Progressive profiling | 🔲 | Profile completeness score. Feature gating at thresholds. |
-| P13-23 | User data transparency dashboard | 🔲 | Show users what we know. Export/delete controls. GDPR. |
-| P13-24 | Churn risk scoring | 🔲 | 0-100 risk score. Daily pg_cron. Auto-interventions. |
-| P13-25 | Closed-loop feedback display | 🔲 | "You told us X, so we built Y." Canny integration. |
+| P13-19 | Explicit user attribute capture | 🚫 BLOCKED | profile_v1 survey. Stored in profiles.user_data. **⛔ Blocked on:** Launch + active user base — needs users to profile. |
+| P13-20 | Behavioral activity tracking | 🚫 BLOCKED | PostHog structured events. Daily Edge Function aggregation. **⛔ Blocked on:** Launch + user activity data — needs behavioral data to track. |
+| P13-21 | Merged user intelligence profiles | 🚫 BLOCKED | build_user_profile() RPC. **⛔ Blocked on:** P13-19 + P13-20 — depends on both explicit + behavioral data being collected. |
+| P13-22 | Progressive profiling | 🚫 BLOCKED | Profile completeness score. Feature gating at thresholds. **⛔ Blocked on:** P13-21 — needs merged profiles to score completeness against. |
+| P13-23 | User data transparency dashboard | 🚫 BLOCKED | Show users what we know. Export/delete controls. GDPR. **⛔ Blocked on:** P13-21 — needs merged intelligence profiles to display. |
+| P13-24 | Churn risk scoring | 🚫 BLOCKED | 0-100 risk score. Daily pg_cron. Auto-interventions. **⛔ Blocked on:** P13-20 + P13-21 — needs behavioral data + profiles to score against. Also needs baseline usage patterns (months of data). |
+| P13-25 | Closed-loop feedback display | 🚫 BLOCKED | "You told us X, so we built Y." Canny integration. **⛔ Blocked on:** P13-13 Canny adoption — needs accumulated user feedback in Canny boards first. |
 
 ### Manual Action Items
 | Item | Owner | Status |
 |------|-------|--------|
-| Run VACUUM ANALYZE + REINDEX in Supabase SQL Editor | CEO | 🔲 |
-| Export 32K ungeocoded locations (SQL provided), geocode externally, re-import to location_cache | CEO | 🔲 |
-| Stripe Billing Portal configuration in Stripe Dashboard | CEO | 🔲 |
+| Run VACUUM ANALYZE + REINDEX in Supabase SQL Editor | CEO | 🚫 BLOCKED — CEO action |
+| Export 32K ungeocoded locations (SQL provided), geocode externally, re-import to location_cache | CEO | 🚫 BLOCKED — CEO action + external geocoding service |
+| Stripe Billing Portal configuration in Stripe Dashboard | CEO | 🚫 BLOCKED — CEO action in Stripe Dashboard |
 
 ### Active pg_cron Jobs (as of v3.88)
 
