@@ -436,6 +436,7 @@
 | Stripe production webhook registration | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — checkout.session.completed + 4 more events |
 | Public pricing page (`pricing.html`) | ✅ | v3.80: Cohort-tied pricing page, monthly/annual toggle, credit packs, FAQ |
 | Stripe Billing Portal configuration | 🚫 BLOCKED | Customer Portal for self-service plan management — EF exists, Portal needs configuration in Stripe Dashboard. **⛔ Blocked on:** CEO action in Stripe Dashboard. |
+| Survey reward fulfillment | 🚫 BLOCKED | Wire 7-day Pro grant on periodic/NPS survey completion (`submitSurvey()` L1476 has TODO). Wire exit save-offer buttons (downgrade + 2-week Pro). Promises exist in UI — language kept per CPO direction, fulfillment deferred to monetization phase. **⛔ Blocked on:** Stripe subscription management must be live (Billing Portal config). |
 | Vendor payout consolidation | 🚫 BLOCKED | Centralize Vercel/Supabase/DataForSEO/Cloudflare/Resend billing through Stripe. **⛔ Blocked on:** Post-launch ops — need active revenue + vendor billing cycles aligned. Low priority. |
 
 ---
@@ -669,7 +670,7 @@
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ⚠️ Billing Portal 🚫 blocked on CEO Stripe config |
 | **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ⚠️ Toll-free verification 🚫 blocked on CEO Vonage action |
 | **J** Infrastructure Hardening | 12/13 | v3.81–v3.88 | ⚠️ J13 🚫 blocked on Greenhouse API partnership |
-| **M** Surveys & User Intelligence | 13/25 | v3.92–v3.97 | ⚠️ 12 items 🚫 blocked — need launch + user volume |
+| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v3.97 | ⚠️ Sprint 0 foundation (15 items, Pod 1) verified. 13/25 P13 items complete. 12 🚫 blocked (user volume). 7 Pod 2 remaining items (M-R1–R7). |
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
@@ -704,6 +705,8 @@
 | Production Stripe keys (`sk_live_*`) | H | ✅ | Live keys set in Supabase secrets + billing.js. Webhook registered. 3 EFs redeployed. |
 | Stripe webhook endpoint (live) | H | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — 5 events, signing secret set |
 | Stripe pricing page (`pricing.html`) | H | ✅ | v3.80: Public pricing page live — cohort-tied (launch_2026), 3-tier (Free/Starter/Pro), credit packs, FAQ |
+| `nps-pulse` Edge Function not deployed | M | **High** | In repo but not in deployed EF list. `supabase functions deploy nps-pulse --no-verify-jwt` |
+| `survey_social_proof` anon access broken | M | **High** | 401 on anon key read. Grant in baseline migration may not be applied live. Blocks landing page social proof. |
 | 🚫 Stripe Billing Portal for self-service | H | **Medium** | ⛔ CEO action — configure Customer Portal in Stripe Dashboard (EF exists) |
 | 🚫 D3 — Landing Page interactive preview | D | Medium | ⛔ Blocked on D7 — 5 screenshot assets from CPO (no ETA) |
 | 🚫 D7 — Walkthrough screenshots (5x) | D | Medium | ⛔ Blocked on CPO deliverable (no ETA) |
@@ -719,6 +722,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-23 | M-AUDIT | — | **Survey system audit.** Phase M Sprint 0 added — 15 Pod 1 foundation items verified (survey.html, 4 question banks, feedback table, social proof view, analytics RPC, admin tab, micro-survey triggers, rate limiting). Found: `nps-pulse` EF in repo but NOT deployed, `survey_social_proof` anon access returning 401, NPS formula uses avg not standard methodology. 7 remaining Pod 2 items documented (M-R1–R7). Survey reward fulfillment added to Phase H outstanding. |
 | 2026-02-23 | PERF | — | **v4.12:** Tiered Refresh v13. HOT (9K boards, 6h) / WARM (29K, 3d) / COLD (1.3K, 7d). Batch 50→150, concurrency 5→10, cron 6h→3min. 3 partial indexes. Full HOT cycle in ~6h (was 194 days). PR #72. |
 | 2026-02-23 | P-S3 | P27–P29 | **v4.11:** Admin Ghost tab. Company Response Performance table (ghost rate, avg response, last activity). Ghost Score Distribution chart (ECharts). 4 KPI cards. |
 | 2026-02-23 | P-S2 | P12–P26 | **v4.10:** Gmail OAuth live. GCP consent screen + branding. 3 Edge Functions deployed (gmail-auth, gmail-disconnect, gmail-scan). CORS fix. Privacy policy updated. Connect/Disconnect UI on Setup + Ghost Monitor pages. End-to-end verified: gould.marston@gmail.com connected. pg_cron: 6h scan + 90d purge. |
@@ -814,6 +818,28 @@
 
 ## Phase M: Surveys & User Intelligence (P13) — Feb 23, 2026
 
+### Sprint 0: Survey Foundation (Pre-existing — Pod 1 Deliverables)
+
+Complete survey infrastructure delivered by Pod 1 before Phase M engineering began. All items verified in repo + live DB.
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| M0-1 | `survey.html` — full-page survey engine | ✅ | 3 contexts (churn/periodic/nps). Step-based renderer with progress bar. Version routing via `?v=` URL param. |
+| M0-2 | Exit survey `exit_v1` — 8 questions | ✅ | Outcome, rating, disappointment, missing feature, competitor, price sensitivity, win-back, parting shot. |
+| M0-3 | Exit survey conditional save-offer logic | ✅ | "I'd come back right now" or cost/bug answers → save offer panel. Buttons present but actions not wired (see H-phase outstanding). |
+| M0-4 | Periodic survey `periodic_v1` (8 Qs) | ✅ | Search quality, ease of use, most valuable, frustration, missing feature, recommend, comparison, open feedback. |
+| M0-5 | Periodic survey `periodic_v2` (16 Qs) | ✅ | Extends v1 with community pulse (anxiety, timeline, appreciation) + process ease (comparative, control, filter adequacy). Current default. |
+| M0-6 | NPS survey `nps_v1` (3 Qs) | ✅ | Standard 0-10 NPS scale + reason + improvement freetext. |
+| M0-7 | `feedback` table + RLS | ✅ | Single source of truth. JSONB answers. Denormalized overall_rating + nps_score. type/survey_version/feature_context columns. Anon INSERT for exit surveys. 0 responses (pre-launch). |
+| M0-8 | `survey_social_proof` view | ✅ | 90-day rolling window. Excludes exit + micro surveys. Anon grant in baseline migration. Service role verified. |
+| M0-9 | `get_survey_analytics` RPC | ✅ | Returns versions, daily, nps_monthly, total_responses, unique_respondents. Admin consumption verified. |
+| M0-10 | `nps-pulse` Edge Function | ⚠️ In repo, NOT deployed | Exists at `supabase/functions/nps-pulse/index.ts`. Queries active users (30d), checks last_nps_date de-dupe, sends email via send-notification. **Not in deployed EF list** — needs `supabase functions deploy nps-pulse --no-verify-jwt`. |
+| M0-11 | `uninstall.html` exit survey entry point | ✅ | Chrome `uninstall_url` → reason selection → survey link with `?context=churn&reason=` param. |
+| M0-12 | NPS de-duplication | ✅ | `submitSurvey()` patches `profiles.user_data.last_nps_date` after NPS submission. |
+| M0-13 | Micro-survey session rate limiting | ✅ | `sessionStorage` key `bj_micro_survey_shown`. Max 1 micro-survey per session. First-trigger-wins. |
+| M0-14 | Landing page social proof bar | ✅ | Queries `survey_social_proof` view. Shows star rating, respondent count, NPS recommend %. Hidden when `total_respondents < 20`. CSS + JS wired in `index.html`. |
+| M0-15 | Admin Surveys tab (ECharts + table) | ✅ | 4 charts (versions bar, daily line, NPS stacked bar, funnel). KPI cards. Recent responses table. Period toggle (7d/30d/90d/all). `loadSurveysTab()` in admin.js L1437+. |
+
 ### Sprint 1: Tier 1 — Survey Question Expansion (v3.92–v3.94)
 
 | # | Item | Version | Status | Notes |
@@ -825,7 +851,7 @@
 | P13-05 | Post-application confidence survey | v3.93/v3.94 | ✅ | showApplyConfidence() in pipeline.js. Toast at bottom-right after apply action. |
 | P13-06 | Data value assessment | v3.93/v3.94 | ✅ | startDataViewTimer() in stats.js. Shows after 10s viewing charts. |
 | P13-07 | Process ease & control survey | v3.92 | ✅ | Comparative ease, perceived control (1-5 scale), filter adequacy + missing filters freetext. |
-| P13-08 | Monthly NPS pulse | v3.93 | ✅ (frontend) | nps_v1 question bank + NPS context routing. Edge Function cron job is TODO. |
+| P13-08 | Monthly NPS pulse | v3.93 | ⚠️ Frontend ✅, EF not deployed, cron not scheduled | nps_v1 question bank + NPS context routing in survey.html. `nps-pulse` EF exists in repo but is NOT in deployed EF list. `pg_cron` schedule not configured. Two actions needed: (1) deploy EF, (2) add cron. |
 | P13-09 | Paywall friction survey | v3.93 | ✅ | showPaywallFriction() in billing.js. Triggers on feature limit hit. |
 
 **Infrastructure:** Baseline migration fixed (v3.92) — added CREATE TABLE for 9 missing tables so Supabase Preview branches pass. New question types: scale, nps (0-10), dropdown. Micro-survey card component with choice/rating/chips, session rate-limiting.
@@ -858,6 +884,18 @@
 | P13-23 | User data transparency dashboard | 🚫 BLOCKED | Show users what we know. Export/delete controls. GDPR. **⛔ Blocked on:** P13-21 — needs merged intelligence profiles to display. |
 | P13-24 | Churn risk scoring | 🚫 BLOCKED | 0-100 risk score. Daily pg_cron. Auto-interventions. **⛔ Blocked on:** P13-20 + P13-21 — needs behavioral data + profiles to score against. Also needs baseline usage patterns (months of data). |
 | P13-25 | Closed-loop feedback display | 🚫 BLOCKED | "You told us X, so we built Y." Canny integration. **⛔ Blocked on:** P13-13 Canny adoption — needs accumulated user feedback in Canny boards first. |
+
+### Pod 2 Remaining Survey Work
+
+| # | Item | Est. | Status | Blocker |
+|---|------|------|--------|---------|
+| M-R1 | Deploy `nps-pulse` Edge Function | 1min | 🔲 | None — `supabase functions deploy nps-pulse --no-verify-jwt` |
+| M-R2 | Configure `pg_cron` for `nps-pulse` | 5min | 🔲 | M-R1 — one SQL statement, 1st of month 10am ET |
+| M-R3 | Build periodic survey automated trigger | 2h | 🔲 | Pod 1 to specify targeting rules. No automated trigger exists — email or in-app banner. Add de-dupe via `profiles.user_data.last_periodic_date`. |
+| M-R4 | Micro-survey priority weighting | 1h | 🔲 | Optional optimization. Replace first-trigger-wins with priority queue. Paywall friction = highest commercial value but most likely suppressed. |
+| M-R5 | Validate NPS formula in `survey_social_proof` | 30min | 🔲 | View returns `avg_nps` (average score) — standard NPS is `% promoters - % detractors`. Landing page bar may display incorrect methodology. |
+| M-R6 | Fix `survey_social_proof` anon access | 30min | 🔲 | View returned 401 with anon key during audit. Grant exists in baseline migration but may not be applied live. Landing page social proof bar won't render without anon read. |
+| M-R7 | Survey reward fulfillment | 1h | 🚫 BLOCKED | Wire `submitSurvey()` Pro grant + exit save-offer buttons. **⛔ Blocked on:** Phase H Billing Portal config (CEO action). |
 
 ### Manual Action Items
 | Item | Owner | Status |
