@@ -1363,10 +1363,15 @@ function render() {
 render();
 
 // Inject version from app.js (single source of truth)
-fetch('/js/app.js').then(r => r.text()).then(t => {
+fetch('/js/app.js').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(t => {
   var m = t.match(/BJ_VERSION\s*=\s*'([^']+)'/);
   if (m) document.getElementById('rm-version').textContent = m[1];
-}).catch(function(){});
+}).catch(function(){
+  fetch('/dist/dashboard.min.js').then(r => r.text()).then(t => {
+    var m = t.match(/BJ_VERSION="([^"]+)"/);
+    if (m) document.getElementById('rm-version').textContent = m[1];
+  }).catch(function(){ document.getElementById('rm-version').textContent = 'v4.11'; });
+});
 </script>
 
 </body>
