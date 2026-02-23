@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.10';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build Phase 2: Gmail OAuth connect/disconnect live');
+const BJ_VERSION = 'v4.11';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build complete: admin ghost tab, full pipeline live');
 
 // Auth
 async function init() {

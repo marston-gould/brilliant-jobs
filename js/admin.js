@@ -90,6 +90,7 @@ function switchAdminTab(tabId) {
       case 'seo': loadSeoTab(); break;
       case 'revenue': loadRevenueTab(); break;
       case 'surveys': loadSurveysTab(); break;
+      case 'ghost': loadGhostTab(); break;
     }
   }
 }
@@ -103,8 +104,8 @@ function setAdminText(id, val) {
 function fmtAdminNum(n) {
   if (n == null) return '—';
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return Math.round(n / 1000).toLocaleString() + 'K';
-  return n.toLocaleString();
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
+  return String(n);
 }
 
 function fmtAdminPct(n, d) {
@@ -160,7 +161,6 @@ async function loadBoardHealth() {
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
         var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
-        var ra = 'text-align:right;font-family:var(--mono)';
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
@@ -168,11 +168,11 @@ async function loadBoardHealth() {
           totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(p.total) + '</td>' +
-            '<td style="' + ra + '" class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td style="' + ra + '" class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(p.errors_4xx) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(p.jobs) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(jpb) + '</td>' +
+            '<td>' + fmtAdminNum(p.total) + '</td>' +
+            '<td class="' + pctColor + '">' + activePct + '%</td>' +
+            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
+            '<td>' + fmtAdminNum(p.jobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
         }).join('');
         if (tfoot) {
@@ -180,11 +180,11 @@ async function loadBoardHealth() {
           var totJpb = totWithJobs > 0 ? Math.round(totJobs / totWithJobs) : 0;
           tfoot.innerHTML = '<tr style="font-weight:600;border-top:2px solid var(--border)">' +
             '<td>Total</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(totBoards) + '</td>' +
-            '<td style="' + ra + '">' + totPct + '%</td>' +
-            '<td style="' + ra + '" class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(tot4xx) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(totJobs) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(totJpb) + '</td>' +
+            '<td>' + fmtAdminNum(totBoards) + '</td>' +
+            '<td>' + totPct + '%</td>' +
+            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td>' + fmtAdminNum(totJobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
         }
       }
@@ -204,8 +204,7 @@ var _platformColors = {
   lever: '#3b82f6',
   ashby: '#f59e0b',
   workable: '#8b5cf6',
-  recruitee: '#ec4899',
-  usajobs: '#dc2626'
+  recruitee: '#ec4899'
 };
 
 async function loadFeedHealthCharts() {
@@ -1608,4 +1607,122 @@ function renderSurveyRecentTable(recent) {
     var qCount = r.q_count || '—';
     return '<tr><td>' + date + '</td><td><code style="font-size:12px">' + (r.survey_version || '') + '</code></td><td><code style="font-size:11px">' + userId + '</code></td><td>' + qCount + '</td><td>' + nps + '</td><td>' + rating + '</td></tr>';
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GHOST TAB
+// ═══════════════════════════════════════════════════════════════
+
+async function loadGhostTab() {
+  try {
+    // KPI: total applications tracked
+    var { count: totalApps } = await sb.from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .in('stage', ['applied', 'posting_closed', 'responded', 'interview', 'rejected', 'archived']);
+    setAdminText('ag-total-apps', fmtAdminNum(totalApps || 0));
+
+    // KPI: ghosted count
+    var { count: ghostedCount } = await sb.from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .in('stage', ['applied', 'posting_closed'])
+      .lt('applied_at', new Date(Date.now() - 21 * 86400000).toISOString());
+    setAdminText('ag-ghosted', fmtAdminNum(ghostedCount || 0));
+
+    // KPI: gmail connected
+    var { count: gmailCount } = await sb.from('gmail_connections')
+      .select('*', { count: 'exact', head: true })
+      .eq('sync_status', 'active');
+    setAdminText('ag-gmail-connected', gmailCount || 0);
+
+    // Company ghost stats table
+    var { data: stats } = await sb.from('company_ghost_stats')
+      .select('*')
+      .order('ghost_rate', { ascending: false });
+
+    var tbody = document.getElementById('ag-company-body');
+    if (!stats || stats.length === 0) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:24px;">No ghost stats yet. Data populates as users track applications.</td></tr>';
+      setAdminText('ag-avg-response', '—');
+      renderAdminGhostChart([]);
+      return;
+    }
+
+    // KPI: avg response days
+    var responseDays = stats.filter(function(s) { return s.avg_response_days > 0; });
+    var avgResp = responseDays.length > 0
+      ? Math.round(responseDays.reduce(function(a, b) { return a + b.avg_response_days; }, 0) / responseDays.length)
+      : 0;
+    setAdminText('ag-avg-response', avgResp > 0 ? avgResp + 'd' : '—');
+
+    // Render table
+    if (tbody) {
+      tbody.innerHTML = stats.map(function(s) {
+        var rate = s.ghost_rate != null ? Math.round(s.ghost_rate * 100) : 0;
+        var rateColor = rate >= 50 ? 'var(--red)' : rate >= 25 ? '#f59e0b' : 'var(--green)';
+        var responded = (s.total_applications || 0) - (s.ghosted_count || 0);
+        var lastActivity = s.updated_at ? new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+        var avgDays = s.avg_response_days > 0 ? s.avg_response_days + 'd' : '—';
+
+        return '<tr>' +
+          '<td style="font-weight:600;text-transform:capitalize;">' + (s.company_slug || '—').replace(/-/g, ' ') + '</td>' +
+          '<td>' + (s.total_applications || 0) + '</td>' +
+          '<td>' + responded + '</td>' +
+          '<td>' + (s.ghosted_count || 0) + '</td>' +
+          '<td style="color:' + rateColor + ';font-weight:600;">' + rate + '%</td>' +
+          '<td>' + avgDays + '</td>' +
+          '<td>' + lastActivity + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    renderAdminGhostChart(stats);
+
+  } catch (err) {
+    console.error('[BJ] Ghost admin error:', err);
+    var tbody = document.getElementById('ag-company-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + (err.message || 'unknown') + '</td></tr>';
+  }
+}
+
+var _adminGhostChart = null;
+function renderAdminGhostChart(stats) {
+  var el = document.getElementById('ag-ghost-chart');
+  if (!el || !window.echarts) return;
+  if (_adminGhostChart) _adminGhostChart.dispose();
+  _adminGhostChart = echarts.init(el);
+
+  if (!stats || stats.length === 0) {
+    _adminGhostChart.setOption({
+      title: { text: 'No data yet', left: 'center', top: 'center', textStyle: { color: '#a0aec0', fontSize: 14 } }
+    });
+    return;
+  }
+
+  // Top 15 companies by total applications, sorted by ghost rate
+  var top = stats.filter(function(s) { return s.total_applications >= 1; })
+    .sort(function(a, b) { return (b.ghost_rate || 0) - (a.ghost_rate || 0); })
+    .slice(0, 15);
+
+  var names = top.map(function(s) { return (s.company_slug || '').replace(/-/g, ' '); });
+  var rates = top.map(function(s) { return Math.round((s.ghost_rate || 0) * 100); });
+  var colors = rates.map(function(r) { return r >= 50 ? '#f56565' : r >= 25 ? '#f59e0b' : '#48bb78'; });
+
+  var isDark = document.body.classList.contains('dark');
+  var textColor = isDark ? '#a0aec0' : '#4a5568';
+
+  _adminGhostChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 120, right: 24, top: 12, bottom: 24 },
+    xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%', color: textColor, fontSize: 11 }, splitLine: { lineStyle: { color: isDark ? '#2d3748' : '#e2e8f0' } } },
+    yAxis: { type: 'category', data: names.reverse(), axisLabel: { color: textColor, fontSize: 11, width: 100, overflow: 'truncate' } },
+    series: [{
+      type: 'bar',
+      data: rates.slice().reverse().map(function(v, i) {
+        var c = v >= 50 ? '#f56565' : v >= 25 ? '#f59e0b' : '#48bb78';
+        return { value: v, itemStyle: { color: c } };
+      }),
+      barWidth: 16, itemStyle: { borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: 'right', formatter: '{c}%', fontSize: 11, color: textColor }
+    }]
+  });
 }
