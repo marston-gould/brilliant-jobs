@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.94';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13 micro-survey hooks wired');
+const BJ_VERSION = 'v3.95';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13-10 survey analytics admin tab');
 
 // Auth
 async function init() {
