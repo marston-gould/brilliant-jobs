@@ -24,6 +24,7 @@
     This data stays local and is only used for resume consistency checking.
   </div>
   <script>
+    function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
     chrome.storage.local.get('bj_linkedin_profile', (data) => {
       const profile = data.bj_linkedin_profile;
       if (profile && profile.name) {
@@ -31,9 +32,9 @@
         document.getElementById('status').textContent = '✅ Profile synced';
         document.getElementById('profile-info').innerHTML =
           '<div style="font-size:12px;margin:8px 0;">' +
-          '<strong>' + profile.name + '</strong><br>' +
-          '<span style="color:#666;">' + (profile.current_title || '') + ' at ' + (profile.current_company || '') + '</span><br>' +
-          '<span style="font-size:10px;color:#999;">Captured: ' + new Date(profile.captured_at).toLocaleDateString() + '</span>' +
+          '<strong>' + esc(profile.name) + '</strong><br>' +
+          '<span style="color:#666;">' + esc(profile.current_title || '') + ' at ' + esc(profile.current_company || '') + '</span><br>' +
+          '<span style="font-size:10px;color:#999;">Captured: ' + esc(profile.captured_at ? new Date(profile.captured_at).toLocaleDateString() : 'unknown') + '</span>' +
           '</div>';
         document.getElementById('clear-btn').style.display = '';
       }

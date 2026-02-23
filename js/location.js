@@ -995,7 +995,7 @@ function renderSavedFilters() {
       <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
       <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
       <div class="sf-item-info">
-        <div class="sf-item-name">${sf.name}</div>
+        <div class="sf-item-name">${escapeHtml(sf.name)}</div>
         ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
       </div>
       ${miniPills}

@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.89';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — roadmap P19 items marked done');
+const BJ_VERSION = 'v3.90';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — security hardening sprint');
 
 // Auth
 async function init() {
@@ -17,6 +17,9 @@ if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
 // Error recovery & offline resilience (v3.87)
 if (typeof initOfflineDetection === 'function') initOfflineDetection();
 if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
+
+// Session management hardening (v3.90)
+if (typeof initSessionManagement === 'function') initSessionManagement();
   let profile = null;
   try {
     const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
@@ -25,7 +28,7 @@ if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
     currentUser._cohortId = p.cohort_id || null;
     window._bjUserPlan = p.plan || 'free';
     window._bjUserRole = p.role || 'user';
-  } catch (e) {}
+  } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
   // Show admin nav immediately — profile already fetched, no extra round trip

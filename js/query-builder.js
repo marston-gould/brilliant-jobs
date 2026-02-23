@@ -46,13 +46,13 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
 
     let display;
     if (pill.type === 'collection') {
-      display = `📂 ${pill.collectionName}<span class="coll-count">(${pill.values.length})</span>`;
+      display = `📂 ${escapeHtml(pill.collectionName)}<span class="coll-count">(${pill.values.length})</span>`;
     } else if (isMulti) {
       // Multi-value: each value gets its own × button
       const parts = pill.values.map((v, vi) => {
         let valHtml = `<span class="qb-val-item" data-pill="${i}" data-val="${vi}">`;
-        valHtml += `<span class="qb-val-text">${v}</span>`;
-        valHtml += `<span class="qb-val-remove" data-pill="${i}" data-val="${vi}" title="Remove '${v.replace(/'/g,'&#39;')}'">×</span>`;
+        valHtml += `<span class="qb-val-text">${escapeHtml(v)}</span>`;
+        valHtml += `<span class="qb-val-remove" data-pill="${i}" data-val="${vi}" title="Remove '${escapeHtml(v)}'">×</span>`;
         valHtml += `</span>`;
         return valHtml;
       });
