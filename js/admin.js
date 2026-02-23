@@ -106,6 +106,7 @@ function switchAdminTab(tabId) {
       case 'users': loadUsersTab(); break;
       case 'seo': loadSeoTab(); break;
       case 'revenue': loadRevenueTab(); break;
+      case 'surveys': loadSurveysTab(); break;
     }
   }
 }
@@ -1136,4 +1137,192 @@ async function loadRevenueTab(daysBack) {
   } catch (err) {
     console.error('[Admin] loadRevenueTab error:', err);
   }
+}
+
+// ─── P13-10: Survey Analytics Tab ───
+var _surveyDays = 30;
+
+// Period toggle
+(function() {
+  var toggle = document.getElementById('survey-period-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-period-btn');
+    if (!btn) return;
+    toggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _surveyDays = parseInt(btn.dataset.surveyDays);
+    _adminTabInit['surveys'] = false;
+    loadSurveysTab();
+  });
+})();
+
+async function loadSurveysTab() {
+  console.log('[Admin] loadSurveysTab', _surveyDays, 'days');
+  _adminTabInit['surveys'] = true;
+
+  try {
+    var res = await sb.rpc('get_survey_analytics', { p_days: _surveyDays });
+    if (res.error) throw res.error;
+    var d = res.data || {};
+
+    // KPIs
+    setAdminText('sv-total', (d.total_responses || 0).toLocaleString());
+    setAdminText('sv-respondents', (d.unique_respondents || 0).toLocaleString());
+
+    // Avg completion: estimate from versions data
+    var versions = d.versions || [];
+    var totalQ = 0, totalV = 0;
+    versions.forEach(function(v) { if (v.avg_rating) { totalQ += v.count; totalV++; } });
+    setAdminText('sv-completion', versions.length > 0 ? versions.length + ' types' : '—');
+
+    // Avg NPS
+    var npsVersions = versions.filter(function(v) { return v.avg_nps !== null; });
+    if (npsVersions.length > 0) {
+      var avgNps = npsVersions.reduce(function(s, v) { return s + parseFloat(v.avg_nps); }, 0) / npsVersions.length;
+      setAdminText('sv-nps', avgNps.toFixed(1));
+    } else {
+      setAdminText('sv-nps', '—');
+    }
+
+    // Chart: Responses by Version (bar)
+    renderSurveyVersionsChart(versions);
+
+    // Chart: Daily volume (line)
+    renderSurveyDailyChart(d.daily || []);
+
+    // Chart: NPS trend (line)
+    renderSurveyNpsChart(d.nps_monthly || []);
+
+    // Chart: Completion funnel (placeholder — shows version distribution as funnel)
+    renderSurveyFunnel(versions);
+
+    // Recent responses table
+    renderSurveyRecentTable(d.recent || []);
+
+  } catch (err) {
+    console.error('[Admin] loadSurveysTab error:', err);
+  }
+}
+
+function renderSurveyVersionsChart(versions) {
+  var el = document.getElementById('sv-chart-versions');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (versions.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No survey data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: versions.map(function(v) { return v.version; }), axisLabel: { rotate: 30, fontSize: 11 } },
+    yAxis: { type: 'value', name: 'Responses' },
+    series: [{
+      type: 'bar',
+      data: versions.map(function(v) { return v.count; }),
+      itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
+    }],
+    grid: { left: 50, right: 16, top: 30, bottom: 60 }
+  });
+}
+
+function renderSurveyDailyChart(daily) {
+  var el = document.getElementById('sv-chart-daily');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (daily.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No daily data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: daily.map(function(d) { return d.date; }), axisLabel: { fontSize: 10 } },
+    yAxis: { type: 'value' },
+    series: [{
+      type: 'line',
+      data: daily.map(function(d) { return d.count; }),
+      smooth: true,
+      areaStyle: { opacity: 0.15 },
+      lineStyle: { color: '#3b82f6' },
+      itemStyle: { color: '#3b82f6' }
+    }],
+    grid: { left: 40, right: 16, top: 20, bottom: 40 }
+  });
+}
+
+function renderSurveyNpsChart(npsMonthly) {
+  var el = document.getElementById('sv-chart-nps');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (npsMonthly.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No NPS data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Promoters', 'Passives', 'Detractors'], bottom: 0, textStyle: { fontSize: 11 } },
+    xAxis: { type: 'category', data: npsMonthly.map(function(m) { return m.month; }) },
+    yAxis: { type: 'value' },
+    series: [
+      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#22c55e' } },
+      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#f59e0b' } },
+      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#ef4444' } }
+    ],
+    grid: { left: 40, right: 16, top: 20, bottom: 50 }
+  });
+}
+
+function renderSurveyFunnel(versions) {
+  var el = document.getElementById('sv-chart-funnel');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (versions.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No funnel data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  // Group by type: periodic, exit, nps, micro
+  var groups = {};
+  versions.forEach(function(v) {
+    var type = 'other';
+    if (v.version.indexOf('periodic') === 0) type = 'Periodic';
+    else if (v.version.indexOf('exit') === 0) type = 'Exit';
+    else if (v.version.indexOf('nps') === 0) type = 'NPS';
+    else if (v.version.indexOf('micro') === 0) type = 'Micro-survey';
+    groups[type] = (groups[type] || 0) + v.count;
+  });
+  var data = Object.keys(groups).map(function(k) { return { name: k, value: groups[k] }; });
+  data.sort(function(a, b) { return b.value - a.value; });
+
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    series: [{
+      type: 'funnel',
+      left: '10%',
+      width: '80%',
+      top: 10,
+      bottom: 10,
+      sort: 'descending',
+      gap: 4,
+      label: { show: true, position: 'inside', formatter: '{b}: {c}', fontSize: 12 },
+      itemStyle: { borderWidth: 1, borderColor: '#fff' },
+      data: data
+    }]
+  });
+}
+
+function renderSurveyRecentTable(recent) {
+  var tbody = document.getElementById('sv-responses-body');
+  if (!tbody) return;
+  if (recent.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:24px;">No survey responses yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map(function(r) {
+    var date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    var userId = (r.user_id || 'anon').substring(0, 8);
+    var nps = r.nps_score != null ? r.nps_score : '—';
+    var rating = r.overall_rating != null ? '★'.repeat(r.overall_rating) : '—';
+    var qCount = r.q_count || '—';
+    return '<tr><td>' + date + '</td><td><code style="font-size:12px">' + (r.survey_version || '') + '</code></td><td><code style="font-size:11px">' + userId + '</code></td><td>' + qCount + '</td><td>' + nps + '</td><td>' + rating + '</td></tr>';
+  }).join('');
 }
