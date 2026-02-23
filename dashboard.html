@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.94 - 2026-02-23 — P13 micro-survey hooks wired (search, apply, stats) -->
+<!-- Brilliant Jobs Dashboard v3.95 - 2026-02-23 — P13-10 survey analytics admin tab -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2001,6 +2001,7 @@
             <button class="admin-tab" data-tab="users">Users</button>
             <button class="admin-tab" data-tab="seo">SEO</button>
             <button class="admin-tab" data-tab="revenue">Revenue</button>
+            <button class="admin-tab" data-tab="surveys">Surveys</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -2213,6 +2214,57 @@
               <table class="admin-table" style="width:100%">
                 <thead><tr><th>User</th><th>Credits Used</th><th>Credits Granted</th><th>Transactions</th></tr></thead>
                 <tbody id="ar-users-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ─── SURVEYS PANEL (P13-10) ─── -->
+          <div class="admin-panel" id="admin-panel-surveys">
+            <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap" id="survey-period-toggle">
+              <button class="admin-period-btn active" data-survey-days="30">30d</button>
+              <button class="admin-period-btn" data-survey-days="90">90d</button>
+              <button class="admin-period-btn" data-survey-days="365">1y</button>
+              <button class="admin-period-btn" data-survey-days="0">All</button>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="stat-grid" id="survey-kpis" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Responses</div><div class="stat-val" id="sv-total">—</div></div>
+              <div class="stat-card"><div class="stat-label">Unique Respondents</div><div class="stat-val" id="sv-respondents">—</div></div>
+              <div class="stat-card"><div class="stat-label">Avg Completion</div><div class="stat-val" id="sv-completion">—</div></div>
+              <div class="stat-card"><div class="stat-label">Avg NPS</div><div class="stat-val" id="sv-nps">—</div></div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Responses by Version</div>
+                <div id="sv-chart-versions" style="height:260px;"></div>
+              </div>
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Completion Funnel</div>
+                <div id="sv-chart-funnel" style="height:260px;"></div>
+              </div>
+            </div>
+
+            <!-- Daily Trend + NPS Trend -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+              <div class="card" style="padding:16px;">
+                <div class="card-title">Daily Response Volume</div>
+                <div id="sv-chart-daily" style="height:220px;"></div>
+              </div>
+              <div class="card" style="padding:16px;">
+                <div class="card-title">NPS Trend</div>
+                <div id="sv-chart-nps" style="height:220px;"></div>
+              </div>
+            </div>
+
+            <!-- Response Details Table -->
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Recent Responses</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Date</th><th>Version</th><th>User</th><th>Questions</th><th>NPS</th><th>Rating</th></tr></thead>
+                <tbody id="sv-responses-body"></tbody>
               </table>
             </div>
           </div>
