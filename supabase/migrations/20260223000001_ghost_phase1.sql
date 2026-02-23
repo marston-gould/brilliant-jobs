@@ -108,7 +108,7 @@ BEGIN
   RETURN QUERY
   WITH pipeline_data AS (
     SELECT p.id AS p_id, p.company_slug AS p_company_slug,
-      COALESCE(p.company_name, c.company_name, p.company_slug) AS p_company_name,
+      COALESCE(p.company_name, c.name, p.company_slug) AS p_company_name,
       p.job_title AS p_job_title, p.applied_at AS p_applied_at,
       EXTRACT(DAY FROM now() - p.applied_at)::int AS p_days,
       'unknown'::text AS p_email_class, COALESCE(j.status, 'unknown') AS p_listing_status,
