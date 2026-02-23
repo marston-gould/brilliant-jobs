@@ -306,7 +306,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v3.94 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live (test mode) · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tier 1 surveys complete (9/9)
+    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v3.97 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration
   </div>
 
 </div>
@@ -612,7 +612,7 @@ const features = [
   { s: 'done', n: '[GH] Re-scrape all jobs', d: 'Recovered 116,206 jobs via Greenhouse API CSV scrape + psql COPY bulk load in 25 min. Core fields restored.', p: 10 },
   { s: 'done', n: '[GH] Location normalization', d: 'Ran normalize_job_locations() on all 116K rows + manual cleanup SQL. lat/lng populated for 20K jobs from ref_city_radius.', p: 10 },
   { s: 'done', n: '[GH] Alphabet crawl expansion', d: 'DataForSEO alphabet crawl for Greenhouse-specific boards. Got through letters a-s before Task Handed errors. 78 new boards discovered.', p: 10 },
-  { s: 'todo', n: '[GH] New board discovery via TheirStack', d: 'Import 24K+ Greenhouse slugs, diff against existing 1,900', p: 10 },
+  { s: 'done', n: '[GH] TheirStack board discovery — NOT NEEDED', d: 'Removed. Already have 10,019 boards across 5 ATS platforms. TheirStack import unnecessary.', p: 10 },
   { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', p: 10 },
 
   // ── Lever (ACTIVE — 1,154 boards, scraping live) ──
@@ -656,7 +656,7 @@ const features = [
   { s: 'todo', n: 'Source attribution in feed', d: 'Show GH/LV/WK/ASH/REC badge per job row — already have pill CSS ready.', p: 10 },
 
   // ── Future Sources ──
-  { s: 'todo', n: '[IND] Indeed RSS feed integration', d: 'Poll rss.indeed.com for keyword/location job feeds. Normalize + dedup against ATS sources.', p: 10 },
+  { s: 'done', n: '[IND] Indeed RSS — DEPRECATED', d: 'Removed. Indeed deprecated their RSS feed. No longer viable as a data source.', p: 10 },
   { s: 'todo', n: '[USJ] USAJobs API integration', d: 'Fetch federal government jobs from developer.usajobs.gov public API. Map to ats_jobs schema.', p: 10 },
   { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', p: 10 },
   { s: 'done', n: 'Cross-source job deduplication', d: 'Normalize title + company + location hash for dedup across all sources.', p: 10 },
@@ -1098,10 +1098,10 @@ const features = [
   { s: 'done', n: 'v3.93: P13-08 NPS pulse question bank', d: 'nps_v1 question bank (0-10 NPS score, reason quick-select, improvement freetext). NPS context routing in resolveVersion(). Edge Function for monthly cron trigger is follow-up.', p: 25 },
   { s: 'done', n: 'v3.93: P13-04/05/06/09 micro-survey module', d: 'micro-surveys.js — inline survey components for post-search relevance, post-apply confidence, data value assessment, paywall friction. Generic createMicroCard() with choice/rating/chips follow-up. Session rate-limiting via sessionStorage. CSS in dashboard.html.', p: 25 },
   { s: 'done', n: 'v3.94: P13-04/05/06 micro-survey hooks wired', d: 'Connected micro-survey triggers to dashboard modules: trackSearchForSurvey() in job-feed.js (after 10th search or 5min), showApplyConfidence() in pipeline.js (after apply action), startDataViewTimer() in stats.js (after 10s viewing charts). P13-09 paywall hook was already in billing.js.', p: 25 },
-  { s: 'progress', n: 'P13-10: Survey completion rate dashboard', d: 'Admin console section showing completion count per survey version, per-question drop-off, aggregate response summaries. ECharts funnel. Supabase RPC get_survey_analytics().', p: 25 },
-  { s: 'todo', n: 'P13-11: Landing page survey social proof', d: 'Wire survey_social_proof view to landing page. Auto-updating satisfaction rating, NPS %%, total respondents. Min 20 responses threshold.', p: 25 },
+  { s: 'done', n: 'P13-10: Survey completion rate dashboard', d: 'DONE v3.95 — Admin Surveys tab with 4 ECharts (version bar, daily line, NPS stacked bar, type funnel), KPI cards, recent responses table, period toggle. get_survey_analytics() RPC.', p: 25 },
+  { s: 'done', n: 'P13-11: Landing page survey social proof', d: 'DONE v3.96 — Social proof bar below stats on landing page. Star rating, respondent count, NPS recommend %%. Min 20 responses threshold. Reads survey_social_proof anon view.', p: 25 },
   { s: 'todo', n: 'P13-12: Quarterly feature prioritization survey', d: 'Drag-and-drop ranking of potential features. New rank question type in survey.html. Quarterly pg_cron trigger.', p: 25 },
-  { s: 'todo', n: 'P13-13: Public changelog + feedback board (Canny)', d: 'Canny.io free tier. Feature requests, bug reports, changelog boards. In-app nav link. SSO if supported.', p: 25 },
+  { s: 'done', n: 'P13-13: Public changelog + feedback board (Canny)', d: 'DONE v3.97 — Canny widget embedded in dashboard Feedback page. Feature Requests + Bug Reports boards. Canny Identify SSO with Supabase auth. GitHub integration for auto-complete on issue close. Changelog at brilliant-jobs.canny.io/changelog.', p: 25 },
   { s: 'todo', n: 'P13-08: NPS monthly cron Edge Function', d: 'pg_cron job (1st of month, 10am ET) triggers nps-pulse Edge Function. Identifies active users, sends notification linking to /survey?context=nps&v=nps_v1.', p: 25 },
   { s: 'todo', n: 'P13-14: Ghost Job Reality Check flagship survey', d: '10 questions on ghost job experiences. Public access, 1K+ target responses. Dedicated /ghost-report results page with ECharts.', p: 25 },
   { s: 'todo', n: 'P13-19–24: User Intelligence System', d: 'Explicit attribute capture, behavioral tracking (PostHog), merged intelligence profiles, progressive profiling, transparency dashboard, churn risk scoring. Months 2-3.', p: 25 },
