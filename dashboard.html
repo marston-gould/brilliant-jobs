@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.10 - 2026-02-23 — Ghost Build Phase 2: Gmail OAuth connect/disconnect live -->
+<!-- Brilliant Jobs Dashboard v4.11 - 2026-02-23 — Ghost Build complete: admin ghost tab, full pipeline live -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -120,7 +120,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.10</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.11</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2070,6 +2070,7 @@
             <button class="admin-tab" data-tab="users">Users</button>
             <button class="admin-tab" data-tab="surveys">Surveys</button>
             <button class="admin-tab" data-tab="revenue">Revenue</button>
+            <button class="admin-tab" data-tab="ghost">Ghost</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -2380,6 +2381,40 @@
                 <thead><tr><th>Date</th><th>Version</th><th>User</th><th>Questions</th><th>NPS</th><th>Rating</th></tr></thead>
                 <tbody id="sv-responses-body"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- ═══════════ GHOST ═══════════ -->
+          <div class="admin-panel" id="admin-panel-ghost">
+            <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+              <div class="stat-card"><div class="stat-val" id="ag-total-apps">—</div><div class="stat-label">Total Applications</div></div>
+              <div class="stat-card"><div class="stat-val" id="ag-ghosted">—</div><div class="stat-label">Ghosted</div></div>
+              <div class="stat-card"><div class="stat-val" id="ag-avg-response">—</div><div class="stat-label">Avg Response (days)</div></div>
+              <div class="stat-card"><div class="stat-val" id="ag-gmail-connected">—</div><div class="stat-label">Gmail Connected</div></div>
+            </div>
+
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Company Response Performance</div>
+              <div class="card-sub">Companies with tracked applications — sorted by ghost rate</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr>
+                  <th>Company</th>
+                  <th>Applications</th>
+                  <th>Responded</th>
+                  <th>Ghosted</th>
+                  <th>Ghost Rate</th>
+                  <th>Avg Response</th>
+                  <th>Last Activity</th>
+                </tr></thead>
+                <tbody id="ag-company-body">
+                  <tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:24px;">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Ghost Score Distribution</div>
+              <div id="ag-ghost-chart" style="height:280px;"></div>
             </div>
           </div>
         </div>
