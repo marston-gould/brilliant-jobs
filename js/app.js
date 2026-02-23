@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.02';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Feed Health: timeout fix + cycle tracker + Active %% fix');
+const BJ_VERSION = 'v4.03';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin console restructure: tab reorder, cohort redesign, entitlements tab');
 
 // Auth
 async function init() {

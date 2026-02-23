@@ -103,6 +103,7 @@ function switchAdminTab(tabId) {
     switch (tabId) {
       case 'feed-health': loadBoardHealth(); break;
       case 'cohorts': loadCohortTab(); break;
+      case 'entitlements': loadEntitlementsTab(); break;
       case 'users': loadUsersTab(); break;
       case 'seo': loadSeoTab(); break;
       case 'revenue': loadRevenueTab(); break;
@@ -265,43 +266,55 @@ async function loadCohortTab() {
       setAdminText('ac-total-users', '0');
       setAdminText('ac-pro-pct', '—');
       setAdminText('ac-active-7d', '0');
+      setAdminText('ac-churned', '0');
       return;
     }
+
+    // Store for entitlements tab
+    window._cohortList = cohorts;
 
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
     var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
     var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
-    var active30d = cohorts.reduce(function(s, c) { return s + (c.active_30d || 0); }, 0);
-    var retention = totalUsers > 0 ? Math.round(active30d / totalUsers * 100) : 0;
+    var churned28d = cohorts.reduce(function(s, c) { return s + (c.churned_28d || 0); }, 0);
 
     setAdminText('ac-total-cohorts', cohorts.length);
     setAdminText('ac-total-users', fmtAdminNum(totalUsers));
     setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
     setAdminText('ac-active-7d', fmtAdminNum(active7d));
-    setAdminText('ac-retention', retention + '%');
+    setAdminText('ac-churned', fmtAdminNum(churned28d));
 
     var tbody = document.getElementById('admin-cohort-body');
     if (!tbody) return;
     tbody.innerHTML = cohorts.map(function(c) {
-      return '<tr class="admin-cohort-row" data-cohort-id="' + c.id + '" style="cursor:pointer">' +
-        '<td class="admin-platform-name">' + c.name + ' <span style="color:var(--text-faint);font-size:10px">(' + c.slug + ')</span></td>' +
+      // Format enrollment dates
+      var enrollStart = c.enrollment_start ? new Date(c.enrollment_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+      var enrollClose = c.enrollment_close ? new Date(c.enrollment_close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Open';
+      var isOpen = !c.enrollment_close || new Date(c.enrollment_close) > new Date();
+
+      // Plan breakdown as mini badges
+      var planBadges = '';
+      if (c.plan_breakdown && c.plan_breakdown.length) {
+        planBadges = c.plan_breakdown.map(function(pb) {
+          var cls = pb.plan === 'free' ? '' : (pb.plan === 'pro' ? 'admin-green' : 'admin-amber');
+          return '<span class="' + cls + '">' + pb.plan + ':' + pb.count + '</span>';
+        }).join(' ');
+      }
+
+      return '<tr>' +
+        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || '—') + '</td>' +
+        '<td class="admin-platform-name">' + c.name + (c.is_locked ? ' 🔒' : '') + '</td>' +
+        '<td>' + (c.age_days || 0) + 'd</td>' +
+        '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
         '<td>' + fmtAdminNum(c.user_count) + '</td>' +
-        '<td>' + fmtAdminNum(c.free_count) + '</td>' +
-        '<td class="admin-green">' + fmtAdminNum(c.pro_count) + '</td>' +
         '<td>' + fmtAdminNum(c.active_7d) + '</td>' +
-        '<td>' + fmtAdminNum(c.active_30d) + '</td>' +
-        '<td>' + (c.entitlement_count || 0) + '</td>' +
-        '<td>' + (c.is_locked ? '🔒' : '—') + '</td>' +
+        '<td class="' + (c.churned_28d > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(c.churned_28d) + '</td>' +
+        '<td style="font-size:11px">' + planBadges + '</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
         '</tr>';
     }).join('');
-
-    tbody.addEventListener('click', function(e) {
-      var row = e.target.closest('.admin-cohort-row');
-      if (!row) return;
-      var cid = row.dataset.cohortId;
-      var cohort = cohorts.find(function(c) { return String(c.id) === cid; });
-      if (cohort) loadCohortDetail(cohort);
-    });
 
     renderCohortCharts(cohorts);
   } catch (err) {
@@ -309,13 +322,75 @@ async function loadCohortTab() {
   }
 }
 
+// ─── Entitlements Tab ───
+async function loadEntitlementsTab() {
+  console.log('[Admin] loadEntitlementsTab');
+  var select = document.getElementById('entitlement-cohort-select');
+  var tbody = document.getElementById('admin-entitlement-body');
+  if (!select || !tbody) return;
+
+  // Populate dropdown if empty
+  if (select.options.length === 0) {
+    try {
+      var res = await sb.from('cohorts').select('id,display_id,name').eq('is_active', true).order('created_at');
+      if (res.data) {
+        res.data.forEach(function(c) {
+          var opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = (c.display_id || c.id) + ' — ' + c.name;
+          select.appendChild(opt);
+        });
+      }
+    } catch (e) {}
+    select.addEventListener('change', function() { loadEntitlementRows(select.value); });
+  }
+
+  if (select.value) loadEntitlementRows(select.value);
+}
+
+async function loadEntitlementRows(cohortId) {
+  var tbody = document.getElementById('admin-entitlement-body');
+  if (!tbody || !cohortId) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-faint)">Loading...</td></tr>';
+
+  var res = await sb.from('cohort_plan_entitlements')
+    .select('feature_id,plan_id,behavior,limit_value')
+    .eq('cohort_id', cohortId)
+    .order('feature_id')
+    .order('plan_id');
+
+  if (res.error || !res.data) {
+    tbody.innerHTML = '<tr><td colspan="5" class="admin-red">Error loading entitlements</td></tr>';
+    return;
+  }
+
+  // Group by feature for a cleaner view
+  tbody.innerHTML = res.data.map(function(e) {
+    var limitStr = e.limit_value === -1 ? '∞' : String(e.limit_value);
+    var behaviorColor = e.behavior === 'off' ? 'admin-red' : (e.behavior === 'unlimited' ? 'admin-green' : '');
+    return '<tr>' +
+      '<td>' + e.feature_id + '</td>' +
+      '<td>' + e.plan_id + '</td>' +
+      '<td class="' + behaviorColor + '">' + e.behavior + '</td>' +
+      '<td style="font-family:var(--mono)">' + limitStr + '</td>' +
+      '<td>—</td>' +
+      '</tr>';
+  }).join('');
+}
+
 // ─── Cohort Charts ───
 function renderCohortCharts(cohorts) {
-  // 1. Plan Distribution — stacked bar (Free/Pro per cohort)
+  // 1. Sessions over time (adjusted to cohort open date)
+  renderCohortSessionsChart();
+
+  // 2. Cumulative Revenue (placeholder until Stripe data)
+  renderCohortRevenueChart();
+
+  // 3. Plan Distribution — stacked bar (Free/Pro per cohort)
   var planEl = document.getElementById('admin-cohort-plan-chart');
   if (planEl && typeof echarts !== 'undefined') {
     var planChart = echarts.init(planEl);
-    var names = cohorts.map(function(c) { return c.slug || c.name; });
+    var names = cohorts.map(function(c) { return c.display_id || c.name; });
     var t = seoChartTheme();
     planChart.setOption(Object.assign({}, t, {
       title: { text: 'Plan Distribution', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
@@ -332,11 +407,19 @@ function renderCohortCharts(cohorts) {
     window.addEventListener('resize', function() { planChart.resize(); });
   }
 
-  // 2. User Growth — cumulative signups over time
+  // 4. User Growth — cumulative signups
   renderCohortGrowthChart();
+}
 
-  // 3. Sessions per day
-  renderCohortSessionsChart();
+async function renderCohortRevenueChart() {
+  var el = document.getElementById('admin-cohort-revenue-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  // Placeholder until Stripe revenue data is wired
+  chart.setOption({
+    title: { text: 'Cumulative Revenue / Month', subtext: 'Waiting for Stripe integration', left: 'center', top: 'center', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, subtextStyle: { color: '#9ca3af', fontSize: 11 } }
+  });
+  window.addEventListener('resize', function() { chart.resize(); });
 }
 
 async function renderCohortGrowthChart() {
@@ -402,36 +485,8 @@ async function renderCohortSessionsChart() {
   } catch (e) { console.error('[Admin] Sessions chart error:', e); }
 }
 
-async function loadCohortDetail(cohort) {
-  var detail = document.getElementById('admin-cohort-detail');
-  var title = document.getElementById('admin-cohort-detail-title');
-  var tbody = document.getElementById('admin-entitlement-body');
-  if (!detail || !tbody) return;
-
-  title.textContent = cohort.name + ' — Entitlements';
-  detail.style.display = '';
-
-  var res = await sb.from('cohort_plan_entitlements')
-    .select('feature, plan, behavior, limit_value, bonus_max')
-    .eq('cohort_id', cohort.id)
-    .order('plan')
-    .order('feature');
-
-  if (res.error || !res.data) return;
-
-  tbody.innerHTML = res.data.map(function(e) {
-    return '<tr>' +
-      '<td>' + e.feature + '</td>' +
-      '<td>' + e.plan + '</td>' +
-      '<td>' + e.behavior + '</td>' +
-      '<td>' + (e.limit_value != null ? e.limit_value : '∞') + '</td>' +
-      '<td>' + (e.bonus_max != null ? e.bonus_max : '—') + '</td>' +
-      '</tr>';
-  }).join('');
-}
-
 // ═══════════════════════════════════════════════════════════
-// TAB 3: USERS + SESSIONS
+// TAB 3 (was 4): USERS + SESSIONS
 // ═══════════════════════════════════════════════════════════
 
 async function loadUsersTab() {
