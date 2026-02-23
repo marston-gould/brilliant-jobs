@@ -329,6 +329,8 @@ async function requireCredits(amount, description) {
   if (_isAdmin) return true;
   if (_creditBalance >= amount) return true;
   showToast('You need ' + amount + ' credits for ' + description + '. You have ' + _creditBalance + '.', 'warning');
+  // P13-09: Paywall friction micro-survey
+  if (typeof showPaywallFriction === 'function') showPaywallFriction(description);
   openPricingModal();
   return false;
 }
