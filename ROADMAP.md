@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-23
 **Target launch:** March 2026
-**Current version:** v3.98
+**Current version:** v4.11
 
 ---
 
@@ -537,6 +537,123 @@
 | v3.75 | ✅ | Admin Revenue tab, credit gating (score-resume 3cr, generate-filter 2cr), auto-refill EF, bundle rebuild |
 
 
+## Phase N: USAJOBS Integration (v3.80–v4.09) — Feb 23, 2026
+
+**Goal:** Add USAJOBS as the 6th job source (federal government positions, ~10K listings). Full propagation across landing, data lab, feed health, stats, and admin console.
+
+### Sprint 1: Backend + Edge Function (v3.80)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| N1 | `refresh-usajobs` Edge Function | v3.80 | ✅ | New Edge Function. USAJOBS API (Authorization-Key + User-Agent). Parses federal job postings into ats_jobs schema. ~10K listings. |
+| N2 | USAJOBS API key in Supabase secrets | v3.80 | ✅ | USAJOBS_API_KEY + USAJOBS_USER_AGENT stored. |
+| N3 | Landing page: USAJOBS as 6th source | v4.09 | ✅ | FAQ updated. Source count references updated. |
+| N4 | Data Lab: updated counts (38K+/350K) | v4.09 | ✅ | All 11 references updated from 10K/285K to 38K/350K. |
+| N5 | Feed Health: USAJOBS as standard platform | v4.09 | ✅ | Inserted into ats_companies + feed_health_daily. Appears in Platform table, charts, Refresh Cycle — same as greenhouse/lever/etc. |
+| N6 | Admin platform table formatting | v4.09 | ✅ | Right-aligned numerics, consistent K formatting (whole numbers), mono font. |
+| N7 | Board counts: total monitored (38K+) | v4.09 | ✅ | get_landing_stats RPC updated to count all ats_companies (38,774 total). |
+
+**Phase N total:** 7 items | All complete.
+
+---
+
+## Phase K-2: Admin Console Restructure (v4.00–v4.06) — Feb 23, 2026
+
+**Goal:** Overhaul admin console with improved tab organization, Feed Health enhancements, cohort redesign, and SEO dedup.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| K2-1 | Roadmap interactive filter bar | v4.01 | ✅ | Clickable blocked-type filters on roadmap.html. |
+| K2-2 | Admin console restructure | v4.03 | ✅ | Tab reorder, cohort redesign (ID-only), Entitlements tab. |
+| K2-3 | Admin links, job count fix, version SSoT | v4.04 | ✅ | Centralized version management. |
+| K2-4 | Feed Health: charts, Jobs/Board, total row | v4.05 | ✅ | Platform metrics, refresh cycle tracker, Active % fix. |
+| K2-5 | SEO dedup, cohort multi-select, Cloudflare | v4.06 | ✅ | Title dedup in SEO tab. Cohort multi-select. Cloudflare refresh. |
+
+**Phase K-2 total:** 5 items | All complete.
+
+---
+
+## Phase P: Ghost Build (v4.07–v4.11) — Feb 23, 2026
+
+**Goal:** Full Ghost Detection system — track which companies respond to job applications and which ghost candidates. Gmail OAuth integration for email-based signal detection.
+
+**Spec:** `docs/GHOST_BUILD.md`
+
+### Phase P1: Foundation — Pipeline + Scoring Engine (v4.07) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P1 | `user_pipeline` table (Supabase) | v4.07 | ✅ | 15+ columns: stage progression, ghost scoring, company domain, auto-advance. RLS + indexes. |
+| P2 | `company_ghost_stats` table | v4.07 | ✅ | Aggregated company ghost rates, avg response days, total applications. |
+| P3 | `ghost_alerts_sent` dedup table | v4.07 | ✅ | Prevents duplicate ghost alert emails per pipeline entry + status combo. |
+| P4 | `auto_refill_settings` table + trigger | v4.07 | ✅ | Default row creation on profile insert. Fixed 406 error (empty table + .single()). |
+| P5 | `compute_ghost_score()` RPC | v4.07 | ✅ | 4-factor weighted scoring: time (40%), email (30%), listing (20%), company history (10%). Returns score, status, factors, confidence. |
+| P6 | `get_pipeline_ghost_status()` RPC | v4.07 | ✅ | Joins pipeline + email_signals + company_ghost_stats. Returns full ghost analysis per entry. |
+| P7 | `recompute_company_ghost_stats()` RPC | v4.07 | ✅ | Aggregates pipeline data into company-level ghost metrics. |
+| P8 | Ghost Monitor page UI | v4.07 | ✅ | 4 KPI cards, ghost table with 10 columns (company, role, applied, days, email signal, listing status, score bar, status, confidence, action). Ghost score distribution chart (ECharts). |
+| P9 | Pipeline client-side migration | v4.07 | ✅ | localStorage → Supabase migration for existing pipeline data. |
+| P10 | `job-intelligence` ghost alerts | v4.07 | ✅ | Uses get_pipeline_ghost_status() + ghost_alerts_sent dedup. Sends ghost alert emails for ghosted/likely_ghosted entries. |
+| P11 | Company Browser ghost rate badges | v4.07 | ✅ | Fetches company_ghost_stats, shows color-coded ghost rate on company cards (≥5 applications required). |
+
+### Phase P2: Gmail OAuth + Email Scanning (v4.10) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P12 | GCP: Gmail API enabled | v4.10 | ✅ | APIs & Services → Gmail API enabled. |
+| P13 | GCP: OAuth 2.0 Client ID + consent screen | v4.10 | ✅ | Client: `27086315974-9988litv2cq153tlbqb7ag9u8bgmtsho`. Branding: logo, privacy policy, TOS links. External, Testing mode. Scope: `gmail.readonly` (restricted). Test user: gould.marston@gmail.com. |
+| P14 | Gmail secrets in Supabase | v4.10 | ✅ | GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REDIRECT_URI. |
+| P15 | `gmail_connections` table + RLS | v4.10 | ✅ | Encrypted refresh tokens, sync status, error tracking. UNIQUE(user_id). |
+| P16 | `email_signals` table + RLS | v4.10 | ✅ | Classification: response/interview/rejection/auto_reply/scheduling/silence. Linked to pipeline entries. |
+| P17 | Vercel rewrite rules | v4.10 | ✅ | `/api/auth/gmail/callback` → `gmail-auth`, `/api/auth/gmail/disconnect` → `gmail-disconnect`. |
+| P18 | `gmail-auth` Edge Function | v4.10 | ✅ | CSRF-protected OAuth flow: connect (generates Google auth URL) → callback (exchanges code for tokens, stores encrypted refresh token, fetches Gmail address). CORS headers. |
+| P19 | `gmail-disconnect` Edge Function | v4.10 | ✅ | Revokes Google token, deletes email_signals + gmail_connections. |
+| P20 | `gmail-scan` Edge Function | v4.10 | ✅ | Batch scan: token refresh → query Gmail by company domain → keyword classification → upsert email_signals → auto-advance pipeline stages. Wall-time safety (120s). Rate limit handling. |
+| P21 | pg_cron: gmail-scan every 6h | v4.10 | ✅ | `gmail-scan-6h` — 0 */6 * * *. Calls Edge Function via pg_net. |
+| P22 | pg_cron: 90-day signal purge | v4.10 | ✅ | `purge-old-email-signals` — weekly, deletes email_signals older than 90 days. |
+| P23 | Setup page: Connect/Disconnect Gmail UI | v4.10 | ✅ | Real OAuth flow (not placeholder). Connected state shows email address + disconnect button. Green dot indicator. |
+| P24 | Ghost Monitor page: Gmail connect UI | v4.10 | ✅ | Connect button + connected state with email address + disconnect. |
+| P25 | Gmail callback handler (client-side) | v4.10 | ✅ | Parses ?gmail=connected/denied/error params, cleans URL, shows appropriate feedback. |
+| P26 | Privacy policy update | v4.10 | ✅ | Removed "(future)" label. Added: metadata-only access, disconnect deletes all data, never reads message body. |
+
+### Phase P3: Admin + Polish (v4.11) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P27 | Admin Ghost tab | v4.11 | ✅ | 4 KPI cards (total apps, ghosted, avg response, Gmail connected). Company Response Performance table (company, applications, responded, ghosted, ghost rate, avg response, last activity). Ghost Score Distribution bar chart (ECharts, top 15, color-coded). |
+| P28 | Gmail OAuth verified end-to-end | v4.10 | ✅ | Test user (gould.marston@gmail.com) connected successfully. Token stored, scan executed (0 errors). |
+| P29 | Manual scan test | v4.10 | ✅ | gmail-scan returned: 1 user processed, 0 pipeline entries (expected), 0 errors, 582ms. |
+
+### Phase P Summary
+
+| Sprint | Items | Theme |
+|--------|-------|-------|
+| P-S1 | P1–P11 | ✅ Foundation: pipeline, scoring, Ghost Monitor UI, alerts (v4.07) |
+| P-S2 | P12–P26 | ✅ Gmail OAuth: GCP setup, 3 Edge Functions, email scanning, UI (v4.10) |
+| P-S3 | P27–P29 | ✅ Admin ghost tab + verification (v4.11) |
+| **Total** | **29 items** | **✅ Phase P complete (v4.07–v4.11)** |
+
+**Not built (intentionally deferred):**
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Google OAuth verification submission | ⏳ | 4-10 week timeline. Submit when ready for production (>100 users). Testing mode sufficient for now. |
+| Claude API email classification fallback | ⏳ | Future enhancement — keyword classifier works for English, Claude fallback for ambiguous snippets. |
+
+**Email Classification Keywords:**
+
+| Category | Keywords |
+|----------|----------|
+| Scheduling | calendly.com, goodtime.io, pick a time, book a time, availability |
+| Interview | interview, schedule a call, phone screen, next steps, coding challenge |
+| Rejection | unfortunately, not moving forward, other candidates, position filled |
+| Auto-reply | we received your application, thank you for applying, noreply |
+| Response | (default — any email from company domain that doesn't match above) |
+| Silence | (no emails found from company domain since application date) |
+
+**12 agents total (Phase G) + 3 Ghost Edge Functions (Phase P) = 15 Edge Functions with AI/email capabilities.**
+
+---
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -552,8 +669,11 @@
 | **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ⚠️ Toll-free verification 🚫 blocked on CEO Vonage action |
 | **J** Infrastructure Hardening | 12/13 | v3.81–v3.88 | ⚠️ J13 🚫 blocked on Greenhouse API partnership |
 | **M** Surveys & User Intelligence | 13/25 | v3.92–v3.97 | ⚠️ 12 items 🚫 blocked — need launch + user volume |
+| **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
+| **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
+| **P** Ghost Build | 29/29 | v4.07–v4.11 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **176+ items** | **v2.68–v3.97** | **17 items 🚫 BLOCKED** |
+| **Total built** | **217+ items** | **v2.68–v4.11** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -598,6 +718,11 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-23 | P-S3 | P27–P29 | **v4.11:** Admin Ghost tab. Company Response Performance table (ghost rate, avg response, last activity). Ghost Score Distribution chart (ECharts). 4 KPI cards. |
+| 2026-02-23 | P-S2 | P12–P26 | **v4.10:** Gmail OAuth live. GCP consent screen + branding. 3 Edge Functions deployed (gmail-auth, gmail-disconnect, gmail-scan). CORS fix. Privacy policy updated. Connect/Disconnect UI on Setup + Ghost Monitor pages. End-to-end verified: gould.marston@gmail.com connected. pg_cron: 6h scan + 90d purge. |
+| 2026-02-23 | N | N1–N7 | **v4.08–v4.09:** USAJOBS integration. Edge Function, landing page propagation, data lab counts (38K+/350K), Feed Health as standard platform, admin table formatting. |
+| 2026-02-23 | P-S1 | P1–P11 | **v4.07:** Ghost Build Phase 1. user_pipeline, company_ghost_stats, ghost_alerts_sent tables. compute_ghost_score() + get_pipeline_ghost_status() RPCs. Ghost Monitor page with 10-column table + ECharts distribution. Company Browser ghost rate badges. job-intelligence ghost alerts. |
+| 2026-02-23 | K-2 | K2-1–K2-5 | **v4.00–v4.06:** Admin console restructure. Roadmap filter bar. Tab reorder, cohort redesign. Feed Health charts + metrics. SEO dedup. |
 | 2026-02-23 | ROADMAP | — | **v3.98:** Roadmap blocked item audit. 17 in-progress/planned items annotated with 🚫 BLOCKED status + specific blocker reason. Quick-reference table added. Categorized: 7 CEO/CPO actions, 3 external dependencies, 7 post-launch. |
 | 2026-02-22 | H++ | — | **Stripe LIVE:** Production keys deployed. 11 live price IDs in create-checkout, 3 in auto-refill. Live webhook endpoint registered (`we_1T3lqY`). Supabase secrets updated (STRIPE_SECRET_KEY, PUBLISHABLE_KEY, WEBHOOK_SECRET). billing.js → pk_live. 3 Edge Functions redeployed. |
 | 2026-02-22 | H+ | — | **v3.80:** Public pricing page (`pricing.html`). Cohort-tied (launch_2026). 3-tier: Free/Starter($20)/Pro($40). DB aligned: `starter` plan added, `pro` price updated to $40. 13 starter entitlements seeded. Monthly/annual toggle, credit packs, FAQ. |
@@ -739,7 +864,7 @@
 | Export 32K ungeocoded locations (SQL provided), geocode externally, re-import to location_cache | CEO | 🚫 BLOCKED — CEO action + external geocoding service |
 | Stripe Billing Portal configuration in Stripe Dashboard | CEO | 🚫 BLOCKED — CEO action in Stripe Dashboard |
 
-### Active pg_cron Jobs (as of v3.88)
+### Active pg_cron Jobs (as of v4.11)
 
 | ID | Schedule | Function | Added |
 |----|----------|----------|-------|
@@ -753,3 +878,5 @@
 | 15 | 30 */2 * * * | escalation-checker | Phase I |
 | 16 | 0 3 * * 0 | weekly-data-hygiene | Phase J |
 | 17 | 0 2 * * * | daily-table-backup | Phase J |
+| — | 0 */6 * * * | gmail-scan-6h | Phase P |
+| — | 0 3 * * 0 | purge-old-email-signals (90d) | Phase P |
