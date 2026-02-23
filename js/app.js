@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.04';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin links, cohort ID-only, job count aligned, version single source of truth');
+const BJ_VERSION = 'v4.05';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Feed Health charts + Jobs/Board, cohort plan columns, period toggle removed');
 
 // Auth
 async function init() {

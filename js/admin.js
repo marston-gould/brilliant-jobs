@@ -54,24 +54,6 @@ function initAdminTabs() {
     switchAdminTab(btn.dataset.tab);
   });
 
-  // Period toggle (lives inside feed-health panel)
-  var periodToggle = document.getElementById('admin-period-toggle');
-  if (periodToggle) {
-    periodToggle.addEventListener('click', function(e) {
-      var btn = e.target.closest('.admin-period-btn');
-      if (!btn) return;
-      periodToggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      adminPeriod = parseInt(btn.dataset.hours);
-      localStorage.setItem('bj_admin_period', adminPeriod);
-      _adminTabInit['feed-health'] = false;
-      loadBoardHealth();
-    });
-    periodToggle.querySelectorAll('.admin-period-btn').forEach(function(b) {
-      b.classList.toggle('active', parseInt(b.dataset.hours) === adminPeriod);
-    });
-  }
-
   // Period toggle for Revenue tab
   var revPeriod = document.getElementById('admin-rev-period');
   if (revPeriod) {
@@ -175,26 +157,147 @@ async function loadBoardHealth() {
     var platform = await sb.rpc('get_board_health_by_platform', { period_hours: adminPeriod });
     if (platform.data && platform.data.length) {
       var tbody = document.getElementById('admin-platform-body');
+      var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
+        var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
+          var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
-            '<td class="admin-green">+' + fmtAdminNum(p.boards_added) + '</td>' +
-            '<td class="admin-red">-' + fmtAdminNum(p.boards_lost) + '</td>' +
             '<td class="' + pctColor + '">' + activePct + '%</td>' +
             '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
-            '<td class="admin-green">+' + fmtAdminNum(p.jobs_added) + '</td>' +
-            '<td class="admin-red">-' + fmtAdminNum(p.jobs_lost) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
         }).join('');
+        if (tfoot) {
+          var totPct = totBoards > 0 ? Math.round((totWithJobs / totBoards) * 100) : 0;
+          var totJpb = totWithJobs > 0 ? Math.round(totJobs / totWithJobs) : 0;
+          tfoot.innerHTML = '<tr style="font-weight:600;border-top:2px solid var(--border)">' +
+            '<td>Total</td>' +
+            '<td>' + fmtAdminNum(totBoards) + '</td>' +
+            '<td>' + totPct + '%</td>' +
+            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td>' + fmtAdminNum(totJobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
+            '</tr>';
+        }
       }
     }
+
+    // Load feed health charts
+    loadFeedHealthCharts();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
+  }
+}
+
+// ─── Feed Health Charts (stacked area by platform) ───
+var _fhCharts = {};
+var _platformColors = {
+  greenhouse: '#22c55e',
+  lever: '#3b82f6',
+  ashby: '#f59e0b',
+  workable: '#8b5cf6',
+  recruitee: '#ec4899'
+};
+
+async function loadFeedHealthCharts() {
+  if (typeof echarts === 'undefined') return;
+  try {
+    var res = await sb.rpc('get_feed_health_history', { days_back: 90 });
+    if (res.error || !res.data || !res.data.length) return;
+    var rows = res.data;
+
+    // Build date axis + per-platform series
+    var dates = [];
+    var dateSet = {};
+    var platforms = [];
+    var platSet = {};
+    rows.forEach(function(r) {
+      if (!dateSet[r.snapshot_date]) { dateSet[r.snapshot_date] = true; dates.push(r.snapshot_date); }
+      if (!platSet[r.platform]) { platSet[r.platform] = true; platforms.push(r.platform); }
+    });
+    dates.sort();
+
+    // Build lookup: data[platform][date] = row
+    var lookup = {};
+    rows.forEach(function(r) {
+      if (!lookup[r.platform]) lookup[r.platform] = {};
+      lookup[r.platform][r.snapshot_date] = r;
+    });
+
+    var t = seoChartTheme();
+    var legend = { data: platforms.map(function(p) { return p.charAt(0).toUpperCase() + p.slice(1); }), textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 };
+    var grid = { top: 40, right: 20, bottom: 30, left: 60 };
+    var xAxis = { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35, interval: Math.max(0, Math.floor(dates.length / 10) - 1) } };
+
+    function makeSeries(field) {
+      return platforms.map(function(p) {
+        return {
+          name: p.charAt(0).toUpperCase() + p.slice(1),
+          type: 'line',
+          stack: 'total',
+          areaStyle: { opacity: 0.6 },
+          lineStyle: { width: 1 },
+          symbol: 'none',
+          itemStyle: { color: _platformColors[p] || '#999' },
+          data: dates.map(function(d) { return lookup[p] && lookup[p][d] ? lookup[p][d][field] : 0; })
+        };
+      });
+    }
+
+    // Chart 1: Total Boards
+    var el1 = document.getElementById('fh-chart-total-boards');
+    if (el1) {
+      if (_fhCharts.totalBoards) _fhCharts.totalBoards.dispose();
+      _fhCharts.totalBoards = echarts.init(el1);
+      _fhCharts.totalBoards.setOption(Object.assign({}, t, {
+        title: { text: 'Total Boards by Platform', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('total_boards')
+      }), true);
+    }
+
+    // Chart 2: Active Boards
+    var el2 = document.getElementById('fh-chart-active-boards');
+    if (el2) {
+      if (_fhCharts.activeBoards) _fhCharts.activeBoards.dispose();
+      _fhCharts.activeBoards = echarts.init(el2);
+      _fhCharts.activeBoards.setOption(Object.assign({}, t, {
+        title: { text: 'Active Boards by Platform (with jobs)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('active_boards')
+      }), true);
+    }
+
+    // Chart 3: Jobs
+    var el3 = document.getElementById('fh-chart-jobs');
+    if (el3) {
+      if (_fhCharts.jobs) _fhCharts.jobs.dispose();
+      _fhCharts.jobs = echarts.init(el3);
+      _fhCharts.jobs.setOption(Object.assign({}, t, {
+        title: { text: 'Jobs by Platform', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('total_jobs')
+      }), true);
+    }
+
+    window.addEventListener('resize', function() {
+      Object.keys(_fhCharts).forEach(function(k) { if (_fhCharts[k]) _fhCharts[k].resize(); });
+    });
+  } catch (err) {
+    console.error('[Admin] Feed health charts error:', err);
   }
 }
 
@@ -286,20 +389,32 @@ async function loadCohortTab() {
 
     var tbody = document.getElementById('admin-cohort-body');
     if (!tbody) return;
+
+    // Collect all plan types across all cohorts
+    var allPlans = {};
+    cohorts.forEach(function(c) {
+      if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { allPlans[pb.plan] = true; });
+    });
+    var planOrder = ['free', 'starter', 'pro', 'enterprise'].filter(function(p) { return allPlans[p]; });
+
+    // Build dynamic header
+    var thead = tbody.parentElement.querySelector('thead');
+    if (thead) {
+      thead.innerHTML = '<tr>' +
+        '<th>ID</th><th>Age</th><th>Enrollment</th><th>Users</th><th>Active 7d</th><th>Churned</th>' +
+        planOrder.map(function(p) { return '<th>' + p.charAt(0).toUpperCase() + p.slice(1) + '</th>'; }).join('') +
+        '<th>Revenue/mo</th><th>LTV</th><th>ARPU</th>' +
+        '</tr>';
+    }
+
     tbody.innerHTML = cohorts.map(function(c) {
-      // Format enrollment dates
       var enrollStart = c.enrollment_start ? new Date(c.enrollment_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
       var enrollClose = c.enrollment_close ? new Date(c.enrollment_close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Open';
       var isOpen = !c.enrollment_close || new Date(c.enrollment_close) > new Date();
 
-      // Plan breakdown as mini badges
-      var planBadges = '';
-      if (c.plan_breakdown && c.plan_breakdown.length) {
-        planBadges = c.plan_breakdown.map(function(pb) {
-          var cls = pb.plan === 'free' ? '' : (pb.plan === 'pro' ? 'admin-green' : 'admin-amber');
-          return '<span class="' + cls + '">' + pb.plan + ':' + pb.count + '</span>';
-        }).join(' ');
-      }
+      // Build plan count lookup
+      var planCounts = {};
+      if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { planCounts[pb.plan] = pb.count; });
 
       return '<tr>' +
         '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + (c.is_locked ? ' 🔒' : '') + '</td>' +
@@ -308,7 +423,11 @@ async function loadCohortTab() {
         '<td>' + fmtAdminNum(c.user_count) + '</td>' +
         '<td>' + fmtAdminNum(c.active_7d) + '</td>' +
         '<td class="' + (c.churned_28d > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(c.churned_28d) + '</td>' +
-        '<td style="font-size:11px">' + planBadges + '</td>' +
+        planOrder.map(function(p) {
+          var cnt = planCounts[p] || 0;
+          var cls = p === 'pro' ? 'admin-green' : (p === 'enterprise' ? 'admin-amber' : '');
+          return '<td class="' + cls + '">' + fmtAdminNum(cnt) + '</td>';
+        }).join('') +
         '<td style="color:var(--text-faint)">—</td>' +
         '<td style="color:var(--text-faint)">—</td>' +
         '<td style="color:var(--text-faint)">—</td>' +
