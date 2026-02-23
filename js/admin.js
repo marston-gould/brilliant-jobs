@@ -319,7 +319,23 @@ async function loadRefreshCycle() {
     setAdminText('ac-cycle-total', fmtAdminNum(c.total_boards));
     setAdminText('ac-cycle-refreshed', fmtAdminNum(c.hot_fresh || 0) + ' / ' + fmtAdminNum(c.hot_total || 0) + ' HOT');
     setAdminText('ac-cycle-pending', fmtAdminNum(c.hot_due || 0) + ' HOT due');
-    setAdminText('ac-cycle-rate', fmtAdminNum(c.rate_per_hour) + '/hr');
+
+    // Rate with trend arrow: compare 1h vs 6h average
+    var rate1h = c.rate_1h || 0;
+    var rate6h = c.rate_6h || 0;
+    var rateStr = fmtAdminNum(rate1h) + '/hr';
+    if (rate6h > 0 && rate1h > 0) {
+      var pctChange = Math.round(((rate1h - rate6h) / rate6h) * 100);
+      if (pctChange > 10) {
+        rateStr += ' <span style="color:#22c55e;font-size:0.8em">▲ ' + pctChange + '%</span>';
+      } else if (pctChange < -10) {
+        rateStr += ' <span style="color:#ef4444;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
+      } else {
+        rateStr += ' <span style="color:#94a3b8;font-size:0.8em">● steady</span>';
+      }
+    }
+    var rateEl = document.getElementById('ac-cycle-rate');
+    if (rateEl) rateEl.innerHTML = rateStr;
 
     // ETA based on HOT cycle
     var estHours = c.est_hot_cycle_hours || 0;
@@ -336,6 +352,21 @@ async function loadRefreshCycle() {
       var lr = new Date(c.last_refresh);
       var minsAgo = Math.round((Date.now() - lr.getTime()) / 60000);
       setAdminText('ac-cycle-start', minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ago');
+    }
+
+    // Sparkline: hourly throughput (last 24h)
+    var sparkEl = document.getElementById('ac-cycle-spark');
+    if (sparkEl && c.hourly_rates && c.hourly_rates.length > 1 && typeof echarts !== 'undefined') {
+      var hours = c.hourly_rates.map(function(r) { return new Date(r.hour).getHours() + ':00'; });
+      var counts = c.hourly_rates.map(function(r) { return r.count; });
+      var chart = echarts.init(sparkEl);
+      chart.setOption({
+        grid: { top: 4, right: 4, bottom: 16, left: 30 },
+        xAxis: { type: 'category', data: hours, axisLabel: { fontSize: 9, color: '#94a3b8' }, axisLine: { show: false }, axisTick: { show: false } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+        series: [{ type: 'bar', data: counts, itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
+        tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + ': ' + p[0].value.toLocaleString() + ' boards'; } }
+      });
     }
   } catch (err) {
     console.error('[Admin] loadRefreshCycle error:', err);
