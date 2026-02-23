@@ -590,7 +590,8 @@ async function renderGhostMonitor() {
     if (ghostedEl) ghostedEl.textContent = ghostedCount;
 
     if (entries.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:32px;">No active applications to monitor. Apply to jobs from the Feed to see ghost detection here.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:32px;">No active applications to monitor. Apply to jobs from the Feed to see ghost detection here.</td></tr>';
+      renderGhostChart([]);
       return;
     }
 
@@ -616,6 +617,26 @@ async function renderGhostMonitor() {
         unknown: '<span style="color:var(--text-faint);">—</span>'
       };
 
+      // Email signal icons (CSS-rendered)
+      const emailClass = e.email_classification || 'unknown';
+      const emailIcons = {
+        response: '<span title="Response received" style="color:var(--green);font-size:13px;">● Reply</span>',
+        interview: '<span title="Interview detected" style="color:var(--green);font-size:13px;">● Interview</span>',
+        scheduling: '<span title="Scheduling link" style="color:var(--green);font-size:13px;">● Schedule</span>',
+        rejection: '<span title="Rejection received" style="color:#f59e0b;font-size:13px;">● Rejected</span>',
+        auto_reply: '<span title="Auto-reply only" style="color:var(--text-dim);font-size:13px;">○ Auto-reply</span>',
+        silence: '<span title="No emails from company" style="color:var(--red);font-size:13px;">✕ Silence</span>',
+        unknown: '<span title="No Gmail connected" style="color:var(--text-faint);font-size:13px;">◌ No Gmail</span>'
+      };
+
+      // Confidence badge
+      const conf = e.confidence || 'low';
+      const confBadges = {
+        high: '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--green);color:#fff;">High</span>',
+        medium: '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:#f59e0b;color:#fff;">Med</span>',
+        low: '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);">Low</span>'
+      };
+
       // Score bar color
       const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? '#f59e0b' : score >= 25 ? 'var(--accent)' : 'var(--green)';
 
@@ -632,26 +653,85 @@ async function renderGhostMonitor() {
       html += '<td title="' + (e.job_title || '') + '">' + ((e.job_title || '').length > 30 ? (e.job_title || '').slice(0,30) + '…' : (e.job_title || '—')) + '</td>';
       html += '<td>' + appliedStr + '</td>';
       html += '<td>' + (e.days_since_applied || 0) + 'd</td>';
+      html += '<td>' + (emailIcons[emailClass] || emailIcons.unknown) + '</td>';
       html += '<td>' + (listingLabels[e.listing_status] || listingLabels.unknown) + '</td>';
       html += '<td><div style="display:flex;align-items:center;gap:6px;">';
       html += '<div style="width:40px;height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden;">';
       html += '<div style="width:' + score + '%;height:100%;background:' + barColor + ';border-radius:3px;"></div></div>';
       html += '<span style="font-size:11px;font-weight:500;">' + score + '</span></div></td>';
       html += '<td style="' + (statusColors[status] || '') + 'font-size:12px;">' + (statusLabels[status] || status) + '</td>';
+      html += '<td>' + (confBadges[conf] || confBadges.low) + '</td>';
       html += '<td>' + actionBtn + '</td>';
       html += '</tr>';
     }
     tbody.innerHTML = html;
 
+    // Render distribution chart
+    renderGhostChart(entries);
+
   } catch (err) {
     console.error('[BJ] Ghost monitor error:', err);
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
   }
 }
 
 // Auto-load ghost monitor when page is shown
 function onGhostPageShow() {
   renderGhostMonitor();
+}
+
+// ── Ghost score distribution chart (ECharts) ──────────────────
+let ghostChartInstance = null;
+function renderGhostChart(entries) {
+  const el = document.getElementById('ghost-distribution-chart');
+  if (!el) return;
+  if (!window.echarts) return;
+
+  if (ghostChartInstance) ghostChartInstance.dispose();
+  ghostChartInstance = echarts.init(el);
+
+  const buckets = { active: 0, waiting: 0, likely_ghosted: 0, ghosted: 0 };
+  for (const e of entries) {
+    const s = e.ghost_status || 'active';
+    if (buckets[s] !== undefined) buckets[s]++;
+  }
+
+  const isDark = document.body.classList.contains('dark');
+  const textColor = isDark ? '#a0aec0' : '#4a5568';
+
+  ghostChartInstance.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 40, right: 20, top: 10, bottom: 30 },
+    xAxis: {
+      type: 'category',
+      data: ['Active', 'Waiting', 'Likely Ghosted', 'Ghosted'],
+      axisLabel: { color: textColor, fontSize: 11 },
+      axisLine: { lineStyle: { color: isDark ? '#2d3748' : '#e2e8f0' } }
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: { color: textColor, fontSize: 11 },
+      splitLine: { lineStyle: { color: isDark ? '#2d3748' : '#e2e8f0' } }
+    },
+    series: [{
+      type: 'bar',
+      barWidth: '50%',
+      data: [
+        { value: buckets.active, itemStyle: { color: '#48bb78' } },
+        { value: buckets.waiting, itemStyle: { color: '#f59e0b' } },
+        { value: buckets.likely_ghosted, itemStyle: { color: '#f56565' } },
+        { value: buckets.ghosted, itemStyle: { color: '#c53030' } }
+      ],
+      label: {
+        show: true, position: 'top', color: textColor, fontSize: 12, fontWeight: 600,
+        formatter: p => p.value > 0 ? p.value : ''
+      }
+    }]
+  });
+
+  // Responsive resize
+  new ResizeObserver(() => ghostChartInstance?.resize()).observe(el);
 }
 
 // ── Gmail connection UI ──────────────────────────────────────

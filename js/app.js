@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.09';
+const BJ_VERSION = 'v4.10';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build Phase 2+3: Gmail OAuth, email scanning, full ghost engine');
 
 // Auth
