@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.11';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build complete: admin ghost tab, full pipeline live');
+const BJ_VERSION = 'v4.12';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — S3-1: Priority-weighted micro-survey selection');
 
 // Auth
 async function init() {

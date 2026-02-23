@@ -2,6 +2,11 @@
 // Lightweight survey prompts that appear inline in the dashboard.
 // All responses stored in feedback table via Supabase REST API.
 //
+// v4.12 — S3-1: Priority-weighted micro-survey selection
+//   Instead of first-trigger-wins, eligible surveys queue up and the
+//   highest-priority one is shown. Paywall friction (willingness-to-pay
+//   signal) gets highest priority since it feeds monetization decisions.
+//
 // Usage:
 //   showPaywallFriction('resume_grading')  — after feature limit hit
 //   showSearchRelevance(filterName, count)  — after 10th search or 5min session
@@ -13,7 +18,21 @@
 (function() {
   'use strict';
 
-  const MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
+  var MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
+
+  // ─── Priority Queue ───
+  // Higher number = higher priority. Paywall is king (monetization signal).
+  var PRIORITY = {
+    micro_paywall_v1: 100,
+    micro_search_v1: 60,
+    micro_apply_v1: 50,
+    micro_data_v1: 30
+  };
+
+  // Pending surveys that haven't been shown yet, waiting for the flush window
+  var _pendingQueue = [];
+  var _flushTimer = null;
+  var FLUSH_DELAY_MS = 500; // Wait 500ms to collect competing triggers before picking winner
 
   // ─── Rate Limiter ───
   function canShowMicroSurvey() {
@@ -28,17 +47,71 @@
     } catch { /* ignore */ }
   }
 
+  // ─── Queue + Flush Logic ───
+  // When a trigger fires, it enqueues a survey config. After FLUSH_DELAY_MS,
+  // the highest-priority pending survey is displayed and the rest are discarded.
+  function enqueueMicroSurvey(config) {
+    if (!canShowMicroSurvey()) return;
+    _pendingQueue.push(config);
+
+    // Reset the flush timer — give other triggers a chance to fire
+    if (_flushTimer) clearTimeout(_flushTimer);
+    _flushTimer = setTimeout(flushQueue, FLUSH_DELAY_MS);
+  }
+
+  function flushQueue() {
+    _flushTimer = null;
+    if (!canShowMicroSurvey() || _pendingQueue.length === 0) return;
+
+    // Sort by priority descending, pick winner
+    _pendingQueue.sort(function(a, b) {
+      return (PRIORITY[b.version] || 0) - (PRIORITY[a.version] || 0);
+    });
+
+    var winner = _pendingQueue[0];
+    var suppressed = _pendingQueue.slice(1);
+
+    // Log what was suppressed for analytics
+    if (suppressed.length > 0) {
+      console.info('[micro-survey] Showing', winner.version,
+        '(priority ' + (PRIORITY[winner.version] || 0) + '),',
+        'suppressed:', suppressed.map(function(s) { return s.version; }).join(', '));
+    }
+
+    // Clear queue
+    _pendingQueue = [];
+
+    // Display the winner
+    displayMicroSurvey(winner);
+  }
+
+  function displayMicroSurvey(config) {
+    var card = createMicroCard(config);
+
+    if (config.displayMode === 'toast') {
+      card.classList.add('micro-survey-toast');
+      document.body.appendChild(card);
+    } else {
+      var target = config.target
+        || document.getElementById('main-content')
+        || document.querySelector('.content-area')
+        || document.querySelector('main')
+        || document.body;
+      target.insertBefore(card, target.firstChild);
+    }
+  }
+
   // ─── Submit to Supabase ───
   async function submitMicroSurvey(version, responses, context) {
-    const SUPABASE_URL = window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co';
-    const SUPABASE_ANON_KEY = window._bjAnonKey || '';
+    var SUPABASE_URL = window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    var SUPABASE_ANON_KEY = window._bjAnonKey || '';
 
-    let userId = null;
-    let authHeader = 'Bearer ' + SUPABASE_ANON_KEY;
+    var userId = null;
+    var authHeader = 'Bearer ' + SUPABASE_ANON_KEY;
     try {
-      const stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
+      var stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
       if (stored) {
-        const session = JSON.parse(stored);
+        var session = JSON.parse(stored);
         if (session?.access_token && session?.user?.id) {
           userId = session.user.id;
           authHeader = 'Bearer ' + session.access_token;
@@ -46,7 +119,7 @@
       }
     } catch { /* anon fallback */ }
 
-    const payload = {
+    var payload = {
       type: 'micro_survey',
       user_id: userId,
       survey_version: version,
@@ -73,12 +146,12 @@
 
   // ─── Generic Micro-Survey Card ───
   function createMicroCard(config) {
-    const card = document.createElement('div');
+    var card = document.createElement('div');
     card.className = 'micro-survey-card';
     card.setAttribute('role', 'complementary');
     card.setAttribute('aria-label', 'Quick survey');
 
-    let inner = '<div class="micro-survey-inner">';
+    var inner = '<div class="micro-survey-inner">';
     inner += '<button class="micro-survey-close" aria-label="Dismiss survey">&times;</button>';
     inner += '<div class="micro-survey-q">' + config.question + '</div>';
 
@@ -90,7 +163,7 @@
       inner += '</div>';
     } else if (config.type === 'rating') {
       inner += '<div class="micro-survey-rating">';
-      for (let r = 1; r <= 5; r++) {
+      for (var r = 1; r <= 5; r++) {
         inner += '<button class="micro-survey-star" data-val="' + r + '">' + r + '</button>';
       }
       inner += '</div>';
@@ -185,10 +258,9 @@
 
   // ─── P13-09: Paywall Friction Survey ───
   // Shows when a free user hits a feature limit
+  // PRIORITY: 100 (highest — monetization signal)
   window.showPaywallFriction = function(featureName) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'Would you pay to unlock this feature?',
       type: 'choice',
       options: ['Definitely', 'Maybe', 'No'],
@@ -198,19 +270,16 @@
         options: ['Too expensive', 'Not enough value yet', 'Just browsing', 'Already paying elsewhere']
       },
       version: 'micro_paywall_v1',
-      featureContext: featureName
+      featureContext: featureName,
+      displayMode: 'inline',
+      target: document.getElementById('main-content') || document.querySelector('.content-area') || document.querySelector('main') || document.body
     });
-
-    // Insert near the top of the main content area
-    var target = document.getElementById('main-content') || document.querySelector('.content-area') || document.querySelector('main') || document.body;
-    target.insertBefore(card, target.firstChild);
   };
 
   // ─── P13-04: Post-Search Relevance Survey ───
+  // PRIORITY: 60
   window.showSearchRelevance = function(filterName, resultCount) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'How relevant were these results?',
       type: 'rating',
       minLabel: 'Not at all',
@@ -221,18 +290,16 @@
         options: ['More salary data', 'Wrong seniority level', 'Too many ghost jobs', 'Not my industry', 'Other']
       },
       version: 'micro_search_v1',
-      featureContext: JSON.stringify({ filter: filterName, result_count: resultCount })
+      featureContext: JSON.stringify({ filter: filterName, result_count: resultCount }),
+      displayMode: 'inline',
+      target: document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body
     });
-
-    var target = document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body;
-    target.insertBefore(card, target.firstChild);
   };
 
   // ─── P13-05: Post-Application Confidence Survey ───
+  // PRIORITY: 50
   window.showApplyConfidence = function(jobId, companyName) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'How confident are you this job is real?',
       type: 'rating',
       minLabel: 'Likely ghost',
@@ -243,29 +310,22 @@
         options: ['Yes, very clear', 'Somewhat', 'No, confusing']
       },
       version: 'micro_apply_v1',
-      featureContext: JSON.stringify({ job_id: jobId, company: companyName })
+      featureContext: JSON.stringify({ job_id: jobId, company: companyName }),
+      displayMode: 'toast'
     });
-
-    // Show as toast-like at bottom right
-    card.classList.add('micro-survey-toast');
-    document.body.appendChild(card);
   };
 
   // ─── P13-06: Data Value Assessment ───
+  // PRIORITY: 30 (lowest — passive viewing, least commercial signal)
   window.showDataValue = function(featureContext) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'Did this data help your decision?',
       type: 'choice',
       options: ['Yes, very helpful', 'Somewhat', 'Not really'],
       version: 'micro_data_v1',
-      featureContext: featureContext
+      featureContext: featureContext,
+      displayMode: 'toast'
     });
-
-    // Floating bottom-right widget
-    card.classList.add('micro-survey-toast');
-    document.body.appendChild(card);
   };
 
   // ─── Search/Session Tracking (P13-04) ───
