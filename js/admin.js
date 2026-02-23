@@ -302,8 +302,7 @@ async function loadCohortTab() {
       }
 
       return '<tr>' +
-        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || '—') + '</td>' +
-        '<td class="admin-platform-name">' + c.name + (c.is_locked ? ' 🔒' : '') + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + (c.is_locked ? ' 🔒' : '') + '</td>' +
         '<td>' + (c.age_days || 0) + 'd</td>' +
         '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
         '<td>' + fmtAdminNum(c.user_count) + '</td>' +

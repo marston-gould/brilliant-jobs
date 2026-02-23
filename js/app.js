@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.03';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin console restructure: tab reorder, cohort redesign, entitlements tab');
+const BJ_VERSION = 'v4.04';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin links, cohort ID-only, job count aligned, version single source of truth');
 
 // Auth
 async function init() {
