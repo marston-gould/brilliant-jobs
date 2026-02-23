@@ -227,6 +227,15 @@ function randFloat(min, max) {
   return Math.random() * (max - min) + min;
 }
 
+// Fisher-Yates shuffle — properly randomize an array in-place
+function fisherYatesShuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function newDailyLimit() {
   return randInt(40, 90);
 }
@@ -581,7 +590,8 @@ async function visitNextProfile() {
   }
 
   try {
-    // Get next pending profile from Supabase (random order to avoid sequential patterns)
+    // Get next pending profiles and shuffle the entire batch (Fisher-Yates)
+    // This eliminates any sequential pattern LinkedIn could detect across visits
     const rows = await supabase.select('connections', 'visit_status=eq.pending&limit=20&order=id.asc');
     if (!rows || rows.length === 0) {
       logMsg('No more profiles in queue! All done!', 'success');
@@ -590,8 +600,9 @@ async function visitNextProfile() {
       return;
     }
 
-    // Pick a random profile from the batch to avoid sequential visit patterns
-    const connection = rows[Math.floor(Math.random() * rows.length)];
+    // Shuffle and take the first — true randomization, not just random index
+    fisherYatesShuffle(rows);
+    const connection = rows[0];
     scannerState.currentProfile = connection.name || connection.profile_slug;
     logMsg(`Visiting: ${connection.name || connection.profile_slug}`, 'info');
     saveState();
@@ -613,6 +624,75 @@ async function visitNextProfile() {
 
     // Simple wait for page load
     await sleep(5000);
+
+    // === CAPTCHA / CHALLENGE DETECTION ===
+    // If LinkedIn serves a challenge page instead of a profile, halt immediately.
+    // Continuing to visit pages while flagged makes the situation worse.
+    try {
+      const challengeCheck = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const url = window.location.href.toLowerCase();
+          const body = document.body?.innerText?.substring(0, 2000)?.toLowerCase() || '';
+          const title = document.title?.toLowerCase() || '';
+
+          // URL-based detection
+          if (url.includes('/checkpoint/') || url.includes('/challenge/') ||
+              url.includes('/authwall') || url.includes('/captcha')) {
+            return { blocked: true, reason: 'challenge_url', detail: url };
+          }
+
+          // Content-based detection
+          if (title.includes('security verification') || title.includes('captcha') ||
+              title.includes('let\'s do a quick security check')) {
+            return { blocked: true, reason: 'challenge_title', detail: title };
+          }
+
+          // Body content signals
+          if (body.includes('unusual activity') || body.includes('security check') ||
+              body.includes('verify you\'re a real person') || body.includes('automated behavior') ||
+              body.includes('restricted your account') || body.includes('temporarily limited')) {
+            return { blocked: true, reason: 'challenge_body', detail: body.substring(0, 200) };
+          }
+
+          // reCAPTCHA / hCaptcha iframe detection
+          if (document.querySelector('iframe[src*="recaptcha"]') ||
+              document.querySelector('iframe[src*="hcaptcha"]') ||
+              document.querySelector('#captcha-challenge') ||
+              document.querySelector('.challenge-dialog')) {
+            return { blocked: true, reason: 'captcha_element', detail: 'CAPTCHA iframe or dialog detected' };
+          }
+
+          return { blocked: false };
+        }
+      });
+
+      const challenge = challengeCheck?.[0]?.result;
+      if (challenge?.blocked) {
+        logMsg(`🚨 CAPTCHA/CHALLENGE DETECTED: ${challenge.reason}`, 'error');
+        logMsg(`Detail: ${challenge.detail}`, 'error');
+        logMsg('⛔ Scanner halted — LinkedIn is suspicious. Wait 24-48h before resuming.', 'error');
+        notify('Brilliant Jobs — CAPTCHA Detected',
+          'LinkedIn is showing a security challenge. Scanner stopped. Wait 24-48h before resuming.');
+
+        // Revert the connection status back to pending
+        await supabase.update('connections', { profile_slug: connection.profile_slug }, {
+          visit_status: 'pending'
+        });
+
+        scannerState.paused = true;
+        scannerState.currentProfile = null;
+        scannerState.nextActionType = 'captcha_halt';
+        scannerState.nextActionAt = null;
+        chrome.alarms.clear('nextVisit');
+        saveState();
+        syncStateToSupabase();
+        broadcastState();
+        return;
+      }
+    } catch (e) {
+      // If we can't even run the check, the tab may have navigated away — continue cautiously
+    }
 
     // Simulate browsing: scroll down gradually
     const browseTime = timeOnProfileSec();

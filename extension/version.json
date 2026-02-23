@@ -1,18 +1,19 @@
 {
-  "version": "2.6.6",
-  "build": "2026-02-11g",
+  "version": "2.7.0",
+  "build": "2026-02-23a",
   "files": {
-    "background.js": "2.6.6",
+    "background.js": "2.7.0",
     "popup.html": "2.6.5",
     "popup.js": "2.6.5",
     "supabase.js": "2.5.0",
     "help.html": "2.6.0",
-    "manifest.json": "2.6.6",
+    "manifest.json": "2.7.0",
     "human-sim.js": "2.5.0",
     "interceptor.js": "2.5.0",
     "interceptor-bridge.js": "2.5.0"
   },
   "changelog": {
+    "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo",
     "2.6.6": "Fix visited/queued counts: load from Supabase on service worker restart",
     "2.6.5": "Simplify indicator (green=active, orange=idle), sync manifest version",
     "2.6.0": "UI reskin (light theme, unified log, flat icons), scanner resume fix (chrome.alarms)",
