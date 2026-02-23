@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.13';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — S3-2: Micro-survey breakdown analytics in admin Surveys tab');
+const BJ_VERSION = 'v4.14';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — S5-1: Ghost Job Reality Check survey + ghost-report page');
 
 // Auth
 async function init() {

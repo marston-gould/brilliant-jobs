@@ -94,6 +94,18 @@
     }
     .badge-churn { color: var(--amber); background: var(--amber-dim); }
     .badge-periodic { color: var(--purple); background: var(--purple-dim); }
+    .badge-ghost { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+    /* Multiselect: toggle buttons, no auto-advance */
+    .multiselect-options .multiselect-btn.selected {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .multiselect-options .multiselect-btn.selected .opt-key {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
 
     h1 {
       font-size: 30px;
@@ -557,6 +569,19 @@
     </p>
   </div>
 
+  <!-- Thank you — ghost -->
+  <div class="thank-you" id="thankYouGhost">
+    <h2>Your data is now part of the record.</h2>
+    <p>You just contributed to the Ghost Job Reality Check. When we hit 1,000 responses, we're publishing the results — with receipts.</p>
+    <p style="margin-top:16px;">See what the data says so far:</p>
+    <p style="margin-top:8px;">
+      <a href="/ghost-report" class="save-btn primary" style="display:inline-block;text-decoration:none;">View the Ghost Report →</a>
+    </p>
+    <p style="margin-top:16px;font-size:13px;">
+      Know someone who's been ghosted? <a href="/survey?context=ghost" style="font-weight:600;">Share this survey</a> — every response adds to the evidence.
+    </p>
+  </div>
+
   <div class="footer">
     &copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs &nbsp;·&nbsp; <a href="/terms">Terms</a> &nbsp;·&nbsp; <a href="/privacy">Privacy</a>
   </div>
@@ -839,6 +864,138 @@ const periodicQuestionsV2 = [
   }
 ];
 
+// ─── GHOST JOB REALITY CHECK QUESTION BANK (P13-14) ───
+// Public survey — no auth required. /survey?context=ghost&v=ghost_v1
+// Captures the human side of ghosting: prevalence, emotional impact, accountability.
+// Complements pipeline ghost detection data with subjective job seeker experience.
+
+const ghostQuestions = [
+  {
+    id: 'search_status',
+    q: "What's your current job search status?",
+    sub: "This helps us segment the data. No judgment.",
+    type: 'choice',
+    opts: [
+      "Actively searching",
+      "Casually browsing",
+      "Recently landed a job",
+      "Taking a break",
+      "Employed but always looking"
+    ]
+  },
+  {
+    id: 'apps_last_90',
+    q: "Roughly how many jobs have you applied to in the last 90 days?",
+    sub: "Best guess is fine.",
+    type: 'choice',
+    opts: ["0", "1–10", "11–25", "26–50", "51–100", "100+"]
+  },
+  {
+    id: 'ghost_rate',
+    q: "Of those applications, how many never got ANY response?",
+    sub: "No auto-rejection email, no acknowledgment, nothing.",
+    type: 'choice',
+    opts: [
+      "None — I heard back from all",
+      "A few (under 25%)",
+      "About half",
+      "Most of them (50–75%)",
+      "Almost all (75%+)",
+      "Literally all of them"
+    ]
+  },
+  {
+    id: 'longest_ghost',
+    q: "What's the longest you've waited with zero response?",
+    sub: "From application to right now — still nothing.",
+    type: 'choice',
+    opts: [
+      "Less than 2 weeks",
+      "2–4 weeks",
+      "1–2 months",
+      "3–6 months",
+      "6+ months",
+      "I'm still waiting on one from last year"
+    ]
+  },
+  {
+    id: 'ghost_type',
+    q: "Which of these have you experienced?",
+    sub: "Select all that apply. We're building the ghosting spectrum.",
+    type: 'multiselect',
+    opts: [
+      "Applied and never heard anything",
+      "Recruiter screen then silence",
+      "Multiple interviews then ghosted",
+      "Verbal offer then ghosted",
+      "Job disappeared while I was interviewing",
+      "Auto-rejection months later"
+    ]
+  },
+  {
+    id: 'emotional_impact',
+    q: "How has ghosting affected your job search?",
+    sub: "Select all that apply. This data gets published.",
+    type: 'multiselect',
+    opts: [
+      "I apply to more jobs to compensate",
+      "I've lost motivation",
+      "I question if I'm qualified",
+      "I avoid certain companies now",
+      "I've gotten used to it",
+      "It makes me angry",
+      "It hasn't really affected me"
+    ]
+  },
+  {
+    id: 'worst_offenders',
+    q: "Which types of companies ghost the most, in your experience?",
+    sub: "Your experience is the data point.",
+    type: 'choice',
+    opts: [
+      "Large enterprises (1000+)",
+      "Mid-size (100–1000)",
+      "Startups (under 100)",
+      "Recruiting agencies",
+      "All equally bad"
+    ]
+  },
+  {
+    id: 'accountability',
+    q: "What should companies be required to do?",
+    sub: "Select all you agree with. This feeds our accountability index.",
+    type: 'multiselect',
+    opts: [
+      "Respond to every applicant within 2 weeks",
+      "Disclose if a listing is already filled",
+      "Show how many people have applied",
+      "Publish their average response time",
+      "Remove listings when filled",
+      "Nothing — it's their prerogative"
+    ]
+  },
+  {
+    id: 'ghost_score_value',
+    q: "Would a 'ghost score' rating for companies be useful?",
+    sub: "Like a Yelp rating, but for hiring responsiveness.",
+    type: 'choice',
+    opts: [
+      "Absolutely — I'd use it every time",
+      "Somewhat useful",
+      "Not really",
+      "Companies would game it"
+    ]
+  },
+  {
+    id: 'final_word',
+    q: "One thing you'd say to companies that ghost applicants?",
+    sub: "They'll read this. Make it count.",
+    type: 'text',
+    optional: true,
+    placeholder: "Don't hold back."
+  }
+];
+
 const params = new URLSearchParams(window.location.search);
 const context = params.get('context') || 'periodic';
 const reason = params.get('reason') || null;  // from uninstall page
@@ -904,6 +1061,10 @@ const npsVersions = {
   'nps_v1': npsQuestions,
 };
 
+const ghostVersions = {
+  'ghost_v1': ghostQuestions,
+};
+
 function resolveVersion() {
   if (context === 'churn') {
     if (version && exitVersions[version]) return { id: version, questions: exitVersions[version] };
@@ -913,6 +1074,10 @@ function resolveVersion() {
     if (version && npsVersions[version]) return { id: version, questions: npsVersions[version] };
     const latest = Object.keys(npsVersions).pop();
     return { id: latest, questions: npsVersions[latest] };
+  } else if (context === 'ghost') {
+    if (version && ghostVersions[version]) return { id: version, questions: ghostVersions[version] };
+    const latest = Object.keys(ghostVersions).pop();
+    return { id: latest, questions: ghostVersions[latest] };
   } else {
     if (version && periodicVersions[version]) return { id: version, questions: periodicVersions[version] };
     const latest = Object.keys(periodicVersions).pop();
@@ -948,6 +1113,12 @@ function init() {
     subtitle.textContent = "Your monthly pulse check helps us know if we're headed in the right direction. Takes 30 seconds.";
     meta.textContent = `${questions.length} questions · anonymous · ~30 seconds · ${surveyVersion}`;
     reward.style.display = 'block';
+  } else if (context === 'ghost') {
+    badge.textContent = '👻 Ghost Job Reality Check';
+    badge.className = 'survey-badge badge-ghost';
+    title.textContent = "Let's put numbers on the ghosting epidemic.";
+    subtitle.textContent = "10 questions. No login required. Your answers join a public dataset exposing how companies treat applicants. We publish the results when we hit 1,000 responses.";
+    meta.textContent = `${questions.length} questions · anonymous · ~2 minutes · ${surveyVersion}`;
   } else {
     badge.textContent = '🎁 Quick Survey';
     badge.className = 'survey-badge badge-periodic';
@@ -1015,6 +1186,15 @@ function renderSteps() {
         inner += `<option value="${j}">${opt}</option>`;
       });
       inner += `</select></div>`;
+    } else if (q.type === 'multiselect') {
+      const keys = 'ABCDEFGHIJ'.split('');
+      inner += '<div class="options multiselect-options">';
+      q.opts.forEach((opt, j) => {
+        inner += `<button class="opt-btn multiselect-btn" data-qid="${q.id}" data-val="${j}">
+          <span class="opt-key">${keys[j]}</span>${opt}
+        </button>`;
+      });
+      inner += '</div>';
     } else if (q.type === 'text') {
       inner += `<textarea class="free-text-input" data-qid="${q.id}" placeholder="${q.placeholder || 'Type here…'}"></textarea>`;
     }
@@ -1059,8 +1239,8 @@ function updateNextBtn(idx) {
   const q = questions[idx];
   const btn = document.getElementById('next-' + idx);
   if (!btn) return;
-  if (q.type === 'text') {
-    // Text fields: always allow next (user can skip or type)
+  if (q.type === 'text' || q.type === 'multiselect') {
+    // Text fields and multiselects: always allow next
     btn.classList.add('ready');
   } else if (answers[q.id] !== undefined) {
     btn.classList.add('ready');
@@ -1091,6 +1271,32 @@ document.addEventListener('click', (e) => {
       showStep(currentStep + 1);
     }
   }, 350);
+});
+
+// Multiselect buttons (toggle, no auto-advance)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.multiselect-btn');
+  if (!btn) return;
+  const qid = btn.dataset.qid;
+  const val = parseInt(btn.dataset.val);
+  const q = questions.find(x => x.id === qid);
+
+  btn.classList.toggle('selected');
+
+  // Collect all selected
+  const selected = [];
+  btn.closest('.multiselect-options').querySelectorAll('.multiselect-btn.selected').forEach(b => {
+    const idx = parseInt(b.dataset.val);
+    selected.push({ index: idx, text: q.opts[idx] });
+  });
+
+  if (selected.length > 0) {
+    answers[qid] = { selections: selected };
+  } else {
+    delete answers[qid];
+  }
+  updateProgress();
+  updateNextBtn(currentStep);
 });
 
 // Rating buttons (also handles scale and nps types)
@@ -1174,7 +1380,7 @@ document.addEventListener('click', (e) => {
 // ─── SUBMIT ───
 
 async function submitSurvey() {
-  const surveyType = context === 'churn' ? 'exit_survey' : context === 'nps' ? 'nps_survey' : 'user_survey';
+  const surveyType = context === 'churn' ? 'exit_survey' : context === 'nps' ? 'nps_survey' : context === 'ghost' ? 'ghost_survey' : 'user_survey';
 
   // Try to get user session for association
   let userId = null;
@@ -1263,6 +1469,8 @@ async function submitSurvey() {
       } catch (e) { /* non-critical */ }
     }
     document.getElementById('thankYouPeriodic').classList.add('visible');
+  } else if (context === 'ghost') {
+    document.getElementById('thankYouGhost').classList.add('visible');
   } else {
     document.getElementById('thankYouPeriodic').classList.add('visible');
     // TODO: API call to unlock Pro features for 7 days
