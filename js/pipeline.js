@@ -653,3 +653,130 @@ async function renderGhostMonitor() {
 function onGhostPageShow() {
   renderGhostMonitor();
 }
+
+// ── Gmail connection UI ──────────────────────────────────────
+async function connectGmail() {
+  const btn = document.getElementById('gmail-connect-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Connecting...'; }
+
+  try {
+    const session = await sb.auth.getSession();
+    const token = session?.data?.session?.access_token;
+    if (!token) { window.location.href = '/'; return; }
+
+    const res = await fetch(SUPABASE_FUNCTIONS_URL + '/gmail-auth?action=connect', {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Connect Gmail'; }
+      console.error('[BJ] Gmail connect error:', data);
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Connect Gmail'; }
+    console.error('[BJ] Gmail connect error:', e);
+  }
+}
+
+async function disconnectGmail() {
+  if (!confirm('Disconnect Gmail? This will remove all email signal data.')) return;
+
+  const btn = document.getElementById('gmail-disconnect-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Disconnecting...'; }
+
+  try {
+    const session = await sb.auth.getSession();
+    const token = session?.data?.session?.access_token;
+    if (!token) return;
+
+    await fetch(SUPABASE_FUNCTIONS_URL + '/gmail-disconnect', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+    });
+
+    // Refresh UI
+    updateGmailStatus();
+    renderGhostMonitor();
+  } catch (e) {
+    console.error('[BJ] Gmail disconnect error:', e);
+  }
+}
+
+async function updateGmailStatus() {
+  if (!currentUser?.id) return;
+
+  const gmailCard = document.getElementById('g-gmail-card');
+  const connectBtn = document.getElementById('gmail-connect-btn');
+
+  const { data: conn } = await sb.from('gmail_connections')
+    .select('gmail_address, sync_status, last_sync_at, error_message')
+    .eq('user_id', currentUser.id)
+    .single();
+
+  if (conn && conn.sync_status === 'active') {
+    // Connected state
+    if (gmailCard) {
+      gmailCard.querySelector('.stat-val').innerHTML =
+        '<span style="color:var(--green);font-size:14px;">Connected</span>';
+      gmailCard.querySelector('.stat-label').textContent = conn.gmail_address || 'Gmail';
+    }
+    if (connectBtn) {
+      connectBtn.textContent = 'Disconnect Gmail';
+      connectBtn.className = 'btn btn-outline btn-sm';
+      connectBtn.disabled = false;
+      connectBtn.onclick = disconnectGmail;
+      connectBtn.id = 'gmail-disconnect-btn';
+    }
+  } else if (conn && conn.sync_status === 'error') {
+    if (gmailCard) {
+      gmailCard.querySelector('.stat-val').innerHTML =
+        '<span style="color:var(--red);font-size:14px;">Error</span>';
+      gmailCard.querySelector('.stat-label').textContent = conn.error_message || 'Reconnect needed';
+    }
+    if (connectBtn) {
+      connectBtn.textContent = 'Reconnect Gmail';
+      connectBtn.className = 'btn btn-primary btn-sm';
+      connectBtn.disabled = false;
+      connectBtn.onclick = connectGmail;
+    }
+  } else {
+    // Not connected
+    if (gmailCard) {
+      gmailCard.querySelector('.stat-val').innerHTML =
+        '<span style="font-size:14px;color:var(--text-dim);">Not Connected</span>';
+      gmailCard.querySelector('.stat-label').textContent = 'Gmail Status';
+    }
+    if (connectBtn) {
+      connectBtn.textContent = 'Connect Gmail';
+      connectBtn.className = 'btn btn-primary btn-sm';
+      connectBtn.disabled = false;
+      connectBtn.onclick = connectGmail;
+    }
+  }
+
+  // Check URL params for gmail connect result
+  const params = new URLSearchParams(window.location.search);
+  const gmailResult = params.get('gmail');
+  if (gmailResult) {
+    const msgs = {
+      connected: 'Gmail connected! Email scanning will begin shortly.',
+      denied: 'Gmail connection was denied.',
+      error: 'Gmail connection failed. Please try again.',
+    };
+    if (msgs[gmailResult]) {
+      // Show toast notification
+      const toast = document.createElement('div');
+      toast.className = 'toast-notification';
+      toast.style.cssText = 'position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:8px;z-index:9999;font-size:13px;animation:fadeIn 0.3s;';
+      toast.style.background = gmailResult === 'connected' ? 'var(--green)' : 'var(--red)';
+      toast.style.color = '#fff';
+      toast.textContent = msgs[gmailResult];
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }
+}

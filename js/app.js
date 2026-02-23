@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.07';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build Phase 1: Supabase pipeline, ghost scoring engine');
+const BJ_VERSION = 'v4.09';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build Phase 2+3: Gmail OAuth, email scanning, full ghost engine');
 
 // Auth
 async function init() {
@@ -98,6 +98,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
   if (typeof initBilling === 'function') initBilling();
+    if (typeof updateGmailStatus === "function") updateGmailStatus();
   loadStats();
   checkExtensionStatus();
   loadCollections();
@@ -186,7 +187,7 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
-    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+    if (item.dataset.page === 'ghost') { if (typeof renderGhostMonitor === 'function') renderGhostMonitor(); if (typeof updateGmailStatus === 'function') updateGmailStatus(); }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });

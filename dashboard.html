@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.08 - 2026-02-23 — USAJOBS Integration: Federal gov job source -->
+<!-- Brilliant Jobs Dashboard v4.09 - 2026-02-23 — Ghost Build Phase 2+3: Gmail OAuth, email scanning, pipeline auto-advance -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1737,7 +1737,7 @@
             <div style="font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:12px;">
               When connected, we scan for emails from company domains you've applied to. We detect responses, rejections, and interview invitations automatically. Only metadata is accessed — we never read your email content.
             </div>
-            <button class="btn btn-primary btn-sm" id="gmail-connect-btn" disabled>Connect Gmail (Coming Soon)</button>
+            <button class="btn btn-primary btn-sm" id="gmail-connect-btn" onclick="connectGmail()">Connect Gmail</button>
           </div>
         </div>
       </div>
