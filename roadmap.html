@@ -632,7 +632,7 @@ const features = [
   { s: 'todo', n: 'Extension build fingerprint obfuscation', d: 'Each downloaded extension build gets: randomized file names (content.js → [hash].js, background.js → [hash].js), randomized manifest metadata (short_name, description variations), shuffled CSS class names in injected styles, variable whitespace/comments in source, randomized internal message channel names. Goal: no two downloaded builds share the same file fingerprint, making pattern-based detection by LinkedIn infeasible.', b: 'needs-extension', p: 8, b: 'needs-extension' },
 
   // Phase 8 — Ghost Monitor
-  { s: 'progress', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates. Building against Google OAuth docs pre-credential.', p: 9 },
+  { s: 'done', n: 'Gmail OAuth integration', d: 'Gmail OAuth live (v4.10). gmail.readonly scope. GCP consent screen configured. gmail-auth, gmail-disconnect, gmail-scan Edge Functions deployed. Connect/Disconnect UI on Setup + Ghost Monitor pages. Token refresh + 6h cron scan. End-to-end verified.', p: 9 },
   { s: 'done', n: 'Auto-detect company email responses', d: 'gmail-scan Edge Function matches incoming emails by company domain. Classifies: response, interview, scheduling, rejection, auto-reply, silence. v4.10.', p: 9 },
   { s: 'done', n: 'Ghost detection from email', d: 'compute_ghost_score() combines time, email signals, listing status, and company history. Auto-advances pipeline stages from email classification. v4.07-v4.10.', p: 9 },
   { s: 'done', n: 'Interview scheduling detection', d: 'gmail-scan classifies scheduling keywords (calendly, goodtime, pick a time). Auto-advances pipeline to interview stage. v4.10.', p: 9 },
@@ -719,7 +719,7 @@ const features = [
 
   // ── Future Sources ──
   { s: 'done', n: '[IND] Indeed RSS — DEPRECATED', d: 'Removed. Indeed deprecated their RSS feed. No longer viable as a data source.', p: 10 },
-  { s: 'progress', n: '[USJ] USAJobs API integration', d: 'API key application submitted Feb 23 2026. Fetch federal government jobs from developer.usajobs.gov public API. Map to ats_jobs schema.', p: 10 },
+  { s: 'done', n: '[USJ] USAJobs API integration', d: 'refresh-usajobs Edge Function live (v3.80-v4.09). 6th job source. ~10K federal listings. Propagated to landing, data lab, Feed Health, stats. Standard platform in admin console.', p: 10 },
   { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', b: 'post-launch', p: 10, b: 'deferred' },
   { s: 'done', n: 'Cross-source job deduplication', d: 'Normalize title + company + location hash for dedup across all sources.', p: 10 },
   { s: 'todo', n: 'Auto-apply form-fill automation', d: 'Per-ATS form fill adapters: Greenhouse, Lever, Workable, Ashby, Recruitee. Depends on P4 decision engine.', b: 'needs-apply', p: 10, b: 'needs-apply' },
