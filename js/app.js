@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.05';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Feed Health charts + Jobs/Board, cohort plan columns, period toggle removed');
+const BJ_VERSION = 'v4.06';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — SEO dedup titles, cohort multi-select filter, Cloudflare data refreshed');
 
 // Auth
 async function init() {
