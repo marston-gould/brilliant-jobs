@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.09 - 2026-02-23 — Ghost Build Phase 2+3: Gmail OAuth, email scanning, pipeline auto-advance -->
+<!-- Brilliant Jobs Dashboard v4.10 - 2026-02-23 — Ghost Build Phase 4: email signal column, confidence, distribution chart, company ghost rates -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1724,12 +1724,17 @@
             <table class="ghost-table">
               <thead><tr>
                 <th>Company</th><th>Role</th><th>Applied</th><th>Days</th>
-                <th>Listing</th><th>Score</th><th>Status</th><th>Action</th>
+                <th>Email</th><th>Listing</th><th>Score</th><th>Status</th><th>Confidence</th><th>Action</th>
               </tr></thead>
               <tbody id="ghost-table-body">
-                <tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:32px;">Loading ghost data...</td></tr>
+                <tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:32px;">Loading ghost data...</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="card">
+            <div class="card-title">Ghost Score Distribution</div>
+            <div class="card-sub">Your applications by ghost detection status</div>
+            <div id="ghost-distribution-chart" style="width:100%;height:200px;"></div>
           </div>
           <div class="card">
             <div class="card-title">Gmail Integration</div>

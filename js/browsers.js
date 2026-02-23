@@ -552,11 +552,22 @@ async function loadCompanyBrowser() {
       return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
     }, { ttl: 600000 }) || [];
 
+    // Load ghost stats for companies that have data
+    let ghostStats = {};
+    try {
+      const { data: gs } = await sb.from('company_ghost_stats')
+        .select('company_slug, ghost_rate, avg_response_days, total_applications');
+      (gs || []).forEach(g => { ghostStats[g.company_slug] = g; });
+    } catch (e) { /* ghost stats optional */ }
+
     cbAllCompanies = allData.map(c => ({
       slug: c.slug,
       name: c.name || c.slug,
       jobs: c.job_count || 0,
-      source: c.source || 'greenhouse'
+      source: c.source || 'greenhouse',
+      ghostRate: ghostStats[c.slug]?.ghost_rate || null,
+      avgResponseDays: ghostStats[c.slug]?.avg_response_days || null,
+      ghostApps: ghostStats[c.slug]?.total_applications || 0
     })).sort((a, b) => a.name.localeCompare(b.name));
 
     renderCompanyBrowserList();
@@ -680,6 +691,7 @@ function renderCompanyBrowserList() {
           <div class="cb-toggle ${toggleClass}" data-slug="${c.slug}">${toggleIcon}</div>
           <div class="cb-name">${c.name}</div>
           <div class="cb-jobs">${c.jobs > 0 ? c.jobs + ' jobs' : ''}</div>
+          ${c.ghostRate !== null && c.ghostApps >= 5 ? `<div class="cb-ghost-rate" title="Ghost rate: ${Math.round(c.ghostRate * 100)}% (${c.ghostApps} applications tracked)" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;${c.ghostRate >= 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.ghostRate >= 0.25 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.ghostRate * 100)}% ghost</div>` : ''}
           <div class="cb-source-badge" style="background:rgba(99,102,241,0.1);color:#6366f1;">${c.source}</div>
         </div>`;
       }).join('')}
