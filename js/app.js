@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.90';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — security hardening sprint');
+const BJ_VERSION = 'v3.91';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — roadmap cleanup');
 
 // Auth
 async function init() {
