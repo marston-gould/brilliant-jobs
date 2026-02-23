@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v3.92 - 2026-02-23 — P13 survey expansion (Community Pulse + Process Ease) -->
+<!-- Brilliant Jobs Dashboard v3.93 - 2026-02-23 — P13 NPS pulse + micro-surveys + paywall friction -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -20,6 +20,33 @@
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
+  <style>/* P13 micro-survey styles */
+  .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
+  .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
+  .micro-survey-card.micro-survey-out{animation:microFadeOut .3s ease-in forwards}
+  .micro-survey-inner{position:relative}
+  .micro-survey-close{position:absolute;inset-block-start:-4px;inset-inline-end:-4px;background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px}
+  .micro-survey-close:hover{color:var(--text);background:var(--bg-input)}
+  .micro-survey-q{font-size:14px;font-weight:600;color:var(--text);margin-block-end:12px;padding-inline-end:24px}
+  .micro-survey-q2{font-weight:500;margin-block-start:12px}
+  .micro-survey-opts{display:flex;gap:8px;flex-wrap:wrap}
+  .micro-survey-opt{background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text-dim);font-size:13px;font-family:var(--sans,'Outfit',sans-serif);cursor:pointer;transition:all .15s}
+  .micro-survey-opt:hover{border-color:var(--accent);color:var(--text)}
+  .micro-survey-opt.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .micro-survey-rating{display:flex;gap:6px}
+  .micro-survey-star{width:36px;height:36px;border-radius:8px;background:var(--bg-input);border:1px solid var(--border);color:var(--text-dim);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+  .micro-survey-star:hover{border-color:var(--accent);color:var(--text)}
+  .micro-survey-star.selected{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .micro-survey-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);margin-block-start:4px}
+  .micro-survey-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .micro-survey-chip{background:var(--bg-input);border:1px solid var(--border);border-radius:16px;padding:6px 12px;color:var(--text-dim);font-size:12px;font-family:var(--sans,'Outfit',sans-serif);cursor:pointer;transition:all .15s}
+  .micro-survey-chip:hover{border-color:var(--accent);color:var(--text)}
+  .micro-survey-chip.selected{background:rgba(59,130,246,.15);color:var(--accent);border-color:var(--accent)}
+  .micro-survey-thanks{color:var(--green);font-size:14px;font-weight:500;text-align:center;padding:8px 0}
+  @keyframes microFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes microFadeOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(8px)}}
+  @media(max-width:480px){.micro-survey-card.micro-survey-toast{inset-inline-start:12px;inset-inline-end:12px;width:auto}}
+  </style>
   <style>
     .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:14px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
     .admin-tab:hover{border-color:var(--accent);color:var(--text)}

@@ -18,6 +18,7 @@ const jsFiles = [
   'js/stats.js',
   'js/admin.js',
   'js/billing.js',
+  'js/micro-surveys.js',
   'js/app.js',
 ];
 
