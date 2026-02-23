@@ -1,80 +1,263 @@
 // ============================================================
-// PIPELINE — Table-based stage tracker (redesigned)
+// PIPELINE — Supabase-native stage tracker (Ghost Build Phase 1)
+// Replaces localStorage bj_pipeline_meta with user_pipeline table.
+// Maintains backward-compatible function signatures for other modules.
 // ============================================================
-const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected'];
+const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected','archived'];
 const PL_STAGE_COLORS = {
   saved: 'var(--text-dim)', applied: 'var(--accent)', posting_closed: 'var(--warm)',
-  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)', hired: 'hsl(142,70%,35%)', rejected: 'var(--red)'
+  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)',
+  hired: 'hsl(142,70%,35%)', rejected: 'var(--red)', archived: 'var(--text-faint)'
+};
+const PL_STAGE_LABELS = {
+  saved:'Saved', applied:'Applied', posting_closed:'Posting Closed',
+  responded:'Responded', interview:'Interview', offer:'Offer',
+  hired:'Hired!', rejected:'Rejected/Ghosted', archived:'Archived'
 };
 
-// Pipeline metadata per job — stage, dates, resume
+// In-memory pipeline cache — populated from Supabase, keyed by job_id
+let _pipelineCache = {};
+let _pipelineLoaded = false;
+
+// ── Supabase-backed getter (replaces getPipelineMeta) ──────────
 function getPipelineMeta() {
-  return JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+  // Returns the in-memory cache for synchronous access (backward compat).
+  // Cache is populated by loadPipelineFromSupabase() on init.
+  return _pipelineCache;
 }
+
+// ── Load pipeline from Supabase into memory cache ──────────────
+async function loadPipelineFromSupabase() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .select('*')
+      .eq('user_id', currentUser.id);
+    if (error) throw error;
+    _pipelineCache = {};
+    // Also rebuild legacy global arrays for cross-module compat
+    savedJobIds.length = 0;
+    appliedJobIds.length = 0;
+    (data || []).forEach(row => {
+      const key = row.job_id || row.id; // job_id preferred, fallback to uuid
+      _pipelineCache[key] = {
+        _dbId: row.id,              // Supabase row ID for updates
+        stage: row.stage,
+        savedAt: row.saved_at,
+        appliedAt: row.applied_at,
+        respondedAt: row.responded_at,
+        interviewAt: row.interview_at,
+        offerAt: row.offer_at,
+        hiredAt: row.hired_at,
+        rejectedAt: row.rejected_at,
+        archivedAt: row.archived_at,
+        resumeUsed: row.resume_used || '',
+        filterTags: row.filter_tags || [],
+        matchScore: row.match_score,
+        companyName: row.company_name || '',
+        company: row.company_name || '',
+        title: row.job_title || '',
+        salaryEstimate: row.salary_estimate,
+        notes: row.notes || '',
+        autoAdvanced: row.auto_advanced || false,
+        autoAdvancedSource: row.auto_advanced_source || null,
+        atsSource: row.ats_source || 'greenhouse',
+        companySlug: row.company_slug || '',
+        companyDomain: row.company_domain || '',
+        jobUrl: row.job_url || '',
+      };
+      // Populate legacy arrays
+      if (row.stage !== 'saved') appliedJobIds.push(key);
+      savedJobIds.push(key);
+    });
+    _pipelineLoaded = true;
+    console.log('[BJ] Pipeline loaded from Supabase:', data?.length || 0, 'entries');
+  } catch (e) {
+    console.error('[BJ] Pipeline load error:', e);
+    // Fallback: try localStorage if Supabase fails
+    _pipelineCache = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+  }
+}
+
+// ── Save single pipeline entry to Supabase (replaces savePipelineMeta) ──
+async function savePipelineEntry(jobId, meta) {
+  if (!currentUser?.id) return;
+  _pipelineCache[jobId] = meta;
+  const row = {
+    user_id: currentUser.id,
+    job_id: jobId,
+    ats_source: meta.atsSource || 'greenhouse',
+    company_slug: meta.companySlug || meta.company || jobId,
+    company_domain: meta.companyDomain || null,
+    job_title: meta.title || meta.jobTitle || 'Untitled',
+    job_url: meta.jobUrl || null,
+    stage: meta.stage || 'saved',
+    saved_at: meta.savedAt || new Date().toISOString(),
+    applied_at: meta.appliedAt || null,
+    responded_at: meta.respondedAt || null,
+    interview_at: meta.interviewAt || null,
+    offer_at: meta.offerAt || null,
+    hired_at: meta.hiredAt || null,
+    rejected_at: meta.rejectedAt || null,
+    archived_at: meta.archivedAt || null,
+    auto_advanced: meta.autoAdvanced || false,
+    auto_advanced_source: meta.autoAdvancedSource || null,
+    notes: meta.notes || null,
+    filter_tags: meta.filterTags || [],
+    resume_used: meta.resumeUsed || null,
+    match_score: meta.matchScore || null,
+    company_name: meta.companyName || meta.company || null,
+    salary_estimate: meta.salaryEstimate || null,
+  };
+
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .upsert(row, { onConflict: 'user_id, job_id, ats_source' })
+      .select('id')
+      .single();
+    if (error) throw error;
+    if (data) meta._dbId = data.id;
+  } catch (e) {
+    console.error('[BJ] Pipeline save error:', e);
+  }
+}
+
+// Legacy compat wrapper — saves entire cache (avoid using, prefer savePipelineEntry)
 function savePipelineMeta(meta) {
-  saveUserData('bj_pipeline_meta', JSON.stringify(meta));
+  _pipelineCache = meta;
+  // Batch save is async but we don't await here for backward compat
 }
 
-// Migrate from old system on first load
-function migratePipelineData() {
-  const meta = getPipelineMeta();
-  if (Object.keys(meta).length > 0) return; // Already migrated
-  const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
-  // Migrate applied jobs
-  appliedJobIds.forEach(id => {
-    meta[id] = {
-      stage: 'applied',
-      savedAt: dates[id] || new Date().toISOString(),
-      appliedAt: dates[id] || new Date().toISOString(),
-      resumeUsed: '',
-      filterTags: []
-    };
-  });
-  // Migrate saved-only jobs
-  savedJobIds.filter(id => !appliedJobIds.includes(id)).forEach(id => {
-    meta[id] = {
-      stage: 'saved',
-      savedAt: new Date().toISOString(),
-      resumeUsed: '',
-      filterTags: []
-    };
-  });
-  savePipelineMeta(meta);
-  console.log('[BJ] Pipeline data migrated:', Object.keys(meta).length, 'jobs');
+// ── One-time localStorage → Supabase migration ────────────────
+async function migratePipelineToSupabase() {
+  if (!currentUser?.id) return;
+
+  // Check if already migrated — if Supabase has data, skip
+  const { data: existing } = await sb.from('user_pipeline')
+    .select('id').eq('user_id', currentUser.id).limit(1);
+  if (existing?.length) {
+    console.log('[BJ] Pipeline already in Supabase, skipping migration');
+    return false;
+  }
+
+  // Read localStorage data
+  const localMeta = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+  const localApplied = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+  const localSaved = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
+  const localDates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+
+  const allIds = new Set([...Object.keys(localMeta), ...localApplied, ...localSaved]);
+  if (allIds.size === 0) {
+    console.log('[BJ] No localStorage pipeline data to migrate');
+    return false;
+  }
+
+  console.log('[BJ] Migrating', allIds.size, 'pipeline entries to Supabase...');
+
+  // Fetch job data for company info
+  const idList = Array.from(allIds);
+  let jobMap = {};
+  for (let i = 0; i < idList.length; i += 100) {
+    const batch = idList.slice(i, i + 100);
+    try {
+      const { data } = await sb.from('ats_jobs')
+        .select('greenhouse_id, title, company_name, ats_source, status')
+        .in('greenhouse_id', batch);
+      if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
+    } catch (e) { console.error('[BJ] Migration fetch error:', e); }
+  }
+
+  // Build rows
+  const rows = [];
+  for (const jobId of allIds) {
+    const m = localMeta[jobId] || {};
+    const job = jobMap[jobId];
+    const isApplied = localApplied.includes(jobId);
+    rows.push({
+      user_id: currentUser.id,
+      job_id: jobId,
+      ats_source: job?.ats_source || 'greenhouse',
+      company_slug: m.companySlug || job?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || jobId,
+      job_title: m.title || job?.title || 'Unknown',
+      company_name: m.company || m.companyName || job?.company_name || null,
+      stage: m.stage || (isApplied ? 'applied' : 'saved'),
+      saved_at: m.savedAt || localDates[jobId] || new Date().toISOString(),
+      applied_at: m.appliedAt || (isApplied ? (localDates[jobId] || new Date().toISOString()) : null),
+      responded_at: m.respondedAt || null,
+      interview_at: m.interviewAt || null,
+      offer_at: m.offerAt || null,
+      hired_at: m.hiredAt || null,
+      rejected_at: m.rejectedAt || null,
+      filter_tags: m.filterTags || [],
+      resume_used: m.resumeUsed || null,
+      match_score: typeof m.matchScore === 'number' ? m.matchScore : null,
+      salary_estimate: m.salaryEstimate || null,
+    });
+  }
+
+  // Batch upsert
+  const { error } = await sb.from('user_pipeline')
+    .upsert(rows, { onConflict: 'user_id, job_id, ats_source' });
+
+  if (error) {
+    console.error('[BJ] Pipeline migration error:', error);
+    return false;
+  }
+
+  // Clean up localStorage
+  localStorage.removeItem('bj_pipeline_meta');
+  localStorage.removeItem('bj_applied_jobs');
+  localStorage.removeItem('bj_saved_jobs');
+  localStorage.removeItem('bj_applied_dates');
+  console.log('[BJ] ✅ Migrated', rows.length, 'pipeline entries to Supabase');
+  return true;
 }
 
-// Move job to a new stage
+// ── Initialize pipeline (call from app.js init) ──────────────
+async function initPipeline() {
+  await migratePipelineToSupabase();
+  await loadPipelineFromSupabase();
+}
+
+// ── Move job to a new stage ──────────────────────────────────
 function movePipelineStage(jobId, newStage) {
-  const meta = getPipelineMeta();
-  if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
-  meta[jobId].stage = newStage;
+  const meta = _pipelineCache[jobId];
+  if (!meta) {
+    _pipelineCache[jobId] = { savedAt: new Date().toISOString(), filterTags: [], stage: newStage };
+  } else {
+    meta.stage = newStage;
+  }
+  const m = _pipelineCache[jobId];
+
   // Track stage dates
-  if (newStage === 'applied' && !meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-  if (newStage === 'responded' && !meta[jobId].respondedAt) meta[jobId].respondedAt = new Date().toISOString();
-  if (newStage === 'interview' && !meta[jobId].interviewAt) meta[jobId].interviewAt = new Date().toISOString();
-  if (newStage === 'offer' && !meta[jobId].offerAt) meta[jobId].offerAt = new Date().toISOString();
-  if (newStage === 'hired' && !meta[jobId].hiredAt) {
-    meta[jobId].hiredAt = new Date().toISOString();
-    // Trigger hire fee confirmation (async, non-blocking)
+  const now = new Date().toISOString();
+  if (newStage === 'applied' && !m.appliedAt) m.appliedAt = now;
+  if (newStage === 'responded' && !m.respondedAt) m.respondedAt = now;
+  if (newStage === 'interview' && !m.interviewAt) m.interviewAt = now;
+  if (newStage === 'offer' && !m.offerAt) m.offerAt = now;
+  if (newStage === 'hired' && !m.hiredAt) {
+    m.hiredAt = now;
     if (typeof confirmHireFee === 'function') {
-      var jobTitle = meta[jobId].title || jobId;
-      var salary = meta[jobId].salaryEstimate || 80000;
+      var jobTitle = m.title || jobId;
+      var salary = m.salaryEstimate || 80000;
       confirmHireFee(jobId, jobTitle, salary);
     }
   }
-  if (newStage === 'rejected' && !meta[jobId].rejectedAt) meta[jobId].rejectedAt = new Date().toISOString();
-  savePipelineMeta(meta);
+  if (newStage === 'rejected' && !m.rejectedAt) m.rejectedAt = now;
+  if (newStage === 'archived' && !m.archivedAt) m.archivedAt = now;
+
+  // Save to Supabase (async, non-blocking for UI)
+  savePipelineEntry(jobId, m);
+
   // Keep legacy arrays in sync
   if (newStage !== 'saved' && !appliedJobIds.includes(jobId)) {
     appliedJobIds.push(jobId);
-    saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
   }
   renderPipeline();
 }
 
-// Mark applied from feed
+// ── Mark applied from feed ───────────────────────────────────
 function markApplied(jobId, btn) {
-  // Show resume picker, then complete
   showResumePicker(jobId, function(resumeName) {
     _completeMarkApplied(jobId, btn, resumeName);
   });
@@ -83,7 +266,6 @@ function markApplied(jobId, btn) {
 function _completeMarkApplied(jobId, btn, resumeName) {
   if (!appliedJobIds.includes(jobId)) {
     appliedJobIds.push(jobId);
-    saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
     if (btn) {
       const row = btn.closest('tr');
       if (row) {
@@ -96,29 +278,24 @@ function _completeMarkApplied(jobId, btn, resumeName) {
       }
     }
   }
-  // Update pipeline meta
-  const meta = getPipelineMeta();
-  if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
-  meta[jobId].stage = 'applied';
-  if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-  // Store resume
-  if (resumeName) {
-    meta[jobId].resumeUsed = resumeName;
-  }
+
+  // Update pipeline
+  const meta = _pipelineCache[jobId] || { savedAt: new Date().toISOString(), filterTags: [] };
+  meta.stage = 'applied';
+  if (!meta.appliedAt) meta.appliedAt = new Date().toISOString();
+  if (resumeName) meta.resumeUsed = resumeName;
+
   // Detect filter tags
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
-  meta[jobId].filterTags = checkedFilters;
-  savePipelineMeta(meta);
-  // Store applied date for legacy compat
-  const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
-  dates[jobId] = new Date().toISOString();
-  saveUserData('bj_applied_dates', JSON.stringify(dates));
+  meta.filterTags = checkedFilters;
 
-  // P13-05: Post-application confidence micro-survey
+  _pipelineCache[jobId] = meta;
+  savePipelineEntry(jobId, meta);
+
+  // Post-application confidence micro-survey
   if (typeof showApplyConfidence === 'function') {
-    var pm = meta[jobId] || {};
-    showApplyConfidence(jobId, pm.companyName || '');
+    showApplyConfidence(jobId, meta.companyName || '');
   }
 }
 
@@ -127,38 +304,47 @@ function markAppliedFromPipeline(jobId, btn) {
   renderPipeline();
 }
 
-function unsaveFromPipeline(jobId) {
-  const meta = getPipelineMeta();
-  delete meta[jobId];
-  savePipelineMeta(meta);
+// ── Remove from pipeline ─────────────────────────────────────
+async function unsaveFromPipeline(jobId) {
+  const meta = _pipelineCache[jobId];
+  delete _pipelineCache[jobId];
+
+  // Remove from Supabase
+  if (currentUser?.id) {
+    try {
+      await sb.from('user_pipeline')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('job_id', jobId);
+    } catch (e) { console.error('[BJ] Pipeline delete error:', e); }
+  }
+
+  // Update legacy arrays
   const idx = savedJobIds.indexOf(jobId);
   if (idx >= 0) savedJobIds.splice(idx, 1);
-  saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   const aidx = appliedJobIds.indexOf(jobId);
   if (aidx >= 0) appliedJobIds.splice(aidx, 1);
-  saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
-  $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+  const el = $('#j-saved');
+  if (el) el.textContent = savedJobIds.length.toLocaleString();
   renderPipeline();
 }
 
-// Collapse toggle
+// ── Collapse toggle ──────────────────────────────────────────
 function togglePipelineStage(headerEl) {
   const section = headerEl.closest('.pl-stage-section');
   section.classList.toggle('collapsed');
-  // Persist collapse state
   const states = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
   states[section.dataset.stage] = section.classList.contains('collapsed');
   localStorage.setItem('bj_pl_collapse', JSON.stringify(states));
 }
 
-// Filter by saved filter tag
+// ── Filter by saved filter tag ───────────────────────────────
 let _plActiveFilter = 'all';
 function filterPipeline(tag) {
   _plActiveFilter = tag;
   renderPipeline();
 }
 
-// Build filter dropdown options
 function buildPipelineFilterTags() {
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   const select = $('#pl-filter-select');
@@ -174,9 +360,9 @@ function buildPipelineFilterTags() {
   select.value = currentVal || 'all';
 }
 
-// Main render
+// ── Main render ──────────────────────────────────────────────
 async function renderPipeline() {
-  const meta = getPipelineMeta();
+  const meta = _pipelineCache;
   const allIds = Object.keys(meta);
   if (allIds.length === 0) {
     PL_STAGES.forEach(stage => {
@@ -188,7 +374,7 @@ async function renderPipeline() {
     return;
   }
 
-  // Fetch all pipeline jobs from Supabase
+  // Fetch all pipeline jobs from Supabase (for supplementary data like status)
   const batchSize = 100;
   let allJobData = [];
   for (let i = 0; i < allIds.length; i += batchSize) {
@@ -208,14 +394,12 @@ async function renderPipeline() {
   allJobData.forEach(j => {
     if (j.status === 'closed' && meta[j.greenhouse_id] && meta[j.greenhouse_id].stage === 'applied') {
       meta[j.greenhouse_id].stage = 'posting_closed';
+      savePipelineEntry(j.greenhouse_id, meta[j.greenhouse_id]);
     }
   });
-  savePipelineMeta(meta);
 
   const now = new Date();
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-
-  // Restore collapse states
   const collapseStates = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
 
   // Group by stage
@@ -226,7 +410,6 @@ async function renderPipeline() {
   for (const [jobId, m] of Object.entries(meta)) {
     const stage = m.stage || 'saved';
     if (!stageJobs[stage]) continue;
-    // Apply filter
     if (_plActiveFilter !== 'all' && !(m.filterTags || []).includes(_plActiveFilter)) continue;
     const job = jobMap[jobId];
     stageJobs[stage].push({ id: jobId, meta: m, job: job || null });
@@ -247,18 +430,13 @@ async function renderPipeline() {
     const section = body?.closest('.pl-stage-section');
 
     if (countEl) countEl.textContent = jobs.length;
-
-    // Restore collapse
     if (section && collapseStates[stage]) section.classList.add('collapsed');
 
-    // Match score summary
     const scores = jobs.map(j => j.meta.matchScore).filter(s => typeof s === 'number');
     if (matchEl) {
       if (scores.length > 0) {
         const median = scores.sort((a,b) => a - b)[Math.floor(scores.length / 2)];
-        const min = Math.min(...scores);
-        const max = Math.max(...scores);
-        matchEl.textContent = 'Match: ' + min + '% – ' + median + '% – ' + max + '%';
+        matchEl.textContent = 'Match: ' + Math.min(...scores) + '% – ' + median + '% – ' + Math.max(...scores) + '%';
       } else {
         matchEl.textContent = '';
       }
@@ -279,8 +457,8 @@ async function renderPipeline() {
     for (const item of jobs) {
       const j = item.job;
       const m = item.meta;
-      const title = j ? (j.title || 'Untitled') : 'Unknown job';
-      const company = j ? (j.company_name || '') : '';
+      const title = m.title || (j ? (j.title || 'Untitled') : 'Unknown job');
+      const company = m.companyName || m.company || (j ? (j.company_name || '') : '');
       // Persist job info in meta for hire fee and analytics
       if (j && !m.title) { m.title = title; m.company = company; }
       if (j && j.salary_max && !m.salaryEstimate) { m.salaryEstimate = j.salary_max; }
@@ -289,18 +467,17 @@ async function renderPipeline() {
       const dayApplied = appliedDate ? appliedDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
       const resumeName = m.resumeUsed || '—';
 
-      // Days in current stage — use the most recent stage timestamp
       const stageDate = m.respondedAt ? new Date(m.respondedAt) :
                         m.appliedAt ? new Date(m.appliedAt) :
                         m.savedAt ? new Date(m.savedAt) : null;
       const daysInStage = stageDate ? Math.floor((now - stageDate) / 86400000) : '—';
 
-      // Staleness dot — stage-specific thresholds
       let staleDot = '';
       if (typeof daysInStage === 'number') {
         const staleRules = {
           saved:     { yellow: 5, red: 7 },
           applied:   { yellow: 7, red: 14 },
+          posting_closed: { yellow: 3, red: 7 },
           responded: { yellow: 7, red: 14 },
           interview: { yellow: 7, red: 14 },
         };
@@ -314,22 +491,18 @@ async function renderPipeline() {
         }
       }
 
-      // Filter tag badges
       const filterBadges = (m.filterTags || []).map(tag => {
         const idx = sf.findIndex(f => f.name === tag);
         const color = idx >= 0 ? filterColors[idx % filterColors.length] : 'var(--text-faint)';
         return '<span class="pl-filter-badge" style="background:' + color + '15;color:' + color + ';border:1px solid ' + color + '30;">' + tag + '</span>';
       }).join(' ');
 
-      // Match score
       const matchScore = typeof m.matchScore === 'number' ? m.matchScore + '%' : '—';
       const matchColor = typeof m.matchScore === 'number' ? (m.matchScore >= 70 ? 'color:var(--green);' : m.matchScore >= 40 ? 'color:var(--warm);' : 'color:var(--red);') : '';
 
-      // Stage move dropdown
-      let moveOpts = PL_STAGES.filter(s => s !== stage).map(s => {
-        const labels = {saved:'Saved',applied:'Applied',posting_closed:'Posting Closed',responded:'Responded',interview:'Interview',offer:'Offer',hired:'🎉 Hired!',rejected:'Rejected/Ghosted'};
-        return '<option value="' + s + '">' + labels[s] + '</option>';
-      }).join('');
+      let moveOpts = PL_STAGES.filter(s => s !== stage).map(s =>
+        '<option value="' + s + '">' + PL_STAGE_LABELS[s] + '</option>'
+      ).join('');
 
       html += '<tr data-jobid="' + item.id + '">';
       html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
@@ -352,26 +525,31 @@ async function renderPipeline() {
 
   // Update stats
   const appliedAndBeyond = stageJobs.applied.length + stageJobs.posting_closed.length + stageJobs.responded.length + stageJobs.interview.length + stageJobs.offer.length + stageJobs.rejected.length;
-  $('#p-total').textContent = totalTracked;
-  $('#p-active').textContent = activeCount;
+  const el1 = $('#p-total'); if (el1) el1.textContent = totalTracked;
+  const el2 = $('#p-active'); if (el2) el2.textContent = activeCount;
   const responseRate = appliedAndBeyond > 0 ? Math.round((respondedCount / appliedAndBeyond) * 100) + '%' : '—';
-  $('#p-response').textContent = responseRate;
+  const el3 = $('#p-response'); if (el3) el3.textContent = responseRate;
   const avgDays = respondedCount > 0 ? Math.round(totalDaysToResponse / respondedCount) + 'd' : '—';
-  $('#p-avg-days').textContent = avgDays;
+  const el4 = $('#p-avg-days'); if (el4) el4.textContent = avgDays;
 
-  // Update nav dot
   if (typeof updatePipelineNavDot === 'function') updatePipelineNavDot();
 }
 
-// Legacy compat: renderPipelineSaved calls renderPipeline
+// Legacy compat
 async function renderPipelineSaved() { await renderPipeline(); }
 
 function addToPipeline(jobId, row) {
-  const meta = getPipelineMeta();
-  if (!meta[jobId]) meta[jobId] = { stage: 'applied', savedAt: new Date().toISOString(), filterTags: [] };
-  meta[jobId].stage = 'applied';
-  if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-  savePipelineMeta(meta);
+  const meta = _pipelineCache[jobId] || { stage: 'applied', savedAt: new Date().toISOString(), filterTags: [] };
+  meta.stage = 'applied';
+  if (!meta.appliedAt) meta.appliedAt = new Date().toISOString();
+  _pipelineCache[jobId] = meta;
+  savePipelineEntry(jobId, meta);
+}
+
+// ── Migrated pipeline data init (replaces old migratePipelineData) ──
+function migratePipelineData() {
+  // No-op — migration now handled by migratePipelineToSupabase() in initPipeline()
+  console.log('[BJ] Pipeline migration handled by initPipeline()');
 }
 
 function formatTimeAgo(date) {
@@ -384,3 +562,94 @@ function formatTimeAgo(date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ── Ghost Monitor rendering ──────────────────────────────────
+async function renderGhostMonitor() {
+  if (!currentUser?.id) return;
+  const tbody = document.getElementById('ghost-table-body');
+  if (!tbody) return;
+
+  try {
+    const { data, error } = await sb.rpc('get_pipeline_ghost_status', { p_user_id: currentUser.id });
+    if (error) throw error;
+
+    // Update KPI cards
+    const activeEl = document.getElementById('g-active');
+    const avgWaitEl = document.getElementById('g-avg-wait');
+    const likelyEl = document.getElementById('g-likely');
+    const ghostedEl = document.getElementById('g-ghosted');
+
+    const entries = data || [];
+    if (activeEl) activeEl.textContent = entries.length;
+
+    const totalDays = entries.reduce((sum, e) => sum + (e.days_since_applied || 0), 0);
+    if (avgWaitEl) avgWaitEl.textContent = entries.length > 0 ? Math.round(totalDays / entries.length) + 'd' : '—';
+
+    const likelyCount = entries.filter(e => e.ghost_status === 'likely_ghosted').length;
+    const ghostedCount = entries.filter(e => e.ghost_status === 'ghosted').length;
+    if (likelyEl) likelyEl.textContent = likelyCount;
+    if (ghostedEl) ghostedEl.textContent = ghostedCount;
+
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:32px;">No active applications to monitor. Apply to jobs from the Feed to see ghost detection here.</td></tr>';
+      return;
+    }
+
+    // Sort: ghosted first, then by score desc
+    entries.sort((a, b) => (b.ghost_score || 0) - (a.ghost_score || 0));
+
+    let html = '';
+    for (const e of entries) {
+      const score = e.ghost_score || 0;
+      const status = e.ghost_status || 'active';
+      const statusColors = {
+        active: 'color:var(--green);', waiting: 'color:#f59e0b;',
+        likely_ghosted: 'color:var(--red);', ghosted: 'color:var(--red);font-weight:600;'
+      };
+      const statusLabels = {
+        active: 'Active', waiting: 'Waiting',
+        likely_ghosted: 'Likely Ghosted', ghosted: 'Ghosted'
+      };
+      const listingLabels = {
+        open: '<span style="color:var(--green);">Open</span>',
+        closed: '<span style="color:var(--red);">Closed</span>',
+        removed: '<span style="color:var(--red);">Removed</span>',
+        unknown: '<span style="color:var(--text-faint);">—</span>'
+      };
+
+      // Score bar color
+      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? '#f59e0b' : score >= 25 ? 'var(--accent)' : 'var(--green)';
+
+      const appliedStr = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
+
+      const actionBtn = status === 'ghosted'
+        ? '<button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;" onclick="movePipelineStage(\'' + e.pipeline_entry_id + '\', \'archived\')">Archive</button>'
+        : status === 'likely_ghosted'
+        ? '<span style="font-size:11px;color:var(--text-dim);">Follow up</span>'
+        : '<span style="font-size:11px;color:var(--text-faint);">—</span>';
+
+      html += '<tr>';
+      html += '<td title="' + (e.company_slug || '') + '">' + (e.company_name || e.company_slug || '—') + '</td>';
+      html += '<td title="' + (e.job_title || '') + '">' + ((e.job_title || '').length > 30 ? (e.job_title || '').slice(0,30) + '…' : (e.job_title || '—')) + '</td>';
+      html += '<td>' + appliedStr + '</td>';
+      html += '<td>' + (e.days_since_applied || 0) + 'd</td>';
+      html += '<td>' + (listingLabels[e.listing_status] || listingLabels.unknown) + '</td>';
+      html += '<td><div style="display:flex;align-items:center;gap:6px;">';
+      html += '<div style="width:40px;height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden;">';
+      html += '<div style="width:' + score + '%;height:100%;background:' + barColor + ';border-radius:3px;"></div></div>';
+      html += '<span style="font-size:11px;font-weight:500;">' + score + '</span></div></td>';
+      html += '<td style="' + (statusColors[status] || '') + 'font-size:12px;">' + (statusLabels[status] || status) + '</td>';
+      html += '<td>' + actionBtn + '</td>';
+      html += '</tr>';
+    }
+    tbody.innerHTML = html;
+
+  } catch (err) {
+    console.error('[BJ] Ghost monitor error:', err);
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
+  }
+}
+
+// Auto-load ghost monitor when page is shown
+function onGhostPageShow() {
+  renderGhostMonitor();
+}

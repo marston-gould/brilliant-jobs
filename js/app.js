@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.06';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — SEO dedup titles, cohort multi-select filter, Cloudflare data refreshed');
+const BJ_VERSION = 'v4.07';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build Phase 1: Supabase pipeline, ghost scoring engine');
 
 // Auth
 async function init() {
@@ -87,9 +87,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   tuningIndExclPills = tuningSettings.industryExcludes || [];
   levelHierarchy = tuningSettings.levelHierarchy || [];
   hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
-  savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-  appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+  // Pipeline now loaded from Supabase (Ghost Build Phase 1)
+  // savedJobIds and appliedJobIds are populated by initPipeline()
+  savedJobIds = [];
+  appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
+  if (typeof initPipeline === 'function') await initPipeline();
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
@@ -182,6 +186,7 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
+    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
