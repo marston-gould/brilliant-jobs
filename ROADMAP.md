@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-23
 **Target launch:** March 2026
-**Current version:** v4.11
+**Current version:** v4.12
 
 ---
 
@@ -573,7 +573,7 @@
 
 ---
 
-## Phase P: Ghost Build (v4.07–v4.11) — Feb 23, 2026
+## Phase P: Ghost Build (v4.07–v4.12) — Feb 23, 2026
 
 **Goal:** Full Ghost Detection system — track which companies respond to job applications and which ghost candidates. Gmail OAuth integration for email-based signal detection.
 
@@ -615,13 +615,14 @@
 | P25 | Gmail callback handler (client-side) | v4.10 | ✅ | Parses ?gmail=connected/denied/error params, cleans URL, shows appropriate feedback. |
 | P26 | Privacy policy update | v4.10 | ✅ | Removed "(future)" label. Added: metadata-only access, disconnect deletes all data, never reads message body. |
 
-### Phase P3: Admin + Polish (v4.11) ✅
+### Phase P3: Admin + Polish (v4.12) ✅
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| P27 | Admin Ghost tab | v4.11 | ✅ | 4 KPI cards (total apps, ghosted, avg response, Gmail connected). Company Response Performance table (company, applications, responded, ghosted, ghost rate, avg response, last activity). Ghost Score Distribution bar chart (ECharts, top 15, color-coded). |
+| P27 | Admin Ghost tab | v4.12 | ✅ | 4 KPI cards (total apps, ghosted, avg response, Gmail connected). Company Response Performance table (company, applications, responded, ghosted, ghost rate, avg response, last activity). Ghost Score Distribution bar chart (ECharts, top 15, color-coded). |
 | P28 | Gmail OAuth verified end-to-end | v4.10 | ✅ | Test user (gould.marston@gmail.com) connected successfully. Token stored, scan executed (0 errors). |
 | P29 | Manual scan test | v4.10 | ✅ | gmail-scan returned: 1 user processed, 0 pipeline entries (expected), 0 errors, 582ms. |
+| P30 | Tiered Refresh v13 | v4.12 | ✅ | HOT (job_count>0, 9K boards, 6h) / WARM (empty+active, 29K, 3d) / COLD (404/inactive, 1.3K, 7d). Batch 50→150, concurrency 5→10, cron 6h→3min. 3 partial indexes. PR #72. Full HOT cycle ~6h (was 194 days). |
 
 ### Phase P Summary
 
@@ -629,8 +630,8 @@
 |--------|-------|-------|
 | P-S1 | P1–P11 | ✅ Foundation: pipeline, scoring, Ghost Monitor UI, alerts (v4.07) |
 | P-S2 | P12–P26 | ✅ Gmail OAuth: GCP setup, 3 Edge Functions, email scanning, UI (v4.10) |
-| P-S3 | P27–P29 | ✅ Admin ghost tab + verification (v4.11) |
-| **Total** | **29 items** | **✅ Phase P complete (v4.07–v4.11)** |
+| P-S3 | P27–P29 | ✅ Admin ghost tab + verification (v4.12) |
+| **Total** | **30 items** | **✅ Phase P complete (v4.07–v4.12)** |
 
 **Not built (intentionally deferred):**
 
@@ -671,9 +672,9 @@
 | **M** Surveys & User Intelligence | 13/25 | v3.92–v3.97 | ⚠️ 12 items 🚫 blocked — need launch + user volume |
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
-| **P** Ghost Build | 29/29 | v4.07–v4.11 | ✅ Complete |
+| **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **217+ items** | **v2.68–v4.11** | **17 items 🚫 BLOCKED** |
+| **Total built** | **218+ items** | **v2.68–v4.12** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -718,6 +719,7 @@
 
 | Date | Sprint | Items | Summary |
 |------|--------|-------|---------|
+| 2026-02-23 | PERF | — | **v4.12:** Tiered Refresh v13. HOT (9K boards, 6h) / WARM (29K, 3d) / COLD (1.3K, 7d). Batch 50→150, concurrency 5→10, cron 6h→3min. 3 partial indexes. Full HOT cycle in ~6h (was 194 days). PR #72. |
 | 2026-02-23 | P-S3 | P27–P29 | **v4.11:** Admin Ghost tab. Company Response Performance table (ghost rate, avg response, last activity). Ghost Score Distribution chart (ECharts). 4 KPI cards. |
 | 2026-02-23 | P-S2 | P12–P26 | **v4.10:** Gmail OAuth live. GCP consent screen + branding. 3 Edge Functions deployed (gmail-auth, gmail-disconnect, gmail-scan). CORS fix. Privacy policy updated. Connect/Disconnect UI on Setup + Ghost Monitor pages. End-to-end verified: gould.marston@gmail.com connected. pg_cron: 6h scan + 90d purge. |
 | 2026-02-23 | N | N1–N7 | **v4.08–v4.09:** USAJOBS integration. Edge Function, landing page propagation, data lab counts (38K+/350K), Feed Health as standard platform, admin table formatting. |
@@ -864,7 +866,7 @@
 | Export 32K ungeocoded locations (SQL provided), geocode externally, re-import to location_cache | CEO | 🚫 BLOCKED — CEO action + external geocoding service |
 | Stripe Billing Portal configuration in Stripe Dashboard | CEO | 🚫 BLOCKED — CEO action in Stripe Dashboard |
 
-### Active pg_cron Jobs (as of v4.11)
+### Active pg_cron Jobs (as of v4.12)
 
 | ID | Schedule | Function | Added |
 |----|----------|----------|-------|
@@ -873,7 +875,7 @@
 | 7 | 0 13 * * 1 | weekly-summary (Mondays) | Phase I |
 | 8 | 0 5 * * * | job-intelligence | Phase I |
 | 12 | 0 6 * * * | seo-sync | Phase E |
-| 13 | 0 */6 * * * | refresh-jobs (6-hourly) | Phase D |
+| — | */3 * * * * | refresh-jobs-tiered (v13, HOT/WARM/COLD) | Phase P |
 | 14 | 0 */2 * * * | refresh_materialized_views | Phase C |
 | 15 | 30 */2 * * * | escalation-checker | Phase I |
 | 16 | 0 3 * * 0 | weekly-data-hygiene | Phase J |
