@@ -302,7 +302,7 @@ async function loadFeedHealthCharts() {
   }
 }
 
-// ─── Refresh Cycle Status ───
+// ─── Refresh Cycle Status (Tiered) ───
 async function loadRefreshCycle() {
   try {
     var res = await sb.rpc('get_refresh_cycle_status');
@@ -310,37 +310,32 @@ async function loadRefreshCycle() {
     var c = res.data;
     if (!c) return;
 
-    var pct = c.pct_complete || 0;
-    setAdminText('ac-cycle-pct', pct + '%');
+    // HOT tier progress (primary metric)
+    var hotPct = c.hot_pct || 0;
+    setAdminText('ac-cycle-pct', hotPct + '%');
     var bar = document.getElementById('ac-cycle-bar');
-    if (bar) setTimeout(function() { bar.style.width = pct + '%'; }, 100);
+    if (bar) setTimeout(function() { bar.style.width = hotPct + '%'; }, 100);
 
     setAdminText('ac-cycle-total', fmtAdminNum(c.total_boards));
-    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.refreshed));
-    setAdminText('ac-cycle-pending', fmtAdminNum(c.pending));
+    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.hot_fresh || 0) + ' / ' + fmtAdminNum(c.hot_total || 0) + ' HOT');
+    setAdminText('ac-cycle-pending', fmtAdminNum(c.hot_due || 0) + ' HOT due');
     setAdminText('ac-cycle-rate', fmtAdminNum(c.rate_per_hour) + '/hr');
 
-    // Format dates as relative
-    if (c.cycle_start) {
-      var start = new Date(c.cycle_start);
-      var hoursAgo = Math.round((Date.now() - start.getTime()) / 3600000);
-      var daysAgo = Math.floor(hoursAgo / 24);
-      var startStr = daysAgo > 0 ? daysAgo + 'd ' + (hoursAgo % 24) + 'h ago' : hoursAgo + 'h ago';
-      setAdminText('ac-cycle-start', startStr);
+    // ETA based on HOT cycle
+    var estHours = c.est_hot_cycle_hours || 0;
+    if (estHours <= 0) {
+      setAdminText('ac-cycle-eta', 'Up to date');
+    } else if (estHours < 1) {
+      setAdminText('ac-cycle-eta', Math.round(estHours * 60) + 'min cycle');
+    } else {
+      setAdminText('ac-cycle-eta', estHours.toFixed(1) + 'h cycle');
     }
-    if (c.est_completion) {
-      var eta = new Date(c.est_completion);
-      var hoursLeft = Math.round((eta.getTime() - Date.now()) / 3600000);
-      var daysLeft = Math.floor(hoursLeft / 24);
-      var etaStr;
-      if (hoursLeft <= 0) {
-        etaStr = 'Overdue';
-      } else if (daysLeft > 0) {
-        etaStr = daysLeft + 'd ' + (hoursLeft % 24) + 'h remaining';
-      } else {
-        etaStr = hoursLeft + 'h remaining';
-      }
-      setAdminText('ac-cycle-eta', etaStr);
+
+    // Last refresh
+    if (c.last_refresh) {
+      var lr = new Date(c.last_refresh);
+      var minsAgo = Math.round((Date.now() - lr.getTime()) / 60000);
+      setAdminText('ac-cycle-start', minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ago');
     }
   } catch (err) {
     console.error('[Admin] loadRefreshCycle error:', err);
@@ -1482,9 +1477,6 @@ async function loadSurveysTab() {
     // Recent responses table
     renderSurveyRecentTable(d.recent || []);
 
-    // S3-2: Micro-survey breakdown
-    await loadMicroSurveyBreakdown();
-
   } catch (err) {
     console.error('[Admin] loadSurveysTab error:', err);
   }
@@ -1610,127 +1602,6 @@ function renderSurveyRecentTable(recent) {
     var qCount = r.q_count || '—';
     return '<tr><td>' + date + '</td><td><code style="font-size:12px">' + (r.survey_version || '') + '</code></td><td><code style="font-size:11px">' + userId + '</code></td><td>' + qCount + '</td><td>' + nps + '</td><td>' + rating + '</td></tr>';
   }).join('');
-}
-
-// ─── S3-2: Micro-Survey Breakdown Analytics ───
-async function loadMicroSurveyBreakdown() {
-  try {
-    // Build auth headers (same pattern as SEO tab)
-    var hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
-    try {
-      var session = (await sb.auth.getSession()).data.session;
-      if (session) hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
-    } catch(e) {}
-
-    var dateFilter = '';
-    if (_surveyDays > 0) {
-      var since = new Date(Date.now() - _surveyDays * 86400000).toISOString();
-      dateFilter = '&created_at=gte.' + since;
-    }
-
-    var res = await fetch(SUPABASE_URL + '/rest/v1/feedback?select=survey_version,answers,feature_context,created_at&type=eq.micro_survey' + dateFilter + '&order=created_at.desc', {
-      headers: hdr
-    });
-    if (!res.ok) throw new Error('Micro-survey fetch failed: ' + res.status);
-    var rows = await res.json();
-
-    // Count by version
-    var counts = {
-      micro_paywall_v1: 0,
-      micro_search_v1: 0,
-      micro_apply_v1: 0,
-      micro_data_v1: 0
-    };
-    var paywallWTP = { definitely: 0, maybe: 0, no: 0 };
-
-    rows.forEach(function(r) {
-      var v = r.survey_version || '';
-      if (counts[v] !== undefined) counts[v]++;
-
-      // Extract willingness-to-pay signal from paywall responses
-      if (v === 'micro_paywall_v1' && r.answers && r.answers.primary) {
-        var idx = r.answers.primary.index;
-        if (idx === 0) paywallWTP.definitely++;
-        else if (idx === 1) paywallWTP.maybe++;
-        else if (idx === 2) paywallWTP.no++;
-      }
-    });
-
-    // KPI cards
-    setAdminText('sv-micro-paywall', counts.micro_paywall_v1);
-    setAdminText('sv-micro-search', counts.micro_search_v1);
-    setAdminText('sv-micro-apply', counts.micro_apply_v1);
-    setAdminText('sv-micro-data', counts.micro_data_v1);
-
-    // Insight line
-    var insightEl = document.getElementById('sv-micro-insight');
-    if (insightEl) {
-      var total = rows.length;
-      if (total === 0) {
-        insightEl.textContent = 'No micro-survey responses yet. Triggers fire after 10 searches, apply actions, 10s stats viewing, or paywall hits.';
-      } else {
-        var wtpTotal = paywallWTP.definitely + paywallWTP.maybe + paywallWTP.no;
-        if (wtpTotal > 0) {
-          var wtpPct = Math.round(((paywallWTP.definitely + paywallWTP.maybe) / wtpTotal) * 100);
-          insightEl.innerHTML = '<strong>WTP signal:</strong> ' + wtpPct + '% of paywall respondents indicated willingness to pay (' + paywallWTP.definitely + ' definitely, ' + paywallWTP.maybe + ' maybe, ' + paywallWTP.no + ' no).';
-        } else {
-          insightEl.textContent = total + ' micro-survey responses collected. No paywall friction data yet — paywall survey is highest priority and will fire first when competing.';
-        }
-      }
-    }
-
-    // Volume chart
-    renderMicroVolumeChart(counts);
-
-  } catch (err) {
-    console.error('[Admin] loadMicroSurveyBreakdown error:', err);
-  }
-}
-
-function renderMicroVolumeChart(counts) {
-  var el = document.getElementById('sv-chart-micro-volume');
-  if (!el || !window.echarts) return;
-  var chart = echarts.init(el);
-
-  var labels = ['Paywall', 'Search', 'Apply', 'Data Value'];
-  var values = [
-    counts.micro_paywall_v1,
-    counts.micro_search_v1,
-    counts.micro_apply_v1,
-    counts.micro_data_v1
-  ];
-  var colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
-  var total = values.reduce(function(s, v) { return s + v; }, 0);
-
-  if (total === 0) {
-    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No micro-survey data yet', fill: '#888', fontSize: 14 } } });
-    return;
-  }
-
-  chart.setOption({
-    tooltip: {
-      trigger: 'axis',
-      formatter: function(params) {
-        var p = params[0];
-        var pct = total > 0 ? Math.round((p.value / total) * 100) : 0;
-        return p.name + ': ' + p.value + ' (' + pct + '%)';
-      }
-    },
-    xAxis: {
-      type: 'category',
-      data: labels,
-      axisLabel: { fontSize: 11 }
-    },
-    yAxis: { type: 'value', name: 'Responses' },
-    series: [{
-      type: 'bar',
-      data: values.map(function(v, i) {
-        return { value: v, itemStyle: { color: colors[i], borderRadius: [4, 4, 0, 0] } };
-      }),
-      barWidth: '50%'
-    }],
-    grid: { left: 50, right: 16, top: 30, bottom: 40 }
-  });
 }
 
 // ═══════════════════════════════════════════════════════════════

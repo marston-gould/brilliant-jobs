@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.14';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — S5-1: Ghost Job Reality Check survey + ghost-report page');
+const BJ_VERSION = 'v4.12';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tiered refresh v13: HOT/WARM/COLD board prioritization');
 
 // Auth
 async function init() {
