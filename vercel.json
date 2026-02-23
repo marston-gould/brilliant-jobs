@@ -76,6 +76,14 @@
     {
       "source": "/job-market-data",
       "destination": "/job-market-data.html"
+    },
+    {
+      "source": "/api/auth/gmail/callback",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-auth"
+    },
+    {
+      "source": "/api/auth/gmail/disconnect",
+      "destination": "https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/gmail-disconnect"
     }
   ]
 }
