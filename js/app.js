@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.12';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — S3-1: Priority-weighted micro-survey selection');
+const BJ_VERSION = 'v4.13';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — S3-2: Micro-survey breakdown analytics in admin Surveys tab');
 
 // Auth
 async function init() {

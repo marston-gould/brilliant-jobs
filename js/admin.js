@@ -1482,6 +1482,9 @@ async function loadSurveysTab() {
     // Recent responses table
     renderSurveyRecentTable(d.recent || []);
 
+    // S3-2: Micro-survey breakdown
+    await loadMicroSurveyBreakdown();
+
   } catch (err) {
     console.error('[Admin] loadSurveysTab error:', err);
   }
@@ -1607,6 +1610,127 @@ function renderSurveyRecentTable(recent) {
     var qCount = r.q_count || '—';
     return '<tr><td>' + date + '</td><td><code style="font-size:12px">' + (r.survey_version || '') + '</code></td><td><code style="font-size:11px">' + userId + '</code></td><td>' + qCount + '</td><td>' + nps + '</td><td>' + rating + '</td></tr>';
   }).join('');
+}
+
+// ─── S3-2: Micro-Survey Breakdown Analytics ───
+async function loadMicroSurveyBreakdown() {
+  try {
+    // Build auth headers (same pattern as SEO tab)
+    var hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+    try {
+      var session = (await sb.auth.getSession()).data.session;
+      if (session) hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
+    } catch(e) {}
+
+    var dateFilter = '';
+    if (_surveyDays > 0) {
+      var since = new Date(Date.now() - _surveyDays * 86400000).toISOString();
+      dateFilter = '&created_at=gte.' + since;
+    }
+
+    var res = await fetch(SUPABASE_URL + '/rest/v1/feedback?select=survey_version,answers,feature_context,created_at&type=eq.micro_survey' + dateFilter + '&order=created_at.desc', {
+      headers: hdr
+    });
+    if (!res.ok) throw new Error('Micro-survey fetch failed: ' + res.status);
+    var rows = await res.json();
+
+    // Count by version
+    var counts = {
+      micro_paywall_v1: 0,
+      micro_search_v1: 0,
+      micro_apply_v1: 0,
+      micro_data_v1: 0
+    };
+    var paywallWTP = { definitely: 0, maybe: 0, no: 0 };
+
+    rows.forEach(function(r) {
+      var v = r.survey_version || '';
+      if (counts[v] !== undefined) counts[v]++;
+
+      // Extract willingness-to-pay signal from paywall responses
+      if (v === 'micro_paywall_v1' && r.answers && r.answers.primary) {
+        var idx = r.answers.primary.index;
+        if (idx === 0) paywallWTP.definitely++;
+        else if (idx === 1) paywallWTP.maybe++;
+        else if (idx === 2) paywallWTP.no++;
+      }
+    });
+
+    // KPI cards
+    setAdminText('sv-micro-paywall', counts.micro_paywall_v1);
+    setAdminText('sv-micro-search', counts.micro_search_v1);
+    setAdminText('sv-micro-apply', counts.micro_apply_v1);
+    setAdminText('sv-micro-data', counts.micro_data_v1);
+
+    // Insight line
+    var insightEl = document.getElementById('sv-micro-insight');
+    if (insightEl) {
+      var total = rows.length;
+      if (total === 0) {
+        insightEl.textContent = 'No micro-survey responses yet. Triggers fire after 10 searches, apply actions, 10s stats viewing, or paywall hits.';
+      } else {
+        var wtpTotal = paywallWTP.definitely + paywallWTP.maybe + paywallWTP.no;
+        if (wtpTotal > 0) {
+          var wtpPct = Math.round(((paywallWTP.definitely + paywallWTP.maybe) / wtpTotal) * 100);
+          insightEl.innerHTML = '<strong>WTP signal:</strong> ' + wtpPct + '% of paywall respondents indicated willingness to pay (' + paywallWTP.definitely + ' definitely, ' + paywallWTP.maybe + ' maybe, ' + paywallWTP.no + ' no).';
+        } else {
+          insightEl.textContent = total + ' micro-survey responses collected. No paywall friction data yet — paywall survey is highest priority and will fire first when competing.';
+        }
+      }
+    }
+
+    // Volume chart
+    renderMicroVolumeChart(counts);
+
+  } catch (err) {
+    console.error('[Admin] loadMicroSurveyBreakdown error:', err);
+  }
+}
+
+function renderMicroVolumeChart(counts) {
+  var el = document.getElementById('sv-chart-micro-volume');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+
+  var labels = ['Paywall', 'Search', 'Apply', 'Data Value'];
+  var values = [
+    counts.micro_paywall_v1,
+    counts.micro_search_v1,
+    counts.micro_apply_v1,
+    counts.micro_data_v1
+  ];
+  var colors = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+  var total = values.reduce(function(s, v) { return s + v; }, 0);
+
+  if (total === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No micro-survey data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: function(params) {
+        var p = params[0];
+        var pct = total > 0 ? Math.round((p.value / total) * 100) : 0;
+        return p.name + ': ' + p.value + ' (' + pct + '%)';
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: labels,
+      axisLabel: { fontSize: 11 }
+    },
+    yAxis: { type: 'value', name: 'Responses' },
+    series: [{
+      type: 'bar',
+      data: values.map(function(v, i) {
+        return { value: v, itemStyle: { color: colors[i], borderRadius: [4, 4, 0, 0] } };
+      }),
+      barWidth: '50%'
+    }],
+    grid: { left: 50, right: 16, top: 30, bottom: 40 }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
