@@ -14410,7 +14410,7 @@ function initBilling() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v3.75';
+const BJ_VERSION = 'v3.80';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — hire fee, hired stage, credit gating');
 
 // Auth
