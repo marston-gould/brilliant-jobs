@@ -625,9 +625,11 @@
 | 2026-02-19 | S4 | A7, A8, A13 | Structured logger. Health check endpoint. PostHog snippet (gated). |
 
 
-## Phase J: Infrastructure Hardening (v3.81–v3.86) — Feb 22
+## Phase J: Infrastructure Hardening & Data Quality (v3.81–v3.88) — Feb 22-23
 
-**Goal:** Performance optimization, data integrity automation, disaster recovery preparedness.
+**Goal:** Performance optimization, data integrity automation, disaster recovery, safety infrastructure, and data quality backfills.
+
+### Sprint 1: Performance & Resilience (v3.81–v3.86)
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
@@ -638,9 +640,43 @@
 | J5 | localStorage stress test & guards | v3.85 | ✅ | `saveUserData()` size guards (2MB reject, 500KB warn). `storageHealth()` console diagnostic. `_handleStorageFull()` emergency cleanup with array trimming. |
 | J6 | Backup & DR plan + error recovery | v3.86 | ✅ | Full DR documentation: table priority matrix, recovery RTOs, cron job inventory, disaster scenarios. Docs: `docs/DR_BACKUP_PLAN.md`. |
 
-**Phase J total:** 7 items | 6 versions | All complete.
+### Sprint 2: Safety Infrastructure (v3.87)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| J7 | Automated daily table backups | v3.87 | ✅ | `run_daily_backup()` — 29 critical small tables → `daily_backups` JSONB table. pg_cron #17 at 2 AM UTC. 30-day retention. `restore_from_backup()` generates restore SQL. First backup: 161ms. |
+| J8 | Pre-migration backup script | v3.87 | ✅ | `pre_migration_snapshot()` captures all table row counts + DB size. `verify_migration()` compares current vs snapshot. `migration_snapshots` table. Baseline: 496,875 rows / 745 MB / 51 tables. |
+| J9 | TRUNCATE protection triggers | v3.87 | ✅ | `block_truncate()` trigger on 19 protected tables. Override: `SET LOCAL bj.allow_truncate = 'true'`. Prevents repeat of Feb 14 CASCADE disaster. |
+| J10 | FK dependency graph documentation | v3.87 | ✅ | 13 FK constraints mapped (5 with CASCADE DELETE — danger zones). 24 soft references documented. Mermaid diagram. `docs/FK_DEPENDENCY_GRAPH.md`. |
+
+### Sprint 3: Data Quality Backfills (v3.88)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| J11 | Geocode remaining jobs | v3.88 | ✅ | **+127,277 lat/lng** (18,463→145,740, +689%) via `location_cache` exact-match join. **+145,740 location_normalized** backfilled from zero. 32K unique unmatched locations (143K jobs) exported for external geocoding. |
+| J12 | Catch unparsed salary formats | v3.88 | ✅ | **+698 salary records** (20,579→21,277, +3.4%) via `backfill_salary_batch()` regex on content. Handles en-dash/em-dash ranges, hourly→annual conversion, K notation. Remaining 267K genuinely have no salary in content. |
+| J13 | Enrich ~555 unmatched companies | — | ⏭️ Deferred | Needs Greenhouse API partnership (March 3 deadline) or PDL paid tier. External dependency. |
+
+**Phase J total:** 13 items | 8 versions | 12/13 complete, 1 deferred on external dependency.
 
 ### Manual Action Items
 | Item | Owner | Status |
 |------|-------|--------|
 | Run VACUUM ANALYZE + REINDEX in Supabase SQL Editor | CEO | 🔲 |
+| Export 32K ungeocoded locations (SQL provided), geocode externally, re-import to location_cache | CEO | 🔲 |
+| Stripe Billing Portal configuration in Stripe Dashboard | CEO | 🔲 |
+
+### Active pg_cron Jobs (as of v3.88)
+
+| ID | Schedule | Function | Added |
+|----|----------|----------|-------|
+| 2 | 0 4 * * * | refresh-orchestrator | Phase D |
+| 6 | 0 13 * * * | daily-digest | Phase I |
+| 7 | 0 13 * * 1 | weekly-summary (Mondays) | Phase I |
+| 8 | 0 5 * * * | job-intelligence | Phase I |
+| 12 | 0 6 * * * | seo-sync | Phase E |
+| 13 | 0 */6 * * * | refresh-jobs (6-hourly) | Phase D |
+| 14 | 0 */2 * * * | refresh_materialized_views | Phase C |
+| 15 | 30 */2 * * * | escalation-checker | Phase I |
+| 16 | 0 3 * * 0 | weekly-data-hygiene | Phase J |
+| 17 | 0 2 * * * | daily-table-backup | Phase J |
