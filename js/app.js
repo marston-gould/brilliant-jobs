@@ -435,7 +435,7 @@ window.connectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { alert('Please log in first.'); return; }
-    const res = await fetch(SUPABASE_URL + '/functions/v1/gmail-auth?action=connect', {
+    const res = await fetch('/api/auth/gmail/callback?action=connect', {
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
     const json = await res.json();
@@ -454,7 +454,7 @@ window.disconnectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-    const res = await fetch(SUPABASE_URL + '/functions/v1/gmail-disconnect', {
+    const res = await fetch('/api/auth/gmail/disconnect', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
