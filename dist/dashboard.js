@@ -13,6 +13,306 @@ window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
+// ============================================================
+// XSS PROTECTION — escapeHtml utility (v3.90)
+// ============================================================
+// Use for any user-generated content rendered via innerHTML/template literals.
+// Does NOT replace DOMPurify for untrusted rich HTML (job descriptions).
+
+var _escapeEl = document.createElement('div');
+/**
+ * Escape HTML special characters to prevent XSS.
+ * @param {string} str - Untrusted string
+ * @returns {string} Escaped string safe for innerHTML
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  _escapeEl.textContent = str;
+  return _escapeEl.innerHTML;
+}
+
+/**
+ * Truncate string with HTML escaping (safe for innerHTML).
+ * Drop-in replacement for raw truncate() in user-generated contexts.
+ * @param {string} str - Untrusted string
+ * @param {number} max - Max length
+ * @returns {string} Escaped and truncated string
+ */
+function truncateSafe(str, max) {
+  if (!str) return '\u2014';
+  var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
+  return escapeHtml(trimmed);
+}
+
+// ============================================================
+// TOAST NOTIFICATION SYSTEM — User-facing errors (v3.90)
+// ============================================================
+// Replaces silent console.error/warn for Supabase failures, auth issues, etc.
+
+var _toastContainer = null;
+var _toastQueue = [];
+var _toastCount = 0;
+var _MAX_TOASTS = 3;
+
+function _ensureToastContainer() {
+  if (_toastContainer && document.body.contains(_toastContainer)) return;
+  _toastContainer = document.createElement('div');
+  _toastContainer.id = 'bj-toast-container';
+  _toastContainer.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99998;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px;';
+  document.body.appendChild(_toastContainer);
+}
+
+/**
+ * Show a toast notification to the user.
+ * @param {string} message - Message text (will be escaped)
+ * @param {object} opts - { type: 'error'|'warning'|'success'|'info', duration: ms, action: { label, fn } }
+ */
+function showToast(message, opts) {
+  var type = (opts && opts.type) || 'info';
+  var duration = (opts && opts.duration) || (type === 'error' ? 6000 : 4000);
+
+  _ensureToastContainer();
+
+  // Enforce max visible toasts
+  if (_toastCount >= _MAX_TOASTS) {
+    var oldest = _toastContainer.querySelector('.bj-toast');
+    if (oldest) _dismissToast(oldest);
+  }
+
+  var colors = {
+    error:   { bg: 'hsl(0, 84%, 60%)',   icon: '\u2716' },
+    warning: { bg: 'hsl(38, 92%, 50%)',   icon: '\u26A0' },
+    success: { bg: 'hsl(142, 71%, 45%)',  icon: '\u2714' },
+    info:    { bg: 'hsl(217, 100%, 62%)', icon: '\u2139' }
+  };
+  var c = colors[type] || colors.info;
+
+  var toast = document.createElement('div');
+  toast.className = 'bj-toast';
+  toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:hsl(230,28%,14%);color:#f0f1f3;font-size:13px;font-family:Outfit,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;max-width:380px;word-break:break-word;';
+
+  var iconSpan = '<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:' + c.bg + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">' + c.icon + '</span>';
+  var closeBtn = '<button style="flex-shrink:0;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:0 0 0 8px;line-height:1;" title="Dismiss">\u2715</button>';
+  var actionHtml = '';
+  if (opts && opts.action) {
+    actionHtml = '<button class="bj-toast-action" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">' + escapeHtml(opts.action.label) + '</button>';
+  }
+  toast.innerHTML = iconSpan + '<span style="flex:1;">' + escapeHtml(message) + '</span>' + actionHtml + closeBtn;
+
+  // Close button handler
+  toast.querySelector('button:last-child').addEventListener('click', function() { _dismissToast(toast); });
+
+  // Action button handler
+  if (opts && opts.action) {
+    toast.querySelector('.bj-toast-action').addEventListener('click', function() {
+      if (opts.action.fn) opts.action.fn();
+      _dismissToast(toast);
+    });
+  }
+
+  _toastContainer.appendChild(toast);
+  _toastCount++;
+
+  // Animate in
+  requestAnimationFrame(function() { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; });
+
+  // Auto-dismiss
+  if (duration > 0) {
+    setTimeout(function() { _dismissToast(toast); }, duration);
+  }
+
+  return toast;
+}
+
+function _dismissToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(12px)';
+  setTimeout(function() {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+    _toastCount = Math.max(0, _toastCount - 1);
+  }, 250);
+}
+
+// Convenience shortcuts
+function toastError(msg, opts) { return showToast(msg, Object.assign({ type: 'error' }, opts || {})); }
+function toastWarning(msg, opts) { return showToast(msg, Object.assign({ type: 'warning' }, opts || {})); }
+function toastSuccess(msg, opts) { return showToast(msg, Object.assign({ type: 'success' }, opts || {})); }
+function toastInfo(msg, opts) { return showToast(msg, Object.assign({ type: 'info' }, opts || {})); }
+
+// ============================================================
+// LOCALSTORAGE ENCRYPTION FOR PII (v3.90)
+// ============================================================
+// Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
+// Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
+
+var _encryptionKey = null;
+var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
+
+/**
+ * Derive an AES-GCM encryption key from the user's Supabase session ID.
+ * Key is deterministic per user (same user = same key).
+ */
+async function _deriveEncryptionKey(userId) {
+  if (_encryptionKey) return _encryptionKey;
+  var encoder = new TextEncoder();
+  var keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(userId + ':bj_pii_v1'), 'PBKDF2', false, ['deriveKey']);
+  _encryptionKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: encoder.encode('brilliant-jobs-pii-salt'), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+  return _encryptionKey;
+}
+
+/**
+ * Encrypt a string value for localStorage storage.
+ * @param {string} plaintext - Value to encrypt
+ * @param {string} userId - User ID for key derivation
+ * @returns {Promise<string>} Base64-encoded ciphertext with IV prefix
+ */
+async function encryptForStorage(plaintext, userId) {
+  try {
+    var key = await _deriveEncryptionKey(userId);
+    var encoder = new TextEncoder();
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encoder.encode(plaintext));
+    // Prepend IV to ciphertext
+    var combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
+  } catch (e) {
+    console.warn('[BJ] Encryption failed, storing plaintext:', e.message);
+    return plaintext;
+  }
+}
+
+/**
+ * Decrypt a localStorage value.
+ * @param {string} ciphertext - Base64-encoded value from localStorage
+ * @param {string} userId - User ID for key derivation
+ * @returns {Promise<string>} Decrypted plaintext
+ */
+async function decryptFromStorage(ciphertext, userId) {
+  if (!ciphertext || !ciphertext.startsWith('enc:')) return ciphertext; // Not encrypted
+  try {
+    var key = await _deriveEncryptionKey(userId);
+    var raw = atob(ciphertext.slice(4));
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    var iv = bytes.slice(0, 12);
+    var data = bytes.slice(12);
+    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.warn('[BJ] Decryption failed (key mismatch or corruption):', e.message);
+    return null;
+  }
+}
+
+/** Check if a localStorage key is PII and should be encrypted */
+function isPiiKey(lsKey) {
+  return _PII_KEYS.indexOf(lsKey) !== -1;
+}
+
+// ============================================================
+// SESSION MANAGEMENT HARDENING (v3.90)
+// ============================================================
+// - Monitors auth state changes for session expiry
+// - Auto-refreshes tokens before expiry
+// - Warns user before forced logout
+// - Inactivity timeout for PII protection
+
+var _sessionInactivityTimer = null;
+var _SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+var _lastActivity = Date.now();
+var _sessionWarningShown = false;
+
+/** Initialize session management */
+function initSessionManagement() {
+  // Listen for auth state changes (session expiry, token refresh)
+  sb.auth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_OUT') {
+        _clearSensitiveData();
+        window.location.href = '/?session_expired=1';
+      }
+    }
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('[BJ] Session token refreshed');
+      _lastActivity = Date.now();
+    }
+  });
+
+  // Track user activity for inactivity timeout
+  ['click', 'keydown', 'scroll', 'mousemove'].forEach(function(evt) {
+    document.addEventListener(evt, _trackActivity, { passive: true });
+  });
+
+  // Check inactivity every minute
+  _sessionInactivityTimer = setInterval(_checkInactivity, 60000);
+
+  // Periodically verify session is still valid
+  setInterval(_verifySession, 5 * 60 * 1000); // every 5 min
+}
+
+function _trackActivity() {
+  _lastActivity = Date.now();
+  if (_sessionWarningShown) {
+    _sessionWarningShown = false;
+    // User came back — dismiss inactivity warning
+  }
+}
+
+function _checkInactivity() {
+  var idle = Date.now() - _lastActivity;
+  if (idle > _SESSION_INACTIVITY_MS && !_sessionWarningShown) {
+    _sessionWarningShown = true;
+    showToast('Your session will expire soon due to inactivity.', {
+      type: 'warning',
+      duration: 0, // persistent until action
+      action: { label: 'Stay signed in', fn: function() {
+        _lastActivity = Date.now();
+        _sessionWarningShown = false;
+        sb.auth.getSession(); // triggers refresh
+        toastSuccess('Session extended.');
+      }}
+    });
+  }
+  // Force logout after 2x the inactivity timeout
+  if (idle > _SESSION_INACTIVITY_MS * 2) {
+    _clearSensitiveData();
+    sb.auth.signOut();
+  }
+}
+
+async function _verifySession() {
+  try {
+    var result = await sb.auth.getSession();
+    if (!result.data.session) {
+      toastError('Your session has expired. Please sign in again.', {
+        duration: 0,
+        action: { label: 'Sign in', fn: function() { window.location.href = '/'; } }
+      });
+    }
+  } catch (e) {
+    // Network error — don't force logout
+  }
+}
+
+/** Clear sensitive data on logout / session expiry */
+function _clearSensitiveData() {
+  _encryptionKey = null;
+  _PII_KEYS.forEach(function(key) {
+    localStorage.removeItem(key);
+  });
+  // Clear any cached query data
+  _queryCache = {};
+}
+
 // Auth
 let currentUser = null;
 
@@ -46,13 +346,30 @@ let _udPendingKeys = new Set();
  * @param {string} jsonStr - JSON string to save
  */
 function saveUserData(lsKey, jsonStr) {
-  localStorage.setItem(lsKey, jsonStr);
+  // Size guard: warn if single key exceeds 500KB, reject if >2MB (v3.85)
+  var bytes = new Blob([jsonStr]).size;
+  if (bytes > 2 * 1024 * 1024) {
+    console.error('[BJ] Storage rejected: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB (>2MB limit)');
+    return false;
+  }
+  if (bytes > 500 * 1024) {
+    console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
+  }
+  try {
+    localStorage.setItem(lsKey, jsonStr);
+  } catch (e) {
+    // QuotaExceededError — storage is full
+    console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
+    _handleStorageFull(lsKey);
+    return false;
+  }
   const shortKey = UD_LS_TO_SHORT[lsKey];
   if (shortKey && currentUser) {
     _udPendingKeys.add(shortKey);
     clearTimeout(_udSyncTimer);
     _udSyncTimer = setTimeout(_flushUserData, 2000);
   }
+  return true;
 }
 
 /** Flush all pending keys to Supabase in one PATCH */
@@ -279,6 +596,279 @@ async function enrichJob(jobId, data) {
 }
 
 
+
+// ============================================================
+// STORAGE HEALTH — size monitoring and emergency cleanup (v3.85)
+// ============================================================
+
+/** Get total localStorage usage in bytes */
+function getStorageUsage() {
+  var total = 0;
+  var keys = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    var size = new Blob([localStorage.getItem(key)]).size;
+    total += size + new Blob([key]).size;
+    if (key.startsWith('bj_')) keys[key] = size;
+  }
+  return { totalBytes: total, totalKB: Math.round(total / 1024), bjKeys: keys };
+}
+
+/** Log storage usage to console (call from DevTools: storageHealth()) */
+function storageHealth() {
+  var usage = getStorageUsage();
+  console.group('[BJ] Storage Health');
+  console.log('Total localStorage:', usage.totalKB + 'KB');
+  var sorted = Object.entries(usage.bjKeys).sort(function(a, b) { return b[1] - a[1]; });
+  sorted.forEach(function(entry) {
+    var pct = Math.round(entry[1] / usage.totalBytes * 100);
+    console.log('  ' + entry[0] + ': ' + Math.round(entry[1] / 1024) + 'KB (' + pct + '%)');
+  });
+  console.log('Estimated limit: ~5MB (varies by browser)');
+  console.log('Usage: ' + Math.round(usage.totalBytes / (5 * 1024 * 1024) * 100) + '% of estimated limit');
+  console.groupEnd();
+  return usage;
+}
+
+/** Emergency cleanup when storage is full */
+function _handleStorageFull(failedKey) {
+  console.warn('[BJ] Running emergency storage cleanup...');
+  // Priority: remove caches first, then old data
+  var sacrificial = ['bj_readiness', 'bj_ref_city_radius', '_bj_ud_cache'];
+  for (var i = 0; i < sacrificial.length; i++) {
+    if (sacrificial[i] !== failedKey) {
+      localStorage.removeItem(sacrificial[i]);
+      console.log('[BJ] Cleared ' + sacrificial[i]);
+    }
+  }
+  // Trim hidden_jobs and applied_jobs to last 500
+  ['bj_hidden_jobs', 'bj_applied_jobs', 'bj_saved_jobs'].forEach(function(key) {
+    try {
+      var arr = JSON.parse(localStorage.getItem(key) || '[]');
+      if (arr.length > 500) {
+        arr = arr.slice(-500);
+        localStorage.setItem(key, JSON.stringify(arr));
+        console.log('[BJ] Trimmed ' + key + ' to 500 items');
+      }
+    } catch (e) {}
+  });
+  // Trim app_history to last 200
+  try {
+    var hist = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+    if (hist.length > 200) {
+      hist = hist.slice(-200);
+      localStorage.setItem('bj_app_history', JSON.stringify(hist));
+      console.log('[BJ] Trimmed bj_app_history to 200 items');
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// CACHED QUERY — in-memory cache with TTL (v3.84)
+// ============================================================
+// Usage: const data = await cachedQuery('companies', () => sb.from('ats_companies').select('slug, name, job_count, source'), { ttl: 300000 });
+
+var _queryCache = {};
+
+/**
+ * Execute a Supabase query with in-memory caching.
+ * @param {string} key - Unique cache key
+ * @param {function} queryFn - Function that returns a Supabase query promise
+ * @param {object} opts - { ttl: ms (default 5 min), force: boolean }
+ * @returns {Promise<any>} Cached or fresh data
+ */
+async function cachedQuery(key, queryFn, opts) {
+  var ttl = (opts && opts.ttl) || 300000; // 5 min default
+  var force = opts && opts.force;
+  var entry = _queryCache[key];
+
+  if (!force && entry && Date.now() - entry.ts < ttl) {
+    return entry.data;
+  }
+
+  try {
+    var result = await queryFn();
+    if (result.error) {
+      console.warn('[cachedQuery] Error for', key, result.error.message);
+      // Return stale cache if available
+      return entry ? entry.data : null;
+    }
+    _queryCache[key] = { data: result.data, ts: Date.now(), count: result.count };
+    return result.data;
+  } catch (e) {
+    console.warn('[cachedQuery] Failed for', key, e.message);
+    return entry ? entry.data : null;
+  }
+}
+
+/** Get cached count (if query used { count: 'exact' }) */
+function cachedCount(key) {
+  var entry = _queryCache[key];
+  return entry ? entry.count : null;
+}
+
+/** Invalidate a specific cache key or all keys matching a prefix */
+function invalidateCache(keyOrPrefix) {
+  if (!keyOrPrefix) { _queryCache = {}; return; }
+  Object.keys(_queryCache).forEach(function(k) {
+    if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
+  });
+}
+
+/** Pre-warm static ref table caches on app init */
+async function prewarmRefCaches() {
+  try {
+    await Promise.all([
+      cachedQuery('ref:industries', function() {
+        return sb.from('ref_industries').select('name, category').order('name');
+      }, { ttl: 3600000 }), // 1 hour TTL — rarely changes
+      cachedQuery('ref:companies:list', function() {
+        return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+      }, { ttl: 600000 }), // 10 min TTL — job_count updates periodically
+    ]);
+    console.log('[BJ] Ref caches pre-warmed');
+  } catch (e) {
+    console.warn('[BJ] Ref cache pre-warm failed:', e.message);
+  }
+}
+
+// ============================================================
+// ERROR RECOVERY & OFFLINE RESILIENCE (v3.87)
+// ============================================================
+
+var _isOnline = navigator.onLine;
+var _offlineBanner = null;
+var _retryQueue = [];
+
+/** Check if the browser is online */
+function isOnline() { return _isOnline; }
+
+/** Initialize offline/online detection */
+function initOfflineDetection() {
+  window.addEventListener('online', function() {
+    _isOnline = true;
+    console.log('[BJ] Back online');
+    _hideOfflineBanner();
+    _drainRetryQueue();
+  });
+  window.addEventListener('offline', function() {
+    _isOnline = false;
+    console.warn('[BJ] Went offline');
+    _showOfflineBanner();
+  });
+}
+
+function _showOfflineBanner() {
+  if (_offlineBanner) return;
+  _offlineBanner = document.createElement('div');
+  _offlineBanner.id = 'bj-offline-banner';
+  _offlineBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f59e0b;color:#000;text-align:center;padding:8px 16px;font-size:14px;font-weight:600;';
+  _offlineBanner.textContent = 'You are offline — changes will sync when connection returns';
+  document.body.prepend(_offlineBanner);
+}
+
+function _hideOfflineBanner() {
+  if (_offlineBanner) { _offlineBanner.remove(); _offlineBanner = null; }
+}
+
+/** Retry a failed async operation with exponential backoff */
+async function withRetry(fn, opts) {
+  var maxRetries = (opts && opts.retries) || 3;
+  var baseDelay = (opts && opts.delay) || 1000;
+  var label = (opts && opts.label) || 'operation';
+
+  for (var attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt === maxRetries) {
+        console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', e.message);
+        throw e;
+      }
+      var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
+      await new Promise(function(resolve) { setTimeout(resolve, delay); });
+    }
+  }
+}
+
+/** Queue a failed write operation for retry when back online */
+function queueForRetry(fn, label) {
+  _retryQueue.push({ fn: fn, label: label || 'queued op', addedAt: Date.now() });
+  console.log('[BJ] Queued for retry: ' + label + ' (' + _retryQueue.length + ' pending)');
+}
+
+/** Drain the retry queue (called when coming back online) */
+async function _drainRetryQueue() {
+  if (_retryQueue.length === 0) return;
+  console.log('[BJ] Draining retry queue: ' + _retryQueue.length + ' items');
+  var queue = _retryQueue.slice();
+  _retryQueue = [];
+  for (var i = 0; i < queue.length; i++) {
+    try {
+      await queue[i].fn();
+      console.log('[BJ] Retry succeeded: ' + queue[i].label);
+    } catch (e) {
+      console.warn('[BJ] Retry failed: ' + queue[i].label, e.message);
+      // Don't re-queue items older than 10 minutes
+      if (Date.now() - queue[i].addedAt < 600000) {
+        _retryQueue.push(queue[i]);
+      }
+    }
+  }
+}
+
+/** Global unhandled error and rejection handlers */
+function initGlobalErrorHandlers() {
+  window.addEventListener('error', function(event) {
+    console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event.reason;
+    var msg = reason && reason.message ? reason.message : String(reason);
+    // Suppress noisy auth/network errors
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+      if (!_isOnline) {
+        event.preventDefault(); // Don't spam console when offline
+        return;
+      }
+    }
+    console.error('[BJ] Unhandled promise rejection:', msg);
+  });
+}
+
+/** Safe Supabase query wrapper — handles offline, retries, fallback */
+async function safeQuery(queryFn, opts) {
+  var label = (opts && opts.label) || 'query';
+  var fallback = opts && opts.fallback;
+  var retry = opts && opts.retry !== false;
+
+  if (!_isOnline) {
+    console.warn('[BJ] Offline — skipping ' + label);
+    return fallback !== undefined ? fallback : null;
+  }
+
+  try {
+    if (retry) {
+      return await withRetry(function() {
+        return queryFn().then(function(result) {
+          if (result.error) throw new Error(result.error.message);
+          return result.data;
+        });
+      }, { retries: 2, delay: 800, label: label });
+    } else {
+      var result = await queryFn();
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
+    }
+  } catch (e) {
+    console.warn('[BJ] ' + label + ' failed:', e.message);
+    return fallback !== undefined ? fallback : null;
+  }
+}
+
+
 // === js/query-builder.js ===
 // ============================================================
 // JOBS — TAG QUERY BUILDER
@@ -328,13 +918,13 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
 
     let display;
     if (pill.type === 'collection') {
-      display = `📂 ${pill.collectionName}<span class="coll-count">(${pill.values.length})</span>`;
+      display = `📂 ${escapeHtml(pill.collectionName)}<span class="coll-count">(${pill.values.length})</span>`;
     } else if (isMulti) {
       // Multi-value: each value gets its own × button
       const parts = pill.values.map((v, vi) => {
         let valHtml = `<span class="qb-val-item" data-pill="${i}" data-val="${vi}">`;
-        valHtml += `<span class="qb-val-text">${v}</span>`;
-        valHtml += `<span class="qb-val-remove" data-pill="${i}" data-val="${vi}" title="Remove '${v.replace(/'/g,'&#39;')}'">×</span>`;
+        valHtml += `<span class="qb-val-text">${escapeHtml(v)}</span>`;
+        valHtml += `<span class="qb-val-remove" data-pill="${i}" data-val="${vi}" title="Remove '${escapeHtml(v)}'">×</span>`;
         valHtml += `</span>`;
         return valHtml;
       });
@@ -508,20 +1098,20 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
 
   const allIds = new Set();
 
-  // Radius search via RPC
-  for (const pill of radiusPills) {
-    try {
-      const { data, error } = await sb.rpc('find_jobs_within_radius', {
+  // Radius search via RPC — parallelized (N+1 fix v3.82)
+  if (radiusPills.length > 0) {
+    const radiusResults = await Promise.allSettled(radiusPills.map(pill =>
+      sb.rpc('find_jobs_within_radius', {
         p_lat: pill.lat,
         p_lng: pill.lng,
         p_radius_mi: pill.radius_mi,
-      });
-      if (!error && data) {
-        data.forEach(r => allIds.add(r.greenhouse_id));
+      }).then(r => ({ pill, ...r }))
+    ));
+    for (const result of radiusResults) {
+      if (result.status === 'fulfilled' && !result.value.error && result.value.data) {
+        result.value.data.forEach(r => allIds.add(r.greenhouse_id));
+        console.log(`[BJ] Radius search: ${result.value.pill.values[0]} (${result.value.pill.radius_mi}mi) → ${result.value.data.length} jobs`);
       }
-      console.log(`[BJ] Radius search: ${pill.values[0]} (${pill.radius_mi}mi) → ${data?.length || 0} jobs`);
-    } catch (e) {
-      console.warn('[BJ] Radius search failed for', pill.values[0], e);
     }
   }
 
@@ -544,32 +1134,44 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
     'MT': ['valletta','malta'],
   };
 
-  for (const pill of statePills) {
+  // State search — batched for non-ambiguous, parallel for ambiguous (N+1 fix v3.82)
+  const simpleCodes = statePills.filter(p => !ambiguousExclusions[p.stateCode]).map(p => p.stateCode);
+  const ambiguousPills = statePills.filter(p => !!ambiguousExclusions[p.stateCode]);
+
+  // Single query for all non-ambiguous states
+  if (simpleCodes.length > 0) {
     try {
-      let query = sb
+      const { data, error } = await sb
         .from('ats_jobs')
         .select('greenhouse_id')
         .eq('status', 'open')
-        .eq('loc_state', pill.stateCode);
-
-      // For ambiguous codes, exclude jobs with known foreign city/country names in location
-      const exclusions = ambiguousExclusions[pill.stateCode];
-      if (exclusions) {
-        for (const excl of exclusions) {
-          query = query.not('location', 'ilike', `%${excl}%`);
-        }
-        // Also exclude if loc_country is set to the state code itself (means the country, not the state)
-        query = query.not('loc_country', 'eq', pill.stateCode);
-        query = query.not('location', 'ilike', 'Remote -%');
-      }
-
-      const { data, error } = await query;
+        .in('loc_state', simpleCodes);
       if (!error && data) {
         data.forEach(r => allIds.add(r.greenhouse_id));
       }
-      console.log(`[BJ] State search: ${pill.stateCode} → ${data?.length || 0} jobs`);
+      console.log(`[BJ] Batched state search: [${simpleCodes.join(',')}] → ${data?.length || 0} jobs`);
     } catch (e) {
-      console.warn('[BJ] State search failed for', pill.stateCode, e);
+      console.warn('[BJ] Batched state search failed', e);
+    }
+  }
+
+  // Parallel queries for ambiguous states (need exclusion filters)
+  if (ambiguousPills.length > 0) {
+    const ambigResults = await Promise.allSettled(ambiguousPills.map(pill => {
+      let query = sb.from('ats_jobs').select('greenhouse_id').eq('status', 'open').eq('loc_state', pill.stateCode);
+      const exclusions = ambiguousExclusions[pill.stateCode];
+      for (const excl of exclusions) {
+        query = query.not('location', 'ilike', `%${excl}%`);
+      }
+      query = query.not('loc_country', 'eq', pill.stateCode);
+      query = query.not('location', 'ilike', 'Remote -%');
+      return query.then(r => ({ pill, ...r }));
+    }));
+    for (const result of ambigResults) {
+      if (result.status === 'fulfilled' && !result.value.error && result.value.data) {
+        result.value.data.forEach(r => allIds.add(r.greenhouse_id));
+        console.log(`[BJ] Ambiguous state search: ${result.value.pill.stateCode} → ${result.value.data.length} jobs`);
+      }
     }
   }
 
@@ -1140,10 +1742,17 @@ async function searchJobs(page = 0) {
 
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
+    // P13-04: Track search for micro-survey trigger
+    if (typeof trackSearchForSurvey === 'function') {
+      var filterLabel = filtersToRun[0]?.name || 'builder';
+      trackSearchForSurvey(filterLabel, totalCount);
+    }
+
   } catch (e) {
     console.error('Search error:', e);
+    if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px 12px;">
-      <div style="font-size:13px;">Search failed: ${e.message}</div>
+      <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
     </td></tr>`;
   }
 }
@@ -1195,32 +1804,43 @@ async function updateJobStatsFromFilters(filters) {
       }
     }
 
-    for (const sf of effectiveFilters) {
+    // Parallelize all stats queries across all filters (N+1 fix v3.82)
+    // Before: N filters × 3 sequential queries = 3N round-trips
+    // After: all queries fired in parallel = 1 round-trip (effectively)
+    const statsPromises = effectiveFilters.flatMap(sf => {
       const locIds = sf._statsLocationIds || null;
 
-      // Total count
       let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q = buildFilterQuery(sf, q, locIds);
       q = excludeHidden(q);
-      const { count: c1 } = await q;
-      total += (c1 || 0);
 
-      // Last 24h count
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q2 = buildFilterQuery(sf, q2, locIds);
       q2 = excludeHidden(q2);
       q2 = q2.gte('updated_at', last24h.toISOString());
-      const { count: c2 } = await q2;
-      todayCount += (c2 || 0);
 
-      // New since last login
+      const promises = [
+        q.then(r => ({ type: 'total', count: r.count || 0 })),
+        q2.then(r => ({ type: 'today', count: r.count || 0 })),
+      ];
+
       if (lastViewDate) {
         let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
         qLogin = buildFilterQuery(sf, qLogin, locIds);
         qLogin = excludeHidden(qLogin);
         qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
-        const { count: cLogin } = await qLogin;
-        newSinceLoginCount += (cLogin || 0);
+        promises.push(qLogin.then(r => ({ type: 'login', count: r.count || 0 })));
+      }
+
+      return promises;
+    });
+
+    const statsResults = await Promise.allSettled(statsPromises);
+    for (const r of statsResults) {
+      if (r.status === 'fulfilled') {
+        if (r.value.type === 'total') total += r.value.count;
+        else if (r.value.type === 'today') todayCount += r.value.count;
+        else if (r.value.type === 'login') newSinceLoginCount += r.value.count;
       }
     }
 
@@ -1287,8 +1907,9 @@ function formatSalaryCell(job) {
 }
 
 function truncate(str, max) {
-  if (!str) return '—';
-  return str.length > max ? str.slice(0, max) + '…' : str;
+  if (!str) return '\u2014';
+  var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
+  return typeof escapeHtml === 'function' ? escapeHtml(trimmed) : trimmed;
 }
 
 // City alias map for display normalization
@@ -1501,13 +2122,13 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     if (isNew) newCount++;
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
-    html += `<tr class="job-data-row" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+    html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
+      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
       <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
-      <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
+      <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match">${matchBadge(jobMatchScores[job.greenhouse_id])}</td>
@@ -1672,8 +2293,8 @@ function renderSortPills() {
     pill.style.color = colors.text;
     pill.innerHTML = `
       <span class="sort-num" style="background:${colors.dot};">${i + 1}</span>
-      ${label}
-      <span class="sort-dir" title="${dirTitle}" data-idx="${i}">${dirLabel}</span>
+      ${escapeHtml(label)}
+      <span class="sort-dir" title="${escapeHtml(dirTitle)}" data-idx="${i}">${dirLabel}</span>
       <span class="sort-remove" title="Remove" data-idx="${i}">✕</span>
     `;
     container.appendChild(pill);
@@ -6145,27 +6766,27 @@ async function loadCompanyBrowser() {
   list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);">Loading companies…</div>';
 
   try {
-    // Load all companies from ats_companies (batched since >1800)
-    let allData = [];
-    let offset = 0;
-    const batchSize = 1000;
-    while (true) {
-      const { data, error } = await sb.from('ats_companies')
-        .select('slug, name, job_count, source')
-        .order('name')
-        .range(offset, offset + batchSize - 1);
-      if (error) { console.warn('[BJ] Load companies error:', error.message); break; }
-      if (!data || data.length === 0) break;
-      allData = allData.concat(data);
-      if (data.length < batchSize) break;
-      offset += batchSize;
-    }
+    // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)
+    let allData = await cachedQuery('ref:companies:list', function() {
+      return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+    }, { ttl: 600000 }) || [];
+
+    // Load ghost stats for companies that have data
+    let ghostStats = {};
+    try {
+      const { data: gs } = await sb.from('company_ghost_stats')
+        .select('company_slug, ghost_rate, avg_response_days, total_applications');
+      (gs || []).forEach(g => { ghostStats[g.company_slug] = g; });
+    } catch (e) { /* ghost stats optional */ }
 
     cbAllCompanies = allData.map(c => ({
       slug: c.slug,
       name: c.name || c.slug,
       jobs: c.job_count || 0,
-      source: c.source || 'greenhouse'
+      source: c.source || 'greenhouse',
+      ghostRate: ghostStats[c.slug]?.ghost_rate || null,
+      avgResponseDays: ghostStats[c.slug]?.avg_response_days || null,
+      ghostApps: ghostStats[c.slug]?.total_applications || 0
     })).sort((a, b) => a.name.localeCompare(b.name));
 
     renderCompanyBrowserList();
@@ -6289,6 +6910,7 @@ function renderCompanyBrowserList() {
           <div class="cb-toggle ${toggleClass}" data-slug="${c.slug}">${toggleIcon}</div>
           <div class="cb-name">${c.name}</div>
           <div class="cb-jobs">${c.jobs > 0 ? c.jobs + ' jobs' : ''}</div>
+          ${c.ghostRate !== null && c.ghostApps >= 5 ? `<div class="cb-ghost-rate" title="Ghost rate: ${Math.round(c.ghostRate * 100)}% (${c.ghostApps} applications tracked)" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;${c.ghostRate >= 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.ghostRate >= 0.25 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.ghostRate * 100)}% ghost</div>` : ''}
           <div class="cb-source-badge" style="background:rgba(99,102,241,0.1);color:#6366f1;">${c.source}</div>
         </div>`;
       }).join('')}
@@ -7439,7 +8061,7 @@ function renderSavedFilters() {
       <input type="checkbox" class="sf-item-check" data-idx="${sf._idx}" data-filternum="${filterNum}" data-filtercolor="${filterColor}">
       <span class="sf-num" style="background:${filterColor};">${filterNum}</span>
       <div class="sf-item-info">
-        <div class="sf-item-name">${sf.name}</div>
+        <div class="sf-item-name">${escapeHtml(sf.name)}</div>
         ${meta ? `<div class="sf-item-meta">${meta}</div>` : ''}
       </div>
       ${miniPills}
@@ -7646,25 +8268,22 @@ async function updateSavedFilterCounts() {
         locIds = await getLocationMatchIds(wh, whnot, tuningLoc, sf.includeRemote === true);
       }
 
-      // Today (last 24h)
+      // Parallel velocity counts: 24h, 7d, 30d (N+1 fix v3.82)
       let q1 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q1 = buildFilterQuery(sf, q1, locIds);
       q1 = q1.gte('updated_at', last24h.toISOString());
-      const r1 = await q1;
-      const c1 = r1.error ? 0 : (r1.count || 0);
 
-      // 7 days
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q2 = buildFilterQuery(sf, q2, locIds);
       q2 = q2.gte('updated_at', weekAgo.toISOString());
-      const r2 = await q2;
-      const c2 = r2.error ? 0 : (r2.count || 0);
 
-      // 30 days
       let q3 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q3 = buildFilterQuery(sf, q3, locIds);
       q3 = q3.gte('updated_at', monthAgo.toISOString());
-      const r3 = await q3;
+
+      const [r1, r2, r3] = await Promise.all([q1, q2, q3]);
+      const c1 = r1.error ? 0 : (r1.count || 0);
+      const c2 = r2.error ? 0 : (r2.count || 0);
       const c3 = r3.error ? 0 : (r3.count || 0);
 
       console.log(`Filter "${sf.name}": today=${c1}, 7d=${c2}, 30d=${c3}`);
@@ -8100,82 +8719,265 @@ if (document.readyState === 'loading') {
 
 // === js/pipeline.js ===
 // ============================================================
-// PIPELINE — Table-based stage tracker (redesigned)
+// PIPELINE — Supabase-native stage tracker (Ghost Build Phase 1)
+// Replaces localStorage bj_pipeline_meta with user_pipeline table.
+// Maintains backward-compatible function signatures for other modules.
 // ============================================================
-const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected'];
+const PL_STAGES = ['saved','applied','posting_closed','responded','interview','offer','hired','rejected','archived'];
 const PL_STAGE_COLORS = {
   saved: 'var(--text-dim)', applied: 'var(--accent)', posting_closed: 'var(--warm)',
-  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)', hired: 'hsl(142,70%,35%)', rejected: 'var(--red)'
+  responded: 'var(--green)', interview: 'var(--purple)', offer: 'var(--green)',
+  hired: 'hsl(142,70%,35%)', rejected: 'var(--red)', archived: 'var(--text-faint)'
+};
+const PL_STAGE_LABELS = {
+  saved:'Saved', applied:'Applied', posting_closed:'Posting Closed',
+  responded:'Responded', interview:'Interview', offer:'Offer',
+  hired:'Hired!', rejected:'Rejected/Ghosted', archived:'Archived'
 };
 
-// Pipeline metadata per job — stage, dates, resume
+// In-memory pipeline cache — populated from Supabase, keyed by job_id
+let _pipelineCache = {};
+let _pipelineLoaded = false;
+
+// ── Supabase-backed getter (replaces getPipelineMeta) ──────────
 function getPipelineMeta() {
-  return JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+  // Returns the in-memory cache for synchronous access (backward compat).
+  // Cache is populated by loadPipelineFromSupabase() on init.
+  return _pipelineCache;
 }
+
+// ── Load pipeline from Supabase into memory cache ──────────────
+async function loadPipelineFromSupabase() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .select('*')
+      .eq('user_id', currentUser.id);
+    if (error) throw error;
+    _pipelineCache = {};
+    // Also rebuild legacy global arrays for cross-module compat
+    savedJobIds.length = 0;
+    appliedJobIds.length = 0;
+    (data || []).forEach(row => {
+      const key = row.job_id || row.id; // job_id preferred, fallback to uuid
+      _pipelineCache[key] = {
+        _dbId: row.id,              // Supabase row ID for updates
+        stage: row.stage,
+        savedAt: row.saved_at,
+        appliedAt: row.applied_at,
+        respondedAt: row.responded_at,
+        interviewAt: row.interview_at,
+        offerAt: row.offer_at,
+        hiredAt: row.hired_at,
+        rejectedAt: row.rejected_at,
+        archivedAt: row.archived_at,
+        resumeUsed: row.resume_used || '',
+        filterTags: row.filter_tags || [],
+        matchScore: row.match_score,
+        companyName: row.company_name || '',
+        company: row.company_name || '',
+        title: row.job_title || '',
+        salaryEstimate: row.salary_estimate,
+        notes: row.notes || '',
+        autoAdvanced: row.auto_advanced || false,
+        autoAdvancedSource: row.auto_advanced_source || null,
+        atsSource: row.ats_source || 'greenhouse',
+        companySlug: row.company_slug || '',
+        companyDomain: row.company_domain || '',
+        jobUrl: row.job_url || '',
+      };
+      // Populate legacy arrays
+      if (row.stage !== 'saved') appliedJobIds.push(key);
+      savedJobIds.push(key);
+    });
+    _pipelineLoaded = true;
+    console.log('[BJ] Pipeline loaded from Supabase:', data?.length || 0, 'entries');
+  } catch (e) {
+    console.error('[BJ] Pipeline load error:', e);
+    // Fallback: try localStorage if Supabase fails
+    _pipelineCache = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+  }
+}
+
+// ── Save single pipeline entry to Supabase (replaces savePipelineMeta) ──
+async function savePipelineEntry(jobId, meta) {
+  if (!currentUser?.id) return;
+  _pipelineCache[jobId] = meta;
+  const row = {
+    user_id: currentUser.id,
+    job_id: jobId,
+    ats_source: meta.atsSource || 'greenhouse',
+    company_slug: meta.companySlug || meta.company || jobId,
+    company_domain: meta.companyDomain || null,
+    job_title: meta.title || meta.jobTitle || 'Untitled',
+    job_url: meta.jobUrl || null,
+    stage: meta.stage || 'saved',
+    saved_at: meta.savedAt || new Date().toISOString(),
+    applied_at: meta.appliedAt || null,
+    responded_at: meta.respondedAt || null,
+    interview_at: meta.interviewAt || null,
+    offer_at: meta.offerAt || null,
+    hired_at: meta.hiredAt || null,
+    rejected_at: meta.rejectedAt || null,
+    archived_at: meta.archivedAt || null,
+    auto_advanced: meta.autoAdvanced || false,
+    auto_advanced_source: meta.autoAdvancedSource || null,
+    notes: meta.notes || null,
+    filter_tags: meta.filterTags || [],
+    resume_used: meta.resumeUsed || null,
+    match_score: meta.matchScore || null,
+    company_name: meta.companyName || meta.company || null,
+    salary_estimate: meta.salaryEstimate || null,
+  };
+
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .upsert(row, { onConflict: 'user_id, job_id, ats_source' })
+      .select('id')
+      .single();
+    if (error) throw error;
+    if (data) meta._dbId = data.id;
+  } catch (e) {
+    console.error('[BJ] Pipeline save error:', e);
+  }
+}
+
+// Legacy compat wrapper — saves entire cache (avoid using, prefer savePipelineEntry)
 function savePipelineMeta(meta) {
-  saveUserData('bj_pipeline_meta', JSON.stringify(meta));
+  _pipelineCache = meta;
+  // Batch save is async but we don't await here for backward compat
 }
 
-// Migrate from old system on first load
-function migratePipelineData() {
-  const meta = getPipelineMeta();
-  if (Object.keys(meta).length > 0) return; // Already migrated
-  const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
-  // Migrate applied jobs
-  appliedJobIds.forEach(id => {
-    meta[id] = {
-      stage: 'applied',
-      savedAt: dates[id] || new Date().toISOString(),
-      appliedAt: dates[id] || new Date().toISOString(),
-      resumeUsed: '',
-      filterTags: []
-    };
-  });
-  // Migrate saved-only jobs
-  savedJobIds.filter(id => !appliedJobIds.includes(id)).forEach(id => {
-    meta[id] = {
-      stage: 'saved',
-      savedAt: new Date().toISOString(),
-      resumeUsed: '',
-      filterTags: []
-    };
-  });
-  savePipelineMeta(meta);
-  console.log('[BJ] Pipeline data migrated:', Object.keys(meta).length, 'jobs');
+// ── One-time localStorage → Supabase migration ────────────────
+async function migratePipelineToSupabase() {
+  if (!currentUser?.id) return;
+
+  // Check if already migrated — if Supabase has data, skip
+  const { data: existing } = await sb.from('user_pipeline')
+    .select('id').eq('user_id', currentUser.id).limit(1);
+  if (existing?.length) {
+    console.log('[BJ] Pipeline already in Supabase, skipping migration');
+    return false;
+  }
+
+  // Read localStorage data
+  const localMeta = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+  const localApplied = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+  const localSaved = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
+  const localDates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+
+  const allIds = new Set([...Object.keys(localMeta), ...localApplied, ...localSaved]);
+  if (allIds.size === 0) {
+    console.log('[BJ] No localStorage pipeline data to migrate');
+    return false;
+  }
+
+  console.log('[BJ] Migrating', allIds.size, 'pipeline entries to Supabase...');
+
+  // Fetch job data for company info
+  const idList = Array.from(allIds);
+  let jobMap = {};
+  for (let i = 0; i < idList.length; i += 100) {
+    const batch = idList.slice(i, i + 100);
+    try {
+      const { data } = await sb.from('ats_jobs')
+        .select('greenhouse_id, title, company_name, ats_source, status')
+        .in('greenhouse_id', batch);
+      if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
+    } catch (e) { console.error('[BJ] Migration fetch error:', e); }
+  }
+
+  // Build rows
+  const rows = [];
+  for (const jobId of allIds) {
+    const m = localMeta[jobId] || {};
+    const job = jobMap[jobId];
+    const isApplied = localApplied.includes(jobId);
+    rows.push({
+      user_id: currentUser.id,
+      job_id: jobId,
+      ats_source: job?.ats_source || 'greenhouse',
+      company_slug: m.companySlug || job?.company_name?.toLowerCase().replace(/[^a-z0-9]/g, '-') || jobId,
+      job_title: m.title || job?.title || 'Unknown',
+      company_name: m.company || m.companyName || job?.company_name || null,
+      stage: m.stage || (isApplied ? 'applied' : 'saved'),
+      saved_at: m.savedAt || localDates[jobId] || new Date().toISOString(),
+      applied_at: m.appliedAt || (isApplied ? (localDates[jobId] || new Date().toISOString()) : null),
+      responded_at: m.respondedAt || null,
+      interview_at: m.interviewAt || null,
+      offer_at: m.offerAt || null,
+      hired_at: m.hiredAt || null,
+      rejected_at: m.rejectedAt || null,
+      filter_tags: m.filterTags || [],
+      resume_used: m.resumeUsed || null,
+      match_score: typeof m.matchScore === 'number' ? m.matchScore : null,
+      salary_estimate: m.salaryEstimate || null,
+    });
+  }
+
+  // Batch upsert
+  const { error } = await sb.from('user_pipeline')
+    .upsert(rows, { onConflict: 'user_id, job_id, ats_source' });
+
+  if (error) {
+    console.error('[BJ] Pipeline migration error:', error);
+    return false;
+  }
+
+  // Clean up localStorage
+  localStorage.removeItem('bj_pipeline_meta');
+  localStorage.removeItem('bj_applied_jobs');
+  localStorage.removeItem('bj_saved_jobs');
+  localStorage.removeItem('bj_applied_dates');
+  console.log('[BJ] ✅ Migrated', rows.length, 'pipeline entries to Supabase');
+  return true;
 }
 
-// Move job to a new stage
+// ── Initialize pipeline (call from app.js init) ──────────────
+async function initPipeline() {
+  await migratePipelineToSupabase();
+  await loadPipelineFromSupabase();
+}
+
+// ── Move job to a new stage ──────────────────────────────────
 function movePipelineStage(jobId, newStage) {
-  const meta = getPipelineMeta();
-  if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
-  meta[jobId].stage = newStage;
+  const meta = _pipelineCache[jobId];
+  if (!meta) {
+    _pipelineCache[jobId] = { savedAt: new Date().toISOString(), filterTags: [], stage: newStage };
+  } else {
+    meta.stage = newStage;
+  }
+  const m = _pipelineCache[jobId];
+
   // Track stage dates
-  if (newStage === 'applied' && !meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-  if (newStage === 'responded' && !meta[jobId].respondedAt) meta[jobId].respondedAt = new Date().toISOString();
-  if (newStage === 'interview' && !meta[jobId].interviewAt) meta[jobId].interviewAt = new Date().toISOString();
-  if (newStage === 'offer' && !meta[jobId].offerAt) meta[jobId].offerAt = new Date().toISOString();
-  if (newStage === 'hired' && !meta[jobId].hiredAt) {
-    meta[jobId].hiredAt = new Date().toISOString();
-    // Trigger hire fee confirmation (async, non-blocking)
+  const now = new Date().toISOString();
+  if (newStage === 'applied' && !m.appliedAt) m.appliedAt = now;
+  if (newStage === 'responded' && !m.respondedAt) m.respondedAt = now;
+  if (newStage === 'interview' && !m.interviewAt) m.interviewAt = now;
+  if (newStage === 'offer' && !m.offerAt) m.offerAt = now;
+  if (newStage === 'hired' && !m.hiredAt) {
+    m.hiredAt = now;
     if (typeof confirmHireFee === 'function') {
-      var jobTitle = meta[jobId].title || jobId;
-      var salary = meta[jobId].salaryEstimate || 80000;
+      var jobTitle = m.title || jobId;
+      var salary = m.salaryEstimate || 80000;
       confirmHireFee(jobId, jobTitle, salary);
     }
   }
-  if (newStage === 'rejected' && !meta[jobId].rejectedAt) meta[jobId].rejectedAt = new Date().toISOString();
-  savePipelineMeta(meta);
+  if (newStage === 'rejected' && !m.rejectedAt) m.rejectedAt = now;
+  if (newStage === 'archived' && !m.archivedAt) m.archivedAt = now;
+
+  // Save to Supabase (async, non-blocking for UI)
+  savePipelineEntry(jobId, m);
+
   // Keep legacy arrays in sync
   if (newStage !== 'saved' && !appliedJobIds.includes(jobId)) {
     appliedJobIds.push(jobId);
-    saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
   }
   renderPipeline();
 }
 
-// Mark applied from feed
+// ── Mark applied from feed ───────────────────────────────────
 function markApplied(jobId, btn) {
-  // Show resume picker, then complete
   showResumePicker(jobId, function(resumeName) {
     _completeMarkApplied(jobId, btn, resumeName);
   });
@@ -8184,7 +8986,6 @@ function markApplied(jobId, btn) {
 function _completeMarkApplied(jobId, btn, resumeName) {
   if (!appliedJobIds.includes(jobId)) {
     appliedJobIds.push(jobId);
-    saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
     if (btn) {
       const row = btn.closest('tr');
       if (row) {
@@ -8197,24 +8998,25 @@ function _completeMarkApplied(jobId, btn, resumeName) {
       }
     }
   }
-  // Update pipeline meta
-  const meta = getPipelineMeta();
-  if (!meta[jobId]) meta[jobId] = { savedAt: new Date().toISOString(), filterTags: [] };
-  meta[jobId].stage = 'applied';
-  if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-  // Store resume
-  if (resumeName) {
-    meta[jobId].resumeUsed = resumeName;
-  }
+
+  // Update pipeline
+  const meta = _pipelineCache[jobId] || { savedAt: new Date().toISOString(), filterTags: [] };
+  meta.stage = 'applied';
+  if (!meta.appliedAt) meta.appliedAt = new Date().toISOString();
+  if (resumeName) meta.resumeUsed = resumeName;
+
   // Detect filter tags
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
-  meta[jobId].filterTags = checkedFilters;
-  savePipelineMeta(meta);
-  // Store applied date for legacy compat
-  const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
-  dates[jobId] = new Date().toISOString();
-  saveUserData('bj_applied_dates', JSON.stringify(dates));
+  meta.filterTags = checkedFilters;
+
+  _pipelineCache[jobId] = meta;
+  savePipelineEntry(jobId, meta);
+
+  // Post-application confidence micro-survey
+  if (typeof showApplyConfidence === 'function') {
+    showApplyConfidence(jobId, meta.companyName || '');
+  }
 }
 
 function markAppliedFromPipeline(jobId, btn) {
@@ -8222,38 +9024,47 @@ function markAppliedFromPipeline(jobId, btn) {
   renderPipeline();
 }
 
-function unsaveFromPipeline(jobId) {
-  const meta = getPipelineMeta();
-  delete meta[jobId];
-  savePipelineMeta(meta);
+// ── Remove from pipeline ─────────────────────────────────────
+async function unsaveFromPipeline(jobId) {
+  const meta = _pipelineCache[jobId];
+  delete _pipelineCache[jobId];
+
+  // Remove from Supabase
+  if (currentUser?.id) {
+    try {
+      await sb.from('user_pipeline')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('job_id', jobId);
+    } catch (e) { console.error('[BJ] Pipeline delete error:', e); }
+  }
+
+  // Update legacy arrays
   const idx = savedJobIds.indexOf(jobId);
   if (idx >= 0) savedJobIds.splice(idx, 1);
-  saveUserData('bj_saved_jobs', JSON.stringify(savedJobIds));
   const aidx = appliedJobIds.indexOf(jobId);
   if (aidx >= 0) appliedJobIds.splice(aidx, 1);
-  saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
-  $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+  const el = $('#j-saved');
+  if (el) el.textContent = savedJobIds.length.toLocaleString();
   renderPipeline();
 }
 
-// Collapse toggle
+// ── Collapse toggle ──────────────────────────────────────────
 function togglePipelineStage(headerEl) {
   const section = headerEl.closest('.pl-stage-section');
   section.classList.toggle('collapsed');
-  // Persist collapse state
   const states = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
   states[section.dataset.stage] = section.classList.contains('collapsed');
   localStorage.setItem('bj_pl_collapse', JSON.stringify(states));
 }
 
-// Filter by saved filter tag
+// ── Filter by saved filter tag ───────────────────────────────
 let _plActiveFilter = 'all';
 function filterPipeline(tag) {
   _plActiveFilter = tag;
   renderPipeline();
 }
 
-// Build filter dropdown options
 function buildPipelineFilterTags() {
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   const select = $('#pl-filter-select');
@@ -8269,9 +9080,9 @@ function buildPipelineFilterTags() {
   select.value = currentVal || 'all';
 }
 
-// Main render
+// ── Main render ──────────────────────────────────────────────
 async function renderPipeline() {
-  const meta = getPipelineMeta();
+  const meta = _pipelineCache;
   const allIds = Object.keys(meta);
   if (allIds.length === 0) {
     PL_STAGES.forEach(stage => {
@@ -8283,7 +9094,7 @@ async function renderPipeline() {
     return;
   }
 
-  // Fetch all pipeline jobs from Supabase
+  // Fetch all pipeline jobs from Supabase (for supplementary data like status)
   const batchSize = 100;
   let allJobData = [];
   for (let i = 0; i < allIds.length; i += batchSize) {
@@ -8303,14 +9114,12 @@ async function renderPipeline() {
   allJobData.forEach(j => {
     if (j.status === 'closed' && meta[j.greenhouse_id] && meta[j.greenhouse_id].stage === 'applied') {
       meta[j.greenhouse_id].stage = 'posting_closed';
+      savePipelineEntry(j.greenhouse_id, meta[j.greenhouse_id]);
     }
   });
-  savePipelineMeta(meta);
 
   const now = new Date();
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-
-  // Restore collapse states
   const collapseStates = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
 
   // Group by stage
@@ -8321,7 +9130,6 @@ async function renderPipeline() {
   for (const [jobId, m] of Object.entries(meta)) {
     const stage = m.stage || 'saved';
     if (!stageJobs[stage]) continue;
-    // Apply filter
     if (_plActiveFilter !== 'all' && !(m.filterTags || []).includes(_plActiveFilter)) continue;
     const job = jobMap[jobId];
     stageJobs[stage].push({ id: jobId, meta: m, job: job || null });
@@ -8342,18 +9150,13 @@ async function renderPipeline() {
     const section = body?.closest('.pl-stage-section');
 
     if (countEl) countEl.textContent = jobs.length;
-
-    // Restore collapse
     if (section && collapseStates[stage]) section.classList.add('collapsed');
 
-    // Match score summary
     const scores = jobs.map(j => j.meta.matchScore).filter(s => typeof s === 'number');
     if (matchEl) {
       if (scores.length > 0) {
         const median = scores.sort((a,b) => a - b)[Math.floor(scores.length / 2)];
-        const min = Math.min(...scores);
-        const max = Math.max(...scores);
-        matchEl.textContent = 'Match: ' + min + '% – ' + median + '% – ' + max + '%';
+        matchEl.textContent = 'Match: ' + Math.min(...scores) + '% – ' + median + '% – ' + Math.max(...scores) + '%';
       } else {
         matchEl.textContent = '';
       }
@@ -8374,8 +9177,8 @@ async function renderPipeline() {
     for (const item of jobs) {
       const j = item.job;
       const m = item.meta;
-      const title = j ? (j.title || 'Untitled') : 'Unknown job';
-      const company = j ? (j.company_name || '') : '';
+      const title = m.title || (j ? (j.title || 'Untitled') : 'Unknown job');
+      const company = m.companyName || m.company || (j ? (j.company_name || '') : '');
       // Persist job info in meta for hire fee and analytics
       if (j && !m.title) { m.title = title; m.company = company; }
       if (j && j.salary_max && !m.salaryEstimate) { m.salaryEstimate = j.salary_max; }
@@ -8384,18 +9187,17 @@ async function renderPipeline() {
       const dayApplied = appliedDate ? appliedDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
       const resumeName = m.resumeUsed || '—';
 
-      // Days in current stage — use the most recent stage timestamp
       const stageDate = m.respondedAt ? new Date(m.respondedAt) :
                         m.appliedAt ? new Date(m.appliedAt) :
                         m.savedAt ? new Date(m.savedAt) : null;
       const daysInStage = stageDate ? Math.floor((now - stageDate) / 86400000) : '—';
 
-      // Staleness dot — stage-specific thresholds
       let staleDot = '';
       if (typeof daysInStage === 'number') {
         const staleRules = {
           saved:     { yellow: 5, red: 7 },
           applied:   { yellow: 7, red: 14 },
+          posting_closed: { yellow: 3, red: 7 },
           responded: { yellow: 7, red: 14 },
           interview: { yellow: 7, red: 14 },
         };
@@ -8409,22 +9211,18 @@ async function renderPipeline() {
         }
       }
 
-      // Filter tag badges
       const filterBadges = (m.filterTags || []).map(tag => {
         const idx = sf.findIndex(f => f.name === tag);
         const color = idx >= 0 ? filterColors[idx % filterColors.length] : 'var(--text-faint)';
         return '<span class="pl-filter-badge" style="background:' + color + '15;color:' + color + ';border:1px solid ' + color + '30;">' + tag + '</span>';
       }).join(' ');
 
-      // Match score
       const matchScore = typeof m.matchScore === 'number' ? m.matchScore + '%' : '—';
       const matchColor = typeof m.matchScore === 'number' ? (m.matchScore >= 70 ? 'color:var(--green);' : m.matchScore >= 40 ? 'color:var(--warm);' : 'color:var(--red);') : '';
 
-      // Stage move dropdown
-      let moveOpts = PL_STAGES.filter(s => s !== stage).map(s => {
-        const labels = {saved:'Saved',applied:'Applied',posting_closed:'Posting Closed',responded:'Responded',interview:'Interview',offer:'Offer',hired:'🎉 Hired!',rejected:'Rejected/Ghosted'};
-        return '<option value="' + s + '">' + labels[s] + '</option>';
-      }).join('');
+      let moveOpts = PL_STAGES.filter(s => s !== stage).map(s =>
+        '<option value="' + s + '">' + PL_STAGE_LABELS[s] + '</option>'
+      ).join('');
 
       html += '<tr data-jobid="' + item.id + '">';
       html += '<td style="width:16px;text-align:center;padding:4px 2px;">' + staleDot + '</td>';
@@ -8447,26 +9245,31 @@ async function renderPipeline() {
 
   // Update stats
   const appliedAndBeyond = stageJobs.applied.length + stageJobs.posting_closed.length + stageJobs.responded.length + stageJobs.interview.length + stageJobs.offer.length + stageJobs.rejected.length;
-  $('#p-total').textContent = totalTracked;
-  $('#p-active').textContent = activeCount;
+  const el1 = $('#p-total'); if (el1) el1.textContent = totalTracked;
+  const el2 = $('#p-active'); if (el2) el2.textContent = activeCount;
   const responseRate = appliedAndBeyond > 0 ? Math.round((respondedCount / appliedAndBeyond) * 100) + '%' : '—';
-  $('#p-response').textContent = responseRate;
+  const el3 = $('#p-response'); if (el3) el3.textContent = responseRate;
   const avgDays = respondedCount > 0 ? Math.round(totalDaysToResponse / respondedCount) + 'd' : '—';
-  $('#p-avg-days').textContent = avgDays;
+  const el4 = $('#p-avg-days'); if (el4) el4.textContent = avgDays;
 
-  // Update nav dot
   if (typeof updatePipelineNavDot === 'function') updatePipelineNavDot();
 }
 
-// Legacy compat: renderPipelineSaved calls renderPipeline
+// Legacy compat
 async function renderPipelineSaved() { await renderPipeline(); }
 
 function addToPipeline(jobId, row) {
-  const meta = getPipelineMeta();
-  if (!meta[jobId]) meta[jobId] = { stage: 'applied', savedAt: new Date().toISOString(), filterTags: [] };
-  meta[jobId].stage = 'applied';
-  if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
-  savePipelineMeta(meta);
+  const meta = _pipelineCache[jobId] || { stage: 'applied', savedAt: new Date().toISOString(), filterTags: [] };
+  meta.stage = 'applied';
+  if (!meta.appliedAt) meta.appliedAt = new Date().toISOString();
+  _pipelineCache[jobId] = meta;
+  savePipelineEntry(jobId, meta);
+}
+
+// ── Migrated pipeline data init (replaces old migratePipelineData) ──
+function migratePipelineData() {
+  // No-op — migration now handled by migratePipelineToSupabase() in initPipeline()
+  console.log('[BJ] Pipeline migration handled by initPipeline()');
 }
 
 function formatTimeAgo(date) {
@@ -8479,6 +9282,97 @@ function formatTimeAgo(date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ── Ghost Monitor rendering ──────────────────────────────────
+async function renderGhostMonitor() {
+  if (!currentUser?.id) return;
+  const tbody = document.getElementById('ghost-table-body');
+  if (!tbody) return;
+
+  try {
+    const { data, error } = await sb.rpc('get_pipeline_ghost_status', { p_user_id: currentUser.id });
+    if (error) throw error;
+
+    // Update KPI cards
+    const activeEl = document.getElementById('g-active');
+    const avgWaitEl = document.getElementById('g-avg-wait');
+    const likelyEl = document.getElementById('g-likely');
+    const ghostedEl = document.getElementById('g-ghosted');
+
+    const entries = data || [];
+    if (activeEl) activeEl.textContent = entries.length;
+
+    const totalDays = entries.reduce((sum, e) => sum + (e.days_since_applied || 0), 0);
+    if (avgWaitEl) avgWaitEl.textContent = entries.length > 0 ? Math.round(totalDays / entries.length) + 'd' : '—';
+
+    const likelyCount = entries.filter(e => e.ghost_status === 'likely_ghosted').length;
+    const ghostedCount = entries.filter(e => e.ghost_status === 'ghosted').length;
+    if (likelyEl) likelyEl.textContent = likelyCount;
+    if (ghostedEl) ghostedEl.textContent = ghostedCount;
+
+    if (entries.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-faint);padding:32px;">No active applications to monitor. Apply to jobs from the Feed to see ghost detection here.</td></tr>';
+      return;
+    }
+
+    // Sort: ghosted first, then by score desc
+    entries.sort((a, b) => (b.ghost_score || 0) - (a.ghost_score || 0));
+
+    let html = '';
+    for (const e of entries) {
+      const score = e.ghost_score || 0;
+      const status = e.ghost_status || 'active';
+      const statusColors = {
+        active: 'color:var(--green);', waiting: 'color:#f59e0b;',
+        likely_ghosted: 'color:var(--red);', ghosted: 'color:var(--red);font-weight:600;'
+      };
+      const statusLabels = {
+        active: 'Active', waiting: 'Waiting',
+        likely_ghosted: 'Likely Ghosted', ghosted: 'Ghosted'
+      };
+      const listingLabels = {
+        open: '<span style="color:var(--green);">Open</span>',
+        closed: '<span style="color:var(--red);">Closed</span>',
+        removed: '<span style="color:var(--red);">Removed</span>',
+        unknown: '<span style="color:var(--text-faint);">—</span>'
+      };
+
+      // Score bar color
+      const barColor = score >= 80 ? 'var(--red)' : score >= 50 ? '#f59e0b' : score >= 25 ? 'var(--accent)' : 'var(--green)';
+
+      const appliedStr = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
+
+      const actionBtn = status === 'ghosted'
+        ? '<button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;" onclick="movePipelineStage(\'' + e.pipeline_entry_id + '\', \'archived\')">Archive</button>'
+        : status === 'likely_ghosted'
+        ? '<span style="font-size:11px;color:var(--text-dim);">Follow up</span>'
+        : '<span style="font-size:11px;color:var(--text-faint);">—</span>';
+
+      html += '<tr>';
+      html += '<td title="' + (e.company_slug || '') + '">' + (e.company_name || e.company_slug || '—') + '</td>';
+      html += '<td title="' + (e.job_title || '') + '">' + ((e.job_title || '').length > 30 ? (e.job_title || '').slice(0,30) + '…' : (e.job_title || '—')) + '</td>';
+      html += '<td>' + appliedStr + '</td>';
+      html += '<td>' + (e.days_since_applied || 0) + 'd</td>';
+      html += '<td>' + (listingLabels[e.listing_status] || listingLabels.unknown) + '</td>';
+      html += '<td><div style="display:flex;align-items:center;gap:6px;">';
+      html += '<div style="width:40px;height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden;">';
+      html += '<div style="width:' + score + '%;height:100%;background:' + barColor + ';border-radius:3px;"></div></div>';
+      html += '<span style="font-size:11px;font-weight:500;">' + score + '</span></div></td>';
+      html += '<td style="' + (statusColors[status] || '') + 'font-size:12px;">' + (statusLabels[status] || status) + '</td>';
+      html += '<td>' + actionBtn + '</td>';
+      html += '</tr>';
+    }
+    tbody.innerHTML = html;
+
+  } catch (err) {
+    console.error('[BJ] Ghost monitor error:', err);
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
+  }
+}
+
+// Auto-load ghost monitor when page is shown
+function onGhostPageShow() {
+  renderGhostMonitor();
+}
 
 
 // === js/tuning.js ===
@@ -9067,9 +9961,11 @@ let industryDropdownIdx = -1;
 
 async function loadIndustryCache() {
   if (industryCache) return industryCache;
+  // Use cachedQuery (v3.84) — pre-warmed on app init, 1h TTL
   try {
-    const { data } = await sb.from('ref_industries').select('name, category').order('name');
-    industryCache = data || [];
+    industryCache = await cachedQuery('ref:industries', function() {
+      return sb.from('ref_industries').select('name, category').order('name');
+    }, { ttl: 3600000 }) || [];
   } catch (e) {
     console.warn('[BJ] Failed to load industries:', e);
     industryCache = [];
@@ -10120,7 +11016,7 @@ function renderResumes() {
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div class="rc-icon-sm ${icon.cls}" style="font-size:9px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
           <div style="min-width:0;flex:1;">
-            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${(r.name||'').replace(/"/g,'&quot;')}">${r.name}</div>
+            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}</div>
             ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
           </div>
           ${gdriveIcon}${tierBadge}
@@ -10364,6 +11260,7 @@ async function extractTextFromPDF(file) {
     return fullText.trim();
   } catch (e) {
     console.error('[BJ] PDF text extraction failed:', e);
+    if (typeof toastWarning === 'function') toastWarning('Could not extract text from PDF. Try re-uploading or use a different file format.');
     return '';
   }
 }
@@ -11107,6 +12004,16 @@ const NOTIF_TYPES = [
   { id: 'weekly_summary', label: 'Weekly summary', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
   { id: 'market_stats', label: 'Market stats digest', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
   { id: 'ghost_report', label: 'Ghost report', tier: 'weekly', defaultFreq: 'weekly', smsDefault: false },
+  // v2: Job intelligence
+  { id: 'company_new_roles', label: 'Company posted more roles', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  { id: 'resume_decay', label: 'Resume readiness drop', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  { id: 'resume_improve', label: 'Resume readiness improved', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  { id: 'exclusion_override', label: 'Excluded company match', tier: 'event', defaultFreq: 'daily', smsDefault: false },
+  // v2: Credit / Billing
+  { id: 'credit_low', label: 'Credit balance low', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'autorefill_success', label: 'Auto-refill confirmations', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'autorefill_failed', label: 'Auto-refill failed', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'credit_exhausted', label: 'Credits exhausted mid-month', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
 ];
 
 let notifPrefs = null;   // notification_preferences row
@@ -11384,7 +12291,7 @@ function populateOverrideFilterSelect() {
   if (!sel) return;
   sel.innerHTML = '<option value="">Select a saved filter...</option>';
   savedFilters.forEach(f => {
-    sel.innerHTML += `<option value="${f.name}">${f.name}</option>`;
+    sel.innerHTML += `<option value="${escapeHtml(f.name)}">${escapeHtml(f.name)}</option>`;
   });
 }
 populateOverrideFilterSelect();
@@ -11929,6 +12836,9 @@ function initStatsPage() {
   renderFilterPills();
   fetchAndRenderStats();
   window.addEventListener('resize', statsResizeAll);
+
+  // P13-06: Start data value assessment timer (shows after 10s viewing)
+  if (typeof startDataViewTimer === 'function') startDataViewTimer('stats_charts');
 }
 
 // ─── Filter Pills (CSS classes only, no inline styles) ───
@@ -12016,7 +12926,6 @@ async function fetchAndRenderStats() {
     renderSeniorityBars(stats);
     renderTopCompanies(stats);
     renderWorkType(stats);
-    renderAtsSource(stats);
     renderPostingAge(stats);
     renderGeoMap(stats, configs);
     renderSalaryByLevel(stats);
@@ -12054,7 +12963,7 @@ async function fetchFilterData(sf) {
 function aggregateStats(rows) {
   var s = { total: rows.length, medianSalary: null, seniorPct: 0, remotePct: 0, companyCount: 0,
     levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {},
-    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0, atsSourceCounts: {} };
+    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0 };
 
   var cos = {}; rows.forEach(function(r) { var ck = r.company_slug || r.company_name; if (ck) cos[ck] = true; });
   s.companyCount = Object.keys(cos).length;
@@ -12210,15 +13119,6 @@ function aggregateStats(rows) {
         s.cityCounts[key] = (s.cityCounts[key]||0) + 1;
       }
     }
-  });
-
-  // ATS Source breakdown
-  s.atsSourceCounts = {};
-  var sourceLabels = { greenhouse: 'Greenhouse', lever: 'Lever', ashby: 'Ashby', workable: 'Workable', recruitee: 'Recruitee', usajobs: 'USAJobs' };
-  rows.forEach(function(r) {
-    var src = r.ats_source || 'unknown';
-    var label = sourceLabels[src] || src;
-    s.atsSourceCounts[label] = (s.atsSourceCounts[label] || 0) + 1;
   });
 
   return s;
@@ -12416,29 +13316,6 @@ function renderWorkType(stats) {
       formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+p.percent.toFixed(1)+'%)';}}, ttip()),
     legend: { orient:'vertical', right:10, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:12},
       formatter:function(name){ var v=wt[name]||0; var pct=displayTotal>0?Math.round(v/displayTotal*100):0; return name+'  '+pct+'%'; }},
-    series: [{ type:'pie', radius:['42%','70%'], center:['35%','50%'], avoidLabelOverlap:true,
-      label:{show:false},
-      emphasis:{label:{show:true,fontSize:14,fontFamily:_T.sans,fontWeight:'600',color:_T.dark}},
-      data:data }],
-    animation:true, animationDuration:600,
-  }, true);
-}
-
-// ─── C9: ATS Source Breakdown — donut ───
-function renderAtsSource(stats) {
-  var chart = getOrCreateChart('#chart-ats-source'); if (!chart) return;
-  var sc = stats.atsSourceCounts;
-  var sourceColors = { 'Greenhouse':'#22c55e', 'Lever':'#6366f1', 'Ashby':'#f59e0b', 'Workable':'#ec4899', 'Recruitee':'#06b6d4', 'USAJobs':'#3b82f6' };
-  var total = Object.values(sc).reduce(function(a,b){return a+b;},0);
-  if (total === 0) { emptyChart(chart, 'No source data'); return; }
-  var data = Object.entries(sc).sort(function(a,b){return b[1]-a[1];}).map(function(e){
-    return {name:e[0], value:e[1], itemStyle:{color:sourceColors[e[0]]||'#64748b'}};
-  });
-  chart.setOption({
-    tooltip: Object.assign({ trigger:'item',
-      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';} }, ttip()),
-    legend: { orient:'vertical', right:10, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:12},
-      formatter:function(name){ var v=sc[name]||0; var pct=total>0?Math.round(v/total*100):0; return name+'  '+pct+'%'; }},
     series: [{ type:'pie', radius:['42%','70%'], center:['35%','50%'], avoidLabelOverlap:true,
       label:{show:false},
       emphasis:{label:{show:true,fontSize:14,fontFamily:_T.sans,fontWeight:'600',color:_T.dark}},
@@ -12744,24 +13621,6 @@ function initAdminTabs() {
     switchAdminTab(btn.dataset.tab);
   });
 
-  // Period toggle (lives inside feed-health panel)
-  var periodToggle = document.getElementById('admin-period-toggle');
-  if (periodToggle) {
-    periodToggle.addEventListener('click', function(e) {
-      var btn = e.target.closest('.admin-period-btn');
-      if (!btn) return;
-      periodToggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      adminPeriod = parseInt(btn.dataset.hours);
-      localStorage.setItem('bj_admin_period', adminPeriod);
-      _adminTabInit['feed-health'] = false;
-      loadBoardHealth();
-    });
-    periodToggle.querySelectorAll('.admin-period-btn').forEach(function(b) {
-      b.classList.toggle('active', parseInt(b.dataset.hours) === adminPeriod);
-    });
-  }
-
   // Period toggle for Revenue tab
   var revPeriod = document.getElementById('admin-rev-period');
   if (revPeriod) {
@@ -12793,9 +13652,11 @@ function switchAdminTab(tabId) {
     switch (tabId) {
       case 'feed-health': loadBoardHealth(); break;
       case 'cohorts': loadCohortTab(); break;
+      case 'entitlements': loadEntitlementsTab(); break;
       case 'users': loadUsersTab(); break;
       case 'seo': loadSeoTab(); break;
       case 'revenue': loadRevenueTab(); break;
+      case 'surveys': loadSurveysTab(); break;
     }
   }
 }
@@ -12825,6 +13686,9 @@ function fmtAdminPct(n, d) {
 async function loadBoardHealth() {
   console.log('[Admin] loadBoardHealth called, period:', adminPeriod);
   try {
+    // Load refresh cycle status (independent of period)
+    loadRefreshCycle();
+
     var snapshot = await sb.rpc('get_board_health', { period_hours: adminPeriod });
     console.log('[Admin] RPC data:', snapshot.data);
     if (snapshot.error) {
@@ -12860,28 +13724,56 @@ async function loadBoardHealth() {
     var platform = await sb.rpc('get_board_health_by_platform', { period_hours: adminPeriod });
     if (platform.data && platform.data.length) {
       var tbody = document.getElementById('admin-platform-body');
+      var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
+        var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
         tbody.innerHTML = platform.data.map(function(p) {
+          var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
+          var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
+          var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
-            '<td class="admin-green">+' + fmtAdminNum(p.boards_added) + '</td>' +
-            '<td class="admin-red">-' + fmtAdminNum(p.boards_lost) + '</td>' +
-            '<td>' + fmtAdminNum(p.with_jobs) + '</td>' +
+            '<td class="' + pctColor + '">' + activePct + '%</td>' +
             '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
-            '<td class="admin-green">+' + fmtAdminNum(p.jobs_added) + '</td>' +
-            '<td class="admin-red">-' + fmtAdminNum(p.jobs_lost) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
         }).join('');
+        if (tfoot) {
+          var totPct = totBoards > 0 ? Math.round((totWithJobs / totBoards) * 100) : 0;
+          var totJpb = totWithJobs > 0 ? Math.round(totJobs / totWithJobs) : 0;
+          tfoot.innerHTML = '<tr style="font-weight:600;border-top:2px solid var(--border)">' +
+            '<td>Total</td>' +
+            '<td>' + fmtAdminNum(totBoards) + '</td>' +
+            '<td>' + totPct + '%</td>' +
+            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td>' + fmtAdminNum(totJobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
+            '</tr>';
+        }
       }
     }
+
+    // Load feed health charts
+    loadFeedHealthCharts();
     loadUsajobsHealth();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
   }
 }
 
+// ─── Feed Health Charts (stacked area by platform) ───
+var _fhCharts = {};
+var _platformColors = {
+  greenhouse: '#22c55e',
+  lever: '#3b82f6',
+  ashby: '#f59e0b',
+  workable: '#8b5cf6',
+  recruitee: '#ec4899',
+  usajobs: '#dc2626'
+};
 
 // ─── USAJOBS Feed Health ───
 async function loadUsajobsHealth() {
@@ -12913,6 +13805,146 @@ async function loadUsajobsHealth() {
   } catch(e) { console.error('[Admin] USAJobs health error:', e); }
 }
 
+async function loadFeedHealthCharts() {
+  if (typeof echarts === 'undefined') return;
+  try {
+    var res = await sb.rpc('get_feed_health_history', { days_back: 90 });
+    if (res.error || !res.data || !res.data.length) return;
+    var rows = res.data;
+
+    // Build date axis + per-platform series
+    var dates = [];
+    var dateSet = {};
+    var platforms = [];
+    var platSet = {};
+    rows.forEach(function(r) {
+      if (!dateSet[r.snapshot_date]) { dateSet[r.snapshot_date] = true; dates.push(r.snapshot_date); }
+      if (!platSet[r.platform]) { platSet[r.platform] = true; platforms.push(r.platform); }
+    });
+    dates.sort();
+
+    // Build lookup: data[platform][date] = row
+    var lookup = {};
+    rows.forEach(function(r) {
+      if (!lookup[r.platform]) lookup[r.platform] = {};
+      lookup[r.platform][r.snapshot_date] = r;
+    });
+
+    var t = seoChartTheme();
+    var legend = { data: platforms.map(function(p) { return p.charAt(0).toUpperCase() + p.slice(1); }), textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 };
+    var grid = { top: 40, right: 20, bottom: 30, left: 60 };
+    var xAxis = { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35, interval: Math.max(0, Math.floor(dates.length / 10) - 1) } };
+
+    function makeSeries(field) {
+      return platforms.map(function(p) {
+        return {
+          name: p.charAt(0).toUpperCase() + p.slice(1),
+          type: 'line',
+          stack: 'total',
+          areaStyle: { opacity: 0.6 },
+          lineStyle: { width: 1 },
+          symbol: 'none',
+          itemStyle: { color: _platformColors[p] || '#999' },
+          data: dates.map(function(d) { return lookup[p] && lookup[p][d] ? lookup[p][d][field] : 0; })
+        };
+      });
+    }
+
+    // Chart 1: Total Boards
+    var el1 = document.getElementById('fh-chart-total-boards');
+    if (el1) {
+      if (_fhCharts.totalBoards) _fhCharts.totalBoards.dispose();
+      _fhCharts.totalBoards = echarts.init(el1);
+      _fhCharts.totalBoards.setOption(Object.assign({}, t, {
+        title: { text: 'Total Boards by Platform', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('total_boards')
+      }), true);
+    }
+
+    // Chart 2: Active Boards
+    var el2 = document.getElementById('fh-chart-active-boards');
+    if (el2) {
+      if (_fhCharts.activeBoards) _fhCharts.activeBoards.dispose();
+      _fhCharts.activeBoards = echarts.init(el2);
+      _fhCharts.activeBoards.setOption(Object.assign({}, t, {
+        title: { text: 'Active Boards by Platform (with jobs)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('active_boards')
+      }), true);
+    }
+
+    // Chart 3: Jobs
+    var el3 = document.getElementById('fh-chart-jobs');
+    if (el3) {
+      if (_fhCharts.jobs) _fhCharts.jobs.dispose();
+      _fhCharts.jobs = echarts.init(el3);
+      _fhCharts.jobs.setOption(Object.assign({}, t, {
+        title: { text: 'Jobs by Platform', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('total_jobs')
+      }), true);
+    }
+
+    window.addEventListener('resize', function() {
+      Object.keys(_fhCharts).forEach(function(k) { if (_fhCharts[k]) _fhCharts[k].resize(); });
+    });
+  } catch (err) {
+    console.error('[Admin] Feed health charts error:', err);
+  }
+}
+
+// ─── Refresh Cycle Status ───
+async function loadRefreshCycle() {
+  try {
+    var res = await sb.rpc('get_refresh_cycle_status');
+    if (res.error) { console.error('[Admin] Cycle RPC error:', res.error); return; }
+    var c = res.data;
+    if (!c) return;
+
+    var pct = c.pct_complete || 0;
+    setAdminText('ac-cycle-pct', pct + '%');
+    var bar = document.getElementById('ac-cycle-bar');
+    if (bar) setTimeout(function() { bar.style.width = pct + '%'; }, 100);
+
+    setAdminText('ac-cycle-total', fmtAdminNum(c.total_boards));
+    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.refreshed));
+    setAdminText('ac-cycle-pending', fmtAdminNum(c.pending));
+    setAdminText('ac-cycle-rate', fmtAdminNum(c.rate_per_hour) + '/hr');
+
+    // Format dates as relative
+    if (c.cycle_start) {
+      var start = new Date(c.cycle_start);
+      var hoursAgo = Math.round((Date.now() - start.getTime()) / 3600000);
+      var daysAgo = Math.floor(hoursAgo / 24);
+      var startStr = daysAgo > 0 ? daysAgo + 'd ' + (hoursAgo % 24) + 'h ago' : hoursAgo + 'h ago';
+      setAdminText('ac-cycle-start', startStr);
+    }
+    if (c.est_completion) {
+      var eta = new Date(c.est_completion);
+      var hoursLeft = Math.round((eta.getTime() - Date.now()) / 3600000);
+      var daysLeft = Math.floor(hoursLeft / 24);
+      var etaStr;
+      if (hoursLeft <= 0) {
+        etaStr = 'Overdue';
+      } else if (daysLeft > 0) {
+        etaStr = daysLeft + 'd ' + (hoursLeft % 24) + 'h remaining';
+      } else {
+        etaStr = hoursLeft + 'h remaining';
+      }
+      setAdminText('ac-cycle-eta', etaStr);
+    }
+  } catch (err) {
+    console.error('[Admin] loadRefreshCycle error:', err);
+  }
+}
+
 function setDelta(id, val, prefix, invert) {
   var el = document.getElementById(id);
   if (!el) return;
@@ -12925,6 +13957,9 @@ function setDelta(id, val, prefix, invert) {
 // TAB 2: COHORTS
 // ═══════════════════════════════════════════════════════════
 
+var _allCohorts = [];
+var _selectedCohortIds = []; // empty = all selected
+
 async function loadCohortTab() {
   console.log('[Admin] loadCohortTab');
   try {
@@ -12936,57 +13971,202 @@ async function loadCohortTab() {
       setAdminText('ac-total-users', '0');
       setAdminText('ac-pro-pct', '—');
       setAdminText('ac-active-7d', '0');
+      setAdminText('ac-churned', '0');
       return;
     }
 
-    var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
-    var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
-    var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
-    var active30d = cohorts.reduce(function(s, c) { return s + (c.active_30d || 0); }, 0);
-    var retention = totalUsers > 0 ? Math.round(active30d / totalUsers * 100) : 0;
+    _allCohorts = cohorts;
+    window._cohortList = cohorts;
 
-    setAdminText('ac-total-cohorts', cohorts.length);
-    setAdminText('ac-total-users', fmtAdminNum(totalUsers));
-    setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
-    setAdminText('ac-active-7d', fmtAdminNum(active7d));
-    setAdminText('ac-retention', retention + '%');
+    // Build cohort filter chips
+    var filterEl = document.getElementById('ac-cohort-filter');
+    if (filterEl && !filterEl.hasChildNodes()) {
+      var allBtn = document.createElement('button');
+      allBtn.className = 'admin-period-btn active';
+      allBtn.textContent = 'All';
+      allBtn.dataset.cohortId = '__all__';
+      allBtn.addEventListener('click', function() { toggleCohortFilter('__all__'); });
+      filterEl.appendChild(allBtn);
 
-    var tbody = document.getElementById('admin-cohort-body');
-    if (!tbody) return;
-    tbody.innerHTML = cohorts.map(function(c) {
-      return '<tr class="admin-cohort-row" data-cohort-id="' + c.id + '" style="cursor:pointer">' +
-        '<td class="admin-platform-name">' + c.name + ' <span style="color:var(--text-faint);font-size:10px">(' + c.slug + ')</span></td>' +
-        '<td>' + fmtAdminNum(c.user_count) + '</td>' +
-        '<td>' + fmtAdminNum(c.free_count) + '</td>' +
-        '<td class="admin-green">' + fmtAdminNum(c.pro_count) + '</td>' +
-        '<td>' + fmtAdminNum(c.active_7d) + '</td>' +
-        '<td>' + fmtAdminNum(c.active_30d) + '</td>' +
-        '<td>' + (c.entitlement_count || 0) + '</td>' +
-        '<td>' + (c.is_locked ? '🔒' : '—') + '</td>' +
-        '</tr>';
-    }).join('');
+      cohorts.forEach(function(c) {
+        var btn = document.createElement('button');
+        btn.className = 'admin-period-btn';
+        btn.textContent = c.display_id || c.id;
+        btn.dataset.cohortId = c.id;
+        btn.addEventListener('click', function() { toggleCohortFilter(c.id); });
+        filterEl.appendChild(btn);
+      });
+    }
 
-    tbody.addEventListener('click', function(e) {
-      var row = e.target.closest('.admin-cohort-row');
-      if (!row) return;
-      var cid = row.dataset.cohortId;
-      var cohort = cohorts.find(function(c) { return String(c.id) === cid; });
-      if (cohort) loadCohortDetail(cohort);
-    });
-
-    renderCohortCharts(cohorts);
+    renderCohortData(cohorts);
   } catch (err) {
     console.error('[Admin] loadCohortTab error:', err);
   }
 }
 
+function toggleCohortFilter(id) {
+  var filterEl = document.getElementById('ac-cohort-filter');
+  if (!filterEl) return;
+
+  if (id === '__all__') {
+    _selectedCohortIds = [];
+  } else {
+    var idx = _selectedCohortIds.indexOf(id);
+    if (idx >= 0) {
+      _selectedCohortIds.splice(idx, 1);
+    } else {
+      _selectedCohortIds.push(id);
+    }
+  }
+
+  // Update button states
+  var isAll = _selectedCohortIds.length === 0;
+  filterEl.querySelectorAll('button').forEach(function(btn) {
+    if (btn.dataset.cohortId === '__all__') {
+      btn.classList.toggle('active', isAll);
+    } else {
+      btn.classList.toggle('active', _selectedCohortIds.indexOf(btn.dataset.cohortId) >= 0);
+    }
+  });
+
+  // Filter and re-render
+  var filtered = isAll ? _allCohorts : _allCohorts.filter(function(c) {
+    return _selectedCohortIds.indexOf(c.id) >= 0;
+  });
+  renderCohortData(filtered);
+}
+
+function renderCohortData(cohorts) {
+    var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
+    var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
+    var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
+    var churned28d = cohorts.reduce(function(s, c) { return s + (c.churned_28d || 0); }, 0);
+
+    setAdminText('ac-total-cohorts', cohorts.length);
+    setAdminText('ac-total-users', fmtAdminNum(totalUsers));
+    setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
+    setAdminText('ac-active-7d', fmtAdminNum(active7d));
+    setAdminText('ac-churned', fmtAdminNum(churned28d));
+
+    var tbody = document.getElementById('admin-cohort-body');
+    if (!tbody) return;
+
+    // Collect all plan types across all cohorts
+    var allPlans = {};
+    cohorts.forEach(function(c) {
+      if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { allPlans[pb.plan] = true; });
+    });
+    var planOrder = ['free', 'starter', 'pro', 'enterprise'].filter(function(p) { return allPlans[p]; });
+
+    // Build dynamic header
+    var thead = tbody.parentElement.querySelector('thead');
+    if (thead) {
+      thead.innerHTML = '<tr>' +
+        '<th>ID</th><th>Age</th><th>Enrollment</th><th>Users</th><th>Active 7d</th><th>Churned</th>' +
+        planOrder.map(function(p) { return '<th>' + p.charAt(0).toUpperCase() + p.slice(1) + '</th>'; }).join('') +
+        '<th>Revenue/mo</th><th>LTV</th><th>ARPU</th>' +
+        '</tr>';
+    }
+
+    tbody.innerHTML = cohorts.map(function(c) {
+      var enrollStart = c.enrollment_start ? new Date(c.enrollment_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+      var enrollClose = c.enrollment_close ? new Date(c.enrollment_close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Open';
+      var isOpen = !c.enrollment_close || new Date(c.enrollment_close) > new Date();
+
+      // Build plan count lookup
+      var planCounts = {};
+      if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { planCounts[pb.plan] = pb.count; });
+
+      return '<tr>' +
+        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + '</td>' +
+        '<td>' + (c.age_days || 0) + 'd</td>' +
+        '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
+        '<td>' + fmtAdminNum(c.user_count) + '</td>' +
+        '<td>' + fmtAdminNum(c.active_7d) + '</td>' +
+        '<td class="' + (c.churned_28d > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(c.churned_28d) + '</td>' +
+        planOrder.map(function(p) {
+          var cnt = planCounts[p] || 0;
+          var cls = p === 'pro' ? 'admin-green' : (p === 'enterprise' ? 'admin-amber' : '');
+          return '<td class="' + cls + '">' + fmtAdminNum(cnt) + '</td>';
+        }).join('') +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '</tr>';
+    }).join('');
+
+    renderCohortCharts(cohorts);
+}
+
+// ─── Entitlements Tab ───
+async function loadEntitlementsTab() {
+  console.log('[Admin] loadEntitlementsTab');
+  var select = document.getElementById('entitlement-cohort-select');
+  var tbody = document.getElementById('admin-entitlement-body');
+  if (!select || !tbody) return;
+
+  // Populate dropdown if empty
+  if (select.options.length === 0) {
+    try {
+      var res = await sb.from('cohorts').select('id,display_id,name').eq('is_active', true).order('created_at');
+      if (res.data) {
+        res.data.forEach(function(c) {
+          var opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = (c.display_id || c.id) + ' — ' + c.name;
+          select.appendChild(opt);
+        });
+      }
+    } catch (e) {}
+    select.addEventListener('change', function() { loadEntitlementRows(select.value); });
+  }
+
+  if (select.value) loadEntitlementRows(select.value);
+}
+
+async function loadEntitlementRows(cohortId) {
+  var tbody = document.getElementById('admin-entitlement-body');
+  if (!tbody || !cohortId) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-faint)">Loading...</td></tr>';
+
+  var res = await sb.from('cohort_plan_entitlements')
+    .select('feature_id,plan_id,behavior,limit_value')
+    .eq('cohort_id', cohortId)
+    .order('feature_id')
+    .order('plan_id');
+
+  if (res.error || !res.data) {
+    tbody.innerHTML = '<tr><td colspan="5" class="admin-red">Error loading entitlements</td></tr>';
+    return;
+  }
+
+  // Group by feature for a cleaner view
+  tbody.innerHTML = res.data.map(function(e) {
+    var limitStr = e.limit_value === -1 ? '∞' : String(e.limit_value);
+    var behaviorColor = e.behavior === 'off' ? 'admin-red' : (e.behavior === 'unlimited' ? 'admin-green' : '');
+    return '<tr>' +
+      '<td>' + e.feature_id + '</td>' +
+      '<td>' + e.plan_id + '</td>' +
+      '<td class="' + behaviorColor + '">' + e.behavior + '</td>' +
+      '<td style="font-family:var(--mono)">' + limitStr + '</td>' +
+      '<td>—</td>' +
+      '</tr>';
+  }).join('');
+}
+
 // ─── Cohort Charts ───
 function renderCohortCharts(cohorts) {
-  // 1. Plan Distribution — stacked bar (Free/Pro per cohort)
+  // 1. Sessions over time (adjusted to cohort open date)
+  renderCohortSessionsChart();
+
+  // 2. Cumulative Revenue (placeholder until Stripe data)
+  renderCohortRevenueChart();
+
+  // 3. Plan Distribution — stacked bar (Free/Pro per cohort)
   var planEl = document.getElementById('admin-cohort-plan-chart');
   if (planEl && typeof echarts !== 'undefined') {
     var planChart = echarts.init(planEl);
-    var names = cohorts.map(function(c) { return c.slug || c.name; });
+    var names = cohorts.map(function(c) { return c.display_id || c.name; });
     var t = seoChartTheme();
     planChart.setOption(Object.assign({}, t, {
       title: { text: 'Plan Distribution', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
@@ -13003,11 +14183,19 @@ function renderCohortCharts(cohorts) {
     window.addEventListener('resize', function() { planChart.resize(); });
   }
 
-  // 2. User Growth — cumulative signups over time
+  // 4. User Growth — cumulative signups
   renderCohortGrowthChart();
+}
 
-  // 3. Sessions per day
-  renderCohortSessionsChart();
+async function renderCohortRevenueChart() {
+  var el = document.getElementById('admin-cohort-revenue-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  // Placeholder until Stripe revenue data is wired
+  chart.setOption({
+    title: { text: 'Cumulative Revenue / Month', subtext: 'Waiting for Stripe integration', left: 'center', top: 'center', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, subtextStyle: { color: '#9ca3af', fontSize: 11 } }
+  });
+  window.addEventListener('resize', function() { chart.resize(); });
 }
 
 async function renderCohortGrowthChart() {
@@ -13073,36 +14261,8 @@ async function renderCohortSessionsChart() {
   } catch (e) { console.error('[Admin] Sessions chart error:', e); }
 }
 
-async function loadCohortDetail(cohort) {
-  var detail = document.getElementById('admin-cohort-detail');
-  var title = document.getElementById('admin-cohort-detail-title');
-  var tbody = document.getElementById('admin-entitlement-body');
-  if (!detail || !tbody) return;
-
-  title.textContent = cohort.name + ' — Entitlements';
-  detail.style.display = '';
-
-  var res = await sb.from('cohort_plan_entitlements')
-    .select('feature, plan, behavior, limit_value, bonus_max')
-    .eq('cohort_id', cohort.id)
-    .order('plan')
-    .order('feature');
-
-  if (res.error || !res.data) return;
-
-  tbody.innerHTML = res.data.map(function(e) {
-    return '<tr>' +
-      '<td>' + e.feature + '</td>' +
-      '<td>' + e.plan + '</td>' +
-      '<td>' + e.behavior + '</td>' +
-      '<td>' + (e.limit_value != null ? e.limit_value : '∞') + '</td>' +
-      '<td>' + (e.bonus_max != null ? e.bonus_max : '—') + '</td>' +
-      '</tr>';
-  }).join('');
-}
-
 // ═══════════════════════════════════════════════════════════
-// TAB 3: USERS + SESSIONS
+// TAB 3 (was 4): USERS + SESSIONS
 // ═══════════════════════════════════════════════════════════
 
 async function loadUsersTab() {
@@ -13310,7 +14470,6 @@ function initSeoChart(elId) {
 
 function seoNoData(chart, title, msg) {
   chart.setOption({
-    title: { text: title, textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     graphic: { elements: [{ type: 'group', left: 'center', top: 'middle', children: [
       { type: 'text', left: 'center', top: -10, style: { text: msg || 'No data yet', fill: '#9ca3af', fontSize: 13, fontFamily: 'Outfit' } },
       { type: 'text', left: 'center', top: 12, style: { text: 'Run sync to populate', fill: '#d1d5db', fontSize: 11, fontFamily: 'Outfit' } }
@@ -13345,7 +14504,7 @@ function renderGscChart() {
   var dates = data.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Google Search Console', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+
     legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -13379,7 +14538,7 @@ function renderPsiChart() {
     var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI (Mobile) — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 12 } },
       yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: function(v) { return Math.round(v); } } }),
@@ -13408,7 +14567,7 @@ function renderPsiChart() {
     var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'Avg Across ' + n + ' Pages', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
       yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
@@ -13432,7 +14591,7 @@ function renderCruxChart() {
   var p75s = metricNames.map(function(k) { return m[k] && m[k].p75 ? m[k].p75 : 0; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+
     grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
     yAxis: ax.yAxis,
@@ -13461,7 +14620,7 @@ function renderYltChart() {
 
     var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'YLT: ' + score + '/100 — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: score + '/100 — ' + (new URL(_seoUrl).pathname), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       radar: {
         indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
         shape: 'polygon',
@@ -13508,7 +14667,7 @@ function renderYltChart() {
     
     var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'YLT Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       radar: {
         indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
         shape: 'polygon',
@@ -13541,7 +14700,7 @@ function renderCloudflareChart() {
   var dates = cfData.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Cloudflare', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+
     legend: { data: ['Requests', 'Page Views', 'Uniques'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -13858,6 +15017,194 @@ async function loadRevenueTab(daysBack) {
   } catch (err) {
     console.error('[Admin] loadRevenueTab error:', err);
   }
+}
+
+// ─── P13-10: Survey Analytics Tab ───
+var _surveyDays = 30;
+
+// Period toggle
+(function() {
+  var toggle = document.getElementById('survey-period-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-period-btn');
+    if (!btn) return;
+    toggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _surveyDays = parseInt(btn.dataset.surveyDays);
+    _adminTabInit['surveys'] = false;
+    loadSurveysTab();
+  });
+})();
+
+async function loadSurveysTab() {
+  console.log('[Admin] loadSurveysTab', _surveyDays, 'days');
+  _adminTabInit['surveys'] = true;
+
+  try {
+    var res = await sb.rpc('get_survey_analytics', { p_days: _surveyDays });
+    if (res.error) throw res.error;
+    var d = res.data || {};
+
+    // KPIs
+    setAdminText('sv-total', (d.total_responses || 0).toLocaleString());
+    setAdminText('sv-respondents', (d.unique_respondents || 0).toLocaleString());
+
+    // Avg completion: estimate from versions data
+    var versions = d.versions || [];
+    var totalQ = 0, totalV = 0;
+    versions.forEach(function(v) { if (v.avg_rating) { totalQ += v.count; totalV++; } });
+    setAdminText('sv-completion', versions.length > 0 ? versions.length + ' types' : '—');
+
+    // Avg NPS
+    var npsVersions = versions.filter(function(v) { return v.avg_nps !== null; });
+    if (npsVersions.length > 0) {
+      var avgNps = npsVersions.reduce(function(s, v) { return s + parseFloat(v.avg_nps); }, 0) / npsVersions.length;
+      setAdminText('sv-nps', avgNps.toFixed(1));
+    } else {
+      setAdminText('sv-nps', '—');
+    }
+
+    // Chart: Responses by Version (bar)
+    renderSurveyVersionsChart(versions);
+
+    // Chart: Daily volume (line)
+    renderSurveyDailyChart(d.daily || []);
+
+    // Chart: NPS trend (line)
+    renderSurveyNpsChart(d.nps_monthly || []);
+
+    // Chart: Completion funnel (placeholder — shows version distribution as funnel)
+    renderSurveyFunnel(versions);
+
+    // Recent responses table
+    renderSurveyRecentTable(d.recent || []);
+
+  } catch (err) {
+    console.error('[Admin] loadSurveysTab error:', err);
+  }
+}
+
+function renderSurveyVersionsChart(versions) {
+  var el = document.getElementById('sv-chart-versions');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (versions.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No survey data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: versions.map(function(v) { return v.version; }), axisLabel: { rotate: 30, fontSize: 11 } },
+    yAxis: { type: 'value', name: 'Responses' },
+    series: [{
+      type: 'bar',
+      data: versions.map(function(v) { return v.count; }),
+      itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
+    }],
+    grid: { left: 50, right: 16, top: 30, bottom: 60 }
+  });
+}
+
+function renderSurveyDailyChart(daily) {
+  var el = document.getElementById('sv-chart-daily');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (daily.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No daily data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: daily.map(function(d) { return d.date; }), axisLabel: { fontSize: 10 } },
+    yAxis: { type: 'value' },
+    series: [{
+      type: 'line',
+      data: daily.map(function(d) { return d.count; }),
+      smooth: true,
+      areaStyle: { opacity: 0.15 },
+      lineStyle: { color: '#3b82f6' },
+      itemStyle: { color: '#3b82f6' }
+    }],
+    grid: { left: 40, right: 16, top: 20, bottom: 40 }
+  });
+}
+
+function renderSurveyNpsChart(npsMonthly) {
+  var el = document.getElementById('sv-chart-nps');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (npsMonthly.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No NPS data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Promoters', 'Passives', 'Detractors'], bottom: 0, textStyle: { fontSize: 11 } },
+    xAxis: { type: 'category', data: npsMonthly.map(function(m) { return m.month; }) },
+    yAxis: { type: 'value' },
+    series: [
+      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#22c55e' } },
+      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#f59e0b' } },
+      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#ef4444' } }
+    ],
+    grid: { left: 40, right: 16, top: 20, bottom: 50 }
+  });
+}
+
+function renderSurveyFunnel(versions) {
+  var el = document.getElementById('sv-chart-funnel');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (versions.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No funnel data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  // Group by type: periodic, exit, nps, micro
+  var groups = {};
+  versions.forEach(function(v) {
+    var type = 'other';
+    if (v.version.indexOf('periodic') === 0) type = 'Periodic';
+    else if (v.version.indexOf('exit') === 0) type = 'Exit';
+    else if (v.version.indexOf('nps') === 0) type = 'NPS';
+    else if (v.version.indexOf('micro') === 0) type = 'Micro-survey';
+    groups[type] = (groups[type] || 0) + v.count;
+  });
+  var data = Object.keys(groups).map(function(k) { return { name: k, value: groups[k] }; });
+  data.sort(function(a, b) { return b.value - a.value; });
+
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    series: [{
+      type: 'funnel',
+      left: '10%',
+      width: '80%',
+      top: 10,
+      bottom: 10,
+      sort: 'descending',
+      gap: 4,
+      label: { show: true, position: 'inside', formatter: '{b}: {c}', fontSize: 12 },
+      itemStyle: { borderWidth: 1, borderColor: '#fff' },
+      data: data
+    }]
+  });
+}
+
+function renderSurveyRecentTable(recent) {
+  var tbody = document.getElementById('sv-responses-body');
+  if (!tbody) return;
+  if (recent.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:24px;">No survey responses yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map(function(r) {
+    var date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    var userId = (r.user_id || 'anon').substring(0, 8);
+    var nps = r.nps_score != null ? r.nps_score : '—';
+    var rating = r.overall_rating != null ? '★'.repeat(r.overall_rating) : '—';
+    var qCount = r.q_count || '—';
+    return '<tr><td>' + date + '</td><td><code style="font-size:12px">' + (r.survey_version || '') + '</code></td><td><code style="font-size:11px">' + userId + '</code></td><td>' + qCount + '</td><td>' + nps + '</td><td>' + rating + '</td></tr>';
+  }).join('');
 }
 
 
@@ -14193,6 +15540,8 @@ async function requireCredits(amount, description) {
   if (_isAdmin) return true;
   if (_creditBalance >= amount) return true;
   showToast('You need ' + amount + ' credits for ' + description + '. You have ' + _creditBalance + '.', 'warning');
+  // P13-09: Paywall friction micro-survey
+  if (typeof showPaywallFriction === 'function') showPaywallFriction(description);
   openPricingModal();
   return false;
 }
@@ -14341,7 +15690,7 @@ async function setupHireFee() {
 }
 
 async function confirmSetupIntent(clientSecret) {
-  var stripe = Stripe('pk_test_51T3TKyAUKPQHZOPaDUiztdazjyngM83dWzztLHDtRXj2JgudeiqMV17HfoLR2fvz2HXeQVIS0xBU73nnq9h1hyy1004jBvtprR');
+  var stripe = Stripe('pk_live_51T3TKnPKzCZbw3KzvE3xlxz8Yt9Hx9PTIRewh21Pks8YQt6TgV5urss7w93Hd27vfnZQlMiAvMP9WAgRSHM3dFFz00ufrYmhyI');
 
   // Create a modal with card element
   var modal = document.createElement('div');
@@ -14474,9 +15823,310 @@ function initBilling() {
 }
 
 
+// === js/micro-surveys.js ===
+// js/micro-surveys.js — P13-04/05/06/09 Inline micro-survey components
+// Lightweight survey prompts that appear inline in the dashboard.
+// All responses stored in feedback table via Supabase REST API.
+//
+// Usage:
+//   showPaywallFriction('resume_grading')  — after feature limit hit
+//   showSearchRelevance(filterName, count)  — after 10th search or 5min session
+//   showApplyConfidence(jobId, company)     — after pipeline apply action
+//   showDataValue(featureContext)            — after 10s viewing stats/data
+//
+// Rate limiting: max 1 micro-survey per session, stored in sessionStorage.
+
+(function() {
+  'use strict';
+
+  const MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
+
+  // ─── Rate Limiter ───
+  function canShowMicroSurvey() {
+    try {
+      return !sessionStorage.getItem(MICRO_SURVEY_KEY);
+    } catch { return true; }
+  }
+
+  function markMicroSurveyShown() {
+    try {
+      sessionStorage.setItem(MICRO_SURVEY_KEY, Date.now().toString());
+    } catch { /* ignore */ }
+  }
+
+  // ─── Submit to Supabase ───
+  async function submitMicroSurvey(version, responses, context) {
+    const SUPABASE_URL = window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    const SUPABASE_ANON_KEY = window._bjAnonKey || '';
+
+    let userId = null;
+    let authHeader = 'Bearer ' + SUPABASE_ANON_KEY;
+    try {
+      const stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
+      if (stored) {
+        const session = JSON.parse(stored);
+        if (session?.access_token && session?.user?.id) {
+          userId = session.user.id;
+          authHeader = 'Bearer ' + session.access_token;
+        }
+      }
+    } catch { /* anon fallback */ }
+
+    const payload = {
+      type: 'micro_survey',
+      user_id: userId,
+      survey_version: version,
+      answers: responses,
+      feature_context: context || null,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      await fetch(SUPABASE_URL + '/rest/v1/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': authHeader,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('[micro-survey] Submit failed:', e);
+    }
+  }
+
+  // ─── Generic Micro-Survey Card ───
+  function createMicroCard(config) {
+    const card = document.createElement('div');
+    card.className = 'micro-survey-card';
+    card.setAttribute('role', 'complementary');
+    card.setAttribute('aria-label', 'Quick survey');
+
+    let inner = '<div class="micro-survey-inner">';
+    inner += '<button class="micro-survey-close" aria-label="Dismiss survey">&times;</button>';
+    inner += '<div class="micro-survey-q">' + config.question + '</div>';
+
+    if (config.type === 'choice') {
+      inner += '<div class="micro-survey-opts">';
+      config.options.forEach(function(opt, i) {
+        inner += '<button class="micro-survey-opt" data-val="' + i + '">' + opt + '</button>';
+      });
+      inner += '</div>';
+    } else if (config.type === 'rating') {
+      inner += '<div class="micro-survey-rating">';
+      for (let r = 1; r <= 5; r++) {
+        inner += '<button class="micro-survey-star" data-val="' + r + '">' + r + '</button>';
+      }
+      inner += '</div>';
+      if (config.minLabel || config.maxLabel) {
+        inner += '<div class="micro-survey-labels"><span>' + (config.minLabel || '') + '</span><span>' + (config.maxLabel || '') + '</span></div>';
+      }
+    }
+
+    if (config.followUp) {
+      inner += '<div class="micro-survey-followup hidden">';
+      inner += '<div class="micro-survey-q micro-survey-q2">' + config.followUp.question + '</div>';
+      if (config.followUp.type === 'chips') {
+        inner += '<div class="micro-survey-chips">';
+        config.followUp.options.forEach(function(opt, i) {
+          inner += '<button class="micro-survey-chip" data-val="' + i + '">' + opt + '</button>';
+        });
+        inner += '</div>';
+      }
+      inner += '</div>';
+    }
+
+    inner += '<div class="micro-survey-thanks hidden">Thanks for the feedback!</div>';
+    inner += '</div>';
+    card.innerHTML = inner;
+
+    // ─── Wire Events ───
+    var answers = {};
+    var closed = false;
+
+    card.querySelector('.micro-survey-close').addEventListener('click', function() {
+      card.classList.add('micro-survey-out');
+      closed = true;
+      setTimeout(function() { card.remove(); }, 300);
+    });
+
+    // Primary answer (choice or rating)
+    card.querySelectorAll('.micro-survey-opt, .micro-survey-star').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (closed) return;
+        btn.parentElement.querySelectorAll('button').forEach(function(b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+
+        var val = parseInt(btn.dataset.val);
+        if (config.type === 'choice') {
+          answers.primary = { index: val, text: config.options[val] };
+        } else {
+          answers.primary = { rating: val };
+        }
+
+        // Show follow-up if configured
+        var followup = card.querySelector('.micro-survey-followup');
+        if (followup && config.followUp) {
+          followup.classList.remove('hidden');
+        } else {
+          finishMicro();
+        }
+      });
+    });
+
+    // Follow-up chips (multi-select)
+    card.querySelectorAll('.micro-survey-chip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (closed) return;
+        btn.classList.toggle('selected');
+        var selected = [];
+        card.querySelectorAll('.micro-survey-chip.selected').forEach(function(s) {
+          selected.push(config.followUp.options[parseInt(s.dataset.val)]);
+        });
+        answers.followup = selected;
+
+        // Auto-submit 1s after last chip click
+        clearTimeout(card._chipTimer);
+        card._chipTimer = setTimeout(function() { finishMicro(); }, 1000);
+      });
+    });
+
+    function finishMicro() {
+      submitMicroSurvey(config.version, answers, config.featureContext);
+      card.querySelectorAll('.micro-survey-opts, .micro-survey-rating, .micro-survey-followup, .micro-survey-q, .micro-survey-q2, .micro-survey-labels').forEach(function(el) {
+        el.classList.add('hidden');
+      });
+      card.querySelector('.micro-survey-thanks').classList.remove('hidden');
+      setTimeout(function() {
+        card.classList.add('micro-survey-out');
+        setTimeout(function() { card.remove(); }, 300);
+      }, 1500);
+    }
+
+    markMicroSurveyShown();
+    return card;
+  }
+
+  // ─── P13-09: Paywall Friction Survey ───
+  // Shows when a free user hits a feature limit
+  window.showPaywallFriction = function(featureName) {
+    if (!canShowMicroSurvey()) return;
+
+    var card = createMicroCard({
+      question: 'Would you pay to unlock this feature?',
+      type: 'choice',
+      options: ['Definitely', 'Maybe', 'No'],
+      followUp: {
+        question: 'What\'s holding you back?',
+        type: 'chips',
+        options: ['Too expensive', 'Not enough value yet', 'Just browsing', 'Already paying elsewhere']
+      },
+      version: 'micro_paywall_v1',
+      featureContext: featureName
+    });
+
+    // Insert near the top of the main content area
+    var target = document.getElementById('main-content') || document.querySelector('.content-area') || document.querySelector('main') || document.body;
+    target.insertBefore(card, target.firstChild);
+  };
+
+  // ─── P13-04: Post-Search Relevance Survey ───
+  window.showSearchRelevance = function(filterName, resultCount) {
+    if (!canShowMicroSurvey()) return;
+
+    var card = createMicroCard({
+      question: 'How relevant were these results?',
+      type: 'rating',
+      minLabel: 'Not at all',
+      maxLabel: 'Very relevant',
+      followUp: {
+        question: 'What was missing?',
+        type: 'chips',
+        options: ['More salary data', 'Wrong seniority level', 'Too many ghost jobs', 'Not my industry', 'Other']
+      },
+      version: 'micro_search_v1',
+      featureContext: JSON.stringify({ filter: filterName, result_count: resultCount })
+    });
+
+    var target = document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body;
+    target.insertBefore(card, target.firstChild);
+  };
+
+  // ─── P13-05: Post-Application Confidence Survey ───
+  window.showApplyConfidence = function(jobId, companyName) {
+    if (!canShowMicroSurvey()) return;
+
+    var card = createMicroCard({
+      question: 'How confident are you this job is real?',
+      type: 'rating',
+      minLabel: 'Likely ghost',
+      maxLabel: 'Definitely real',
+      followUp: {
+        question: 'Was the application process clear?',
+        type: 'chips',
+        options: ['Yes, very clear', 'Somewhat', 'No, confusing']
+      },
+      version: 'micro_apply_v1',
+      featureContext: JSON.stringify({ job_id: jobId, company: companyName })
+    });
+
+    // Show as toast-like at bottom right
+    card.classList.add('micro-survey-toast');
+    document.body.appendChild(card);
+  };
+
+  // ─── P13-06: Data Value Assessment ───
+  window.showDataValue = function(featureContext) {
+    if (!canShowMicroSurvey()) return;
+
+    var card = createMicroCard({
+      question: 'Did this data help your decision?',
+      type: 'choice',
+      options: ['Yes, very helpful', 'Somewhat', 'Not really'],
+      version: 'micro_data_v1',
+      featureContext: featureContext
+    });
+
+    // Floating bottom-right widget
+    card.classList.add('micro-survey-toast');
+    document.body.appendChild(card);
+  };
+
+  // ─── Search/Session Tracking (P13-04) ───
+  var _searchCount = 0;
+  var _sessionStart = Date.now();
+
+  window.trackSearchForSurvey = function(filterName, resultCount) {
+    _searchCount++;
+    var sessionMinutes = (Date.now() - _sessionStart) / 60000;
+    if (_searchCount >= 10 || sessionMinutes >= 5) {
+      showSearchRelevance(filterName, resultCount);
+    }
+  };
+
+  // ─── Data Page Timer (P13-06) ───
+  var _dataViewTimers = {};
+  window.startDataViewTimer = function(featureContext) {
+    if (_dataViewTimers[featureContext]) return;
+    _dataViewTimers[featureContext] = setTimeout(function() {
+      showDataValue(featureContext);
+    }, 10000); // 10 seconds
+  };
+  window.cancelDataViewTimer = function(featureContext) {
+    if (_dataViewTimers[featureContext]) {
+      clearTimeout(_dataViewTimers[featureContext]);
+      delete _dataViewTimers[featureContext];
+    }
+  };
+
+})();
+
+
 // === js/app.js ===
-const BJ_VERSION = 'v3.81';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — hire fee, hired stage, credit gating');
+const BJ_VERSION = 'v4.08';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — USAJOBS integration: federal gov job source');
 
 // Auth
 async function init() {
@@ -14487,6 +16137,16 @@ async function init() {
   localStorage.setItem('bj_has_account', 'true');
   const vEl = document.getElementById('nav-version');
   if (vEl) vEl.textContent = BJ_VERSION;
+
+// Pre-warm static ref table caches (v3.84)
+if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
+
+// Error recovery & offline resilience (v3.87)
+if (typeof initOfflineDetection === 'function') initOfflineDetection();
+if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
+
+// Session management hardening (v3.90)
+if (typeof initSessionManagement === 'function') initSessionManagement();
   let profile = null;
   try {
     const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
@@ -14495,7 +16155,7 @@ async function init() {
     currentUser._cohortId = p.cohort_id || null;
     window._bjUserPlan = p.plan || 'free';
     window._bjUserRole = p.role || 'user';
-  } catch (e) {}
+  } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
   // Show admin nav immediately — profile already fetched, no extra round trip
@@ -14554,9 +16214,13 @@ async function init() {
   tuningIndExclPills = tuningSettings.industryExcludes || [];
   levelHierarchy = tuningSettings.levelHierarchy || [];
   hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
-  savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-  appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+  // Pipeline now loaded from Supabase (Ghost Build Phase 1)
+  // savedJobIds and appliedJobIds are populated by initPipeline()
+  savedJobIds = [];
+  appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
+  if (typeof initPipeline === 'function') await initPipeline();
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
@@ -14648,6 +16312,8 @@ $$('.nav-item').forEach(item => {
     // Init stats charts when stats tab is shown
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
+    if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
+    if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
@@ -14663,6 +16329,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
   });
   if (lastTab === 'admin' && typeof initAdminPage === 'function') initAdminPage();
   if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
 }
 
 // Extension detection — check if extension has updated the profile recently

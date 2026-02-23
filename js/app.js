@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.07';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Ghost Build Phase 1: Supabase pipeline, ghost scoring engine');
+const BJ_VERSION = 'v4.08';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — USAJOBS integration: federal gov job source');
 
 // Auth
 async function init() {
