@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.00';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P8 complete: Fisher-Yates + CAPTCHA auto-stop');
+const BJ_VERSION = 'v4.01';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Roadmap filter bar');
 
 // Auth
 async function init() {

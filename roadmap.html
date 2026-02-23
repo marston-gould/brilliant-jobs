@@ -175,6 +175,51 @@
     .blocked-tag.bt-ceo        { background: rgba(168,85,247,0.12); color: #a855f7; }
     .blocked-tag.bt-deferred   { background: rgba(107,114,128,0.12); color: #6b7280; }
 
+    /* Filter bar */
+    .filter-bar {
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      margin: 0 auto 20px; max-width: 780px;
+    }
+    .filter-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 600; padding: 5px 12px;
+      border-radius: 6px; cursor: pointer; user-select: none;
+      transition: all 0.2s ease; border: 1px solid transparent;
+      letter-spacing: 0.3px;
+    }
+    .filter-btn:hover { transform: translateY(-1px); }
+    .filter-btn .filter-count {
+      font-family: var(--mono); font-size: 10px; opacity: 0.7;
+    }
+    /* All */
+    .filter-btn.fb-all { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+    .filter-btn.fb-all.active { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.2); }
+    /* Post-launch */
+    .filter-btn.fb-postlaunch { background: rgba(59,130,246,0.08); color: #5b9bff; }
+    .filter-btn.fb-postlaunch.active { background: rgba(59,130,246,0.22); color: #93bbff; border-color: rgba(59,130,246,0.4); }
+    /* Pre-launch */
+    .filter-btn.fb-prelaunch { background: rgba(245,158,11,0.08); color: #f5b84d; }
+    .filter-btn.fb-prelaunch.active { background: rgba(245,158,11,0.22); color: #ffd077; border-color: rgba(245,158,11,0.4); }
+    /* Dependency */
+    .filter-btn.fb-dependency { background: rgba(245,158,11,0.08); color: #f5b84d; }
+    .filter-btn.fb-dependency.active { background: rgba(245,158,11,0.22); color: #ffd077; border-color: rgba(245,158,11,0.4); }
+    /* External */
+    .filter-btn.fb-external { background: rgba(239,68,68,0.08); color: #f87171; }
+    .filter-btn.fb-external.active { background: rgba(239,68,68,0.22); color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+    /* CEO */
+    .filter-btn.fb-ceo { background: rgba(168,85,247,0.08); color: #c4a0fa; }
+    .filter-btn.fb-ceo.active { background: rgba(168,85,247,0.22); color: #d8c2fc; border-color: rgba(168,85,247,0.4); }
+    /* Deferred */
+    .filter-btn.fb-deferred { background: rgba(107,114,128,0.08); color: #9ca3af; }
+    .filter-btn.fb-deferred.active { background: rgba(107,114,128,0.22); color: #d1d5db; border-color: rgba(107,114,128,0.4); }
+    /* No tag (done items etc) */
+    .filter-btn.fb-done { background: rgba(52,211,153,0.08); color: var(--green); }
+    .filter-btn.fb-done.active { background: rgba(52,211,153,0.22); color: #6ee7b7; border-color: rgba(52,211,153,0.4); }
+
+    /* Inactive filter buttons when another is active */
+    .filter-bar.has-active .filter-btn:not(.active) { opacity: 0.4; }
+    .filter-bar.has-active .filter-btn:not(.active):hover { opacity: 0.7; }
+
     /* Phase badge */
     .phase-badge {
       font-family: var(--mono); font-size: 10px; font-weight: 600;
@@ -309,33 +354,17 @@
       <div class="header-stat"><span class="val" id="count-progress">0</span><span class="lbl">In Progress</span></div>
       <div class="header-stat"><span class="val" id="count-todo">0</span><span class="lbl">Planned</span></div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px;font-size:11px;">
-      <span class="blocked-tag bt-dependency">PRE-LAUNCH</span>
-      <span class="blocked-tag bt-postlaunch">POST-LAUNCH</span>
-      <span class="blocked-tag bt-postlaunch">NEEDS USERS</span>
-      <span class="blocked-tag bt-dependency">NEEDS DATA VOLUME</span>
-      <span class="blocked-tag bt-external">EXTERNAL</span>
-      <span class="blocked-tag bt-ceo">CEO ACTION</span>
-      <span class="blocked-tag bt-dependency">DEPENDENCY</span>
-    </div>
     <div class="progress-bar-outer">
       <div class="progress-bar-fill" id="progress-fill"></div>
     </div>
   </div>
 
-  <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:0 auto 16px;max-width:720px;">
-    <span class="blocked-tag bt-postlaunch">POST-LAUNCH</span>
-    <span class="blocked-tag bt-dependency">DEPENDENCY</span>
-    <span class="blocked-tag bt-dependency">PRE-LAUNCH</span>
-    <span class="blocked-tag bt-external">EXTERNAL</span>
-    <span class="blocked-tag bt-ceo">CEO ACTION</span>
-    <span class="blocked-tag bt-deferred">DEFERRED</span>
-  </div>
+  <div class="filter-bar" id="filter-bar"></div>
 
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v3.98 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap blocked-reason tags
+    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v4.01 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
   </div>
 
 </div>
@@ -1142,17 +1171,92 @@ function phaseLabel(p) {
   return 'P' + p;
 }
 
+// Normalize blocked tags to filter groups
+const filterGroups = {
+  'post-launch':   'postlaunch',
+  'needs-users':   'postlaunch',
+  'pre-launch':    'prelaunch',
+  'dependency':    'dependency',
+  'needs-extension':'dependency',
+  'needs-gmail':   'dependency',
+  'needs-referrals':'dependency',
+  'needs-data':    'dependency',
+  'needs-apply':   'dependency',
+  'external':      'external',
+  'ceo':           'ceo',
+  'deferred':      'deferred',
+};
+
+const filterLabels = {
+  'all':        'ALL',
+  'postlaunch': 'POST-LAUNCH',
+  'prelaunch':  'PRE-LAUNCH',
+  'dependency': 'DEPENDENCY',
+  'external':   'EXTERNAL',
+  'ceo':        'CEO ACTION',
+  'deferred':   'DEFERRED',
+  'done':       'COMPLETED',
+};
+
+let activeFilter = 'all';
+
+function getFilterGroup(f) {
+  if (f.s === 'done' && !f.b) return 'done';
+  if (f.b && filterGroups[f.b]) return filterGroups[f.b];
+  if (f.s === 'done') return 'done';
+  return null;
+}
+
+function buildFilterBar() {
+  // Count items per filter group
+  const counts = { all: features.length, done: 0, postlaunch: 0, prelaunch: 0, dependency: 0, external: 0, ceo: 0, deferred: 0 };
+  features.forEach(f => {
+    const group = getFilterGroup(f);
+    if (group && counts[group] !== undefined) counts[group]++;
+  });
+
+  const bar = document.getElementById('filter-bar');
+  const order = ['all', 'postlaunch', 'prelaunch', 'dependency', 'external', 'ceo', 'deferred', 'done'];
+  const cssCls = { all: 'fb-all', postlaunch: 'fb-postlaunch', prelaunch: 'fb-prelaunch', dependency: 'fb-dependency', external: 'fb-external', ceo: 'fb-ceo', deferred: 'fb-deferred', done: 'fb-done' };
+
+  bar.innerHTML = order.filter(k => counts[k] > 0).map(k =>
+    `<span class="filter-btn ${cssCls[k]}${activeFilter === k ? ' active' : ''}" data-filter="${k}">
+      ${filterLabels[k]}<span class="filter-count">${counts[k]}</span>
+    </span>`
+  ).join('');
+
+  if (activeFilter !== 'all') bar.classList.add('has-active');
+  else bar.classList.remove('has-active');
+
+  bar.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const f = btn.dataset.filter;
+      activeFilter = (activeFilter === f) ? 'all' : f;
+      render();
+    });
+  });
+}
+
 function render() {
-  const done = features.filter(f => f.s === 'done');
-  const progress = features.filter(f => f.s === 'progress');
-  const todo = features.filter(f => f.s === 'todo');
+  // Determine visible features based on active filter
+  let visible;
+  if (activeFilter === 'all') {
+    visible = features;
+  } else {
+    visible = features.filter(f => getFilterGroup(f) === activeFilter);
+  }
+
+  const done = visible.filter(f => f.s === 'done');
+  const progress = visible.filter(f => f.s === 'progress');
+  const todo = visible.filter(f => f.s === 'todo');
 
   document.getElementById('count-done').textContent = done.length;
   document.getElementById('count-progress').textContent = progress.length;
   document.getElementById('count-todo').textContent = todo.length;
 
   const total = features.length;
-  const pct = Math.round((done.length / total) * 100);
+  const allDone = features.filter(f => f.s === 'done').length;
+  const pct = Math.round((allDone / total) * 100);
   setTimeout(() => {
     document.getElementById('progress-fill').style.width = pct + '%';
   }, 300);
@@ -1174,6 +1278,7 @@ function render() {
   };
 
   function buildSection(items, cls, label, startCollapsed) {
+    if (items.length === 0) return '';
     const colClass = startCollapsed ? ' collapsed' : '';
     let html = `<div class="section-wrap ${cls}${colClass}">`;
     html += `<div class="section-divider ${cls}" onclick="this.parentElement.classList.toggle('collapsed')">
@@ -1247,6 +1352,8 @@ function render() {
   html += buildSection(todo, 'sec-todo', 'Planned', false);
 
   el.innerHTML = html;
+
+  buildFilterBar();
 }
 
 render();
