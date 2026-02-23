@@ -136,6 +136,9 @@ function fmtAdminPct(n, d) {
 async function loadBoardHealth() {
   console.log('[Admin] loadBoardHealth called, period:', adminPeriod);
   try {
+    // Load refresh cycle status (independent of period)
+    loadRefreshCycle();
+
     var snapshot = await sb.rpc('get_board_health', { period_hours: adminPeriod });
     console.log('[Admin] RPC data:', snapshot.data);
     if (snapshot.error) {
@@ -173,12 +176,14 @@ async function loadBoardHealth() {
       var tbody = document.getElementById('admin-platform-body');
       if (tbody) {
         tbody.innerHTML = platform.data.map(function(p) {
+          var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
+          var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
             '<td class="admin-green">+' + fmtAdminNum(p.boards_added) + '</td>' +
             '<td class="admin-red">-' + fmtAdminNum(p.boards_lost) + '</td>' +
-            '<td>' + fmtAdminNum(p.with_jobs) + '</td>' +
+            '<td class="' + pctColor + '">' + activePct + '%</td>' +
             '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
             '<td class="admin-green">+' + fmtAdminNum(p.jobs_added) + '</td>' +
@@ -189,6 +194,51 @@ async function loadBoardHealth() {
     }
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
+  }
+}
+
+// ─── Refresh Cycle Status ───
+async function loadRefreshCycle() {
+  try {
+    var res = await sb.rpc('get_refresh_cycle_status');
+    if (res.error) { console.error('[Admin] Cycle RPC error:', res.error); return; }
+    var c = res.data;
+    if (!c) return;
+
+    var pct = c.pct_complete || 0;
+    setAdminText('ac-cycle-pct', pct + '%');
+    var bar = document.getElementById('ac-cycle-bar');
+    if (bar) setTimeout(function() { bar.style.width = pct + '%'; }, 100);
+
+    setAdminText('ac-cycle-total', fmtAdminNum(c.total_boards));
+    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.refreshed));
+    setAdminText('ac-cycle-pending', fmtAdminNum(c.pending));
+    setAdminText('ac-cycle-rate', fmtAdminNum(c.rate_per_hour) + '/hr');
+
+    // Format dates as relative
+    if (c.cycle_start) {
+      var start = new Date(c.cycle_start);
+      var hoursAgo = Math.round((Date.now() - start.getTime()) / 3600000);
+      var daysAgo = Math.floor(hoursAgo / 24);
+      var startStr = daysAgo > 0 ? daysAgo + 'd ' + (hoursAgo % 24) + 'h ago' : hoursAgo + 'h ago';
+      setAdminText('ac-cycle-start', startStr);
+    }
+    if (c.est_completion) {
+      var eta = new Date(c.est_completion);
+      var hoursLeft = Math.round((eta.getTime() - Date.now()) / 3600000);
+      var daysLeft = Math.floor(hoursLeft / 24);
+      var etaStr;
+      if (hoursLeft <= 0) {
+        etaStr = 'Overdue';
+      } else if (daysLeft > 0) {
+        etaStr = daysLeft + 'd ' + (hoursLeft % 24) + 'h remaining';
+      } else {
+        etaStr = hoursLeft + 'h remaining';
+      }
+      setAdminText('ac-cycle-eta', etaStr);
+    }
+  } catch (err) {
+    console.error('[Admin] loadRefreshCycle error:', err);
   }
 }
 
