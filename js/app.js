@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.98';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Roadmap blocked-reason tags');
+const BJ_VERSION = 'v3.99';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Extension committed + P8 items marked done');
 
 // Auth
 async function init() {
