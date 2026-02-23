@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghost Job Reality Check — Live Results | Brilliant Jobs</title>
+  <meta name="description" content="How often do companies ghost job applicants? Live data from job seekers on ghosting rates, emotional impact, and what accountability looks like.">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="Ghost Job Reality Check — Live Results">
+  <meta property="og:description" content="Live data from job seekers on ghosting rates, emotional impact, and what companies should do about it.">
+  <meta property="og:type" content="article">
+  <link rel="canonical" href="https://brilliantjobs.app/ghost-report">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+  <script src="/js/vendor/echarts.custom.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e2e4ea;
+      --text-faint: #8b8fa3;
+      --accent: #3b82f6;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --purple: #a855f7;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+    .hero { text-align: center; margin-bottom: 48px; }
+    .hero-badge {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--red);
+      background: rgba(239,68,68,0.1);
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    .hero h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 12px; }
+    .hero p { color: var(--text-faint); font-size: 15px; max-width: 600px; margin: 0 auto; }
+    .response-counter {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px; color: var(--accent);
+      background: rgba(59,130,246,0.08);
+      padding: 6px 16px; border-radius: 8px;
+      margin-top: 16px;
+    }
+    .response-counter .dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .kpi-val { font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+    .kpi-val.red { color: var(--red); }
+    .kpi-val.amber { color: var(--amber); }
+    .kpi-val.green { color: var(--green); }
+    .kpi-label { font-size: 13px; color: var(--text-faint); margin-top: 4px; }
+
+    /* Chart Cards */
+    .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .chart-sub { font-size: 12px; color: var(--text-faint); margin-bottom: 12px; }
+
+    /* Testimonial Wall */
+    .testimonials { margin-top: 40px; }
+    .testimonials h2 { font-size: 1.3rem; margin-bottom: 16px; }
+    .quote-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .quote-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-faint);
+    }
+
+    /* CTA */
+    .cta-bar {
+      text-align: center;
+      margin-top: 48px;
+      padding: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .cta-bar h3 { margin-bottom: 8px; }
+    .cta-bar p { color: var(--text-faint); font-size: 14px; margin-bottom: 16px; }
+    .cta-btn {
+      display: inline-block;
+      background: var(--red);
+      color: #fff;
+      font-weight: 600;
+      font-size: 15px;
+      padding: 10px 28px;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .cta-btn:hover { opacity: 0.9; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-faint); }
+    .empty-state h2 { color: var(--text); margin-bottom: 12px; }
+
+    .footer {
+      text-align: center; padding: 32px 0; color: var(--text-faint); font-size: 12px;
+      border-top: 1px solid var(--border); margin-top: 48px;
+    }
+    .footer a { color: var(--text-faint); }
+
+    @media (max-width: 640px) {
+      .chart-row { grid-template-columns: 1fr; }
+      .quote-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 1.6rem; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="hero">
+    <div class="hero-badge">👻 Ghost Job Reality Check</div>
+    <h1>How companies treat job applicants.</h1>
+    <p>Live data from real job seekers. Every response is anonymous. The numbers update as new submissions come in.</p>
+    <div class="response-counter">
+      <span class="dot"></span>
+      <span id="totalResponses">Loading...</span> responses and counting
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="kpi-card"><div class="kpi-val red" id="kpi-ghost-rate">—</div><div class="kpi-label">report being ghosted on 50%+ of applications</div></div>
+    <div class="kpi-card"><div class="kpi-val amber" id="kpi-avg-apps">—</div><div class="kpi-label">median applications in 90 days</div></div>
+    <div class="kpi-card"><div class="kpi-val red" id="kpi-motivation">—</div><div class="kpi-label">say ghosting killed their motivation</div></div>
+    <div class="kpi-card"><div class="kpi-val green" id="kpi-ghost-score">—</div><div class="kpi-label">want a company ghost score</div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">Ghosting Rate Distribution</div>
+      <div class="chart-sub">What % of applications get zero response?</div>
+      <div id="chart-ghost-rate" style="height:260px;"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">The Ghosting Spectrum</div>
+      <div class="chart-sub">Types of ghosting experienced (multi-select)</div>
+      <div id="chart-ghost-types" style="height:260px;"></div>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">Emotional Impact</div>
+      <div class="chart-sub">How ghosting affects job seekers</div>
+      <div id="chart-emotional" style="height:280px;"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">What Job Seekers Want</div>
+      <div class="chart-sub">Accountability measures companies should adopt</div>
+      <div id="chart-accountability" style="height:280px;"></div>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">Worst Offenders by Company Size</div>
+      <div class="chart-sub">Who ghosts the most?</div>
+      <div id="chart-offenders" style="height:240px;"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Would a Ghost Score Help?</div>
+      <div class="chart-sub">Interest in company hiring accountability ratings</div>
+      <div id="chart-ghost-score" style="height:240px;"></div>
+    </div>
+  </div>
+
+  <!-- Testimonial Wall -->
+  <div class="testimonials" id="testimonialSection" style="display:none;">
+    <h2>In their own words</h2>
+    <div class="quote-grid" id="quoteGrid"></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-bar">
+    <h3>Been ghosted? Add your data.</h3>
+    <p>Every response strengthens the evidence. 10 questions, no login, completely anonymous.</p>
+    <a href="/survey?context=ghost" class="cta-btn">Take the Survey →</a>
+  </div>
+
+  <div class="footer">
+    &copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs &nbsp;·&nbsp;
+    <a href="/">Home</a> &nbsp;·&nbsp;
+    <a href="/terms">Terms</a> &nbsp;·&nbsp;
+    <a href="/privacy">Privacy</a>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+
+async function loadGhostReport() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/feedback?select=answers,created_at&type=eq.ghost_survey&survey_version=eq.ghost_v1&order=created_at.desc', {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+    });
+    if (!res.ok) throw new Error('Fetch failed');
+    const rows = await res.json();
+
+    document.getElementById('totalResponses').textContent = rows.length.toLocaleString();
+
+    if (rows.length < 5) {
+      document.querySelector('.kpi-grid').style.display = 'none';
+      document.querySelectorAll('.chart-row').forEach(r => r.style.display = 'none');
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = '<h2>We need more data.</h2><p>Only ' + rows.length + ' responses so far. Charts unlock at 5 responses. Share the survey to help us get there.</p>';
+      document.querySelector('.kpi-grid').parentElement.insertBefore(empty, document.querySelector('.kpi-grid'));
+      return;
+    }
+
+    // Parse all answers
+    var ghostRateCounts = {};
+    var ghostTypeCounts = {};
+    var emotionalCounts = {};
+    var offenderCounts = {};
+    var accountabilityCounts = {};
+    var ghostScoreCounts = {};
+    var appCounts = {};
+    var testimonials = [];
+
+    rows.forEach(function(r) {
+      var a = r.answers || {};
+
+      // Ghost rate (Q3)
+      if (a.ghost_rate) {
+        var t = a.ghost_rate.text || '';
+        ghostRateCounts[t] = (ghostRateCounts[t] || 0) + 1;
+      }
+
+      // Apps last 90 (Q2)
+      if (a.apps_last_90) {
+        var t = a.apps_last_90.text || '';
+        appCounts[t] = (appCounts[t] || 0) + 1;
+      }
+
+      // Ghost types (Q5 — multiselect)
+      if (a.ghost_type && a.ghost_type.selections) {
+        a.ghost_type.selections.forEach(function(s) {
+          ghostTypeCounts[s.text] = (ghostTypeCounts[s.text] || 0) + 1;
+        });
+      }
+
+      // Emotional impact (Q6 — multiselect)
+      if (a.emotional_impact && a.emotional_impact.selections) {
+        a.emotional_impact.selections.forEach(function(s) {
+          emotionalCounts[s.text] = (emotionalCounts[s.text] || 0) + 1;
+        });
+      }
+
+      // Worst offenders (Q7)
+      if (a.worst_offenders) {
+        var t = a.worst_offenders.text || '';
+        offenderCounts[t] = (offenderCounts[t] || 0) + 1;
+      }
+
+      // Accountability (Q8 — multiselect)
+      if (a.accountability && a.accountability.selections) {
+        a.accountability.selections.forEach(function(s) {
+          accountabilityCounts[s.text] = (accountabilityCounts[s.text] || 0) + 1;
+        });
+      }
+
+      // Ghost score value (Q9)
+      if (a.ghost_score_value) {
+        var t = a.ghost_score_value.text || '';
+        ghostScoreCounts[t] = (ghostScoreCounts[t] || 0) + 1;
+      }
+
+      // Testimonials (Q10)
+      if (a.final_word && a.final_word.text && a.final_word.text.length > 10) {
+        testimonials.push(a.final_word.text);
+      }
+    });
+
+    var total = rows.length;
+
+    // KPI: ghost rate 50%+
+    var highGhost = (ghostRateCounts['Most of them (50–75%)'] || 0) +
+                    (ghostRateCounts['Almost all (75%+)'] || 0) +
+                    (ghostRateCounts['Literally all of them'] || 0);
+    document.getElementById('kpi-ghost-rate').textContent = Math.round((highGhost / total) * 100) + '%';
+
+    // KPI: median apps
+    var appBuckets = ['0', '1–10', '11–25', '26–50', '51–100', '100+'];
+    var appMids = [0, 5, 18, 38, 75, 150];
+    var totalApps = 0, appRespondents = 0;
+    appBuckets.forEach(function(b, i) {
+      var c = appCounts[b] || 0;
+      totalApps += c * appMids[i];
+      appRespondents += c;
+    });
+    document.getElementById('kpi-avg-apps').textContent = appRespondents > 0 ? Math.round(totalApps / appRespondents) : '—';
+
+    // KPI: motivation
+    var lostMotivation = emotionalCounts["I've lost motivation"] || 0;
+    document.getElementById('kpi-motivation').textContent = Math.round((lostMotivation / total) * 100) + '%';
+
+    // KPI: ghost score interest
+    var wantScore = (ghostScoreCounts["Absolutely — I'd use it every time"] || 0) +
+                    (ghostScoreCounts["Somewhat useful"] || 0);
+    document.getElementById('kpi-ghost-score').textContent = Math.round((wantScore / total) * 100) + '%';
+
+    // Wait for ECharts
+    function waitForECharts(cb) {
+      if (window.echarts) return cb();
+      var check = setInterval(function() { if (window.echarts) { clearInterval(check); cb(); } }, 100);
+    }
+
+    waitForECharts(function() {
+      renderBarChart('chart-ghost-rate', ghostRateCounts, total, '#ef4444');
+      renderHorizontalBar('chart-ghost-types', ghostTypeCounts, total, '#a855f7');
+      renderHorizontalBar('chart-emotional', emotionalCounts, total, '#f59e0b');
+      renderHorizontalBar('chart-accountability', accountabilityCounts, total, '#3b82f6');
+      renderBarChart('chart-offenders', offenderCounts, total, '#22c55e');
+      renderPieChart('chart-ghost-score', ghostScoreCounts);
+    });
+
+    // Testimonials
+    if (testimonials.length > 0) {
+      document.getElementById('testimonialSection').style.display = 'block';
+      var grid = document.getElementById('quoteGrid');
+      // Show max 12, randomized
+      var shuffled = testimonials.sort(function() { return 0.5 - Math.random(); }).slice(0, 12);
+      grid.innerHTML = shuffled.map(function(t) {
+        return '<div class="quote-card">"' + escapeHtml(t) + '"</div>';
+      }).join('');
+    }
+
+  } catch (err) {
+    console.error('Ghost report load failed:', err);
+    document.getElementById('totalResponses').textContent = 'Error loading';
+  }
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderBarChart(elId, counts, total, color) {
+  var el = document.getElementById(elId);
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  var labels = Object.keys(counts);
+  var values = labels.map(function(l) { return counts[l]; });
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: function(p) {
+        var v = p[0];
+        return v.name + ': ' + v.value + ' (' + Math.round((v.value / total) * 100) + '%)';
+      }
+    },
+    xAxis: { type: 'category', data: labels, axisLabel: { rotate: 20, fontSize: 10, color: '#8b8fa3', interval: 0 } },
+    yAxis: { type: 'value', axisLabel: { color: '#8b8fa3' }, splitLine: { lineStyle: { color: '#2a2d3a' } } },
+    series: [{ type: 'bar', data: values, itemStyle: { color: color, borderRadius: [4, 4, 0, 0] }, barMaxWidth: 40 }],
+    grid: { left: 40, right: 16, top: 10, bottom: 60 }
+  });
+}
+
+function renderHorizontalBar(elId, counts, total, color) {
+  var el = document.getElementById(elId);
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  var sorted = Object.entries(counts).sort(function(a, b) { return a[1] - b[1]; });
+  var labels = sorted.map(function(s) { return s[0]; });
+  var values = sorted.map(function(s) { return s[1]; });
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      formatter: function(p) {
+        var v = p[0];
+        return v.name + ': ' + v.value + ' (' + Math.round((v.value / total) * 100) + '%)';
+      }
+    },
+    xAxis: { type: 'value', axisLabel: { color: '#8b8fa3' }, splitLine: { lineStyle: { color: '#2a2d3a' } } },
+    yAxis: { type: 'category', data: labels, axisLabel: { fontSize: 11, color: '#e2e4ea', width: 200, overflow: 'truncate' } },
+    series: [{ type: 'bar', data: values, itemStyle: { color: color, borderRadius: [0, 4, 4, 0] }, barMaxWidth: 24 }],
+    grid: { left: 200, right: 30, top: 10, bottom: 10 }
+  });
+}
+
+function renderPieChart(elId, counts) {
+  var el = document.getElementById(elId);
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  var data = Object.entries(counts).map(function(e) { return { name: e[0], value: e[1] }; });
+  var colors = ['#22c55e', '#3b82f6', '#8b8fa3', '#f59e0b'];
+
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [{
+      type: 'pie',
+      radius: ['40%', '70%'],
+      center: ['50%', '50%'],
+      data: data,
+      label: { show: true, color: '#e2e4ea', fontSize: 11, formatter: '{b}\n{d}%' },
+      itemStyle: { borderColor: '#1a1d27', borderWidth: 2 },
+      color: colors
+    }]
+  });
+}
+
+loadGhostReport();
+</script>
+
+</body>
+</html>
