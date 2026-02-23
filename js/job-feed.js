@@ -687,8 +687,9 @@ async function searchJobs(page = 0) {
 
   } catch (e) {
     console.error('Search error:', e);
+    if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px 12px;">
-      <div style="font-size:13px;">Search failed: ${e.message}</div>
+      <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
     </td></tr>`;
   }
 }
@@ -843,8 +844,9 @@ function formatSalaryCell(job) {
 }
 
 function truncate(str, max) {
-  if (!str) return '—';
-  return str.length > max ? str.slice(0, max) + '…' : str;
+  if (!str) return '\u2014';
+  var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
+  return typeof escapeHtml === 'function' ? escapeHtml(trimmed) : trimmed;
 }
 
 // City alias map for display normalization
@@ -1057,13 +1059,13 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     if (isNew) newCount++;
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
-    html += `<tr class="job-data-row" data-jobid="${job.greenhouse_id}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${job.greenhouse_id}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
-      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${job.greenhouse_id}" title="${(job.title||'').replace(/"/g,'&quot;')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+    html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
+      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
+      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
       <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
-      <td class="jt-loc" title="${(job.location||'').replace(/"/g,'&quot;')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
+      <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
       <td class="jt-match">${matchBadge(jobMatchScores[job.greenhouse_id])}</td>

@@ -12,6 +12,306 @@ window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
+// ============================================================
+// XSS PROTECTION — escapeHtml utility (v3.90)
+// ============================================================
+// Use for any user-generated content rendered via innerHTML/template literals.
+// Does NOT replace DOMPurify for untrusted rich HTML (job descriptions).
+
+var _escapeEl = document.createElement('div');
+/**
+ * Escape HTML special characters to prevent XSS.
+ * @param {string} str - Untrusted string
+ * @returns {string} Escaped string safe for innerHTML
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  _escapeEl.textContent = str;
+  return _escapeEl.innerHTML;
+}
+
+/**
+ * Truncate string with HTML escaping (safe for innerHTML).
+ * Drop-in replacement for raw truncate() in user-generated contexts.
+ * @param {string} str - Untrusted string
+ * @param {number} max - Max length
+ * @returns {string} Escaped and truncated string
+ */
+function truncateSafe(str, max) {
+  if (!str) return '\u2014';
+  var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
+  return escapeHtml(trimmed);
+}
+
+// ============================================================
+// TOAST NOTIFICATION SYSTEM — User-facing errors (v3.90)
+// ============================================================
+// Replaces silent console.error/warn for Supabase failures, auth issues, etc.
+
+var _toastContainer = null;
+var _toastQueue = [];
+var _toastCount = 0;
+var _MAX_TOASTS = 3;
+
+function _ensureToastContainer() {
+  if (_toastContainer && document.body.contains(_toastContainer)) return;
+  _toastContainer = document.createElement('div');
+  _toastContainer.id = 'bj-toast-container';
+  _toastContainer.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99998;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px;';
+  document.body.appendChild(_toastContainer);
+}
+
+/**
+ * Show a toast notification to the user.
+ * @param {string} message - Message text (will be escaped)
+ * @param {object} opts - { type: 'error'|'warning'|'success'|'info', duration: ms, action: { label, fn } }
+ */
+function showToast(message, opts) {
+  var type = (opts && opts.type) || 'info';
+  var duration = (opts && opts.duration) || (type === 'error' ? 6000 : 4000);
+
+  _ensureToastContainer();
+
+  // Enforce max visible toasts
+  if (_toastCount >= _MAX_TOASTS) {
+    var oldest = _toastContainer.querySelector('.bj-toast');
+    if (oldest) _dismissToast(oldest);
+  }
+
+  var colors = {
+    error:   { bg: 'hsl(0, 84%, 60%)',   icon: '\u2716' },
+    warning: { bg: 'hsl(38, 92%, 50%)',   icon: '\u26A0' },
+    success: { bg: 'hsl(142, 71%, 45%)',  icon: '\u2714' },
+    info:    { bg: 'hsl(217, 100%, 62%)', icon: '\u2139' }
+  };
+  var c = colors[type] || colors.info;
+
+  var toast = document.createElement('div');
+  toast.className = 'bj-toast';
+  toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:hsl(230,28%,14%);color:#f0f1f3;font-size:13px;font-family:Outfit,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;max-width:380px;word-break:break-word;';
+
+  var iconSpan = '<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:' + c.bg + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">' + c.icon + '</span>';
+  var closeBtn = '<button style="flex-shrink:0;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:0 0 0 8px;line-height:1;" title="Dismiss">\u2715</button>';
+  var actionHtml = '';
+  if (opts && opts.action) {
+    actionHtml = '<button class="bj-toast-action" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">' + escapeHtml(opts.action.label) + '</button>';
+  }
+  toast.innerHTML = iconSpan + '<span style="flex:1;">' + escapeHtml(message) + '</span>' + actionHtml + closeBtn;
+
+  // Close button handler
+  toast.querySelector('button:last-child').addEventListener('click', function() { _dismissToast(toast); });
+
+  // Action button handler
+  if (opts && opts.action) {
+    toast.querySelector('.bj-toast-action').addEventListener('click', function() {
+      if (opts.action.fn) opts.action.fn();
+      _dismissToast(toast);
+    });
+  }
+
+  _toastContainer.appendChild(toast);
+  _toastCount++;
+
+  // Animate in
+  requestAnimationFrame(function() { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; });
+
+  // Auto-dismiss
+  if (duration > 0) {
+    setTimeout(function() { _dismissToast(toast); }, duration);
+  }
+
+  return toast;
+}
+
+function _dismissToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(12px)';
+  setTimeout(function() {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+    _toastCount = Math.max(0, _toastCount - 1);
+  }, 250);
+}
+
+// Convenience shortcuts
+function toastError(msg, opts) { return showToast(msg, Object.assign({ type: 'error' }, opts || {})); }
+function toastWarning(msg, opts) { return showToast(msg, Object.assign({ type: 'warning' }, opts || {})); }
+function toastSuccess(msg, opts) { return showToast(msg, Object.assign({ type: 'success' }, opts || {})); }
+function toastInfo(msg, opts) { return showToast(msg, Object.assign({ type: 'info' }, opts || {})); }
+
+// ============================================================
+// LOCALSTORAGE ENCRYPTION FOR PII (v3.90)
+// ============================================================
+// Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
+// Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
+
+var _encryptionKey = null;
+var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
+
+/**
+ * Derive an AES-GCM encryption key from the user's Supabase session ID.
+ * Key is deterministic per user (same user = same key).
+ */
+async function _deriveEncryptionKey(userId) {
+  if (_encryptionKey) return _encryptionKey;
+  var encoder = new TextEncoder();
+  var keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(userId + ':bj_pii_v1'), 'PBKDF2', false, ['deriveKey']);
+  _encryptionKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: encoder.encode('brilliant-jobs-pii-salt'), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+  return _encryptionKey;
+}
+
+/**
+ * Encrypt a string value for localStorage storage.
+ * @param {string} plaintext - Value to encrypt
+ * @param {string} userId - User ID for key derivation
+ * @returns {Promise<string>} Base64-encoded ciphertext with IV prefix
+ */
+async function encryptForStorage(plaintext, userId) {
+  try {
+    var key = await _deriveEncryptionKey(userId);
+    var encoder = new TextEncoder();
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encoder.encode(plaintext));
+    // Prepend IV to ciphertext
+    var combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
+  } catch (e) {
+    console.warn('[BJ] Encryption failed, storing plaintext:', e.message);
+    return plaintext;
+  }
+}
+
+/**
+ * Decrypt a localStorage value.
+ * @param {string} ciphertext - Base64-encoded value from localStorage
+ * @param {string} userId - User ID for key derivation
+ * @returns {Promise<string>} Decrypted plaintext
+ */
+async function decryptFromStorage(ciphertext, userId) {
+  if (!ciphertext || !ciphertext.startsWith('enc:')) return ciphertext; // Not encrypted
+  try {
+    var key = await _deriveEncryptionKey(userId);
+    var raw = atob(ciphertext.slice(4));
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    var iv = bytes.slice(0, 12);
+    var data = bytes.slice(12);
+    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.warn('[BJ] Decryption failed (key mismatch or corruption):', e.message);
+    return null;
+  }
+}
+
+/** Check if a localStorage key is PII and should be encrypted */
+function isPiiKey(lsKey) {
+  return _PII_KEYS.indexOf(lsKey) !== -1;
+}
+
+// ============================================================
+// SESSION MANAGEMENT HARDENING (v3.90)
+// ============================================================
+// - Monitors auth state changes for session expiry
+// - Auto-refreshes tokens before expiry
+// - Warns user before forced logout
+// - Inactivity timeout for PII protection
+
+var _sessionInactivityTimer = null;
+var _SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+var _lastActivity = Date.now();
+var _sessionWarningShown = false;
+
+/** Initialize session management */
+function initSessionManagement() {
+  // Listen for auth state changes (session expiry, token refresh)
+  sb.auth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_OUT') {
+        _clearSensitiveData();
+        window.location.href = '/?session_expired=1';
+      }
+    }
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('[BJ] Session token refreshed');
+      _lastActivity = Date.now();
+    }
+  });
+
+  // Track user activity for inactivity timeout
+  ['click', 'keydown', 'scroll', 'mousemove'].forEach(function(evt) {
+    document.addEventListener(evt, _trackActivity, { passive: true });
+  });
+
+  // Check inactivity every minute
+  _sessionInactivityTimer = setInterval(_checkInactivity, 60000);
+
+  // Periodically verify session is still valid
+  setInterval(_verifySession, 5 * 60 * 1000); // every 5 min
+}
+
+function _trackActivity() {
+  _lastActivity = Date.now();
+  if (_sessionWarningShown) {
+    _sessionWarningShown = false;
+    // User came back — dismiss inactivity warning
+  }
+}
+
+function _checkInactivity() {
+  var idle = Date.now() - _lastActivity;
+  if (idle > _SESSION_INACTIVITY_MS && !_sessionWarningShown) {
+    _sessionWarningShown = true;
+    showToast('Your session will expire soon due to inactivity.', {
+      type: 'warning',
+      duration: 0, // persistent until action
+      action: { label: 'Stay signed in', fn: function() {
+        _lastActivity = Date.now();
+        _sessionWarningShown = false;
+        sb.auth.getSession(); // triggers refresh
+        toastSuccess('Session extended.');
+      }}
+    });
+  }
+  // Force logout after 2x the inactivity timeout
+  if (idle > _SESSION_INACTIVITY_MS * 2) {
+    _clearSensitiveData();
+    sb.auth.signOut();
+  }
+}
+
+async function _verifySession() {
+  try {
+    var result = await sb.auth.getSession();
+    if (!result.data.session) {
+      toastError('Your session has expired. Please sign in again.', {
+        duration: 0,
+        action: { label: 'Sign in', fn: function() { window.location.href = '/'; } }
+      });
+    }
+  } catch (e) {
+    // Network error — don't force logout
+  }
+}
+
+/** Clear sensitive data on logout / session expiry */
+function _clearSensitiveData() {
+  _encryptionKey = null;
+  _PII_KEYS.forEach(function(key) {
+    localStorage.removeItem(key);
+  });
+  // Clear any cached query data
+  _queryCache = {};
+}
+
 // Auth
 let currentUser = null;
 
