@@ -12016,6 +12016,7 @@ async function fetchAndRenderStats() {
     renderSeniorityBars(stats);
     renderTopCompanies(stats);
     renderWorkType(stats);
+    renderAtsSource(stats);
     renderPostingAge(stats);
     renderGeoMap(stats, configs);
     renderSalaryByLevel(stats);
@@ -12053,7 +12054,7 @@ async function fetchFilterData(sf) {
 function aggregateStats(rows) {
   var s = { total: rows.length, medianSalary: null, seniorPct: 0, remotePct: 0, companyCount: 0,
     levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {},
-    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0 };
+    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0, atsSourceCounts: {} };
 
   var cos = {}; rows.forEach(function(r) { var ck = r.company_slug || r.company_name; if (ck) cos[ck] = true; });
   s.companyCount = Object.keys(cos).length;
@@ -12209,6 +12210,15 @@ function aggregateStats(rows) {
         s.cityCounts[key] = (s.cityCounts[key]||0) + 1;
       }
     }
+  });
+
+  // ATS Source breakdown
+  s.atsSourceCounts = {};
+  var sourceLabels = { greenhouse: 'Greenhouse', lever: 'Lever', ashby: 'Ashby', workable: 'Workable', recruitee: 'Recruitee', usajobs: 'USAJobs' };
+  rows.forEach(function(r) {
+    var src = r.ats_source || 'unknown';
+    var label = sourceLabels[src] || src;
+    s.atsSourceCounts[label] = (s.atsSourceCounts[label] || 0) + 1;
   });
 
   return s;
@@ -12406,6 +12416,29 @@ function renderWorkType(stats) {
       formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value+' jobs ('+p.percent.toFixed(1)+'%)';}}, ttip()),
     legend: { orient:'vertical', right:10, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:12},
       formatter:function(name){ var v=wt[name]||0; var pct=displayTotal>0?Math.round(v/displayTotal*100):0; return name+'  '+pct+'%'; }},
+    series: [{ type:'pie', radius:['42%','70%'], center:['35%','50%'], avoidLabelOverlap:true,
+      label:{show:false},
+      emphasis:{label:{show:true,fontSize:14,fontFamily:_T.sans,fontWeight:'600',color:_T.dark}},
+      data:data }],
+    animation:true, animationDuration:600,
+  }, true);
+}
+
+// ─── C9: ATS Source Breakdown — donut ───
+function renderAtsSource(stats) {
+  var chart = getOrCreateChart('#chart-ats-source'); if (!chart) return;
+  var sc = stats.atsSourceCounts;
+  var sourceColors = { 'Greenhouse':'#22c55e', 'Lever':'#6366f1', 'Ashby':'#f59e0b', 'Workable':'#ec4899', 'Recruitee':'#06b6d4', 'USAJobs':'#3b82f6' };
+  var total = Object.values(sc).reduce(function(a,b){return a+b;},0);
+  if (total === 0) { emptyChart(chart, 'No source data'); return; }
+  var data = Object.entries(sc).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+    return {name:e[0], value:e[1], itemStyle:{color:sourceColors[e[0]]||'#64748b'}};
+  });
+  chart.setOption({
+    tooltip: Object.assign({ trigger:'item',
+      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+p.percent.toFixed(1)+'%)';} }, ttip()),
+    legend: { orient:'vertical', right:10, top:'center', textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:12},
+      formatter:function(name){ var v=sc[name]||0; var pct=total>0?Math.round(v/total*100):0; return name+'  '+pct+'%'; }},
     series: [{ type:'pie', radius:['42%','70%'], center:['35%','50%'], avoidLabelOverlap:true,
       label:{show:false},
       emphasis:{label:{show:true,fontSize:14,fontFamily:_T.sans,fontWeight:'600',color:_T.dark}},
@@ -12843,9 +12876,41 @@ async function loadBoardHealth() {
         }).join('');
       }
     }
+    loadUsajobsHealth();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
   }
+}
+
+
+// ─── USAJOBS Feed Health ───
+async function loadUsajobsHealth() {
+  try {
+    var res = await sb.from('ats_jobs').select('greenhouse_id,salary_min,loc_type,updated_at', { count: 'exact', head: false })
+      .eq('ats_source', 'usajobs').eq('status', 'open').limit(1).order('updated_at', {ascending: false});
+    var total = res.count || 0;
+    var lastRefresh = (res.data && res.data[0]) ? res.data[0].updated_at : null;
+
+    setAdminText('ac-usajobs-total', total > 0 ? total.toLocaleString() : '—');
+
+    // Count salary and remote separately (smaller queries)
+    var salRes = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
+      .eq('ats_source', 'usajobs').eq('status', 'open').not('salary_min', 'is', null);
+    setAdminText('ac-usajobs-salary', salRes.count ? salRes.count.toLocaleString() : '—');
+
+    var remRes = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
+      .eq('ats_source', 'usajobs').eq('status', 'open').eq('loc_type', 'remote');
+    setAdminText('ac-usajobs-remote', remRes.count ? remRes.count.toLocaleString() : '—');
+
+    if (lastRefresh) {
+      var ago = Math.round((Date.now() - new Date(lastRefresh).getTime()) / 3600000);
+      setAdminText('ac-usajobs-refresh', ago < 1 ? 'just now' : ago + 'h ago');
+    }
+
+    // Update health dot
+    var dot = document.querySelector('#admin-usajobs-health .admin-health-dot');
+    if (dot) dot.className = 'admin-health-dot ' + (total > 5000 ? 'green' : total > 0 ? 'yellow' : 'red');
+  } catch(e) { console.error('[Admin] USAJobs health error:', e); }
 }
 
 function setDelta(id, val, prefix, invert) {
