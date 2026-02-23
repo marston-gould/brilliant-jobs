@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.87';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — safety: TRUNCATE protection, daily backups, pre-migration snapshots, FK graph');
+const BJ_VERSION = 'v3.88';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — data quality: +698 salaries, +121K geocoded jobs');
 
 // Auth
 async function init() {
