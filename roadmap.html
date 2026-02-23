@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
+    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 25 Edge Functions · 12 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
   </div>
 
 </div>
@@ -664,7 +664,7 @@ const features = [
   { s: 'done', n: 'DataForSEO alphabet crawl — 5 ATS platforms', d: 'Systematic a-z + aa-zz site: queries (702 per platform) across Greenhouse, Lever, Ashby, Workable, Recruitee via DataForSEO Standard method. Total cost ~$10. Discovered 6,036 new companies + 1,874 existing Greenhouse = 7,910 total boards imported to ats_companies.', p: 10 },
   { s: 'done', n: 'Multi-ATS board validation', d: 'Built dfs_validate_boards.js — pings all 7,910 boards against live ATS APIs with concurrency control, rate limit backoff, timeout handling. Results: 7,542 live (95.3%), 238 dead, 130 unknown. Updates job_count + last_checked in Supabase. Top boards: svetness (4,678), jobgether (4,606), mercier-consultancy (3,276).', p: 10 },
   { s: 'done', n: 'Multi-ATS refresh-jobs Edge Function v10→v13', d: 'Single function handles all 5 ATS platforms. v10: 200 boards/invocation. v13: 50 boards (OOM fix), dedup before upsert, country parsing from location strings. Parsers for Greenhouse, Lever, Ashby, Workable, Recruitee normalize to shared ats_jobs schema. Upserts on composite (greenhouse_id, ats_source). Marks disappeared jobs as closed. Wall time safety at 120s.', p: 10 },
-  { s: 'done', n: 'pg_cron 10-minute refresh cycle', d: 'refresh-jobs-cycle fires every 10 min — full cycle of 7,542 boards in ~6.5 hours. Replaced old daily-job-refresh and refresh-batch-00 cron jobs. Old refresh-orchestrator function deprecated.', p: 10 },
+  { s: 'done', n: 'pg_cron tiered refresh cycle', d: 'refresh-jobs-tiered fires every 3 min with priority tiers. HOT boards (have active jobs) refresh every 6h. WARM (empty but active) every 3 days. COLD (404/inactive) weekly. ~310 invocations/day. Replaced old 6-hourly cron. 38,775 boards across 6 platforms.', p: 10 },
   { s: 'done', n: 'Scheduled discovery automation', d: 'Built dfs_scheduled_discovery.js for monthly crawl: runs alphabet crawl across all 5 platforms (3,510 queries, ~$10.53/run), compares against Supabase, inserts net-new slugs. Includes --resume flag for crash recovery. Designed for cron (monthly 1st at 3am).', p: 10 },
   { s: 'done', n: 'Slug import pipeline', d: 'Built dfs_import_existing.js to load *_alpha_slugs.json files into Supabase. Handles object vs array formats, filters master files, validates arrays. Imported 3,588 net-new slugs (Workable + Recruitee) bringing total from 4,322 to 7,910.', p: 10 },
   { s: 'done', n: 'Competitive analysis toolkit', d: 'Built Manifest V3 Chrome extension (Site Inspector) for LoopCV UX research: network request interception, fetch/XHR response capture, WebSocket logging, localStorage snapshots, form detection, DOM mutation observer, notes with timestamps. JSON + summary export.', p: 10 },
@@ -704,7 +704,7 @@ const features = [
   // ── PDL Company Dataset Discovery ──
   { s: 'done', n: 'PDL dataset ATS probing', d: 'Tested 1,500 US companies from PDL 34M dataset against 5 ATS APIs. 3 hits from 400 companies (0.75% hit rate). Non-Greenhouse platforms use unpredictable slugs. Not viable for discovery. PDL remains excellent for enrichment only.', p: 10 },
   { s: 'done', n: 'Greenhouse Seekers Portal discovery', d: 'Scraped my.greenhouse.io/jobs seeker portal. 2,668 total slugs extracted, 1,856 net-new boards imported. Discovered EU domain (job-boards.eu.greenhouse.io, 496 boards) and 67 custom domain companies (Duolingo, Asana, HubSpot, Klaviyo). CSV staging table + SQL regex parsing pipeline. Total Greenhouse boards: 3,830.', p: 10 },
-  { s: 'done', n: 'refresh-jobs v11-v13 (OOM fix + dedup + country parsing)', d: 'v11: Removed ?content=true from Greenhouse URL (was causing Memory Limit Exceeded on every run), reduced batch from 200→50 boards. v12: Deduplicate jobs by greenhouse_id+ats_source before upsert (fixes ON CONFLICT batch error). v13: Country code parsing from location strings for Greenhouse/Lever/Ashby (US states→US, country names/codes→ISO). Jobs now flowing: 1,394 upserted per cycle.', p: 10 },
+  { s: 'done', n: 'refresh-jobs v11-v14 (OOM fix + dedup + country + tiered refresh)', d: 'v11: Removed ?content=true from Greenhouse (OOM fix), batch 200→50. v12: Dedup before upsert. v13: Country parsing. v14: Tiered refresh — HOT (9K boards with jobs, 6h) / WARM (29K empty+active, 3d) / COLD (1.3K dead, 7d). Batch 50→150, concurrency 5→10, cron 6h→3min. 3 partial indexes. Full HOT cycle ~6h (was 194 days). PR #72.', p: 10 },
   { s: 'done', n: 'Parking lot page', d: 'Built parkinglot.html tracking discovery channels, enrichment tasks, infrastructure debt, and product ideas. Status dots: tested (green), viable (blue), parked (amber), dead (red), idea (purple). Tags for cost, yield, channel, platform. Matches roadmap visual style.', p: 10 },
   { s: 'todo', n: 'PDL industry enrichment for new ATS boards', d: 'Match 5,668 non-Greenhouse ats_companies against PDL dataset for industry, size, locality, region, country, founded, website, linkedin_url.', b: 'post-launch', p: 10, b: 'deferred' },
 
@@ -1370,7 +1370,7 @@ fetch('/js/app.js').then(r => { if (!r.ok) throw new Error(r.status); return r.t
   fetch('/dist/dashboard.min.js').then(r => r.text()).then(t => {
     var m = t.match(/BJ_VERSION="([^"]+)"/);
     if (m) document.getElementById('rm-version').textContent = m[1];
-  }).catch(function(){ document.getElementById('rm-version').textContent = 'v4.11'; });
+  }).catch(function(){ document.getElementById('rm-version').textContent = 'v4.12'; });
 });
 </script>
 
