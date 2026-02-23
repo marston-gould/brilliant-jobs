@@ -683,10 +683,10 @@
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| P13-10 | Survey completion rate dashboard | — | 🔲 | Admin console section. ECharts funnel. get_survey_analytics() RPC. |
-| P13-11 | Landing page survey social proof | — | 🔲 | Wire survey_social_proof view. Min 20 responses threshold. |
-| P13-12 | Quarterly feature prioritization | — | 🔲 | Drag-and-drop ranking. New rank question type. Quarterly cron. |
-| P13-13 | Public changelog + feedback board | — | 🔲 | Canny.io free tier integration. |
+| P13-10 | Survey completion rate dashboard | v3.95 | ✅ | Admin Surveys tab: 4 ECharts, KPI cards, recent responses, period toggle. get_survey_analytics() RPC. |
+| P13-11 | Landing page survey social proof | v3.96 | ✅ | Social proof bar: star rating, respondent count, NPS recommend %. Min 20 threshold. survey_social_proof view. |
+| P13-12 | Quarterly feature prioritization | — | 🔲 | Drag-and-drop ranking. New rank question type. Quarterly cron. Deferred — needs user volume. |
+| P13-13 | Public changelog + feedback board | v3.97 | ✅ | Canny widget in dashboard Feedback page. Feature Requests + Bug Reports boards. Identify SSO. GitHub auto-complete. |
 
 ### Sprint 3: Tier 3 — Flagship Content Surveys (planned)
 
