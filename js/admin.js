@@ -191,7 +191,6 @@ async function loadBoardHealth() {
 
     // Load feed health charts
     loadFeedHealthCharts();
-    loadUsajobsHealth();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
   }
@@ -207,36 +206,6 @@ var _platformColors = {
   recruitee: '#ec4899',
   usajobs: '#dc2626'
 };
-
-// ─── USAJOBS Feed Health ───
-async function loadUsajobsHealth() {
-  try {
-    var res = await sb.from('ats_jobs').select('greenhouse_id,salary_min,loc_type,updated_at', { count: 'exact', head: false })
-      .eq('ats_source', 'usajobs').eq('status', 'open').limit(1).order('updated_at', {ascending: false});
-    var total = res.count || 0;
-    var lastRefresh = (res.data && res.data[0]) ? res.data[0].updated_at : null;
-
-    setAdminText('ac-usajobs-total', total > 0 ? total.toLocaleString() : '—');
-
-    // Count salary and remote separately (smaller queries)
-    var salRes = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
-      .eq('ats_source', 'usajobs').eq('status', 'open').not('salary_min', 'is', null);
-    setAdminText('ac-usajobs-salary', salRes.count ? salRes.count.toLocaleString() : '—');
-
-    var remRes = await sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true })
-      .eq('ats_source', 'usajobs').eq('status', 'open').eq('loc_type', 'remote');
-    setAdminText('ac-usajobs-remote', remRes.count ? remRes.count.toLocaleString() : '—');
-
-    if (lastRefresh) {
-      var ago = Math.round((Date.now() - new Date(lastRefresh).getTime()) / 3600000);
-      setAdminText('ac-usajobs-refresh', ago < 1 ? 'just now' : ago + 'h ago');
-    }
-
-    // Update health dot
-    var dot = document.querySelector('#admin-usajobs-health .admin-health-dot');
-    if (dot) dot.className = 'admin-health-dot ' + (total > 5000 ? 'green' : total > 0 ? 'yellow' : 'red');
-  } catch(e) { console.error('[Admin] USAJobs health error:', e); }
-}
 
 async function loadFeedHealthCharts() {
   if (typeof echarts === 'undefined') return;

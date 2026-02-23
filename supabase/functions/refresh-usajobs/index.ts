@@ -222,6 +222,36 @@ serve(async (_req) => {
       }
     }
 
+    // ── Phase 3: Update ats_companies board row ──
+    const openCount = seenIds.length - closedCount;
+    const { error: compErr } = await sb
+      .from("ats_companies")
+      .update({
+        job_count: openCount,
+        last_http_status: 200,
+        last_refresh_at: new Date().toISOString(),
+        last_checked: new Date().toISOString(),
+        is_active: true,
+      })
+      .eq("slug", "usajobs-federal-government")
+      .eq("source", "usajobs");
+
+    if (compErr) errors.push(`ats_companies update: ${compErr.message}`);
+
+    // ── Phase 4: Upsert feed_health_daily snapshot ──
+    const today = new Date().toISOString().slice(0, 10);
+    const { error: fhErr } = await sb
+      .from("feed_health_daily")
+      .upsert({
+        platform: "usajobs",
+        snapshot_date: today,
+        total_boards: 1,
+        active_boards: 1,
+        total_jobs: openCount,
+      }, { onConflict: "platform,snapshot_date" });
+
+    if (fhErr) errors.push(`feed_health_daily upsert: ${fhErr.message}`);
+
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
     return new Response(
@@ -234,7 +264,7 @@ serve(async (_req) => {
         seenCount: seenIds.length,
         errors: errors.length > 0 ? errors : undefined,
         elapsedSeconds: elapsed,
-        version: "3.53",
+        version: "4.09",
       }),
       { headers: { "Content-Type": "application/json" } }
     );
@@ -249,7 +279,7 @@ serve(async (_req) => {
         totalUpserted,
         errors,
         elapsedSeconds: elapsed,
-        version: "3.53",
+        version: "4.09",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
