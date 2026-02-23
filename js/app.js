@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.99';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Extension committed + P8 items marked done');
+const BJ_VERSION = 'v4.00';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P8 complete: Fisher-Yates + CAPTCHA auto-stop');
 
 // Auth
 async function init() {
