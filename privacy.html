@@ -344,7 +344,7 @@
       <tr><td><strong>Supabase</strong></td><td>Database, authentication, and file storage</td><td>User data stored with row-level security — each user can only access their own records</td></tr>
       <tr><td><strong>Vercel</strong></td><td>Website hosting</td><td>IP address and browser information (standard web server logs)</td></tr>
       <tr><td><strong>Stripe</strong></td><td>Payment processing</td><td>Payment method and billing information (we never see or store your full card number)</td></tr>
-      <tr><td><strong>Google OAuth</strong> (future)</td><td>Email integration for application tracking</td><td>Email metadata only — we never read message body content</td></tr>
+      <tr><td><strong>Google OAuth — Gmail</strong></td><td>Email integration for application tracking (Ghost Monitor)</td><td>Email metadata only (sender domain, subject line, date) — we never read message body content. Users connect and disconnect Gmail at any time from the Setup page. Disconnecting deletes all stored tokens and email data.</td></tr>
     </tbody>
   </table>
   <p>Each of these services has its own privacy policy and maintains industry-standard security practices. We chose them because they're good at what they do, not because they were cheap.</p>
