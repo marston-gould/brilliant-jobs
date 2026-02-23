@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.96';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13-11 landing page social proof');
+const BJ_VERSION = 'v3.97';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13-13 Canny feedback widget');
 
 // Auth
 async function init() {
@@ -181,6 +181,7 @@ $$('.nav-item').forEach(item => {
     // Init stats charts when stats tab is shown
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
+    if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
@@ -196,6 +197,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
   });
   if (lastTab === 'admin' && typeof initAdminPage === 'function') initAdminPage();
   if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
+  if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
 }
 
 // Extension detection — check if extension has updated the profile recently
