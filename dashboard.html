@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.04 - 2026-02-23 — Version single source of truth, admin links, cohort ID-only, job count fix -->
+<!-- Brilliant Jobs Dashboard v4.05 - 2026-02-23 — Version single source of truth, admin links, cohort ID-only, job count fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2063,15 +2063,18 @@
               <div class="stat-card"><div class="stat-val" id="ah-net">&mdash;</div><div class="stat-label">Net Change</div><div class="stat-delta" id="ah-net-delta"></div></div>
             </div>
 
-            <div id="admin-period-toggle" style="display:flex;gap:4px;margin-bottom:16px">
-              <button class="admin-period-btn" data-hours="24">24h</button>
-              <button class="admin-period-btn active" data-hours="168">7d</button>
-              <button class="admin-period-btn" data-hours="720">30d</button>
-            </div>
             <table class="admin-table" style="width:100%">
-              <thead><tr><th>Platform</th><th>Boards</th><th>Added</th><th>Lost</th><th>Active %</th><th>4xx</th><th>Jobs</th><th>Added</th><th>Lost</th></tr></thead>
+              <thead><tr><th>Platform</th><th>Boards</th><th>Active %</th><th>4xx</th><th>Jobs</th><th>Jobs/Board</th></tr></thead>
               <tbody id="admin-platform-body"></tbody>
+              <tfoot id="admin-platform-foot"></tfoot>
             </table>
+
+            <!-- Feed Health Charts -->
+            <div style="margin-top:24px">
+              <div id="fh-chart-total-boards" style="width:100%;height:260px;margin-bottom:16px"></div>
+              <div id="fh-chart-active-boards" style="width:100%;height:260px;margin-bottom:16px"></div>
+              <div id="fh-chart-jobs" style="width:100%;height:260px"></div>
+            </div>
           </div>
 
           <div class="admin-panel" id="admin-panel-cohorts">
@@ -2097,7 +2100,8 @@
               <thead><tr>
                 <th>ID</th><th>Age</th><th>Enrollment</th>
                 <th>Users</th><th>Active 7d</th><th>Churned</th>
-                <th>Plans</th><th>Revenue/mo</th><th>LTV</th><th>ARPU</th>
+                <th>Free</th><th>Pro</th>
+                <th>Revenue/mo</th><th>LTV</th><th>ARPU</th>
               </tr></thead>
               <tbody id="admin-cohort-body"></tbody>
             </table>
