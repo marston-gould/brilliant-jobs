@@ -120,7 +120,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.80</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v3.81</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1816,8 +1816,9 @@
               </div>
             </div>
             <div class="stats-chart-card">
-
-        </div>
+              <div class="stats-chart-title">ATS Source Breakdown</div>
+              <div class="ec" id="chart-ats-source" style="width:100%;height:300px"></div>
+            </div>
       </div>
       </div>
       </div>
@@ -2100,6 +2101,21 @@
               <tbody id="admin-platform-body"></tbody>
               <tfoot id="admin-platform-foot"></tfoot>
             </table>
+
+            <!-- USAJOBS Summary (API-based, no boards) -->
+            <div id="admin-usajobs-health" style="margin-top:16px;padding:16px;background:var(--bg-input);border-radius:10px;border:1px solid var(--border)">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <span class="admin-health-dot green"></span>
+                <span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">USAJobs (Federal)</span>
+                <span style="font-size:11px;color:var(--text-faint);margin-left:auto">API-based · refreshes every 6h</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;font-size:12px">
+                <div><span style="color:var(--text-faint)">Total jobs</span><br><strong id="ac-usajobs-total" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">With salary</span><br><strong id="ac-usajobs-salary" style="font-family:var(--mono);color:var(--green)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Remote</span><br><strong id="ac-usajobs-remote" style="font-family:var(--mono)">—</strong></div>
+                <div><span style="color:var(--text-faint)">Last refresh</span><br><strong id="ac-usajobs-refresh" style="font-family:var(--mono)">—</strong></div>
+              </div>
+            </div>
 
             <!-- Feed Health Charts -->
             <div style="margin-top:24px">
