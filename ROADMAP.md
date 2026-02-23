@@ -659,6 +659,55 @@
 
 **Phase J total:** 13 items | 8 versions | 12/13 complete, 1 deferred on external dependency.
 
+---
+
+## Phase M: Surveys & User Intelligence (P13) — Feb 23, 2026
+
+### Sprint 1: Tier 1 — Survey Question Expansion (v3.92–v3.94)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P13-01 | Community Pulse: job anxiety scale | v3.92 | ✅ | 1-5 scale with custom labels. New `scale` question type renderer. |
+| P13-02 | Community Pulse: expected timeline | v3.92 | ✅ | New `dropdown` question type renderer. 5 options (<1mo to 12mo+). |
+| P13-03 | Community Pulse: appreciation score | v3.92 | ✅ | 1-5 stars + optional testimonial freetext (pipeline to landing page). |
+| P13-04 | Post-search micro-surveys | v3.93/v3.94 | ✅ | micro-surveys.js module (v3.93) + trackSearchForSurvey() hook in job-feed.js (v3.94). Triggers after 10th search or 5min session. |
+| P13-05 | Post-application confidence survey | v3.93/v3.94 | ✅ | showApplyConfidence() in pipeline.js. Toast at bottom-right after apply action. |
+| P13-06 | Data value assessment | v3.93/v3.94 | ✅ | startDataViewTimer() in stats.js. Shows after 10s viewing charts. |
+| P13-07 | Process ease & control survey | v3.92 | ✅ | Comparative ease, perceived control (1-5 scale), filter adequacy + missing filters freetext. |
+| P13-08 | Monthly NPS pulse | v3.93 | ✅ (frontend) | nps_v1 question bank + NPS context routing. Edge Function cron job is TODO. |
+| P13-09 | Paywall friction survey | v3.93 | ✅ | showPaywallFriction() in billing.js. Triggers on feature limit hit. |
+
+**Infrastructure:** Baseline migration fixed (v3.92) — added CREATE TABLE for 9 missing tables so Supabase Preview branches pass. New question types: scale, nps (0-10), dropdown. Micro-survey card component with choice/rating/chips, session rate-limiting.
+
+### Sprint 2: Tier 2 — Admin & Analytics (planned)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P13-10 | Survey completion rate dashboard | — | 🔲 | Admin console section. ECharts funnel. get_survey_analytics() RPC. |
+| P13-11 | Landing page survey social proof | — | 🔲 | Wire survey_social_proof view. Min 20 responses threshold. |
+| P13-12 | Quarterly feature prioritization | — | 🔲 | Drag-and-drop ranking. New rank question type. Quarterly cron. |
+| P13-13 | Public changelog + feedback board | — | 🔲 | Canny.io free tier integration. |
+
+### Sprint 3: Tier 3 — Flagship Content Surveys (planned)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| P13-14 | Ghost Job Reality Check flagship survey | 🔲 | 10 questions, public access, 1K+ target. /ghost-report results page. |
+| P13-15–17 | Market, employer, referral surveys | 🔲 | Same pattern as ghost survey. |
+| P13-18 | Survey → content pipeline | 🔲 | Results aggregation RPC, auto-generated charts, OG meta tags. |
+
+### Sprint 4: Tier 4 — User Intelligence System (planned)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| P13-19 | Explicit user attribute capture | 🔲 | profile_v1 survey. Stored in profiles.user_data. |
+| P13-20 | Behavioral activity tracking | 🔲 | PostHog structured events. Daily Edge Function aggregation. |
+| P13-21 | Merged user intelligence profiles | 🔲 | build_user_profile() RPC. Depends on P13-19 + P13-20. |
+| P13-22 | Progressive profiling | 🔲 | Profile completeness score. Feature gating at thresholds. |
+| P13-23 | User data transparency dashboard | 🔲 | Show users what we know. Export/delete controls. GDPR. |
+| P13-24 | Churn risk scoring | 🔲 | 0-100 risk score. Daily pg_cron. Auto-interventions. |
+| P13-25 | Closed-loop feedback display | 🔲 | "You told us X, so we built Y." Canny integration. |
+
 ### Manual Action Items
 | Item | Owner | Status |
 |------|-------|--------|
