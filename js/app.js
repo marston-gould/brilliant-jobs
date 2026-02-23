@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.91';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — roadmap cleanup');
+const BJ_VERSION = 'v3.92';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13 survey expansion');
 
 // Auth
 async function init() {
