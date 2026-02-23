@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.08';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — USAJOBS integration: federal gov job source');
+const BJ_VERSION = 'v4.09';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — USAJOBS propagation: landing, stats, data lab, feed health');
 
 // Auth
 async function init() {
