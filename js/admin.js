@@ -358,6 +358,9 @@ function setDelta(id, val, prefix, invert) {
 // TAB 2: COHORTS
 // ═══════════════════════════════════════════════════════════
 
+var _allCohorts = [];
+var _selectedCohortIds = []; // empty = all selected
+
 async function loadCohortTab() {
   console.log('[Admin] loadCohortTab');
   try {
@@ -373,9 +376,68 @@ async function loadCohortTab() {
       return;
     }
 
-    // Store for entitlements tab
+    _allCohorts = cohorts;
     window._cohortList = cohorts;
 
+    // Build cohort filter chips
+    var filterEl = document.getElementById('ac-cohort-filter');
+    if (filterEl && !filterEl.hasChildNodes()) {
+      var allBtn = document.createElement('button');
+      allBtn.className = 'admin-period-btn active';
+      allBtn.textContent = 'All';
+      allBtn.dataset.cohortId = '__all__';
+      allBtn.addEventListener('click', function() { toggleCohortFilter('__all__'); });
+      filterEl.appendChild(allBtn);
+
+      cohorts.forEach(function(c) {
+        var btn = document.createElement('button');
+        btn.className = 'admin-period-btn';
+        btn.textContent = c.display_id || c.id;
+        btn.dataset.cohortId = c.id;
+        btn.addEventListener('click', function() { toggleCohortFilter(c.id); });
+        filterEl.appendChild(btn);
+      });
+    }
+
+    renderCohortData(cohorts);
+  } catch (err) {
+    console.error('[Admin] loadCohortTab error:', err);
+  }
+}
+
+function toggleCohortFilter(id) {
+  var filterEl = document.getElementById('ac-cohort-filter');
+  if (!filterEl) return;
+
+  if (id === '__all__') {
+    _selectedCohortIds = [];
+  } else {
+    var idx = _selectedCohortIds.indexOf(id);
+    if (idx >= 0) {
+      _selectedCohortIds.splice(idx, 1);
+    } else {
+      _selectedCohortIds.push(id);
+    }
+  }
+
+  // Update button states
+  var isAll = _selectedCohortIds.length === 0;
+  filterEl.querySelectorAll('button').forEach(function(btn) {
+    if (btn.dataset.cohortId === '__all__') {
+      btn.classList.toggle('active', isAll);
+    } else {
+      btn.classList.toggle('active', _selectedCohortIds.indexOf(btn.dataset.cohortId) >= 0);
+    }
+  });
+
+  // Filter and re-render
+  var filtered = isAll ? _allCohorts : _allCohorts.filter(function(c) {
+    return _selectedCohortIds.indexOf(c.id) >= 0;
+  });
+  renderCohortData(filtered);
+}
+
+function renderCohortData(cohorts) {
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
     var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
     var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
@@ -417,7 +479,7 @@ async function loadCohortTab() {
       if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { planCounts[pb.plan] = pb.count; });
 
       return '<tr>' +
-        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + (c.is_locked ? ' 🔒' : '') + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + '</td>' +
         '<td>' + (c.age_days || 0) + 'd</td>' +
         '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
         '<td>' + fmtAdminNum(c.user_count) + '</td>' +
@@ -435,9 +497,6 @@ async function loadCohortTab() {
     }).join('');
 
     renderCohortCharts(cohorts);
-  } catch (err) {
-    console.error('[Admin] loadCohortTab error:', err);
-  }
 }
 
 // ─── Entitlements Tab ───
@@ -812,7 +871,6 @@ function initSeoChart(elId) {
 
 function seoNoData(chart, title, msg) {
   chart.setOption({
-    title: { text: title, textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     graphic: { elements: [{ type: 'group', left: 'center', top: 'middle', children: [
       { type: 'text', left: 'center', top: -10, style: { text: msg || 'No data yet', fill: '#9ca3af', fontSize: 13, fontFamily: 'Outfit' } },
       { type: 'text', left: 'center', top: 12, style: { text: 'Run sync to populate', fill: '#d1d5db', fontSize: 11, fontFamily: 'Outfit' } }
@@ -847,7 +905,7 @@ function renderGscChart() {
   var dates = data.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Google Search Console', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+
     legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
@@ -881,7 +939,7 @@ function renderPsiChart() {
     var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI (Mobile) — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 12 } },
       yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: function(v) { return Math.round(v); } } }),
@@ -910,7 +968,7 @@ function renderPsiChart() {
     var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'PSI Avg Across ' + n + ' Pages (Mobile)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'Avg Across ' + n + ' Pages', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
       yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
@@ -934,7 +992,7 @@ function renderCruxChart() {
   var p75s = metricNames.map(function(k) { return m[k] && m[k].p75 ? m[k].p75 : 0; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Chrome UX Report (p75)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+
     grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
     yAxis: ax.yAxis,
@@ -963,7 +1021,7 @@ function renderYltChart() {
 
     var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'YLT: ' + score + '/100 — ' + (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: score + '/100 — ' + (new URL(_seoUrl).pathname), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       radar: {
         indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
         shape: 'polygon',
@@ -1010,7 +1068,7 @@ function renderYltChart() {
     
     var t = seoChartTheme();
     chart.setOption(Object.assign({}, t, {
-      title: { text: 'YLT Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      title: { text: 'Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
       radar: {
         indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
         shape: 'polygon',
@@ -1043,7 +1101,7 @@ function renderCloudflareChart() {
   var dates = cfData.map(function(r) { return r.date; });
   var t = seoChartTheme(), ax = seoAxis();
   chart.setOption(Object.assign({}, t, {
-    title: { text: 'Cloudflare', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+
     legend: { data: ['Requests', 'Page Views', 'Uniques'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
     grid: { top: 35, right: 60, bottom: 30, left: 50 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
