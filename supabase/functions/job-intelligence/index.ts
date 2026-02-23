@@ -50,7 +50,6 @@ serve(async (req: Request) => {
 
   const now = new Date();
   const yesterday = new Date(now.getTime() - 24 * 3600000).toISOString();
-  const ghostCutoff = new Date(now.getTime() - GHOST_THRESHOLD_DAYS * 24 * 3600000).toISOString();
 
   let ghostsSent = 0;
   let surgesSent = 0;
@@ -74,8 +73,9 @@ serve(async (req: Request) => {
       const userId = prefs.user_id;
 
       // ================================================================
-      // 1. GHOST ALERTS
-      // Applied 14+ days ago with no further pipeline update
+      // 1. GHOST ALERTS (Phase 1 — using ghost scoring engine)
+      // Uses get_pipeline_ghost_status() RPC for scored detection
+      // and ghost_alerts_sent for deduplication
       // ================================================================
       const { data: ghostChannel } = await sb
         .from("notification_channels")
@@ -86,44 +86,61 @@ serve(async (req: Request) => {
 
       // Default to enabled
       if (!ghostChannel || ghostChannel.email !== false) {
-        const { data: ghostCandidates } = await sb
-          .from("notification_actions")
-          .select("job_title, company_name, responded_at")
-          .eq("user_id", userId)
-          .eq("status", "accepted")
-          .lt("responded_at", ghostCutoff)
-          .limit(10);
+        // Use the ghost scoring RPC
+        const { data: ghostEntries, error: ghostErr } = await sb
+          .rpc("get_pipeline_ghost_status", { p_user_id: userId });
 
-        // Check we haven't already sent a ghost alert for these recently
-        for (const g of ghostCandidates || []) {
-          const daysSince = Math.floor(
-            (now.getTime() - new Date(g.responded_at).getTime()) / 86400000
-          );
+        if (ghostErr) {
+          console.warn(`[job-intelligence] Ghost RPC error for ${userId}:`, ghostErr.message);
+        }
 
-          // Check if we already sent a ghost_alert for this company+title in the last 7 days
-          const { count: recentAlert } = await sb
-            .from("notification_log")
-            .select("*", { count: "exact", head: true })
+        // Filter to only ghosted/likely_ghosted entries
+        const alertCandidates = (ghostEntries || []).filter(
+          (e: any) => e.ghost_status === "ghosted" || e.ghost_status === "likely_ghosted"
+        );
+
+        for (const g of alertCandidates) {
+          // Dedup: check ghost_alerts_sent table
+          const { data: alreadySent } = await sb
+            .from("ghost_alerts_sent")
+            .select("sent_at")
             .eq("user_id", userId)
-            .eq("notification_type", "ghost_alert")
-            .eq("company_name", g.company_name)
-            .gte("created_at", new Date(now.getTime() - 7 * 24 * 3600000).toISOString());
+            .eq("pipeline_entry_id", g.pipeline_entry_id)
+            .eq("ghost_status", g.ghost_status)
+            .single();
 
-          if ((recentAlert || 0) > 0) continue;
+          if (alreadySent) continue;
 
-          // Average response time (simplified — use 8 days as baseline until we have real data)
-          const avgDays = 8;
+          // Get company avg response days from ghost stats
+          const avgDays = 8; // fallback, ghost_score factors already include company history
 
-          const email = ghostAlertEmail(g.company_name, g.job_title, daysSince, avgDays);
+          const email = ghostAlertEmail(
+            g.company_name || g.company_slug,
+            g.job_title,
+            g.days_since_applied,
+            avgDays
+          );
 
           await sendNotification({
             user_id: userId,
             notification_type: "ghost_alert",
             subject: email.subject,
             html: email.html,
-            company_name: g.company_name,
+            company_name: g.company_name || g.company_slug,
             job_title: g.job_title,
             force_channel: "email",
+            metadata: {
+              ghost_score: g.ghost_score,
+              ghost_status: g.ghost_status,
+              confidence: g.confidence,
+            },
+          });
+
+          // Record in dedup table
+          await sb.from("ghost_alerts_sent").upsert({
+            user_id: userId,
+            pipeline_entry_id: g.pipeline_entry_id,
+            ghost_status: g.ghost_status,
           });
 
           ghostsSent++;
@@ -267,3 +284,4 @@ serve(async (req: Request) => {
     );
   }
 });
+
