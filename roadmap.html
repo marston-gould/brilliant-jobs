@@ -306,7 +306,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 22, 2026 · Dashboard v3.79 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · Architecture hardening complete (35/35) · 22 Edge Functions · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live (test mode) · Communication Center v2 (email + SMS)
+    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v3.88 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live (test mode) · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection
   </div>
 
 </div>
@@ -1061,6 +1061,21 @@ const features = [
   { s: 'todo', n: 'Tooltips: Jobs Feed', d: 'Info-icon tooltips on: filter pills, Match %% header, salary column, sort options, new jobs badge, company name link.', p: 20 },
   { s: 'todo', n: 'Tooltips: Search Tuning + Pipeline', d: 'Tooltips explaining each tuning section, stage headers, staleness dot colors, available actions per stage.', p: 20 },
   { s: 'todo', n: 'Tooltips: Resume Readiness + Stats', d: 'Tooltips on letter grades, ngram matching, missing-term chips, each chart card explaining data and strategic takeaways.', p: 20 },
+
+  // Phase J: Infrastructure Hardening & Data Quality — Feb 22-23 2026 (v3.81–v3.88)
+  { s: 'done', n: 'v3.81: Index maintenance at scale', d: 'Dropped 7 unused indexes (~104MB). index_health_report() monitoring function. Runbook in docs/INDEX_MAINTENANCE_RUNBOOK.md.', p: 22 },
+  { s: 'done', n: 'v3.82: N+1 query detection & fixes', d: 'Parallelized 4 query patterns in job-feed.js and location.js: radius search, state search, stats counts, velocity counts. 35 sequential round-trips reduced to 7 effective (5x improvement). Audit: docs/N1_QUERY_AUDIT.md.', p: 22 },
+  { s: 'done', n: 'v3.83: Data hygiene automation', d: 'data_hygiene_cleanup() with 6 retention policies (closed jobs >90d archived, location cache >90d pruned, notifications >90d purged, sessions >90d, audit >180d). hygiene_log table. pg_cron #16 Sundays 3 AM UTC. Docs: docs/DATA_HYGIENE_AUTOMATION.md.', p: 22 },
+  { s: 'done', n: 'v3.84: Client-side caching strategy', d: 'cachedQuery() utility with configurable TTL. prewarmRefCaches() on app init. ref_industries cached 1h, ats_companies cached 10min. Company browser: 10 paginated calls reduced to 1 (or 0 if warm).', p: 22 },
+  { s: 'done', n: 'v3.85: localStorage stress test & guards', d: 'saveUserData() size guards (2MB reject, 500KB warn). storageHealth() console diagnostic. _handleStorageFull() emergency cleanup with priority-based cache clearing and array trimming (500 items max).', p: 22 },
+  { s: 'done', n: 'v3.86: Backup & DR plan + error recovery', d: 'Full DR documentation: 57 tables inventoried by recovery priority, disaster scenarios with RTOs (5min–24h), recovery procedures for each scenario, cron job registry. docs/DR_BACKUP_PLAN.md.', p: 22 },
+  { s: 'done', n: 'v3.87: Automated daily JSONB backups', d: 'run_daily_backup() backs up 29 critical small tables to daily_backups JSONB table. pg_cron #17 at 2 AM UTC. 30-day retention with auto-cleanup. restore_from_backup() generates restore SQL. First backup: 161ms.', p: 22 },
+  { s: 'done', n: 'v3.87: Pre-migration snapshot system', d: 'pre_migration_snapshot() captures all table row counts + DB size before schema changes. verify_migration() compares current state vs snapshot and reports deltas. migration_snapshots table. Baseline: 496,875 rows / 745 MB / 51 tables.', p: 22 },
+  { s: 'done', n: 'v3.87: TRUNCATE protection triggers', d: 'block_truncate() trigger on 19 protected tables prevents accidental data loss (prevents repeat of Feb 14 CASCADE disaster). Override: SET LOCAL bj.allow_truncate = true.', p: 22 },
+  { s: 'done', n: 'v3.87: FK dependency graph', d: '13 FK constraints mapped (5 with CASCADE DELETE danger zones). 24 soft references documented. Mermaid diagram. docs/FK_DEPENDENCY_GRAPH.md.', p: 22 },
+  { s: 'done', n: 'v3.88: Geocode backfill (+127K jobs)', d: 'backfill_geocode_batch() + backfill_location_normalized() via location_cache exact-match join. lat/lng: 18,463 to 145,740 (+689%%). location_normalized: 0 to 145,740 (50.5%% coverage). 32K unique unmatched locations exported for external geocoding.', p: 22 },
+  { s: 'done', n: 'v3.88: Salary format backfill (+698 jobs)', d: 'backfill_salary_batch() regex on job content. Handles en-dash/em-dash ranges, hourly-to-annual conversion, K notation. 20,579 to 21,277 (+3.4%%). Remaining 267K have no salary in content.', p: 22 },
+  { s: 'todo', n: 'Enrich ~555 unmatched companies', d: 'Companies not in PDL free dataset. Options: Greenhouse API board metadata (March 3 partner deadline), LinkedIn scrape, or paid PDL API. External dependency.', p: 22 },
 ];
 
 
@@ -1096,7 +1111,7 @@ function render() {
     16: 'Passive Mode', 17: 'Backlog & Debt', 18: 'Security & Hardening',
     19: 'Scalability & Multi-User',
     20: 'Showcase',
-    21: 'Enterprise', 24: 'Platform Expansion'
+    21: 'Enterprise', 22: 'Infra Hardening & Data Quality', 24: 'Platform Expansion'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
