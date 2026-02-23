@@ -1,6 +1,21 @@
-// refresh-jobs Edge Function v12
-// Multi-ATS job scraper — processes 50 boards per invocation (stalest first).
-// pg_cron fires every 10 minutes → full cycle of ~10K boards in ~33 hours.
+// refresh-jobs Edge Function v13
+// Multi-ATS job scraper with TIERED REFRESH.
+// Boards are prioritized by activity:
+//   HOT  (job_count > 0):              ~9K boards — refresh every 6h
+//   WARM (job_count = 0, not dead):   ~29K boards — refresh every 3 days
+//   COLD (404/inactive):              ~1.3K boards — refresh weekly
+//
+// Board selection query picks stalest boards within the tier that's
+// due for refresh, weighted so HOT boards always get priority.
+//
+// pg_cron fires every 3 minutes, batch=150 → full HOT cycle in ~6h,
+// WARM in ~3 days, COLD weekly. ~310 invocations/day.
+//
+// v13 changes:
+//   - Tiered refresh (HOT/WARM/COLD) based on job_count + last_http_status
+//   - Default batch increased from 50 to 150
+//   - Concurrency bumped from 5 to 10
+//   - Skip dead boards (404) unless stale > 7 days
 //
 // v12 changes:
 //   - Records last_http_status + last_refresh_at on every board fetch
@@ -21,7 +36,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const CONCURRENCY = 5;
+const CONCURRENCY = 10;
 // A6: Timeout config now in _shared/resilience.ts (TIMEOUT_CONFIGS.ats = 15s)
 
 // ============ TYPES ============
@@ -363,30 +378,107 @@ async function updateCompany(
 
 // ============ MAIN HANDLER ============
 
+// Tier thresholds (how long since last_checked before a tier is "due")
+const TIER_THRESHOLDS = {
+  hot:  6 * 60 * 60 * 1000,       // 6 hours
+  warm: 3 * 24 * 60 * 60 * 1000,  // 3 days
+  cold: 7 * 24 * 60 * 60 * 1000,  // 7 days
+};
+
 Deno.serve(async (req: Request) => {
   const startTime = Date.now();
   const url = new URL(req.url);
   const sourceFilter = url.searchParams.get("source") || null;
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50") || 50, 200);
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "150") || 150, 300);
+  const forceTier = url.searchParams.get("tier") || null; // override: hot|warm|cold|all
 
-  console.log(`[refresh-jobs] v12 Starting: source=${sourceFilter || "all"}, limit=${limit}`);
+  console.log(`[refresh-jobs] v13 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
 
-  let query = sb
-    .from("ats_companies")
-    .select("slug, source, name")
-    .order("last_checked", { ascending: true, nullsFirst: true })
-    .limit(limit);
+  // ── Tiered board selection ──
+  // Priority: HOT boards due for refresh > WARM boards due > COLD boards due
+  // Within each tier, stalest first (last_checked ASC NULLS FIRST)
+  let boards: Board[] = [];
 
-  if (sourceFilter) {
-    query = query.eq("source", sourceFilter);
+  if (forceTier === "all") {
+    // Legacy mode: just grab stalest regardless of tier
+    let query = sb
+      .from("ats_companies")
+      .select("slug, source, name")
+      .order("last_checked", { ascending: true, nullsFirst: true })
+      .limit(limit);
+    if (sourceFilter) query = query.eq("source", sourceFilter);
+    const { data } = await query;
+    boards = data || [];
+  } else {
+    const now = Date.now();
+    let remaining = limit;
+
+    // HOT: boards with jobs (job_count > 0) that haven't been checked in 6h
+    if (remaining > 0 && (!forceTier || forceTier === "hot")) {
+      const hotCutoff = new Date(now - TIER_THRESHOLDS.hot).toISOString();
+      let q = sb
+        .from("ats_companies")
+        .select("slug, source, name")
+        .gt("job_count", 0)
+        .or(`last_checked.is.null,last_checked.lt.${hotCutoff}`)
+        .order("last_checked", { ascending: true, nullsFirst: true })
+        .limit(remaining);
+      if (sourceFilter) q = q.eq("source", sourceFilter);
+      const { data } = await q;
+      const hotBoards = data || [];
+      boards.push(...hotBoards);
+      remaining -= hotBoards.length;
+      if (hotBoards.length > 0) {
+        console.log(`[refresh-jobs] HOT: ${hotBoards.length} boards queued`);
+      }
+    }
+
+    // WARM: boards with no jobs, active, not 404 — stale > 3 days
+    if (remaining > 0 && (!forceTier || forceTier === "warm")) {
+      const warmCutoff = new Date(now - TIER_THRESHOLDS.warm).toISOString();
+      let q = sb
+        .from("ats_companies")
+        .select("slug, source, name")
+        .eq("job_count", 0)
+        .eq("is_active", true)
+        .neq("last_http_status", 404)
+        .or(`last_checked.is.null,last_checked.lt.${warmCutoff}`)
+        .order("last_checked", { ascending: true, nullsFirst: true })
+        .limit(remaining);
+      if (sourceFilter) q = q.eq("source", sourceFilter);
+      const { data } = await q;
+      const warmBoards = data || [];
+      boards.push(...warmBoards);
+      remaining -= warmBoards.length;
+      if (warmBoards.length > 0) {
+        console.log(`[refresh-jobs] WARM: ${warmBoards.length} boards queued`);
+      }
+    }
+
+    // COLD: dead/inactive boards — stale > 7 days
+    if (remaining > 0 && (!forceTier || forceTier === "cold")) {
+      const coldCutoff = new Date(now - TIER_THRESHOLDS.cold).toISOString();
+      let q = sb
+        .from("ats_companies")
+        .select("slug, source, name")
+        .or("last_http_status.eq.404,is_active.eq.false")
+        .or(`last_checked.is.null,last_checked.lt.${coldCutoff}`)
+        .order("last_checked", { ascending: true, nullsFirst: true })
+        .limit(remaining);
+      if (sourceFilter) q = q.eq("source", sourceFilter);
+      const { data } = await q;
+      const coldBoards = data || [];
+      boards.push(...coldBoards);
+      if (coldBoards.length > 0) {
+        console.log(`[refresh-jobs] COLD: ${coldBoards.length} boards queued`);
+      }
+    }
   }
 
-  const { data: boards, error: boardError } = await query;
-
-  if (boardError || !boards?.length) {
-    console.log(`[refresh-jobs] No boards: ${boardError?.message || "empty"}`);
+  if (!boards.length) {
+    console.log(`[refresh-jobs] No boards due for refresh`);
     return new Response(
-      JSON.stringify({ boards_processed: 0, jobs_upserted: 0, elapsed_seconds: 0 }),
+      JSON.stringify({ boards_processed: 0, jobs_upserted: 0, elapsed_seconds: 0, message: "All boards up to date" }),
       { headers: { "Content-Type": "application/json" } }
     );
   }
@@ -442,6 +534,7 @@ Deno.serve(async (req: Request) => {
     errors,
     elapsed_seconds: parseFloat(elapsed),
     source_filter: sourceFilter,
+    tier: forceTier || "auto",
   };
 
   console.log(`[refresh-jobs] Done:`, JSON.stringify(summary));
