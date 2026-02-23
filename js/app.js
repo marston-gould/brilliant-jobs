@@ -1,5 +1,5 @@
 const BJ_VERSION = 'v3.87';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — error recovery: offline detection, retry queue, global error handlers, safeQuery');
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — safety: TRUNCATE protection, daily backups, pre-migration snapshots, FK graph');
 
 // Auth
 async function init() {
