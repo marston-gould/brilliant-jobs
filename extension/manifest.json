@@ -1,20 +1,41 @@
 {
   "manifest_version": 3,
-  "name": "Brilliant Jobs — LinkedIn Profile Sync",
-  "version": "1.1.0",
-  "description": "Capture your LinkedIn profile data to improve resume alignment checking in Brilliant Jobs.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://www.linkedin.com/in/*"],
+  "name": "Brilliant Jobs",
+  "version": "2.6.6",
+  "description": "Discover jobs through your professional network",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "alarms",
+    "sidePanel",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://qojhagupdnbtomfoxnsf.supabase.co/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/in/*"],
-      "js": ["content.js"],
-      "css": ["inject.css"],
-      "run_at": "document_idle"
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["interceptor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["interceptor-bridge.js"],
+      "run_at": "document_start"
     }
   ],
+  "side_panel": {
+    "default_path": "popup.html"
+  },
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icon16.png",
       "48": "icon48.png",
@@ -25,8 +46,5 @@
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
-  },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
   }
 }

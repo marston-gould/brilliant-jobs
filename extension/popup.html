@@ -1,53 +1,225 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    body { width: 300px; padding: 16px; font-family: -apple-system, system-ui, sans-serif; margin: 0; }
-    h3 { margin: 0 0 8px; font-size: 15px; color: #1a1a2e; }
-    p { font-size: 12px; color: #666; margin: 0 0 12px; line-height: 1.4; }
-    .status { padding: 8px; border-radius: 6px; font-size: 11px; margin-bottom: 8px; }
-    .synced { background: #dcfce7; color: #166534; }
-    .not-synced { background: #fef3c7; color: #92400e; }
-    .info { font-size: 10px; color: #999; margin-top: 8px; }
-    button { width: 100%; padding: 8px; background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
-    button:hover { background: #dc2626; }
+    :root {
+      --bg-main: #f5f6fa;
+      --bg-card: #ffffff;
+      --bg-input: #f0f1f5;
+      --bg-hover: #eef0f6;
+      --border: #e2e4ed;
+      --border-hover: #cdd0de;
+      --text: #1a1d2e;
+      --text-dim: #5c6277;
+      --text-faint: #9298ae;
+      --accent: #3d7eff;
+      --accent-hover: #2b6aeb;
+      --accent-glow: rgba(61,126,255,0.10);
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,0.10);
+      --warm: #f59e0b;
+      --warm-dim: rgba(245,158,11,0.10);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.08);
+      --nav-bg: #1a3a6e;
+      --sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --mono: 'JetBrains Mono', 'SF Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-width: 320px; max-width: 500px;
+      font-family: var(--sans);
+      background: var(--bg-main); color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    .header {
+      background: var(--bg-card); padding: 4px 16px;
+      display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header .ver { font-size: 10px; color: var(--text-faint); cursor: pointer; }
+    .header .ver:hover { color: var(--accent); }
+    .header .help-link {
+      color: var(--text-faint); font-size: 11px; text-decoration: none;
+      width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border); border-radius: 50%;
+      font-weight: 600; transition: all 0.15s;
+    }
+    .header .help-link:hover { color: var(--accent); border-color: var(--accent); }
+    .about-panel { display: none; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: 11px; }
+    .about-panel.active { display: block; }
+    .about-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px; border-bottom: 1px solid var(--border); }
+    .about-title { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+    .about-close { background: none; border: none; color: var(--text-faint); font-size: 16px; cursor: pointer; font-family: var(--sans); }
+    .about-close:hover { color: var(--text); }
+    .about-body { padding: 8px 16px; }
+    .about-body table { width: 100%; border-collapse: collapse; }
+    .about-body td { padding: 2px 0; }
+    .about-body td:first-child { color: var(--text-faint); width: 120px; }
+    .about-body td:last-child { color: var(--text-dim); font-family: var(--mono); font-size: 10px; }
+    .tabs { display: flex; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+    .tab { flex: 1; padding: 10px 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-faint); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab:hover { color: var(--text-dim); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .scanner-indicator { display: flex; align-items: center; gap: 8px; padding: 6px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: 11px; }
+    .scanner-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .scanner-dot.running { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    .scanner-dot.break { background: var(--warm); box-shadow: 0 0 6px var(--warm); }
+    .scanner-dot.paused { background: var(--red); }
+    .scanner-dot.idle { background: var(--warm); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .scanner-indicator-text { color: var(--text-dim); }
+    .scanner-indicator-count { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+    .tab-content { display: none; padding: 14px 16px; }
+    .tab-content.active { display: block; }
+    .stats { display: flex; gap: 8px; margin-bottom: 12px; }
+    .stat { flex: 1; background: var(--bg-card); border-radius: 8px; padding: 8px 10px; text-align: center; border: 1px solid var(--border); }
+    .stat-value { font-size: 20px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
+    .stat-label { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn { width: 100%; padding: 10px; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--sans); margin-bottom: 6px; transition: all 0.15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--bg-input); color: var(--text-faint); cursor: not-allowed; }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-success:hover { background: #1aab4f; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-danger:hover { background: #dc3636; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .badge-soon { font-size: 9px; font-weight: 700; text-transform: uppercase; background: var(--warm-dim); color: var(--warm); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
+    .btn-sm { padding: 7px 12px; font-size: 11px; width: auto; }
+    .hidden { display: none !important; }
+    .status-bar { background: var(--bg-card); border-radius: 6px; padding: 8px 10px; font-size: 11px; margin-bottom: 8px; border: 1px solid var(--border); }
+    .status-bar .label { color: var(--text-faint); font-size: 9px; text-transform: uppercase; }
+    .status-bar .value { color: var(--text); font-weight: 500; }
+    .status-bar .countdown { color: var(--accent); font-weight: 600; font-family: var(--mono); }
+    .log-section { border-top: 1px solid var(--border); background: var(--bg-card); }
+    .log-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px; border-bottom: 1px solid var(--border); }
+    .log-title { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
+    .log-clear { background: none; border: none; color: var(--text-faint); font-size: 10px; cursor: pointer; font-family: var(--sans); padding: 2px 6px; }
+    .log-clear:hover { color: var(--accent); }
+    .log { padding: 8px 16px; max-height: 180px; overflow-y: auto; font-size: 12px; font-family: var(--sans); }
+    .log-line { padding: 3px 0; border-bottom: 1px solid var(--bg-input); color: var(--text-dim); line-height: 1.5; }
+    .log-line:last-child { border-bottom: none; }
+    .log-line.error { color: var(--red); }
+    .log-line.success { color: var(--green); }
+    .log-line.info { color: var(--accent); }
+    .log-line .log-time { font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-right: 6px; }
+    .log-line .log-source { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-right: 6px; opacity: 0.7; }
+    .estimate { background: var(--bg-card); border-radius: 6px; padding: 10px; margin-bottom: 8px; border: 1px solid var(--border); font-size: 11px; }
+    .estimate-title { color: var(--text-faint); font-size: 9px; text-transform: uppercase; margin-bottom: 4px; }
+    .estimate-main { color: var(--accent); font-size: 16px; font-weight: 700; font-family: var(--mono); }
+    .estimate-detail { color: var(--text-faint); margin-top: 2px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; color: var(--text-dim); }
+    .checkbox-row input { accent-color: var(--accent); }
+    .progress-bar { height: 4px; background: var(--bg-input); border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #6ba3ff); border-radius: 4px; transition: width 0.3s; }
+    .source-list { margin-bottom: 10px; border-radius: 6px; border: 1px solid var(--border); overflow: hidden; background: var(--bg-card); }
+    .source-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--border); color: var(--text); }
+    .source-item:last-child { border-bottom: none; }
+    .source-item.disabled { opacity: 0.4; }
+    .source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-active { background: var(--green); }
+    .dot-disabled { background: var(--text-faint); }
+    .source-badge { margin-left: auto; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-ready { background: var(--green-dim); color: var(--green); }
+    .auth-gate { padding: 24px 16px; text-align: center; }
+    .auth-gate h2 { font-size: 16px; color: var(--text); margin-bottom: 4px; }
+    .auth-gate .subtitle { font-size: 12px; color: var(--text-faint); margin-bottom: 20px; }
+    .auth-gate .field { margin-bottom: 12px; text-align: left; }
+    .auth-gate .field label { display: block; font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .auth-gate .field input { width: 100%; padding: 9px 10px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; font-family: var(--sans); outline: none; }
+    .auth-gate .field input:focus { border-color: var(--accent); }
+    .auth-gate .pw-wrap { position: relative; }
+    .auth-gate .pw-wrap input { padding-right: 44px; }
+    .auth-gate .pw-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 11px; padding: 3px 5px; font-family: var(--sans); }
+    .auth-gate .pw-toggle:hover { color: var(--accent); }
+    .auth-gate .auth-msg { padding: 8px 10px; border-radius: 6px; font-size: 12px; margin-top: 10px; display: none; }
+    .auth-gate .auth-msg.error { display: block; background: var(--red-dim); border: 1px solid rgba(239,68,68,0.25); color: var(--red); }
+    .auth-gate .auth-msg.info { display: block; background: var(--accent-glow); border: 1px solid rgba(61,126,255,0.25); color: var(--accent); }
+    .auth-gate .auth-msg.warn { display: block; background: var(--warm-dim); border: 1px solid rgba(245,158,11,0.25); color: #b47a08; }
+    .auth-gate .signup-link { font-size: 12px; color: var(--text-faint); margin-top: 14px; }
+    .auth-gate .signup-link a { color: var(--accent); text-decoration: none; }
+    .auth-gate .signup-link a:hover { text-decoration: underline; }
+    .auth-user-bar { display: none; align-items: center; gap: 8px; padding: 6px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: 11px; }
+    .auth-user-bar.active { display: flex; }
+    .auth-user-bar .user-email { color: var(--accent); font-weight: 600; flex: 1; }
+    .auth-user-bar .logout-btn { background: none; border: 1px solid var(--border); color: var(--text-faint); padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-family: var(--sans); }
+    .auth-user-bar .logout-btn:hover { border-color: var(--red); color: var(--red); }
+    .section-label { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    ::-webkit-scrollbar-track { background: transparent; }
   </style>
 </head>
 <body>
-  <h3>✨ Brilliant Jobs</h3>
-  <p>LinkedIn profile sync for resume alignment checking.</p>
-  <div id="status" class="status not-synced">No profile synced yet</div>
-  <div id="profile-info"></div>
-  <button id="clear-btn" style="display:none;" onclick="clearProfile()">Clear Synced Data</button>
-  <div class="info">
-    Navigate to your LinkedIn profile page and click the "Sync to Brilliant Jobs" button to capture your data.
-    This data stays local and is only used for resume consistency checking.
+  <div class="header">
+    <a href="help.html" target="_blank" class="help-link" title="Help" id="help-link">?</a>
+    <span class="ver" id="ver-label">v—</span>
   </div>
-  <script>
-    function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-    chrome.storage.local.get('bj_linkedin_profile', (data) => {
-      const profile = data.bj_linkedin_profile;
-      if (profile && profile.name) {
-        document.getElementById('status').className = 'status synced';
-        document.getElementById('status').textContent = '✅ Profile synced';
-        document.getElementById('profile-info').innerHTML =
-          '<div style="font-size:12px;margin:8px 0;">' +
-          '<strong>' + esc(profile.name) + '</strong><br>' +
-          '<span style="color:#666;">' + esc(profile.current_title || '') + ' at ' + esc(profile.current_company || '') + '</span><br>' +
-          '<span style="font-size:10px;color:#999;">Captured: ' + esc(profile.captured_at ? new Date(profile.captured_at).toLocaleDateString() : 'unknown') + '</span>' +
-          '</div>';
-        document.getElementById('clear-btn').style.display = '';
-      }
-    });
-
-    function clearProfile() {
-      chrome.storage.local.remove('bj_linkedin_profile', () => {
-        document.getElementById('status').className = 'status not-synced';
-        document.getElementById('status').textContent = 'Profile data cleared';
-        document.getElementById('profile-info').innerHTML = '';
-        document.getElementById('clear-btn').style.display = 'none';
-      });
-    }
-  </script>
+  <div class="about-panel" id="about-panel">
+    <div class="about-header"><span class="about-title">Build Info</span><button class="about-close" id="about-close">&times;</button></div>
+    <div class="about-body" id="about-body">Loading...</div>
+  </div>
+  <div id="auth-gate" class="auth-gate">
+    <h2>Welcome</h2>
+    <p class="subtitle">Log in to access your tools</p>
+    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@email.com"></div>
+    <div class="field">
+      <label>Password</label>
+      <div class="pw-wrap"><input type="password" id="auth-password" placeholder="Your password"><button type="button" class="pw-toggle" id="auth-pw-toggle">Show</button></div>
+      <div style="text-align: right; margin-top: 4px;"><a href="https://brilliantjobs.app" target="_blank" style="font-size: 11px; color: var(--accent); text-decoration: none;">Forgot password?</a></div>
+    </div>
+    <button class="btn btn-primary" id="auth-login-btn">Log In</button>
+    <div class="auth-msg" id="auth-msg"></div>
+    <p class="signup-link">No account? <a href="https://brilliantjobs.app#signup" target="_blank">Sign up at brilliantjobs.app</a></p>
+  </div>
+  <div class="auth-user-bar" id="auth-user-bar"><span class="user-email" id="auth-user-email"></span><button class="logout-btn" id="auth-logout-btn">Log Out</button></div>
+  <div id="app-content" style="display: none;">
+    <div class="tabs">
+      <div class="tab active" data-tab="harvest">Harvest</div>
+      <div class="tab" data-tab="scan">Scan</div>
+      <div class="tab" data-tab="jobs">Jobs</div>
+      <div class="tab" data-tab="data">Data</div>
+    </div>
+    <div class="scanner-indicator" id="scanner-indicator"><div class="scanner-dot idle" id="scanner-dot"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
+    <div id="tab-harvest" class="tab-content active">
+      <div class="stats"><div class="stat"><div class="stat-value" id="h-count">0</div><div class="stat-label">Connections Found</div></div><div class="stat"><div class="stat-value" id="h-companies">0</div><div class="stat-label">Parsed Companies</div></div></div>
+      <div class="source-list"><div class="source-item"><span class="source-dot dot-active"></span><span>Connections</span><span class="source-badge badge-ready">Ready</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Followers</span><span class="source-badge badge-soon">Coming Soon</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Following</span><span class="source-badge badge-soon">Coming Soon</span></div></div>
+      <button class="btn btn-primary" id="h-start">Harvest Connections</button>
+      <button class="btn btn-danger hidden" id="h-stop">Stop</button>
+      <div class="status-bar hidden" id="h-last-harvest"><span class="label">Last Harvest: </span><span class="value" id="h-last-date">—</span></div>
+    </div>
+    <div id="tab-scan" class="tab-content">
+      <div class="stats"><div class="stat"><div class="stat-value" id="s-visited">0</div><div class="stat-label">Visited</div></div><div class="stat"><div class="stat-value" id="s-queued">0</div><div class="stat-label">In Queue</div></div><div class="stat"><div class="stat-value" id="s-today">0</div><div class="stat-label">Today</div></div></div>
+      <div class="estimate" id="s-estimate"><div class="estimate-title">Estimated Completion</div><div class="estimate-main" id="s-est-days">—</div><div class="estimate-detail" id="s-est-detail"></div></div>
+      <div class="checkbox-row"><input type="checkbox" id="s-include-past" checked><label for="s-include-past">Include past companies</label></div>
+      <button class="btn btn-primary" id="s-start">Start Scanning</button>
+      <button class="btn btn-outline hidden" id="s-pause">Pause</button>
+      <button class="btn btn-primary hidden" id="s-resume">Resume</button>
+      <button class="btn btn-danger hidden" id="s-stop">Stop</button>
+    </div>
+    <div id="tab-jobs" class="tab-content">
+      <div class="stats"><div class="stat"><div class="stat-value" id="j-count">0</div><div class="stat-label">Jobs Found</div></div></div>
+      <button class="btn btn-primary" id="j-scrape">Scrape All Pages</button>
+      <button class="btn btn-danger hidden" id="j-stop">Stop</button>
+      <button class="btn btn-success hidden" id="j-download">Download TSV</button>
+    </div>
+    <div id="tab-data" class="tab-content">
+      <div class="stats"><div class="stat"><div class="stat-value" id="d-connections">0</div><div class="stat-label">Connections</div></div><div class="stat"><div class="stat-value" id="d-companies">0</div><div class="stat-label">Unique Companies</div></div><div class="stat"><div class="stat-value" id="d-hiring">0</div><div class="stat-label">#Hiring</div></div><div class="stat"><div class="stat-value" id="d-otw">0</div><div class="stat-label">#OpenToWork</div></div></div>
+      <div id="d-top-companies" style="margin: 10px 0;"><div class="section-label">Top Companies by Connections</div><div id="d-top-list" style="font-size: 12px;"></div></div>
+      <button class="btn btn-success" id="d-export-connections">Export Connections TSV</button>
+      <button class="btn btn-success" id="d-export-companies">Export Companies TSV</button>
+      <button class="btn btn-outline" id="d-refresh">Refresh Counts</button>
+    </div>
+    <div class="log-section"><div class="log-header"><span class="log-title">Activity</span><button class="log-clear" id="log-clear">Clear</button></div><div class="log" id="unified-log"></div></div>
+  </div>
+  <script src="supabase.js"></script>
+  <script src="popup-bridge.js"></script>
+  <script src="popup.js"></script>
+  <script src="popup-post.js"></script>
 </body>
 </html>

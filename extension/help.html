@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f1a;
+      color: #c8ccd4;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    h1 { font-size: 16px; color: #fff; margin-bottom: 12px; }
+    h2 { font-size: 13px; color: #4da3ff; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    p { margin-bottom: 8px; color: #8892b0; }
+    .step { display: flex; gap: 10px; margin-bottom: 10px; }
+    .step-num {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+      background: #0a66c2; color: #fff; font-size: 11px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-text { color: #c8ccd4; }
+    .tip {
+      background: #1a1d30; border: 1px solid #2a2d42; border-radius: 6px;
+      padding: 8px 10px; margin: 10px 0; font-size: 12px; color: #6b7080;
+    }
+    .tip strong { color: #f39c12; }
+    a { color: #4da3ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .back-link { margin-bottom: 16px; display: inline-block; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>💼 Brilliant Jobs — Quick Start</h1>
+
+  <h2>How It Works</h2>
+  <p>Brilliant Jobs discovers job opportunities through your professional network. It scans your connections, finds where they work, and helps you find open positions at those companies.</p>
+
+  <h2>Step-by-Step</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-text"><strong>Harvest</strong> — Collects your connections list. Click "Harvest Connections" while on the networking site. Takes a few minutes for large networks.</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-text"><strong>Scan</strong> — Visits each connection's profile to extract their work history. Runs automatically at a safe pace (40-90 profiles/day) with built-in breaks.</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-text"><strong>Jobs</strong> — Navigate to a job search page and click "Scrape All Pages" to collect listings. Works on search results pages.</div>
+  </div>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-text"><strong>Data</strong> — Export your connections and discovered companies as TSV files for analysis.</div>
+  </div>
+
+  <h2>Tips</h2>
+
+  <div class="tip">
+    <strong>Scanner pacing:</strong> The scanner deliberately runs slowly with randomized delays and daily limits to stay under the radar. Don't worry if it takes several days — this is by design.
+  </div>
+
+  <div class="tip">
+    <strong>Re-harvesting:</strong> You can run Harvest again anytime to pick up new connections. It won't overwrite data from profiles that have already been scanned.
+  </div>
+
+  <div class="tip">
+    <strong>Keep a tab open:</strong> The scanner needs a browser tab available to visit profiles. It will create one if needed, but keeping one open helps.
+  </div>
+
+  <p style="margin-top: 20px; font-size: 11px; color: #555;">
+    Full documentation: <a href="https://brilliantjobs.app/help" target="_blank">brilliantjobs.app/help</a>
+  </p>
+</body>
+</html>
