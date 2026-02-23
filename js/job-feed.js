@@ -685,6 +685,12 @@ async function searchJobs(page = 0) {
 
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
+    // P13-04: Track search for micro-survey trigger
+    if (typeof trackSearchForSurvey === 'function') {
+      var filterLabel = filtersToRun[0]?.name || 'builder';
+      trackSearchForSurvey(filterLabel, totalCount);
+    }
+
   } catch (e) {
     console.error('Search error:', e);
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
