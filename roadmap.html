@@ -632,10 +632,10 @@ const features = [
   { s: 'todo', n: 'Extension build fingerprint obfuscation', d: 'Each downloaded extension build gets: randomized file names (content.js → [hash].js, background.js → [hash].js), randomized manifest metadata (short_name, description variations), shuffled CSS class names in injected styles, variable whitespace/comments in source, randomized internal message channel names. Goal: no two downloaded builds share the same file fingerprint, making pattern-based detection by LinkedIn infeasible.', b: 'needs-extension', p: 8, b: 'needs-extension' },
 
   // Phase 8 — Ghost Monitor
-  { s: 'todo', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates', b: 'post-launch', p: 9, b: 'post-launch' },
-  { s: 'todo', n: 'Auto-detect company email responses', d: 'Match incoming emails to companies in pipeline, flag new responses', b: 'needs-gmail', p: 9, b: 'needs-gmail' },
-  { s: 'todo', n: 'Ghost detection from email', d: 'Applied X days ago + no response = ghosted, auto-update pipeline', b: 'needs-gmail', p: 9, b: 'needs-gmail' },
-  { s: 'todo', n: 'Interview scheduling detection', d: 'Parse calendar invites and scheduling links from recruiter emails', b: 'needs-gmail', p: 9, b: 'needs-gmail' },
+  { s: 'progress', n: 'Gmail OAuth integration', d: 'Read-only access to detect hiring responses and automate pipeline updates. Building against Google OAuth docs pre-credential.', p: 9 },
+  { s: 'todo', n: 'Auto-detect company email responses', d: 'Match incoming emails to companies in pipeline, flag new responses. Depends on Gmail OAuth.', b: 'needs-gmail', p: 9, b: 'needs-gmail' },
+  { s: 'todo', n: 'Ghost detection from email', d: 'Applied X days ago + no response = ghosted, auto-update pipeline. Depends on Gmail OAuth.', b: 'needs-gmail', p: 9, b: 'needs-gmail' },
+  { s: 'todo', n: 'Interview scheduling detection', d: 'Parse calendar invites and scheduling links from recruiter emails. Depends on Gmail OAuth.', b: 'needs-gmail', p: 9, b: 'needs-gmail' },
   { s: 'done', n: 'Pipeline redesign — table-based collapsible stages', d: 'Replaced kanban columns with 7 collapsible table sections: Saved, Applied, Posting Closed, Responded, Interview, Offer, Rejected/Ghosted. Each stage renders a full table with: title, company, resume used, filter tag badges, discovered date, days-to-apply, days-since-apply, match score. Stage headers show count + median match score (min/max range). Filter by saved filter tags (compact dropdown select). Stage move via dropdown per row. Data migration from legacy savedJobIds/appliedJobIds to unified bj_pipeline_meta localStorage structure with per-job stage, timestamps, resume, and filter tracking. Auto-detects posting_closed from ATS job status. Collapse state persisted. Resume picker popup on every apply action — shows existing resumes with pre-selected filter-matched resume, skip option for later. Stats: total tracked, active, response rate, avg days to response.', p: 9 },
   { s: 'done', n: 'Pipeline Calendar View', d: 'Second tab within Pipeline page (Stages | Calendar) showing a month calendar grid. Each day cell shows activity counts by type: applications sent (blue), responses received (green), interviews (purple), offers (gold), rejections/ghosts (red), saves (gray). Click a day to expand full activity list. Helps visualize cadence, identify gaps in activity, and spot patterns (e.g. Tuesdays get more responses). Data sourced from pipeline stage timestamps (savedAt, appliedAt, respondedAt, etc). Month navigation with today highlight.', p: 9 },
 
@@ -719,7 +719,7 @@ const features = [
 
   // ── Future Sources ──
   { s: 'done', n: '[IND] Indeed RSS — DEPRECATED', d: 'Removed. Indeed deprecated their RSS feed. No longer viable as a data source.', p: 10 },
-  { s: 'todo', n: '[USJ] USAJobs API integration', d: 'Fetch federal government jobs from developer.usajobs.gov public API. Map to ats_jobs schema.', b: 'post-launch', p: 10, b: 'deferred' },
+  { s: 'progress', n: '[USJ] USAJobs API integration', d: 'API key application submitted Feb 23 2026. Fetch federal government jobs from developer.usajobs.gov public API. Map to ats_jobs schema.', p: 10 },
   { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', b: 'post-launch', p: 10, b: 'deferred' },
   { s: 'done', n: 'Cross-source job deduplication', d: 'Normalize title + company + location hash for dedup across all sources.', p: 10 },
   { s: 'todo', n: 'Auto-apply form-fill automation', d: 'Per-ATS form fill adapters: Greenhouse, Lever, Workable, Ashby, Recruitee. Depends on P4 decision engine.', b: 'needs-apply', p: 10, b: 'needs-apply' },
