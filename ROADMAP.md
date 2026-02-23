@@ -624,3 +624,23 @@
 | 2026-02-19 | B-S2 | B1, B4 | Soft deletes on 5 user tables. localStorage sync audit — already complete (saveUserData covers all 11 keys). |
 | 2026-02-19 | S4 | A7, A8, A13 | Structured logger. Health check endpoint. PostHog snippet (gated). |
 
+
+## Phase J: Infrastructure Hardening (v3.81–v3.86) — Feb 22
+
+**Goal:** Performance optimization, data integrity automation, disaster recovery preparedness.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| J1 | Index maintenance at scale | v3.81 | ✅ | Dropped 7 unused indexes (~104MB). `index_health_report()` monitoring. Runbook: `docs/INDEX_MAINTENANCE_RUNBOOK.md`. |
+| J2 | N+1 query detection & fixes | v3.82 | ✅ | Parallelized 4 query patterns: radius search, state search, stats counts, velocity counts. 35→7 effective DB round-trips. Audit: `docs/N1_QUERY_AUDIT.md`. |
+| J3 | Data hygiene automation | v3.83 | ✅ | `data_hygiene_cleanup()` with 6 retention policies. `hygiene_log` table. pg_cron job #16 (Sundays 3 AM UTC). Docs: `docs/DATA_HYGIENE_AUTOMATION.md`. |
+| J4 | Client-side caching strategy | v3.84 | ✅ | `cachedQuery()` utility with TTL. `prewarmRefCaches()` on app init. ref_industries (1h TTL), ats_companies (10min TTL). Updated tuning.js + browsers.js consumers. |
+| J5 | localStorage stress test & guards | v3.85 | ✅ | `saveUserData()` size guards (2MB reject, 500KB warn). `storageHealth()` console diagnostic. `_handleStorageFull()` emergency cleanup with array trimming. |
+| J6 | Backup & DR plan + error recovery | v3.86 | ✅ | Full DR documentation: table priority matrix, recovery RTOs, cron job inventory, disaster scenarios. Docs: `docs/DR_BACKUP_PLAN.md`. |
+
+**Phase J total:** 7 items | 6 versions | All complete.
+
+### Manual Action Items
+| Item | Owner | Status |
+|------|-------|--------|
+| Run VACUUM ANALYZE + REINDEX in Supabase SQL Editor | CEO | 🔲 |
