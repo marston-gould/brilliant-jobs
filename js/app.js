@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.97';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — P13-13 Canny feedback widget');
+const BJ_VERSION = 'v3.98';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Roadmap blocked-reason tags');
 
 // Auth
 async function init() {
