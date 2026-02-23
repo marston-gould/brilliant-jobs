@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.01';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Roadmap filter bar');
+const BJ_VERSION = 'v4.02';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Feed Health: timeout fix + cycle tracker + Active %% fix');
 
 // Auth
 async function init() {
