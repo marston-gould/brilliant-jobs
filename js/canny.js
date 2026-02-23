@@ -81,13 +81,16 @@
     } catch (e) { /* anon fallback */ }
 
     // Identify user with Canny (for seamless auth)
-    // TODO: Add appID from Canny admin → developers.canny.io/install
-    // if (cannyUser) {
-    //   Canny('identify', {
-    //     appID: 'YOUR_APP_ID',
-    //     user: { email: cannyUser.email, id: cannyUser.id, name: cannyUser.name }
-    //   });
-    // }
+    if (cannyUser) {
+      Canny('identify', {
+        appID: '699c653962d6fa63d58ce27f',
+        user: {
+          email: cannyUser.email,
+          id: cannyUser.id,
+          name: cannyUser.name
+        }
+      });
+    }
 
     Canny('render', {
       boardToken: token,
