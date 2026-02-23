@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v3.88';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — data quality: +698 salaries, +121K geocoded jobs');
+const BJ_VERSION = 'v3.89';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — roadmap P19 items marked done');
 
 // Auth
 async function init() {
