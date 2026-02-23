@@ -306,7 +306,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v3.89 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live (test mode) · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection
+    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · Dashboard v3.90 · ✅ Multi-ATS live: 10,019 boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 288K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 22 Edge Functions · 10 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live (test mode) · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6)
   </div>
 
 </div>
@@ -1075,6 +1075,19 @@ const features = [
   { s: 'done', n: 'v3.87: FK dependency graph', d: '13 FK constraints mapped (5 with CASCADE DELETE danger zones). 24 soft references documented. Mermaid diagram. docs/FK_DEPENDENCY_GRAPH.md.', p: 22 },
   { s: 'done', n: 'v3.88: Geocode backfill (+127K jobs)', d: 'backfill_geocode_batch() + backfill_location_normalized() via location_cache exact-match join. lat/lng: 18,463 to 145,740 (+689%%). location_normalized: 0 to 145,740 (50.5%% coverage). 32K unique unmatched locations exported for external geocoding.', p: 22 },
   { s: 'done', n: 'v3.88: Salary format backfill (+698 jobs)', d: 'backfill_salary_batch() regex on job content. Handles en-dash/em-dash ranges, hourly-to-annual conversion, K notation. 20,579 to 21,277 (+3.4%%). Remaining 267K have no salary in content.', p: 22 },
+  { s: 'done', n: 'v3.89: Roadmap P19 items marked done', d: 'Updated roadmap to reflect completion of all Phase J infrastructure hardening items (P19). Version alignment.', p: 22 },
+
+  // Phase K: Security Hardening — Feb 22 2026 (v3.90)
+  { s: 'done', n: 'v3.90: escapeHtml() utility + innerHTML audit', d: 'XSS protection. Added escapeHtml() and truncateSafe() to globals.js. Audited and fixed innerHTML calls across 7 files: job-feed.js, resumes.js, applications.js, sort-bar.js, location.js, query-builder.js, extension/popup.html. truncate() now escapes by default. DOMPurify remains for untrusted rich HTML (job descriptions).', p: 23 },
+  { s: 'done', n: 'v3.90: Toast notification system', d: 'User-facing error handling. showToast() with error/warning/success/info types, action buttons, max 3 simultaneous, auto-dismiss. Wired into job search failures, profile fetch errors, PDF extraction failures, session expiry warnings. Replaces silent console.error for key user-impacting paths.', p: 23 },
+  { s: 'done', n: 'v3.90: Extension permissions minimized', d: 'Removed activeTab permission (not needed with content_scripts). Tightened host_permissions from linkedin.com/* to linkedin.com/in/* only. Added explicit CSP. Extension version bumped to 1.1.0.', p: 23 },
+  { s: 'done', n: 'v3.90: localStorage encryption for PII', d: 'AES-GCM encryption with PBKDF2 key derivation (100K iterations) from user session ID. encryptForStorage()/decryptFromStorage() with enc: prefix detection, random IV, graceful fallback. PII keys identified: bj_resumes, bj_readiness. Key cleared on logout. Integration into saveUserData() read/write paths is follow-up.', p: 23 },
+  { s: 'done', n: 'v3.90: Extension code obfuscation', d: 'extension/build-extension.js script using esbuild for minification, identifier mangling, comment stripping. Outputs to extension/dist/ with updated manifest pointing to content.min.js. Run before Chrome Web Store publishing.', p: 23 },
+  { s: 'done', n: 'v3.90: Session management hardening', d: 'initSessionManagement() with auth state listener (SIGNED_OUT redirect, TOKEN_REFRESHED logging), 30-min inactivity timeout with warning toast + Stay signed in action button, 5-min session verification interval, _clearSensitiveData() on logout (encryption key, PII keys, query cache).', p: 23 },
+  { s: 'todo', n: 'Wire encryption into saveUserData() paths', d: 'Follow-up from v3.90. Call encryptForStorage()/decryptFromStorage() for PII keys in saveUserData() and corresponding read paths. Requires migration strategy for existing unencrypted data.', p: 23 },
+  { s: 'todo', n: 'Toast notifications for remaining error paths', d: 'Follow-up from v3.90. Add toastError/toastWarning to pipeline.js, settings.js, admin.js, stats.js, billing.js Supabase error handlers.', p: 23 },
+  { s: 'todo', n: 'innerHTML audit: admin.js + keywords.js', d: 'Follow-up from v3.90. admin.js (1,124 lines, admin-only lower risk) and keywords.js (3,614 lines) have extensive innerHTML usage that needs escapeHtml() treatment for any user-generated content.', p: 23 },
+
   { s: 'todo', n: 'Enrich ~555 unmatched companies', d: 'Companies not in PDL free dataset. Options: Greenhouse API board metadata (March 3 partner deadline), LinkedIn scrape, or paid PDL API. External dependency.', p: 22 },
 ];
 
