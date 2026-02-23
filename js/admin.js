@@ -103,8 +103,8 @@ function setAdminText(id, val) {
 function fmtAdminNum(n) {
   if (n == null) return '—';
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
-  return String(n);
+  if (n >= 1000) return Math.round(n / 1000).toLocaleString() + 'K';
+  return n.toLocaleString();
 }
 
 function fmtAdminPct(n, d) {
@@ -160,6 +160,7 @@ async function loadBoardHealth() {
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
         var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
+        var ra = 'text-align:right;font-family:var(--mono)';
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
@@ -167,11 +168,11 @@ async function loadBoardHealth() {
           totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
-            '<td>' + fmtAdminNum(p.total) + '</td>' +
-            '<td class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
-            '<td>' + fmtAdminNum(p.jobs) + '</td>' +
-            '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
+            '<td style="' + ra + '">' + fmtAdminNum(p.total) + '</td>' +
+            '<td style="' + ra + '" class="' + pctColor + '">' + activePct + '%</td>' +
+            '<td style="' + ra + '" class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(p.errors_4xx) + '</td>' +
+            '<td style="' + ra + '">' + fmtAdminNum(p.jobs) + '</td>' +
+            '<td style="' + ra + '">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
         }).join('');
         if (tfoot) {
@@ -179,11 +180,11 @@ async function loadBoardHealth() {
           var totJpb = totWithJobs > 0 ? Math.round(totJobs / totWithJobs) : 0;
           tfoot.innerHTML = '<tr style="font-weight:600;border-top:2px solid var(--border)">' +
             '<td>Total</td>' +
-            '<td>' + fmtAdminNum(totBoards) + '</td>' +
-            '<td>' + totPct + '%</td>' +
-            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
-            '<td>' + fmtAdminNum(totJobs) + '</td>' +
-            '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
+            '<td style="' + ra + '">' + fmtAdminNum(totBoards) + '</td>' +
+            '<td style="' + ra + '">' + totPct + '%</td>' +
+            '<td style="' + ra + '" class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(tot4xx) + '</td>' +
+            '<td style="' + ra + '">' + fmtAdminNum(totJobs) + '</td>' +
+            '<td style="' + ra + '">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
         }
       }
