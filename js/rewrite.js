@@ -257,9 +257,162 @@ async function _rwStartRewrite(feedback) {
 // ════════════════════════════════════════════════════════════
 
 async function _rwAcceptAll() {
-  showToast('Resume rewrite accepted! Your improved resume is ready.', { type: 'success' });
-  // TODO Phase D: Generate DOCX, upload to storage, update resume management
-  closeRewritePanel();
+  var acceptBtn = document.querySelector('.rw-actions .btn-primary');
+  if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Generating document…'; }
+
+  try {
+    // Build the rewritten text by combining accepted sections
+    var fullText = '';
+    (_rwState.sections || []).forEach(function (s) {
+      var text = s.changed ? s.rewritten : s.original;
+      if (text) fullText += text + '\n\n';
+    });
+
+    // Generate DOCX
+    var docBlob = await _rwBuildDocx(_rwState.sections);
+
+    if (!docBlob) {
+      // Fallback: offer plain text download
+      _rwDownloadText(fullText);
+      showToast('DOCX generation unavailable. Plain text downloaded instead.', { type: 'info' });
+      closeRewritePanel();
+      return;
+    }
+
+    // Upload to Supabase Storage
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    var fileName = 'rewrite_' + (_rwState.company || 'job').replace(/[^a-zA-Z0-9]/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.docx';
+    var storagePath = currentUser.id + '/' + _rwState.sessionId + '/' + fileName;
+
+    var { error: uploadErr } = await sb.storage
+      .from('rewrites')
+      .upload(storagePath, docBlob, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.warn('[rewrite] Storage upload failed:', uploadErr.message);
+      // Still download locally
+    }
+
+    // Update session record with file path
+    if (_rwState.sessionId) {
+      await sb.from('rewrite_sessions').update({
+        output_file_path: storagePath,
+        status: 'accepted',
+      }).eq('id', _rwState.sessionId);
+    }
+
+    // Auto-download
+    var url = URL.createObjectURL(docBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+
+    showToast('Resume rewrite downloaded! File saved to your account.', { type: 'success', duration: 5000 });
+    closeRewritePanel();
+
+  } catch (e) {
+    console.error('[rewrite] Accept error:', e);
+    showToast('Download failed: ' + e.message, { type: 'error' });
+    if (acceptBtn) { acceptBtn.disabled = false; acceptBtn.textContent = 'Accept All'; }
+  }
+}
+
+// ─── DOCX Builder (client-side via docx-js UMD) ───
+async function _rwBuildDocx(sections) {
+  if (typeof docx === 'undefined') {
+    console.warn('[rewrite] docx library not loaded');
+    return null;
+  }
+
+  var children = [];
+
+  sections.forEach(function (s) {
+    var text = s.changed ? s.rewritten : s.original;
+    if (!text) return;
+
+    // Section heading
+    children.push(new docx.Paragraph({
+      spacing: { before: 240, after: 80 },
+      children: [new docx.TextRun({
+        text: (s.name || 'Section').toUpperCase(),
+        bold: true,
+        size: 24,
+        font: 'Calibri',
+        color: '2B2B2B',
+      })],
+    }));
+
+    // Section content — split by lines
+    text.split('\n').forEach(function (line) {
+      line = line.trim();
+      if (!line) return;
+
+      // Detect bullet points
+      var isBullet = /^[\u2022\-\*]\s/.test(line);
+      var cleanLine = isBullet ? line.replace(/^[\u2022\-\*]\s*/, '') : line;
+
+      if (isBullet) {
+        children.push(new docx.Paragraph({
+          spacing: { after: 40 },
+          indent: { left: 360, hanging: 260 },
+          children: [
+            new docx.TextRun({ text: '\u2022 ', font: 'Calibri', size: 22, color: '666666' }),
+            new docx.TextRun({ text: cleanLine, font: 'Calibri', size: 22, color: '333333' }),
+          ],
+        }));
+      } else {
+        children.push(new docx.Paragraph({
+          spacing: { after: 60 },
+          children: [new docx.TextRun({
+            text: cleanLine,
+            font: 'Calibri',
+            size: 22,
+            color: '333333',
+          })],
+        }));
+      }
+    });
+  });
+
+  var doc = new docx.Document({
+    styles: {
+      default: {
+        document: { run: { font: 'Calibri', size: 22 } },
+      },
+    },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 },
+        },
+      },
+      children: children,
+    }],
+  });
+
+  return await docx.Packer.toBlob(doc);
+}
+
+// ─── Plaintext fallback ───
+function _rwDownloadText(text) {
+  var blob = new Blob([text], { type: 'text/plain' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'rewrite_' + new Date().toISOString().slice(0, 10) + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
 }
 
 function _rwTryAgain() {
@@ -481,6 +634,18 @@ function _rwRenderResults() {
     '<button class="btn btn-sm" onclick="closeRewritePanel()" style="margin-top:8px;font-size:11px;color:var(--text-faint);">Cancel — no credits deducted</button>' +
     '</div>';
 
+  // Keywords added
+  if (_rwState.sections.some(function (s) { return s.changed; })) {
+    var kws = [];
+    _rwState.sections.forEach(function (s) { if (s.keywords_added) kws = kws.concat(s.keywords_added); });
+    if (_rwState.quality && _rwState.quality.keyword_coverage) {
+      html += '<div class="rw-keywords-bar" style="margin-top:16px;font-size:11px;color:var(--text-faint);">' +
+        'Keyword coverage: <strong>' + _rwState.quality.keyword_coverage + '%</strong> of JD terms' +
+        (kws.length > 0 ? ' · Added: ' + kws.slice(0, 8).join(', ') : '') +
+        '</div>';
+    }
+  }
+
   html += '</div>';
   return html;
 }
@@ -518,14 +683,25 @@ function boostMatch(jobId, jobTitle, company) {
   }
 
   if (!assignedResume) {
-    showToast('Assign a resume first on the Resumes page.', { type: 'error' });
+    showToast('Upload a resume on the Resumes page first, then come back to Boost.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Check if resume text has been extracted
+  if (!assignedResume.extractedText || assignedResume.extractedText.length < 50) {
+    showToast('Resume text not ready. Open your resume on the Resumes page to extract it, then try again.', { type: 'error', duration: 5000 });
     return;
   }
 
   var matchScore = jobMatchScores[jobId];
   if (typeof matchScore === 'object') matchScore = matchScore.score;
 
-  // Entitlement check (async — opens panel immediately, checks in _rwStartAnalysis)
+  // Already A+ match — celebrate instead
+  if (matchScore != null && matchScore >= 95) {
+    showToast('Your resume is already a 95%+ match for this role! No rewrite needed.', { type: 'success', duration: 4000 });
+    return;
+  }
+
   openRewritePanel(jobId, jobTitle, company, assignedResume.id, matchScore);
 }
 
