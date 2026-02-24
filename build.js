@@ -19,11 +19,14 @@ const jsFiles = [
   'js/admin.js',
   'js/billing.js',
   'js/micro-surveys.js',
+  'js/rewrite.js',
   'js/app.js',
 ];
 
 // Simple concatenation — no IIFE wrapper needed.
 // Browser <script> tags run in sloppy mode where function re-declarations are fine.
+// NOTE: const/let re-declarations in the same scope WILL fail in esbuild.
+// Fix: eliminate duplicate const declarations within single files (see app.js init() fix).
 const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
 
 mkdirSync('dist', { recursive: true });
