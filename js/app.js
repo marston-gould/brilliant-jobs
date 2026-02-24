@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.25';
+const BJ_VERSION = 'v4.26';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
 
 // Auth
@@ -78,9 +78,59 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Re-init admin page if it was the active tab (tab restore runs before auth)
   if (typeof initAdminPage === 'function') initAdminPage();
-  // Re-hydrate globals from potentially updated localStorage
-  savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  
+  // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
+  const { data: { session } } = await sb.auth.getSession();
+  const userId = session?.user?.id;
+  
+  // Load filters from Supabase
+  let filtersFromCloud = false;
+  if (userId) {
+    const { data: cloudFilters } = await sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order');
+    if (cloudFilters && cloudFilters.length > 0) {
+      savedFilters = cloudFilters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
+      filtersFromCloud = true;
+    }
+  }
+  if (!filtersFromCloud) {
+    savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    // Migrate localStorage filters to Supabase on first load
+    if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
+      for (let i = 0; i < savedFilters.length; i++) {
+        const f = savedFilters[i];
+        await sb.from('user_filters').insert({
+          user_id: userId,
+          name: f.name || 'Untitled',
+          filter_data: f,
+          sort_order: i,
+        });
+      }
+      localStorage.setItem('bj_filters_migrated', '1');
+      showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
+    }
+  }
+  
+  // Load tuning from Supabase
+  let tuningFromCloud = false;
+  if (userId) {
+    const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
+    if (cloudTuning?.tuning_data && Object.keys(cloudTuning.tuning_data).length > 0) {
+      tuningSettings = cloudTuning.tuning_data;
+      tuningFromCloud = true;
+    }
+  }
+  if (!tuningFromCloud) {
+    tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    // Migrate to Supabase
+    if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
+      await sb.from('user_tuning').upsert({
+        user_id: userId,
+        tuning_data: tuningSettings,
+      }, { onConflict: 'user_id' });
+      localStorage.setItem('bj_tuning_migrated', '1');
+    }
+  }
+  
   tuningLocExclPills = tuningSettings.locationExcludes || [];
   tuningTitleExclPills = tuningSettings.titleExcludes || [];
   tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -92,12 +142,20 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   savedJobIds = [];
   appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
-  // 9.1: Warn about localStorage-only data if user has significant local state
-  if (!localStorage.getItem('bj_cloud_sync_noted') && savedFilters.length > 0) {
-    localStorage.setItem('bj_cloud_sync_noted', '1');
-    setTimeout(function() {
-      showToast('Your saved searches are stored on this device. Cloud sync is coming soon — your data will carry across devices automatically.', { type: 'info', duration: 8000 });
-    }, 3000);
+  // Cloud sync is now live via user_filters + user_tuning tables
+  // Q23: Populate global rules crosslink banner
+  const grBanner = document.getElementById('global-rules-banner');
+  const grSummary = document.getElementById('gr-summary');
+  if (grBanner && grSummary) {
+    const parts = [];
+    if (tuningSettings.locationExcludes?.length) parts.push(tuningSettings.locationExcludes.length + ' excluded locations');
+    if (tuningSettings.titleExcludes?.length) parts.push(tuningSettings.titleExcludes.length + ' excluded titles');
+    if (tuningSettings.companyExcludes?.length) parts.push(tuningSettings.companyExcludes.length + ' excluded companies');
+    if (tuningSettings.levelHierarchy?.length) parts.push(tuningSettings.levelHierarchy.length + ' levels');
+    if (parts.length) {
+      grSummary.textContent = parts.join(', ');
+      grBanner.style.display = '';
+    }
   }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
   if (typeof initPipeline === 'function') await initPipeline();
@@ -496,6 +554,199 @@ window.disconnectGmail = async function() {
 
 // Init Gmail status on load
 initGmailStatus();
+
+// Q22: Switch between List and Board views in My Applications
+window.switchAppView = function(view) {
+
+// Q16-Q19: Resume-First Onboarding
+let _onboardProfile = null;
+
+window.handleOnboardResume = async function(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  
+  // Read file as text (for PDF, we'd need pdf.js — for now handle text-based)
+  const text = await file.text();
+  if (text.length < 50) {
+    showToast('Could not read resume text. Try a .docx or .pdf file.', { type: 'error' });
+    return;
+  }
+
+  // Show loading state
+  const card = document.getElementById('onboard-resume-first');
+  const origHTML = card.querySelector('.btn.btn-primary').innerHTML;
+  card.querySelector('.btn.btn-primary').innerHTML = '<span class="skel-line" style="width:80px;height:12px;display:inline-block;"></span> Analyzing…';
+  card.querySelector('.btn.btn-primary').style.pointerEvents = 'none';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const resp = await fetch(SB_URL + '/functions/v1/extract-resume-profile', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SB_ANON_KEY,
+      },
+      body: JSON.stringify({ resume_text: text }),
+    });
+    const data = await resp.json();
+    
+    if (data.error) {
+      showToast('Profile extraction failed: ' + data.error, { type: 'error' });
+      return;
+    }
+
+    _onboardProfile = data.profile;
+    renderOnboardProfile(data.profile);
+  } catch (e) {
+    showToast('Could not extract profile: ' + e.message, { type: 'error' });
+  } finally {
+    card.querySelector('.btn.btn-primary').innerHTML = origHTML;
+    card.querySelector('.btn.btn-primary').style.pointerEvents = '';
+  }
+};
+
+function renderOnboardProfile(p) {
+  const tag = (text) => `<span style="display:inline-block;padding:2px 8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--text);">${text}</span>`;
+
+  document.getElementById('onboard-titles').innerHTML = (p.titles || []).map(tag).join('');
+  document.getElementById('onboard-locations').innerHTML = (p.locations || []).map(tag).join('');
+  document.getElementById('onboard-seniority').textContent = (p.seniority || 'unknown').replace('_', ' ');
+  document.getElementById('onboard-industries').innerHTML = (p.industries || []).map(tag).join('');
+  document.getElementById('onboard-skills').innerHTML = (p.skills || []).slice(0, 8).map(tag).join('');
+
+  document.getElementById('onboard-profile-card').style.display = '';
+  document.getElementById('onboard-profile-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+window.createFilterFromProfile = function() {
+  if (!_onboardProfile) return;
+  const p = _onboardProfile;
+
+  // Build pills from profile
+  const newFilter = {
+    name: (p.titles?.[0] || 'My Search') + ' — auto-generated',
+    whatPills: (p.titles || []).slice(0, 3).map(t => ({ values: [t], type: 'keyword' })),
+    wherePills: (p.locations || []).slice(0, 2).map(l => ({ values: [l], type: 'location', locType: 'text' })),
+    whenPills: [],
+    whoPills: [],
+    payPills: [],
+    whatNotPills: [],
+    whereNotPills: [],
+    whoNotPills: [],
+    includeNoSalary: true,
+    includeRemote: p.remote_preference === 'remote',
+    created: new Date().toISOString(),
+  };
+
+  // Add to saved filters
+  savedFilters.push(newFilter);
+  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  
+  // Update onboarding step
+  updateOnboardingStep(2);
+
+  // Navigate to Jobs page and run search
+  showToast('Search created from your resume! Running your first search…', { type: 'success' });
+  document.querySelector('[data-page=feed]').click();
+  
+  // Check the new filter and trigger search
+  setTimeout(() => {
+    if (typeof renderSavedFilters === 'function') renderSavedFilters();
+    if (typeof searchJobs === 'function') searchJobs();
+  }, 300);
+};
+
+// Q20: Onboarding milestone tracking
+// Steps: 0=new, 1=resume uploaded, 2=filter created, 3=first search run, 4=pipeline used
+function getOnboardingStep() {
+  return parseInt(localStorage.getItem('bj_onboarding_step') || '0');
+}
+
+function updateOnboardingStep(step) {
+  const current = getOnboardingStep();
+  if (step > current) {
+    localStorage.setItem('bj_onboarding_step', String(step));
+    applyProgressiveNav(step);
+  }
+}
+
+// Q21: Progressive nav disclosure
+function applyProgressiveNav(step) {
+  // Step 0-1: Show Get Started, Jobs, Settings only
+  // Step 2+: Unlock Tuning, Resumes
+  // Step 3+: Unlock Pipeline/Applications, Stats
+  // Step 4+: Full nav
+  const navItems = {
+    'tuning': 2,
+    'resumes': 1,
+    'applications': 3,
+    'ghost': 4,
+    'stats': 3,
+    'notifications': 3,
+    'feedback': 2,
+  };
+
+  for (const [page, minStep] of Object.entries(navItems)) {
+    const el = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (el) {
+      if (step < minStep) {
+        el.style.opacity = '0.35';
+        el.style.pointerEvents = 'none';
+        el.setAttribute('title', 'Complete onboarding to unlock');
+      } else {
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+        el.removeAttribute('title');
+      }
+    }
+  }
+}
+
+// Init progressive nav on load
+(function initOnboarding() {
+  const step = getOnboardingStep();
+  // Auto-detect milestones from existing data
+  if (step < 1 && resumes && resumes.length > 0) updateOnboardingStep(1);
+  if (step < 2 && savedFilters && savedFilters.length > 0) updateOnboardingStep(2);
+  if (step < 3 && localStorage.getItem('bj_first_search_done')) updateOnboardingStep(3);
+  if (step < 4 && localStorage.getItem('bj_pipeline_used')) updateOnboardingStep(4);
+  
+  applyProgressiveNav(getOnboardingStep());
+  
+  // Hide resume-first prompt if they already have filters
+  if (savedFilters.length > 0) {
+    const prompt = document.getElementById('onboard-resume-first');
+    if (prompt) prompt.style.display = 'none';
+  }
+})();
+
+
+  const listPanel = document.getElementById('app-view-list-panel');
+  const boardPanel = document.getElementById('app-view-board-panel');
+  const listBtn = document.getElementById('app-view-list');
+  const boardBtn = document.getElementById('app-view-board');
+  if (!listPanel || !boardPanel) return;
+
+  if (view === 'board') {
+    listPanel.style.display = 'none';
+    boardPanel.style.display = '';
+    listBtn.classList.remove('active');
+    boardBtn.classList.add('active');
+    // Move pipeline stages into board panel
+    const stages = document.getElementById('pl-stages-container');
+    const target = document.getElementById('app-view-board-panel');
+    if (stages && target && !target.contains(stages)) {
+      target.appendChild(stages);
+    }
+    if (typeof renderPipeline === 'function') renderPipeline();
+  } else {
+    listPanel.style.display = '';
+    boardPanel.style.display = 'none';
+    listBtn.classList.add('active');
+    boardBtn.classList.remove('active');
+  }
+};
 
 
 

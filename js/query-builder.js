@@ -31,6 +31,9 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
     }
 
     const el = document.createElement('span');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'Filter: ' + pill.values.join(' or ') + '. Press Delete to remove.');
     let cls = 'qb-pill';
     if (pill.type === 'collection') cls += ' collection-pill';
     else if (extraClass) cls += ' ' + extraClass;
@@ -78,6 +81,33 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
 
     el.innerHTML = `<span class="qb-pill-text" data-idx="${i}">${display}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
     builder.insertBefore(el, input);
+
+    // Q26: Keyboard navigation
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        pillArray.splice(i, 1);
+        if (onRemove) onRemove();
+        else renderAllPills();
+        // Focus next pill or input
+        const nextPill = builder.querySelector('.qb-pill');
+        if (nextPill) nextPill.focus();
+        else input.focus();
+      } else if (e.key === 'ArrowRight') {
+        const next = el.nextElementSibling;
+        if (next && next.classList.contains('qb-and')) {
+          const pill2 = next.nextElementSibling;
+          if (pill2 && pill2.classList.contains('qb-pill')) pill2.focus();
+        } else if (next && next.classList.contains('qb-pill')) next.focus();
+        else input.focus();
+      } else if (e.key === 'ArrowLeft') {
+        const prev = el.previousElementSibling;
+        if (prev && prev.classList.contains('qb-and')) {
+          const pill2 = prev.previousElementSibling;
+          if (pill2 && pill2.classList.contains('qb-pill')) pill2.focus();
+        } else if (prev && prev.classList.contains('qb-pill')) prev.focus();
+      }
+    });
   });
 
   // Bind per-value remove buttons (for multi-value pills)
