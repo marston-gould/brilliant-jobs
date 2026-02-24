@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.50';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix WARM tier null exclusion, 28K boards now visible to scraper');
+const BJ_VERSION = 'v4.49.1';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Rebuild bundle with sort-bar guards');
 
 // Auth
 async function init() {

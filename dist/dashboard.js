@@ -473,6 +473,8 @@ var _entitlementCacheTTL = 5 * 60 * 1000; // 5 min cache
  * @returns {Promise<object>} Entitlement result from server
  */
 async function checkEntitlement(feature, usageCount) {
+  // Admin bypass — unlimited access to all features
+  if (window._bjUserRole === 'admin') return { allowed: true, behavior: 'fixed', effective_limit: 9999, remaining: 9999 };
   if (!currentUser) return { allowed: false, behavior: 'off', effective_limit: 0, remaining: 0 };
   if (typeof usageCount === 'undefined') usageCount = 0;
   var cacheKey = feature + ':' + usageCount;
@@ -2307,7 +2309,7 @@ async function backgroundEnrichSalary() {
 
 function renderSortPills() {
   const container = $('#sort-pills');
-  container.innerHTML = '';
+  if (!container) return;
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
@@ -2366,8 +2368,112 @@ function renderSortPills() {
   });
 }
 
+// Function declarations (must be top-level for cross-file access)
+async function searchCompanies(query) {
+  const results = [];
+  try {
+    // Search ats_companies by slug or name
+    const { data: atsData, error: atsErr } = await sb
+      .from('ats_companies')
+      .select('slug, name, source')
+      .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+      .limit(6);
+    if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
+    if (atsData) {
+      atsData.forEach(c => results.push({
+        name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
+      }));
+    }
+  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+
+  try {
+    // Search user's connections by parsed_company
+    const { data: connData, error: connErr } = await sb
+      .from('connections')
+      .select('parsed_company')
+      .ilike('parsed_company', `%${query}%`)
+      .not('parsed_company', 'is', null)
+      .limit(30);
+    if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
+    if (connData) {
+      const counts = {};
+      connData.forEach(p => {
+        const n = (p.parsed_company || '').trim();
+        if (n) counts[n] = (counts[n] || 0) + 1;
+      });
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .forEach(([name, count]) => {
+          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+            results.push({ name, source: 'network', connections: count });
+          }
+        });
+    }
+  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
+
+  renderCompanyDropdown(results, query);
+}
+
+function commitPill(input, pillArray, makePill) {
+  const raw = input.value.trim().toLowerCase();
+  if (!raw) return false;
+  pillArray.push(makePill(raw));
+  input.value = '';
+  renderAllPills();
+  return true;
+}
+
+function focusNextInput(currentId) {
+  const idx = qbInputOrder.indexOf(currentId);
+  if (idx >= 0 && idx < qbInputOrder.length - 1) {
+    const next = $('#' + qbInputOrder[idx + 1]);
+    if (next) setTimeout(() => next.focus(), 10);
+  }
+}
+
+function renderCompanyDropdown(results, query) {
+  if (results.length === 0) { companyDropdown.classList.remove('open'); return; }
+  companyDropdown.innerHTML = results.map(r => {
+    const badge = r.source === 'network'
+      ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
+      : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
+    const hl = highlightCompanyMatch(r.name, query);
+    return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
+      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+  }).join('');
+  companyDropdown.classList.add('open');
+
+  companyDropdown.querySelectorAll('.company-opt').forEach(opt => {
+    opt.addEventListener('mousedown', e => {
+      e.preventDefault(); // prevent blur from firing first
+      qbInputWho.value = opt.dataset.name;
+      commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+      renderAllPills();
+      companyDropdown.classList.remove('open');
+    });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); opt.dispatchEvent(new Event('mousedown')); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWho.focus(); }
+      if (e.key === 'Escape') { companyDropdown.classList.remove('open'); qbInputWho.focus(); }
+    });
+  });
+}
+
+function highlightCompanyMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0) return text;
+  return text.slice(0, idx) +
+    '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
+    text.slice(idx + query.length);
+}
+
+// Guard: only run imperative DOM code if dashboard elements exist
+if ($('#sort-pills')) {
+
 // Sort add button + dropdown
-$('#sort-add-btn').addEventListener('click', (e) => {
+$('#sort-add-btn')?.addEventListener('click', (e) => {
   e.stopPropagation();
   const dd = $('#sort-dropdown');
   dd.style.display = dd.style.display === 'none' ? '' : 'none';
@@ -2418,24 +2524,11 @@ renderSortPills();
 
 // Input handling — What row
 const qbInputWhat = $('#qb-input-what');
-function commitPill(input, pillArray, makePill) {
-  const raw = input.value.trim().toLowerCase();
-  if (!raw) return false;
-  pillArray.push(makePill(raw));
-  input.value = '';
-  renderAllPills();
-  return true;
-}
+
 
 const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
 
-function focusNextInput(currentId) {
-  const idx = qbInputOrder.indexOf(currentId);
-  if (idx >= 0 && idx < qbInputOrder.length - 1) {
-    const next = $('#' + qbInputOrder[idx + 1]);
-    if (next) setTimeout(() => next.focus(), 10);
-  }
-}
+
 
 qbInputWhat.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
@@ -2459,19 +2552,19 @@ qbInputWhat.addEventListener('blur', () => {
 // Input handling — Where row (handled by location autocomplete section below)
 
 // Click builders to focus respective inputs
-$('#query-builder-what').addEventListener('click', e => {
+$('#query-builder-what')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   qbInputWhat.focus();
 });
-$('#query-builder-where').addEventListener('click', e => {
+$('#query-builder-where')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   qbInputWhere.focus();
 });
-$('#query-builder-when').addEventListener('click', e => {
+$('#query-builder-when')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   $('#qb-input-when').focus();
 });
-$('#query-builder-who').addEventListener('click', e => {
+$('#query-builder-who')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   $('#qb-input-who').focus();
 });
@@ -2544,89 +2637,13 @@ qbInputWho.addEventListener('input', () => {
 });
 
 
-async function searchCompanies(query) {
-  const results = [];
-  try {
-    // Search ats_companies by slug or name
-    const { data: atsData, error: atsErr } = await sb
-      .from('ats_companies')
-      .select('slug, name, source')
-      .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
-      .limit(6);
-    if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
-    if (atsData) {
-      atsData.forEach(c => results.push({
-        name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
-      }));
-    }
-  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+// searchCompanies defined above guard
 
-  try {
-    // Search user's connections by parsed_company
-    const { data: connData, error: connErr } = await sb
-      .from('connections')
-      .select('parsed_company')
-      .ilike('parsed_company', `%${query}%`)
-      .not('parsed_company', 'is', null)
-      .limit(30);
-    if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
-    if (connData) {
-      const counts = {};
-      connData.forEach(p => {
-        const n = (p.parsed_company || '').trim();
-        if (n) counts[n] = (counts[n] || 0) + 1;
-      });
-      Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .forEach(([name, count]) => {
-          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
-            results.push({ name, source: 'network', connections: count });
-          }
-        });
-    }
-  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
 
-  renderCompanyDropdown(results, query);
-}
 
-function renderCompanyDropdown(results, query) {
-  if (results.length === 0) { companyDropdown.classList.remove('open'); return; }
-  companyDropdown.innerHTML = results.map(r => {
-    const badge = r.source === 'network'
-      ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
-      : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
-    const hl = highlightCompanyMatch(r.name, query);
-    return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
-      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
-  }).join('');
-  companyDropdown.classList.add('open');
 
-  companyDropdown.querySelectorAll('.company-opt').forEach(opt => {
-    opt.addEventListener('mousedown', e => {
-      e.preventDefault(); // prevent blur from firing first
-      qbInputWho.value = opt.dataset.name;
-      commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
-      renderAllPills();
-      companyDropdown.classList.remove('open');
-    });
-    opt.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); opt.dispatchEvent(new Event('mousedown')); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
-      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWho.focus(); }
-      if (e.key === 'Escape') { companyDropdown.classList.remove('open'); qbInputWho.focus(); }
-    });
-  });
-}
 
-function highlightCompanyMatch(text, query) {
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx < 0) return text;
-  return text.slice(0, idx) +
-    '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
-    text.slice(idx + query.length);
-}
-
+} // end sort-bar guard
 
 
 // === js/keywords.js ===
@@ -10527,6 +10544,7 @@ tuningInputs.forEach(t => {
     metro: '<span style="font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;padding:1px 6px;border-radius:4px;font-weight:600;">metro</span>',
     city: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">city</span>',
     remote: '<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">remote</span>',
+    country: '<span style="font-size:9px;background:rgba(14,165,233,0.1);color:#0ea5e9;padding:1px 6px;border-radius:4px;font-weight:600;">country</span>',
     pin: '<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">📍</span>',
   };
 
@@ -10584,6 +10602,14 @@ tuningInputs.forEach(t => {
         }
       }
     } catch (e) {}
+
+    // Countries
+    var COUNTRIES = ['Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Czechia','Denmark','Djibouti','Dominican Republic','DR Congo','Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon','Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kosovo','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein','Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Mauritania','Mauritius','Mexico','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Sierra Leone','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Togo','Trinidad and Tobago','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','UK','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
+    var countryMatches = COUNTRIES.filter(c => c.toLowerCase().startsWith(ql) || c.toLowerCase().includes(ql));
+    for (var ci = 0; ci < Math.min(countryMatches.length, 5); ci++) {
+      var cKey = 'country:' + countryMatches[ci].toLowerCase();
+      if (!seenKeys.has(cKey)) { seenKeys.add(cKey); results.push({ display: countryMatches[ci], badge: 'country' }); }
+    }
 
     // Remote
     if ('remote'.startsWith(ql)) {
@@ -11784,6 +11810,24 @@ async function addResume(file) {
   // Store file blob in IndexedDB for downloads
   bjFileStore.put(id, file).catch(e => console.warn('[BJ] File store error:', e));
 
+  // Upload to Supabase Storage for cross-device persistence
+  if (currentUser) {
+    const storagePath = currentUser.id + '/' + id + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    sb.storage.from('resumes').upload(storagePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: file.type || 'application/octet-stream'
+    }).then(({ data, error }) => {
+      if (error) { console.warn('[resume-storage] Upload failed:', error.message); return; }
+      const idx = resumes.findIndex(r => r.id === id);
+      if (idx >= 0) {
+        resumes[idx].storagePath = storagePath;
+        saveResumes();
+        console.log('[resume-storage] Uploaded', storagePath);
+      }
+    }).catch(e => console.warn('[resume-storage] Upload error:', e.message));
+  }
+
   extractTextFromFile(file).then(text => {
     const idx = resumes.findIndex(r => r.id === id);
     if (idx < 0) return;
@@ -11811,8 +11855,11 @@ window.renameResume = function(idx) {
 
 window.removeResume = function(idx) {
   if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
-  // Clean up stored file
+  // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
+  if (resumes[idx].storagePath && currentUser) {
+    sb.storage.from('resumes').remove([resumes[idx].storagePath]).catch(() => {});
+  }
   resumes.splice(idx, 1);
   saveResumes();
   renderResumes();
@@ -11863,7 +11910,19 @@ window.downloadResume = async function(idx) {
   const r = resumes[idx];
   if (!r) return;
   try {
-    const file = await bjFileStore.get(r.id);
+    let file = await bjFileStore.get(r.id);
+    // Fall back to Supabase Storage if IndexedDB doesn't have the file
+    if (!file && r.storagePath && currentUser) {
+      try {
+        const { data: blob, error } = await sb.storage.from('resumes').download(r.storagePath);
+        if (!error && blob) {
+          file = blob;
+          // Re-cache in IndexedDB for next time
+          bjFileStore.put(r.id, blob).catch(() => {});
+          console.log('[resume-storage] Restored from cloud:', r.storagePath);
+        }
+      } catch (e) { console.warn('[resume-storage] Download failed:', e.message); }
+    }
     if (file) {
       const url = URL.createObjectURL(file);
       const a = document.createElement('a');
@@ -11874,7 +11933,7 @@ window.downloadResume = async function(idx) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      showToast('File data not available. Re-upload this resume to enable downloads.', { type: 'error' });
+      showToast('File not available. Re-upload this resume to restore the file.', { type: 'error' });
     }
   } catch(e) {
     showToast('Download failed: ' + e.message, { type: 'error' });
@@ -11897,6 +11956,12 @@ window.replaceResumePlaceholder = function(idx) {
     resumes[idx].source = 'upload';
     resumes[idx].textStatus = 'extracting';
     saveResumes();
+    // Upload replacement file to Storage
+    if (currentUser) {
+      var rePath = currentUser.id + '/' + resumes[idx].id + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      sb.storage.from('resumes').upload(rePath, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'application/octet-stream' })
+        .then(function(res) { if (!res.error) { resumes[idx].storagePath = rePath; saveResumes(); } });
+    }
     renderResumes();
 
     extractTextFromFile(file).then(text => {
@@ -13698,7 +13763,7 @@ function renderSeniorityBars(stats) {
   }
 
   // Ordered Entry → C-Suite (correct career ladder)
-  var SENIORITY_ORDER = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Head','Principal','Sr Manager','Manager','Sr Director','Director','VP','C-Suite'];
+  var SENIORITY_ORDER = ['Entry','Analyst','Associate','Mid','Senior','Sr Manager','Manager','Head','Lead','Principal','Staff','Assoc Director','Director','Sr Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
@@ -14125,6 +14190,7 @@ function switchAdminTab(tabId) {
       case 'revenue': loadRevenueTab(); break;
       case 'surveys': loadSurveysTab(); break;
       case 'ghost': loadGhostTab(); break;
+      case 'feedback': loadFeedbackTab(); break;
     }
   }
 }
@@ -14240,6 +14306,13 @@ var _platformColors = {
   workable: '#8878a0',
   recruitee: '#a07080'
 };
+var _platformLineColors = {
+  greenhouse: '#2d6b4a',
+  lever: '#3b5a8a',
+  ashby: '#7a6530',
+  workable: '#5e4880',
+  recruitee: '#804050'
+};
 
 async function loadFeedHealthCharts() {
   if (typeof echarts === 'undefined') return;
@@ -14277,8 +14350,8 @@ async function loadFeedHealthCharts() {
           name: p.charAt(0).toUpperCase() + p.slice(1),
           type: 'line',
           stack: 'total',
-          areaStyle: { opacity: 0.6 },
-          lineStyle: { width: 1 },
+          areaStyle: { opacity: 0.15 },
+          lineStyle: { width: 2, color: _platformLineColors[p] || _platformColors[p] || '#666' },
           symbol: 'none',
           itemStyle: { color: _platformColors[p] || '#999' },
           data: dates.map(function(d) { return lookup[p] && lookup[p][d] ? lookup[p][d][field] : 0; })
@@ -15762,6 +15835,474 @@ function renderAdminGhostChart(stats) {
   });
 }
 
+// ============================================================
+// SEO EXTRACT REPORT — v4.47
+// Generates a downloadable HTML report combining all 5 SEO tools
+// ============================================================
+window.generateSeoReport = async function() {
+  var btn = document.getElementById('seo-export-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+
+  try {
+    var url = _seoUrl || 'https://brilliantjobs.app/';
+    var strategy = 'Mobile';
+    var now = new Date().toLocaleString();
+
+    // Gather data from _seoData (already loaded by SEO tab)
+    var techAudits = (_seoData.tech_audits || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var psiAudits = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
+    var dfAudits = techAudits.filter(function(r) { return r.source === 'dataforseo'; });
+    var yltAudits = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
+    var indexStatus = (_seoData.index_status || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var siteDailyArr = _seoData.site_daily || [];
+    var pageDailyArr = (_seoData.page_daily || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var gscQueries = _seoData.gsc_queries || [];
+
+    // PSI scores
+    var latestPsi = psiAudits.length ? psiAudits[psiAudits.length - 1] : null;
+    var psiMetrics = latestPsi ? (latestPsi.metrics || {}) : {};
+    var perfScore = psiMetrics.performance || 0;
+    var grade = perfScore >= 90 ? 'A' : perfScore >= 70 ? 'B' : perfScore >= 50 ? 'C' : perfScore >= 30 ? 'D' : 'F';
+    var gradeColor = { A: '#22c55e', B: '#84cc16', C: '#f59e0b', D: '#f97316', F: '#ef4444' }[grade];
+
+    // DataForSEO
+    var latestDf = dfAudits.length ? dfAudits[dfAudits.length - 1] : null;
+    var dfMetrics = latestDf ? (latestDf.metrics || {}) : {};
+
+    // YLT
+    var latestYlt = yltAudits.length ? yltAudits[yltAudits.length - 1] : null;
+    var yltMetrics = latestYlt ? (latestYlt.metrics || {}) : {};
+
+    // Index status
+    var latestIdx = indexStatus.length ? indexStatus[indexStatus.length - 1] : null;
+    var idxData = latestIdx ? (latestIdx.details || latestIdx.metrics || {}) : {};
+
+    // GSC totals
+    var gscTotalClicks = siteDailyArr.reduce(function(a, r) { return a + (r.total_clicks || 0); }, 0);
+    var gscTotalImpr = siteDailyArr.reduce(function(a, r) { return a + (r.total_impressions || 0); }, 0);
+    var gscAvgPos = siteDailyArr.filter(function(r) { return r.avg_position > 0; });
+    var avgPos = gscAvgPos.length ? (gscAvgPos.reduce(function(a, r) { return a + r.avg_position; }, 0) / gscAvgPos.length).toFixed(1) : '—';
+
+    function scoreBar(val, max) {
+      max = max || 100;
+      var pct = Math.min(100, Math.round((val / max) * 100));
+      var c = pct >= 90 ? '#22c55e' : pct >= 70 ? '#84cc16' : pct >= 50 ? '#f59e0b' : '#ef4444';
+      return '<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div style="width:' + pct + '%;height:100%;background:' + c + ';border-radius:4px;"></div></div><span style="font-weight:700;color:' + c + ';">' + val + '</span></div>';
+    }
+
+    function row(label, value) {
+      return '<tr><td style="padding:6px 12px;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;">' + label + '</td><td style="padding:6px 12px;font-weight:600;border-bottom:1px solid #f3f4f6;">' + (value != null ? value : '—') + '</td></tr>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>SEO Report — ' + url + '</title>' +
+      '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a2e;background:#fff;padding:40px;max-width:900px;margin:0 auto;line-height:1.5}' +
+      'h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;color:#4b5563;margin:32px 0 12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb}h3{font-size:14px;color:#6b7280;margin:16px 0 8px}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:16px}th{text-align:left;padding:8px 12px;background:#f9fafb;font-size:12px;color:#6b7280;border-bottom:2px solid #e5e7eb}' +
+      'td{padding:6px 12px;font-size:13px;border-bottom:1px solid #f3f4f6}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}' +
+      '.metric-card{background:#f9fafb;border-radius:8px;padding:16px;text-align:center}.metric-card .val{font-size:28px;font-weight:700}.metric-card .lbl{font-size:11px;color:#6b7280;margin-top:4px}' +
+      '.grade{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;font-size:24px;font-weight:800;color:#fff}' +
+      '@media print{body{padding:20px}h2{page-break-before:auto}}</style></head><body>';
+
+    // Header
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">';
+    html += '<div><h1>SEO Report</h1><div style="font-size:13px;color:#6b7280;">' + url + '</div><div style="font-size:11px;color:#9ca3af;">Generated ' + now + ' · Strategy: ' + strategy + '</div></div>';
+    html += '<div class="grade" style="background:' + gradeColor + ';">' + grade + '</div>';
+    html += '</div>';
+
+    // Section 1: PSI Scores
+    html += '<h2>1. PageSpeed Insights</h2>';
+    html += '<div class="metric-grid">';
+    ['Performance', 'SEO', 'Accessibility', 'Best Practices'].forEach(function(cat) {
+      var key = cat.toLowerCase().replace(' ', '_');
+      var val = psiMetrics[key] || 0;
+      var c = val >= 90 ? '#22c55e' : val >= 70 ? '#f59e0b' : '#ef4444';
+      html += '<div class="metric-card"><div class="val" style="color:' + c + ';">' + val + '</div><div class="lbl">' + cat + '</div></div>';
+    });
+    html += '</div>';
+
+    // Core Web Vitals
+    html += '<h3>Core Web Vitals</h3><table>';
+    html += '<tr><th>Metric</th><th>Value</th><th>Status</th></tr>';
+    var cwv = [
+      ['LCP', psiMetrics.lcp, '< 2.5s'],
+      ['FID / INP', psiMetrics.inp || psiMetrics.fid, '< 200ms'],
+      ['CLS', psiMetrics.cls, '< 0.1'],
+      ['TBT', psiMetrics.tbt, '< 200ms'],
+      ['FCP', psiMetrics.fcp, '< 1.8s'],
+      ['Speed Index', psiMetrics.speed_index || psiMetrics.si, '< 3.4s'],
+    ];
+    cwv.forEach(function(m) {
+      var val = m[1] != null ? m[1] : '—';
+      html += '<tr><td style="padding:6px 12px;font-weight:600;border-bottom:1px solid #f3f4f6;">' + m[0] + '</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + val + '</td><td style="padding:6px 12px;color:#6b7280;font-size:11px;border-bottom:1px solid #f3f4f6;">Target: ' + m[2] + '</td></tr>';
+    });
+    html += '</table>';
+
+    // PSI Opportunities
+    if (latestPsi && latestPsi.details && latestPsi.details.opportunities) {
+      html += '<h3>Opportunities</h3><table><tr><th>Audit</th><th>Savings</th></tr>';
+      latestPsi.details.opportunities.forEach(function(o) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (o.title || o.id || '—') + '</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (o.savings || o.displayValue || '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    // Section 2: DataForSEO
+    html += '<h2>2. On-Page Audit (DataForSEO)</h2>';
+    if (latestDf) {
+      html += '<table>';
+      html += row('Title', dfMetrics.title || '—');
+      html += row('Title Length', dfMetrics.title_length || '—');
+      html += row('Meta Description', (dfMetrics.meta_description || '—').toString().slice(0, 120));
+      html += row('H1 Count', dfMetrics.h1_count || '—');
+      html += row('Word Count', dfMetrics.word_count || '—');
+      html += row('Internal Links', dfMetrics.internal_links || '—');
+      html += row('External Links', dfMetrics.external_links || '—');
+      html += row('Images', dfMetrics.images_count || '—');
+      html += row('Images without Alt', dfMetrics.images_without_alt || '—');
+      html += row('Readability', dfMetrics.readability_score || '—');
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No DataForSEO audit data available. Run a sync first.</p>';
+    }
+
+    // Section 3: URL Inspection
+    html += '<h2>3. URL Inspection (Google Index)</h2>';
+    if (latestIdx) {
+      html += '<table>';
+      html += row('Index Status', idxData.indexing_state || idxData.verdict || '—');
+      html += row('Coverage State', idxData.coverage_state || '—');
+      html += row('Last Crawl', idxData.last_crawl_time || idxData.last_crawl || '—');
+      html += row('Crawl Status', idxData.crawl_status || idxData.pageFetchState || '—');
+      html += row('Google Canonical', idxData.google_canonical || idxData.googleCanonical || '—');
+      html += row('User Canonical', idxData.user_canonical || idxData.userCanonical || '—');
+      html += row('Mobile Usability', idxData.mobile_usability || idxData.mobileFriendly || '—');
+      html += row('Rich Results', idxData.rich_results || '—');
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No URL Inspection data. Requires Google Service Account with Search Console access.</p>';
+    }
+
+    // Section 4: Yellow Lab Tools
+    html += '<h2>4. Page Quality (Yellow Lab Tools)</h2>';
+    if (latestYlt) {
+      html += '<table>';
+      html += row('Global Score', scoreBar(yltMetrics.globalScore || yltMetrics.global_score || 0));
+      var yltCats = ['weight', 'requests', 'domComplexity', 'cssComplexity', 'jsComplexity', 'fonts', 'serverConfig', 'images'];
+      yltCats.forEach(function(cat) {
+        var val = yltMetrics[cat] || yltMetrics[cat.replace(/([A-Z])/g, '_$1').toLowerCase()];
+        if (val != null) html += row(cat.replace(/([A-Z])/g, ' $1').replace(/^./, function(s) { return s.toUpperCase(); }), typeof val === 'number' ? scoreBar(val) : val);
+      });
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No Yellow Lab Tools data available.</p>';
+    }
+
+    // Section 5: CrUX / GSC Performance
+    html += '<h2>5. Search Performance (Google Search Console)</h2>';
+    html += '<div class="metric-grid">';
+    html += '<div class="metric-card"><div class="val">' + gscTotalClicks + '</div><div class="lbl">Total Clicks</div></div>';
+    html += '<div class="metric-card"><div class="val">' + gscTotalImpr.toLocaleString() + '</div><div class="lbl">Total Impressions</div></div>';
+    html += '<div class="metric-card"><div class="val">' + avgPos + '</div><div class="lbl">Avg Position</div></div>';
+    html += '<div class="metric-card"><div class="val">' + siteDailyArr.length + '</div><div class="lbl">Days of Data</div></div>';
+    html += '</div>';
+
+    if (gscQueries.length > 0) {
+      html += '<h3>Top Queries</h3><table><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr>';
+      gscQueries.slice(0, 20).forEach(function(q) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.query || '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.clicks || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.impressions || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.ctr ? (q.ctr * 100).toFixed(1) + '%' : '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.position ? q.position.toFixed(1) : '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    // Daily breakdown
+    if (siteDailyArr.length > 0) {
+      html += '<h3>Daily Performance</h3><table><tr><th>Date</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr>';
+      siteDailyArr.slice(-14).forEach(function(r) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + r.date + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.total_clicks || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.total_impressions || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.avg_ctr ? (r.avg_ctr * 100).toFixed(1) + '%' : '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.avg_position || '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    html += '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;">Brilliant Jobs SEO Report · Generated ' + now + ' · <a href="https://brilliantjobs.app">brilliantjobs.app</a></div>';
+    html += '</body></html>';
+
+    // Create downloadable HTML file
+    var blob = new Blob([html], { type: 'text/html' });
+    var downloadUrl = URL.createObjectURL(blob);
+    var slug = url.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/-$/, '');
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = 'seo-report-' + slug + '-' + dateStr + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+
+    if (typeof showToast === 'function') showToast('SEO report downloaded!', { type: 'success' });
+  } catch (e) {
+    console.error('[SEO Report]', e);
+    if (typeof showToast === 'function') showToast('Report generation failed: ' + e.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Export Report'; }
+  }
+};
+
+// ============================================================
+// ADMIN FEEDBACK TAB — v4.48
+// Unified view of Canny FR, Bug Reports, Supabase Feedback
+// ============================================================
+
+var _afbData = [];
+var _afbFiltered = [];
+var _afbSort = 'newest';
+var _afbTypeFilter = 'all';
+var _afbStatusFilter = 'all';
+var _afbCohortFilter = 'all';
+var _afbSearchQuery = '';
+var _afbUserMap = {};
+
+async function loadFeedbackTab() {
+  console.log('[Admin] loadFeedbackTab');
+  try {
+    var { data, error } = await sb.from('admin_feedback')
+      .select('*')
+      .order('submitted_at', { ascending: false })
+      .limit(1000);
+    if (error) { console.error('[Feedback]', error); return; }
+    _afbData = data || [];
+
+    // Resolve user emails
+    var userIds = [...new Set(_afbData.map(function(r) { return r.user_id; }).filter(Boolean))];
+    if (userIds.length > 0) {
+      var { data: profiles } = await sb.from('profiles').select('id, email, cohort_id').in('id', userIds);
+      (profiles || []).forEach(function(p) { _afbUserMap[p.id] = p; });
+    }
+
+    // Populate cohort dropdown
+    var cohorts = [...new Set(_afbData.map(function(r) { return r.cohort_id; }).filter(Boolean))];
+    var sel = document.getElementById('afb-cohort-filter');
+    if (sel) {
+      sel.innerHTML = '<option value="all">All Cohorts</option>';
+      cohorts.sort().forEach(function(c) {
+        sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+      });
+    }
+
+    applyFeedbackFilters();
+    renderFeedbackCards();
+  } catch (e) {
+    console.error('[Feedback]', e);
+  }
+}
+
+function applyFeedbackFilters() {
+  _afbFiltered = _afbData.filter(function(r) {
+    if (_afbTypeFilter !== 'all' && r.source !== _afbTypeFilter) return false;
+    if (_afbStatusFilter !== 'all' && r.status !== _afbStatusFilter) return false;
+    if (_afbCohortFilter !== 'all' && r.cohort_id !== _afbCohortFilter) return false;
+    if (_afbSearchQuery) {
+      var q = _afbSearchQuery.toLowerCase();
+      var text = ((r.title || '') + ' ' + (r.content || '')).toLowerCase();
+      if (text.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  _afbFiltered.sort(function(a, b) {
+    switch (_afbSort) {
+      case 'oldest': return new Date(a.submitted_at) - new Date(b.submitted_at);
+      case 'votes': return (b.votes || 0) - (a.votes || 0);
+      case 'stale':
+        var da = Math.floor((Date.now() - new Date(a.submitted_at).getTime()) / 86400000);
+        var db = Math.floor((Date.now() - new Date(b.submitted_at).getTime()) / 86400000);
+        return db - da;
+      default: return new Date(b.submitted_at) - new Date(a.submitted_at);
+    }
+  });
+
+  renderFeedbackTable();
+}
+
+function renderFeedbackCards() {
+  var now = Date.now();
+  var weekAgo = now - 7 * 86400000;
+  var open = _afbData.filter(function(r) { return r.status !== 'done' && r.status !== 'wont_fix'; });
+  var newWeek = _afbData.filter(function(r) { return new Date(r.submitted_at).getTime() > weekAgo; });
+  var done = _afbData.filter(function(r) { return r.status === 'done'; });
+  var topFr = _afbData.filter(function(r) { return r.source === 'canny_fr'; }).sort(function(a, b) { return (b.votes || 0) - (a.votes || 0); })[0];
+
+  var el = function(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; };
+  el('afb-open', open.length);
+  el('afb-new-week', newWeek.length);
+  el('afb-avg-resolve', done.length > 0 ? '—' : '—'); // No resolved_at yet
+  el('afb-top-fr', topFr ? (topFr.title || '').slice(0, 60) + ' (' + topFr.votes + '↑)' : '—');
+}
+
+var _SOURCE_LABELS = {
+  'canny_fr': { label: 'FR', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  'canny_bug': { label: 'Bug', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  'supabase_feedback': { label: 'FB', color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+  'survey': { label: 'Survey', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' }
+};
+
+var _STATUS_OPTIONS = ['new', 'reviewing', 'planned', 'in_progress', 'done', 'wont_fix'];
+var _STATUS_LABELS = { 'new': 'New', 'reviewing': 'Reviewing', 'planned': 'Planned', 'in_progress': 'In Progress', 'done': 'Done', 'wont_fix': "Won't Fix" };
+
+function renderFeedbackTable() {
+  var tbody = document.getElementById('afb-tbody');
+  var empty = document.getElementById('afb-empty');
+  if (!tbody) return;
+
+  if (_afbFiltered.length === 0) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  var now = Date.now();
+  var rows = _afbFiltered.slice(0, 200).map(function(r) {
+    var src = _SOURCE_LABELS[r.source] || { label: r.source, color: '#999', bg: '#f5f5f5' };
+    var daysSince = Math.floor((now - new Date(r.submitted_at).getTime()) / 86400000);
+    var staleColor = daysSince < 7 ? '#22c55e' : daysSince < 30 ? '#f59e0b' : '#ef4444';
+    var user = r.user_id && _afbUserMap[r.user_id] ? _afbUserMap[r.user_id].email : '—';
+    var userShort = user.length > 16 ? user.slice(0, 14) + '…' : user;
+    var title = (r.title || r.content || '').slice(0, 80);
+    var relTime = daysSince === 0 ? 'today' : daysSince === 1 ? '1d ago' : daysSince < 7 ? daysSince + 'd ago' : daysSince < 30 ? Math.floor(daysSince / 7) + 'w ago' : Math.floor(daysSince / 30) + 'mo ago';
+
+    var statusSelect = '<select onchange="updateFeedbackStatus(\'' + r.id + '\', this.value)" style="font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--card);">';
+    _STATUS_OPTIONS.forEach(function(s) {
+      statusSelect += '<option value="' + s + '"' + (r.status === s ? ' selected' : '') + '>' + _STATUS_LABELS[s] + '</option>';
+    });
+    statusSelect += '</select>';
+
+    return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openFeedbackDetail(\'' + r.id + '\')">' +
+      '<td style="padding:6px 10px;"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:' + src.color + ';background:' + src.bg + ';">' + src.label + '</span></td>' +
+      '<td style="padding:6px 10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.title || '').replace(/"/g, '&quot;') + '">' + title + '</td>' +
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text-faint);" title="' + user + '">' + userShort + '</td>' +
+      '<td style="padding:6px 10px;">' + (r.cohort_id ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;background:rgba(99,102,241,0.1);color:var(--indigo);">' + r.cohort_id + '</span>' : '—') + '</td>' +
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text-faint);" title="' + new Date(r.submitted_at).toLocaleString() + '">' + relTime + '</td>' +
+      '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + staleColor + ';">' + daysSince + '</td>' +
+      '<td style="padding:6px 10px;text-align:center;font-weight:600;">' + (r.votes || 0) + '</td>' +
+      '<td style="padding:6px 10px;" onclick="event.stopPropagation()">' + statusSelect + '</td>' +
+      '</tr>';
+  }).join('');
+
+  tbody.innerHTML = rows;
+}
+
+window.updateFeedbackStatus = async function(id, newStatus) {
+  var { error } = await sb.from('admin_feedback').update({ status: newStatus }).eq('id', id);
+  if (error) {
+    console.error('[Feedback] Status update failed:', error);
+    if (typeof showToast === 'function') showToast('Status update failed', { type: 'error' });
+    return;
+  }
+  // Update local data
+  var item = _afbData.find(function(r) { return r.id === id; });
+  if (item) item.status = newStatus;
+  applyFeedbackFilters();
+  renderFeedbackCards();
+  if (typeof showToast === 'function') showToast('Status updated', { type: 'success' });
+};
+
+window.openFeedbackDetail = function(id) {
+  var item = _afbData.find(function(r) { return r.id === id; });
+  if (!item) return;
+  var panel = document.getElementById('afb-detail');
+  if (!panel) return;
+  var src = _SOURCE_LABELS[item.source] || { label: item.source };
+  var user = item.user_id && _afbUserMap[item.user_id] ? _afbUserMap[item.user_id].email : 'Unknown';
+  document.getElementById('afb-detail-title').textContent = item.title || 'Feedback';
+  document.getElementById('afb-detail-meta').innerHTML = '<span style="color:' + (src.color || '#999') + ';font-weight:600;">' + src.label + '</span> · ' + user + ' · ' + new Date(item.submitted_at).toLocaleDateString() + (item.votes ? ' · ' + item.votes + ' votes' : '');
+  document.getElementById('afb-detail-content').textContent = item.content || '(no content)';
+  panel.style.display = '';
+};
+
+window.closeFeedbackDetail = function() {
+  var panel = document.getElementById('afb-detail');
+  if (panel) panel.style.display = 'none';
+};
+
+window.sortFeedbackBy = function(field) {
+  if (field === 'submitted') _afbSort = _afbSort === 'newest' ? 'oldest' : 'newest';
+  else if (field === 'votes') _afbSort = 'votes';
+  else if (field === 'stale') _afbSort = 'stale';
+  applyFeedbackFilters();
+};
+
+window.triggerFeedbackSync = async function() {
+  var btn = document.getElementById('afb-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+  try {
+    var res = await fetch(sb.supabaseUrl + '/functions/v1/sync-feedback', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token, 'Content-Type': 'application/json' }
+    });
+    var data = await res.json();
+    console.log('[Feedback] Sync result:', data);
+    if (typeof showToast === 'function') showToast('Synced: ' + (data.canny_fr || 0) + ' FR, ' + (data.canny_bug || 0) + ' bugs', { type: 'success' });
+    loadFeedbackTab(); // Reload
+  } catch (e) {
+    console.error('[Feedback] Sync failed:', e);
+    if (typeof showToast === 'function') showToast('Sync failed: ' + e.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Sync'; }
+  }
+};
+
+// Wire up filter pills + search + sort
+(function() {
+  // Type pills
+  document.getElementById('afb-type-pills')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-afb-type]');
+    if (!btn) return;
+    this.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _afbTypeFilter = btn.dataset.afbType;
+    applyFeedbackFilters();
+  });
+  // Status pills
+  document.getElementById('afb-status-pills')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-afb-status]');
+    if (!btn) return;
+    this.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _afbStatusFilter = btn.dataset.afbStatus;
+    applyFeedbackFilters();
+  });
+  // Cohort filter
+  document.getElementById('afb-cohort-filter')?.addEventListener('change', function() {
+    _afbCohortFilter = this.value;
+    applyFeedbackFilters();
+  });
+  // Sort
+  document.getElementById('afb-sort')?.addEventListener('change', function() {
+    _afbSort = this.value;
+    applyFeedbackFilters();
+  });
+  // Search
+  var searchTimeout;
+  document.getElementById('afb-search')?.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    var val = this.value;
+    searchTimeout = setTimeout(function() {
+      _afbSearchQuery = val;
+      applyFeedbackFilters();
+    }, 250);
+  });
+})();
+
 
 // === js/billing.js ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
@@ -16270,7 +16811,7 @@ async function confirmSetupIntent(clientSecret) {
   });
   cardElement.mount('#hire-fee-card-element');
 
-  document.getElementById('hire-fee-confirm-btn').addEventListener('click', async function() {
+  document.getElementById('hire-fee-confirm-btn')?.addEventListener('click', async function() {
     var btn = this;
     btn.disabled = true;
     btn.textContent = 'Authorizing...';
@@ -17476,8 +18017,8 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v4.50';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix WARM tier null exclusion, 28K boards now visible to scraper');
+const BJ_VERSION = 'v4.49.1';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Rebuild bundle with sort-bar guards');
 
 // Auth
 async function init() {
@@ -17630,6 +18171,27 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
     } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
+  }
+  // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
+  if (resumes.length > 0 && currentUser) {
+    var needsStorageSync = resumes.filter(function(r) { return !r.storagePath && !r.archived; });
+    if (needsStorageSync.length > 0) {
+      console.log('[resume-storage] ' + needsStorageSync.length + ' resumes need Storage upload');
+      needsStorageSync.forEach(async function(r) {
+        try {
+          var file = await bjFileStore.get(r.id);
+          if (file) {
+            var path = currentUser.id + '/' + r.id + '_' + (r.fileName || 'resume').replace(/[^a-zA-Z0-9._-]/g, '_');
+            var { error } = await sb.storage.from('resumes').upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'application/octet-stream' });
+            if (!error) {
+              var idx = resumes.findIndex(function(x) { return x.id === r.id; });
+              if (idx >= 0) { resumes[idx].storagePath = path; saveResumes(); }
+              console.log('[resume-storage] Backfilled', path);
+            }
+          }
+        } catch (e) { /* silent */ }
+      });
+    }
   }
   // Cloud sync is now live via user_filters + user_tuning tables
   // Q23: Populate global rules crosslink banner
@@ -18236,6 +18798,7 @@ function applyProgressiveNav(step) {
     boardBtn.classList.remove('active');
   }
 };
+
 
 
 
