@@ -2213,3 +2213,27 @@
       .rw-diff-cols { grid-template-columns: 1fr; }
       .rw-diff-original { border-inline-end: none; border-block-end: 1px solid var(--border); }
     }
+
+    /* ── Signal badge on stage headers ── */
+    .pl-signal-badge {
+      font-size: 10px; color: var(--accent); font-weight: 600; margin-inline-start: 8px;
+      background: rgba(59,130,246,0.1); padding: 1px 8px; border-radius: 10px;
+    }
+
+    /* ── Pipeline ⋮ menu ── */
+    .pl-menu-trigger { cursor: pointer; font-weight: 700; line-height: 1; }
+    .pl-menu {
+      display: none; position: absolute; right: 0; top: 100%; z-index: 50;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      min-width: 180px; box-shadow: 0 4px 16px rgba(0,0,0,0.3); overflow: hidden;
+    }
+    .pl-menu.open { display: block; }
+    .pl-menu-item {
+      padding: 8px 14px; font-size: 12px; color: var(--text-dim); cursor: pointer;
+      transition: background 0.1s;
+    }
+    .pl-menu-item:hover { background: var(--bg-hover); color: var(--text); }
+    .pl-menu-danger { color: var(--red); }
+    .pl-menu-danger:hover { background: rgba(239,68,68,0.1); }
+    .pl-menu-sep { height: 1px; background: var(--border); margin: 2px 0; }
+    .pl-status-note { font-size: 10px; position: absolute; top: -2px; left: 2px; }

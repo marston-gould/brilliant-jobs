@@ -1041,7 +1041,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Saved</span>
                 <span class="pl-stage-count" id="pc-saved">0</span>
-                <span class="pl-stage-match-summary" id="pm-saved"></span>
+                <span class="pl-stage-match-summary" id="pm-saved"></span><span class="pl-signal-badge" id="psig-saved" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-saved"></div>
             </div>
@@ -1050,7 +1050,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Applied</span>
                 <span class="pl-stage-count" id="pc-applied">0</span>
-                <span class="pl-stage-match-summary" id="pm-applied"></span>
+                <span class="pl-stage-match-summary" id="pm-applied"></span><span class="pl-signal-badge" id="psig-applied" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-applied"></div>
             </div>
@@ -1059,7 +1059,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Posting Closed</span>
                 <span class="pl-stage-count" id="pc-posting_closed">0</span>
-                <span class="pl-stage-match-summary" id="pm-posting_closed"></span>
+                <span class="pl-stage-match-summary" id="pm-posting_closed"></span><span class="pl-signal-badge" id="psig-posting_closed" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-posting_closed"></div>
             </div>
@@ -1068,7 +1068,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Responded</span>
                 <span class="pl-stage-count" id="pc-responded">0</span>
-                <span class="pl-stage-match-summary" id="pm-responded"></span>
+                <span class="pl-stage-match-summary" id="pm-responded"></span><span class="pl-signal-badge" id="psig-responded" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-responded"></div>
             </div>
@@ -1077,7 +1077,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Interview</span>
                 <span class="pl-stage-count" id="pc-interview">0</span>
-                <span class="pl-stage-match-summary" id="pm-interview"></span>
+                <span class="pl-stage-match-summary" id="pm-interview"></span><span class="pl-signal-badge" id="psig-interview" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-interview"></div>
             </div>
@@ -1086,7 +1086,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Offer</span>
                 <span class="pl-stage-count" id="pc-offer">0</span>
-                <span class="pl-stage-match-summary" id="pm-offer"></span>
+                <span class="pl-stage-match-summary" id="pm-offer"></span><span class="pl-signal-badge" id="psig-offer" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-offer"></div>
             </div>
@@ -1095,7 +1095,7 @@
                 <svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
                 <span class="pl-stage-name" style="color:var(--text);">Rejected / Ghosted</span>
                 <span class="pl-stage-count" id="pc-rejected">0</span>
-                <span class="pl-stage-match-summary" id="pm-rejected"></span>
+                <span class="pl-stage-match-summary" id="pm-rejected"></span><span class="pl-signal-badge" id="psig-rejected" style="display:none;"></span>
               </div>
               <div class="pl-stage-body" id="pb-rejected"></div>
             </div>
@@ -1435,6 +1435,22 @@
                       <label style="font-size:11px;"><input type="radio" name="pi-confidence" value="0.4"> Low (more prompts)</label>
                       <label style="font-size:11px;"><input type="radio" name="pi-confidence" value="0.6" checked> Medium</label>
                       <label style="font-size:11px;"><input type="radio" name="pi-confidence" value="0.8"> High (fewer, accurate)</label>
+                    </div>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Email thread depth</label>
+                    <input type="number" id="pi-thread-depth" value="50" min="10" max="200" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;"> <span style="font-size:11px;color:var(--text-faint);">emails per scan</span>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Calendar lookahead</label>
+                    <input type="number" id="pi-cal-lookahead" value="14" min="7" max="30" style="width:70px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;"> <span style="font-size:11px;color:var(--text-faint);">days ahead</span>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Prompt notification channels</label>
+                    <div style="display:flex;gap:10px;">
+                      <label style="font-size:11px;"><input type="checkbox" id="pi-ch-email" checked> Email</label>
+                      <label style="font-size:11px;"><input type="checkbox" id="pi-ch-inapp" checked> In-app</label>
+                      <label style="font-size:11px;"><input type="checkbox" id="pi-ch-sms"> SMS</label>
                     </div>
                   </div>
                 </div>
