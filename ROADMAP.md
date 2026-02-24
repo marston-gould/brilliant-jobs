@@ -809,6 +809,37 @@
 
 ---
 
+## Phase R: AI Resume Rewrite — JD-Match Boost (v4.28) — Feb 23-24, 2026
+
+**Goal:** Job-specific AI resume rewrite pipeline. Analyzes gaps between a resume and a specific JD, asks targeted questions, rewrites sections, verifies truthfulness, outputs DOCX. The "Boost Match" feature that turns B/C matches into A matches.
+
+**Architecture:** 2 Edge Functions, 4 AI agents (2 Haiku + 1 Sonnet + 1 Haiku), client-side DOCX generation, Supabase Storage.
+
+**Cost per rewrite:** ~$0.018 AI + 3 credits ($0.40) = 94% gross margin.
+
+### Sprint 1: Database + Edge Functions (Phase 0 + A)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| R1 | `resume_texts` table + RLS + indexes | v4.27 | ✅ | Server-side resume text storage. Background sync from client. Unique(user_id, resume_id). |
+| R2 | `rewrite_sessions` schema extension | v4.28 | ✅ | 11 new columns: target_job_id, gap_analysis, user_answers, rewritten_content, quality_check, original_score, new_score, credits_used, output_file_path, completed_at, rewrite_type. 4 indexes. |
+| R3 | `init_rewrite_session` RPC + `strip_html()` | v4.28 | ✅ | SECURITY DEFINER. Credit check (3 min), fetches resume text + stripped JD, creates session. Structured errors. |
+| R4 | `rewrite-resume-analyze` Edge Function | v4.28 | ✅ | Agent 1: Gap Analyzer (Haiku). Agent 2: Question Generator (Haiku). ~5s. |
+| R5 | `rewrite-resume-execute` Edge Function | v4.28 | ✅ | Agent 3: Rewriter (Sonnet). Agent 4: Quality Checker (Haiku). Auto-retry on truthfulness fail. Credit debit. |
+
+### Sprint 2: UI + DOCX + Hardening (Phase B-F)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| R6 | `js/rewrite.js` — slide-out panel | v4.28 | ✅ | 3-state: analyzing → Q&A → diff view. Progress dots, gap summary, question cards, side-by-side diff, score improvement bar. |
+| R7 | Boost pill on Jobs Feed | v4.28 | ✅ | `matchBadgeWithBoost()` — renders when match < 85%. Finds assigned resume. Edge cases handled. |
+| R8 | Client-side DOCX generation | v4.28 | ✅ | docx-js UMD from CDN. Upload to Storage. Auto-download. Plaintext fallback. |
+| R9 | Build hardening — esbuild scope fix | v4.28 | ✅ | Fixed duplicate `const session` in app.js. Reverted IIFE wrapping. Bundle: 772KB → 511KB minified. |
+
+**Phase R total: 9 items, 2 sprints, all complete. Version: v4.28. Edge Functions: 27 total (2 new).**
+
+---
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -828,9 +859,10 @@
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
 | **S** SEO Data Pages | 24/24 | v4.13 | ✅ Complete |
-| **Q** UX Polish & Resume-First Onboarding | 0/30 | v4.14+ | 🔲 Planned |
+| **Q** UX Polish & Resume-First Onboarding | 30/30 | v4.14–v4.27 | ✅ Complete |
+| **R** AI Rewrite: JD-Match Boost | 9/9 | v4.28 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **242+ items** | **v2.68–v4.13** | **17 items 🚫 BLOCKED** |
+| **Total built** | **251+ items** | **v2.68–v4.28** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -876,6 +908,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-24 | R | R1–R9 | **Phase R: AI Rewrite JD-Match Boost (v4.28).** Complete "Boost Match" pipeline: 2 new Edge Functions (rewrite-resume-analyze, rewrite-resume-execute), 4 AI agents (Gap Analyzer + Question Generator on Haiku, Resume Rewriter on Sonnet, Quality Checker on Haiku). Slide-out panel UI (analyze → Q&A → diff → accept). Boost pill on Jobs Feed match column (< 85%). Client-side DOCX generation via docx-js + Supabase Storage upload. resume_texts table + 11 new rewrite_sessions columns + init_rewrite_session RPC. Build hardening: fixed esbuild scope collision. 27 Edge Functions total. |
 | 2026-02-23 | S | S1–S24 | **Phase S: SEO Data Pages (v4.13).** 127 public data pages live. 3 DB tables (metro map, role map, page cache) + 6 compute functions + pg_cron. Vercel serverless with ISR. 15 metro pages, 20 role trends, 91 metro+role combos. ECharts hydration (7 chart types). PostHog instrumented. 137 URLs in sitemap. Schema.org Dataset markup. Landing-page design language CSS. |
 | 2026-02-23 | Q | Q1–Q30 | **Phase Q planned.** UX Polish & Resume-First Onboarding. 30 items across 5 sprints (~6 days). 47 issues from 20-persona usability audit. Resume-First flow: upload → AI extract → auto-filter → instant results. Quick wins: alert→toast, logo standardize, CTA unify, a11y, empty states. Pricing unification. Nav progressive disclosure. localStorage→Supabase migration. |
 |------|--------|-------|---------|
