@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.40';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Nav styling patch on original working CSS');
+const BJ_VERSION = 'v4.41';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix account pages outside .main + nav patches');
 
 // Auth
 async function init() {
