@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-24
 **Target launch:** March 2026
-**Current version:** v4.48.1
+**Current version:** v4.50
 
 ---
 
@@ -900,6 +900,40 @@
 
 ---
 
+
+## Phase 32: Scraper Coverage Fix (v4.49–v4.50) — 2026-02-24
+
+**Goal:** Diagnose and fix why 38,885 career pages only yielded ~301K active jobs. Root cause: 28,635 boards (73.9%) were invisible to the scraper.
+
+### Root Cause Analysis
+
+Two compounding bugs prevented 28,635 bulk-imported boards from ever being scraped:
+
+1. **PostgreSQL NULL semantics bug** — WARM tier query used `.neq("last_http_status", 404)`, but in SQL `NULL != 404` evaluates to `NULL` (not `TRUE`). All 28,635 boards with `last_http_status = NULL` were silently excluded.
+2. **Premature `last_checked` timestamp** — Boards were bulk-imported with `last_checked` set (Feb 23) but never actually scraped (`last_refresh_at = NULL`, `last_http_status = NULL`). The WARM tier requires `last_checked` >3 days stale, so they wouldn't have been eligible until Feb 26.
+
+### Fixes Applied
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| 32-1 | WARM tier NULL fix in refresh-jobs | v4.50 | ✅ | Changed `.neq("last_http_status", 404)` → `.or("last_http_status.is.null,last_http_status.neq.404")` in Edge Function v14. |
+| 32-2 | Database: null out `last_checked` on 28,635 never-scraped boards | v4.50 | ✅ | `UPDATE ats_companies SET last_checked = NULL WHERE last_refresh_at IS NULL AND last_http_status IS NULL`. Boards now immediately enter WARM queue (nulls sort first). |
+| 32-3 | Edge Function v14 deployed | v4.50 | ✅ | `supabase functions deploy refresh-jobs`. WARM tier confirmed picking up previously-invisible boards. |
+| 32-4 | Version sync: dashboard v4.50, console v4.50 | v4.50 | ✅ | dashboard.html, js/app.js, dist/dashboard.js, dist/dashboard.min.js all updated. Vercel deploy triggered. |
+
+### Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Boards ever scraped | 10,140 (26.1%) | 38,775 (100% eligible) |
+| Boards invisible to scraper | 28,635 (73.9%) | 0 |
+| Open jobs | 301,696 | TBD (~9.5h to process backlog) |
+| Estimated additional jobs | — | 285K–950K (depends on live board rate) |
+
+**Phase 32 total:** 4 items | All complete. Version: v4.50. Edge Function: refresh-jobs v14.
+
+---
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -923,8 +957,9 @@
 | **R** AI Rewrite: JD-Match Boost | 9/9 | v4.28 | ✅ Complete |
 | **S2** Survey System Hardening | 6/6 | v4.29 | ✅ Complete |
 | **T** Intelligent Pipeline Tracking | 22/22 | v4.30–v4.32 | ✅ Complete |
+| **32** Scraper Coverage Fix | 4/4 | v4.49–v4.50 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **279+ items** | **v2.68–v4.32** | **17 items 🚫 BLOCKED** |
+| **Total built** | **283+ items** | **v2.68–v4.32** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -970,6 +1005,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-24 | 32 | 32-1–32-4 | **Phase 32: Scraper Coverage Fix (v4.50).** Root cause: `.neq("last_http_status", 404)` excluded NULL values in PostgreSQL, making 28,635 bulk-imported boards invisible to WARM tier. Fix: Edge Function v14 uses `.or("last_http_status.is.null,last_http_status.neq.404")`. Database patch: nulled `last_checked` on 28,635 never-scraped boards so they immediately enter WARM queue. Version sync: v4.50 across dashboard, console, dist bundle. |
 | 2026-02-24 | T | T1–T22 | **Phase T: Intelligent Pipeline Tracking (v4.30–v4.32).** 4 new DB tables (pipeline_tracking_settings, pipeline_signals, signal_patterns + 21 seeds, user_pipeline +7 columns). 3 new Edge Functions (prompt-pipeline-updates, confirm-pipeline-signal, scan-pipeline-signals). gmail-scan refactored: auto-advance → confirmation-first pipeline_signals. 5-color dot system (green/blue-pulse/yellow/red/gray). Inline signal + prompt cards. ⋮ context menu (mute/reminder/note). Pipeline Intelligence settings UI. PostHog events (5). Last Activity column. Stage header signal badges. 32 Edge Functions total, 17 pg_cron jobs. |
 | 2026-02-24 | S2 | M-R1–R6 | **Survey system hardening (v4.29).** nps-pulse EF deployed (bug fix: last_sign_in_at → last_seen_at) + pg_cron. periodic-survey-pulse EF + cron. NPS formula fixed (avg → standard). survey_social_proof anon access fixed. micro-survey priority already built. 29 Edge Functions, 14 pg_cron. |
 | 2026-02-24 | R | R1–R9 | **Phase R: AI Rewrite JD-Match Boost (v4.28).** Complete "Boost Match" pipeline: 2 new Edge Functions (rewrite-resume-analyze, rewrite-resume-execute), 4 AI agents (Gap Analyzer + Question Generator on Haiku, Resume Rewriter on Sonnet, Quality Checker on Haiku). Slide-out panel UI (analyze → Q&A → diff → accept). Boost pill on Jobs Feed match column (< 85%). Client-side DOCX generation via docx-js + Supabase Storage upload. resume_texts table + 11 new rewrite_sessions columns + init_rewrite_session RPC. Build hardening: fixed esbuild scope collision. 27 Edge Functions total. |
@@ -1163,7 +1199,7 @@ M-R1–R6 complete — see **Phase S2** above (v4.29).
 | 7 | 0 13 * * 1 | weekly-summary (Mondays) | Phase I |
 | 8 | 0 5 * * * | job-intelligence | Phase I |
 | 12 | 0 6 * * * | seo-sync | Phase E |
-| — | */3 * * * * | refresh-jobs-tiered (v13, HOT/WARM/COLD) | Phase P |
+| — | */3 * * * * | refresh-jobs-tiered (v14, HOT/WARM/COLD, NULL fix) | Phase 32 |
 | 14 | 0 */2 * * * | refresh_materialized_views | Phase C |
 | 15 | 30 */2 * * * | escalation-checker | Phase I |
 | 16 | 0 3 * * 0 | weekly-data-hygiene | Phase J |
@@ -1179,7 +1215,7 @@ M-R1–R6 complete — see **Phase S2** above (v4.29).
 
 ---
 
-## Phase 31: Daily Fixes & Admin Panel (v4.42–v4.48.1) — 2026-02-24
+## Phase 31: Daily Fixes & Admin Panel (v4.42–v4.49) — 2026-02-24
 
 **Estimated:** ~12h | **Actual:** Single session | **Status:** ✅ COMPLETE
 
@@ -1256,6 +1292,12 @@ Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge
 | # | Item | Status | Notes |
 |---|------|--------|-------|
 | F22 | Null ref TypeError | ✅ | `$('#sort-add-btn').addEventListener` crashed at parse time. Added `?.` to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js. |
+
+### Layout Fix (v4.49)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F23 | Fix account pages outside .main | ✅ | Orphan div closing .main prematurely — account pages rendered at wrong width. Nav styling patch. |
 
 ### Deployment Summary
 
