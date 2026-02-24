@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.21';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T8: Resume-first onboarding + copy fixes');
+const BJ_VERSION = 'v4.22';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
 
 // Auth
 async function init() {
@@ -92,6 +92,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   savedJobIds = [];
   appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  // 9.1: Warn about localStorage-only data if user has significant local state
+  if (!localStorage.getItem('bj_cloud_sync_noted') && savedFilters.length > 0) {
+    localStorage.setItem('bj_cloud_sync_noted', '1');
+    setTimeout(function() {
+      showToast('Your saved searches are stored on this device. Cloud sync is coming soon — your data will carry across devices automatically.', { type: 'info', duration: 8000 });
+    }, 3000);
+  }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
   if (typeof initPipeline === 'function') await initPipeline();
   // Trigger sparkle flourish
