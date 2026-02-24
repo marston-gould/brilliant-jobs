@@ -27,6 +27,16 @@
 .seo-page { margin: 0; background: var(--seo-bg); color: var(--seo-text); font-family: var(--seo-sans); line-height: 1.6; -webkit-font-smoothing: antialiased; height: auto !important; overflow: visible !important; overflow-y: auto !important; max-height: none !important; }
 .seo-page *, .seo-page *::before, .seo-page *::after { box-sizing: border-box; }
 
+/* --- Skip link (accessibility) --- */
+.seo-skip-link { position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; z-index: 1000; background: var(--seo-accent); color: #fff; padding: 8px 16px; border-radius: 4px; font-size: 14px; font-weight: 600; text-decoration: none; }
+.seo-skip-link:focus { position: fixed; left: 16px; top: 16px; width: auto; height: auto; overflow: visible; }
+
+/* --- Breadcrumbs --- */
+.seo-breadcrumbs { max-width: var(--seo-max-w); margin: 0 auto; padding: 16px 24px 0; font-size: 13px; color: var(--seo-text-faint); }
+.seo-breadcrumbs a { color: var(--seo-text-dim); text-decoration: none; }
+.seo-breadcrumbs a:hover { color: var(--seo-accent); text-decoration: underline; }
+.seo-crumb-sep { margin: 0 6px; color: var(--seo-text-faint); }
+
 /* --- Navigation --- */
 .seo-nav {
   display: flex; align-items: center; justify-content: space-between;
