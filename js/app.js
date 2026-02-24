@@ -80,7 +80,6 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (typeof initAdminPage === 'function') initAdminPage();
   
   // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
-  const { data: { session } } = await sb.auth.getSession();
   const userId = session?.user?.id;
   
   // Load filters from Supabase
