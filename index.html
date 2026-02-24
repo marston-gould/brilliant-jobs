@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v4.22 - 2026-02-23 -->
+<!-- Brilliant Jobs Landing Page v4.23 - 2026-02-23 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -420,6 +420,7 @@
       background: var(--bg-card); border: 1px solid var(--border);
       border-radius: 14px; padding: 32px; position: relative;
       transition: border-color 0.2s;
+      display: flex; flex-direction: column;
     }
     .price-card:hover { border-color: var(--border-hover); }
     .price-card.featured {
@@ -436,7 +437,7 @@
     .price-desc { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
     .price-amount { font-family: var(--mono); font-size: 36px; font-weight: 600; margin-bottom: 4px; }
     .price-period { font-size: 13px; color: var(--text-faint); margin-bottom: 24px; }
-    .price-features { list-style: none; margin-bottom: 24px; }
+    .price-features { list-style: none; margin-bottom: 24px; flex: 1; }
     .price-features li {
       font-size: 14px; color: var(--text-dim); padding: 6px 0;
       display: flex; align-items: center; gap: 8px;
@@ -733,7 +734,7 @@
   <!-- Segment detection — runs before body paint to prevent FOUC (v3.59) -->
   <script>
   (function() {
-    console.log('[BJ] Landing page v4.22');
+    console.log('[BJ] Landing page v4.23');
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -1286,7 +1287,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.22</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.23</p>
   </footer>
 
   <!-- AUTH MODAL -->
