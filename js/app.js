@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.39';
+const BJ_VERSION = 'v4.42';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Revert to flex layout + overflow-x:hidden fix');
 
 // Auth
