@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-23
 **Target launch:** March 2026
-**Current version:** v4.12
+**Current version:** v4.13
 
 ---
 
@@ -656,13 +656,82 @@
 
 ---
 
-## Phase Q: UX Polish & Resume-First Onboarding (v4.13+) — Feb 23, 2026
+
+## Phase S: SEO Data Pages (v4.13) — Feb 23, 2026
+
+**Goal:** 127 public, server-rendered data pages targeting organic search traffic. Pre-computed aggregates served via Vercel serverless + ISR. Charts hydrated client-side with ECharts.
+
+**Source:** `seo-data-pages-handoff-v2.md` (Pod 1 spec, 11-step build plan)
+
+### Sprint 1: Database Infrastructure (v4.13) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S1 | `seo_metro_map` table + 15 metros seeded | v4.13 | ✅ | Slug → city_variants/state_code/exclude_cities matching. Public RLS. |
+| S2 | `seo_role_map` table + 20 roles seeded | v4.13 | ✅ | Slug → title keyword matching. Public RLS. |
+| S3 | `seo_page_cache` table | v4.13 | ✅ | Pre-computed JSONB aggregates. 24h TTL. Public RLS. |
+| S4 | 4 performance indexes on `ats_jobs` | v4.13 | ✅ | open_state, open_first_seen, open_loc_type, open_ats_source. Cut compute times from timeout → <40s. |
+
+### Sprint 2: Compute Functions + Scheduling (v4.13) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S5 | `compute_seo_cache_market()` | v4.13 | ✅ | Global stats: 298K jobs, median salary, velocity, timeline, salary buckets, top companies, ATS breakdown. ~28s. |
+| S6 | `compute_seo_cache_metro(slug)` | v4.13 | ✅ | Per-metro aggregates. 15 metros, 1–38s each. |
+| S7 | `compute_seo_cache_role(slug)` | v4.13 | ✅ | Per-role trend aggregates. 20 roles, 6–21s each. |
+| S8 | `compute_seo_cache_combo(metro, role)` | v4.13 | ✅ | Metro+role combos. 91 above 50-job threshold. |
+| S9 | `compute_seo_cache_rankings()` | v4.13 | ✅ | Cross-metro salary + volume rankings. Patched into each metro entry. ~12s. |
+| S10 | `compute_seo_cache_all()` orchestrator | v4.13 | ✅ | Calls all above. ~6 min total. pg_cron job #26, daily 5 AM UTC. |
+
+### Sprint 3: Serverless + Frontend (v4.13) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S11 | `js/aggregations.js` shared module | v4.13 | ✅ | Isomorphic (browser + Node). bucketSalaries, countByLevel, countByLocType, computeMedianSalary, etc. |
+| S12 | `api/seo-page.js` Vercel serverless function | v4.13 | ✅ | Reads seo_page_cache via anon key. Server-renders full HTML. ISR: 1hr revalidation, 24hr stale-while-revalidate. |
+| S13 | 3 Vercel rewrite rules in `vercel.json` | v4.13 | ✅ | `/jobs-in/:metro`, `/jobs-in/:metro/:role`, `/trends/:role` → `api/seo-page.js`. |
+| S14 | `seo-pages.css` | v4.13 | ✅ | Landing-page design language. 3 breakpoints (960, 640, 400). Outfit + JetBrains Mono. |
+| S15 | `seo-charts.js` ECharts hydration | v4.13 | ✅ | 7 chart types: timeline, salary, companies, levels, worktype, comparison, metros. PostHog instrumentation. |
+| S16 | PostHog snippet on all SEO pages | v4.13 | ✅ | Same A13 snippet as dashboard. Events: seo_page_viewed, seo_chart_interacted, seo_cta_clicked. |
+| S17 | Sitemap: 127 SEO URLs added | v4.13 | ✅ | Total 137 URLs. Daily changefreq. Priority: 0.9 market, 0.8 metro/trends, 0.6 combos. |
+| S18 | `@supabase/supabase-js` dependency | v4.13 | ✅ | Added to package.json for serverless function. |
+
+### Sprint 4: SEO & Schema (v4.13) ✅
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S19 | Unique `<title>` + `<meta description>` per page | v4.13 | ✅ | Dynamic with job count, median salary, metro/role name. |
+| S20 | `<link rel="canonical">` + Open Graph tags | v4.13 | ✅ | og:title, og:description, og:url, og:type on every page. |
+| S21 | Schema.org `Dataset` structured data | v4.13 | ✅ | JSON-LD on every page with name, description, creator, temporalCoverage. |
+| S22 | `<noscript>` fallbacks for comparison data | v4.13 | ✅ | Ordered list of metro salary rankings for search engine crawlers. |
+| S23 | Clean 404s for invalid slugs | v4.13 | ✅ | Custom 404 page with back-link. Below-threshold combos return 404 with explanation. |
+| S24 | 2 inline CTAs per page | v4.13 | ✅ | "Create Free Account" + "See How It Works" with gradient background. |
+
+### Phase S Summary
+
+| Metric | Value |
+|--------|-------|
+| Total pages | 127 (15 metro + 20 trends + 91 combo + 1 market) |
+| Total open jobs | 298,733 |
+| National median salary | $90,000 |
+| Top metro salary | San Francisco ($146K) |
+| Top role salary | Software Engineer ($166K) |
+| Cache refresh | Daily 5 AM UTC (pg_cron #26) |
+| ISR revalidation | 1 hour |
+| Files committed | 10 (migrations, JS, CSS, API, config) |
+| Migrations | 007 (tables), 008 (functions) |
+
+**Phase S total: 24 items | 1 version (v4.13) | All complete.**
+
+---
+
+## Phase Q: UX Polish & Resume-First Onboarding (v4.14+) — Feb 23, 2026
 
 **Goal:** Address design debt, messaging inconsistencies, and workflow friction identified by 20-persona usability audit. Implement Resume-First Onboarding flow to eliminate the filter-setup barrier for new users.
 
 **Source:** `brilliant-jobs-polish-audit.md` (Agentic Polish & Usability Team audit, 47 issues)
 
-### Sprint 0: Quick Wins (v4.13) — Est. 2h
+### Sprint 0: Quick Wins (v4.14) — Est. 2h
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
@@ -758,9 +827,10 @@
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
-| **Q** UX Polish & Resume-First Onboarding | 0/30 | v4.13+ | 🔲 Planned |
+| **S** SEO Data Pages | 24/24 | v4.13 | ✅ Complete |
+| **Q** UX Polish & Resume-First Onboarding | 0/30 | v4.14+ | 🔲 Planned |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **218+ items** | **v2.68–v4.12** | **17 items 🚫 BLOCKED** |
+| **Total built** | **242+ items** | **v2.68–v4.13** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -806,6 +876,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-23 | S | S1–S24 | **Phase S: SEO Data Pages (v4.13).** 127 public data pages live. 3 DB tables (metro map, role map, page cache) + 6 compute functions + pg_cron. Vercel serverless with ISR. 15 metro pages, 20 role trends, 91 metro+role combos. ECharts hydration (7 chart types). PostHog instrumented. 137 URLs in sitemap. Schema.org Dataset markup. Landing-page design language CSS. |
 | 2026-02-23 | Q | Q1–Q30 | **Phase Q planned.** UX Polish & Resume-First Onboarding. 30 items across 5 sprints (~6 days). 47 issues from 20-persona usability audit. Resume-First flow: upload → AI extract → auto-filter → instant results. Quick wins: alert→toast, logo standardize, CTA unify, a11y, empty states. Pricing unification. Nav progressive disclosure. localStorage→Supabase migration. |
 |------|--------|-------|---------|
 | 2026-02-23 | M-AUDIT | — | **Survey system audit.** Phase M Sprint 0 added — 15 Pod 1 foundation items verified (survey.html, 4 question banks, feedback table, social proof view, analytics RPC, admin tab, micro-survey triggers, rate limiting). Found: `nps-pulse` EF in repo but NOT deployed, `survey_social_proof` anon access returning 401, NPS formula uses avg not standard methodology. 7 remaining Pod 2 items documented (M-R1–R7). Survey reward fulfillment added to Phase H outstanding. |
@@ -1006,3 +1077,4 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 | 17 | 0 2 * * * | daily-table-backup | Phase J |
 | — | 0 */6 * * * | gmail-scan-6h | Phase P |
 | — | 0 3 * * 0 | purge-old-email-signals (90d) | Phase P |
+| 26 | 0 5 * * * | seo-cache-refresh (compute_seo_cache_all) | Phase S |
