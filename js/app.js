@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.12';
+const BJ_VERSION = 'v4.13';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tiered refresh v13: HOT/WARM/COLD board prioritization');
 
 // Auth
