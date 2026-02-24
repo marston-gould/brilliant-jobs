@@ -139,6 +139,8 @@ async function loadBoardHealth() {
     setAdminText('ah-total', fmtAdminNum(d.total_feeds));
     setAdminText('ah-with-jobs', fmtAdminNum(d.feeds_with_jobs));
     setAdminText('ah-4xx', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-dead', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-unscraped', fmtAdminNum(d.feeds_never_scraped || 0));
     setAdminText('ah-jobs', fmtAdminNum(d.total_jobs));
 
     var net = (d.jobs_added || 0) - (d.jobs_lost || 0);
@@ -147,6 +149,8 @@ async function loadBoardHealth() {
     setDelta('ah-total-delta', d.boards_added, '+');
     setDelta('ah-with-jobs-delta', null);
     setDelta('ah-4xx-delta', d.boards_lost, '+', true);
+    setDelta('ah-dead-delta', null);
+    setDelta('ah-unscraped-delta', null);
     setDelta('ah-jobs-delta', d.jobs_added, '+');
     setDelta('ah-net-delta', d.jobs_lost, '-', true);
 
@@ -162,17 +166,20 @@ async function loadBoardHealth() {
       var tbody = document.getElementById('admin-platform-body');
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
-        var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
+        var totBoards = 0, totWithJobs = 0, totDead = 0, totUnscraped = 0, totJobs = 0;
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
           var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
-          totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
+          var dead = p.dead || 0;
+          var unscraped = p.never_scraped || 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; totDead += dead; totUnscraped += unscraped; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
             '<td class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
+            '<td class="' + (dead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(dead) + '</td>' +
+            '<td class="' + (unscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(unscraped) + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
@@ -184,7 +191,8 @@ async function loadBoardHealth() {
             '<td>Total</td>' +
             '<td>' + fmtAdminNum(totBoards) + '</td>' +
             '<td>' + totPct + '%</td>' +
-            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td class="' + (totDead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(totDead) + '</td>' +
+            '<td class="' + (totUnscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(totUnscraped) + '</td>' +
             '<td>' + fmtAdminNum(totJobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
