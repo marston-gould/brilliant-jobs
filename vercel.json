@@ -87,7 +87,7 @@
     },
     {
       "source": "/job-market-data",
-      "destination": "/job-market-data.html"
+      "destination": "/api/seo-page?type=market"
     },
     {
       "source": "/api/auth/gmail/callback",

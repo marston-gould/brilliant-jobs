@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v4.02 - 2026-02-23 -->
+<!-- Brilliant Jobs Landing Page v4.22 - 2026-02-23 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -733,7 +733,7 @@
   <!-- Segment detection — runs before body paint to prevent FOUC (v3.59) -->
   <script>
   (function() {
-    console.log('[BJ] Landing page v4.02');
+    console.log('[BJ] Landing page v4.22');
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -817,7 +817,7 @@
     <h1>The job search<br>for people who are<br><span class="accent">done with job boards.</span></h1>
     <p class="hero-sub"><span id="lp-hero-jobs">350,000+</span> real jobs from <span id="lp-hero-companies">38,000+</span> company career pages. Salary data they don't want you to see. And the first public record of which companies actually respond.</p>
     <div class="hero-ctas">
-      <button class="btn btn-primary" id="hero-signup-btn">Get Started — It's Free</button>
+      <button class="btn btn-primary" id="hero-signup-btn">Start Free</button>
       <button class="btn btn-ghost" id="hero-preview-btn">See Jobs in Your Field ↓</button>
     </div>
   </section>
@@ -828,7 +828,7 @@
     <h1>See what's new<br><span class="accent">since your last visit.</span></h1>
     <p class="hero-sub">Jump right into exploring <span id="lp-hero-jobs-ret">350,000+</span> jobs from real company career pages — with salary data and ghost rate tracking.</p>
     <div class="hero-ctas">
-      <button class="btn btn-primary" id="hero-signup-ret">Create Your Free Account</button>
+      <button class="btn btn-primary" id="hero-signup-ret">Start Free</button>
       <button class="btn btn-ghost" id="hero-preview-ret">Search Jobs ↓</button>
     </div>
   </section>
@@ -838,7 +838,7 @@
     <h1>Welcome back.<br><span class="accent">Your search continues.</span></h1>
     <p class="hero-sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
     <div class="hero-ctas">
-      <button class="btn btn-primary" onclick="openModal('login')">Log In to Dashboard</button>
+      <button class="btn btn-primary" onclick="openModal('login')">Log in</button>
       <a href="#" class="btn btn-ghost" onclick="event.preventDefault();openModal('login');setTimeout(function(){var fs=document.getElementById('forgot-section');if(fs&&!fs.classList.contains('active'))fs.classList.add('active');},100);">Forgot Password?</a>
     </div>
   </section>
@@ -1016,13 +1016,13 @@
         <div class="preview-titles" id="pv-titles"></div>
         <div class="preview-cta">
           <span id="pv-cta-text">Create your free account to see all jobs</span>
-          <button class="btn btn-primary" id="pv-signup-btn">Get Started Free</button>
+          <button class="btn btn-primary" id="pv-signup-btn">Start Free</button>
         </div>
       </div>
 
       <div class="preview-locked" id="preview-locked" style="display:none">
         <p>You've previewed the data — sign up free to explore unlimited filters, salary data, and more.</p>
-        <button class="btn btn-primary" id="pv-locked-signup">Get Started Free</button>
+        <button class="btn btn-primary" id="pv-locked-signup">Start Free</button>
       </div>
     </div>
   </section>
@@ -1054,7 +1054,7 @@
     <div style="max-width:640px;margin:24px auto 0;display:flex;flex-direction:column;gap:16px;">
       <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
         <summary style="cursor:pointer;font-weight:600;font-size:15px;">Is my data safe?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from Pro subscriptions, not from selling your information to recruiters.</p>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p>
       </details>
       <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
         <summary style="cursor:pointer;font-weight:600;font-size:15px;">Why not just use LinkedIn?</summary>
@@ -1062,7 +1062,7 @@
       </details>
       <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
         <summary style="cursor:pointer;font-weight:600;font-size:15px;">What does the free plan include?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">One saved search filter, full job feed access, salary data, ghost rates, and AI resume scoring. Pro unlocks unlimited filters, boolean operators, advanced analytics, and priority notifications.</p>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p>
       </details>
       <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
         <summary style="cursor:pointer;font-weight:600;font-size:15px;">How current are the job listings?</summary>
@@ -1167,55 +1167,50 @@
         <ul class="price-features">
           <li>Jobs from all company career pages</li>
           <li>Basic filters (title, location, remote)</li>
-          <li>5 saved searches</li>
+          <li>1 saved search</li>
           <li>Community ghost rate data</li>
         </ul>
-        <button class="price-btn price-btn-outline" onclick="openModal('signup')">Sign Up Free</button>
+        <button class="price-btn price-btn-outline" onclick="openModal('signup')">Start Free</button>
       </div>
 
       <div class="price-card featured">
-        <div class="price-name">Pro</div>
-        <div class="price-desc">Full power for active searchers</div>
-        <div class="price-amount">$29</div>
+        <div class="price-name">Starter</div>
+        <div class="price-desc">AI-powered tools to stand out</div>
+        <div class="price-amount">$20</div>
         <div class="price-period">per month</div>
         <ul class="price-features">
           <li>Everything in Free</li>
-          <li>Advanced filters (salary, company size, industry)</li>
-          <li>Unlimited saved searches</li>
-          <li>Salary extraction from job descriptions</li>
-          <li>Resume-to-job match scoring</li>
-          <li>Priority access to new features</li>
+          <li>3 saved searches</li>
+          <li>AI resume scoring &amp; rewrites</li>
+          <li>100 credits/month for AI features</li>
+          <li>SMS job alerts</li>
         </ul>
-        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Pro</button>
+        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
       </div>
 
       <div class="price-card">
-        <div class="price-name">Success</div>
-        <div class="price-desc">Pay nothing until you're hired</div>
-        <div class="price-amount">$0</div>
-        <div class="price-period">until hired, then $149 one-time</div>
+        <div class="price-name">Pro</div>
+        <div class="price-desc">Full power for serious searchers</div>
+        <div class="price-amount">$40</div>
+        <div class="price-period">per month</div>
         <ul class="price-features">
-          <li>Everything in Pro</li>
-          <li>No upfront cost — full access during your search</li>
-          <li>One-time fee after confirmed hire</li>
-          <li>Cancel anytime — owe nothing</li>
-          <li>We trade on your results, not your attention</li>
+          <li>Everything in Starter</li>
+          <li>10 saved searches</li>
+          <li>300 credits/month for AI features</li>
+          <li>Auto-apply &amp; network intelligence</li>
+          <li>Priority job refresh</li>
         </ul>
-        <button class="price-btn price-btn-outline" onclick="openModal('signup')">Get Started</button>
+        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
       </div>
     </div>
+    <p style="text-align:center;margin-top:20px;font-size:14px;color:var(--text-dim);">Credits power AI features like resume scoring and smart matching. <a href="/pricing">See full pricing &amp; credit details →</a></p>
   </section>
 
   <!-- ==================== SOCIAL PROOF ==================== -->
   <div class="section fade-up" style="padding-bottom:0;">
     <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by a job seeker</div>
-      <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;color:var(--text-dim);font-size:14px;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> beta users</div>
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> applications tracked</div>
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--green);">$0</span> in ad spend</div>
-      </div>
-      <div style="font-size:12px;color:var(--text-faint);margin-top:12px;">These numbers update as we grow. We don't fake metrics.</div>
+      <div style="font-size:14px;color:var(--text-dim);line-height:1.6;">We're in private beta. Early numbers are real and published — we don't fake metrics.</div>
     </div>
   </div>
 
@@ -1265,7 +1260,7 @@
         <div class="carousel-slide carousel-slide-cta">
           <h4>Ready to start?</h4>
           <p>Create your free account — takes 30 seconds.</p>
-          <button class="btn btn-primary" id="walkthrough-signup-btn">Get Started Free</button>
+          <button class="btn btn-primary" id="walkthrough-signup-btn">Start Free</button>
         </div>
       </div>
       <div class="carousel-dots" id="carousel-dots"></div>
@@ -1276,7 +1271,7 @@
   <section class="section fade-up" style="text-align:center;padding-bottom:120px;">
     <h2 style="margin-bottom:16px;">You've been searching their way.<br>Try yours.</h2>
     <p class="section-desc" style="margin:0 auto 32px;">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
-    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Get Started — It's Free</button>
+    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Start Free</button>
   </section>
 
   </main>
@@ -1291,7 +1286,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v3.91</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.22</p>
   </footer>
 
   <!-- AUTH MODAL -->
@@ -1407,12 +1402,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const isReturning = document.cookie.includes('bj_returning');
     if (isReturning) {
       $('#nav-login-btn').textContent = 'Log In';
-      $('#hero-signup-btn').textContent = 'Log In to Your Dashboard';
-      $('#bottom-signup-btn').textContent = 'Log In to Your Dashboard';
+      $('#hero-signup-btn').textContent = 'Go to Dashboard';
+      $('#bottom-signup-btn').textContent = 'Go to Dashboard';
     } else {
       $('#nav-login-btn').textContent = 'Sign Up';
-      $('#hero-signup-btn').textContent = 'Get Started — It\u2019s Free';
-      $('#bottom-signup-btn').textContent = 'Get Started — It\u2019s Free';
+      $('#hero-signup-btn').textContent = 'Start Free';
+      $('#bottom-signup-btn').textContent = 'Start Free';
     }
 
     // ============================================================

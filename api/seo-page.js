@@ -35,6 +35,8 @@ function buildCacheKey(type, metro, role) {
 // =========================================================================
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+function jsonEsc(s) { return String(s || '').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/\t/g,'\\t'); }
+
 function fmtSal(v) {
   if (!v || v <= 0) return 'N/A';
   if (v >= 1000000) return '$' + (Math.round(v / 100000) / 10) + 'M';
@@ -43,9 +45,23 @@ function fmtSal(v) {
 
 function fmtNum(n) { return Number(n || 0).toLocaleString('en-US'); }
 
+function fmtRounded(s) {
+  // Handles cache values like "250000+" → "250,000+"
+  if (!s) return '250,000+';
+  var m = String(s).match(/^(\d+)(\+?)$/);
+  if (m) return Number(m[1]).toLocaleString('en-US') + m[2];
+  return s;
+}
+
 function trendArrow(val) {
-  if (val > 3) return '<span class="trend-up">↑ ' + Math.abs(val) + '%</span>';
-  if (val < -3) return '<span class="trend-down">↓ ' + Math.abs(val) + '%</span>';
+  if (val === undefined || val === null) return '';
+  // Cap display at ±50% — anything beyond is likely a data artifact
+  if (Math.abs(val) > 50) {
+    if (val > 0) return '<span class="trend-up">↑ 50%+</span>';
+    return '<span class="trend-down">↓ 50%+</span>';
+  }
+  if (val > 3) return '<span class="trend-up">↑ ' + Math.abs(Math.round(val * 10) / 10) + '%</span>';
+  if (val < -3) return '<span class="trend-down">↓ ' + Math.abs(Math.round(val * 10) / 10) + '%</span>';
   return '<span class="trend-flat">→ flat</span>';
 }
 
@@ -66,22 +82,24 @@ function renderMetroPage(data, metro, role) {
     : `Jobs in ${metroDisplay}`;
   const metaDesc = role
     ? `${fmtNum(stats.total_jobs)} open ${roleDisplay} jobs in ${metroDisplay}. Median salary: ${fmtSal(stats.median_salary)}. See salary distribution, hiring velocity, and top companies.`
-    : `${fmtNum(stats.total_jobs)} open jobs in ${metroDisplay}. Median salary: ${fmtSal(stats.median_salary)}. See salary distribution, hiring velocity, top companies, and how ${metroDisplay} compares. Data from ${metaInfo.total_jobs_rounded || '250K+'} direct ATS listings.`;
+    : `${fmtNum(stats.total_jobs)} open jobs in ${metroDisplay}. Median salary: ${fmtSal(stats.median_salary)}. See salary distribution, hiring velocity, top companies, and how ${metroDisplay} compares. Data from ${fmtRounded(metaInfo.total_jobs_rounded)} direct ATS listings.`;
 
   // Comparison section HTML
   let comparisonHtml = '';
   if (comparison.salary_ranking && comparison.salary_ranking.length >= 5 && !role) {
-    const currentRank = comparison.salary_ranking.findIndex(r => r.metro === metro) + 1;
+    // Filter out metros with $0 or missing salary data
+    const validRanking = comparison.salary_ranking.filter(r => r.median && r.median > 0);
+    const currentRank = validRanking.findIndex(r => r.metro === metro) + 1;
     const natMed = comparison.national_median;
     const diffPct = natMed && stats.median_salary ? Math.round(((stats.median_salary - natMed) / natMed) * 100) : 0;
     const diffDir = diffPct >= 0 ? 'above' : 'below';
     comparisonHtml = `
     <section class="seo-section">
       <h2>How ${esc(metroDisplay)} Compares</h2>
-      <p class="seo-subline">Median salary across the top metros — ${esc(metroDisplay)} ranks #${currentRank} of ${comparison.salary_ranking.length} metros, ${Math.abs(diffPct)}% ${diffDir} the national median of ${fmtSal(natMed)}.</p>
+      <p class="seo-subline">Median salary across the top metros — ${esc(metroDisplay)} ranks #${currentRank} of ${validRanking.length} metros, ${Math.abs(diffPct)}% ${diffDir} the national median of ${fmtSal(natMed)}.</p>
       <div id="chart-comparison" class="seo-chart" data-chart="comparison"></div>
       <noscript>
-        <ol>${comparison.salary_ranking.map(r =>
+        <ol>${validRanking.map(r =>
           `<li>${esc(r.display)}: ${fmtSal(r.median)}</li>`
         ).join('')}</ol>
       </noscript>
@@ -109,11 +127,21 @@ function renderMetroPage(data, metro, role) {
     </section>`;
   }
 
+  // Build breadcrumbs
+  const breadcrumbs = [{ name: 'Brilliant Jobs', url: '/' }, { name: 'Job Market Data', url: '/job-market-data' }];
+  if (role) {
+    breadcrumbs.push({ name: metroDisplay, url: `/jobs-in/${metro}` });
+    breadcrumbs.push({ name: roleDisplay, url: `/jobs-in/${metro}/${role}` });
+  } else {
+    breadcrumbs.push({ name: metroDisplay, url: `/jobs-in/${metro}` });
+  }
+
   return renderShell({
     title: `${pageTitle} — Salary Data, Hiring Trends & Top Companies | Brilliant Jobs`,
     metaDesc,
     canonical: role ? `/jobs-in/${metro}/${role}` : `/jobs-in/${metro}`,
     bodyClass: 'seo-page seo-metro',
+    breadcrumbs,
     content: `
     <section class="seo-hero">
       <h1>${esc(pageTitle)}</h1>
@@ -180,6 +208,11 @@ function renderTrendsPage(data, role) {
     metaDesc,
     canonical: `/trends/${role}`,
     bodyClass: 'seo-page seo-trends',
+    breadcrumbs: [
+      { name: 'Brilliant Jobs', url: '/' },
+      { name: 'Job Market Data', url: '/job-market-data' },
+      { name: `${roleDisplay} Trends`, url: `/trends/${role}` }
+    ],
     content: `
     <section class="seo-hero">
       <h1>${esc(roleDisplay)} Hiring Trends</h1>
@@ -232,17 +265,21 @@ function renderTrendsPage(data, role) {
 function renderMarketPage(data) {
   const d = data.data;
   const stats = d.stats;
-  const metaDesc = `${d.meta?.total_jobs_rounded || '250K+'} open jobs from direct ATS feeds. See salary distributions, hiring velocity, top companies, and metro-level market data.`;
+  const metaDesc = `${fmtRounded(d.meta?.total_jobs_rounded)} open jobs from direct ATS feeds. See salary distributions, hiring velocity, top companies, and metro-level market data.`;
 
   return renderShell({
     title: 'Job Market Data — Salary, Hiring Trends & Company Rankings | Brilliant Jobs',
     metaDesc,
     canonical: '/job-market-data',
     bodyClass: 'seo-page seo-market',
+    breadcrumbs: [
+      { name: 'Brilliant Jobs', url: '/' },
+      { name: 'Job Market Data', url: '/job-market-data' }
+    ],
     content: `
     <section class="seo-hero">
       <h1>Job Market Data</h1>
-      <p class="seo-hero-sub">${d.meta?.total_jobs_rounded || '250K+'} open roles across ${fmtNum(stats.companies_count)} companies — sourced directly from ATS platforms</p>
+      <p class="seo-hero-sub">${fmtRounded(d.meta?.total_jobs_rounded)} open roles across ${fmtNum(stats.companies_count)} companies — sourced directly from ATS platforms</p>
     </section>
 
     <section class="seo-section">
@@ -295,7 +332,24 @@ function renderCTA() {
 // =========================================================================
 // HTML shell — full page template
 // =========================================================================
-function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData }) {
+function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData, breadcrumbs }) {
+  // Build breadcrumb HTML and JSON-LD
+  let breadcrumbHtml = '';
+  let breadcrumbLd = '';
+  if (breadcrumbs && breadcrumbs.length > 0) {
+    const crumbLinks = breadcrumbs.map((b, i) =>
+      i < breadcrumbs.length - 1
+        ? `<a href="${b.url}">${esc(b.name)}</a>`
+        : `<span>${esc(b.name)}</span>`
+    ).join(' <span class="seo-crumb-sep">›</span> ');
+    breadcrumbHtml = `<div class="seo-breadcrumbs">${crumbLinks}</div>`;
+    breadcrumbLd = `<script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[${breadcrumbs.map((b, i) =>
+    `{"@type":"ListItem","position":${i + 1},"name":"${jsonEsc(b.name)}","item":"https://brilliantjobs.app${b.url}"}`
+  ).join(',')}]}
+  </script>`;
+  }
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -308,9 +362,13 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   <meta property="og:description" content="${esc(metaDesc)}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://brilliantjobs.app${canonical}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20rx%3D'8'%20fill%3D'%234d8eff'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'55%25'%20dominant-baseline%3D'central'%20text-anchor%3D'middle'%20font-family%3D'system-ui'%20font-weight%3D'800'%20font-size%3D'18'%20fill%3D'white'%3EB%3C%2Ftext%3E%3C%2Fsvg%3E">
+  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face { font-family: 'Outfit'; src: url('/fonts/outfit-latin-var.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+    @font-face { font-family: 'JetBrains Mono'; src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+  </style>
   <link rel="stylesheet" href="/seo-pages.css">
   <!-- A13: PostHog analytics -->
   <script>
@@ -324,29 +382,32 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   {
     "@context": "https://schema.org",
     "@type": "Dataset",
-    "name": "${esc(title)}",
-    "description": "${esc(metaDesc)}",
+    "name": "${jsonEsc(title)}",
+    "description": "${jsonEsc(metaDesc)}",
     "url": "https://brilliantjobs.app${canonical}",
     "creator": { "@type": "Organization", "name": "Brilliant Jobs" },
     "temporalCoverage": "${new Date().toISOString().slice(0,10)}"
   }
   </script>
+  ${breadcrumbLd}
 </head>
 <body class="${bodyClass}">
-  <nav class="seo-nav">
+  <a href="#main" class="seo-skip-link">Skip to content</a>
+  <nav class="seo-nav" aria-label="Main navigation">
     <a href="/" class="seo-logo">Brilliant Jobs</a>
     <div class="seo-nav-links">
       <a href="/job-market-data">Market Data</a>
-      <a href="/dashboard" class="btn-nav-cta">Sign In</a>
+      <a href="/dashboard" class="btn-nav-cta">Start Free</a>
     </div>
   </nav>
 
-  <main class="seo-main">
+  <main id="main" class="seo-main">
+    ${breadcrumbHtml}
     ${content}
   </main>
 
   <footer class="seo-footer">
-    <p>Data sourced directly from Greenhouse, Lever, Ashby, Workable & Recruitee ATS platforms.</p>
+    <p>Data sourced directly from Greenhouse, Lever, Ashby, Workable, Recruitee & USAJobs.</p>
     <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a></p>
   </footer>
 

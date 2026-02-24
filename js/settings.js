@@ -12,19 +12,19 @@ $('#st-change-pw')?.addEventListener('click', async () => {
   try {
     const { error } = await sb.auth.resetPasswordForEmail(currentUser.email, { redirectTo: window.location.origin });
     if (error) throw error;
-    alert('Password reset email sent! Check your inbox.');
-  } catch (e) { alert('Failed: ' + e.message); }
+    showToast('Password reset email sent — check your inbox.', { type: 'success' });
+  } catch (e) { showToast('Password reset failed: ' + e.message, { type: 'error' }); }
 });
 $('#st-export')?.addEventListener('click', async () => {
   try {
     const { data } = await sb.from('connections').select('*').limit(5000);
-    if (!data?.length) { alert('No data to export yet.'); return; }
+    if (!data?.length) { showToast('Nothing to export yet — start tracking applications first.', { type: 'info' }); return; }
     const csv = [Object.keys(data[0]).join(','), ...data.map(r => Object.values(r).map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `brilliant-jobs-export-${new Date().toISOString().slice(0,10)}.csv`;
     a.click(); URL.revokeObjectURL(a.href);
-  } catch (e) { alert('Export failed: ' + e.message); }
+  } catch (e) { showToast('Export failed: ' + e.message, { type: 'error' }); }
 });
 
 // Logout
@@ -68,8 +68,8 @@ function setFbType(type) {
 function handleFbFiles(fileList) {
   for (const file of fileList) {
     if (fbFiles.length >= 3) break;
-    if (file.size > 5 * 1024 * 1024) { alert(file.name + ' is over 5MB'); continue; }
-    if (!file.type.startsWith('image/')) { alert(file.name + ' is not an image'); continue; }
+    if (file.size > 5 * 1024 * 1024) { showToast(file.name + ' is over 5MB', { type: 'error' }); continue; }
+    if (!file.type.startsWith('image/')) { showToast(file.name + ' is not an image', { type: 'error' }); continue; }
     const reader = new FileReader();
     reader.onload = e => {
       fbFiles.push({ file, dataUrl: e.target.result });
@@ -188,7 +188,7 @@ async function submitFeedback() {
     $('#fb-success-view').style.display = 'flex';
   } catch (e) {
     console.error('[BJ] Feedback submit error:', e);
-    alert('Failed to submit feedback. Please try again.');
+    showToast('Failed to submit feedback. Please try again.', { type: 'error' });
     btn.disabled = false;
     btn.textContent = 'Submit';
   }

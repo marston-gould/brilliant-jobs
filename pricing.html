@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Pricing Page v3.80 - 2026-02-22 -->
+<!-- Brilliant Jobs Pricing Page v4.22 - 2026-02-23 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -67,8 +67,8 @@
     }
     .nav-logo .mark {
       width: 32px; height: 32px; border-radius: 8px;
-      background: rgba(255,255,255,0.15); display: grid; place-items: center;
-      font-weight: 800; font-size: 16px; color: #fff;
+      background: #fff; display: grid; place-items: center;
+      font-weight: 800; font-size: 16px; color: var(--nav-bg);
     }
     .nav-links { display: flex; gap: 24px; align-items: center; }
     .nav-links a { color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 500; }
@@ -256,7 +256,7 @@
       <a href="/">Home</a>
       <a href="/data-lab">Data Lab</a>
       <a href="/pricing" style="color:#fff">Pricing</a>
-      <a href="#" class="nav-cta" id="nav-cta-btn">Get Started</a>
+      <a href="#" class="nav-cta" id="nav-cta-btn">Start Free</a>
     </div>
   </nav>
 
@@ -311,7 +311,7 @@
 
   <script>
   document.getElementById('year').textContent = new Date().getFullYear();
-  console.log('[BJ] Pricing page v3.80 loaded');
+  console.log('[BJ] Pricing page v4.22 loaded');
 
   const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
@@ -321,13 +321,13 @@
   // ─── Feature display config ───
   const PLAN_TIERS = ['free', 'starter', 'pro'];
   const PLAN_META = {
-    free:    { name: 'Free',    desc: 'Get started with the essentials', credits: 0, payg: 25, cta: 'Sign Up Free', ctaClass: 'plan-cta-outline' },
-    starter: { name: 'Starter', desc: 'AI-powered tools to stand out',   credits: 100, payg: 20, cta: 'Get Starter',  ctaClass: 'plan-cta-primary', featured: true },
-    pro:     { name: 'Pro',     desc: 'Full power for serious searchers', credits: 300, payg: 15, cta: 'Get Pro',     ctaClass: 'plan-cta-primary' },
+    free:    { name: 'Free',    desc: 'Get started with the essentials', credits: 0, payg: 25, cta: 'Start Free', ctaClass: 'plan-cta-outline' },
+    starter: { name: 'Starter', desc: 'AI-powered tools to stand out',   credits: 100, payg: 20, cta: 'Start Free',  ctaClass: 'plan-cta-primary', featured: true },
+    pro:     { name: 'Pro',     desc: 'Full power for serious searchers', credits: 300, payg: 15, cta: 'Start Free',     ctaClass: 'plan-cta-primary' },
   };
 
   const FEATURE_DISPLAY = [
-    { id: 'filters',            free: '1 saved filter',    starter: '3 saved filters',       pro: '10 saved filters' },
+    { id: 'filters',            free: '1 saved search',    starter: '3 saved searches',       pro: '10 saved searches' },
     { id: 'resumes',            free: '2 resumes',         starter: '3 resumes',             pro: '5 resumes' },
     { id: 'resume_grading',     free: null,                starter: '5 AI scores/month',     pro: 'Unlimited AI scoring' },
     { id: 'resume_rewrite',     free: null,                starter: '3 AI rewrites/month',   pro: '10 AI rewrites/month' },
