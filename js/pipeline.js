@@ -106,6 +106,13 @@ async function loadPipelineFromSupabase() {
         companySlug: row.company_slug || '',
         companyDomain: row.company_domain || '',
         jobUrl: row.job_url || '',
+        tracking_mode: row.tracking_mode || 'auto',
+        status_note: row.status_note || null,
+        custom_reminder_at: row.custom_reminder_at || null,
+        lastPromptedAt: row.last_prompted_at || null,
+        promptCount: row.prompt_count || 0,
+        stageChangedAt: row.stage_changed_at || null,
+        jobTitle: row.job_title || '',
       };
       // Populate legacy arrays
       if (row.stage !== 'saved') appliedJobIds.push(key);
@@ -574,7 +581,18 @@ async function renderPipeline() {
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
       html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
-      html += '<td><button class="job-action-btn hide-btn" onclick="unsaveFromPipeline(\'' + item.id + '\')" style="padding:2px 6px;font-size:9px;" title="Remove from pipeline">✕</button></td>';
+      html += '<td style="position:relative;">';
+      html += '<button class="job-action-btn hide-btn pl-menu-trigger" onclick="togglePlMenu(this,\'' + item.id + '\')" style="padding:2px 8px;font-size:12px;" title="Actions">⋮</button>';
+      html += '<div class="pl-menu" id="plmenu-' + item.id + '">';
+      html += '<div class="pl-menu-item" onclick="setTrackingMode(\'' + item.id + '\',\'' + (m.tracking_mode === 'muted' ? 'auto' : 'muted') + '\')">' + (m.tracking_mode === 'muted' ? 'Unmute prompts' : 'Mute prompts') + '</div>';
+      html += '<div class="pl-menu-item" onclick="showCustomReminder(\'' + item.id + '\')">Set custom reminder</div>';
+      html += '<div class="pl-menu-item" onclick="showStatusNote(\'' + item.id + '\')">Add status note</div>';
+      html += '<div class="pl-menu-sep"></div>';
+      html += '<div class="pl-menu-item pl-menu-danger" onclick="unsaveFromPipeline(\'' + item.id + '\')">Remove from pipeline</div>';
+      html += '</div>';
+      if (m.status_note) html += '<div class="pl-status-note" title="' + m.status_note.replace(/"/g, '&quot;') + '">📌</div>';
+      if (m.tracking_mode === 'muted') html += '<div style="font-size:8px;color:var(--text-faint);position:absolute;bottom:-2px;right:2px;">🔇</div>';
+      html += '</td>';
       html += '</tr>';
 
       // Inline signal card (hidden by default, toggled by dot click)
@@ -781,4 +799,148 @@ function showStageCorrector(signalId, btnEl) {
     if (this.value) confirmPipelineSignal(signalId, 'correct', this.value);
   };
   btnEl.replaceWith(select);
+}
+
+// ── Per-Application Overrides (Phase D) ──────────────────────
+function togglePlMenu(btn, jobId) {
+  // Close any other open menus
+  document.querySelectorAll('.pl-menu.open').forEach(m => m.classList.remove('open'));
+  const menu = document.getElementById('plmenu-' + jobId);
+  if (menu) menu.classList.toggle('open');
+  // Close on outside click
+  const closer = (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) {
+      menu.classList.remove('open');
+      document.removeEventListener('click', closer);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closer), 10);
+}
+
+async function setTrackingMode(jobId, mode) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  meta.tracking_mode = mode;
+  try {
+    await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    renderPipeline();
+  } catch (e) { console.error('[BJ] Tracking mode error:', e); }
+}
+
+function showCustomReminder(jobId) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  const dateStr = prompt('Remind me about this on (YYYY-MM-DD):', new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
+  if (!dateStr) return;
+  const date = new Date(dateStr + 'T10:00:00');
+  if (isNaN(date.getTime())) { alert('Invalid date'); return; }
+  meta.custom_reminder_at = date.toISOString();
+  sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
+    .then(() => renderPipeline())
+    .catch(e => console.error('[BJ] Custom reminder error:', e));
+}
+
+function showStatusNote(jobId) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  const note = prompt('Status note (e.g., "Waiting on background check"):', meta.status_note || '');
+  if (note === null) return; // cancelled
+  meta.status_note = note || null;
+  sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
+    .then(() => renderPipeline())
+    .catch(e => console.error('[BJ] Status note error:', e));
+}
+
+// ── Manual Pipeline Entry ────────────────────────────────────
+function showManualPipelineAdd() {
+  const form = document.getElementById('pl-manual-add');
+  if (form) form.style.display = '';
+}
+
+function hideManualPipelineAdd() {
+  const form = document.getElementById('pl-manual-add');
+  if (form) form.style.display = 'none';
+  ['pl-man-title', 'pl-man-company', 'pl-man-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function saveManualPipelineEntry() {
+  if (!currentUser?.id) return;
+  const title = (document.getElementById('pl-man-title')?.value || '').trim();
+  const company = (document.getElementById('pl-man-company')?.value || '').trim();
+  const url = (document.getElementById('pl-man-url')?.value || '').trim();
+  const stage = document.getElementById('pl-man-stage')?.value || 'applied';
+
+  if (!title || !company) {
+    alert('Job title and company name are required.');
+    return;
+  }
+
+  // Generate a unique ID for this manual entry (not a real ats_jobs ID)
+  const manualId = 'manual-' + crypto.randomUUID().slice(0, 8);
+  const now = new Date().toISOString();
+
+  // Derive company domain from URL or name
+  let companyDomain = '';
+  if (url) {
+    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch (e) {}
+  }
+  if (!companyDomain) {
+    companyDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+  }
+
+  const row = {
+    user_id: currentUser.id,
+    job_id: manualId,
+    ats_source: 'manual',
+    stage: stage,
+    saved_at: now,
+    applied_at: stage !== 'saved' ? now : null,
+    responded_at: ['responded', 'interview', 'offer'].includes(stage) ? now : null,
+    interview_at: ['interview', 'offer'].includes(stage) ? now : null,
+    offer_at: stage === 'offer' ? now : null,
+    stage_changed_at: now,
+    company_name: company,
+    company_domain: companyDomain,
+    job_title: title,
+    job_url: url || null,
+    tracking_mode: 'auto',
+    notes: 'Manually added',
+  };
+
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .insert(row)
+      .select('id')
+      .single();
+    if (error) throw error;
+
+    // Add to local cache
+    _pipelineCache[manualId] = {
+      _dbId: data.id,
+      stage: stage,
+      savedAt: now,
+      appliedAt: row.applied_at,
+      respondedAt: row.responded_at,
+      interviewAt: row.interview_at,
+      companyName: company,
+      company: company,
+      title: title,
+      companyDomain: companyDomain,
+      jobUrl: url,
+      notes: 'Manually added',
+      atsSource: 'manual',
+      filterTags: [],
+      tracking_mode: 'auto',
+    };
+
+    hideManualPipelineAdd();
+    renderPipeline();
+    console.log('[BJ] Manual pipeline entry added:', manualId);
+  } catch (e) {
+    console.error('[BJ] Manual add error:', e);
+    alert('Failed to add: ' + (e.message || 'Unknown error'));
+  }
 }

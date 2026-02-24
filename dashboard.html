@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.31 - 2026-02-23 — Phase 0: AI Rewrite — resume text server sync -->
+<!-- Brilliant Jobs Dashboard v4.32 - 2026-02-23 — Phase 0: AI Rewrite — resume text server sync -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -121,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.31</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.32</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1004,11 +1004,34 @@
           </div>
 
           <!-- Filter by saved filter tags -->
-          <div class="pl-filter-bar">
+          <div class="pl-filter-bar" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</label>
             <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
               <option value="all">All Filters</option>
             </select>
+            <button class="btn btn-secondary btn-sm" onclick="showManualPipelineAdd()" style="margin-inline-start:auto;font-size:11px;padding:4px 12px;">+ Add Job Manually</button>
+          </div>
+
+          <!-- Manual add form (hidden by default) -->
+          <div id="pl-manual-add" class="card" style="display:none;margin-block-end:12px;">
+            <div class="card-title" style="font-size:13px;">Add External Application</div>
+            <div class="card-sub" style="margin-block-end:10px;">Track a job you applied to outside Brilliant Jobs</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <input type="text" id="pl-man-title" class="save-filter-name" placeholder="Job title (e.g., Senior Engineer)" style="font-size:12px;">
+              <input type="text" id="pl-man-company" class="save-filter-name" placeholder="Company name" style="font-size:12px;">
+              <input type="url" id="pl-man-url" class="save-filter-name" placeholder="Job URL (optional)" style="font-size:12px;">
+              <select id="pl-man-stage" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:12px;">
+                <option value="saved">Saved</option>
+                <option value="applied" selected>Applied</option>
+                <option value="responded">Responded</option>
+                <option value="interview">Interview</option>
+                <option value="offer">Offer</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px;margin-block-start:10px;justify-content:flex-end;">
+              <button class="btn btn-secondary btn-sm" onclick="hideManualPipelineAdd()" style="font-size:11px;">Cancel</button>
+              <button class="btn btn-primary btn-sm" onclick="saveManualPipelineEntry()" style="font-size:11px;">Add to Pipeline</button>
+            </div>
           </div>
 
           <!-- Stage sections -->
@@ -2784,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 
-<!-- AI Resume Rewrite Panel (v4.31) -->
+<!-- AI Resume Rewrite Panel (v4.32) -->
 <div class="rw-panel-overlay" id="rewrite-panel" style="display:none;" onclick="if(event.target===this)closeRewritePanel()">
   <div class="rw-panel" onclick="event.stopPropagation()">
     <div class="rw-panel-header">
