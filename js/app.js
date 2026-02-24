@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.49.1';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Rebuild bundle with sort-bar guards');
+const BJ_VERSION = 'v4.51';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
 
 // Auth
 async function init() {

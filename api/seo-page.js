@@ -66,44 +66,9 @@ function trendArrow(val) {
 }
 
 // =========================================================================
-// Slug → Display name helpers for cross-links
-// =========================================================================
-function slugToDisplay(slug) {
-  const map = {
-    'atlanta': 'Atlanta', 'austin': 'Austin', 'boston': 'Boston', 'chicago': 'Chicago',
-    'dallas': 'Dallas', 'denver': 'Denver', 'los-angeles': 'Los Angeles', 'miami': 'Miami',
-    'minneapolis': 'Minneapolis', 'new-york': 'New York', 'portland': 'Portland',
-    'remote': 'Remote', 'san-francisco': 'San Francisco', 'seattle': 'Seattle',
-    'washington-dc': 'Washington DC',
-    'account-manager': 'Account Manager', 'content-strategist': 'Content Strategist',
-    'customer-success': 'Customer Success', 'data-analyst': 'Data Analyst',
-    'data-engineer': 'Data Engineer', 'data-scientist': 'Data Scientist',
-    'devops-engineer': 'DevOps Engineer', 'financial-analyst': 'Financial Analyst',
-    'human-resources': 'Human Resources', 'marketing-manager': 'Marketing Manager',
-    'operations-manager': 'Operations Manager', 'product-manager': 'Product Manager',
-    'product-marketing': 'Product Marketing', 'project-manager': 'Project Manager',
-    'qa-engineer': 'QA Engineer', 'recruiter': 'Recruiter',
-    'sales-representative': 'Sales Representative', 'security-engineer': 'Security Engineer',
-    'software-engineer': 'Software Engineer', 'ux-designer': 'UX Designer'
-  };
-  return map[slug] || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function buildCrossLinkGrid(links, label) {
-  if (!links || links.length === 0) return '';
-  return `
-    <div class="seo-crosslink-block">
-      <h3>${esc(label)}</h3>
-      <div class="seo-link-grid">${links.map(l =>
-        `<a href="${l.url}">${esc(l.name)}</a>`
-      ).join('')}</div>
-    </div>`;
-}
-
-// =========================================================================
 // Page renderers
 // =========================================================================
-function renderMetroPage(data, metro, role, crossLinks) {
+function renderMetroPage(data, metro, role) {
   const d = data.data;
   const stats = d.stats;
   const charts = d.charts;
@@ -141,55 +106,24 @@ function renderMetroPage(data, metro, role, crossLinks) {
     </section>`;
   }
 
-  // Explore related links — with full cross-linking for SEO
+  // Explore related links
   let relatedHtml = '';
-  const cl = crossLinks || { metros: [], roles: [], roleInOtherMetros: [] };
-
   if (!role) {
-    // ── City hub page: /jobs-in/:metro ──
-    // 1. Role sub-pages for this metro (SSR, not client-side)
-    const roleLinks = cl.roles.sort().map(r => ({
-      url: `/jobs-in/${metro}/${r}`,
-      name: `${slugToDisplay(r)} in ${metroDisplay}`
-    }));
-    // 2. Other city hubs
-    const cityLinks = cl.metros.sort().map(m => ({
-      url: `/jobs-in/${m}`,
-      name: `Jobs in ${slugToDisplay(m)}`
-    }));
-
+    // Link to role sub-pages (we'll populate from role map data if available)
     relatedHtml = `
     <section class="seo-section seo-related">
       <h2>Explore ${esc(metroDisplay)} by Role</h2>
       <p class="seo-subline">Dive deeper into specific roles in ${esc(metroDisplay)}.</p>
-      ${roleLinks.length > 0
-        ? `<div class="seo-link-grid">${roleLinks.map(l => `<a href="${l.url}">${esc(l.name)}</a>`).join('')}</div>`
-        : `<div class="seo-link-grid" id="related-roles"></div>`}
-      ${buildCrossLinkGrid(cityLinks, 'Explore Other Cities')}
+      <div class="seo-link-grid" id="related-roles"></div>
       <p style="margin-top:24px"><a href="/job-market-data" class="seo-back-link">← Back to National Job Market Overview</a></p>
     </section>`;
   } else {
-    // ── Role-in-metro page: /jobs-in/:metro/:role ──
-    // 1. Link back to parent metro
-    // 2. Same role in other cities
-    const sameRoleLinks = cl.roleInOtherMetros.sort().map(m => ({
-      url: `/jobs-in/${m}/${role}`,
-      name: `${roleDisplay} in ${slugToDisplay(m)}`
-    }));
-    // 3. Other roles in same metro
-    const siblingRoles = cl.roles.filter(r => r !== role).sort().map(r => ({
-      url: `/jobs-in/${metro}/${r}`,
-      name: slugToDisplay(r)
-    }));
-
     relatedHtml = `
     <section class="seo-section seo-related">
       <h2>Explore More</h2>
       <p><a href="/jobs-in/${esc(metro)}">← All jobs in ${esc(metroDisplay)}</a></p>
       <p><a href="/trends/${esc(d.role?.slug || role)}">${esc(roleDisplay)} Trends Nationwide →</a></p>
-      ${buildCrossLinkGrid(sameRoleLinks, `${roleDisplay} in Other Cities`)}
-      ${buildCrossLinkGrid(siblingRoles, `Other Roles in ${metroDisplay}`)}
-      <p style="margin-top:24px"><a href="/job-market-data" class="seo-back-link">← National Job Market Overview</a></p>
+      <p><a href="/job-market-data">← National Job Market Overview</a></p>
     </section>`;
   }
 
@@ -547,37 +481,6 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // ── Fetch cross-link data for internal linking ──
-  let crossLinks = { metros: [], roles: [], roleInOtherMetros: [] };
-  if (type === 'metro') {
-    // Get all published metro & metro:role pages for cross-linking
-    const { data: siblings } = await sb
-      .from('seo_page_cache')
-      .select('cache_key, job_count')
-      .like('cache_key', 'metro:%')
-      .gte('job_count', role ? 50 : 200);
-
-    if (siblings) {
-      // All city hub pages (metro:cityname with no second colon)
-      crossLinks.metros = siblings
-        .filter(s => s.cache_key.split(':').length === 2)
-        .map(s => s.cache_key.replace('metro:', ''))
-        .filter(m => m !== metro);
-
-      // All role sub-pages for THIS metro
-      crossLinks.roles = siblings
-        .filter(s => s.cache_key.startsWith('metro:' + metro + ':'))
-        .map(s => s.cache_key.split(':')[2]);
-
-      // If on a role page, find other metros that have this same role
-      if (role) {
-        crossLinks.roleInOtherMetros = siblings
-          .filter(s => s.cache_key.endsWith(':' + role) && !s.cache_key.startsWith('metro:' + metro + ':'))
-          .map(s => s.cache_key.split(':')[1]);
-      }
-    }
-  }
-
   // Render
   let html;
   switch (type) {
@@ -585,7 +488,7 @@ module.exports = async function handler(req, res) {
       html = renderMarketPage(data);
       break;
     case 'metro':
-      html = renderMetroPage(data, metro, role, crossLinks);
+      html = renderMetroPage(data, metro, role);
       break;
     case 'trends':
       html = renderTrendsPage(data, role);
