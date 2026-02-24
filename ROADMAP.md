@@ -1257,6 +1257,18 @@ Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge
 |---|------|--------|-------|
 | F22 | Null ref TypeError | ✅ | `$('#sort-add-btn').addEventListener` crashed at parse time. Added `?.` to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js. |
 
+
+
+### Merchandising System (v4.51)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| M1 | Database schema + RPC | ✅ | 3 tables: `merch_placements`, `merch_rules`, `merch_content`. RLS + indexes. `get_merch_content()` SECURITY DEFINER RPC with priority cascade (cohort-specific > all-cohorts, audience-specific > all). Visit gating, seasonal filtering. |
+| M2 | Copy bank migration (52 entries) | ✅ | 34 returning + 18 lapsed from ROTATING_HERO_COPY_SPEC. 5 deep-visit entries gated at min_visits=3. 8 categories. |
+| M3 | Admin Merchandising tab | ✅ | 9th admin tab. Master-detail: placement list → rules → content entries. Edit modal with live HTML preview + {JOBS}/{COMPANIES} hydration. Bulk JSON import. Full CRUD with cascade delete. |
+| M4 | Frontend merch-client.js | ✅ | Lightweight IIFE. Raw fetch to RPC (no SDK). Unseen-entry rotation via localStorage. Injects into `data-merch-field` targets. PostHog: `merch_content_shown` + `merch_content_click`. Static fallback = progressive enhancement. |
+| M5 | QA & version sync v4.51 | ✅ | 28/28 tests pass. Dashboard nav-version, BJ_VERSION, console.log, dist bundle all v4.51. |
+
 ### Deployment Summary
 
 | Version | Files | Changes |
@@ -1272,3 +1284,4 @@ Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge
 | Edge | hire-fee/index.ts | CORS dynamic origin |
 | Edge | seo-sync/index.ts | JWT base64 + PEM fix |
 | Edge | sync-feedback/index.ts | New: Canny + feedback sync |
+| v4.51 | dashboard.html, js/admin.js, js/app.js, index.html, js/merch-client.js, dist/* | Merchandising system: DB schema, admin tab, frontend integration |
