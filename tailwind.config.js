@@ -7,6 +7,9 @@
 ──────────────────────────────────────────────────────────*/
 
 module.exports = {
+  safelist: [
+    { pattern: /^(page|nav|card|stat|btn|fb|rw|cb|ghost|admin|filter|jobs|micro|resume|app|main)/ },
+  ],
   content: [
     './dashboard.html',
     './js/**/*.js',
