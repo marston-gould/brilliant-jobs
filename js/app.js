@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.41';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix account pages outside .main + nav patches');
+const BJ_VERSION = 'v4.39';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Revert to flex layout + overflow-x:hidden fix');
 
 // Auth
 async function init() {
