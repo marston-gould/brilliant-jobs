@@ -822,6 +822,12 @@ async function loadPipelineIntelligenceSettings() {
     if (el('pi-cadence-responded')) el('pi-cadence-responded').value = data.cadence_responded_days || 5;
     if (el('pi-cadence-interview')) el('pi-cadence-interview').value = data.cadence_interview_days || 3;
     if (el('pi-scan-freq')) el('pi-scan-freq').value = String(data.scan_frequency_minutes || 15);
+    if (el('pi-thread-depth')) el('pi-thread-depth').value = data.email_thread_depth || 50;
+    if (el('pi-cal-lookahead')) el('pi-cal-lookahead').value = data.calendar_lookahead_days || 14;
+    const channels = data.prompt_channels || ['email', 'in_app'];
+    if (el('pi-ch-email')) el('pi-ch-email').checked = channels.includes('email');
+    if (el('pi-ch-inapp')) el('pi-ch-inapp').checked = channels.includes('in_app');
+    if (el('pi-ch-sms')) el('pi-ch-sms').checked = channels.includes('sms');
     const confRadios = document.querySelectorAll('input[name="pi-confidence"]');
     confRadios.forEach(r => { r.checked = parseFloat(r.value) === (data.confidence_threshold || 0.6); });
   } catch (e) {
@@ -856,6 +862,13 @@ async function savePipelineIntelligenceSettings() {
     cadence_interview_days: parseInt(el('pi-cadence-interview')?.value) || 3,
     scan_frequency_minutes: parseInt(el('pi-scan-freq')?.value) || 15,
     confidence_threshold: confRadio ? parseFloat(confRadio.value) : 0.6,
+    email_thread_depth: parseInt(el('pi-thread-depth')?.value) || 50,
+    calendar_lookahead_days: parseInt(el('pi-cal-lookahead')?.value) || 14,
+    prompt_channels: [
+      ...(el('pi-ch-email')?.checked ? ['email'] : []),
+      ...(el('pi-ch-inapp')?.checked ? ['in_app'] : []),
+      ...(el('pi-ch-sms')?.checked ? ['sms'] : []),
+    ],
     updated_at: new Date().toISOString(),
   };
   try {

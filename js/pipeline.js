@@ -36,7 +36,13 @@ async function loadPendingSignals() {
     (data || []).forEach(s => {
       if (s.pipeline_entry_id) _pendingSignals[s.pipeline_entry_id] = s;
     });
-    console.log('[BJ] Loaded', Object.keys(_pendingSignals).length, 'pending pipeline signals');
+    const sigCount = Object.keys(_pendingSignals).length;
+    console.log('[BJ] Loaded', sigCount, 'pending pipeline signals');
+    if (sigCount > 0 && typeof posthog !== 'undefined') {
+      const sources = {};
+      Object.values(_pendingSignals).forEach(s => { sources[s.signal_source] = (sources[s.signal_source] || 0) + 1; });
+      posthog.capture('signal_detected', { count: sigCount, sources: sources });
+    }
   } catch (e) {
     console.error('[BJ] Signal load error:', e);
   }
@@ -44,6 +50,23 @@ async function loadPendingSignals() {
 
 async function confirmPipelineSignal(signalId, action, correctedStage) {
   try {
+    // PostHog: track signal actions
+    const sig = Object.values(_pendingSignals).find(s => s.id === signalId);
+    const phEvent = action === 'confirm' ? 'signal_confirmed'
+      : action === 'correct' ? 'signal_confirmed'
+      : action === 'dismiss' ? 'signal_dismissed'
+      : action === 'snooze' ? 'prompt_snoozed' : 'signal_action';
+    if (typeof posthog !== 'undefined') {
+      posthog.capture(phEvent, {
+        signal_id: signalId,
+        signal_source: sig?.signal_source || 'unknown',
+        signal_type: sig?.signal_type || 'unknown',
+        proposed_stage: sig?.proposed_stage,
+        corrected_stage: correctedStage || null,
+        action: action,
+      });
+    }
+
     const token = (await sb.auth.getSession())?.data?.session?.access_token;
     const resp = await fetch(sb.supabaseUrl + '/functions/v1/confirm-pipeline-signal', {
       method: 'POST',
@@ -481,6 +504,18 @@ async function renderPipeline() {
     if (countEl) countEl.textContent = jobs.length;
     if (section && collapseStates[stage]) section.classList.add('collapsed');
 
+    // Signal count badge on stage header
+    const pendingCount = jobs.filter(j => j.meta._dbId && _pendingSignals[j.meta._dbId]).length;
+    const badgeEl = document.getElementById('psig-' + stage);
+    if (badgeEl) {
+      if (pendingCount > 0) {
+        badgeEl.textContent = pendingCount + ' signal' + (pendingCount > 1 ? 's' : '') + ' pending';
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
     const scores = jobs.map(j => j.meta.matchScore).filter(s => typeof s === 'number');
     if (matchEl) {
       if (scores.length > 0) {
@@ -500,7 +535,7 @@ async function renderPipeline() {
     let html = '<table class="pl-table"><thead><tr>';
     html += '<th></th><th>Title</th><th>Company</th><th>Resume</th><th>Filters</th>';
     html += '<th>Discovered</th><th>Day Applied</th><th>Days In Stage</th>';
-    html += '<th>Match</th><th>Move</th><th></th>';
+    html += '<th>Last Activity</th><th>Match</th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
 
     for (const item of jobs) {
@@ -579,6 +614,17 @@ async function renderPipeline() {
       html += '<td class="pl-date">' + discovered + '</td>';
       html += '<td class="pl-date">' + dayApplied + '</td>';
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
+
+      // Last Activity column
+      const lastActivity = pendingSig
+        ? (pendingSig.signal_source === 'time_based'
+            ? 'Prompt ' + _relTime(pendingSig.created_at)
+            : 'Signal ' + _relTime(pendingSig.created_at))
+        : (m.stage_changed_at || m.lastPromptedAt
+            ? _relTime(m.stage_changed_at || m.lastPromptedAt)
+            : '—');
+      html += '<td class="pl-date" style="font-size:11px;color:var(--text-dim);">' + lastActivity + '</td>';
+
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
       html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
       html += '<td style="position:relative;">';
@@ -606,7 +652,7 @@ async function renderPipeline() {
         const evidence = pendingSig.evidence_preview || '';
 
         html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
-        html += '<td colspan="11" style="padding:0;">';
+        html += '<td colspan="12" style="padding:0;">';
         html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
         html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
         if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
@@ -778,6 +824,18 @@ function onGhostPageShow() {
 }
 
 // ── Pipeline Signal UI (Phase A) ─────────────────────────────
+// Relative time helper (e.g. "3d ago", "2h ago")
+function _relTime(isoStr) {
+  if (!isoStr) return '—';
+  const ms = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
 function toggleSignalCard(dotEl) {
   const signalId = dotEl.getAttribute('data-signal-id');
   const row = document.getElementById('signal-card-' + signalId);
