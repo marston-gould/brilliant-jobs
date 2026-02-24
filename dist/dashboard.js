@@ -13657,6 +13657,7 @@ function switchAdminTab(tabId) {
       case 'seo': loadSeoTab(); break;
       case 'revenue': loadRevenueTab(); break;
       case 'surveys': loadSurveysTab(); break;
+      case 'ghost': loadGhostTab(); break;
     }
   }
 }
@@ -13670,8 +13671,8 @@ function setAdminText(id, val) {
 function fmtAdminNum(n) {
   if (n == null) return '—';
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-  if (n >= 1000) return Math.round(n / 1000).toLocaleString() + 'K';
-  return n.toLocaleString();
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
+  return String(n);
 }
 
 function fmtAdminPct(n, d) {
@@ -13727,7 +13728,6 @@ async function loadBoardHealth() {
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
         var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
-        var ra = 'text-align:right;font-family:var(--mono)';
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
@@ -13735,11 +13735,11 @@ async function loadBoardHealth() {
           totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(p.total) + '</td>' +
-            '<td style="' + ra + '" class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td style="' + ra + '" class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(p.errors_4xx) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(p.jobs) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(jpb) + '</td>' +
+            '<td>' + fmtAdminNum(p.total) + '</td>' +
+            '<td class="' + pctColor + '">' + activePct + '%</td>' +
+            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
+            '<td>' + fmtAdminNum(p.jobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
         }).join('');
         if (tfoot) {
@@ -13747,11 +13747,11 @@ async function loadBoardHealth() {
           var totJpb = totWithJobs > 0 ? Math.round(totJobs / totWithJobs) : 0;
           tfoot.innerHTML = '<tr style="font-weight:600;border-top:2px solid var(--border)">' +
             '<td>Total</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(totBoards) + '</td>' +
-            '<td style="' + ra + '">' + totPct + '%</td>' +
-            '<td style="' + ra + '" class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(tot4xx) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(totJobs) + '</td>' +
-            '<td style="' + ra + '">' + fmtAdminNum(totJpb) + '</td>' +
+            '<td>' + fmtAdminNum(totBoards) + '</td>' +
+            '<td>' + totPct + '%</td>' +
+            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td>' + fmtAdminNum(totJobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
         }
       }
@@ -13771,8 +13771,7 @@ var _platformColors = {
   lever: '#3b82f6',
   ashby: '#f59e0b',
   workable: '#8b5cf6',
-  recruitee: '#ec4899',
-  usajobs: '#dc2626'
+  recruitee: '#ec4899'
 };
 
 async function loadFeedHealthCharts() {
@@ -13870,7 +13869,7 @@ async function loadFeedHealthCharts() {
   }
 }
 
-// ─── Refresh Cycle Status ───
+// ─── Refresh Cycle Status (Tiered) ───
 async function loadRefreshCycle() {
   try {
     var res = await sb.rpc('get_refresh_cycle_status');
@@ -13878,37 +13877,63 @@ async function loadRefreshCycle() {
     var c = res.data;
     if (!c) return;
 
-    var pct = c.pct_complete || 0;
-    setAdminText('ac-cycle-pct', pct + '%');
+    // HOT tier progress (primary metric)
+    var hotPct = c.hot_pct || 0;
+    setAdminText('ac-cycle-pct', hotPct + '%');
     var bar = document.getElementById('ac-cycle-bar');
-    if (bar) setTimeout(function() { bar.style.width = pct + '%'; }, 100);
+    if (bar) setTimeout(function() { bar.style.width = hotPct + '%'; }, 100);
 
     setAdminText('ac-cycle-total', fmtAdminNum(c.total_boards));
-    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.refreshed));
-    setAdminText('ac-cycle-pending', fmtAdminNum(c.pending));
-    setAdminText('ac-cycle-rate', fmtAdminNum(c.rate_per_hour) + '/hr');
+    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.hot_fresh || 0) + ' / ' + fmtAdminNum(c.hot_total || 0) + ' HOT');
+    setAdminText('ac-cycle-pending', fmtAdminNum(c.hot_due || 0) + ' HOT due');
 
-    // Format dates as relative
-    if (c.cycle_start) {
-      var start = new Date(c.cycle_start);
-      var hoursAgo = Math.round((Date.now() - start.getTime()) / 3600000);
-      var daysAgo = Math.floor(hoursAgo / 24);
-      var startStr = daysAgo > 0 ? daysAgo + 'd ' + (hoursAgo % 24) + 'h ago' : hoursAgo + 'h ago';
-      setAdminText('ac-cycle-start', startStr);
-    }
-    if (c.est_completion) {
-      var eta = new Date(c.est_completion);
-      var hoursLeft = Math.round((eta.getTime() - Date.now()) / 3600000);
-      var daysLeft = Math.floor(hoursLeft / 24);
-      var etaStr;
-      if (hoursLeft <= 0) {
-        etaStr = 'Overdue';
-      } else if (daysLeft > 0) {
-        etaStr = daysLeft + 'd ' + (hoursLeft % 24) + 'h remaining';
+    // Rate with trend arrow: compare 1h vs 6h average
+    var rate1h = c.rate_1h || 0;
+    var rate6h = c.rate_6h || 0;
+    var rateStr = fmtAdminNum(rate1h) + '/hr';
+    if (rate6h > 0 && rate1h > 0) {
+      var pctChange = Math.round(((rate1h - rate6h) / rate6h) * 100);
+      if (pctChange > 10) {
+        rateStr += ' <span style="color:#22c55e;font-size:0.8em">▲ ' + pctChange + '%</span>';
+      } else if (pctChange < -10) {
+        rateStr += ' <span style="color:#ef4444;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
       } else {
-        etaStr = hoursLeft + 'h remaining';
+        rateStr += ' <span style="color:#94a3b8;font-size:0.8em">● steady</span>';
       }
-      setAdminText('ac-cycle-eta', etaStr);
+    }
+    var rateEl = document.getElementById('ac-cycle-rate');
+    if (rateEl) rateEl.innerHTML = rateStr;
+
+    // ETA based on HOT cycle
+    var estHours = c.est_hot_cycle_hours || 0;
+    if (estHours <= 0) {
+      setAdminText('ac-cycle-eta', 'Up to date');
+    } else if (estHours < 1) {
+      setAdminText('ac-cycle-eta', Math.round(estHours * 60) + 'min cycle');
+    } else {
+      setAdminText('ac-cycle-eta', estHours.toFixed(1) + 'h cycle');
+    }
+
+    // Last refresh
+    if (c.last_refresh) {
+      var lr = new Date(c.last_refresh);
+      var minsAgo = Math.round((Date.now() - lr.getTime()) / 60000);
+      setAdminText('ac-cycle-start', minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ago');
+    }
+
+    // Sparkline: hourly throughput (last 24h)
+    var sparkEl = document.getElementById('ac-cycle-spark');
+    if (sparkEl && c.hourly_rates && c.hourly_rates.length > 1 && typeof echarts !== 'undefined') {
+      var hours = c.hourly_rates.map(function(r) { return new Date(r.hour).getHours() + ':00'; });
+      var counts = c.hourly_rates.map(function(r) { return r.count; });
+      var chart = echarts.init(sparkEl);
+      chart.setOption({
+        grid: { top: 4, right: 4, bottom: 16, left: 30 },
+        xAxis: { type: 'category', data: hours, axisLabel: { fontSize: 9, color: '#94a3b8' }, axisLine: { show: false }, axisTick: { show: false } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+        series: [{ type: 'bar', data: counts, itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
+        tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + ': ' + p[0].value.toLocaleString() + ' boards'; } }
+      });
     }
   } catch (err) {
     console.error('[Admin] loadRefreshCycle error:', err);
@@ -15177,6 +15202,124 @@ function renderSurveyRecentTable(recent) {
   }).join('');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// GHOST TAB
+// ═══════════════════════════════════════════════════════════════
+
+async function loadGhostTab() {
+  try {
+    // KPI: total applications tracked
+    var { count: totalApps } = await sb.from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .in('stage', ['applied', 'posting_closed', 'responded', 'interview', 'rejected', 'archived']);
+    setAdminText('ag-total-apps', fmtAdminNum(totalApps || 0));
+
+    // KPI: ghosted count
+    var { count: ghostedCount } = await sb.from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .in('stage', ['applied', 'posting_closed'])
+      .lt('applied_at', new Date(Date.now() - 21 * 86400000).toISOString());
+    setAdminText('ag-ghosted', fmtAdminNum(ghostedCount || 0));
+
+    // KPI: gmail connected
+    var { count: gmailCount } = await sb.from('gmail_connections')
+      .select('*', { count: 'exact', head: true })
+      .eq('sync_status', 'active');
+    setAdminText('ag-gmail-connected', gmailCount || 0);
+
+    // Company ghost stats table
+    var { data: stats } = await sb.from('company_ghost_stats')
+      .select('*')
+      .order('ghost_rate', { ascending: false });
+
+    var tbody = document.getElementById('ag-company-body');
+    if (!stats || stats.length === 0) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:24px;">No ghost stats yet. Data populates as users track applications.</td></tr>';
+      setAdminText('ag-avg-response', '—');
+      renderAdminGhostChart([]);
+      return;
+    }
+
+    // KPI: avg response days
+    var responseDays = stats.filter(function(s) { return s.avg_response_days > 0; });
+    var avgResp = responseDays.length > 0
+      ? Math.round(responseDays.reduce(function(a, b) { return a + b.avg_response_days; }, 0) / responseDays.length)
+      : 0;
+    setAdminText('ag-avg-response', avgResp > 0 ? avgResp + 'd' : '—');
+
+    // Render table
+    if (tbody) {
+      tbody.innerHTML = stats.map(function(s) {
+        var rate = s.ghost_rate != null ? Math.round(s.ghost_rate * 100) : 0;
+        var rateColor = rate >= 50 ? 'var(--red)' : rate >= 25 ? '#f59e0b' : 'var(--green)';
+        var responded = (s.total_applications || 0) - (s.ghosted_count || 0);
+        var lastActivity = s.updated_at ? new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+        var avgDays = s.avg_response_days > 0 ? s.avg_response_days + 'd' : '—';
+
+        return '<tr>' +
+          '<td style="font-weight:600;text-transform:capitalize;">' + (s.company_slug || '—').replace(/-/g, ' ') + '</td>' +
+          '<td>' + (s.total_applications || 0) + '</td>' +
+          '<td>' + responded + '</td>' +
+          '<td>' + (s.ghosted_count || 0) + '</td>' +
+          '<td style="color:' + rateColor + ';font-weight:600;">' + rate + '%</td>' +
+          '<td>' + avgDays + '</td>' +
+          '<td>' + lastActivity + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    renderAdminGhostChart(stats);
+
+  } catch (err) {
+    console.error('[BJ] Ghost admin error:', err);
+    var tbody = document.getElementById('ag-company-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + (err.message || 'unknown') + '</td></tr>';
+  }
+}
+
+var _adminGhostChart = null;
+function renderAdminGhostChart(stats) {
+  var el = document.getElementById('ag-ghost-chart');
+  if (!el || !window.echarts) return;
+  if (_adminGhostChart) _adminGhostChart.dispose();
+  _adminGhostChart = echarts.init(el);
+
+  if (!stats || stats.length === 0) {
+    _adminGhostChart.setOption({
+      title: { text: 'No data yet', left: 'center', top: 'center', textStyle: { color: '#a0aec0', fontSize: 14 } }
+    });
+    return;
+  }
+
+  // Top 15 companies by total applications, sorted by ghost rate
+  var top = stats.filter(function(s) { return s.total_applications >= 1; })
+    .sort(function(a, b) { return (b.ghost_rate || 0) - (a.ghost_rate || 0); })
+    .slice(0, 15);
+
+  var names = top.map(function(s) { return (s.company_slug || '').replace(/-/g, ' '); });
+  var rates = top.map(function(s) { return Math.round((s.ghost_rate || 0) * 100); });
+  var colors = rates.map(function(r) { return r >= 50 ? '#f56565' : r >= 25 ? '#f59e0b' : '#48bb78'; });
+
+  var isDark = document.body.classList.contains('dark');
+  var textColor = isDark ? '#a0aec0' : '#4a5568';
+
+  _adminGhostChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 120, right: 24, top: 12, bottom: 24 },
+    xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%', color: textColor, fontSize: 11 }, splitLine: { lineStyle: { color: isDark ? '#2d3748' : '#e2e8f0' } } },
+    yAxis: { type: 'category', data: names.reverse(), axisLabel: { color: textColor, fontSize: 11, width: 100, overflow: 'truncate' } },
+    series: [{
+      type: 'bar',
+      data: rates.slice().reverse().map(function(v, i) {
+        var c = v >= 50 ? '#f56565' : v >= 25 ? '#f59e0b' : '#48bb78';
+        return { value: v, itemStyle: { color: c } };
+      }),
+      barWidth: 16, itemStyle: { borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: 'right', formatter: '{c}%', fontSize: 11, color: textColor }
+    }]
+  });
+}
+
 
 // === js/billing.js ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
@@ -15798,6 +15941,11 @@ function initBilling() {
 // Lightweight survey prompts that appear inline in the dashboard.
 // All responses stored in feedback table via Supabase REST API.
 //
+// v4.12 — S3-1: Priority-weighted micro-survey selection
+//   Instead of first-trigger-wins, eligible surveys queue up and the
+//   highest-priority one is shown. Paywall friction (willingness-to-pay
+//   signal) gets highest priority since it feeds monetization decisions.
+//
 // Usage:
 //   showPaywallFriction('resume_grading')  — after feature limit hit
 //   showSearchRelevance(filterName, count)  — after 10th search or 5min session
@@ -15809,7 +15957,21 @@ function initBilling() {
 (function() {
   'use strict';
 
-  const MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
+  var MICRO_SURVEY_KEY = 'bj_micro_survey_shown';
+
+  // ─── Priority Queue ───
+  // Higher number = higher priority. Paywall is king (monetization signal).
+  var PRIORITY = {
+    micro_paywall_v1: 100,
+    micro_search_v1: 60,
+    micro_apply_v1: 50,
+    micro_data_v1: 30
+  };
+
+  // Pending surveys that haven't been shown yet, waiting for the flush window
+  var _pendingQueue = [];
+  var _flushTimer = null;
+  var FLUSH_DELAY_MS = 500; // Wait 500ms to collect competing triggers before picking winner
 
   // ─── Rate Limiter ───
   function canShowMicroSurvey() {
@@ -15824,17 +15986,71 @@ function initBilling() {
     } catch { /* ignore */ }
   }
 
+  // ─── Queue + Flush Logic ───
+  // When a trigger fires, it enqueues a survey config. After FLUSH_DELAY_MS,
+  // the highest-priority pending survey is displayed and the rest are discarded.
+  function enqueueMicroSurvey(config) {
+    if (!canShowMicroSurvey()) return;
+    _pendingQueue.push(config);
+
+    // Reset the flush timer — give other triggers a chance to fire
+    if (_flushTimer) clearTimeout(_flushTimer);
+    _flushTimer = setTimeout(flushQueue, FLUSH_DELAY_MS);
+  }
+
+  function flushQueue() {
+    _flushTimer = null;
+    if (!canShowMicroSurvey() || _pendingQueue.length === 0) return;
+
+    // Sort by priority descending, pick winner
+    _pendingQueue.sort(function(a, b) {
+      return (PRIORITY[b.version] || 0) - (PRIORITY[a.version] || 0);
+    });
+
+    var winner = _pendingQueue[0];
+    var suppressed = _pendingQueue.slice(1);
+
+    // Log what was suppressed for analytics
+    if (suppressed.length > 0) {
+      console.info('[micro-survey] Showing', winner.version,
+        '(priority ' + (PRIORITY[winner.version] || 0) + '),',
+        'suppressed:', suppressed.map(function(s) { return s.version; }).join(', '));
+    }
+
+    // Clear queue
+    _pendingQueue = [];
+
+    // Display the winner
+    displayMicroSurvey(winner);
+  }
+
+  function displayMicroSurvey(config) {
+    var card = createMicroCard(config);
+
+    if (config.displayMode === 'toast') {
+      card.classList.add('micro-survey-toast');
+      document.body.appendChild(card);
+    } else {
+      var target = config.target
+        || document.getElementById('main-content')
+        || document.querySelector('.content-area')
+        || document.querySelector('main')
+        || document.body;
+      target.insertBefore(card, target.firstChild);
+    }
+  }
+
   // ─── Submit to Supabase ───
   async function submitMicroSurvey(version, responses, context) {
-    const SUPABASE_URL = window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co';
-    const SUPABASE_ANON_KEY = window._bjAnonKey || '';
+    var SUPABASE_URL = window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    var SUPABASE_ANON_KEY = window._bjAnonKey || '';
 
-    let userId = null;
-    let authHeader = 'Bearer ' + SUPABASE_ANON_KEY;
+    var userId = null;
+    var authHeader = 'Bearer ' + SUPABASE_ANON_KEY;
     try {
-      const stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
+      var stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
       if (stored) {
-        const session = JSON.parse(stored);
+        var session = JSON.parse(stored);
         if (session?.access_token && session?.user?.id) {
           userId = session.user.id;
           authHeader = 'Bearer ' + session.access_token;
@@ -15842,7 +16058,7 @@ function initBilling() {
       }
     } catch { /* anon fallback */ }
 
-    const payload = {
+    var payload = {
       type: 'micro_survey',
       user_id: userId,
       survey_version: version,
@@ -15869,12 +16085,12 @@ function initBilling() {
 
   // ─── Generic Micro-Survey Card ───
   function createMicroCard(config) {
-    const card = document.createElement('div');
+    var card = document.createElement('div');
     card.className = 'micro-survey-card';
     card.setAttribute('role', 'complementary');
     card.setAttribute('aria-label', 'Quick survey');
 
-    let inner = '<div class="micro-survey-inner">';
+    var inner = '<div class="micro-survey-inner">';
     inner += '<button class="micro-survey-close" aria-label="Dismiss survey">&times;</button>';
     inner += '<div class="micro-survey-q">' + config.question + '</div>';
 
@@ -15886,7 +16102,7 @@ function initBilling() {
       inner += '</div>';
     } else if (config.type === 'rating') {
       inner += '<div class="micro-survey-rating">';
-      for (let r = 1; r <= 5; r++) {
+      for (var r = 1; r <= 5; r++) {
         inner += '<button class="micro-survey-star" data-val="' + r + '">' + r + '</button>';
       }
       inner += '</div>';
@@ -15981,10 +16197,9 @@ function initBilling() {
 
   // ─── P13-09: Paywall Friction Survey ───
   // Shows when a free user hits a feature limit
+  // PRIORITY: 100 (highest — monetization signal)
   window.showPaywallFriction = function(featureName) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'Would you pay to unlock this feature?',
       type: 'choice',
       options: ['Definitely', 'Maybe', 'No'],
@@ -15994,19 +16209,16 @@ function initBilling() {
         options: ['Too expensive', 'Not enough value yet', 'Just browsing', 'Already paying elsewhere']
       },
       version: 'micro_paywall_v1',
-      featureContext: featureName
+      featureContext: featureName,
+      displayMode: 'inline',
+      target: document.getElementById('main-content') || document.querySelector('.content-area') || document.querySelector('main') || document.body
     });
-
-    // Insert near the top of the main content area
-    var target = document.getElementById('main-content') || document.querySelector('.content-area') || document.querySelector('main') || document.body;
-    target.insertBefore(card, target.firstChild);
   };
 
   // ─── P13-04: Post-Search Relevance Survey ───
+  // PRIORITY: 60
   window.showSearchRelevance = function(filterName, resultCount) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'How relevant were these results?',
       type: 'rating',
       minLabel: 'Not at all',
@@ -16017,18 +16229,16 @@ function initBilling() {
         options: ['More salary data', 'Wrong seniority level', 'Too many ghost jobs', 'Not my industry', 'Other']
       },
       version: 'micro_search_v1',
-      featureContext: JSON.stringify({ filter: filterName, result_count: resultCount })
+      featureContext: JSON.stringify({ filter: filterName, result_count: resultCount }),
+      displayMode: 'inline',
+      target: document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body
     });
-
-    var target = document.getElementById('job-feed-container') || document.getElementById('main-content') || document.body;
-    target.insertBefore(card, target.firstChild);
   };
 
   // ─── P13-05: Post-Application Confidence Survey ───
+  // PRIORITY: 50
   window.showApplyConfidence = function(jobId, companyName) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'How confident are you this job is real?',
       type: 'rating',
       minLabel: 'Likely ghost',
@@ -16039,29 +16249,22 @@ function initBilling() {
         options: ['Yes, very clear', 'Somewhat', 'No, confusing']
       },
       version: 'micro_apply_v1',
-      featureContext: JSON.stringify({ job_id: jobId, company: companyName })
+      featureContext: JSON.stringify({ job_id: jobId, company: companyName }),
+      displayMode: 'toast'
     });
-
-    // Show as toast-like at bottom right
-    card.classList.add('micro-survey-toast');
-    document.body.appendChild(card);
   };
 
   // ─── P13-06: Data Value Assessment ───
+  // PRIORITY: 30 (lowest — passive viewing, least commercial signal)
   window.showDataValue = function(featureContext) {
-    if (!canShowMicroSurvey()) return;
-
-    var card = createMicroCard({
+    enqueueMicroSurvey({
       question: 'Did this data help your decision?',
       type: 'choice',
       options: ['Yes, very helpful', 'Somewhat', 'Not really'],
       version: 'micro_data_v1',
-      featureContext: featureContext
+      featureContext: featureContext,
+      displayMode: 'toast'
     });
-
-    // Floating bottom-right widget
-    card.classList.add('micro-survey-toast');
-    document.body.appendChild(card);
   };
 
   // ─── Search/Session Tracking (P13-04) ───
@@ -16095,8 +16298,8 @@ function initBilling() {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v4.09';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — USAJOBS propagation: landing, stats, data lab, feed health');
+const BJ_VERSION = 'v4.13';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tiered refresh v13: HOT/WARM/COLD board prioritization');
 
 // Auth
 async function init() {
@@ -16481,6 +16684,111 @@ $('#download-btn').addEventListener('click', async () => {
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
+// ============================================================
+// GMAIL OAUTH — Connect / Disconnect / Status
+// ============================================================
+
+async function initGmailStatus() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data: conn } = await sb.from('gmail_connections')
+      .select('gmail_address, sync_status')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    const isConnected = conn && conn.sync_status === 'active';
+    updateGmailUI(isConnected, conn?.gmail_address || '');
+  } catch (e) {
+    console.warn('[BJ] Gmail status check failed:', e.message);
+  }
+}
+
+function updateGmailUI(connected, email) {
+  // Setup page
+  const setupConn = $('#gmail-setup-connected');
+  const setupDisc = $('#gmail-setup-disconnected');
+  const setupAddr = $('#gmail-address');
+  const setupDot = $('#gmail-dot');
+  if (setupConn && setupDisc) {
+    setupConn.style.display = connected ? '' : 'none';
+    setupDisc.style.display = connected ? 'none' : '';
+    if (setupAddr) setupAddr.textContent = email;
+    if (setupDot) setupDot.className = 'setup-dot' + (connected ? ' connected' : '');
+  }
+  // Ghost monitor page
+  const ghostConn = $('#ghost-gmail-connected');
+  const ghostBtn = $('#gmail-connect-btn');
+  const ghostAddr = $('#ghost-gmail-address');
+  const gmailCard = $('#g-gmail-card');
+  if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
+  if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
+  if (ghostAddr) ghostAddr.textContent = email;
+  if (gmailCard) {
+    const valEl = gmailCard.querySelector('.stat-val');
+    if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
+  }
+}
+
+window.connectGmail = async function() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { alert('Please log in first.'); return; }
+    const res = await fetch('/api/auth/gmail/callback?action=connect', {
+      headers: { 'Authorization': 'Bearer ' + session.access_token }
+    });
+    const json = await res.json();
+    if (json.url) {
+      window.location.href = json.url;
+    } else {
+      alert('Failed to start Gmail connection: ' + (json.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Error connecting Gmail: ' + e.message);
+  }
+};
+
+window.disconnectGmail = async function() {
+  if (!confirm('Disconnect Gmail? Ghost Monitor will lose email-based detection.')) return;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const res = await fetch('/api/auth/gmail/disconnect', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + session.access_token }
+    });
+    const json = await res.json();
+    if (json.success) {
+      updateGmailUI(false, '');
+    } else {
+      alert('Failed to disconnect: ' + (json.error || 'Unknown error'));
+    }
+  } catch (e) {
+    alert('Error disconnecting Gmail: ' + e.message);
+  }
+};
+
+// Handle Gmail callback params
+(function handleGmailCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const gmail = params.get('gmail');
+  if (!gmail) return;
+  const url = new URL(window.location);
+  url.searchParams.delete('gmail');
+  window.history.replaceState({}, '', url);
+  if (gmail === 'connected') {
+    initGmailStatus();
+    setTimeout(() => alert('Gmail connected successfully! Ghost Monitor will now scan for company responses.'), 500);
+  } else if (gmail === 'denied') {
+    alert('Gmail connection was cancelled.');
+  } else if (gmail === 'error') {
+    alert('Gmail connection failed. Please try again.');
+  }
+})();
+
+// Init Gmail status on load
+initGmailStatus();
 
 
 
