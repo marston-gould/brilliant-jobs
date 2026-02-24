@@ -1171,7 +1171,18 @@ const features = [
   { s: 'todo', n: 'P13-25: Cohort-survey assignment matrix', d: 'cohort_survey_assignments table mapping cohorts to survey versions. cohort_id column on feedback table (denormalized for fast aggregation). submitSurvey() looks up user cohort and attaches to payload. Admin analytics sliceable by cohort → version → user. Depends on Cohort Experience System Phase A.', b: 'cohort-system', p: 25, b: 'post-launch' },
 
   // Phase 26 — UX Polish & Resume-First Onboarding (Phase Q from audit)
-  { s: 'todo', n: 'Q1: Replace all alert() with showToast()', d: 'settings.js has 3 alert() calls. Replace with showToast() already available in globals.js. Consistency fix.', p: 26 },
+  
+      // ── Phase S: SEO Data Pages (v4.13) ──
+      { s: 'done', n: 'S1-S4: Database infrastructure', d: 'seo_metro_map (15 metros), seo_role_map (20 roles), seo_page_cache tables. 4 performance indexes on ats_jobs. Public RLS. v4.13.', p: 27 },
+      { s: 'done', n: 'S5-S10: Compute functions + pg_cron', d: '6 PostgreSQL functions: market, metro, role, combo, rankings, orchestrator. 127 cache entries. Daily refresh at 5 AM UTC (cron #26). v4.13.', p: 27 },
+      { s: 'done', n: 'S11: Shared aggregation module', d: 'js/aggregations.js — isomorphic (browser + Node). bucketSalaries, countByLevel, countByLocType, computeMedianSalary, etc. v4.13.', p: 27 },
+      { s: 'done', n: 'S12-S13: Vercel serverless + rewrites', d: 'api/seo-page.js — reads seo_page_cache via anon key. ISR 1hr. 3 rewrite rules: /jobs-in/:metro, /jobs-in/:metro/:role, /trends/:role. v4.13.', p: 27 },
+      { s: 'done', n: 'S14-S15: CSS + ECharts hydration', d: 'seo-pages.css (landing-page design, 3 breakpoints). seo-charts.js (7 chart types: timeline, salary, companies, levels, worktype, comparison, metros). v4.13.', p: 27 },
+      { s: 'done', n: 'S16: PostHog on SEO pages', d: 'Same A13 snippet as dashboard. Events: seo_page_viewed, seo_chart_interacted, seo_cta_clicked. v4.13.', p: 27 },
+      { s: 'done', n: 'S17: Sitemap updated (127 URLs)', d: '137 total URLs (10 existing + 127 SEO). Daily changefreq. Priority: 0.9 market, 0.8 metro/trends, 0.6 combos. v4.13.', p: 27 },
+      { s: 'done', n: 'S19-S24: SEO markup + CTAs + 404s', d: 'Unique title/meta/canonical/OG per page. Schema.org Dataset JSON-LD. noscript fallbacks. Clean 404s. 2 inline CTAs per page. v4.13.', p: 27 },
+
+      { s: 'todo', n: 'Q1: Replace all alert() with showToast()', d: 'settings.js has 3 alert() calls. Replace with showToast() already available in globals.js. Consistency fix.', p: 26 },
   { s: 'todo', n: 'Q2: Standardize logo mark CSS across pages', d: 'index.html 30x30 white, pricing.html 32x32 translucent, help.html 22x22 accent. Unified .brand-mark class: 32x32px, #fff, 8px radius.', p: 26 },
   { s: 'todo', n: 'Q3: Add aria-hidden to decorative nav SVGs', d: '11 nav icons are inline SVGs with no aria labels. Add aria-hidden="true" where adjacent text exists.', p: 26 },
   { s: 'todo', n: 'Q4: Fix empty state microcopy', d: '"No resumes uploaded" and "No saved filters" replaced with guiding, actionable copy.', p: 26 },
@@ -1314,7 +1325,8 @@ function render() {
     20: 'Showcase',
     21: 'Enterprise', 22: 'Infra Hardening & Data Quality', 23: 'Security Hardening', 24: 'Platform Expansion',
     25: 'Surveys & User Intelligence',
-    26: 'UX Polish & Resume-First Onboarding'
+    26: 'UX Polish & Resume-First Onboarding',
+    27: 'SEO Data Pages'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
