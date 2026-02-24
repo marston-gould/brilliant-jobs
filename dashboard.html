@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.43 - 2026-02-24 — Fix account pages outside .main, patch nav styling -->
+<!-- Brilliant Jobs Dashboard v4.44 - 2026-02-24 — Fix account pages outside .main, patch nav styling -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -21,7 +21,7 @@
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=4.43">
+  <link rel="stylesheet" href="styles.css?v=4.44">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -121,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.43</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.44</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -590,7 +590,38 @@
             </div>
           </div>
 
-          <!-- ============ SECTION 2: Google Drive ============ -->
+          <!-- Integration cards grid -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;">
+<!-- ============ SECTION 2: Gmail ============ -->
+          <div class="card card-flush">
+            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+              </div>
+              <div style="flex:1;">
+                <div class="card-title" style="margin-bottom:0;">Gmail — Ghost Monitor</div>
+                <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
+              </div>
+              <div class="setup-dot" id="gmail-dot"></div>
+            </div>
+            <div style="padding:20px 24px;">
+              <div id="gmail-setup-connected" style="display:none;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                  <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="disconnectGmail()" style="font-size:11px;">Disconnect Gmail</button>
+              </div>
+              <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <button class="btn btn-sm btn-primary" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
+              </div>
+              <div style="font-size:12px;color:var(--text-faint);line-height:1.6;">
+                When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
+              </div>
+            </div>
+          </div>
+
+<!-- ============ SECTION 3: Google Drive ============ -->
           <div class="card card-flush">
             <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
               <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
@@ -621,33 +652,26 @@
             </div>
           </div>
 
-          <!-- ============ SECTION 3: Gmail ============ -->
+          <!-- ============ SECTION 4: Google Calendar ============ -->
           <div class="card card-flush">
             <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
-              <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
-                <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+              <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><path d="M9 4V2M15 4V2" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/><circle cx="16" cy="14" r="1.5" fill="#FBBC05"/></svg>
               </div>
               <div style="flex:1;">
-                <div class="card-title" style="margin-bottom:0;">Gmail — Ghost Monitor</div>
-                <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
+                <div class="card-title" style="margin-bottom:0;">Google Calendar</div>
+                <div style="font-size:11px;color:var(--text-faint);">Sync interview schedules and application deadlines</div>
               </div>
-              <div class="setup-dot" id="gmail-dot"></div>
+              <div class="setup-dot" id="gcal-dot"></div>
             </div>
             <div style="padding:20px 24px;">
-              <div id="gmail-setup-connected" style="display:none;margin-bottom:12px;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                  <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
-                  <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
-                </div>
-                <button class="btn btn-sm btn-secondary" onclick="disconnectGmail()" style="font-size:11px;">Disconnect Gmail</button>
+              <div id="gcal-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <span style="font-size:12px;color:var(--text-dim);" id="gcal-status-text">Not connected</span>
               </div>
-              <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                <button class="btn btn-sm btn-primary" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
-              </div>
-              <div style="font-size:12px;color:var(--text-faint);line-height:1.6;">
-                When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
-              </div>
+              <button class="btn btn-primary btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Google Calendar</button>
+              <p style="font-size:11px;color:var(--text-faint);margin-top:12px;">When connected, interview confirmations and application deadlines will sync to your calendar automatically.</p>
             </div>
+          </div>
           </div>
 
         </div>
@@ -2139,6 +2163,14 @@
                   <div class="sub-cost-desc">Generate optimized search filters from your resume</div>
                 </div>
                 <div class="sub-cost-amount">2 credits</div>
+              </div>
+              <div class="sub-cost-item">
+                <div class="sub-cost-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+                <div class="sub-cost-info">
+                  <div class="sub-cost-name">AI Exclusions</div>
+                  <div class="sub-cost-desc">AI-powered analysis to suggest exclusion patterns from hidden jobs</div>
+                </div>
+                <div class="sub-cost-amount">1 credit</div>
               </div>
             </div>
           </div>
