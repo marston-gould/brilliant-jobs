@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.13';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tiered refresh v13: HOT/WARM/COLD board prioritization');
+const BJ_VERSION = 'v4.22';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
 
 // Auth
 async function init() {
@@ -92,6 +92,13 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   savedJobIds = [];
   appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  // 9.1: Warn about localStorage-only data if user has significant local state
+  if (!localStorage.getItem('bj_cloud_sync_noted') && savedFilters.length > 0) {
+    localStorage.setItem('bj_cloud_sync_noted', '1');
+    setTimeout(function() {
+      showToast('Your saved searches are stored on this device. Cloud sync is coming soon — your data will carry across devices automatically.', { type: 'info', duration: 8000 });
+    }, 3000);
+  }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
   if (typeof initPipeline === 'function') await initPipeline();
   // Trigger sparkle flourish
@@ -434,7 +441,7 @@ function updateGmailUI(connected, email) {
 window.connectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { alert('Please log in first.'); return; }
+    if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
     const res = await fetch('/api/auth/gmail/callback?action=connect', {
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
@@ -442,10 +449,10 @@ window.connectGmail = async function() {
     if (json.url) {
       window.location.href = json.url;
     } else {
-      alert('Failed to start Gmail connection: ' + (json.error || 'Unknown error'));
+      showToast('Failed to start Gmail connection: ' + (json.error || 'Unknown error'), { type: 'error' });
     }
   } catch (e) {
-    alert('Error connecting Gmail: ' + e.message);
+    showToast('Error connecting Gmail: ' + e.message, { type: 'error' });
   }
 };
 
@@ -462,10 +469,10 @@ window.disconnectGmail = async function() {
     if (json.success) {
       updateGmailUI(false, '');
     } else {
-      alert('Failed to disconnect: ' + (json.error || 'Unknown error'));
+      showToast('Failed to disconnect: ' + (json.error || 'Unknown error'), { type: 'error' });
     }
   } catch (e) {
-    alert('Error disconnecting Gmail: ' + e.message);
+    showToast('Error disconnecting Gmail: ' + e.message, { type: 'error' });
   }
 };
 
@@ -479,11 +486,11 @@ window.disconnectGmail = async function() {
   window.history.replaceState({}, '', url);
   if (gmail === 'connected') {
     initGmailStatus();
-    setTimeout(() => alert('Gmail connected successfully! Ghost Monitor will now scan for company responses.'), 500);
+    showToast('Gmail connected! Ghost Monitor will now scan for company responses.', { type: 'success' });
   } else if (gmail === 'denied') {
-    alert('Gmail connection was cancelled.');
+    showToast('Gmail connection was cancelled.', { type: 'info' });
   } else if (gmail === 'error') {
-    alert('Gmail connection failed. Please try again.');
+    showToast('Gmail connection failed. Please try again.', { type: 'error' });
   }
 })();
 

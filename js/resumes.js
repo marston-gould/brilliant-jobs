@@ -634,10 +634,10 @@ window.downloadResume = async function(idx) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      alert('File data not available. Re-upload this resume to enable downloads.');
+      showToast('File data not available. Re-upload this resume to enable downloads.', { type: 'error' });
     }
   } catch(e) {
-    alert('Download failed: ' + e.message);
+    showToast('Download failed: ' + e.message, { type: 'error' });
   }
 };
 
@@ -742,7 +742,7 @@ renderResumes();
 $('#resume-from-level-btn')?.addEventListener('click', async () => {
   const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
   if (levels.length === 0) {
-    alert('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.');
+    showToast('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.', { type: 'info' });
     return;
   }
 
@@ -750,7 +750,7 @@ $('#resume-from-level-btn')?.addEventListener('click', async () => {
   const newLevels = levels.filter(l => l.label && !existingNames.includes(l.label.toLowerCase() + ' resume'));
 
   if (newLevels.length === 0) {
-    alert('You already have resume placeholders for all configured levels.');
+    showToast('You already have resume placeholders for all configured levels.', { type: 'info' });
     return;
   }
 
