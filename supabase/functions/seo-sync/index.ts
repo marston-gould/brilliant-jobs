@@ -37,19 +37,16 @@ const sb = createClient(SB_URL, SB_KEY);
 async function getGoogleToken(): Promise<string> {
   if (!GOOGLE_SA_KEY) throw new Error('GOOGLE_SA_KEY_JSON secret not set');
   const sa = JSON.parse(GOOGLE_SA_KEY);
-  function b64url(str: string): string {
-    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-  }
-  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const now = Math.floor(Date.now() / 1000);
-  const claims = b64url(JSON.stringify({
+  const claims = btoa(JSON.stringify({
     iss: sa.client_email,
     scope: 'https://www.googleapis.com/auth/webmasters.readonly',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now, exp: now + 3600,
   }));
   const signInput = `${header}.${claims}`;
-  const keyPem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\\n/g, '').replace(/\n/g, '').replace(/\s/g, '');
+  const keyPem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\\n/g, '');
   const binaryKey = Uint8Array.from(atob(keyPem), c => c.charCodeAt(0));
   const cryptoKey = await crypto.subtle.importKey(
     'pkcs8', binaryKey, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']
@@ -92,7 +89,6 @@ async function syncGsc(daysBack = 7): Promise<{ byDate: number; byQuery: number;
     const r1 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
       body: JSON.stringify({ startDate: ds, endDate: ds, rowLimit: 1 }) });
     const d1 = await r1.json();
-    if (d1.error) console.error('[seo-sync] GSC API error:', JSON.stringify(d1.error));
     const agg = (d1.rows || [])[0];
     if (agg) {
       await sb.from('seo_site_daily').upsert({
@@ -146,7 +142,6 @@ async function syncGsc(daysBack = 7): Promise<{ byDate: number; byQuery: number;
       result.byQueryPage += qpRows.length;
     }
   }
-  if (result.byDate === 0) console.warn('[seo-sync] GSC returned 0 date rows for', daysBack, 'days. Check service account access to', GSC_SITE);
   return result;
 }
 
