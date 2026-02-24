@@ -23,8 +23,8 @@
   --seo-max-w: 960px;
 }
 
-/* --- Reset for SEO pages --- */
-.seo-page { margin: 0; background: var(--seo-bg); color: var(--seo-text); font-family: var(--seo-sans); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+/* --- Reset for SEO pages — MUST override styles.css body{height:100vh;overflow:hidden} --- */
+.seo-page { margin: 0; background: var(--seo-bg); color: var(--seo-text); font-family: var(--seo-sans); line-height: 1.6; -webkit-font-smoothing: antialiased; height: auto !important; overflow: visible !important; overflow-y: auto !important; max-height: none !important; }
 .seo-page *, .seo-page *::before, .seo-page *::after { box-sizing: border-box; }
 
 /* --- Navigation --- */
