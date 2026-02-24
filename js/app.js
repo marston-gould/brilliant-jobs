@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.37';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix .main width with calc(100vw) — restore flex on .app');
+const BJ_VERSION = 'v4.38';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix .main layout — position:fixed with left:nav-w right:0');
 
 // Auth
 async function init() {
@@ -30,7 +30,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     window._bjUserRole = p.role || 'user';
   } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
   $('#auth-gate').style.display = 'none';
-  $('#app').style.display = 'flex';
+  $('#app').style.display = 'block';
   // Show admin nav immediately — profile already fetched, no extra round trip
   if (profile && profile.role === 'admin') {
     var navAdmin = document.getElementById('nav-admin');
