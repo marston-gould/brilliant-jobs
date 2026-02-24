@@ -20,6 +20,7 @@ const jsFiles = [
   'js/billing.js',
   'js/micro-surveys.js',
   'js/rewrite.js',
+  'js/resume-archive.js',
   'js/app.js',
 ];
 

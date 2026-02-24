@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.56 - 2026-02-25 — Resume Archive Phase 2 — migration, sync, version tracking -->
+<!-- Brilliant Jobs Dashboard v4.57 - 2026-02-25 — Resume Archive Phase 3 — Archive tab UI -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1156,6 +1156,19 @@
         </div>
         <div class="page-body">
 
+          <!-- Resume Tab Toggle -->
+          <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
+            <button class="btn btn-sm resume-tab-toggle active" id="resume-tab-active" onclick="switchResumeTab('active')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+              Active Resumes
+            </button>
+            <button class="btn btn-sm resume-tab-toggle" id="resume-tab-archive" onclick="switchResumeTab('archive')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+              Archive
+            </button>
+          </div>
+
+          <!-- === Active Resumes Tab === -->
+          <div id="resume-tab-content-active">
+
           <!-- Stats -->
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
@@ -1197,7 +1210,76 @@
             </div>
           </div>
 
-          <!-- Resume Archive -->
+          </div><!-- /resume-tab-content-active -->
+
+          <!-- === Archive Tab === -->
+          <div id="resume-tab-content-archive" style="display:none;">
+
+            <!-- Storage Usage Bar -->
+            <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div class="card-title" style="margin:0;">Storage Usage</div>
+                <span id="archive-storage-label" style="font-size:11px;color:var(--text-faint);">0 KB / 50 MB</span>
+              </div>
+              <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+                <div id="archive-storage-bar" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width 0.3s;"></div>
+              </div>
+              <div id="archive-tier-cta" style="display:none;font-size:10px;color:var(--warm);margin-top:6px;">
+                Approaching storage limit. <a href="#" onclick="event.preventDefault();showPage('subscription');" style="color:var(--accent);text-decoration:underline;">Upgrade plan</a>
+              </div>
+            </div>
+
+            <!-- Archive Stats Row -->
+            <div class="stat-grid" style="margin-bottom:16px;">
+              <div class="stat-card"><div class="stat-val" id="arch-total">0</div><div class="stat-label">Total Archived</div></div>
+              <div class="stat-card"><div class="stat-val" id="arch-active">0</div><div class="stat-label">Active Versions</div></div>
+              <div class="stat-card"><div class="stat-val" id="arch-versions">0</div><div class="stat-label">Total Versions</div></div>
+              <div class="stat-card"><div class="stat-val" id="arch-tier">—</div><div class="stat-label">Your Plan</div></div>
+            </div>
+
+            <!-- Archive Table -->
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+                <div class="card-title" style="margin:0;">Resume Archive</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input id="archive-search" type="text" placeholder="Search…" style="font-size:11px;padding:4px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);width:140px;">
+                  <button class="btn btn-sm btn-secondary" id="archive-refresh-btn" onclick="loadResumeArchive()" style="font-size:10px;">Refresh</button>
+                </div>
+              </div>
+              <div id="archive-table-wrap" style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                  <thead>
+                    <tr style="background:var(--bg-input);text-align:left;">
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Name</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Version</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Created</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Last Used</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Size</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Status</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archive-table-body">
+                    <tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">Loading archive…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Version Timeline (shown when a resume row is expanded) -->
+            <div id="archive-version-timeline" style="display:none;margin-top:16px;">
+              <div class="card" style="padding:16px 20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <div class="card-title" style="margin:0;">Version History</div>
+                  <button class="btn btn-sm btn-secondary" onclick="document.getElementById('archive-version-timeline').style.display='none';" style="font-size:10px;">Close</button>
+                </div>
+                <div id="archive-version-list"></div>
+              </div>
+            </div>
+
+          </div><!-- /resume-tab-content-archive -->
+
+          <!-- Resume Archive (legacy — kept for localStorage archived resumes) -->
           <div id="resume-archive-section" style="display:none;margin-top:24px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div class="card-title">Archived Resumes</div>
@@ -2992,6 +3074,8 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Q22: App view toggle */
 .app-view-toggle { background: transparent !important; color: var(--text-dim) !important; border: none !important; }
 .app-view-toggle.active { background: var(--bg-card) !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.resume-tab-toggle { background: transparent !important; color: var(--text-dim) !important; border: none !important; }
+.resume-tab-toggle.active { background: var(--bg-card) !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 /* Q26: Keyboard focus on pills */
 .qb-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 /* Q28: Skeleton loading */
