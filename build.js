@@ -23,14 +23,11 @@ const jsFiles = [
   'js/app.js',
 ];
 
-// Simple concatenation — wrap each file in an IIFE to avoid const/let scope collisions
-// during esbuild minification. Functions declared inside are hoisted to global in sloppy mode.
-const combined = jsFiles.map(f => {
-  const src = readFileSync(f, 'utf-8');
-  // Wrap in IIFE but keep function declarations accessible globally
-  // by NOT using strict mode (browser sloppy mode hoists function decls)
-  return `// === ${f} ===\n;(function(){\n${src}\n})();`;
-}).join('\n\n');
+// Simple concatenation — no IIFE wrapper needed.
+// Browser <script> tags run in sloppy mode where function re-declarations are fine.
+// NOTE: const/let re-declarations in the same scope WILL fail in esbuild.
+// Fix: eliminate duplicate const declarations within single files (see app.js init() fix).
+const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/dashboard.js', combined);
