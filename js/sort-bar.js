@@ -63,7 +63,108 @@ function renderSortPills() {
   });
 }
 
-// Guard: only run if dashboard sort UI elements exist
+// Function declarations (must be top-level for cross-file access)
+async function searchCompanies(query) {
+  const results = [];
+  try {
+    // Search ats_companies by slug or name
+    const { data: atsData, error: atsErr } = await sb
+      .from('ats_companies')
+      .select('slug, name, source')
+      .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
+      .limit(6);
+    if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
+    if (atsData) {
+      atsData.forEach(c => results.push({
+        name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
+      }));
+    }
+  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+
+  try {
+    // Search user's connections by parsed_company
+    const { data: connData, error: connErr } = await sb
+      .from('connections')
+      .select('parsed_company')
+      .ilike('parsed_company', `%${query}%`)
+      .not('parsed_company', 'is', null)
+      .limit(30);
+    if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
+    if (connData) {
+      const counts = {};
+      connData.forEach(p => {
+        const n = (p.parsed_company || '').trim();
+        if (n) counts[n] = (counts[n] || 0) + 1;
+      });
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .forEach(([name, count]) => {
+          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
+            results.push({ name, source: 'network', connections: count });
+          }
+        });
+    }
+  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
+
+  renderCompanyDropdown(results, query);
+}
+
+function commitPill(input, pillArray, makePill) {
+  const raw = input.value.trim().toLowerCase();
+  if (!raw) return false;
+  pillArray.push(makePill(raw));
+  input.value = '';
+  renderAllPills();
+  return true;
+}
+
+function focusNextInput(currentId) {
+  const idx = qbInputOrder.indexOf(currentId);
+  if (idx >= 0 && idx < qbInputOrder.length - 1) {
+    const next = $('#' + qbInputOrder[idx + 1]);
+    if (next) setTimeout(() => next.focus(), 10);
+  }
+}
+
+function renderCompanyDropdown(results, query) {
+  if (results.length === 0) { companyDropdown.classList.remove('open'); return; }
+  companyDropdown.innerHTML = results.map(r => {
+    const badge = r.source === 'network'
+      ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
+      : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
+    const hl = highlightCompanyMatch(r.name, query);
+    return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
+      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
+  }).join('');
+  companyDropdown.classList.add('open');
+
+  companyDropdown.querySelectorAll('.company-opt').forEach(opt => {
+    opt.addEventListener('mousedown', e => {
+      e.preventDefault(); // prevent blur from firing first
+      qbInputWho.value = opt.dataset.name;
+      commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
+      renderAllPills();
+      companyDropdown.classList.remove('open');
+    });
+    opt.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); opt.dispatchEvent(new Event('mousedown')); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWho.focus(); }
+      if (e.key === 'Escape') { companyDropdown.classList.remove('open'); qbInputWho.focus(); }
+    });
+  });
+}
+
+function highlightCompanyMatch(text, query) {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx < 0) return text;
+  return text.slice(0, idx) +
+    '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
+    text.slice(idx + query.length);
+}
+
+// Guard: only run imperative DOM code if dashboard elements exist
 if ($('#sort-pills')) {
 
 // Sort add button + dropdown
@@ -118,24 +219,11 @@ renderSortPills();
 
 // Input handling — What row
 const qbInputWhat = $('#qb-input-what');
-function commitPill(input, pillArray, makePill) {
-  const raw = input.value.trim().toLowerCase();
-  if (!raw) return false;
-  pillArray.push(makePill(raw));
-  input.value = '';
-  renderAllPills();
-  return true;
-}
+
 
 const qbInputOrder = ['qb-input-what', 'qb-input-where', 'qb-input-when', 'qb-input-who', 'qb-input-pay-min'];
 
-function focusNextInput(currentId) {
-  const idx = qbInputOrder.indexOf(currentId);
-  if (idx >= 0 && idx < qbInputOrder.length - 1) {
-    const next = $('#' + qbInputOrder[idx + 1]);
-    if (next) setTimeout(() => next.focus(), 10);
-  }
-}
+
 
 qbInputWhat.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
@@ -244,88 +332,10 @@ qbInputWho.addEventListener('input', () => {
 });
 
 
-async function searchCompanies(query) {
-  const results = [];
-  try {
-    // Search ats_companies by slug or name
-    const { data: atsData, error: atsErr } = await sb
-      .from('ats_companies')
-      .select('slug, name, source')
-      .or(`slug.ilike.%${query}%,name.ilike.%${query}%`)
-      .limit(6);
-    if (atsErr) console.warn('[BJ] ATS company search error:', atsErr.message);
-    if (atsData) {
-      atsData.forEach(c => results.push({
-        name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
-      }));
-    }
-  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+// searchCompanies defined above guard
 
-  try {
-    // Search user's connections by parsed_company
-    const { data: connData, error: connErr } = await sb
-      .from('connections')
-      .select('parsed_company')
-      .ilike('parsed_company', `%${query}%`)
-      .not('parsed_company', 'is', null)
-      .limit(30);
-    if (connErr) console.warn('[BJ] Connection company search error:', connErr.message);
-    if (connData) {
-      const counts = {};
-      connData.forEach(p => {
-        const n = (p.parsed_company || '').trim();
-        if (n) counts[n] = (counts[n] || 0) + 1;
-      });
-      Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4)
-        .forEach(([name, count]) => {
-          if (!results.find(r => r.name.toLowerCase() === name.toLowerCase())) {
-            results.push({ name, source: 'network', connections: count });
-          }
-        });
-    }
-  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
 
-  renderCompanyDropdown(results, query);
-}
 
-function renderCompanyDropdown(results, query) {
-  if (results.length === 0) { companyDropdown.classList.remove('open'); return; }
-  companyDropdown.innerHTML = results.map(r => {
-    const badge = r.source === 'network'
-      ? `<span style="font-size:9px;background:rgba(52,211,153,0.1);color:var(--green);padding:1px 6px;border-radius:4px;font-weight:600;">${r.connections} conn</span>`
-      : `<span style="font-size:9px;background:rgba(99,102,241,0.1);color:#6366f1;padding:1px 6px;border-radius:4px;font-weight:600;">${r.ats}</span>`;
-    const hl = highlightCompanyMatch(r.name, query);
-    return `<div class="company-opt" tabindex="0" data-name="${r.name.replace(/"/g, '&quot;')}">
-      <span style="font-weight:500;">${hl}</span>${badge}</div>`;
-  }).join('');
-  companyDropdown.classList.add('open');
-
-  companyDropdown.querySelectorAll('.company-opt').forEach(opt => {
-    opt.addEventListener('mousedown', e => {
-      e.preventDefault(); // prevent blur from firing first
-      qbInputWho.value = opt.dataset.name;
-      commitPill(qbInputWho, whoPills, raw => ({ values: [raw], type: 'who' }));
-      renderAllPills();
-      companyDropdown.classList.remove('open');
-    });
-    opt.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); opt.dispatchEvent(new Event('mousedown')); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); const n = opt.nextElementSibling; if (n) n.focus(); }
-      if (e.key === 'ArrowUp') { e.preventDefault(); const p = opt.previousElementSibling; if (p) p.focus(); else qbInputWho.focus(); }
-      if (e.key === 'Escape') { companyDropdown.classList.remove('open'); qbInputWho.focus(); }
-    });
-  });
-}
-
-function highlightCompanyMatch(text, query) {
-  const idx = text.toLowerCase().indexOf(query.toLowerCase());
-  if (idx < 0) return text;
-  return text.slice(0, idx) +
-    '<strong style="color:var(--accent);">' + text.slice(idx, idx + query.length) + '</strong>' +
-    text.slice(idx + query.length);
-}
 
 
 } // end sort-bar guard
