@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.52</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.53</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -840,6 +840,21 @@
 
           <!-- Sort bar -->
                       <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin:8px 12px;flex-wrap:wrap;">
+            <div id="sort-pills" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+            <div class="sort-add-wrap" style="position:relative;">
+              <button id="sort-add-btn" class="btn btn-sm" style="padding:2px 8px;font-size:10px;color:var(--text-faint);border:1px dashed var(--border);background:transparent;cursor:pointer;">+ Sort</button>
+              <div id="sort-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px;min-width:120px;">
+                <div class="sort-opt" data-field="title" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Title</div>
+                <div class="sort-opt" data-field="company_name" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Company</div>
+                <div class="sort-opt" data-field="location" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Location</div>
+                <div class="sort-opt" data-field="updated_at" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Days</div>
+                <div class="sort-opt" data-field="level" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Level</div>
+                <div class="sort-opt" data-field="salary_max" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Salary</div>
+              </div>
+            </div>
           </div>
 
           <!-- Job results table -->
