@@ -345,7 +345,7 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
     <a href="/" class="seo-logo">Brilliant Jobs</a>
     <div class="seo-nav-links">
       <a href="/job-market-data">Market Data</a>
-      <a href="/dashboard" class="btn-nav-cta">Sign In</a>
+      <a href="/dashboard" class="btn-nav-cta">Start Free</a>
     </div>
   </nav>
 
