@@ -10,11 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Extract URLs from sitemap
         id: urls
         run: |
-          # Parse sitemap.xml for URLs
           URLS=$(grep -oP '<loc>\K[^<]+' sitemap.xml | head -20)
           echo "Found URLs:"
           echo "$URLS"
@@ -29,107 +28,120 @@ jobs:
           mkdir -p psi-results
           TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           RESULTS_FILE="psi-results/audit-$(date -u +%Y%m%d).json"
-          
+
           echo '{"timestamp":"'"$TIMESTAMP"'","pages":[' > "$RESULTS_FILE"
           FIRST=true
-          
+
           while IFS= read -r URL; do
             [ -z "$URL" ] && continue
             echo "Auditing: $URL"
-            
-            # PSI API call (mobile strategy)
+
             RESPONSE=$(curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeedTest?url=${URL}&strategy=mobile&key=${PSI_API_KEY}&category=performance&category=accessibility" 2>/dev/null || echo '{}')
-            
-            # Extract key metrics
-            FCP=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('lighthouseResult',{}).get('audits',{}).get('first-contentful-paint',{}).get('numericValue','N/A'))" 2>/dev/null || echo "N/A")
-            LCP=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('lighthouseResult',{}).get('audits',{}).get('largest-contentful-paint',{}).get('numericValue','N/A'))" 2>/dev/null || echo "N/A")
-            CLS=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('lighthouseResult',{}).get('audits',{}).get('cumulative-layout-shift',{}).get('numericValue','N/A'))" 2>/dev/null || echo "N/A")
-            TBT=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('lighthouseResult',{}).get('audits',{}).get('total-blocking-time',{}).get('numericValue','N/A'))" 2>/dev/null || echo "N/A")
-            PERF=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('lighthouseResult',{}).get('categories',{}).get('performance',{}).get('score','N/A'))" 2>/dev/null || echo "N/A")
-            A11Y=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('lighthouseResult',{}).get('categories',{}).get('accessibility',{}).get('score','N/A'))" 2>/dev/null || echo "N/A")
-            
-            # Collect failing audits
-            FAILURES=$(echo "$RESPONSE" | python3 -c "
-import json, sys
-d = json.load(sys.stdin)
-audits = d.get('lighthouseResult',{}).get('audits',{})
-fails = []
-for k,v in audits.items():
-    if v.get('score') is not None and v['score'] < 0.9 and v.get('scoreDisplayMode') != 'informative':
-        fails.append({'id':k,'title':v.get('title',''),'score':v['score']})
-print(json.dumps(fails[:10]))
-" 2>/dev/null || echo "[]")
-            
+
+            # Extract metrics via standalone python script
+            cat > /tmp/extract_psi.py << 'PYEXTRACT'
+          import json, sys
+          try:
+              d = json.load(sys.stdin)
+              lr = d.get('lighthouseResult', {})
+              audits = lr.get('audits', {})
+              cats = lr.get('categories', {})
+              metrics = {
+                  'fcp': audits.get('first-contentful-paint', {}).get('numericValue', 'N/A'),
+                  'lcp': audits.get('largest-contentful-paint', {}).get('numericValue', 'N/A'),
+                  'cls': audits.get('cumulative-layout-shift', {}).get('numericValue', 'N/A'),
+                  'tbt': audits.get('total-blocking-time', {}).get('numericValue', 'N/A'),
+                  'perf_score': cats.get('performance', {}).get('score', 'N/A'),
+                  'a11y_score': cats.get('accessibility', {}).get('score', 'N/A'),
+              }
+              fails = []
+              for k, v in audits.items():
+                  if v.get('score') is not None and v['score'] < 0.9 and v.get('scoreDisplayMode') != 'informative':
+                      fails.append({'id': k, 'title': v.get('title', ''), 'score': v['score']})
+              metrics['failures'] = fails[:10]
+              print(json.dumps(metrics))
+          except Exception:
+              print(json.dumps({'fcp':'N/A','lcp':'N/A','cls':'N/A','tbt':'N/A','perf_score':'N/A','a11y_score':'N/A','failures':[]}))
+          PYEXTRACT
+
+            METRICS=$(echo "$RESPONSE" | python3 /tmp/extract_psi.py)
+
+            FCP=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin)['fcp'])")
+            LCP=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin)['lcp'])")
+            CLS=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin)['cls'])")
+            TBT=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin)['tbt'])")
+            PERF=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin)['perf_score'])")
+            A11Y=$(echo "$METRICS" | python3 -c "import json,sys; print(json.load(sys.stdin)['a11y_score'])")
+            FAILURES=$(echo "$METRICS" | python3 -c "import json,sys; print(json.dumps(json.load(sys.stdin)['failures']))")
+
             if [ "$FIRST" = true ]; then FIRST=false; else echo "," >> "$RESULTS_FILE"; fi
-            
+
             echo "{\"url\":\"$URL\",\"fcp\":$FCP,\"lcp\":$LCP,\"cls\":$CLS,\"tbt\":$TBT,\"perf_score\":$PERF,\"a11y_score\":$A11Y,\"failures\":$FAILURES}" >> "$RESULTS_FILE"
-            
-            # Rate limit: PSI allows ~25 req/100s with API key
+
             sleep 5
           done <<< "${{ steps.urls.outputs.urls }}"
-          
-          echo ']}'  >> "$RESULTS_FILE"
-          
+
+          echo ']}' >> "$RESULTS_FILE"
+
           echo "=== AUDIT SUMMARY ==="
-          python3 -c "
-import json
-with open('$RESULTS_FILE') as f:
-    data = json.load(f)
-for p in data['pages']:
-    perf = p.get('perf_score','?')
-    perf_pct = f'{float(perf)*100:.0f}%' if perf not in ['N/A','?'] else perf
-    a11y = p.get('a11y_score','?')
-    a11y_pct = f'{float(a11y)*100:.0f}%' if a11y not in ['N/A','?'] else a11y
-    fcp = f\"{float(p.get('fcp',0))/1000:.1f}s\" if p.get('fcp') not in ['N/A'] else 'N/A'
-    lcp = f\"{float(p.get('lcp',0))/1000:.1f}s\" if p.get('lcp') not in ['N/A'] else 'N/A'
-    fails = len(p.get('failures',[]))
-    print(f\"  {p['url']}\")
-    print(f\"    Perf: {perf_pct} | A11y: {a11y_pct} | FCP: {fcp} | LCP: {lcp} | Failures: {fails}\")
-"
+          cat > /tmp/summarize_psi.py << 'PYSUMMARY'
+          import json, sys
+          results_file = sys.argv[1]
+          with open(results_file) as f:
+              data = json.load(f)
+          for p in data['pages']:
+              perf = p.get('perf_score', '?')
+              perf_pct = f'{float(perf)*100:.0f}%' if perf not in ['N/A', '?'] else perf
+              a11y = p.get('a11y_score', '?')
+              a11y_pct = f'{float(a11y)*100:.0f}%' if a11y not in ['N/A', '?'] else a11y
+              fcp = f"{float(p.get('fcp', 0))/1000:.1f}s" if p.get('fcp') not in ['N/A'] else 'N/A'
+              lcp = f"{float(p.get('lcp', 0))/1000:.1f}s" if p.get('lcp') not in ['N/A'] else 'N/A'
+              fails = len(p.get('failures', []))
+              print(f"  {p['url']}")
+              print(f"    Perf: {perf_pct} | A11y: {a11y_pct} | FCP: {fcp} | LCP: {lcp} | Failures: {fails}")
+          PYSUMMARY
+          python3 /tmp/summarize_psi.py "$RESULTS_FILE"
 
       - name: Check for regressions
         run: |
-          python3 << 'PYEOF'
+          cat > /tmp/check_regressions.py << 'PYCHECK'
           import json, glob, sys
-          
-          # Find latest two audit files
+
           files = sorted(glob.glob('psi-results/audit-*.json'))
           if len(files) < 2:
               print("Not enough history for regression check")
               sys.exit(0)
-          
+
           with open(files[-1]) as f:
               current = json.load(f)
           with open(files[-2]) as f:
               previous = json.load(f)
-          
+
           prev_by_url = {p['url']: p for p in previous['pages']}
           regressions = []
-          
+
           for page in current['pages']:
               url = page['url']
               if url not in prev_by_url:
                   continue
               prev = prev_by_url[url]
-              
-              # Check for perf score drop > 10 points
+
               try:
                   curr_score = float(page.get('perf_score', 0))
                   prev_score = float(prev.get('perf_score', 0))
                   if prev_score - curr_score > 0.1:
                       regressions.append(f"PERF REGRESSION: {url} dropped from {prev_score*100:.0f}% to {curr_score*100:.0f}%")
-              except:
+              except Exception:
                   pass
-              
-              # Check for LCP increase > 1s
+
               try:
                   curr_lcp = float(page.get('lcp', 0))
                   prev_lcp = float(prev.get('lcp', 0))
                   if curr_lcp - prev_lcp > 1000:
                       regressions.append(f"LCP REGRESSION: {url} increased from {prev_lcp/1000:.1f}s to {curr_lcp/1000:.1f}s")
-              except:
+              except Exception:
                   pass
-          
+
           if regressions:
               print("⚠️ REGRESSIONS DETECTED:")
               for r in regressions:
@@ -137,7 +149,8 @@ for p in data['pages']:
               sys.exit(1)
           else:
               print("✅ No regressions detected")
-          PYEOF
+          PYCHECK
+          python3 /tmp/check_regressions.py
 
       - name: Commit results
         run: |
