@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-23
+**Last updated:** 2026-02-24
 **Target launch:** March 2026
-**Current version:** v4.13
+**Current version:** v4.48.1
 
 ---
 
@@ -1176,3 +1176,99 @@ M-R1–R6 complete — see **Phase S2** above (v4.29).
 | — | 30 * * * * | prompt-pipeline-hourly | Phase T |
 | — | */15 * * * * | scan-pipeline-signals-15m | Phase T |
 | — | 0 4 * * 0 | pattern-confidence-decay | Phase T |
+
+---
+
+## Phase 31: Daily Fixes & Admin Panel (v4.42–v4.48.1) — 2026-02-24
+
+**Estimated:** ~12h | **Actual:** Single session | **Status:** ✅ COMPLETE
+
+Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge Function deploys, and 1 infrastructure upgrade.
+
+### CSS & Layout Foundation (v4.42)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F1 | Tailwind safelist fix | ✅ | CSS tree-shaking purged @layer component rules. Added pattern safelist to tailwind.config.js. CSS: 55KB → 96KB with all rules preserved. |
+| F2 | Extra `</div>` HTML fix | ✅ | Stray `</div>` after page-stats closed `.main` prematurely. Settings/Subscription/Feedback/Admin rendered at 87px width. |
+
+### Quick Fixes (v4.43)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F3 | Forgot Password modal | ✅ | Dedicated `form-forgot` view. "Reset your password" title. `switchTab('forgot')` replaces old hack. |
+| F4 | Admin unlimited filters | ✅ | `checkEntitlement()` returns unlimited for `window._bjUserRole === 'admin'`. |
+| F5 | Feedback page padding | ✅ | Added `.page-body` wrapper for standard 28px 40px padding. |
+
+### UI Batch 1 (v4.44)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F6 | Setup page card grid | ✅ | Chrome Extension full-width, then Gmail → Drive → Calendar in 3-col grid (min 340px). |
+| F7 | Google Calendar card | ✅ | New Setup integration card with icon, connect button, status dot. |
+| F8 | Seniority chart order | ✅ | Fixed `SENIORITY_ORDER` to ascending: Entry → Analyst → … → VP → C-Suite (16 levels). |
+| F9 | Credit usage docs | ✅ | Added "AI Exclusions" (1 credit) to "What Uses Credits" on Subscription page. |
+
+### UI Batch 2 (v4.45)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F10 | AI Suggest moved | ✅ | From Saved Searches header → Filter Builder toolbar. Renamed "✦ Generate from Resume". |
+| F11 | Salary pills layout | ✅ | `grid-column:1/-1` so pills render below min/max inputs instead of overflowing. |
+| F12 | Countries in exclusions | ✅ | 200+ countries in `searchTuningLocations()` with blue "country" badge. |
+| F13 | Chart colors | ✅ | Light fills (opacity 0.15) + dark outlines (width 2). `_platformLineColors` added. |
+
+### Data Persistence (v4.46)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F14 | Resume Storage persistence | ✅ | Files were IndexedDB-only. Now upload to Supabase Storage at `userId/resumeId_filename`. Fallback download from Storage on cache miss. Startup backfill for existing resumes. |
+
+### Edge Functions
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F15 | hire-fee CORS fix | ✅ | Dynamic origin matching from `ALLOWED_ORIGINS` array (prod, dev, staging, localhost). |
+| F16 | GSC JWT fix (seo-sync) | ✅ | URL-safe base64 (`b64url()`) for JWT header/claims. PEM parsing for escaped newlines. GSC data flowing. |
+| F20 | sync-feedback Edge Function | ✅ | Pulls Canny FR + Bug boards, syncs Supabase feedback table. Resolves user emails → profile IDs + cohort_id. |
+
+### Infrastructure
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F17 | Supabase Nano → Small | ✅ | PGRST002 errors from depleted IOPS. Upgraded to Small ($15/mo): 4x IOPS, dedicated CPU, 1GB RAM. |
+
+### SEO Extract Report (v4.47)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F18 | SEO Extract Report | ✅ | "Export Report" button in SEO tab. Styled HTML combining PSI, DataForSEO, URL Inspection, YLT, GSC. Downloads as `seo-report-{slug}-{date}.html` with A-F grade badge. |
+
+### Admin Feedback System (v4.48)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F19 | `admin_feedback` table + RLS | ✅ | `(external_id, source)` unique. Admin-only RLS. Columns: source, user_id, cohort_id, title, content, status, votes, submitted_at. |
+| F21 | Admin Feedback tab | ✅ | Type/status pills, cohort dropdown, sort, search. Summary cards. Table with inline status editing. Side panel detail view. Sync button. Days-stale color coding (green/amber/red). |
+
+### Bug Fix (v4.48.1)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| F22 | Null ref TypeError | ✅ | `$('#sort-add-btn').addEventListener` crashed at parse time. Added `?.` to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js. |
+
+### Deployment Summary
+
+| Version | Files | Changes |
+|---------|-------|---------|
+| v4.42 | tailwind.config.js, styles.css, dashboard.html | Tailwind safelist, CSS rebuild |
+| v4.43 | index.html, dashboard.html, js/globals.js | Forgot password, admin filters, feedback padding |
+| v4.44 | dashboard.html, js/stats.js | Setup cards, Calendar, seniority order, credit usage |
+| v4.45 | dashboard.html, js/admin.js, js/tuning.js | AI suggest, salary pills, countries, chart colors |
+| v4.46 | js/app.js, js/resumes.js | Resume Storage persistence |
+| v4.47 | dashboard.html, js/admin.js | SEO Extract Report |
+| v4.48 | dashboard.html, js/admin.js | Admin Feedback tab + sync-feedback EF |
+| v4.48.1 | js/sort-bar.js, js/billing.js | Null ref TypeError fix |
+| Edge | hire-fee/index.ts | CORS dynamic origin |
+| Edge | seo-sync/index.ts | JWT base64 + PEM fix |
+| Edge | sync-feedback/index.ts | New: Canny + feedback sync |

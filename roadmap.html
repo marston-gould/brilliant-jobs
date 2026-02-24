@@ -1372,7 +1372,8 @@ function render() {
     27: 'SEO Data Pages',
     28: 'AI Rewrite: JD-Match Boost',
     29: 'Survey System Hardening',
-    30: 'Intelligent Pipeline Tracking'
+    30: 'Intelligent Pipeline Tracking',
+    31: 'Daily Fixes & Admin Panel'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
@@ -1412,7 +1413,53 @@ function render() {
         const statusIcon = f.s === 'done' ? '\u2713' : (f.s === 'progress' ? '\u25D0' : '\u25CB');
         const nameCls = f.s === 'done' ? 'feature-name is-done' : 'feature-name';
         const blockedMap = {
-          'post-launch': ['bt-postlaunch', 'POST-LAUNCH'],
+          'post-launch': ['bt-postlaunch', 'POST-LAUNCH'
+  // ============================================================
+  // Phase 31: Daily Fixes & Admin Panel (v4.42–v4.48.1) — 2026-02-24
+  // ============================================================
+
+  // CSS & Layout Foundation
+  { s: 'done', n: 'F1: Tailwind safelist fix', d: 'CSS tree-shaking was purging @layer component rules (.page-header, .page-body, .nav-icon, .card-title, etc). Added pattern safelist to tailwind.config.js. Rebuilt CSS: 55KB → 96KB with all component rules preserved. All 7 dashboard tabs verified.', p: 31 },
+  { s: 'done', n: 'F2: Extra </div> HTML fix', d: 'Stray </div> after page-stats closed .main prematurely. Settings/Subscription/Feedback/Admin pages rendered as flex siblings at 87px width. Fixed HTML structure.', p: 31 },
+
+  // Quick Fixes (v4.43)
+  { s: 'done', n: 'F3: Forgot Password modal', d: 'Dedicated form-forgot modal view. No longer opens login form first. Title shows "Reset your password" with email field + send button. switchTab("forgot") replaces old hack.', p: 31 },
+  { s: 'done', n: 'F4: Admin unlimited filters', d: 'checkEntitlement() returns unlimited for admin role (window._bjUserRole === "admin"). No more 1-filter limit for admin.', p: 31 },
+  { s: 'done', n: 'F5: Feedback page padding', d: 'Added .page-body wrapper around feedback page content. Standard 28px 40px padding matching all other pages.', p: 31 },
+
+  // UI Batch 1 (v4.44)
+  { s: 'done', n: 'F6: Setup page card grid', d: 'Reordered: Chrome Extension full-width, then Gmail → Google Drive → Calendar in 3-col responsive grid (min 340px).', p: 31 },
+  { s: 'done', n: 'F7: Google Calendar integration card', d: 'New Setup card with calendar icon (colored dots SVG), connect button, description, status dot.', p: 31 },
+  { s: 'done', n: 'F8: Seniority chart order fix', d: 'Fixed SENIORITY_ORDER from broken sequence to ascending: Entry → Analyst → Associate → Mid → Senior → … → VP → C-Suite (16 levels).', p: 31 },
+  { s: 'done', n: 'F9: Credit usage documentation', d: 'Added "AI Exclusions" (1 credit) to "What Uses Credits" section on Subscription page.', p: 31 },
+
+  // UI Batch 2 (v4.45)
+  { s: 'done', n: 'F10: AI Suggest moved to Filter Builder', d: 'Moved from Saved Searches header to Filter Builder toolbar. Renamed to "✦ Generate from Resume". Removed redundant resume-filter-cta.', p: 31 },
+  { s: 'done', n: 'F11: Salary pills layout fix', d: 'Moved qb-pay-pill-inline below min/max row with grid-column:1/-1 so pills render underneath inputs instead of overflowing right.', p: 31 },
+  { s: 'done', n: 'F12: Countries in Location Exclusions', d: '200+ countries added to searchTuningLocations() with blue "country" badge. Filter by startsWith or includes.', p: 31 },
+  { s: 'done', n: 'F13: Chart colors update', d: 'Feed Health charts: light fills (opacity 0.15, was 0.6) + dark outlines (width 2). Added _platformLineColors with darker stroke variants.', p: 31 },
+
+  // Resume Storage (v4.46)
+  { s: 'done', n: 'F14: Resume file persistence (Supabase Storage)', d: 'Files were only in IndexedDB (browser-local). Now upload to Storage at userId/resumeId_filename. Download falls back to Storage on IndexedDB miss. Startup backfill for existing resumes without storagePath. Delete cleans both stores.', p: 31 },
+
+  // Edge Functions
+  { s: 'done', n: 'F15: hire-fee CORS fix', d: 'Hardcoded origin blocked dev/staging. Dynamic origin matching from ALLOWED_ORIGINS array (prod, dev, staging, localhost).', p: 31 },
+  { s: 'done', n: 'F16: GSC JWT encoding fix (seo-sync)', d: 'JWT used standard btoa() but Google OAuth requires URL-safe base64. Added b64url() helper. Fixed PEM parsing for escaped newlines. GSC data now flowing.', p: 31 },
+
+  // Infrastructure
+  { s: 'done', n: 'F17: Supabase Nano → Small compute upgrade', d: 'PGRST002 errors from depleted IOPS on Nano tier. Upgraded to Small ($15/mo): 4x IOPS baseline, dedicated CPU, 1GB RAM.', p: 31 },
+
+  // SEO Report (v4.47)
+  { s: 'done', n: 'F18: SEO Extract Report', d: 'Export Report button in SEO tab. Generates styled HTML combining PSI scores + CWV, DataForSEO on-page, URL Inspection, Yellow Lab Tools, GSC performance. Downloads as seo-report-{slug}-{date}.html with print-ready CSS and A-F grade badge.', p: 31 },
+
+  // Feedback System (v4.48)
+  { s: 'done', n: 'F19: admin_feedback table + RLS', d: 'Columns: id, external_id, source, user_id, cohort_id, title, content, status, votes, submitted_at, synced_at. Unique on (external_id, source). Admin-only RLS.', p: 31 },
+  { s: 'done', n: 'F20: sync-feedback Edge Function', d: 'Pulls from Canny FR + Bug boards, syncs existing Supabase feedback table. Resolves user emails to profile IDs + cohort_id. Upserts with conflict handling.', p: 31 },
+  { s: 'done', n: 'F21: Admin Feedback tab', d: 'Type pills (All/FR/Bug/Feedback/Survey), status pills (New/Reviewing/Planned/In Progress/Done/Won\'t Fix), cohort dropdown, sort, search. Summary cards. Table with inline status editing. Side panel detail view. Sync button. Days-stale color coding.', p: 31 },
+
+  // Bug Fix (v4.48.1)
+  { s: 'done', n: 'F22: Null ref TypeError fix', d: 'sort-bar.js: $("#sort-add-btn").addEventListener crashed at parse time (element not in DOM). Added optional chaining (?.) to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js.', p: 31 },
+],
           'needs-users': ['bt-postlaunch', 'NEEDS USERS'],
           'dependency': ['bt-dependency', 'DEPENDENCY'],
           'external': ['bt-external', 'EXTERNAL'],
