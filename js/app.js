@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.45';
+const BJ_VERSION = 'v4.46';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Revert to flex layout + overflow-x:hidden fix');
 
 // Auth
@@ -152,6 +152,27 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
     } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
+  }
+  // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
+  if (resumes.length > 0 && currentUser) {
+    var needsStorageSync = resumes.filter(function(r) { return !r.storagePath && !r.archived; });
+    if (needsStorageSync.length > 0) {
+      console.log('[resume-storage] ' + needsStorageSync.length + ' resumes need Storage upload');
+      needsStorageSync.forEach(async function(r) {
+        try {
+          var file = await bjFileStore.get(r.id);
+          if (file) {
+            var path = currentUser.id + '/' + r.id + '_' + (r.fileName || 'resume').replace(/[^a-zA-Z0-9._-]/g, '_');
+            var { error } = await sb.storage.from('resumes').upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'application/octet-stream' });
+            if (!error) {
+              var idx = resumes.findIndex(function(x) { return x.id === r.id; });
+              if (idx >= 0) { resumes[idx].storagePath = path; saveResumes(); }
+              console.log('[resume-storage] Backfilled', path);
+            }
+          }
+        } catch (e) { /* silent */ }
+      });
+    }
   }
   // Cloud sync is now live via user_filters + user_tuning tables
   // Q23: Populate global rules crosslink banner
