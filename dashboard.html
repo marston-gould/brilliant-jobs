@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.23 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
+<!-- Brilliant Jobs Dashboard v4.24 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -120,7 +120,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.23</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.24</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2059,17 +2059,72 @@
       <div class="page" id="page-feedback">
         <div class="page-header">
           <h2>Feedback</h2>
-          <p>Request features, report bugs, and vote on what we build next</p>
+          <p>Survey data, feature requests, and bug reports</p>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:20px">
-          <button class="admin-period-btn active" id="canny-tab-features" onclick="switchCannyBoard('features')">Feature Requests</button>
-          <button class="admin-period-btn" id="canny-tab-bugs" onclick="switchCannyBoard('bugs')">Bug Reports</button>
+          <button class="admin-tab active" id="fb-tab-surveys" onclick="switchFeedbackTab('surveys')">Surveys</button>
+          <button class="admin-tab" id="fb-tab-features" onclick="switchFeedbackTab('features')">Feature Requests</button>
+          <button class="admin-tab" id="fb-tab-bugs" onclick="switchFeedbackTab('bugs')">Bug Reports</button>
           <a href="https://brilliant-jobs.canny.io/changelog" target="_blank" rel="noopener" style="margin-left:auto;font-size:13px;color:var(--accent);text-decoration:none;display:flex;align-items:center;gap:4px;">
             Changelog <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </a>
         </div>
-        <div id="canny-widget-container" style="min-height:400px;">
-          <div data-canny id="canny-embed"></div>
+
+        <!-- Surveys Panel (moved from Admin) -->
+        <div class="feedback-panel active" id="fb-panel-surveys">
+          <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap" id="fb-survey-period-toggle">
+            <button class="admin-period-btn active" data-fb-survey-days="30">30d</button>
+            <button class="admin-period-btn" data-fb-survey-days="90">90d</button>
+            <button class="admin-period-btn" data-fb-survey-days="365">1y</button>
+            <button class="admin-period-btn" data-fb-survey-days="0">All</button>
+          </div>
+          <div class="stat-grid" style="margin-bottom:20px;">
+            <div class="stat-card"><div class="stat-label">Total Responses</div><div class="stat-val" id="sv-total">—</div></div>
+            <div class="stat-card"><div class="stat-label">Unique Respondents</div><div class="stat-val" id="sv-respondents">—</div></div>
+            <div class="stat-card"><div class="stat-label">Avg Completion</div><div class="stat-val" id="sv-completion">—</div></div>
+            <div class="stat-card"><div class="stat-label">Avg NPS</div><div class="stat-val" id="sv-nps">—</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Responses by Version</div>
+              <div id="sv-chart-versions" style="height:260px;"></div>
+            </div>
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Completion Funnel</div>
+              <div id="sv-chart-funnel" style="height:260px;"></div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div class="card" style="padding:16px;">
+              <div class="card-title">Daily Response Volume</div>
+              <div id="sv-chart-daily" style="height:220px;"></div>
+            </div>
+            <div class="card" style="padding:16px;">
+              <div class="card-title">NPS Trend</div>
+              <div id="sv-chart-nps" style="height:220px;"></div>
+            </div>
+          </div>
+          <div class="card" style="padding:16px;">
+            <div class="card-title">Recent Responses</div>
+            <table class="admin-table" style="width:100%">
+              <thead><tr><th>Date</th><th>Version</th><th>User</th><th>Questions</th><th>NPS</th><th>Rating</th></tr></thead>
+              <tbody id="sv-responses-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Feature Requests Panel (Canny) -->
+        <div class="feedback-panel" id="fb-panel-features" style="display:none;">
+          <div id="canny-widget-container-features" style="min-height:400px;">
+            <div data-canny id="canny-embed"></div>
+          </div>
+        </div>
+
+        <!-- Bug Reports Panel (Canny) -->
+        <div class="feedback-panel" id="fb-panel-bugs" style="display:none;">
+          <div id="canny-widget-container-bugs" style="min-height:400px;">
+            <div data-canny id="canny-embed-bugs"></div>
+          </div>
         </div>
       </div>
 
@@ -2090,7 +2145,6 @@
             <button class="admin-tab" data-tab="cohorts">Cohorts</button>
             <button class="admin-tab" data-tab="entitlements">Entitlements</button>
             <button class="admin-tab" data-tab="users">Users</button>
-            <button class="admin-tab" data-tab="surveys">Surveys</button>
             <button class="admin-tab" data-tab="revenue">Revenue</button>
             <button class="admin-tab" data-tab="ghost">Ghost</button>
           </div>
@@ -2142,8 +2196,6 @@
           </div>
 
           <div class="admin-panel" id="admin-panel-cohorts">
-            <!-- Cohort Selector -->
-            <div id="ac-cohort-filter" style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap"></div>
             <!-- KPI Stat Cards -->
             <div class="stat-grid" style="margin-bottom:20px">
               <div class="stat-card"><div class="stat-val" id="ac-total-cohorts">&mdash;</div><div class="stat-label">Cohorts</div></div>
@@ -2152,7 +2204,7 @@
               <div class="stat-card"><div class="stat-val" id="ac-active-7d">&mdash;</div><div class="stat-label">Active 7d</div></div>
               <div class="stat-card"><div class="stat-val" id="ac-churned">&mdash;</div><div class="stat-label">Churned 28d</div></div>
             </div>
-            <!-- Charts First (more scalable) -->
+            <!-- Charts (driven by table selection below) -->
             <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
               <div id="admin-cohort-sessions-chart" style="flex:1;min-width:280px;height:280px"></div>
               <div id="admin-cohort-revenue-chart" style="flex:1;min-width:280px;height:280px"></div>
@@ -2161,9 +2213,11 @@
               <div id="admin-cohort-plan-chart" style="flex:1;min-width:280px;height:250px"></div>
               <div id="admin-cohort-growth-chart" style="flex:1;min-width:280px;height:250px"></div>
             </div>
-            <!-- Cohort Table -->
+            <!-- Cohort Table (drives chart selection) -->
+            <div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;">Select cohorts below to filter charts. Multi-select aligns enrollment to Day 0 for comparison.</div>
             <table class="admin-table" style="width:100%">
               <thead><tr>
+                <th style="width:32px;"><input type="checkbox" id="cohort-select-all" title="Select all cohorts" style="cursor:pointer;"></th>
                 <th>ID</th><th>Age</th><th>Enrollment</th>
                 <th>Users</th><th>Active 7d</th><th>Churned</th>
                 <th>Free</th><th>Pro</th>
@@ -2357,56 +2411,6 @@
           </div>
 
           <!-- ─── SURVEYS PANEL (P13-10) ─── -->
-          <div class="admin-panel" id="admin-panel-surveys">
-            <div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap" id="survey-period-toggle">
-              <button class="admin-period-btn active" data-survey-days="30">30d</button>
-              <button class="admin-period-btn" data-survey-days="90">90d</button>
-              <button class="admin-period-btn" data-survey-days="365">1y</button>
-              <button class="admin-period-btn" data-survey-days="0">All</button>
-            </div>
-
-            <!-- KPI Cards -->
-            <div class="stat-grid" id="survey-kpis" style="margin-bottom:20px;">
-              <div class="stat-card"><div class="stat-label">Total Responses</div><div class="stat-val" id="sv-total">—</div></div>
-              <div class="stat-card"><div class="stat-label">Unique Respondents</div><div class="stat-val" id="sv-respondents">—</div></div>
-              <div class="stat-card"><div class="stat-label">Avg Completion</div><div class="stat-val" id="sv-completion">—</div></div>
-              <div class="stat-card"><div class="stat-label">Avg NPS</div><div class="stat-val" id="sv-nps">—</div></div>
-            </div>
-
-            <!-- Charts Row -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-              <div class="card" style="padding:16px;">
-                <div class="card-title">Responses by Version</div>
-                <div id="sv-chart-versions" style="height:260px;"></div>
-              </div>
-              <div class="card" style="padding:16px;">
-                <div class="card-title">Completion Funnel</div>
-                <div id="sv-chart-funnel" style="height:260px;"></div>
-              </div>
-            </div>
-
-            <!-- Daily Trend + NPS Trend -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
-              <div class="card" style="padding:16px;">
-                <div class="card-title">Daily Response Volume</div>
-                <div id="sv-chart-daily" style="height:220px;"></div>
-              </div>
-              <div class="card" style="padding:16px;">
-                <div class="card-title">NPS Trend</div>
-                <div id="sv-chart-nps" style="height:220px;"></div>
-              </div>
-            </div>
-
-            <!-- Response Details Table -->
-            <div class="card" style="padding:16px;">
-              <div class="card-title">Recent Responses</div>
-              <table class="admin-table" style="width:100%">
-                <thead><tr><th>Date</th><th>Version</th><th>User</th><th>Questions</th><th>NPS</th><th>Rating</th></tr></thead>
-                <tbody id="sv-responses-body"></tbody>
-              </table>
-            </div>
-          </div>
-
           <!-- ═══════════ GHOST ═══════════ -->
           <div class="admin-panel" id="admin-panel-ghost">
             <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
@@ -2582,6 +2586,41 @@
     </div>
   </div>
 
+<script>
+// Feedback tab switching
+function switchFeedbackTab(tab) {
+  document.querySelectorAll('.feedback-panel').forEach(function(p) { p.style.display = 'none'; p.classList.remove('active'); });
+  document.querySelectorAll('#page-feedback .admin-tab').forEach(function(b) { b.classList.remove('active'); });
+  var panel = document.getElementById('fb-panel-' + tab);
+  if (panel) { panel.style.display = ''; panel.classList.add('active'); }
+  var btn = document.getElementById('fb-tab-' + tab);
+  if (btn) btn.classList.add('active');
+  // Load Canny when switching to features/bugs
+  if ((tab === 'features' || tab === 'bugs') && typeof switchCannyBoard === 'function') {
+    switchCannyBoard(tab);
+  }
+  // Load surveys when switching to surveys tab
+  if (tab === 'surveys' && typeof loadSurveyData === 'function') {
+    loadSurveyData();
+  }
+}
+
+// Cohort select-all checkbox
+document.addEventListener('DOMContentLoaded', function() {
+  var selectAll = document.getElementById('cohort-select-all');
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      var checked = this.checked;
+      document.querySelectorAll('.cohort-row-cb').forEach(function(cb) { cb.checked = checked; });
+      if (typeof updateCohortCharts === 'function') updateCohortCharts();
+    });
+  }
+});
+</script>
+<style>
+.feedback-panel { display: none; }
+.feedback-panel.active { display: block; }
+</style>
 </body>
 </html>
     

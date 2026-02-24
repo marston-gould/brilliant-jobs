@@ -407,25 +407,6 @@ async function loadCohortTab() {
     window._cohortList = cohorts;
 
     // Build cohort filter chips
-    var filterEl = document.getElementById('ac-cohort-filter');
-    if (filterEl && !filterEl.hasChildNodes()) {
-      var allBtn = document.createElement('button');
-      allBtn.className = 'admin-period-btn active';
-      allBtn.textContent = 'All';
-      allBtn.dataset.cohortId = '__all__';
-      allBtn.addEventListener('click', function() { toggleCohortFilter('__all__'); });
-      filterEl.appendChild(allBtn);
-
-      cohorts.forEach(function(c) {
-        var btn = document.createElement('button');
-        btn.className = 'admin-period-btn';
-        btn.textContent = c.display_id || c.id;
-        btn.dataset.cohortId = c.id;
-        btn.addEventListener('click', function() { toggleCohortFilter(c.id); });
-        filterEl.appendChild(btn);
-      });
-    }
-
     renderCohortData(cohorts);
   } catch (err) {
     console.error('[Admin] loadCohortTab error:', err);
@@ -433,36 +414,23 @@ async function loadCohortTab() {
 }
 
 function toggleCohortFilter(id) {
-  var filterEl = document.getElementById('ac-cohort-filter');
-  if (!filterEl) return;
-
-  if (id === '__all__') {
-    _selectedCohortIds = [];
-  } else {
-    var idx = _selectedCohortIds.indexOf(id);
-    if (idx >= 0) {
-      _selectedCohortIds.splice(idx, 1);
-    } else {
-      _selectedCohortIds.push(id);
-    }
-  }
-
-  // Update button states
-  var isAll = _selectedCohortIds.length === 0;
-  filterEl.querySelectorAll('button').forEach(function(btn) {
-    if (btn.dataset.cohortId === '__all__') {
-      btn.classList.toggle('active', isAll);
-    } else {
-      btn.classList.toggle('active', _selectedCohortIds.indexOf(btn.dataset.cohortId) >= 0);
-    }
+  // Driven by table checkboxes now
+  _selectedCohortIds = [];
+  document.querySelectorAll('.cohort-row-cb:checked').forEach(function(cb) {
+    _selectedCohortIds.push(cb.dataset.cohortId);
   });
-
-  // Filter and re-render
-  var filtered = isAll ? _allCohorts : _allCohorts.filter(function(c) {
+  var selectAll = document.getElementById('cohort-select-all');
+  if (selectAll) {
+    var total = document.querySelectorAll('.cohort-row-cb').length;
+    selectAll.checked = _selectedCohortIds.length === total;
+    selectAll.indeterminate = _selectedCohortIds.length > 0 && _selectedCohortIds.length < total;
+  }
+  var filtered = _selectedCohortIds.length === 0 ? _allCohorts : _allCohorts.filter(function(c) {
     return _selectedCohortIds.indexOf(c.id) >= 0;
   });
   renderCohortData(filtered);
 }
+window.updateCohortCharts = function() { toggleCohortFilter(); };
 
 function renderCohortData(cohorts) {
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
@@ -490,6 +458,7 @@ function renderCohortData(cohorts) {
     var thead = tbody.parentElement.querySelector('thead');
     if (thead) {
       thead.innerHTML = '<tr>' +
+        '<th style="width:32px;"><input type="checkbox" id="cohort-select-all" title="Select all" style="cursor:pointer;" onchange="updateCohortCharts()"></th>' +
         '<th>ID</th><th>Age</th><th>Enrollment</th><th>Users</th><th>Active 7d</th><th>Churned</th>' +
         planOrder.map(function(p) { return '<th>' + p.charAt(0).toUpperCase() + p.slice(1) + '</th>'; }).join('') +
         '<th>Revenue/mo</th><th>LTV</th><th>ARPU</th>' +
@@ -506,6 +475,7 @@ function renderCohortData(cohorts) {
       if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { planCounts[pb.plan] = pb.count; });
 
       return '<tr>' +
+        '<td><input type="checkbox" class="cohort-row-cb" data-cohort-id="' + c.id + '" onchange="toggleCohortFilter()" style="cursor:pointer;"></td>' +
         '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + '</td>' +
         '<td>' + (c.age_days || 0) + 'd</td>' +
         '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
@@ -1450,20 +1420,23 @@ async function loadRevenueTab(daysBack) {
 // ─── P13-10: Survey Analytics Tab ───
 var _surveyDays = 30;
 
-// Period toggle
+// Period toggle — now in Feedback page
 (function() {
-  var toggle = document.getElementById('survey-period-toggle');
+  var toggle = document.getElementById('fb-survey-period-toggle');
   if (!toggle) return;
   toggle.addEventListener('click', function(e) {
     var btn = e.target.closest('.admin-period-btn');
     if (!btn) return;
     toggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
-    _surveyDays = parseInt(btn.dataset.surveyDays);
+    _surveyDays = parseInt(btn.dataset.fbSurveyDays);
     _adminTabInit['surveys'] = false;
     loadSurveysTab();
   });
 })();
+
+// Expose for feedback tab switching
+window.loadSurveyData = loadSurveysTab;
 
 async function loadSurveysTab() {
   console.log('[Admin] loadSurveysTab', _surveyDays, 'days');

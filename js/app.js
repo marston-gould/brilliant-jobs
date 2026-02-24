@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.22';
+const BJ_VERSION = 'v4.24';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
 
 // Auth
