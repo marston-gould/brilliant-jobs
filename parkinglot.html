@@ -273,6 +273,11 @@ const sections = [
         d: 'GitHub repos often embed Greenhouse/Lever board URLs in README files, job posting repos, and career page code. Could mine GitHub search API for ATS URLs.',
         tags: [['channel', 'GitHub']]
       },
+      {
+        s: 'tested', n: 'USAJobs API integration',
+        d: 'Federal job listings via data.usajobs.gov API. Structured data (series, grade, salary, location, agency). Completed in Phase N (v3.80-v4.09) — refresh-usajobs Edge Function deployed, ~10K listings ingested.',
+        tags: [['cost', 'FREE'], ['yield', '~10K listings'], ['channel', 'USAJobs API']]
+      },
     ]
   },
   {
@@ -350,6 +355,11 @@ const sections = [
         d: 'Show GH/LV/WK/ASH/REC pills on job cards so users know which ATS platform each listing came from.',
         tags: [['platform', 'Dashboard']]
       },
+      {
+        s: 'idea', n: 'Cloudflare Email Routing — support@brilliantjobs.app',
+        d: 'Set up Cloudflare Email Routing to forward support@brilliantjobs.app to gould.marston@gmail.com. Update all site references from personal email to support@ address. Free, no MX conflicts with Resend (Resend uses API not SMTP).',
+        tags: [['platform', 'Cloudflare'], ['cost', 'FREE']]
+      },
     ]
   },
   {
@@ -393,8 +403,6 @@ const sections = [
       },
     ]
   },
-  { s: 'todo', n: 'Cloudflare Email Routing — support@brilliantjobs.app', d: 'Set up Cloudflare Email Routing to forward support@brilliantjobs.app to gould.marston@gmail.com. Update all site references from personal email to support@ address. Free, no MX conflicts with Resend (Resend uses API not SMTP).', p: 0 },
-  { s: 'todo', n: 'USAJobs API integration', d: 'Request API access at developer.usajobs.gov. Federal job listings with structured data (series, grade, salary, location, agency). REST API with JSON responses. Would add government sector coverage alongside existing ATS platforms.', p: 10 },
 ];
 
 // Render
