@@ -1141,14 +1141,10 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 
 ### Pod 2 Remaining Survey Work
 
+M-R1–R6 complete — see **Phase S2** above (v4.29).
+
 | # | Item | Est. | Status | Blocker |
 |---|------|------|--------|---------|
-| M-R1 | Deploy `nps-pulse` Edge Function | 1min | ✅ | Deployed + bug fix (last_sign_in_at → last_seen_at). v4.29. |
-| M-R2 | Configure `pg_cron` for `nps-pulse` | 5min | ✅ | nps-pulse-monthly: 0 15 1 * * *. v4.29. |
-| M-R3 | Build periodic survey automated trigger | 2h | ✅ | periodic-survey-pulse EF + pg_cron (15th of month). 90-day de-dupe. v4.29. |
-| M-R4 | Micro-survey priority weighting | 1h | ✅ | Already built — priority queue in micro-surveys.js (500ms flush, paywall=100, search=60). |
-| M-R5 | Validate NPS formula in `survey_social_proof` | 30min | ✅ | Fixed: avg(nps_score) → standard NPS (% promoters - % detractors × 100). v4.29. |
-| M-R6 | Fix `survey_social_proof` anon access | 30min | ✅ | GRANT SELECT ON survey_social_proof TO anon. v4.29. |
 | M-R7 | Survey reward fulfillment | 1h | 🚫 BLOCKED | Wire `submitSurvey()` Pro grant + exit save-offer buttons. **⛔ Blocked on:** Phase H Billing Portal config (CEO action). |
 
 ### Manual Action Items
