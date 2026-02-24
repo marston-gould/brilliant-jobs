@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.26 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
+<!-- Brilliant Jobs Dashboard v4.27 - 2026-02-23 — Phase 0: AI Rewrite — resume text server sync -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -16,6 +16,7 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
   <script src="dist/dashboard.min.js" defer></script>
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -120,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.26</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.27</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2710,6 +2711,21 @@ document.addEventListener('DOMContentLoaded', function() {
   .sf-check, .sf-check-input { min-width: 44px; min-height: 44px; }
 }
 </style>
+
+<!-- AI Resume Rewrite Panel (v4.28) -->
+<div class="rw-panel-overlay" id="rewrite-panel" style="display:none;" onclick="if(event.target===this)closeRewritePanel()">
+  <div class="rw-panel" onclick="event.stopPropagation()">
+    <div class="rw-panel-header">
+      <div>
+        <h3 class="rw-panel-title" id="rw-panel-title">Rewrite Resume</h3>
+        <div class="rw-panel-meta" id="rw-panel-meta"></div>
+      </div>
+      <button class="rw-panel-close" onclick="closeRewritePanel()">&times;</button>
+    </div>
+    <div class="rw-panel-body" id="rw-panel-body"></div>
+  </div>
+</div>
+
 </body>
 </html>
     
