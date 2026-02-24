@@ -168,13 +168,6 @@
 .seo-back-link {
   font-size: 14px; color: var(--seo-accent); text-decoration: none;
 }
-.seo-crosslink-block {
-  margin-top: 24px;
-}
-.seo-crosslink-block h3 {
-  font-size: 16px; font-weight: 600; color: var(--seo-text);
-  margin-bottom: 10px;
-}
 .seo-back-link:hover { text-decoration: underline; }
 
 /* --- Footer --- */

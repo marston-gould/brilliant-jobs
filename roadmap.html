@@ -1373,8 +1373,7 @@ function render() {
     28: 'AI Rewrite: JD-Match Boost',
     29: 'Survey System Hardening',
     30: 'Intelligent Pipeline Tracking',
-    31: 'Daily Fixes & Admin Panel',
-    32: 'Scraper Coverage Fix'
+    31: 'Daily Fixes & Admin Panel'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
@@ -1460,12 +1459,6 @@ function render() {
 
   // Bug Fix (v4.48.1)
   { s: 'done', n: 'F22: Null ref TypeError fix', d: 'sort-bar.js: $("#sort-add-btn").addEventListener crashed at parse time (element not in DOM). Added optional chaining (?.) to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js.', p: 31 },
-
-  // Phase 32: Scraper Coverage Fix (v4.49–v4.50) — 2026-02-24
-  { s: 'done', n: '32-1: WARM tier NULL fix in refresh-jobs v14', d: 'Root cause: .neq("last_http_status", 404) in PostgreSQL excludes NULL values (NULL != 404 → NULL, not TRUE). 28,635 bulk-imported boards with last_http_status=NULL were invisible to the WARM tier query. Fix: Changed to .or("last_http_status.is.null,last_http_status.neq.404"). Edge Function v14 deployed.', p: 32 },
-  { s: 'done', n: '32-2: Database patch — null last_checked on 28,635 boards', d: 'Boards were bulk-imported with last_checked set (Feb 23) but never actually scraped (last_refresh_at=NULL). WARM tier requires last_checked >3 days stale. Fix: SET last_checked=NULL so boards immediately enter WARM queue (nulls sort first in ORDER BY ASC NULLS FIRST).', p: 32 },
-  { s: 'done', n: '32-3: Edge Function v14 deployed + verified', d: 'Deployed refresh-jobs v14 via Supabase CLI. Verified WARM tier now picks up previously-invisible boards. Test invocation: 10 boards processed, 4 jobs found, 9 dead boards correctly recorded with HTTP status.', p: 32 },
-  { s: 'done', n: '32-4: Version sync v4.50', d: 'dashboard.html (comment + nav-version), js/app.js (BJ_VERSION + console.log), dist/dashboard.js, dist/dashboard.min.js all updated to v4.50. Vercel deploy triggered. Dashboard and console now synchronized.', p: 32 },
 ],
           'needs-users': ['bt-postlaunch', 'NEEDS USERS'],
           'dependency': ['bt-dependency', 'DEPENDENCY'],
