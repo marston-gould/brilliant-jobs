@@ -840,7 +840,7 @@
     <p class="hero-sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
     <div class="hero-ctas">
       <button class="btn btn-primary" onclick="openModal('login')">Log in</button>
-      <a href="#" class="btn btn-ghost" onclick="event.preventDefault();openModal('login');setTimeout(function(){var fs=document.getElementById('forgot-section');if(fs&&!fs.classList.contains('active'))fs.classList.add('active');},100);">Forgot Password?</a>
+      <a href="#" class="btn btn-ghost" onclick="event.preventDefault();openModal('forgot');">Forgot Password?</a>
     </div>
   </section>
 
@@ -1352,6 +1352,12 @@
           <button class="btn-auth" id="signup-btn">Create Account</button>
           <div class="msg" id="signup-msg"></div></form>
         </div>
+        <div class="auth-form" id="form-forgot"><form onsubmit="return false;">
+          <div class="field"><label>Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
+          <button class="btn-auth" id="forgot-send-btn" style="background:var(--bg-input);color:var(--text-dim);">Send Password Reset Email</button>
+          <div class="msg" id="forgot-send-msg"></div>
+          <div style="text-align:center;margin-top:12px;"><span class="forgot-link" onclick="switchTab('login')">Back to Log In</span></div>
+        </form></div>
       </div>
       <div class="logged-in-view" id="logged-in-view">
         <div class="user-badge" id="li-email"></div>
@@ -1430,10 +1436,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function switchTab(form) {
       $$('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.form === form));
       $$('.auth-form').forEach(f => f.classList.remove('active'));
+      if (form === 'forgot') { $$('.auth-tabs')[0].style.display = 'none'; }
+      else { $$('.auth-tabs')[0].style.display = ''; }
       $(`#form-${form}`).classList.add('active');
       if (form === 'login') {
         $('#modal-title').textContent = 'Welcome back';
         $('#modal-sub').textContent = 'Log in to your account';
+      } else if (form === 'forgot') {
+        $('#modal-title').textContent = 'Reset your password';
+        $('#modal-sub').textContent = 'We\'ll send you a reset link';
       } else {
         $('#modal-title').textContent = 'Get early access';
         $('#modal-sub').textContent = 'Create your free account';
@@ -1479,22 +1490,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // FORGOT PASSWORD
     // ============================================================
     $('#forgot-trigger').addEventListener('click', () => {
-      $('#forgot-section').classList.toggle('active');
+      switchTab('forgot');
     });
 
-    $('#forgot-btn').addEventListener('click', async () => {
+    $('#forgot-send-btn').addEventListener('click', async () => {
       await loadSupabase();
-      const email = $('#login-email').value.trim();
-      const msgEl = $('#forgot-msg');
+      const email = $('#forgot-email').value.trim();
+      const msgEl = $('#forgot-send-msg');
       msgEl.className = 'msg'; msgEl.style.display = 'none';
       if (!email) {
         msgEl.className = 'msg error'; msgEl.textContent = 'Enter your email above first.'; return;
       }
-      $('#forgot-btn').disabled = true;
+      $('#forgot-send-btn').disabled = true;
       const { error } = await sb.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/dashboard'
       });
-      $('#forgot-btn').disabled = false;
+      $('#forgot-send-btn').disabled = false;
       if (error) { msgEl.className = 'msg error'; msgEl.textContent = error.message; }
       else { msgEl.className = 'msg success'; msgEl.textContent = 'Password reset email sent. Check your inbox.'; }
     });
