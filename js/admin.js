@@ -91,6 +91,7 @@ function switchAdminTab(tabId) {
       case 'revenue': loadRevenueTab(); break;
       case 'surveys': loadSurveysTab(); break;
       case 'ghost': loadGhostTab(); break;
+      case 'feedback': loadFeedbackTab(); break;
     }
   }
 }
@@ -1955,3 +1956,250 @@ window.generateSeoReport = async function() {
     if (btn) { btn.disabled = false; btn.textContent = '📄 Export Report'; }
   }
 };
+
+// ============================================================
+// ADMIN FEEDBACK TAB — v4.48
+// Unified view of Canny FR, Bug Reports, Supabase Feedback
+// ============================================================
+
+var _afbData = [];
+var _afbFiltered = [];
+var _afbSort = 'newest';
+var _afbTypeFilter = 'all';
+var _afbStatusFilter = 'all';
+var _afbCohortFilter = 'all';
+var _afbSearchQuery = '';
+var _afbUserMap = {};
+
+async function loadFeedbackTab() {
+  console.log('[Admin] loadFeedbackTab');
+  try {
+    var { data, error } = await sb.from('admin_feedback')
+      .select('*')
+      .order('submitted_at', { ascending: false })
+      .limit(1000);
+    if (error) { console.error('[Feedback]', error); return; }
+    _afbData = data || [];
+
+    // Resolve user emails
+    var userIds = [...new Set(_afbData.map(function(r) { return r.user_id; }).filter(Boolean))];
+    if (userIds.length > 0) {
+      var { data: profiles } = await sb.from('profiles').select('id, email, cohort_id').in('id', userIds);
+      (profiles || []).forEach(function(p) { _afbUserMap[p.id] = p; });
+    }
+
+    // Populate cohort dropdown
+    var cohorts = [...new Set(_afbData.map(function(r) { return r.cohort_id; }).filter(Boolean))];
+    var sel = document.getElementById('afb-cohort-filter');
+    if (sel) {
+      sel.innerHTML = '<option value="all">All Cohorts</option>';
+      cohorts.sort().forEach(function(c) {
+        sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+      });
+    }
+
+    applyFeedbackFilters();
+    renderFeedbackCards();
+  } catch (e) {
+    console.error('[Feedback]', e);
+  }
+}
+
+function applyFeedbackFilters() {
+  _afbFiltered = _afbData.filter(function(r) {
+    if (_afbTypeFilter !== 'all' && r.source !== _afbTypeFilter) return false;
+    if (_afbStatusFilter !== 'all' && r.status !== _afbStatusFilter) return false;
+    if (_afbCohortFilter !== 'all' && r.cohort_id !== _afbCohortFilter) return false;
+    if (_afbSearchQuery) {
+      var q = _afbSearchQuery.toLowerCase();
+      var text = ((r.title || '') + ' ' + (r.content || '')).toLowerCase();
+      if (text.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  _afbFiltered.sort(function(a, b) {
+    switch (_afbSort) {
+      case 'oldest': return new Date(a.submitted_at) - new Date(b.submitted_at);
+      case 'votes': return (b.votes || 0) - (a.votes || 0);
+      case 'stale':
+        var da = Math.floor((Date.now() - new Date(a.submitted_at).getTime()) / 86400000);
+        var db = Math.floor((Date.now() - new Date(b.submitted_at).getTime()) / 86400000);
+        return db - da;
+      default: return new Date(b.submitted_at) - new Date(a.submitted_at);
+    }
+  });
+
+  renderFeedbackTable();
+}
+
+function renderFeedbackCards() {
+  var now = Date.now();
+  var weekAgo = now - 7 * 86400000;
+  var open = _afbData.filter(function(r) { return r.status !== 'done' && r.status !== 'wont_fix'; });
+  var newWeek = _afbData.filter(function(r) { return new Date(r.submitted_at).getTime() > weekAgo; });
+  var done = _afbData.filter(function(r) { return r.status === 'done'; });
+  var topFr = _afbData.filter(function(r) { return r.source === 'canny_fr'; }).sort(function(a, b) { return (b.votes || 0) - (a.votes || 0); })[0];
+
+  var el = function(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; };
+  el('afb-open', open.length);
+  el('afb-new-week', newWeek.length);
+  el('afb-avg-resolve', done.length > 0 ? '—' : '—'); // No resolved_at yet
+  el('afb-top-fr', topFr ? (topFr.title || '').slice(0, 60) + ' (' + topFr.votes + '↑)' : '—');
+}
+
+var _SOURCE_LABELS = {
+  'canny_fr': { label: 'FR', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  'canny_bug': { label: 'Bug', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  'supabase_feedback': { label: 'FB', color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+  'survey': { label: 'Survey', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' }
+};
+
+var _STATUS_OPTIONS = ['new', 'reviewing', 'planned', 'in_progress', 'done', 'wont_fix'];
+var _STATUS_LABELS = { 'new': 'New', 'reviewing': 'Reviewing', 'planned': 'Planned', 'in_progress': 'In Progress', 'done': 'Done', 'wont_fix': "Won't Fix" };
+
+function renderFeedbackTable() {
+  var tbody = document.getElementById('afb-tbody');
+  var empty = document.getElementById('afb-empty');
+  if (!tbody) return;
+
+  if (_afbFiltered.length === 0) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  var now = Date.now();
+  var rows = _afbFiltered.slice(0, 200).map(function(r) {
+    var src = _SOURCE_LABELS[r.source] || { label: r.source, color: '#999', bg: '#f5f5f5' };
+    var daysSince = Math.floor((now - new Date(r.submitted_at).getTime()) / 86400000);
+    var staleColor = daysSince < 7 ? '#22c55e' : daysSince < 30 ? '#f59e0b' : '#ef4444';
+    var user = r.user_id && _afbUserMap[r.user_id] ? _afbUserMap[r.user_id].email : '—';
+    var userShort = user.length > 16 ? user.slice(0, 14) + '…' : user;
+    var title = (r.title || r.content || '').slice(0, 80);
+    var relTime = daysSince === 0 ? 'today' : daysSince === 1 ? '1d ago' : daysSince < 7 ? daysSince + 'd ago' : daysSince < 30 ? Math.floor(daysSince / 7) + 'w ago' : Math.floor(daysSince / 30) + 'mo ago';
+
+    var statusSelect = '<select onchange="updateFeedbackStatus(\'' + r.id + '\', this.value)" style="font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--card);">';
+    _STATUS_OPTIONS.forEach(function(s) {
+      statusSelect += '<option value="' + s + '"' + (r.status === s ? ' selected' : '') + '>' + _STATUS_LABELS[s] + '</option>';
+    });
+    statusSelect += '</select>';
+
+    return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openFeedbackDetail(\'' + r.id + '\')">' +
+      '<td style="padding:6px 10px;"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:' + src.color + ';background:' + src.bg + ';">' + src.label + '</span></td>' +
+      '<td style="padding:6px 10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.title || '').replace(/"/g, '&quot;') + '">' + title + '</td>' +
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text-faint);" title="' + user + '">' + userShort + '</td>' +
+      '<td style="padding:6px 10px;">' + (r.cohort_id ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;background:rgba(99,102,241,0.1);color:var(--indigo);">' + r.cohort_id + '</span>' : '—') + '</td>' +
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text-faint);" title="' + new Date(r.submitted_at).toLocaleString() + '">' + relTime + '</td>' +
+      '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + staleColor + ';">' + daysSince + '</td>' +
+      '<td style="padding:6px 10px;text-align:center;font-weight:600;">' + (r.votes || 0) + '</td>' +
+      '<td style="padding:6px 10px;" onclick="event.stopPropagation()">' + statusSelect + '</td>' +
+      '</tr>';
+  }).join('');
+
+  tbody.innerHTML = rows;
+}
+
+window.updateFeedbackStatus = async function(id, newStatus) {
+  var { error } = await sb.from('admin_feedback').update({ status: newStatus }).eq('id', id);
+  if (error) {
+    console.error('[Feedback] Status update failed:', error);
+    if (typeof showToast === 'function') showToast('Status update failed', { type: 'error' });
+    return;
+  }
+  // Update local data
+  var item = _afbData.find(function(r) { return r.id === id; });
+  if (item) item.status = newStatus;
+  applyFeedbackFilters();
+  renderFeedbackCards();
+  if (typeof showToast === 'function') showToast('Status updated', { type: 'success' });
+};
+
+window.openFeedbackDetail = function(id) {
+  var item = _afbData.find(function(r) { return r.id === id; });
+  if (!item) return;
+  var panel = document.getElementById('afb-detail');
+  if (!panel) return;
+  var src = _SOURCE_LABELS[item.source] || { label: item.source };
+  var user = item.user_id && _afbUserMap[item.user_id] ? _afbUserMap[item.user_id].email : 'Unknown';
+  document.getElementById('afb-detail-title').textContent = item.title || 'Feedback';
+  document.getElementById('afb-detail-meta').innerHTML = '<span style="color:' + (src.color || '#999') + ';font-weight:600;">' + src.label + '</span> · ' + user + ' · ' + new Date(item.submitted_at).toLocaleDateString() + (item.votes ? ' · ' + item.votes + ' votes' : '');
+  document.getElementById('afb-detail-content').textContent = item.content || '(no content)';
+  panel.style.display = '';
+};
+
+window.closeFeedbackDetail = function() {
+  var panel = document.getElementById('afb-detail');
+  if (panel) panel.style.display = 'none';
+};
+
+window.sortFeedbackBy = function(field) {
+  if (field === 'submitted') _afbSort = _afbSort === 'newest' ? 'oldest' : 'newest';
+  else if (field === 'votes') _afbSort = 'votes';
+  else if (field === 'stale') _afbSort = 'stale';
+  applyFeedbackFilters();
+};
+
+window.triggerFeedbackSync = async function() {
+  var btn = document.getElementById('afb-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+  try {
+    var res = await fetch(sb.supabaseUrl + '/functions/v1/sync-feedback', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token, 'Content-Type': 'application/json' }
+    });
+    var data = await res.json();
+    console.log('[Feedback] Sync result:', data);
+    if (typeof showToast === 'function') showToast('Synced: ' + (data.canny_fr || 0) + ' FR, ' + (data.canny_bug || 0) + ' bugs', { type: 'success' });
+    loadFeedbackTab(); // Reload
+  } catch (e) {
+    console.error('[Feedback] Sync failed:', e);
+    if (typeof showToast === 'function') showToast('Sync failed: ' + e.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Sync'; }
+  }
+};
+
+// Wire up filter pills + search + sort
+(function() {
+  // Type pills
+  document.getElementById('afb-type-pills')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-afb-type]');
+    if (!btn) return;
+    this.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _afbTypeFilter = btn.dataset.afbType;
+    applyFeedbackFilters();
+  });
+  // Status pills
+  document.getElementById('afb-status-pills')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-afb-status]');
+    if (!btn) return;
+    this.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _afbStatusFilter = btn.dataset.afbStatus;
+    applyFeedbackFilters();
+  });
+  // Cohort filter
+  document.getElementById('afb-cohort-filter')?.addEventListener('change', function() {
+    _afbCohortFilter = this.value;
+    applyFeedbackFilters();
+  });
+  // Sort
+  document.getElementById('afb-sort')?.addEventListener('change', function() {
+    _afbSort = this.value;
+    applyFeedbackFilters();
+  });
+  // Search
+  var searchTimeout;
+  document.getElementById('afb-search')?.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    var val = this.value;
+    searchTimeout = setTimeout(function() {
+      _afbSearchQuery = val;
+      applyFeedbackFilters();
+    }, 250);
+  });
+})();
