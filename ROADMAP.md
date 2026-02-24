@@ -656,6 +656,90 @@
 
 ---
 
+## Phase Q: UX Polish & Resume-First Onboarding (v4.13+) — Feb 23, 2026
+
+**Goal:** Address design debt, messaging inconsistencies, and workflow friction identified by 20-persona usability audit. Implement Resume-First Onboarding flow to eliminate the filter-setup barrier for new users.
+
+**Source:** `brilliant-jobs-polish-audit.md` (Agentic Polish & Usability Team audit, 47 issues)
+
+### Sprint 0: Quick Wins (v4.13) — Est. 2h
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| Q1 | Replace all `alert()` with `showToast()` | 30min | 🔲 | settings.js: 3 `alert()` calls → `showToast()`. Already available globally from globals.js. |
+| Q2 | Standardize logo mark CSS across pages | 15min | 🔲 | index.html: 30×30px white bg. pricing.html: 32×32px translucent bg. help.html: 22×22px accent bg. → Unified `.brand-mark` class: 32×32px, `#fff`, `border-radius:8px`, `color:var(--nav-bg)`. |
+| Q3 | Add `aria-hidden="true"` to decorative nav SVGs | 20min | 🔲 | All 11 nav icons are inline SVGs with no aria labels. Add `aria-hidden="true"` where adjacent text label exists. |
+| Q4 | Fix empty state microcopy (3 strings) | 10min | 🔲 | "No resumes uploaded" → "No resumes yet — drop one here and we'll show you how it stacks up." "No saved filters" → "No searches saved yet. Build your first one to start seeing jobs." "No data to export yet." → "Nothing to export yet — start tracking applications and your data will appear here." |
+| Q5 | Add "Searching..." disabled state to search button | 20min | 🔲 | Disable search button during async query execution, show "Searching..." text, re-enable on complete. |
+| Q6 | Hide "0 beta users" social proof section | 5min | 🔲 | Add minimum threshold check (100 users / 1K applications) before rendering social proof counters on landing page. |
+| Q7 | Unify CTA text to "Start Free" | 15min | 🔲 | Replace 5 CTA variants ("Get Started — It's Free", "Get Started Free", "Sign Up Free", "Create Your Free Account") with "Start Free" globally. |
+| Q8 | Self-host fonts on help.html | 5min | 🔲 | Replace Google Fonts CDN reference with same `@font-face` declarations used on index/dashboard/pricing. |
+| Q9 | Rename "Be Brilliant" to "Get Started" | 5min | 🔲 | Nav label + page header. Subheading: "Five steps, three minutes. Then your search runs itself." |
+| Q10 | Add admin confirmation modals for write actions | 45min | 🔲 | Entitlements, Cohorts, Users tabs — confirm dialog before any data mutation: "You're about to change X. This takes effect immediately. Confirm?" |
+
+### Sprint 1: Pricing & Messaging Unification (v4.14) — Est. 4h
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| Q11 | Unify pricing across landing ↔ pricing ↔ Stripe | 2h | 🔲 | Landing page shows Free/Pro $29/Success $149. Pricing page shows Free/Starter $20/Pro $40. Stripe has Free/Starter $20/Pro $40. Pick one source of truth (Stripe), render dynamically everywhere. Remove "Success" plan from landing if deprecated, or add to pricing.html if active. |
+| Q12 | Standardize "saved filters" vs "saved searches" | 30min | 🔲 | Pick "saved searches" (more intuitive) and rename all user-facing instances. Internal code can keep `bj_saved_filters` key. |
+| Q13 | Add credits explanation to landing page | 30min | 🔲 | Single line on pricing cards: "Includes X credits/mo for AI features." Add "What are credits?" FAQ entry. |
+| Q14 | Reconcile job/company count discrepancies | 30min | 🔲 | Landing: "350K+ jobs / 38K+ companies." Be Brilliant: "110K+ / 1,900+ (Greenhouse only)." Make Be Brilliant explicit: "Currently indexing 110K+ on Greenhouse — with Lever, Workday, Ashby expanding the index." Landing pulls from `get_landing_stats()` RPC dynamically. |
+| Q15 | Fix help.html product description mismatch | 30min | 🔲 | Current help.html describes LinkedIn scraping workflow ("Harvest connections", "Scan profiles"). Split into: (1) Dashboard help at `/help` — filters, resumes, pipeline, billing. (2) Extension help — current content, served only in extension popup and Setup page. |
+
+### Sprint 2: Resume-First Onboarding Flow (v4.15) — Est. 3d
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| Q16 | `extract-resume-profile` Edge Function | 4h | 🔲 | New EF using Claude Haiku. Input: resume text. Output: JSON `{ titles: [], locations: [], seniority: string, skills: [], industries: [], salary_range: string }`. Reuses existing resume text extraction (pdf.js/mammoth). |
+| Q17 | Resume-First onboarding card UI | 4h | 🔲 | After first login (no saved filters), show single card: "Let's find jobs that match you." Drop zone + "Skip for now — I'll build my own search →". Replaces Be Brilliant as default first-visit page. |
+| Q18 | Resume intelligence summary card | 3h | 🔲 | After extraction, show: "Here's what we found in your resume:" with editable tags for titles, locations, seniority, skills. Buttons: "Looks right — find my jobs →" / "Let me adjust →" |
+| Q19 | Auto-generated filter from resume profile | 3h | 🔲 | Create saved filter from extracted data: titles → whatPills, locations → wherePills, skills → keyword pills. Run search immediately. Show: "We found X jobs matching your resume." |
+| Q20 | Onboarding milestone tracking | 2h | 🔲 | Track completion: `onboarding_step` in profiles (0=new, 1=resume_uploaded, 2=profile_extracted, 3=filter_created, 4=first_search_run). Progressive nav disclosure tied to steps. |
+
+### Sprint 3: Navigation & Architecture Polish (v4.16) — Est. 2d
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| Q21 | Progressive nav disclosure for new users | 4h | 🔲 | On first login show 3 nav items: Get Started, Jobs, Settings. Unlock Tuning after first filter save, Resumes after first upload, Pipeline after first job save. |
+| Q22 | Merge Applications + Pipeline into single view | 4h | 🔲 | Single "My Applications" page with `[List | Board]` toggle. List = current Applications, Board = current Pipeline kanban. |
+| Q23 | Add "Global Rules" crosslink in filter builder | 1h | 🔲 | Banner above filter builder: "Rules that apply to ALL searches: US-only ✓, 3 excluded titles. [Edit Global Rules →]". Links to Tuning page. |
+| Q24 | Migrate saved filters to Supabase | 4h | 🔲 | Move `bj_saved_filters` from localStorage to Supabase `user_filters` table. Same pattern as pipeline migration (P1). localStorage as cache only. |
+| Q25 | Migrate tuning settings to Supabase | 3h | 🔲 | Move `bj_tuning` from localStorage to Supabase `user_tuning` table. Enables cross-device sync. |
+
+### Sprint 4: Accessibility & Interaction Polish (v4.17) — Est. 2d
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| Q26 | Keyboard navigation for filter builder | 3h | 🔲 | `tabindex="0"` + `onkeydown` on all pill elements. Visible focus rings (`outline: 2px solid var(--accent)`). |
+| Q27 | Color-independent status indicators | 2h | 🔲 | Extension dot: add "Connected"/"Not connected" text label. Pipeline: ensure stage name always visible alongside color. Credit badge: add `aria-label`. |
+| Q28 | Loading/skeleton states for async operations | 3h | 🔲 | Skeleton rows for job feed during search. Spinner in search area. Disabled+loading state for all AI action buttons. |
+| Q29 | Mobile nav touch targets (48px min) | 2h | 🔲 | Increase mobile nav item height to 48px min (WCAG 2.5.8). 8px vertical padding between items. Hamburger icon 44×44px. |
+| Q30 | Dashboard voice alignment with landing page | 2h | 🔲 | Update dashboard meta description, page headers, and empty states to match landing page's confident, opinionated tone. |
+
+### Phase Q Summary
+
+| Sprint | Items | Est. | Theme |
+|--------|-------|------|-------|
+| Q-S0 | Q1–Q10 | 2h | Quick wins — consistency, a11y, microcopy |
+| Q-S1 | Q11–Q15 | 4h | Pricing & messaging unification |
+| Q-S2 | Q16–Q20 | 3d | **Resume-First Onboarding** (highest impact) |
+| Q-S3 | Q21–Q25 | 2d | Navigation & architecture polish |
+| Q-S4 | Q26–Q30 | 2d | Accessibility & interaction polish |
+| **Total** | **30 items** | **~6d** | **UX Polish & Resume-First Onboarding** |
+
+### Phase Q Priority
+
+| Priority | Items | Rationale |
+|----------|-------|-----------|
+| **P0 — This Week** | Q1–Q10 (Sprint 0) | Quick wins, < 2h total, immediate quality lift |
+| **P0 — This Week** | Q11, Q14, Q15 | Trust-critical: pricing mismatch, stat mismatch, help page mismatch |
+| **P1 — 2 Weeks** | Q16–Q20 (Sprint 2) | Resume-First Onboarding — highest-impact new feature |
+| **P1 — 2 Weeks** | Q24–Q25 | localStorage → Supabase migration for cross-device sync |
+| **P2 — 4 Weeks** | Q21–Q23, Q26–Q30 | Navigation + accessibility polish |
+
+---
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -674,6 +758,7 @@
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
+| **Q** UX Polish & Resume-First Onboarding | 0/30 | v4.13+ | 🔲 Planned |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
 | **Total built** | **218+ items** | **v2.68–v4.12** | **17 items 🚫 BLOCKED** |
 
@@ -721,6 +806,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-23 | Q | Q1–Q30 | **Phase Q planned.** UX Polish & Resume-First Onboarding. 30 items across 5 sprints (~6 days). 47 issues from 20-persona usability audit. Resume-First flow: upload → AI extract → auto-filter → instant results. Quick wins: alert→toast, logo standardize, CTA unify, a11y, empty states. Pricing unification. Nav progressive disclosure. localStorage→Supabase migration. |
 |------|--------|-------|---------|
 | 2026-02-23 | M-AUDIT | — | **Survey system audit.** Phase M Sprint 0 added — 15 Pod 1 foundation items verified (survey.html, 4 question banks, feedback table, social proof view, analytics RPC, admin tab, micro-survey triggers, rate limiting). Found: `nps-pulse` EF in repo but NOT deployed, `survey_social_proof` anon access returning 401, NPS formula uses avg not standard methodology. 7 remaining Pod 2 items documented (M-R1–R7). Survey reward fulfillment added to Phase H outstanding. |
 | 2026-02-23 | PERF | — | **v4.12:** Tiered Refresh v13. HOT (9K boards, 6h) / WARM (29K, 3d) / COLD (1.3K, 7d). Batch 50→150, concurrency 5→10, cron 6h→3min. 3 partial indexes. Full HOT cycle in ~6h (was 194 days). PR #72. |
