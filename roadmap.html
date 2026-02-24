@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 25 Edge Functions · 12 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
+    Brilliant Jobs · Internal Roadmap · Updated February 24, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 27 Edge Functions · 12 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
   </div>
 
 </div>
@@ -1212,6 +1212,17 @@ const features = [
   { s: 'done', n: 'Q28: Loading/skeleton states', d: 'Skeleton rows for job feed. Spinner during search. Disabled+loading for AI buttons.', p: 26 },
   { s: 'done', n: 'Q29: Mobile nav 48px touch targets', d: 'WCAG 2.5.8 compliance. 48px min height, 8px padding, 44x44px hamburger icon.', p: 26 },
   { s: 'done', n: 'Q30: Dashboard voice alignment', d: 'Update meta description, headers, empty states to match landing page confident tone.', p: 26 },
+
+  // Phase 28 — AI Resume Rewrite: JD-Match Boost (v4.28) — Feb 23-24 2026
+  { s: 'done', n: 'R1: resume_texts table + RLS + indexes', d: 'Server-side resume text storage for Edge Function access. RLS: user-owned read/write/delete. Indexes on user_id + resume_id. Background sync from client already live at v4.27.', p: 28 },
+  { s: 'done', n: 'R2: rewrite_sessions schema extension (11 cols)', d: 'target_job_id, gap_analysis (jsonb), user_answers (jsonb), rewritten_content (jsonb), quality_check (jsonb), original_score, new_score, credits_used, output_file_path, completed_at, rewrite_type. 4 performance indexes.', p: 28 },
+  { s: 'done', n: 'R3: init_rewrite_session RPC + strip_html()', d: 'SECURITY DEFINER orchestration helper. Credit check (3 min, admin bypass), fetches resume text + stripped JD, creates session row. Returns structured errors: insufficient_credits, resume_text_not_found, job_not_found, jd_too_brief.', p: 28 },
+  { s: 'done', n: 'R4: rewrite-resume-analyze Edge Function', d: 'Agent 1: Gap Analyzer (Haiku) — matched skills, rewritable gaps, needs_input (max 5), weak areas. Agent 2: Question Generator (Haiku) — conversational questions with JD context and resume context. 2 Haiku calls, ~5s total.', p: 28 },
+  { s: 'done', n: 'R5: rewrite-resume-execute Edge Function', d: 'Agent 3: Resume Rewriter (Sonnet) — section-by-section with change annotations, keywords added, skipped gaps. Agent 4: Quality Checker (Haiku) — truthfulness, ATS, keyword coverage. Auto-retry on truthfulness failure (max 2). Credit debit (3 first, 1 retry).', p: 28 },
+  { s: 'done', n: 'R6: js/rewrite.js — Slide-out panel UI', d: 'Three-state panel: analyzing (spinner + progress dots), Q&A (gap summary + question cards with skip/input), results (side-by-side diff + score improvement + quality badge). Escape + click-outside dismiss.', p: 28 },
+  { s: 'done', n: 'R7: Boost pill on Jobs Feed', d: 'matchBadgeWithBoost() — "Boost" pill rendered when match < 85%. Finds assigned resume for active filter. Edge cases: no resume, text not extracted, already A+ (95%+).', p: 28 },
+  { s: 'done', n: 'R8: Client-side DOCX generation', d: 'docx-js UMD from CDN. Section headings, bullet detection, Calibri formatting. Upload to Supabase Storage (rewrites/{user}/{session}/{file}.docx). Auto-download. Plaintext fallback.', p: 28 },
+  { s: 'done', n: 'R9: Build hardening — esbuild scope fix', d: 'Fixed duplicate const session in app.js init(). Reverted IIFE wrapping that broke cross-file function access. Bundle: 19 files → 772KB → 511KB minified.', p: 28 },
 ];
 
 
@@ -1326,7 +1337,8 @@ function render() {
     21: 'Enterprise', 22: 'Infra Hardening & Data Quality', 23: 'Security Hardening', 24: 'Platform Expansion',
     25: 'Surveys & User Intelligence',
     26: 'UX Polish & Resume-First Onboarding',
-    27: 'SEO Data Pages'
+    27: 'SEO Data Pages',
+    28: 'AI Rewrite: JD-Match Boost'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
