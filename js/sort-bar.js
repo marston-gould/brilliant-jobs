@@ -64,7 +64,7 @@ function renderSortPills() {
 }
 
 // Sort add button + dropdown
-$('#sort-add-btn').addEventListener('click', (e) => {
+$('#sort-add-btn')?.addEventListener('click', (e) => {
   e.stopPropagation();
   const dd = $('#sort-dropdown');
   dd.style.display = dd.style.display === 'none' ? '' : 'none';
@@ -156,19 +156,19 @@ qbInputWhat.addEventListener('blur', () => {
 // Input handling — Where row (handled by location autocomplete section below)
 
 // Click builders to focus respective inputs
-$('#query-builder-what').addEventListener('click', e => {
+$('#query-builder-what')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   qbInputWhat.focus();
 });
-$('#query-builder-where').addEventListener('click', e => {
+$('#query-builder-where')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   qbInputWhere.focus();
 });
-$('#query-builder-when').addEventListener('click', e => {
+$('#query-builder-when')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   $('#qb-input-when').focus();
 });
-$('#query-builder-who').addEventListener('click', e => {
+$('#query-builder-who')?.addEventListener('click', e => {
   if (e.target.closest('.qb-pill')) return;
   $('#qb-input-who').focus();
 });
