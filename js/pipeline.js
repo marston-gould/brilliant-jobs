@@ -19,6 +19,70 @@ const PL_STAGE_LABELS = {
 let _pipelineCache = {};
 let _pipelineLoaded = false;
 
+// ── Pipeline Signals (Phase A) ─────────────────────────────────
+// Pending signals keyed by pipeline_entry_id
+let _pendingSignals = {};
+
+async function loadPendingSignals() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('pipeline_signals')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'pending_confirmation')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    _pendingSignals = {};
+    (data || []).forEach(s => {
+      if (s.pipeline_entry_id) _pendingSignals[s.pipeline_entry_id] = s;
+    });
+    const sigCount = Object.keys(_pendingSignals).length;
+    console.log('[BJ] Loaded', sigCount, 'pending pipeline signals');
+    if (sigCount > 0 && typeof posthog !== 'undefined') {
+      const sources = {};
+      Object.values(_pendingSignals).forEach(s => { sources[s.signal_source] = (sources[s.signal_source] || 0) + 1; });
+      posthog.capture('signal_detected', { count: sigCount, sources: sources });
+    }
+  } catch (e) {
+    console.error('[BJ] Signal load error:', e);
+  }
+}
+
+async function confirmPipelineSignal(signalId, action, correctedStage) {
+  try {
+    // PostHog: track signal actions
+    const sig = Object.values(_pendingSignals).find(s => s.id === signalId);
+    const phEvent = action === 'confirm' ? 'signal_confirmed'
+      : action === 'correct' ? 'signal_confirmed'
+      : action === 'dismiss' ? 'signal_dismissed'
+      : action === 'snooze' ? 'prompt_snoozed' : 'signal_action';
+    if (typeof posthog !== 'undefined') {
+      posthog.capture(phEvent, {
+        signal_id: signalId,
+        signal_source: sig?.signal_source || 'unknown',
+        signal_type: sig?.signal_type || 'unknown',
+        proposed_stage: sig?.proposed_stage,
+        corrected_stage: correctedStage || null,
+        action: action,
+      });
+    }
+
+    const token = (await sb.auth.getSession())?.data?.session?.access_token;
+    const resp = await fetch(sb.supabaseUrl + '/functions/v1/confirm-pipeline-signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ signal_id: signalId, action: action, corrected_stage: correctedStage })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    // Refresh signals and pipeline
+    await loadPendingSignals();
+    await loadPipelineFromSupabase();
+    renderPipeline();
+  } catch (e) {
+    console.error('[BJ] Signal confirm error:', e);
+  }
+}
+
 // ── Supabase-backed getter (replaces getPipelineMeta) ──────────
 function getPipelineMeta() {
   // Returns the in-memory cache for synchronous access (backward compat).
@@ -65,6 +129,13 @@ async function loadPipelineFromSupabase() {
         companySlug: row.company_slug || '',
         companyDomain: row.company_domain || '',
         jobUrl: row.job_url || '',
+        tracking_mode: row.tracking_mode || 'auto',
+        status_note: row.status_note || null,
+        custom_reminder_at: row.custom_reminder_at || null,
+        lastPromptedAt: row.last_prompted_at || null,
+        promptCount: row.prompt_count || 0,
+        stageChangedAt: row.stage_changed_at || null,
+        jobTitle: row.job_title || '',
       };
       // Populate legacy arrays
       if (row.stage !== 'saved') appliedJobIds.push(key);
@@ -217,6 +288,7 @@ async function migratePipelineToSupabase() {
 async function initPipeline() {
   await migratePipelineToSupabase();
   await loadPipelineFromSupabase();
+  await loadPendingSignals();
 }
 
 // ── Move job to a new stage ──────────────────────────────────
@@ -432,6 +504,18 @@ async function renderPipeline() {
     if (countEl) countEl.textContent = jobs.length;
     if (section && collapseStates[stage]) section.classList.add('collapsed');
 
+    // Signal count badge on stage header
+    const pendingCount = jobs.filter(j => j.meta._dbId && _pendingSignals[j.meta._dbId]).length;
+    const badgeEl = document.getElementById('psig-' + stage);
+    if (badgeEl) {
+      if (pendingCount > 0) {
+        badgeEl.textContent = pendingCount + ' signal' + (pendingCount > 1 ? 's' : '') + ' pending';
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
     const scores = jobs.map(j => j.meta.matchScore).filter(s => typeof s === 'number');
     if (matchEl) {
       if (scores.length > 0) {
@@ -451,7 +535,7 @@ async function renderPipeline() {
     let html = '<table class="pl-table"><thead><tr>';
     html += '<th></th><th>Title</th><th>Company</th><th>Resume</th><th>Filters</th>';
     html += '<th>Discovered</th><th>Day Applied</th><th>Days In Stage</th>';
-    html += '<th>Match</th><th>Move</th><th></th>';
+    html += '<th>Last Activity</th><th>Match</th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
 
     for (const item of jobs) {
@@ -473,7 +557,20 @@ async function renderPipeline() {
       const daysInStage = stageDate ? Math.floor((now - stageDate) / 86400000) : '—';
 
       let staleDot = '';
-      if (typeof daysInStage === 'number') {
+      const dbId = m._dbId; // Supabase row ID for signal lookup
+      const pendingSig = dbId ? _pendingSignals[dbId] : null;
+      const terminalStages = ['offer', 'rejected', 'archived', 'hired'];
+
+      if (terminalStages.includes(stage)) {
+        // Gray — terminal state
+        staleDot = '<span class="pl-dot pl-dot-gray" title="Complete"></span>';
+      } else if (pendingSig && pendingSig.signal_source !== 'time_based') {
+        // Blue pulsing — signal detected (Gmail/Calendar/ATS)
+        staleDot = '<span class="pl-dot pl-dot-blue" title="Signal detected — click to confirm" data-signal-id="' + pendingSig.id + '" onclick="toggleSignalCard(this)"></span>';
+      } else if (pendingSig && pendingSig.signal_source === 'time_based') {
+        // Yellow — prompt due
+        staleDot = '<span class="pl-dot pl-dot-yellow" title="Prompt due — click to update" data-signal-id="' + pendingSig.id + '" onclick="toggleSignalCard(this)"></span>';
+      } else if (typeof daysInStage === 'number') {
         const staleRules = {
           saved:     { yellow: 5, red: 7 },
           applied:   { yellow: 7, red: 14 },
@@ -484,10 +581,14 @@ async function renderPipeline() {
         const rule = staleRules[stage];
         if (rule) {
           if (daysInStage >= rule.red) {
-            staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);" title="' + daysInStage + 'd — needs attention"></span>';
+            staleDot = '<span class="pl-dot pl-dot-red" title="' + daysInStage + 'd — needs attention"></span>';
           } else if (daysInStage >= rule.yellow) {
-            staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;" title="' + daysInStage + 'd in stage"></span>';
+            staleDot = '<span class="pl-dot pl-dot-yellow" title="' + daysInStage + 'd in stage"></span>';
+          } else {
+            staleDot = '<span class="pl-dot pl-dot-green" title="On track"></span>';
           }
+        } else {
+          staleDot = '<span class="pl-dot pl-dot-green" title="On track"></span>';
         }
       }
 
@@ -513,10 +614,78 @@ async function renderPipeline() {
       html += '<td class="pl-date">' + discovered + '</td>';
       html += '<td class="pl-date">' + dayApplied + '</td>';
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
+
+      // Last Activity column
+      const lastActivity = pendingSig
+        ? (pendingSig.signal_source === 'time_based'
+            ? 'Prompt ' + _relTime(pendingSig.created_at)
+            : 'Signal ' + _relTime(pendingSig.created_at))
+        : (m.stage_changed_at || m.lastPromptedAt
+            ? _relTime(m.stage_changed_at || m.lastPromptedAt)
+            : '—');
+      html += '<td class="pl-date" style="font-size:11px;color:var(--text-dim);">' + lastActivity + '</td>';
+
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
       html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
-      html += '<td><button class="job-action-btn hide-btn" onclick="unsaveFromPipeline(\'' + item.id + '\')" style="padding:2px 6px;font-size:9px;" title="Remove from pipeline">✕</button></td>';
+      html += '<td style="position:relative;">';
+      html += '<button class="job-action-btn hide-btn pl-menu-trigger" onclick="togglePlMenu(this,\'' + item.id + '\')" style="padding:2px 8px;font-size:12px;" title="Actions">⋮</button>';
+      html += '<div class="pl-menu" id="plmenu-' + item.id + '">';
+      html += '<div class="pl-menu-item" onclick="setTrackingMode(\'' + item.id + '\',\'' + (m.tracking_mode === 'muted' ? 'auto' : 'muted') + '\')">' + (m.tracking_mode === 'muted' ? 'Unmute prompts' : 'Mute prompts') + '</div>';
+      html += '<div class="pl-menu-item" onclick="showCustomReminder(\'' + item.id + '\')">Set custom reminder</div>';
+      html += '<div class="pl-menu-item" onclick="showStatusNote(\'' + item.id + '\')">Add status note</div>';
+      html += '<div class="pl-menu-sep"></div>';
+      html += '<div class="pl-menu-item pl-menu-danger" onclick="unsaveFromPipeline(\'' + item.id + '\')">Remove from pipeline</div>';
+      html += '</div>';
+      if (m.status_note) html += '<div class="pl-status-note" title="' + m.status_note.replace(/"/g, '&quot;') + '">📌</div>';
+      if (m.tracking_mode === 'muted') html += '<div style="font-size:8px;color:var(--text-faint);position:absolute;bottom:-2px;right:2px;">🔇</div>';
+      html += '</td>';
       html += '</tr>';
+
+      // Inline signal card (hidden by default, toggled by dot click)
+      if (pendingSig) {
+        const isSignal = pendingSig.signal_source !== 'time_based';
+        const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
+        const icon = isSignal ? '✉' : '⏰';
+        const headerText = isSignal
+          ? 'Activity detected for ' + title + ' at ' + company
+          : 'Time to check in on ' + title + ' at ' + company;
+        const evidence = pendingSig.evidence_preview || '';
+
+        html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
+        html += '<td colspan="12" style="padding:0;">';
+        html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
+        html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
+        if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
+
+        if (isSignal && pendingSig.proposed_stage) {
+          // Signal confirmation: Confirm / Different stage / Dismiss
+          html += '<div class="pl-signal-proposed">Move: <strong>' + (PL_STAGE_LABELS[stage] || stage) + ' → ' + (PL_STAGE_LABELS[pendingSig.proposed_stage] || pendingSig.proposed_stage) + '</strong></div>';
+          html += '<div class="pl-signal-actions">';
+          html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'confirm\')">Confirm</button>';
+          html += '<button class="pl-sig-btn pl-sig-correct" onclick="showStageCorrector(\'' + pendingSig.id + '\', this)">Different stage</button>';
+          html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'dismiss\')">Dismiss</button>';
+          html += '</div>';
+        } else {
+          // Time-based prompt: quick actions
+          html += '<div class="pl-signal-actions">';
+          if (stage === 'saved') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'applied\')">Applied</button>';
+          } else if (stage === 'applied') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'responded\')">Got a response</button>';
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'interview\')">Interview scheduled</button>';
+            html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'rejected\')">Rejected</button>';
+          } else if (stage === 'responded') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'interview\')">Interview scheduled</button>';
+          } else if (stage === 'interview') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'offer\')">Got an offer</button>';
+            html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'rejected\')">Rejected</button>';
+          }
+          html += '<button class="pl-sig-btn pl-sig-snooze" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'snooze\')">No update yet</button>';
+          html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'archived\')">Archive</button>';
+          html += '</div>';
+        }
+        html += '</div></td></tr>';
+      }
     }
 
     html += '</tbody></table>';
@@ -652,4 +821,184 @@ async function renderGhostMonitor() {
 // Auto-load ghost monitor when page is shown
 function onGhostPageShow() {
   renderGhostMonitor();
+}
+
+// ── Pipeline Signal UI (Phase A) ─────────────────────────────
+// Relative time helper (e.g. "3d ago", "2h ago")
+function _relTime(isoStr) {
+  if (!isoStr) return '—';
+  const ms = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+function toggleSignalCard(dotEl) {
+  const signalId = dotEl.getAttribute('data-signal-id');
+  const row = document.getElementById('signal-card-' + signalId);
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function showStageCorrector(signalId, btnEl) {
+  // Replace button with stage picker dropdown
+  const parent = btnEl.parentElement;
+  const select = document.createElement('select');
+  select.className = 'pl-move-select';
+  select.style.marginLeft = '4px';
+  const stages = ['saved','applied','responded','interview','offer','rejected','archived'];
+  const labels = PL_STAGE_LABELS;
+  select.innerHTML = '<option value="">Pick stage…</option>' +
+    stages.map(s => '<option value="' + s + '">' + (labels[s] || s) + '</option>').join('');
+  select.onchange = function() {
+    if (this.value) confirmPipelineSignal(signalId, 'correct', this.value);
+  };
+  btnEl.replaceWith(select);
+}
+
+// ── Per-Application Overrides (Phase D) ──────────────────────
+function togglePlMenu(btn, jobId) {
+  // Close any other open menus
+  document.querySelectorAll('.pl-menu.open').forEach(m => m.classList.remove('open'));
+  const menu = document.getElementById('plmenu-' + jobId);
+  if (menu) menu.classList.toggle('open');
+  // Close on outside click
+  const closer = (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) {
+      menu.classList.remove('open');
+      document.removeEventListener('click', closer);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closer), 10);
+}
+
+async function setTrackingMode(jobId, mode) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  meta.tracking_mode = mode;
+  try {
+    await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    renderPipeline();
+  } catch (e) { console.error('[BJ] Tracking mode error:', e); }
+}
+
+function showCustomReminder(jobId) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  const dateStr = prompt('Remind me about this on (YYYY-MM-DD):', new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
+  if (!dateStr) return;
+  const date = new Date(dateStr + 'T10:00:00');
+  if (isNaN(date.getTime())) { alert('Invalid date'); return; }
+  meta.custom_reminder_at = date.toISOString();
+  sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
+    .then(() => renderPipeline())
+    .catch(e => console.error('[BJ] Custom reminder error:', e));
+}
+
+function showStatusNote(jobId) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  const note = prompt('Status note (e.g., "Waiting on background check"):', meta.status_note || '');
+  if (note === null) return; // cancelled
+  meta.status_note = note || null;
+  sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
+    .then(() => renderPipeline())
+    .catch(e => console.error('[BJ] Status note error:', e));
+}
+
+// ── Manual Pipeline Entry ────────────────────────────────────
+function showManualPipelineAdd() {
+  const form = document.getElementById('pl-manual-add');
+  if (form) form.style.display = '';
+}
+
+function hideManualPipelineAdd() {
+  const form = document.getElementById('pl-manual-add');
+  if (form) form.style.display = 'none';
+  ['pl-man-title', 'pl-man-company', 'pl-man-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function saveManualPipelineEntry() {
+  if (!currentUser?.id) return;
+  const title = (document.getElementById('pl-man-title')?.value || '').trim();
+  const company = (document.getElementById('pl-man-company')?.value || '').trim();
+  const url = (document.getElementById('pl-man-url')?.value || '').trim();
+  const stage = document.getElementById('pl-man-stage')?.value || 'applied';
+
+  if (!title || !company) {
+    alert('Job title and company name are required.');
+    return;
+  }
+
+  // Generate a unique ID for this manual entry (not a real ats_jobs ID)
+  const manualId = 'manual-' + crypto.randomUUID().slice(0, 8);
+  const now = new Date().toISOString();
+
+  // Derive company domain from URL or name
+  let companyDomain = '';
+  if (url) {
+    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch (e) {}
+  }
+  if (!companyDomain) {
+    companyDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+  }
+
+  const row = {
+    user_id: currentUser.id,
+    job_id: manualId,
+    ats_source: 'manual',
+    stage: stage,
+    saved_at: now,
+    applied_at: stage !== 'saved' ? now : null,
+    responded_at: ['responded', 'interview', 'offer'].includes(stage) ? now : null,
+    interview_at: ['interview', 'offer'].includes(stage) ? now : null,
+    offer_at: stage === 'offer' ? now : null,
+    stage_changed_at: now,
+    company_name: company,
+    company_domain: companyDomain,
+    job_title: title,
+    job_url: url || null,
+    tracking_mode: 'auto',
+    notes: 'Manually added',
+  };
+
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .insert(row)
+      .select('id')
+      .single();
+    if (error) throw error;
+
+    // Add to local cache
+    _pipelineCache[manualId] = {
+      _dbId: data.id,
+      stage: stage,
+      savedAt: now,
+      appliedAt: row.applied_at,
+      respondedAt: row.responded_at,
+      interviewAt: row.interview_at,
+      companyName: company,
+      company: company,
+      title: title,
+      companyDomain: companyDomain,
+      jobUrl: url,
+      notes: 'Manually added',
+      atsSource: 'manual',
+      filterTags: [],
+      tracking_mode: 'auto',
+    };
+
+    hideManualPipelineAdd();
+    renderPipeline();
+    console.log('[BJ] Manual pipeline entry added:', manualId);
+  } catch (e) {
+    console.error('[BJ] Manual add error:', e);
+    alert('Failed to add: ' + (e.message || 'Unknown error'));
+  }
 }

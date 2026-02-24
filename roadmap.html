@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 23, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 25 Edge Functions · 12 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + filter generation · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (12/13) · Canny feedback integration · Roadmap filter bar
+    Brilliant Jobs · Internal Roadmap · Updated February 24, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 17 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking (signal detection + smart prompts) · Roadmap filter bar
   </div>
 
 </div>
@@ -1212,6 +1212,49 @@ const features = [
   { s: 'done', n: 'Q28: Loading/skeleton states', d: 'Skeleton rows for job feed. Spinner during search. Disabled+loading for AI buttons.', p: 26 },
   { s: 'done', n: 'Q29: Mobile nav 48px touch targets', d: 'WCAG 2.5.8 compliance. 48px min height, 8px padding, 44x44px hamburger icon.', p: 26 },
   { s: 'done', n: 'Q30: Dashboard voice alignment', d: 'Update meta description, headers, empty states to match landing page confident tone.', p: 26 },
+
+  // Phase 28 — AI Resume Rewrite: JD-Match Boost (v4.28) — Feb 23-24 2026
+  { s: 'done', n: 'R1: resume_texts table + RLS + indexes', d: 'Server-side resume text storage for Edge Function access. RLS: user-owned read/write/delete. Indexes on user_id + resume_id. Background sync from client already live at v4.27.', p: 28 },
+  { s: 'done', n: 'R2: rewrite_sessions schema extension (11 cols)', d: 'target_job_id, gap_analysis (jsonb), user_answers (jsonb), rewritten_content (jsonb), quality_check (jsonb), original_score, new_score, credits_used, output_file_path, completed_at, rewrite_type. 4 performance indexes.', p: 28 },
+  { s: 'done', n: 'R3: init_rewrite_session RPC + strip_html()', d: 'SECURITY DEFINER orchestration helper. Credit check (3 min, admin bypass), fetches resume text + stripped JD, creates session row. Returns structured errors: insufficient_credits, resume_text_not_found, job_not_found, jd_too_brief.', p: 28 },
+  { s: 'done', n: 'R4: rewrite-resume-analyze Edge Function', d: 'Agent 1: Gap Analyzer (Haiku) — matched skills, rewritable gaps, needs_input (max 5), weak areas. Agent 2: Question Generator (Haiku) — conversational questions with JD context and resume context. 2 Haiku calls, ~5s total.', p: 28 },
+  { s: 'done', n: 'R5: rewrite-resume-execute Edge Function', d: 'Agent 3: Resume Rewriter (Sonnet) — section-by-section with change annotations, keywords added, skipped gaps. Agent 4: Quality Checker (Haiku) — truthfulness, ATS, keyword coverage. Auto-retry on truthfulness failure (max 2). Credit debit (3 first, 1 retry).', p: 28 },
+  { s: 'done', n: 'R6: js/rewrite.js — Slide-out panel UI', d: 'Three-state panel: analyzing (spinner + progress dots), Q&A (gap summary + question cards with skip/input), results (side-by-side diff + score improvement + quality badge). Escape + click-outside dismiss.', p: 28 },
+  { s: 'done', n: 'R7: Boost pill on Jobs Feed', d: 'matchBadgeWithBoost() — "Boost" pill rendered when match < 85%. Finds assigned resume for active filter. Edge cases: no resume, text not extracted, already A+ (95%+).', p: 28 },
+  { s: 'done', n: 'R8: Client-side DOCX generation', d: 'docx-js UMD from CDN. Section headings, bullet detection, Calibri formatting. Upload to Supabase Storage (rewrites/{user}/{session}/{file}.docx). Auto-download. Plaintext fallback.', p: 28 },
+  { s: 'done', n: 'R9: Build hardening — esbuild scope fix', d: 'Fixed duplicate const session in app.js init(). Reverted IIFE wrapping that broke cross-file function access. Bundle: 19 files → 772KB → 511KB minified.', p: 28 },
+
+  // Phase 29 — Survey System Hardening (M-R1–R6) (v4.29) — Feb 24 2026
+  { s: 'done', n: 'M-R1: Deploy nps-pulse Edge Function', d: 'Deployed + bug fix: last_sign_in_at → last_seen_at. Verified: {sent:1, skipped:0, total:1}.', p: 29 },
+  { s: 'done', n: 'M-R2: pg_cron for nps-pulse', d: 'nps-pulse-monthly: 0 15 1 * * * (1st of month, 10am ET). Calls nps-pulse EF via pg_net.', p: 29 },
+  { s: 'done', n: 'M-R3: Periodic survey automated trigger', d: 'periodic-survey-pulse EF (123 lines). 90-day de-dupe via profiles.user_data.last_periodic_date. pg_cron: 15th of month. Email: "Quarterly check-in — 16 questions, 7 days Pro reward."', p: 29 },
+  { s: 'done', n: 'M-R4: Micro-survey priority weighting', d: 'Already built in micro-surveys.js. Priority queue (500ms flush window): paywall=100, search=60, apply=50, data=30.', p: 29 },
+  { s: 'done', n: 'M-R5: NPS formula fix', d: 'Replaced avg(nps_score) with standard NPS: (% promoters[9-10] - % detractors[0-6]) × 100 in survey_social_proof view.', p: 29 },
+  { s: 'done', n: 'M-R6: survey_social_proof anon access', d: 'GRANT SELECT ON survey_social_proof TO anon. Verified: anon key returns data.', p: 29 },
+
+  // Phase 30 — Intelligent Pipeline Tracking (v4.30–v4.32) — Feb 24 2026
+  { s: 'done', n: 'T1: user_pipeline schema extension', d: '+7 columns: tracking_mode, custom_reminder_at, status_note, last_prompted_at, prompt_count, company_domain, stage_changed_at. Backfilled stage_changed_at from existing timestamps.', p: 30 },
+  { s: 'done', n: 'T2: pipeline_tracking_settings table', d: 'Per-user cadences (saved/applied/responded/interview), scan prefs (frequency, thread depth, lookahead), prompt channels, confidence threshold. RLS: user_id = auth.uid().', p: 30 },
+  { s: 'done', n: 'T3: pipeline_signals table', d: 'Evidence log: signal_source (gmail/calendar/time_based/ats_scraper), signal_type, proposed_stage, confidence, evidence_preview, status lifecycle (pending → confirmed/dismissed/expired). RLS + indexes.', p: 30 },
+  { s: 'done', n: 'T4: signal_patterns table + 21 seeds', d: 'Cross-user learning: 5 ATS sender domains, 12 subject keywords (rejection/interview/offer/confirm), 4 calendar formats. Confidence: confirmations/(confirmations+dismissals). Weekly decay for stale patterns.', p: 30 },
+  { s: 'done', n: 'T5: prompt-pipeline-updates Edge Function', d: 'Hourly cron. Iterates non-terminal pipeline entries. Checks user cadence settings. Creates time_based signals in pipeline_signals. Sends notifications via send-notification EF. Wall-time safety (120s).', p: 30 },
+  { s: 'done', n: 'T6: confirm-pipeline-signal Edge Function', d: 'User action handler: confirm (move stage), correct (different stage), dismiss (false positive), snooze (reset timer). Updates signal_patterns confidence on every action.', p: 30 },
+  { s: 'done', n: 'T7: 5-color dot system', d: 'Green (on track), blue pulsing (signal detected, CSS animation), yellow (prompt due), red (overdue), gray (terminal). Replaced old 2-color yellow/red dots.', p: 30 },
+  { s: 'done', n: 'T8: Inline signal confirmation cards', d: 'Expand below pipeline row on blue dot click. Evidence preview, proposed stage change (Applied → Responded), 3 actions: Confirm (green), Different stage (picker), Dismiss.', p: 30 },
+  { s: 'done', n: 'T9: Inline prompt cards', d: 'Expand on yellow dot click. Stage-appropriate quick actions: Got response, Interview scheduled, Rejected, No update yet (snooze), Archive.', p: 30 },
+  { s: 'done', n: 'T10: pg_cron: prompt-pipeline-hourly', d: '30 * * * * — every hour at :30. Calls prompt-pipeline-updates EF.', p: 30 },
+  { s: 'done', n: 'T11: gmail-scan refactored to confirmation-first', d: 'Replaced autoAdvancePipeline() with createPipelineSignals(). Email classifications create pending pipeline_signals instead of auto-moving entries. Preserves user trust + generates training data.', p: 30 },
+  { s: 'done', n: 'T12: scan-pipeline-signals Edge Function', d: 'Calendar scanning: Google Calendar API events.list. Matches attendee domains + event titles against pipeline companies. 3-tier confidence: high (interview/onsite/final round), medium (phone screen/assessment), low (chat/call).', p: 30 },
+  { s: 'done', n: 'T13: pg_cron: scan-pipeline-signals-15m', d: '*/15 * * * * — every 15 min for users with signal_detection_enabled=true.', p: 30 },
+  { s: 'done', n: 'T14: pg_cron: pattern-confidence-decay', d: 'Weekly (Sundays 4am): confidence_score *= 0.95 for patterns not seen in 30 days. Floor: 0.3. Prevents stale patterns from dominating.', p: 30 },
+  { s: 'done', n: 'T15: Pipeline Intelligence settings UI', d: 'New section on Applications page. Smart Prompts toggle, Signal Detection toggle, cadence inputs per stage, scan frequency selector, confidence threshold (Low/Med/High radio).', p: 30 },
+  { s: 'done', n: 'T16: Gmail connection status indicator', d: 'Shows connected (green checkmark) or "Connect Gmail on Setup page" CTA based on gmail_connections table.', p: 30 },
+  { s: 'done', n: 'T17: Last Activity column', d: 'New pipeline table column. Shows relative time: "Signal 2h ago", "Prompt 3d ago", or time since stage change. _relTime() helper.', p: 30 },
+  { s: 'done', n: 'T18: Stage header signal badges', d: '"X signals pending" blue pill badge on each stage header. Auto-hides when 0. Counts entries with pending pipeline_signals.', p: 30 },
+  { s: 'done', n: 'T19: PostHog analytics events', d: '5 events: signal_detected (on page load), signal_confirmed, signal_dismissed, prompt_snoozed. Includes signal_source, signal_type, proposed_stage metadata.', p: 30 },
+  { s: 'done', n: 'T20: Prompt notification channels UI', d: 'Email/In-app/SMS checkboxes in advanced settings. Saves to pipeline_tracking_settings.prompt_channels array.', p: 30 },
+  { s: 'done', n: 'T21: Email thread depth + Calendar lookahead UI', d: 'Number inputs in advanced settings: thread depth 10-200 (default 50), calendar lookahead 7-30 days (default 14).', p: 30 },
+  { s: 'done', n: 'T22: Per-application context menu', d: 'Three-dot (⋮) dropdown: Mute/unmute prompts, Set custom reminder (date), Add status note (free text), Remove from pipeline. 📌 indicator for notes, 🔇 for muted.', p: 30 },
 ];
 
 
@@ -1326,7 +1369,10 @@ function render() {
     21: 'Enterprise', 22: 'Infra Hardening & Data Quality', 23: 'Security Hardening', 24: 'Platform Expansion',
     25: 'Surveys & User Intelligence',
     26: 'UX Polish & Resume-First Onboarding',
-    27: 'SEO Data Pages'
+    27: 'SEO Data Pages',
+    28: 'AI Rewrite: JD-Match Boost',
+    29: 'Survey System Hardening',
+    30: 'Intelligent Pipeline Tracking'
   };
 
   function buildSection(items, cls, label, startCollapsed) {

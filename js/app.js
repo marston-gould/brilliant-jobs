@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.26';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
+const BJ_VERSION = 'v4.32';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Pipeline Intelligence Phases A-D');
 
 // Auth
 async function init() {
@@ -80,7 +80,6 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   if (typeof initAdminPage === 'function') initAdminPage();
   
   // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
-  const { data: { session } } = await sb.auth.getSession();
   const userId = session?.user?.id;
   
   // Load filters from Supabase

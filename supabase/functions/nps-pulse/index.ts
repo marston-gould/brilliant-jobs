@@ -34,7 +34,7 @@ serve(async (req: Request) => {
     const { data: profiles, error: profileError } = await sb
       .from("profiles")
       .select("id, email, full_name, user_data")
-      .gte("last_sign_in_at", thirtyDaysAgo);
+      .gte("last_seen_at", thirtyDaysAgo);
 
     if (profileError) {
       console.error("[nps-pulse] Error fetching profiles:", profileError);
