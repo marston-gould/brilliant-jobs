@@ -1734,3 +1734,224 @@ function renderAdminGhostChart(stats) {
     }]
   });
 }
+
+// ============================================================
+// SEO EXTRACT REPORT — v4.47
+// Generates a downloadable HTML report combining all 5 SEO tools
+// ============================================================
+window.generateSeoReport = async function() {
+  var btn = document.getElementById('seo-export-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+
+  try {
+    var url = _seoUrl || 'https://brilliantjobs.app/';
+    var strategy = 'Mobile';
+    var now = new Date().toLocaleString();
+
+    // Gather data from _seoData (already loaded by SEO tab)
+    var techAudits = (_seoData.tech_audits || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var psiAudits = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
+    var dfAudits = techAudits.filter(function(r) { return r.source === 'dataforseo'; });
+    var yltAudits = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
+    var indexStatus = (_seoData.index_status || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var siteDailyArr = _seoData.site_daily || [];
+    var pageDailyArr = (_seoData.page_daily || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var gscQueries = _seoData.gsc_queries || [];
+
+    // PSI scores
+    var latestPsi = psiAudits.length ? psiAudits[psiAudits.length - 1] : null;
+    var psiMetrics = latestPsi ? (latestPsi.metrics || {}) : {};
+    var perfScore = psiMetrics.performance || 0;
+    var grade = perfScore >= 90 ? 'A' : perfScore >= 70 ? 'B' : perfScore >= 50 ? 'C' : perfScore >= 30 ? 'D' : 'F';
+    var gradeColor = { A: '#22c55e', B: '#84cc16', C: '#f59e0b', D: '#f97316', F: '#ef4444' }[grade];
+
+    // DataForSEO
+    var latestDf = dfAudits.length ? dfAudits[dfAudits.length - 1] : null;
+    var dfMetrics = latestDf ? (latestDf.metrics || {}) : {};
+
+    // YLT
+    var latestYlt = yltAudits.length ? yltAudits[yltAudits.length - 1] : null;
+    var yltMetrics = latestYlt ? (latestYlt.metrics || {}) : {};
+
+    // Index status
+    var latestIdx = indexStatus.length ? indexStatus[indexStatus.length - 1] : null;
+    var idxData = latestIdx ? (latestIdx.details || latestIdx.metrics || {}) : {};
+
+    // GSC totals
+    var gscTotalClicks = siteDailyArr.reduce(function(a, r) { return a + (r.total_clicks || 0); }, 0);
+    var gscTotalImpr = siteDailyArr.reduce(function(a, r) { return a + (r.total_impressions || 0); }, 0);
+    var gscAvgPos = siteDailyArr.filter(function(r) { return r.avg_position > 0; });
+    var avgPos = gscAvgPos.length ? (gscAvgPos.reduce(function(a, r) { return a + r.avg_position; }, 0) / gscAvgPos.length).toFixed(1) : '—';
+
+    function scoreBar(val, max) {
+      max = max || 100;
+      var pct = Math.min(100, Math.round((val / max) * 100));
+      var c = pct >= 90 ? '#22c55e' : pct >= 70 ? '#84cc16' : pct >= 50 ? '#f59e0b' : '#ef4444';
+      return '<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div style="width:' + pct + '%;height:100%;background:' + c + ';border-radius:4px;"></div></div><span style="font-weight:700;color:' + c + ';">' + val + '</span></div>';
+    }
+
+    function row(label, value) {
+      return '<tr><td style="padding:6px 12px;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;">' + label + '</td><td style="padding:6px 12px;font-weight:600;border-bottom:1px solid #f3f4f6;">' + (value != null ? value : '—') + '</td></tr>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>SEO Report — ' + url + '</title>' +
+      '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a2e;background:#fff;padding:40px;max-width:900px;margin:0 auto;line-height:1.5}' +
+      'h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;color:#4b5563;margin:32px 0 12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb}h3{font-size:14px;color:#6b7280;margin:16px 0 8px}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:16px}th{text-align:left;padding:8px 12px;background:#f9fafb;font-size:12px;color:#6b7280;border-bottom:2px solid #e5e7eb}' +
+      'td{padding:6px 12px;font-size:13px;border-bottom:1px solid #f3f4f6}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}' +
+      '.metric-card{background:#f9fafb;border-radius:8px;padding:16px;text-align:center}.metric-card .val{font-size:28px;font-weight:700}.metric-card .lbl{font-size:11px;color:#6b7280;margin-top:4px}' +
+      '.grade{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;font-size:24px;font-weight:800;color:#fff}' +
+      '@media print{body{padding:20px}h2{page-break-before:auto}}</style></head><body>';
+
+    // Header
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">';
+    html += '<div><h1>SEO Report</h1><div style="font-size:13px;color:#6b7280;">' + url + '</div><div style="font-size:11px;color:#9ca3af;">Generated ' + now + ' · Strategy: ' + strategy + '</div></div>';
+    html += '<div class="grade" style="background:' + gradeColor + ';">' + grade + '</div>';
+    html += '</div>';
+
+    // Section 1: PSI Scores
+    html += '<h2>1. PageSpeed Insights</h2>';
+    html += '<div class="metric-grid">';
+    ['Performance', 'SEO', 'Accessibility', 'Best Practices'].forEach(function(cat) {
+      var key = cat.toLowerCase().replace(' ', '_');
+      var val = psiMetrics[key] || 0;
+      var c = val >= 90 ? '#22c55e' : val >= 70 ? '#f59e0b' : '#ef4444';
+      html += '<div class="metric-card"><div class="val" style="color:' + c + ';">' + val + '</div><div class="lbl">' + cat + '</div></div>';
+    });
+    html += '</div>';
+
+    // Core Web Vitals
+    html += '<h3>Core Web Vitals</h3><table>';
+    html += '<tr><th>Metric</th><th>Value</th><th>Status</th></tr>';
+    var cwv = [
+      ['LCP', psiMetrics.lcp, '< 2.5s'],
+      ['FID / INP', psiMetrics.inp || psiMetrics.fid, '< 200ms'],
+      ['CLS', psiMetrics.cls, '< 0.1'],
+      ['TBT', psiMetrics.tbt, '< 200ms'],
+      ['FCP', psiMetrics.fcp, '< 1.8s'],
+      ['Speed Index', psiMetrics.speed_index || psiMetrics.si, '< 3.4s'],
+    ];
+    cwv.forEach(function(m) {
+      var val = m[1] != null ? m[1] : '—';
+      html += '<tr><td style="padding:6px 12px;font-weight:600;border-bottom:1px solid #f3f4f6;">' + m[0] + '</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + val + '</td><td style="padding:6px 12px;color:#6b7280;font-size:11px;border-bottom:1px solid #f3f4f6;">Target: ' + m[2] + '</td></tr>';
+    });
+    html += '</table>';
+
+    // PSI Opportunities
+    if (latestPsi && latestPsi.details && latestPsi.details.opportunities) {
+      html += '<h3>Opportunities</h3><table><tr><th>Audit</th><th>Savings</th></tr>';
+      latestPsi.details.opportunities.forEach(function(o) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (o.title || o.id || '—') + '</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (o.savings || o.displayValue || '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    // Section 2: DataForSEO
+    html += '<h2>2. On-Page Audit (DataForSEO)</h2>';
+    if (latestDf) {
+      html += '<table>';
+      html += row('Title', dfMetrics.title || '—');
+      html += row('Title Length', dfMetrics.title_length || '—');
+      html += row('Meta Description', (dfMetrics.meta_description || '—').toString().slice(0, 120));
+      html += row('H1 Count', dfMetrics.h1_count || '—');
+      html += row('Word Count', dfMetrics.word_count || '—');
+      html += row('Internal Links', dfMetrics.internal_links || '—');
+      html += row('External Links', dfMetrics.external_links || '—');
+      html += row('Images', dfMetrics.images_count || '—');
+      html += row('Images without Alt', dfMetrics.images_without_alt || '—');
+      html += row('Readability', dfMetrics.readability_score || '—');
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No DataForSEO audit data available. Run a sync first.</p>';
+    }
+
+    // Section 3: URL Inspection
+    html += '<h2>3. URL Inspection (Google Index)</h2>';
+    if (latestIdx) {
+      html += '<table>';
+      html += row('Index Status', idxData.indexing_state || idxData.verdict || '—');
+      html += row('Coverage State', idxData.coverage_state || '—');
+      html += row('Last Crawl', idxData.last_crawl_time || idxData.last_crawl || '—');
+      html += row('Crawl Status', idxData.crawl_status || idxData.pageFetchState || '—');
+      html += row('Google Canonical', idxData.google_canonical || idxData.googleCanonical || '—');
+      html += row('User Canonical', idxData.user_canonical || idxData.userCanonical || '—');
+      html += row('Mobile Usability', idxData.mobile_usability || idxData.mobileFriendly || '—');
+      html += row('Rich Results', idxData.rich_results || '—');
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No URL Inspection data. Requires Google Service Account with Search Console access.</p>';
+    }
+
+    // Section 4: Yellow Lab Tools
+    html += '<h2>4. Page Quality (Yellow Lab Tools)</h2>';
+    if (latestYlt) {
+      html += '<table>';
+      html += row('Global Score', scoreBar(yltMetrics.globalScore || yltMetrics.global_score || 0));
+      var yltCats = ['weight', 'requests', 'domComplexity', 'cssComplexity', 'jsComplexity', 'fonts', 'serverConfig', 'images'];
+      yltCats.forEach(function(cat) {
+        var val = yltMetrics[cat] || yltMetrics[cat.replace(/([A-Z])/g, '_$1').toLowerCase()];
+        if (val != null) html += row(cat.replace(/([A-Z])/g, ' $1').replace(/^./, function(s) { return s.toUpperCase(); }), typeof val === 'number' ? scoreBar(val) : val);
+      });
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No Yellow Lab Tools data available.</p>';
+    }
+
+    // Section 5: CrUX / GSC Performance
+    html += '<h2>5. Search Performance (Google Search Console)</h2>';
+    html += '<div class="metric-grid">';
+    html += '<div class="metric-card"><div class="val">' + gscTotalClicks + '</div><div class="lbl">Total Clicks</div></div>';
+    html += '<div class="metric-card"><div class="val">' + gscTotalImpr.toLocaleString() + '</div><div class="lbl">Total Impressions</div></div>';
+    html += '<div class="metric-card"><div class="val">' + avgPos + '</div><div class="lbl">Avg Position</div></div>';
+    html += '<div class="metric-card"><div class="val">' + siteDailyArr.length + '</div><div class="lbl">Days of Data</div></div>';
+    html += '</div>';
+
+    if (gscQueries.length > 0) {
+      html += '<h3>Top Queries</h3><table><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr>';
+      gscQueries.slice(0, 20).forEach(function(q) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.query || '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.clicks || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.impressions || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.ctr ? (q.ctr * 100).toFixed(1) + '%' : '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.position ? q.position.toFixed(1) : '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    // Daily breakdown
+    if (siteDailyArr.length > 0) {
+      html += '<h3>Daily Performance</h3><table><tr><th>Date</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr>';
+      siteDailyArr.slice(-14).forEach(function(r) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + r.date + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.total_clicks || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.total_impressions || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.avg_ctr ? (r.avg_ctr * 100).toFixed(1) + '%' : '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.avg_position || '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    html += '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;">Brilliant Jobs SEO Report · Generated ' + now + ' · <a href="https://brilliantjobs.app">brilliantjobs.app</a></div>';
+    html += '</body></html>';
+
+    // Create downloadable HTML file
+    var blob = new Blob([html], { type: 'text/html' });
+    var downloadUrl = URL.createObjectURL(blob);
+    var slug = url.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/-$/, '');
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = 'seo-report-' + slug + '-' + dateStr + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+
+    if (typeof showToast === 'function') showToast('SEO report downloaded!', { type: 'success' });
+  } catch (e) {
+    console.error('[SEO Report]', e);
+    if (typeof showToast === 'function') showToast('Report generation failed: ' + e.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Export Report'; }
+  }
+};
