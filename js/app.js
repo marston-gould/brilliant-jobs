@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.26';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
+const BJ_VERSION = 'v4.28';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase B: AI Rewrite JD-match UI');
 
 // Auth
 async function init() {
