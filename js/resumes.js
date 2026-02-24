@@ -545,6 +545,24 @@ async function addResume(file) {
   // Store file blob in IndexedDB for downloads
   bjFileStore.put(id, file).catch(e => console.warn('[BJ] File store error:', e));
 
+  // Upload to Supabase Storage for cross-device persistence
+  if (currentUser) {
+    const storagePath = currentUser.id + '/' + id + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    sb.storage.from('resumes').upload(storagePath, file, {
+      cacheControl: '3600',
+      upsert: true,
+      contentType: file.type || 'application/octet-stream'
+    }).then(({ data, error }) => {
+      if (error) { console.warn('[resume-storage] Upload failed:', error.message); return; }
+      const idx = resumes.findIndex(r => r.id === id);
+      if (idx >= 0) {
+        resumes[idx].storagePath = storagePath;
+        saveResumes();
+        console.log('[resume-storage] Uploaded', storagePath);
+      }
+    }).catch(e => console.warn('[resume-storage] Upload error:', e.message));
+  }
+
   extractTextFromFile(file).then(text => {
     const idx = resumes.findIndex(r => r.id === id);
     if (idx < 0) return;
@@ -572,8 +590,11 @@ window.renameResume = function(idx) {
 
 window.removeResume = function(idx) {
   if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
-  // Clean up stored file
+  // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
+  if (resumes[idx].storagePath && currentUser) {
+    sb.storage.from('resumes').remove([resumes[idx].storagePath]).catch(() => {});
+  }
   resumes.splice(idx, 1);
   saveResumes();
   renderResumes();
@@ -624,7 +645,19 @@ window.downloadResume = async function(idx) {
   const r = resumes[idx];
   if (!r) return;
   try {
-    const file = await bjFileStore.get(r.id);
+    let file = await bjFileStore.get(r.id);
+    // Fall back to Supabase Storage if IndexedDB doesn't have the file
+    if (!file && r.storagePath && currentUser) {
+      try {
+        const { data: blob, error } = await sb.storage.from('resumes').download(r.storagePath);
+        if (!error && blob) {
+          file = blob;
+          // Re-cache in IndexedDB for next time
+          bjFileStore.put(r.id, blob).catch(() => {});
+          console.log('[resume-storage] Restored from cloud:', r.storagePath);
+        }
+      } catch (e) { console.warn('[resume-storage] Download failed:', e.message); }
+    }
     if (file) {
       const url = URL.createObjectURL(file);
       const a = document.createElement('a');
@@ -635,7 +668,7 @@ window.downloadResume = async function(idx) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      showToast('File data not available. Re-upload this resume to enable downloads.', { type: 'error' });
+      showToast('File not available. Re-upload this resume to restore the file.', { type: 'error' });
     }
   } catch(e) {
     showToast('Download failed: ' + e.message, { type: 'error' });
@@ -658,6 +691,12 @@ window.replaceResumePlaceholder = function(idx) {
     resumes[idx].source = 'upload';
     resumes[idx].textStatus = 'extracting';
     saveResumes();
+    // Upload replacement file to Storage
+    if (currentUser) {
+      var rePath = currentUser.id + '/' + resumes[idx].id + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      sb.storage.from('resumes').upload(rePath, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'application/octet-stream' })
+        .then(function(res) { if (!res.error) { resumes[idx].storagePath = rePath; saveResumes(); } });
+    }
     renderResumes();
 
     extractTextFromFile(file).then(text => {
