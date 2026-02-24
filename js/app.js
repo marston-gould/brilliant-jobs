@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.29';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — nav scroll fix + survey hardening');
+const BJ_VERSION = 'v4.30';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Pipeline Intelligence Phase A');
 
 // Auth
 async function init() {

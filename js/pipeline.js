@@ -19,6 +19,47 @@ const PL_STAGE_LABELS = {
 let _pipelineCache = {};
 let _pipelineLoaded = false;
 
+// ── Pipeline Signals (Phase A) ─────────────────────────────────
+// Pending signals keyed by pipeline_entry_id
+let _pendingSignals = {};
+
+async function loadPendingSignals() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('pipeline_signals')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'pending_confirmation')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    _pendingSignals = {};
+    (data || []).forEach(s => {
+      if (s.pipeline_entry_id) _pendingSignals[s.pipeline_entry_id] = s;
+    });
+    console.log('[BJ] Loaded', Object.keys(_pendingSignals).length, 'pending pipeline signals');
+  } catch (e) {
+    console.error('[BJ] Signal load error:', e);
+  }
+}
+
+async function confirmPipelineSignal(signalId, action, correctedStage) {
+  try {
+    const token = (await sb.auth.getSession())?.data?.session?.access_token;
+    const resp = await fetch(sb.supabaseUrl + '/functions/v1/confirm-pipeline-signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ signal_id: signalId, action: action, corrected_stage: correctedStage })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    // Refresh signals and pipeline
+    await loadPendingSignals();
+    await loadPipelineFromSupabase();
+    renderPipeline();
+  } catch (e) {
+    console.error('[BJ] Signal confirm error:', e);
+  }
+}
+
 // ── Supabase-backed getter (replaces getPipelineMeta) ──────────
 function getPipelineMeta() {
   // Returns the in-memory cache for synchronous access (backward compat).
@@ -217,6 +258,7 @@ async function migratePipelineToSupabase() {
 async function initPipeline() {
   await migratePipelineToSupabase();
   await loadPipelineFromSupabase();
+  await loadPendingSignals();
 }
 
 // ── Move job to a new stage ──────────────────────────────────
@@ -473,7 +515,20 @@ async function renderPipeline() {
       const daysInStage = stageDate ? Math.floor((now - stageDate) / 86400000) : '—';
 
       let staleDot = '';
-      if (typeof daysInStage === 'number') {
+      const dbId = m._dbId; // Supabase row ID for signal lookup
+      const pendingSig = dbId ? _pendingSignals[dbId] : null;
+      const terminalStages = ['offer', 'rejected', 'archived', 'hired'];
+
+      if (terminalStages.includes(stage)) {
+        // Gray — terminal state
+        staleDot = '<span class="pl-dot pl-dot-gray" title="Complete"></span>';
+      } else if (pendingSig && pendingSig.signal_source !== 'time_based') {
+        // Blue pulsing — signal detected (Gmail/Calendar/ATS)
+        staleDot = '<span class="pl-dot pl-dot-blue" title="Signal detected — click to confirm" data-signal-id="' + pendingSig.id + '" onclick="toggleSignalCard(this)"></span>';
+      } else if (pendingSig && pendingSig.signal_source === 'time_based') {
+        // Yellow — prompt due
+        staleDot = '<span class="pl-dot pl-dot-yellow" title="Prompt due — click to update" data-signal-id="' + pendingSig.id + '" onclick="toggleSignalCard(this)"></span>';
+      } else if (typeof daysInStage === 'number') {
         const staleRules = {
           saved:     { yellow: 5, red: 7 },
           applied:   { yellow: 7, red: 14 },
@@ -484,10 +539,14 @@ async function renderPipeline() {
         const rule = staleRules[stage];
         if (rule) {
           if (daysInStage >= rule.red) {
-            staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);" title="' + daysInStage + 'd — needs attention"></span>';
+            staleDot = '<span class="pl-dot pl-dot-red" title="' + daysInStage + 'd — needs attention"></span>';
           } else if (daysInStage >= rule.yellow) {
-            staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;" title="' + daysInStage + 'd in stage"></span>';
+            staleDot = '<span class="pl-dot pl-dot-yellow" title="' + daysInStage + 'd in stage"></span>';
+          } else {
+            staleDot = '<span class="pl-dot pl-dot-green" title="On track"></span>';
           }
+        } else {
+          staleDot = '<span class="pl-dot pl-dot-green" title="On track"></span>';
         }
       }
 
@@ -517,6 +576,52 @@ async function renderPipeline() {
       html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
       html += '<td><button class="job-action-btn hide-btn" onclick="unsaveFromPipeline(\'' + item.id + '\')" style="padding:2px 6px;font-size:9px;" title="Remove from pipeline">✕</button></td>';
       html += '</tr>';
+
+      // Inline signal card (hidden by default, toggled by dot click)
+      if (pendingSig) {
+        const isSignal = pendingSig.signal_source !== 'time_based';
+        const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
+        const icon = isSignal ? '✉' : '⏰';
+        const headerText = isSignal
+          ? 'Activity detected for ' + title + ' at ' + company
+          : 'Time to check in on ' + title + ' at ' + company;
+        const evidence = pendingSig.evidence_preview || '';
+
+        html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
+        html += '<td colspan="11" style="padding:0;">';
+        html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
+        html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
+        if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
+
+        if (isSignal && pendingSig.proposed_stage) {
+          // Signal confirmation: Confirm / Different stage / Dismiss
+          html += '<div class="pl-signal-proposed">Move: <strong>' + (PL_STAGE_LABELS[stage] || stage) + ' → ' + (PL_STAGE_LABELS[pendingSig.proposed_stage] || pendingSig.proposed_stage) + '</strong></div>';
+          html += '<div class="pl-signal-actions">';
+          html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'confirm\')">Confirm</button>';
+          html += '<button class="pl-sig-btn pl-sig-correct" onclick="showStageCorrector(\'' + pendingSig.id + '\', this)">Different stage</button>';
+          html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'dismiss\')">Dismiss</button>';
+          html += '</div>';
+        } else {
+          // Time-based prompt: quick actions
+          html += '<div class="pl-signal-actions">';
+          if (stage === 'saved') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'applied\')">Applied</button>';
+          } else if (stage === 'applied') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'responded\')">Got a response</button>';
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'interview\')">Interview scheduled</button>';
+            html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'rejected\')">Rejected</button>';
+          } else if (stage === 'responded') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'interview\')">Interview scheduled</button>';
+          } else if (stage === 'interview') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'offer\')">Got an offer</button>';
+            html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'rejected\')">Rejected</button>';
+          }
+          html += '<button class="pl-sig-btn pl-sig-snooze" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'snooze\')">No update yet</button>';
+          html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'archived\')">Archive</button>';
+          html += '</div>';
+        }
+        html += '</div></td></tr>';
+      }
     }
 
     html += '</tbody></table>';
@@ -652,4 +757,28 @@ async function renderGhostMonitor() {
 // Auto-load ghost monitor when page is shown
 function onGhostPageShow() {
   renderGhostMonitor();
+}
+
+// ── Pipeline Signal UI (Phase A) ─────────────────────────────
+function toggleSignalCard(dotEl) {
+  const signalId = dotEl.getAttribute('data-signal-id');
+  const row = document.getElementById('signal-card-' + signalId);
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function showStageCorrector(signalId, btnEl) {
+  // Replace button with stage picker dropdown
+  const parent = btnEl.parentElement;
+  const select = document.createElement('select');
+  select.className = 'pl-move-select';
+  select.style.marginLeft = '4px';
+  const stages = ['saved','applied','responded','interview','offer','rejected','archived'];
+  const labels = PL_STAGE_LABELS;
+  select.innerHTML = '<option value="">Pick stage…</option>' +
+    stages.map(s => '<option value="' + s + '">' + (labels[s] || s) + '</option>').join('');
+  select.onchange = function() {
+    if (this.value) confirmPipelineSignal(signalId, 'correct', this.value);
+  };
+  btnEl.replaceWith(select);
 }
