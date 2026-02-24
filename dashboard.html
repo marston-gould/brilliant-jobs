@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.30 - 2026-02-23 — Phase 0: AI Rewrite — resume text server sync -->
+<!-- Brilliant Jobs Dashboard v4.31 - 2026-02-23 — Phase 0: AI Rewrite — resume text server sync -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -121,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.30</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.31</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1347,6 +1347,78 @@
                 </div>
               </div>
             </div>
+
+            <!-- Pipeline Intelligence -->
+            <div class="card">
+              <div class="card-title">Pipeline Intelligence</div>
+              <div class="card-sub">Automated tracking and smart prompts for your job applications</div>
+              <div class="notify-config">
+                <div class="notify-config-row">
+                  <label>Smart Prompts — time-based check-in reminders</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="pi-smart-prompts" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notify-config-row">
+                  <label>Signal Detection — auto-detect pipeline changes via Gmail &amp; Calendar</label>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="pi-signal-detection">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="notify-config-row" id="pi-gmail-status" style="display:none;">
+                  <label>Gmail connection</label>
+                  <span id="pi-gmail-connected" style="font-size:12px;color:var(--green);display:none;">Connected</span>
+                  <button class="btn btn-secondary btn-sm" id="pi-gmail-connect" onclick="window.location.hash='setup'" style="font-size:11px;">Connect Gmail on Setup page</button>
+                </div>
+              </div>
+              <details style="margin-top:12px;">
+                <summary style="font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;">Prompt cadences</summary>
+                <div class="notify-config" style="margin-top:8px;">
+                  <div class="notify-config-row">
+                    <label>Saved → Applied</label>
+                    <input type="number" id="pi-cadence-saved" value="3" min="1" max="14" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;"> <span style="font-size:11px;color:var(--text-faint);">days</span>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Applied → Response</label>
+                    <input type="number" id="pi-cadence-applied" value="7" min="3" max="30" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;"> <span style="font-size:11px;color:var(--text-faint);">days</span>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Responded → Interview</label>
+                    <input type="number" id="pi-cadence-responded" value="5" min="2" max="21" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;"> <span style="font-size:11px;color:var(--text-faint);">days</span>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Interview → Follow-up</label>
+                    <input type="number" id="pi-cadence-interview" value="3" min="1" max="14" style="width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;text-align:center;"> <span style="font-size:11px;color:var(--text-faint);">days</span>
+                  </div>
+                </div>
+              </details>
+              <details style="margin-top:8px;">
+                <summary style="font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;">Advanced signal settings</summary>
+                <div class="notify-config" style="margin-top:8px;">
+                  <div class="notify-config-row">
+                    <label>Scan frequency</label>
+                    <select id="pi-scan-freq" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-size:12px;">
+                      <option value="5">Every 5 min</option>
+                      <option value="15" selected>Every 15 min</option>
+                      <option value="30">Every 30 min</option>
+                      <option value="60">Every 60 min</option>
+                    </select>
+                  </div>
+                  <div class="notify-config-row">
+                    <label>Confidence threshold</label>
+                    <div style="display:flex;gap:6px;">
+                      <label style="font-size:11px;"><input type="radio" name="pi-confidence" value="0.4"> Low (more prompts)</label>
+                      <label style="font-size:11px;"><input type="radio" name="pi-confidence" value="0.6" checked> Medium</label>
+                      <label style="font-size:11px;"><input type="radio" name="pi-confidence" value="0.8"> High (fewer, accurate)</label>
+                    </div>
+                  </div>
+                </div>
+              </details>
+              <button class="btn btn-primary btn-sm" id="pi-save-btn" onclick="savePipelineIntelligenceSettings()" style="margin-top:12px;font-size:11px;">Save Pipeline Settings</button>
+            </div>
+
           </div>
 
           <!-- NOTIFICATIONS PANEL -->
@@ -2712,7 +2784,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 
-<!-- AI Resume Rewrite Panel (v4.30) -->
+<!-- AI Resume Rewrite Panel (v4.31) -->
 <div class="rw-panel-overlay" id="rewrite-panel" style="display:none;" onclick="if(event.target===this)closeRewritePanel()">
   <div class="rw-panel" onclick="event.stopPropagation()">
     <div class="rw-panel-header">

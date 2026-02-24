@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.30';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Pipeline Intelligence Phase A');
+const BJ_VERSION = 'v4.31';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Pipeline Intelligence Phases A-D');
 
 // Auth
 async function init() {

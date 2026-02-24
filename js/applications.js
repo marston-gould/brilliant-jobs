@@ -212,6 +212,7 @@ if (currentUser?.email) {
 
 renderAppQueue();
 renderAppHistory();
+loadPipelineIntelligenceSettings();
 
 // Gmail
 $('#gmail-connect-btn').addEventListener('click', () => {
@@ -805,3 +806,68 @@ if (currentUser) {
   setTimeout(() => clearInterval(_waitAuth), 10000); // give up after 10s
 }
 
+
+// ── Pipeline Intelligence Settings (Phase D) ─────────────────
+async function loadPipelineIntelligenceSettings() {
+  if (!currentUser?.id) return;
+  try {
+    const { data } = await sb.from('pipeline_tracking_settings')
+      .select('*').eq('user_id', currentUser.id).single();
+    if (!data) return;
+    const el = (id) => document.getElementById(id);
+    if (el('pi-smart-prompts')) el('pi-smart-prompts').checked = data.smart_prompts_enabled !== false;
+    if (el('pi-signal-detection')) el('pi-signal-detection').checked = data.signal_detection_enabled === true;
+    if (el('pi-cadence-saved')) el('pi-cadence-saved').value = data.cadence_saved_days || 3;
+    if (el('pi-cadence-applied')) el('pi-cadence-applied').value = data.cadence_applied_days || 7;
+    if (el('pi-cadence-responded')) el('pi-cadence-responded').value = data.cadence_responded_days || 5;
+    if (el('pi-cadence-interview')) el('pi-cadence-interview').value = data.cadence_interview_days || 3;
+    if (el('pi-scan-freq')) el('pi-scan-freq').value = String(data.scan_frequency_minutes || 15);
+    const confRadios = document.querySelectorAll('input[name="pi-confidence"]');
+    confRadios.forEach(r => { r.checked = parseFloat(r.value) === (data.confidence_threshold || 0.6); });
+  } catch (e) {
+    console.log('[BJ] No pipeline intelligence settings yet');
+  }
+  // Show Gmail status
+  try {
+    const { data: conn } = await sb.from('gmail_connections')
+      .select('sync_status').eq('user_id', currentUser.id).single();
+    const statusEl = document.getElementById('pi-gmail-status');
+    if (statusEl) statusEl.style.display = '';
+    if (conn?.sync_status === 'active') {
+      const connEl = document.getElementById('pi-gmail-connected');
+      const btnEl = document.getElementById('pi-gmail-connect');
+      if (connEl) connEl.style.display = '';
+      if (btnEl) btnEl.style.display = 'none';
+    }
+  } catch (e) { /* no connection */ }
+}
+
+async function savePipelineIntelligenceSettings() {
+  if (!currentUser?.id) return;
+  const el = (id) => document.getElementById(id);
+  const confRadio = document.querySelector('input[name="pi-confidence"]:checked');
+  const settings = {
+    user_id: currentUser.id,
+    smart_prompts_enabled: el('pi-smart-prompts')?.checked ?? true,
+    signal_detection_enabled: el('pi-signal-detection')?.checked ?? false,
+    cadence_saved_days: parseInt(el('pi-cadence-saved')?.value) || 3,
+    cadence_applied_days: parseInt(el('pi-cadence-applied')?.value) || 7,
+    cadence_responded_days: parseInt(el('pi-cadence-responded')?.value) || 5,
+    cadence_interview_days: parseInt(el('pi-cadence-interview')?.value) || 3,
+    scan_frequency_minutes: parseInt(el('pi-scan-freq')?.value) || 15,
+    confidence_threshold: confRadio ? parseFloat(confRadio.value) : 0.6,
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    await sb.from('pipeline_tracking_settings').upsert(settings, { onConflict: 'user_id' });
+    const btn = el('pi-save-btn');
+    if (btn) { btn.textContent = 'Saved!'; setTimeout(() => btn.textContent = 'Save Pipeline Settings', 1500); }
+  } catch (e) {
+    console.error('[BJ] Pipeline settings save error:', e);
+  }
+}
+
+// Load settings when applications page is shown
+if (typeof _origInitApplications === 'undefined') {
+  var _origInitApplications = typeof initApplications === 'function' ? initApplications : null;
+}

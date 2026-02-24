@@ -148,62 +148,81 @@ async function scanUserEmails(
   return { scanned: entries.length, signals };
 }
 
-// ── Pipeline auto-advance from email signals ──
-async function autoAdvancePipeline(userId: string, logger: any): Promise<number> {
-  let advanced = 0;
+// ── Pipeline signal creation from email signals (Phase B) ──
+// Instead of auto-advancing, create pipeline_signals for user confirmation
+async function createPipelineSignals(userId: string, logger: any): Promise<number> {
+  let signalsCreated = 0;
   const stageOrder = ["saved", "applied", "posting_closed", "responded", "interview", "offer", "hired", "rejected", "archived"];
 
-  // Interview/scheduling signals → interview stage
-  const { data: interviewSigs } = await sb
-    .from("email_signals").select("pipeline_entry_id, classification")
-    .eq("user_id", userId).in("classification", ["interview", "scheduling"]);
+  const classToSignalType: Record<string, { signal_type: string; proposed_stage: string }> = {
+    interview:  { signal_type: "interview_invite", proposed_stage: "interview" },
+    scheduling: { signal_type: "interview_invite", proposed_stage: "interview" },
+    rejection:  { signal_type: "rejection", proposed_stage: "rejected" },
+    response:   { signal_type: "recruiter_reply", proposed_stage: "responded" },
+    auto_reply: { signal_type: "ats_confirm", proposed_stage: "applied" },
+  };
 
-  for (const sig of interviewSigs || []) {
+  // Get all email_signals for this user that might trigger pipeline actions
+  const { data: emailSigs } = await sb
+    .from("email_signals").select("pipeline_entry_id, classification, snippet, company_domain, last_email_at")
+    .eq("user_id", userId)
+    .not("classification", "in", "(silence)");
+
+  for (const sig of emailSigs || []) {
+    const mapping = classToSignalType[sig.classification];
+    if (!mapping) continue;
+
+    // Get current pipeline entry stage
     const { data: entry } = await sb.from("user_pipeline").select("id, stage").eq("id", sig.pipeline_entry_id).single();
-    if (entry && stageOrder.indexOf(entry.stage) < stageOrder.indexOf("interview")) {
-      await sb.from("user_pipeline").update({
-        stage: "interview", interview_at: new Date().toISOString(),
-        auto_advanced: true, auto_advanced_source: "gmail",
-      }).eq("id", entry.id);
-      advanced++;
-      logger.info("Auto → interview", { entryId: entry.id });
+    if (!entry) continue;
+
+    // Only create signal if it would advance the pipeline
+    if (stageOrder.indexOf(entry.stage) >= stageOrder.indexOf(mapping.proposed_stage)) continue;
+
+    // Check for existing pending signal on this entry (dedup)
+    const { data: existing } = await sb
+      .from("pipeline_signals").select("id")
+      .eq("pipeline_entry_id", entry.id)
+      .eq("status", "pending_confirmation")
+      .eq("signal_source", "gmail")
+      .limit(1);
+    if (existing?.length) continue;
+
+    // Look up pattern confidence
+    let confidence = 0.65;
+    if (sig.company_domain) {
+      const { data: pattern } = await sb
+        .from("signal_patterns").select("confidence_score")
+        .eq("pattern_type", "sender_domain")
+        .ilike("pattern_value", `%${sig.company_domain.split('.')[0]}%`)
+        .limit(1);
+      if (pattern?.length) confidence = Math.max(confidence, pattern[0].confidence_score);
+    }
+
+    // Create pipeline_signal for user confirmation
+    const { error } = await sb.from("pipeline_signals").insert({
+      user_id: userId,
+      pipeline_entry_id: entry.id,
+      signal_source: "gmail",
+      signal_type: mapping.signal_type,
+      proposed_stage: mapping.proposed_stage,
+      confidence,
+      evidence_preview: sig.snippet ? sig.snippet.slice(0, 150) : `Email from ${sig.company_domain || 'company'}`,
+      evidence_metadata: {
+        sender_domain: sig.company_domain,
+        classification: sig.classification,
+        last_email_at: sig.last_email_at,
+      },
+      status: "pending_confirmation",
+    });
+
+    if (!error) {
+      signalsCreated++;
+      logger.info("Signal created", { entryId: entry.id, type: mapping.signal_type, proposed: mapping.proposed_stage });
     }
   }
 
-  // Rejection signals → rejected stage
-  const { data: rejectSigs } = await sb
-    .from("email_signals").select("pipeline_entry_id")
-    .eq("user_id", userId).eq("classification", "rejection");
-
-  for (const sig of rejectSigs || []) {
-    const { data: entry } = await sb.from("user_pipeline").select("id, stage").eq("id", sig.pipeline_entry_id).single();
-    if (entry && stageOrder.indexOf(entry.stage) < stageOrder.indexOf("rejected")) {
-      await sb.from("user_pipeline").update({
-        stage: "rejected", rejected_at: new Date().toISOString(),
-        auto_advanced: true, auto_advanced_source: "gmail",
-      }).eq("id", entry.id);
-      advanced++;
-      logger.info("Auto → rejected", { entryId: entry.id });
-    }
-  }
-
-  // General response signals: applied/posting_closed → responded
-  const { data: responseSigs } = await sb
-    .from("email_signals").select("pipeline_entry_id")
-    .eq("user_id", userId).eq("classification", "response");
-
-  for (const sig of responseSigs || []) {
-    const { data: entry } = await sb.from("user_pipeline").select("id, stage").eq("id", sig.pipeline_entry_id).single();
-    if (entry && (entry.stage === "applied" || entry.stage === "posting_closed")) {
-      await sb.from("user_pipeline").update({
-        stage: "responded", responded_at: new Date().toISOString(),
-        auto_advanced: true, auto_advanced_source: "gmail",
-      }).eq("id", entry.id);
-      advanced++;
-    }
-  }
-
-  return advanced;
+  return signalsCreated;
 }
 
 serve(withCorrelation("gmail-scan", async (req, logger) => {
@@ -217,7 +236,7 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
     });
   }
 
-  let totalScanned = 0, totalSignals = 0, totalAdvanced = 0, usersProcessed = 0, errors = 0;
+  let totalScanned = 0, totalSignals = 0, signalsCreated = 0, usersProcessed = 0, errors = 0;
 
   try {
     const { data: connections } = await sb
@@ -266,8 +285,8 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
         totalScanned += result.scanned;
         totalSignals += result.signals;
 
-        const adv = await autoAdvancePipeline(conn.user_id, logger);
-        totalAdvanced += adv;
+        const adv = await createPipelineSignals(conn.user_id, logger);
+        signalsCreated += adv;
 
         await sb.from("gmail_connections").update({ last_sync_at: new Date().toISOString(), error_message: null }).eq("user_id", conn.user_id);
         usersProcessed++;
@@ -278,7 +297,7 @@ serve(withCorrelation("gmail-scan", async (req, logger) => {
       }
     }
 
-    const stats = { usersProcessed, totalScanned, totalSignals, totalAdvanced, errors, elapsed_ms: Date.now() - startTime };
+    const stats = { usersProcessed, totalScanned, totalSignals, signalsCreated, errors, elapsed_ms: Date.now() - startTime };
     logger.info("Scan complete", stats);
     return new Response(JSON.stringify({ message: "Scan complete", stats }), { headers: { "Content-Type": "application/json" } });
   } catch (e) {
