@@ -206,6 +206,13 @@ var _platformColors = {
   workable: '#8878a0',
   recruitee: '#a07080'
 };
+var _platformLineColors = {
+  greenhouse: '#2d6b4a',
+  lever: '#3b5a8a',
+  ashby: '#7a6530',
+  workable: '#5e4880',
+  recruitee: '#804050'
+};
 
 async function loadFeedHealthCharts() {
   if (typeof echarts === 'undefined') return;
@@ -243,8 +250,8 @@ async function loadFeedHealthCharts() {
           name: p.charAt(0).toUpperCase() + p.slice(1),
           type: 'line',
           stack: 'total',
-          areaStyle: { opacity: 0.6 },
-          lineStyle: { width: 1 },
+          areaStyle: { opacity: 0.15 },
+          lineStyle: { width: 2, color: _platformLineColors[p] || _platformColors[p] || '#666' },
           symbol: 'none',
           itemStyle: { color: _platformColors[p] || '#999' },
           data: dates.map(function(d) { return lookup[p] && lookup[p][d] ? lookup[p][d][field] : 0; })
