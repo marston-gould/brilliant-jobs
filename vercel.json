@@ -74,6 +74,18 @@
   ],
   "rewrites": [
     {
+      "source": "/jobs-in/:metro/:role",
+      "destination": "/api/seo-page?type=metro&metro=:metro&role=:role"
+    },
+    {
+      "source": "/jobs-in/:metro",
+      "destination": "/api/seo-page?type=metro&metro=:metro"
+    },
+    {
+      "source": "/trends/:role",
+      "destination": "/api/seo-page?type=trends&role=:role"
+    },
+    {
       "source": "/job-market-data",
       "destination": "/job-market-data.html"
     },
