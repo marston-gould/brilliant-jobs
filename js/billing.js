@@ -504,7 +504,7 @@ async function confirmSetupIntent(clientSecret) {
   });
   cardElement.mount('#hire-fee-card-element');
 
-  document.getElementById('hire-fee-confirm-btn').addEventListener('click', async function() {
+  document.getElementById('hire-fee-confirm-btn')?.addEventListener('click', async function() {
     var btn = this;
     btn.disabled = true;
     btn.textContent = 'Authorizing...';
