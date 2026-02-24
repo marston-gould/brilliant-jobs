@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.20 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
+<!-- Brilliant Jobs Dashboard v4.21 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -120,7 +120,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.20</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.21</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -336,6 +336,28 @@
         </div>
         <div class="page-body" style="max-width:800px;">
 
+          <!-- Resume-first onboarding prompt -->
+          <div id="onboard-resume-first" style="background:linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(61,126,255,0.06) 100%); border:2px solid rgba(34,197,94,0.18); border-radius:14px; padding:28px 32px; margin-bottom:24px;">
+            <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
+              <div style="flex:1;min-width:260px;">
+                <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;">Skip the setup. Drop your resume.</div>
+                <div style="font-size:14px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;">
+                  Upload a resume and we'll extract your target titles, locations, and seniority — then build your first search filter automatically. No forms, no guessing.
+                </div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                  <button class="btn btn-primary" onclick="document.querySelector('[data-page=resumes]').click();" style="gap:6px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload Resume
+                  </button>
+                  <span style="font-size:12px;color:var(--text-faint);">or keep scrolling for the manual setup ↓</span>
+                </div>
+              </div>
+              <div style="width:80px;height:80px;border-radius:16px;background:rgba(34,197,94,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+            </div>
+          </div>
+
           <!-- Hero -->
           <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%); border:1px solid rgba(99,102,241,0.12); border-radius:12px; padding:32px; margin-bottom:24px;">
             <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">Brilliant Jobs is not another job board.</div>
@@ -394,7 +416,7 @@
               <div class="card-title" style="margin:0;">Tune Your Results</div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Getting noise? Head to <strong>Tuning</strong> to set global rules that apply across all your filters:
+              Getting noise? Head to <strong>Search Tuning</strong> to set global rules that apply across all your filters:
             </div>
             <div style="margin-top:10px;font-size:12px;color:var(--text-dim);line-height:1.8;">
               <span style="font-weight:600;color:var(--accent);">Location lock</span> — restrict everything to US-only with one checkbox<br>

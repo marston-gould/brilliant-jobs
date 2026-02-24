@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v4.20 - 2026-02-23 -->
+<!-- Brilliant Jobs Landing Page v4.21 - 2026-02-23 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -733,7 +733,7 @@
   <!-- Segment detection — runs before body paint to prevent FOUC (v3.59) -->
   <script>
   (function() {
-    console.log('[BJ] Landing page v4.20');
+    console.log('[BJ] Landing page v4.21');
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -1054,7 +1054,7 @@
     <div style="max-width:640px;margin:24px auto 0;display:flex;flex-direction:column;gap:16px;">
       <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
         <summary style="cursor:pointer;font-weight:600;font-size:15px;">Is my data safe?</summary>
-        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from Pro subscriptions, not from selling your information to recruiters.</p>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p>
       </details>
       <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
         <summary style="cursor:pointer;font-weight:600;font-size:15px;">Why not just use LinkedIn?</summary>
@@ -1286,7 +1286,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.20</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.21</p>
   </footer>
 
   <!-- AUTH MODAL -->

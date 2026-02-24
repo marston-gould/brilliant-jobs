@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.20';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T7: Nav architecture reorganization');
+const BJ_VERSION = 'v4.21';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T8: Resume-first onboarding + copy fixes');
 
 // Auth
 async function init() {
