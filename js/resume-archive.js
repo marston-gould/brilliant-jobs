@@ -124,11 +124,24 @@ function renderArchiveTable(archives) {
   }
 
   body.innerHTML = filtered.map(a => {
-    const statusBadge = a.is_active
-      ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--green)15;color:var(--green);font-size:10px;font-weight:600;">Active</span>'
-      : a.is_archived
-        ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--warm)15;color:var(--warm);font-size:10px;font-weight:600;">Archived</span>'
-        : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--text-faint)15;color:var(--text-faint);font-size:10px;font-weight:600;">Inactive</span>';
+    const isExpired = a.metadata_snapshot?.soft_deleted === true;
+    const statusBadge = isExpired
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--red)15;color:var(--red);font-size:10px;font-weight:600;">Expired</span>'
+      : a.is_active
+        ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--green)15;color:var(--green);font-size:10px;font-weight:600;">Active</span>'
+        : a.is_archived
+          ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--warm)15;color:var(--warm);font-size:10px;font-weight:600;">Archived</span>'
+          : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--text-faint)15;color:var(--text-faint);font-size:10px;font-weight:600;">Inactive</span>';
+
+    // Show expiry countdown for archived resumes
+    const expiryInfo = a.is_archived && a.archive_expires_at && !isExpired
+      ? (() => {
+          const days = Math.ceil((new Date(a.archive_expires_at) - new Date()) / 86400000);
+          if (days <= 7) return `<div style="font-size:9px;color:var(--red);margin-top:2px;">Expires in ${days}d</div>`;
+          if (days <= 30) return `<div style="font-size:9px;color:var(--warm);margin-top:2px;">Expires in ${days}d</div>`;
+          return '';
+        })()
+      : '';
 
     const levelBadge = a.metadata_snapshot?.level_label
       ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:${a.metadata_snapshot.level_color || '#94a3b8'}15;color:${a.metadata_snapshot.level_color || '#94a3b8'};">${a.metadata_snapshot.level_label}</span>`
@@ -150,11 +163,11 @@ function renderArchiveTable(archives) {
       <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);">${formatDate(a.created_at)}</td>
       <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);">${a.last_used_at ? formatDate(a.last_used_at) : '—'}</td>
       <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);font-family:var(--mono);">${formatBytes(a.compressed_size_bytes || a.file_size_bytes)}</td>
-      <td style="padding:10px 12px;">${statusBadge}</td>
+      <td style="padding:10px 12px;">${statusBadge}${expiryInfo}</td>
       <td style="padding:10px 12px;">
         <div style="display:flex;gap:4px;">
           <button class="btn btn-sm" onclick="showVersionTimeline('${a.resume_id}')" style="font-size:10px;padding:3px 8px;" title="Version history">History</button>
-          ${a.is_archived ? `<button class="btn btn-sm" onclick="restoreArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--accent);color:#fff;" title="Restore">Restore</button>` : ''}
+          ${a.is_archived || isExpired ? `<button class="btn btn-sm" onclick="restoreArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--accent);color:#fff;" title="Restore">${isExpired ? 'Restore ↑' : 'Restore'}</button>` : ''}
           ${a.is_active ? `<button class="btn btn-sm" onclick="archiveDbResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--warm);color:#000;" title="Archive">Archive</button>` : ''}
           <button class="btn btn-sm" onclick="deleteArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--red);color:#fff;" title="Delete">Del</button>
         </div>
@@ -223,8 +236,26 @@ window.showVersionTimeline = async function(resumeId) {
 window.archiveDbResume = async function(resumeId) {
   if (!confirm('Archive this resume? It will be compressed and moved to cold storage.')) return;
   try {
+    // Get tier to set expiry
+    const userId = (await sb.auth.getUser()).data.user.id;
+    const { data: limits } = await sb.rpc('check_resume_limits', { p_user_id: userId });
+    const tier = limits?.tier || 'free';
+
+    // Calculate expiry: Free=30d, Starter=90d, Pro=null
+    let expiresAt = null;
+    if (tier === 'free') {
+      expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+    } else if (tier === 'starter') {
+      expiresAt = new Date(Date.now() + 90 * 86400000).toISOString();
+    }
+
     const { error } = await sb.from('resume_archive')
-      .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
+      .update({
+        is_active: false,
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+        archive_expires_at: expiresAt
+      })
       .eq('resume_id', resumeId);
     if (error) throw error;
     loadResumeArchive();
@@ -288,3 +319,26 @@ function formatDate(isoStr) {
 
 // Check deep link on load
 if (typeof checkArchiveDeepLink === 'function') checkArchiveDeepLink();
+
+// Phase 4: Enhanced restore using server-side function
+window.restoreArchiveResume = async function(resumeId) {
+  try {
+    const { data, error } = await sb.rpc('restore_archived_resume', {
+      p_resume_id: resumeId
+    });
+    if (error) throw error;
+    if (data && !data.success) {
+      if (data.error === 'EXPIRED_UPGRADE_REQUIRED') {
+        if (confirm(data.message + '\n\nGo to subscription page?')) {
+          showPage('subscription');
+        }
+        return;
+      }
+      alert('Restore failed: ' + (data.error || 'Unknown error'));
+      return;
+    }
+    loadResumeArchive();
+  } catch (e) {
+    alert('Restore failed: ' + e.message);
+  }
+};
