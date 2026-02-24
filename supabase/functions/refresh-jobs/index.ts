@@ -1,4 +1,4 @@
-// refresh-jobs Edge Function v13
+// refresh-jobs Edge Function v14
 // Multi-ATS job scraper with TIERED REFRESH.
 // Boards are prioritized by activity:
 //   HOT  (job_count > 0):              ~9K boards — refresh every 6h
@@ -10,6 +10,11 @@
 //
 // pg_cron fires every 3 minutes, batch=150 → full HOT cycle in ~6h,
 // WARM in ~3 days, COLD weekly. ~310 invocations/day.
+//
+// v14 changes:
+//   - Fix: WARM tier query excluded NULL last_http_status boards (SQL NULL != 404 → NULL)
+//     28,635 boards were invisible to scraper. Changed .neq(404) to .or(is.null,neq.404)
+//   - Boards bulk-imported without scraping now correctly enter WARM tier
 //
 // v13 changes:
 //   - Tiered refresh (HOT/WARM/COLD) based on job_count + last_http_status
@@ -441,7 +446,7 @@ Deno.serve(async (req: Request) => {
         .select("slug, source, name")
         .eq("job_count", 0)
         .eq("is_active", true)
-        .neq("last_http_status", 404)
+        .or("last_http_status.is.null,last_http_status.neq.404")
         .or(`last_checked.is.null,last_checked.lt.${warmCutoff}`)
         .order("last_checked", { ascending: true, nullsFirst: true })
         .limit(remaining);

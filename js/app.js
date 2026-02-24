@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.49';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix layout: remove orphan div closing .main prematurely');
+const BJ_VERSION = 'v4.50';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix WARM tier null exclusion, 28K boards now visible to scraper');
 
 // Auth
 async function init() {
