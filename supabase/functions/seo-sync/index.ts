@@ -70,56 +70,79 @@ function dateStr(daysAgo: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-// ─── Task 1: GSC Performance (date × url × query) ───
-async function syncGsc(daysBack = 3): Promise<{ rows: number }> {
+// ─── Task 1: GSC Performance ───
+// Four API calls per date, per spec:
+//   1. By date (no dimensions)       → seo_site_daily
+//   2. By query (dimensions: query)  → seo_gsc_daily (url = '*')
+//   3. By page (dimensions: page)    → seo_page_daily
+//   4. By query × page               → seo_gsc_daily
+async function syncGsc(daysBack = 7): Promise<{ byDate: number; byQuery: number; byPage: number; byQueryPage: number }> {
   const token = await getGoogleToken();
-  let total = 0;
+  const gscUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(GSC_SITE)}/searchAnalytics/query`;
+  const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const result = { byDate: 0, byQuery: 0, byPage: 0, byQueryPage: 0 };
+
   for (let d = daysBack; d >= 1; d--) {
     const ds = dateStr(d);
-    const res = await fetch(
-      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(GSC_SITE)}/searchAnalytics/query`,
-      { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['page','query'], rowLimit: 5000 }) }
-    );
-    const data = await res.json();
-    const rows = data.rows || [];
-    if (!rows.length) continue;
 
-    const recs = rows.map((r: any) => ({
+    // 1. By date — no dimensions, aggregate totals
+    const r1 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
+      body: JSON.stringify({ startDate: ds, endDate: ds, rowLimit: 1 }) });
+    const d1 = await r1.json();
+    const agg = (d1.rows || [])[0];
+    if (agg) {
+      await sb.from('seo_site_daily').upsert({
+        date: ds, total_clicks: agg.clicks||0, total_impressions: agg.impressions||0,
+        avg_ctr: agg.ctr ? Math.round(agg.ctr*10000)/10000 : 0,
+        avg_position: agg.position ? Math.round(agg.position*10)/10 : 0,
+      }, { onConflict: 'date' });
+      result.byDate++;
+      console.log(`[seo-sync] GSC ${ds} date: clicks=${agg.clicks} imp=${agg.impressions}`);
+    }
+
+    // 2. By query — dimensions: ['query']
+    const r2 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
+      body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['query'], rowLimit: 5000 }) });
+    const d2 = await r2.json();
+    const qRows = (d2.rows || []).map((r: any) => ({
+      date: ds, url: '*', query: r.keys[0],
+      clicks: r.clicks||0, impressions: r.impressions||0, ctr: r.ctr||0, position: r.position||0,
+    }));
+    if (qRows.length) {
+      for (let i = 0; i < qRows.length; i += 500)
+        await sb.from('seo_gsc_daily').upsert(qRows.slice(i,i+500), { onConflict: 'date,url,query' });
+      result.byQuery += qRows.length;
+    }
+
+    // 3. By page — dimensions: ['page']
+    const r3 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
+      body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['page'], rowLimit: 5000 }) });
+    const d3 = await r3.json();
+    const pRows = (d3.rows || []).map((r: any) => ({
+      date: ds, url: r.keys[0], clicks: r.clicks||0, impressions: r.impressions||0,
+      avg_position: r.position ? Math.round(r.position*10)/10 : 0,
+      top_queries: [],
+    }));
+    if (pRows.length) {
+      await sb.from('seo_page_daily').upsert(pRows, { onConflict: 'date,url' });
+      result.byPage += pRows.length;
+    }
+
+    // 4. By query × page — dimensions: ['page','query']
+    const r4 = await fetch(gscUrl, { method: 'POST', headers: hdrs,
+      body: JSON.stringify({ startDate: ds, endDate: ds, dimensions: ['page','query'], rowLimit: 5000 }) });
+    const d4 = await r4.json();
+    const qpRows = (d4.rows || []).map((r: any) => ({
       date: ds, url: r.keys[0], query: r.keys[1] || null,
       clicks: r.clicks||0, impressions: r.impressions||0, ctr: r.ctr||0, position: r.position||0,
     }));
-    for (let i = 0; i < recs.length; i += 500) {
-      await sb.from('seo_gsc_daily').upsert(recs.slice(i,i+500), { onConflict: 'date,url,query' });
+    if (qpRows.length) {
+      for (let i = 0; i < qpRows.length; i += 500)
+        await sb.from('seo_gsc_daily').upsert(qpRows.slice(i,i+500), { onConflict: 'date,url,query' });
+      result.byQueryPage += qpRows.length;
     }
-    total += recs.length;
-
-    // Page-level rollup
-    const pm: Record<string, any> = {};
-    for (const r of recs) {
-      if (!pm[r.url]) pm[r.url] = { cl:0, im:0, pos:[], qs:[] };
-      pm[r.url].cl += r.clicks; pm[r.url].im += r.impressions;
-      pm[r.url].pos.push(r.position);
-      if (r.query && r.clicks > 0) pm[r.url].qs.push({ q: r.query, c: r.clicks });
-    }
-    const pageRecs = Object.entries(pm).map(([url, v]: [string, any]) => ({
-      date: ds, url, clicks: v.cl, impressions: v.im,
-      avg_position: Math.round(v.pos.reduce((a:number,b:number)=>a+b,0)/v.pos.length*10)/10,
-      top_queries: v.qs.sort((a:any,b:any)=>b.c-a.c).slice(0,10),
-    }));
-    await sb.from('seo_page_daily').upsert(pageRecs, { onConflict: 'date,url' });
-
-    // Site-level rollup
-    const sc = pageRecs.reduce((s,r)=>s+r.clicks,0);
-    const si = pageRecs.reduce((s,r)=>s+r.impressions,0);
-    const sp = pageRecs.reduce((s,r)=>s+r.avg_position,0)/(pageRecs.length||1);
-    await sb.from('seo_site_daily').upsert({
-      date: ds, total_clicks: sc, total_impressions: si,
-      avg_ctr: si>0 ? Math.round(sc/si*10000)/10000 : 0,
-      avg_position: Math.round(sp*10)/10,
-    }, { onConflict: 'date' });
   }
-  return { rows: total };
+  return result;
 }
 
 // ─── Task 2: URL Inspection ───
