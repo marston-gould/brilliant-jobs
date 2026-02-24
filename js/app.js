@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.48.3';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Revert to flex layout + overflow-x:hidden fix');
+const BJ_VERSION = 'v4.51';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
 
 // Auth
 async function init() {
