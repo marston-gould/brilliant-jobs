@@ -4,7 +4,7 @@
 
 function renderSortPills() {
   const container = $('#sort-pills');
-  container.innerHTML = '';
+  if (!container) return;
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
@@ -62,6 +62,9 @@ function renderSortPills() {
     opt.classList.toggle('disabled', inUse);
   });
 }
+
+// Guard: only run if dashboard sort UI elements exist
+if ($('#sort-pills')) {
 
 // Sort add button + dropdown
 $('#sort-add-btn')?.addEventListener('click', (e) => {
@@ -324,3 +327,5 @@ function highlightCompanyMatch(text, query) {
     text.slice(idx + query.length);
 }
 
+
+} // end sort-bar guard
