@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.34';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tailwind rebuild — restore 20KB missing nav + layout rules');
+const BJ_VERSION = 'v4.35';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Fix .main width collapse — use calc(100% - nav-w) instead of flex:1 alone');
 
 // Auth
 async function init() {
