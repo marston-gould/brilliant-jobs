@@ -1511,6 +1511,24 @@
     .pl-sig-snooze { color: var(--text-dim); }
     .pl-sig-correct { color: var(--accent); border-color: var(--accent); }
 
+    /* ── Per-entry action menu ── */
+    .pl-menu-trigger { cursor: pointer; font-weight: 700; line-height: 1; }
+    .pl-menu {
+      display: none; position: absolute; right: 0; top: 100%; z-index: 50;
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      min-width: 180px; padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .pl-menu.open { display: block; }
+    .pl-menu-item {
+      padding: 8px 14px; font-size: 12px; cursor: pointer; color: var(--text-dim);
+      transition: background 0.1s;
+    }
+    .pl-menu-item:hover { background: var(--bg-hover); color: var(--text); }
+    .pl-menu-danger { color: var(--red); }
+    .pl-menu-danger:hover { background: rgba(239,68,68,0.1); }
+    .pl-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+    .pl-status-note { position: absolute; top: 0; left: -4px; font-size: 10px; cursor: help; }
+
 
     /* ======================== GHOST ======================== */
     .ghost-table { width: 100%; border-collapse: collapse; }

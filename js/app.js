@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.31';
+const BJ_VERSION = 'v4.32';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Pipeline Intelligence Phases A-D');
 
 // Auth
