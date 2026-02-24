@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.24';
+const BJ_VERSION = 'v4.25';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T9: Final sweep — cloud sync notice, polish');
 
 // Auth
@@ -215,14 +215,14 @@ if (lastTab && $(`#page-${lastTab}`)) {
 // Extension detection — check if extension has updated the profile recently
 const _helpContent = {
   feed: { title: 'Jobs Feed', steps: [
-    'Check one or more saved filters in the sidebar to search jobs.',
+    'Check one or more saved searches in the sidebar to search jobs.',
     'Shift+click column headers for multi-column sorting.',
     'Click a job title to open the full description and apply.',
     'Colored number badges show which filter matched each job.',
     'Use the keyword insights panel to see term frequency and resume match scores.',
   ]},
   tuning: { title: 'Search Tuning', steps: [
-    'Set global rules that apply across ALL your saved filters.',
+    'Set global rules that apply across ALL your saved searches.',
     'Location rules: US-only toggle and city/country exclusions.',
     'Title exclusions: remove common false positives (e.g. "intern").',
     'Company exclusions: block specific employers or industries.',
@@ -233,12 +233,12 @@ const _helpContent = {
     'Click stage headers to collapse/expand sections.',
     'Use the Move dropdown on any row to advance jobs through stages.',
     'Stats at top show response rates and days-to-response.',
-    'Filter by saved filter using the dropdown above the stages.',
+    'Filter by saved search using the dropdown above the stages.',
   ]},
   resumes: { title: 'Resumes', steps: [
     'Upload a resume for each role type or seniority level you target.',
     'Assign a level (Director, Manager, etc.) to each resume.',
-    'Click filter pills on each card to assign resumes to your saved filters.',
+    'Click filter pills on each card to assign resumes to your saved searches.',
     'When you apply, the matching resume is automatically selected.',
     'Keyword extraction shows how well each resume matches job descriptions.',
   ]},
@@ -248,7 +248,7 @@ const _helpContent = {
     'Notifications tab: configure email/SMS preferences for every alert type.',
     'Verify your phone to unlock SMS notifications and escalation.',
     'Set escalation rules: unanswered emails auto-escalate to SMS after your timeout.',
-    'Override notification settings per saved filter for targeted control.',
+    'Override notification settings per saved search for targeted control.',
     'History tab: full audit trail of applications and notification delivery log.',
   ]},
   ghost: { title: 'Ghost Monitor', steps: [

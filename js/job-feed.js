@@ -478,18 +478,26 @@ async function searchJobs(page = 0) {
   if (checked.length === 0 && !hasBuilderPills) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
-      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
-      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved filters above, or use the filter builder.</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
+      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
     </td></tr>`;
     await updateJobStatsFromFilters(null);
     $('#filter-count').textContent = '';
     return;
   }
 
-  // Show loading
-  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
-    <div style="font-size:13px;">Searching jobs…</div>
-  </td></tr>`;
+  // Show skeleton loading
+  tbody.innerHTML = Array.from({length: 8}, () => `<tr class="skel-row">
+    <td><div class="skel-line" style="width:24px;height:14px;"></div></td>
+    <td><div class="skel-line" style="width:70%;"></div></td>
+    <td><div class="skel-line" style="width:60%;"></div></td>
+    <td><div class="skel-line" style="width:50%;"></div></td>
+    <td><div class="skel-line" style="width:40px;"></div></td>
+    <td><div class="skel-line" style="width:55%;"></div></td>
+    <td><div class="skel-line" style="width:50%;"></div></td>
+    <td><div class="skel-line" style="width:30px;"></div></td>
+    <td><div class="skel-line" style="width:45%;"></div></td>
+  </tr>`).join('');
 
   try {
     // Build list of filters to run
@@ -645,7 +653,7 @@ async function searchJobs(page = 0) {
 
     if (currentJobs.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match these filters</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match — try broadening your search or adjusting your filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
       return;

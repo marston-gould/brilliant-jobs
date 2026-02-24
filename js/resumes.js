@@ -85,7 +85,8 @@ function renderResumes() {
 
   if (activeResumes.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;">
-      <h3>No resumes uploaded</h3>
+      <h3>Drop your resume here to get started</h3>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Upload a resume and we'll show you how it stacks up against real job postings.</p>
       <p>Upload your first resume to get started.</p>
     </div>`;
     renderResumeArchive(archivedResumes);
@@ -303,7 +304,7 @@ function updateResumeNavDot() {
   if (activeResumes.length === 0 || sf.length === 0 || allAssignedFilterNames.size === 0) {
     // Red: no resumes or no filters associated
     dot.className = 'ext-status-dot stale';
-    dot.title = 'No resumes assigned to filters';
+    dot.title = 'Assign resumes to saved searches for targeted scoring';
   } else if (sf.every(f => allAssignedFilterNames.has(f.name))) {
     // Green: every filter has a resume
     dot.className = 'ext-status-dot connected';

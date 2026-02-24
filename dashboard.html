@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.24 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
+<!-- Brilliant Jobs Dashboard v4.25 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -120,7 +120,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.24</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.25</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -143,7 +143,7 @@
         <div class="nav-item" data-page="setup">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
           <span>Setup</span>
-          <div class="ext-status-dot" id="ext-status-dot" title="Extension not detected"></div>
+          <div class="ext-status-dot" id="ext-status-dot" title="Extension not detected" aria-label="Extension not detected" role="status"></div>
         </div>
 
         <div class="nav-section-label">Search</div>
@@ -151,18 +151,18 @@
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
           <span>Jobs Feed</span>
           <div class="nav-badge" id="nav-jobs-count" style="display:none;">0</div>
-          <div class="ext-status-dot" id="sf-status-dot" title="No saved searches yet"></div>
+          <div class="ext-status-dot" id="sf-status-dot" title="Create your first saved search" aria-label="No saved searches" role="status"></div>
         </div>
         <div class="nav-item" data-page="tuning" style="padding-left:28px;font-size:12px;">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
           <span>Search Tuning</span>
-          <div class="ext-status-dot warning" id="tuning-status-dot" title="Default settings"></div>
+          <div class="ext-status-dot warning" id="tuning-status-dot" title="Default settings" aria-label="Default tuning settings" role="status"></div>
         </div>
         <div class="nav-item" data-page="resumes">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
           <span>Resumes</span>
           <div class="nav-badge" id="nav-resume-count" style="display:none;">0</div>
-          <div class="ext-status-dot" id="resume-status-dot" title="No resumes"></div>
+          <div class="ext-status-dot" id="resume-status-dot" title="Upload a resume to get started" aria-label="No resumes uploaded" role="status"></div>
         </div>
 
         <div class="nav-section-label">Tracking</div>
@@ -170,12 +170,12 @@
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
           <span>Applications</span>
           <div class="nav-badge" id="nav-app-count" style="display:none;">0</div>
-          <div class="ext-status-dot" id="app-status-dot" title="Application status"></div>
+          <div class="ext-status-dot" id="app-status-dot" title="Application status" aria-label="Application status" role="status"></div>
         </div>
         <div class="nav-item" data-page="pipeline">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
           <span>Pipeline</span>
-          <div class="ext-status-dot" id="pipeline-status-dot" title="Pipeline status"></div>
+          <div class="ext-status-dot" id="pipeline-status-dot" title="Pipeline status" aria-label="Pipeline status" role="status"></div>
         </div>
 
         <div class="nav-section-label">Intelligence</div>
@@ -217,7 +217,7 @@
         </div>
         <div class="credit-balance" id="credit-balance" onclick="openPricingModal()" title="Click to purchase credits">
           <svg class="credit-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M8 10h8M8 14h6"/></svg>
-          <span class="credit-balance-count credit-green" id="credit-balance-badge">0</span>
+          <span class="credit-balance-count credit-green" id="credit-balance-badge" aria-label="Credit balance: 0">0</span>
           <span class="credit-balance-label">credits</span>
         </div>
         <button class="btn-logout" id="logout-btn">Log Out</button>
@@ -450,7 +450,7 @@
               </div>
             </div>
             <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
-              Colored number badges next to titles show which saved filter matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
+              Colored number badges next to titles show which saved search matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
             </div>
           </div>
 
@@ -741,7 +741,7 @@
           <!-- Saved filters list -->
           <div class="sf-collapse-header" id="sf-toggle">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="sf-chevron"><polyline points="6 9 12 15 18 9"/></svg>
-            <span>Saved Filters</span>
+            <span>Saved Searches</span>
             <span class="sf-active-count" id="sf-active-count" style="display:none;"></span>
           </div>
           <div class="sf-collapse-body" id="sf-collapse-body">
@@ -813,9 +813,9 @@
                 <tr>
                   <td colspan="11" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
                     <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
-                    <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
                     <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
-                      Check one or more saved filters above, or use the filter builder.
+                      Check one or more saved searches above, or use the filter builder.
                     </div>
                   </td>
                 </tr>
@@ -829,7 +829,7 @@
       <div class="page" id="page-tuning">
         <div class="page-header">
           <h2>Search Tuning</h2>
-          <p>Global filters, title matching, and exclusion rules that apply across all saved filters <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
+          <p>Global filters, title matching, and exclusion rules that apply across all saved searches <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
         </div>
         <div class="page-body">
 
@@ -898,14 +898,14 @@
               <span class="tuning-card-title">Title Rules</span>
               <span class="tuning-card-badge empty" id="tc-title-badge"></span>
             </div>
-            <div class="tuning-card-sub">default seniority levels (each saved filter can override via the ⚙ icon) and global title exclusions</div>
+            <div class="tuning-card-sub">default seniority levels (each saved search can override via the ⚙ icon) and global title exclusions</div>
             <div class="tuning-card-body">
 
               <!-- Default Level Hierarchy -->
               <div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                   <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">default level hierarchy</label>
-                  <span style="font-size:10px;color:var(--text-faint);font-style:italic;">each saved filter can override this with its own hierarchy</span>
+                  <span style="font-size:10px;color:var(--text-faint);font-style:italic;">each saved search can override this with its own hierarchy</span>
                 </div>
                 <table class="level-table" id="level-table">
                   <thead>
@@ -1252,7 +1252,7 @@
                 </div>
                 <div class="app-rule-card">
                   <div class="app-rule-header">
-                    <h4>Saved filter matches</h4>
+                    <h4>Saved search matches</h4>
                     <label class="toggle-switch">
                       <input type="checkbox" class="rule-toggle" data-rule="saved-filter">
                       <span class="toggle-slider"></span>
@@ -1593,10 +1593,10 @@
             <!-- Section 5: Filter-Specific Overrides -->
             <div class="card">
               <div class="card-title">Filter-Specific Overrides</div>
-              <div class="card-sub">Override global notification settings for individual saved filters</div>
+              <div class="card-sub">Override global notification settings for individual saved searches</div>
               <div style="margin-bottom:14px;">
                 <select id="override-filter-select" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:13px;min-width:200px;">
-                  <option value="">Select a saved filter...</option>
+                  <option value="">Select a saved search...</option>
                 </select>
               </div>
               <div id="override-matrix-wrap" style="display:none;">
@@ -1625,7 +1625,7 @@
                 </div>
               </div>
               <div id="override-empty" style="text-align:center;color:var(--text-faint);padding:24px;font-size:13px;">
-                Select a saved filter above to customize its notification settings.
+                Select a saved search above to customize its notification settings.
               </div>
             </div>
           </div>
@@ -2620,6 +2620,18 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 .feedback-panel { display: none; }
 .feedback-panel.active { display: block; }
+/* Q28: Skeleton loading */
+.skel-row td { padding: 10px 8px !important; }
+.skel-line { height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-card) 50%, var(--bg-hover) 75%); background-size: 200% 100%; animation: skel-shimmer 1.5s ease-in-out infinite; }
+@keyframes skel-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+/* Q29: Mobile 48px touch targets */
+@media (max-width: 768px) {
+  .nav-item { min-height: 48px; display: flex; align-items: center; padding: 8px 12px !important; }
+  .nav-icon { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  .btn, .btn-sm, .btn-primary, .btn-secondary { min-height: 44px; min-width: 44px; }
+  .admin-tab, .admin-period-btn { min-height: 44px; padding: 8px 16px !important; }
+  .sf-check, .sf-check-input { min-width: 44px; min-height: 44px; }
+}
 </style>
 </body>
 </html>
