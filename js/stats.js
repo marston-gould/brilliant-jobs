@@ -452,7 +452,7 @@ function renderSeniorityBars(stats) {
   }
 
   // Ordered Entry → C-Suite (correct career ladder)
-  var SENIORITY_ORDER = ['Intern','Entry','Associate','Mid','Senior','Staff','Lead','Head','Principal','Sr Manager','Manager','Sr Director','Director','VP','C-Suite'];
+  var SENIORITY_ORDER = ['Entry','Analyst','Associate','Mid','Senior','Sr Manager','Manager','Head','Lead','Principal','Staff','Assoc Director','Director','Sr Director','VP','C-Suite'];
   var hier = (levelHierarchy && levelHierarchy.length > 0) ? levelHierarchy : DEFAULT_LEVEL_HIERARCHY;
   var data = SENIORITY_ORDER.map(function(label) {
     var count = stats.levelCounts[label] || 0;
