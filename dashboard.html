@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.15 - 2026-02-23 — Phase T2: Pricing unification + CTA consistency -->
+<!-- Brilliant Jobs Dashboard v4.16 - 2026-02-23 — Phase T3: Quick wins, alert→toast, visual consistency -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -120,7 +120,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.15</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.16</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -138,7 +138,7 @@
       <div class="nav-menu">
         <div class="nav-item active" data-page="brilliant">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></div>
-          <span>Be Brilliant</span>
+          <span>Get Started</span>
         </div>
         <div class="nav-item" data-page="setup">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
@@ -151,7 +151,7 @@
           <div class="nav-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>
           <span>Jobs Feed</span>
           <div class="nav-badge" id="nav-jobs-count" style="display:none;">0</div>
-          <div class="ext-status-dot" id="sf-status-dot" title="No saved filters"></div>
+          <div class="ext-status-dot" id="sf-status-dot" title="No saved searches yet"></div>
         </div>
         <div class="nav-item" data-page="tuning">
           <div class="nav-icon"><svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
@@ -258,7 +258,7 @@
             <label>Page</label>
             <select id="fb-page">
               <option value="">Auto-detected</option>
-              <option value="brilliant">Be Brilliant</option>
+              <option value="brilliant">Get Started</option>
               <option value="setup">Setup</option>
               <option value="jobs">Jobs Feed</option>
               <option value="tuning">Tuning</option>
@@ -329,8 +329,8 @@
       <!-- ============ BE BRILLIANT ============ -->
       <div class="page active" id="page-brilliant">
         <div class="page-header">
-          <h2>Be Brilliant</h2>
-          <p>Find a Brilliant Job</p>
+          <h2>Get Started</h2>
+          <p>Your setup guide — five steps, three minutes. Then your search runs itself.</p>
         </div>
         <div class="page-body" style="max-width:800px;">
 
@@ -1079,7 +1079,7 @@
           <!-- Resume Cards Grid -->
           <div class="resume-grid" id="resume-grid">
             <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
-              <h3>No resumes uploaded</h3>
+              <h3>No resumes yet — drop one here and we'll show you how it stacks up against real job postings</h3>
               <p>Upload your first resume to get started.</p>
             </div>
           </div>

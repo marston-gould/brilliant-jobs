@@ -5,9 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Help — Brilliant Jobs</title>
   <meta name="description" content="Get help with Brilliant Jobs. Learn how to set up filters, manage resumes, track applications, and use the Chrome extension.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face {
+      font-family: 'Outfit';
+      src: url('/fonts/outfit-latin-var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
   <style>
     :root {
       --bg-main: #f5f6fa;
@@ -37,9 +51,9 @@
       margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
     }
     h1 .mark {
-      width: 22px; height: 22px; background: var(--accent); border-radius: 5px;
+      width: 32px; height: 32px; background: #fff; border-radius: 8px;
       display: inline-flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0;
+      font-size: 16px; font-weight: 800; color: var(--nav-bg, #1a3a6e); flex-shrink: 0;
     }
     h2 {
       font-size: 11px; color: var(--accent); margin: 18px 0 8px;
