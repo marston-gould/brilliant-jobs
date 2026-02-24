@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.32 - 2026-02-23 — Phase 0: AI Rewrite — resume text server sync -->
+<!-- Brilliant Jobs Dashboard v4.33 - 2026-02-24 — Admin scroll fix, muted color scheme, GSC aggregate sync -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -60,8 +60,8 @@
     .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
     .admin-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text)}
     .admin-table tr:hover td{background:var(--bg-main)}
-    .admin-green{color:var(--green)}
-    .admin-red{color:var(--red)}
+    .admin-green{color:#4a9a6b}
+    .admin-red{color:#c06060}
     .admin-health-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
     .admin-health-dot.green{background:var(--green)}
     .admin-health-dot.yellow{background:var(--warm)}
@@ -121,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.32</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.33</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2343,12 +2343,12 @@
                 <span id="ac-cycle-pct" style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent)"></span>
               </div>
               <div style="width:100%;height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:12px">
-                <div id="ac-cycle-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--accent));transition:width 1s ease;width:0"></div>
+                <div id="ac-cycle-bar" style="height:100%;border-radius:3px;background:linear-gradient(90deg,#5b8a72,#6b82a8);transition:width 1s ease;width:0"></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;font-size:12px">
                 <div><span style="color:var(--text-faint)">Total boards</span><br><strong id="ac-cycle-total" style="font-family:var(--mono)">—</strong></div>
-                <div><span style="color:var(--text-faint)">HOT fresh</span><br><strong id="ac-cycle-refreshed" style="font-family:var(--mono);color:var(--green)">—</strong></div>
-                <div><span style="color:var(--text-faint)">HOT due</span><br><strong id="ac-cycle-pending" style="font-family:var(--mono);color:var(--warm)">—</strong></div>
+                <div><span style="color:var(--text-faint)">HOT fresh</span><br><strong id="ac-cycle-refreshed" style="font-family:var(--mono);color:#4a9a6b">—</strong></div>
+                <div><span style="color:var(--text-faint)">HOT due</span><br><strong id="ac-cycle-pending" style="font-family:var(--mono);color:#a08858">—</strong></div>
                 <div><span style="color:var(--text-faint)">Rate</span><br><strong id="ac-cycle-rate" style="font-family:var(--mono)">—</strong></div>
                 <div><span style="color:var(--text-faint)">Last refresh</span><br><strong id="ac-cycle-start" style="font-family:var(--mono)">—</strong></div>
                 <div><span style="color:var(--text-faint)">HOT cycle</span><br><strong id="ac-cycle-eta" style="font-family:var(--mono)">—</strong></div>
@@ -2468,6 +2468,7 @@
               <div class="stat-card">
                 <div class="stat-val" id="seo-kpi-gsc">&mdash;</div>
                 <div class="stat-label">GSC Clicks</div>
+                <div id="seo-kpi-gsc-date" style="font-size:10px;color:var(--text-faint);font-family:var(--mono);margin-top:2px"></div>
               </div>
             </div>
 
