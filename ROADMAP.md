@@ -840,6 +840,66 @@
 
 ---
 
+## Phase S2: Survey System Hardening (M-R1–R6) (v4.29) — Feb 24, 2026
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| M-R1 | Deploy `nps-pulse` Edge Function | v4.29 | ✅ | Bug fix: `last_sign_in_at` → `last_seen_at`. Deployed + verified. |
+| M-R2 | Configure `pg_cron` for `nps-pulse` | v4.29 | ✅ | `nps-pulse-monthly`: 0 15 1 * * *. 10am ET. |
+| M-R3 | Build periodic survey automated trigger | v4.29 | ✅ | `periodic-survey-pulse` EF (123 lines). 90-day de-dupe via `profiles.user_data.last_periodic_date`. pg_cron: 15th of month. |
+| M-R4 | Micro-survey priority weighting | v4.29 | ✅ | Already built in `micro-surveys.js`. Priority queue (500ms flush): paywall=100, search=60, apply=50, data=30. |
+| M-R5 | Fix NPS formula in `survey_social_proof` | v4.29 | ✅ | Replaced `avg(nps_score)` with standard NPS: `(% promoters[9-10] - % detractors[0-6]) × 100`. |
+| M-R6 | Fix `survey_social_proof` anon access | v4.29 | ✅ | `GRANT SELECT ON survey_social_proof TO anon`. Verified: anon key returns data. |
+
+**Phase S2 total: 6 items, all complete. Version: v4.29. Edge Functions: 29 total (2 new). pg_cron: 14 total (2 new).**
+
+---
+
+## Phase T: Intelligent Pipeline Tracking (v4.30–v4.32) — Feb 24, 2026
+
+**Goal:** Transform the manual-only pipeline into an intelligent tracking system with automated signal detection (Gmail + Calendar), time-based smart prompts, cross-user pattern learning, and confirmation-first UX. Pod 1 (Growth) brief → Pod 2 (Engineering) implementation.
+
+### Sprint 1: Schema + Smart Prompts (Phase A) (v4.30)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| T1 | `user_pipeline` schema extension | v4.30 | ✅ | +7 columns: tracking_mode, custom_reminder_at, status_note, last_prompted_at, prompt_count, company_domain, stage_changed_at. |
+| T2 | `pipeline_tracking_settings` table | v4.30 | ✅ | Per-user cadences, scan prefs, prompt channels, confidence threshold. RLS: user_id = auth.uid(). |
+| T3 | `pipeline_signals` table | v4.30 | ✅ | Evidence log for all detected/time-based signals. Status: pending_confirmation → confirmed/dismissed/expired. RLS enforced. |
+| T4 | `signal_patterns` table + 21 seeds | v4.30 | ✅ | Cross-user learning: sender_domain (5 ATS), subject_keyword (12 patterns), calendar_format (4 patterns). Confidence scoring: confirmations/(confirmations+dismissals). |
+| T5 | `prompt-pipeline-updates` Edge Function | v4.30 | ✅ | Hourly cron. Checks cadences per user settings. Creates time_based signals. Sends notifications via `send-notification`. Wall-time safety (120s). |
+| T6 | `confirm-pipeline-signal` Edge Function | v4.30 | ✅ | User action handler: confirm/correct/dismiss/snooze. Updates pipeline stage. Adjusts signal_patterns confidence. |
+| T7 | 5-color dot system | v4.30 | ✅ | Green (on track), blue pulsing (signal detected), yellow (prompt due), red (overdue), gray (terminal). CSS animations. |
+| T8 | Inline signal confirmation cards | v4.30 | ✅ | Expand below pipeline row on dot click. Evidence preview, proposed stage change, confirm/correct/dismiss buttons. |
+| T9 | Inline prompt cards | v4.30 | ✅ | Stage-appropriate quick actions: Got response, Interview scheduled, Rejected, No update yet, Archive. |
+| T10 | pg_cron: `prompt-pipeline-hourly` | v4.30 | ✅ | `30 * * * *` — hourly at :30. |
+
+### Sprint 2: Gmail Signals + Calendar + Settings (Phases B–D) (v4.31)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| T11 | Refactor `gmail-scan` to confirmation-first | v4.31 | ✅ | Replaced `autoAdvancePipeline()` with `createPipelineSignals()`. Email classifications now create pending pipeline_signals instead of auto-moving entries. |
+| T12 | `scan-pipeline-signals` Edge Function | v4.31 | ✅ | Calendar scanning: Google Calendar API events.list. Matches attendee domains + event titles against pipeline companies. 3-tier confidence (high/med/low keywords). |
+| T13 | pg_cron: `scan-pipeline-signals-15m` | v4.31 | ✅ | `*/15 * * * *` — every 15 min for users with signal_detection_enabled. |
+| T14 | pg_cron: `pattern-confidence-decay` | v4.31 | ✅ | Weekly (Sundays 4am): `confidence_score *= 0.95` for patterns not seen in 30 days. Floor: 0.3. |
+| T15 | Pipeline Intelligence settings UI | v4.31 | ✅ | New section on Applications page: Smart Prompts toggle, Signal Detection toggle, cadence inputs, scan frequency, confidence threshold (Low/Med/High). |
+| T16 | Gmail connection status indicator | v4.31 | ✅ | Shows connected/disconnected state with link to Setup page. |
+
+### Sprint 3: Spec Gap Closure (v4.32)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| T17 | 'Last Activity' column | v4.32 | ✅ | New pipeline table column: "Signal 2h ago", "Prompt 3d ago", or relative time since stage change. `_relTime()` helper. |
+| T18 | Stage header signal count badges | v4.32 | ✅ | "X signals pending" blue pill badge on each stage header. Auto-hides when 0. |
+| T19 | PostHog analytics events | v4.32 | ✅ | 5 events: signal_detected, signal_confirmed, signal_dismissed, prompt_snoozed. Includes signal_source, signal_type, proposed_stage metadata. |
+| T20 | Prompt notification channels UI | v4.32 | ✅ | Email/In-app/SMS checkboxes in advanced settings. Saves to prompt_channels array. |
+| T21 | Email thread depth + Calendar lookahead UI | v4.32 | ✅ | Number inputs: thread depth 10-200 (default 50), calendar lookahead 7-30 days (default 14). |
+| T22 | Per-application ⋮ context menu | v4.32 | ✅ | Mute/unmute prompts, set custom reminder (date), add status note (free text), remove from pipeline. 📌 and 🔇 indicators. |
+
+**Phase T total: 22 items, 3 sprints, all complete. Version: v4.30–v4.32. Edge Functions: 32 total (3 new: prompt-pipeline-updates, confirm-pipeline-signal, scan-pipeline-signals). gmail-scan refactored. pg_cron: 17 total (3 new: prompt-pipeline-hourly, scan-pipeline-signals-15m, pattern-confidence-decay).**
+
+---
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -854,15 +914,17 @@
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ⚠️ Billing Portal 🚫 blocked on CEO Stripe config |
 | **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ⚠️ Toll-free verification 🚫 blocked on CEO Vonage action |
 | **J** Infrastructure Hardening | 12/13 | v3.81–v3.88 | ⚠️ J13 🚫 blocked on Greenhouse API partnership |
-| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v3.97 | ⚠️ Sprint 0 foundation (15 items, Pod 1) verified. 13/25 P13 items complete. 12 🚫 blocked (user volume). 7 Pod 2 remaining items (M-R1–R7). |
+| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v4.29 | ⚠️ Sprint 0 foundation verified. 13/25 P13 items complete. M-R1–R6 complete (v4.29). M-R7 🚫 blocked (Stripe). 12 P13 items 🚫 blocked (user volume). |
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
 | **S** SEO Data Pages | 24/24 | v4.13 | ✅ Complete |
 | **Q** UX Polish & Resume-First Onboarding | 30/30 | v4.14–v4.27 | ✅ Complete |
 | **R** AI Rewrite: JD-Match Boost | 9/9 | v4.28 | ✅ Complete |
+| **S2** Survey System Hardening | 6/6 | v4.29 | ✅ Complete |
+| **T** Intelligent Pipeline Tracking | 22/22 | v4.30–v4.32 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **251+ items** | **v2.68–v4.28** | **17 items 🚫 BLOCKED** |
+| **Total built** | **279+ items** | **v2.68–v4.32** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -908,6 +970,8 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-24 | T | T1–T22 | **Phase T: Intelligent Pipeline Tracking (v4.30–v4.32).** 4 new DB tables (pipeline_tracking_settings, pipeline_signals, signal_patterns + 21 seeds, user_pipeline +7 columns). 3 new Edge Functions (prompt-pipeline-updates, confirm-pipeline-signal, scan-pipeline-signals). gmail-scan refactored: auto-advance → confirmation-first pipeline_signals. 5-color dot system (green/blue-pulse/yellow/red/gray). Inline signal + prompt cards. ⋮ context menu (mute/reminder/note). Pipeline Intelligence settings UI. PostHog events (5). Last Activity column. Stage header signal badges. 32 Edge Functions total, 17 pg_cron jobs. |
+| 2026-02-24 | S2 | M-R1–R6 | **Survey system hardening (v4.29).** nps-pulse EF deployed (bug fix: last_sign_in_at → last_seen_at) + pg_cron. periodic-survey-pulse EF + cron. NPS formula fixed (avg → standard). survey_social_proof anon access fixed. micro-survey priority already built. 29 Edge Functions, 14 pg_cron. |
 | 2026-02-24 | R | R1–R9 | **Phase R: AI Rewrite JD-Match Boost (v4.28).** Complete "Boost Match" pipeline: 2 new Edge Functions (rewrite-resume-analyze, rewrite-resume-execute), 4 AI agents (Gap Analyzer + Question Generator on Haiku, Resume Rewriter on Sonnet, Quality Checker on Haiku). Slide-out panel UI (analyze → Q&A → diff → accept). Boost pill on Jobs Feed match column (< 85%). Client-side DOCX generation via docx-js + Supabase Storage upload. resume_texts table + 11 new rewrite_sessions columns + init_rewrite_session RPC. Build hardening: fixed esbuild scope collision. 27 Edge Functions total. |
 | 2026-02-23 | S | S1–S24 | **Phase S: SEO Data Pages (v4.13).** 127 public data pages live. 3 DB tables (metro map, role map, page cache) + 6 compute functions + pg_cron. Vercel serverless with ISR. 15 metro pages, 20 role trends, 91 metro+role combos. ECharts hydration (7 chart types). PostHog instrumented. 137 URLs in sitemap. Schema.org Dataset markup. Landing-page design language CSS. |
 | 2026-02-23 | Q | Q1–Q30 | **Phase Q planned.** UX Polish & Resume-First Onboarding. 30 items across 5 sprints (~6 days). 47 issues from 20-persona usability audit. Resume-First flow: upload → AI extract → auto-filter → instant results. Quick wins: alert→toast, logo standardize, CTA unify, a11y, empty states. Pricing unification. Nav progressive disclosure. localStorage→Supabase migration. |
@@ -1041,7 +1105,7 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 | P13-05 | Post-application confidence survey | v3.93/v3.94 | ✅ | showApplyConfidence() in pipeline.js. Toast at bottom-right after apply action. |
 | P13-06 | Data value assessment | v3.93/v3.94 | ✅ | startDataViewTimer() in stats.js. Shows after 10s viewing charts. |
 | P13-07 | Process ease & control survey | v3.92 | ✅ | Comparative ease, perceived control (1-5 scale), filter adequacy + missing filters freetext. |
-| P13-08 | Monthly NPS pulse | v3.93 | ⚠️ Frontend ✅, EF not deployed, cron not scheduled | nps_v1 question bank + NPS context routing in survey.html. `nps-pulse` EF exists in repo but is NOT in deployed EF list. `pg_cron` schedule not configured. Two actions needed: (1) deploy EF, (2) add cron. |
+| P13-08 | Monthly NPS pulse | v4.29 | ✅ | nps-pulse EF deployed (bug fix: last_sign_in_at → last_seen_at). pg_cron: 1st of month 10am ET. periodic-survey-pulse EF + cron (15th of month). NPS formula fixed. Anon access fixed. |
 | P13-09 | Paywall friction survey | v3.93 | ✅ | showPaywallFriction() in billing.js. Triggers on feature limit hit. |
 
 **Infrastructure:** Baseline migration fixed (v3.92) — added CREATE TABLE for 9 missing tables so Supabase Preview branches pass. New question types: scale, nps (0-10), dropdown. Micro-survey card component with choice/rating/chips, session rate-limiting.
@@ -1079,12 +1143,12 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 
 | # | Item | Est. | Status | Blocker |
 |---|------|------|--------|---------|
-| M-R1 | Deploy `nps-pulse` Edge Function | 1min | 🔲 | None — `supabase functions deploy nps-pulse --no-verify-jwt` |
-| M-R2 | Configure `pg_cron` for `nps-pulse` | 5min | 🔲 | M-R1 — one SQL statement, 1st of month 10am ET |
-| M-R3 | Build periodic survey automated trigger | 2h | 🔲 | Pod 1 to specify targeting rules. No automated trigger exists — email or in-app banner. Add de-dupe via `profiles.user_data.last_periodic_date`. |
-| M-R4 | Micro-survey priority weighting | 1h | 🔲 | Optional optimization. Replace first-trigger-wins with priority queue. Paywall friction = highest commercial value but most likely suppressed. |
-| M-R5 | Validate NPS formula in `survey_social_proof` | 30min | 🔲 | View returns `avg_nps` (average score) — standard NPS is `% promoters - % detractors`. Landing page bar may display incorrect methodology. |
-| M-R6 | Fix `survey_social_proof` anon access | 30min | 🔲 | View returned 401 with anon key during audit. Grant exists in baseline migration but may not be applied live. Landing page social proof bar won't render without anon read. |
+| M-R1 | Deploy `nps-pulse` Edge Function | 1min | ✅ | Deployed + bug fix (last_sign_in_at → last_seen_at). v4.29. |
+| M-R2 | Configure `pg_cron` for `nps-pulse` | 5min | ✅ | nps-pulse-monthly: 0 15 1 * * *. v4.29. |
+| M-R3 | Build periodic survey automated trigger | 2h | ✅ | periodic-survey-pulse EF + pg_cron (15th of month). 90-day de-dupe. v4.29. |
+| M-R4 | Micro-survey priority weighting | 1h | ✅ | Already built — priority queue in micro-surveys.js (500ms flush, paywall=100, search=60). |
+| M-R5 | Validate NPS formula in `survey_social_proof` | 30min | ✅ | Fixed: avg(nps_score) → standard NPS (% promoters - % detractors × 100). v4.29. |
+| M-R6 | Fix `survey_social_proof` anon access | 30min | ✅ | GRANT SELECT ON survey_social_proof TO anon. v4.29. |
 | M-R7 | Survey reward fulfillment | 1h | 🚫 BLOCKED | Wire `submitSurvey()` Pro grant + exit save-offer buttons. **⛔ Blocked on:** Phase H Billing Portal config (CEO action). |
 
 ### Manual Action Items
@@ -1094,7 +1158,7 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 | Export 32K ungeocoded locations (SQL provided), geocode externally, re-import to location_cache | CEO | 🚫 BLOCKED — CEO action + external geocoding service |
 | Stripe Billing Portal configuration in Stripe Dashboard | CEO | 🚫 BLOCKED — CEO action in Stripe Dashboard |
 
-### Active pg_cron Jobs (as of v4.12)
+### Active pg_cron Jobs (as of v4.32)
 
 | ID | Schedule | Function | Added |
 |----|----------|----------|-------|
@@ -1111,3 +1175,8 @@ Complete survey infrastructure delivered by Pod 1 before Phase M engineering beg
 | — | 0 */6 * * * | gmail-scan-6h | Phase P |
 | — | 0 3 * * 0 | purge-old-email-signals (90d) | Phase P |
 | 26 | 0 5 * * * | seo-cache-refresh (compute_seo_cache_all) | Phase S |
+| — | 0 15 1 * * | nps-pulse-monthly | Phase S2 |
+| — | 0 15 15 * * | periodic-survey-pulse | Phase S2 |
+| — | 30 * * * * | prompt-pipeline-hourly | Phase T |
+| — | */15 * * * * | scan-pipeline-signals-15m | Phase T |
+| — | 0 4 * * 0 | pattern-confidence-decay | Phase T |
