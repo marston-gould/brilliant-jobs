@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.13';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tiered refresh v13: HOT/WARM/COLD board prioritization');
+const BJ_VERSION = 'v4.14';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T1: SEO P0 fixes + social proof cleanup');
 
 // Auth
 async function init() {

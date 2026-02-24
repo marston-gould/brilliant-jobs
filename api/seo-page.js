@@ -35,6 +35,8 @@ function buildCacheKey(type, metro, role) {
 // =========================================================================
 function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+function jsonEsc(s) { return String(s || '').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r').replace(/\t/g,'\\t'); }
+
 function fmtSal(v) {
   if (!v || v <= 0) return 'N/A';
   if (v >= 1000000) return '$' + (Math.round(v / 100000) / 10) + 'M';
@@ -44,8 +46,14 @@ function fmtSal(v) {
 function fmtNum(n) { return Number(n || 0).toLocaleString('en-US'); }
 
 function trendArrow(val) {
-  if (val > 3) return '<span class="trend-up">↑ ' + Math.abs(val) + '%</span>';
-  if (val < -3) return '<span class="trend-down">↓ ' + Math.abs(val) + '%</span>';
+  if (val === undefined || val === null) return '';
+  // Cap display at ±50% — anything beyond is likely a data artifact
+  if (Math.abs(val) > 50) {
+    if (val > 0) return '<span class="trend-up">↑ 50%+</span>';
+    return '<span class="trend-down">↓ 50%+</span>';
+  }
+  if (val > 3) return '<span class="trend-up">↑ ' + Math.abs(Math.round(val * 10) / 10) + '%</span>';
+  if (val < -3) return '<span class="trend-down">↓ ' + Math.abs(Math.round(val * 10) / 10) + '%</span>';
   return '<span class="trend-flat">→ flat</span>';
 }
 
@@ -324,8 +332,8 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   {
     "@context": "https://schema.org",
     "@type": "Dataset",
-    "name": "${esc(title)}",
-    "description": "${esc(metaDesc)}",
+    "name": "${jsonEsc(title)}",
+    "description": "${jsonEsc(metaDesc)}",
     "url": "https://brilliantjobs.app${canonical}",
     "creator": { "@type": "Organization", "name": "Brilliant Jobs" },
     "temporalCoverage": "${new Date().toISOString().slice(0,10)}"
