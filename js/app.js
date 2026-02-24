@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.32';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Pipeline Intelligence Phases A-D');
+const BJ_VERSION = 'v4.33';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin scroll fix, muted color scheme, GSC sync fix');
 
 // Auth
 async function init() {
@@ -141,6 +141,18 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   savedJobIds = [];
   appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
+  if (resumes.length === 0 && userId) {
+    try {
+      const { data: prof } = await sb.from('profiles').select('user_data').eq('id', userId).single();
+      const cloudResumes = prof?.user_data?.resumes;
+      if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
+        resumes = cloudResumes;
+        localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+        console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
+      }
+    } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
+  }
   // Cloud sync is now live via user_filters + user_tuning tables
   // Q23: Populate global rules crosslink banner
   const grBanner = document.getElementById('global-rules-banner');
