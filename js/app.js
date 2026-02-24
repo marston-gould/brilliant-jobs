@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.15';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T2: Pricing unification + CTA consistency');
+const BJ_VERSION = 'v4.16';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T3: Quick wins, alert→toast, visual consistency');
 
 // Auth
 async function init() {
@@ -434,7 +434,7 @@ function updateGmailUI(connected, email) {
 window.connectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { alert('Please log in first.'); return; }
+    if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
     const res = await fetch('/api/auth/gmail/callback?action=connect', {
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
@@ -442,10 +442,10 @@ window.connectGmail = async function() {
     if (json.url) {
       window.location.href = json.url;
     } else {
-      alert('Failed to start Gmail connection: ' + (json.error || 'Unknown error'));
+      showToast('Failed to start Gmail connection: ' + (json.error || 'Unknown error'), { type: 'error' });
     }
   } catch (e) {
-    alert('Error connecting Gmail: ' + e.message);
+    showToast('Error connecting Gmail: ' + e.message, { type: 'error' });
   }
 };
 
@@ -462,10 +462,10 @@ window.disconnectGmail = async function() {
     if (json.success) {
       updateGmailUI(false, '');
     } else {
-      alert('Failed to disconnect: ' + (json.error || 'Unknown error'));
+      showToast('Failed to disconnect: ' + (json.error || 'Unknown error'), { type: 'error' });
     }
   } catch (e) {
-    alert('Error disconnecting Gmail: ' + e.message);
+    showToast('Error disconnecting Gmail: ' + e.message, { type: 'error' });
   }
 };
 
@@ -479,11 +479,11 @@ window.disconnectGmail = async function() {
   window.history.replaceState({}, '', url);
   if (gmail === 'connected') {
     initGmailStatus();
-    setTimeout(() => alert('Gmail connected successfully! Ghost Monitor will now scan for company responses.'), 500);
+    showToast('Gmail connected! Ghost Monitor will now scan for company responses.', { type: 'success' });
   } else if (gmail === 'denied') {
-    alert('Gmail connection was cancelled.');
+    showToast('Gmail connection was cancelled.', { type: 'info' });
   } else if (gmail === 'error') {
-    alert('Gmail connection failed. Please try again.');
+    showToast('Gmail connection failed. Please try again.', { type: 'error' });
   }
 })();
 

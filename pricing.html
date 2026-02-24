@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Pricing Page v4.15 - 2026-02-23 -->
+<!-- Brilliant Jobs Pricing Page v4.16 - 2026-02-23 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -67,8 +67,8 @@
     }
     .nav-logo .mark {
       width: 32px; height: 32px; border-radius: 8px;
-      background: rgba(255,255,255,0.15); display: grid; place-items: center;
-      font-weight: 800; font-size: 16px; color: #fff;
+      background: #fff; display: grid; place-items: center;
+      font-weight: 800; font-size: 16px; color: var(--nav-bg);
     }
     .nav-links { display: flex; gap: 24px; align-items: center; }
     .nav-links a { color: rgba(255,255,255,0.8); font-size: 14px; font-weight: 500; }
@@ -311,7 +311,7 @@
 
   <script>
   document.getElementById('year').textContent = new Date().getFullYear();
-  console.log('[BJ] Pricing page v4.15 loaded');
+  console.log('[BJ] Pricing page v4.16 loaded');
 
   const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';

@@ -45,6 +45,14 @@ function fmtSal(v) {
 
 function fmtNum(n) { return Number(n || 0).toLocaleString('en-US'); }
 
+function fmtRounded(s) {
+  // Handles cache values like "250000+" → "250,000+"
+  if (!s) return '250,000+';
+  var m = String(s).match(/^(\d+)(\+?)$/);
+  if (m) return Number(m[1]).toLocaleString('en-US') + m[2];
+  return s;
+}
+
 function trendArrow(val) {
   if (val === undefined || val === null) return '';
   // Cap display at ±50% — anything beyond is likely a data artifact
@@ -74,7 +82,7 @@ function renderMetroPage(data, metro, role) {
     : `Jobs in ${metroDisplay}`;
   const metaDesc = role
     ? `${fmtNum(stats.total_jobs)} open ${roleDisplay} jobs in ${metroDisplay}. Median salary: ${fmtSal(stats.median_salary)}. See salary distribution, hiring velocity, and top companies.`
-    : `${fmtNum(stats.total_jobs)} open jobs in ${metroDisplay}. Median salary: ${fmtSal(stats.median_salary)}. See salary distribution, hiring velocity, top companies, and how ${metroDisplay} compares. Data from ${metaInfo.total_jobs_rounded || '250K+'} direct ATS listings.`;
+    : `${fmtNum(stats.total_jobs)} open jobs in ${metroDisplay}. Median salary: ${fmtSal(stats.median_salary)}. See salary distribution, hiring velocity, top companies, and how ${metroDisplay} compares. Data from ${fmtRounded(metaInfo.total_jobs_rounded)} direct ATS listings.`;
 
   // Comparison section HTML
   let comparisonHtml = '';
@@ -240,7 +248,7 @@ function renderTrendsPage(data, role) {
 function renderMarketPage(data) {
   const d = data.data;
   const stats = d.stats;
-  const metaDesc = `${d.meta?.total_jobs_rounded || '250K+'} open jobs from direct ATS feeds. See salary distributions, hiring velocity, top companies, and metro-level market data.`;
+  const metaDesc = `${fmtRounded(d.meta?.total_jobs_rounded)} open jobs from direct ATS feeds. See salary distributions, hiring velocity, top companies, and metro-level market data.`;
 
   return renderShell({
     title: 'Job Market Data — Salary, Hiring Trends & Company Rankings | Brilliant Jobs',
@@ -250,7 +258,7 @@ function renderMarketPage(data) {
     content: `
     <section class="seo-hero">
       <h1>Job Market Data</h1>
-      <p class="seo-hero-sub">${d.meta?.total_jobs_rounded || '250K+'} open roles across ${fmtNum(stats.companies_count)} companies — sourced directly from ATS platforms</p>
+      <p class="seo-hero-sub">${fmtRounded(d.meta?.total_jobs_rounded)} open roles across ${fmtNum(stats.companies_count)} companies — sourced directly from ATS platforms</p>
     </section>
 
     <section class="seo-section">
@@ -316,6 +324,7 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   <meta property="og:description" content="${esc(metaDesc)}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://brilliantjobs.app${canonical}">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20rx%3D'8'%20fill%3D'%234d8eff'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'55%25'%20dominant-baseline%3D'central'%20text-anchor%3D'middle'%20font-family%3D'system-ui'%20font-weight%3D'800'%20font-size%3D'18'%20fill%3D'white'%3EB%3C%2Ftext%3E%3C%2Fsvg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
