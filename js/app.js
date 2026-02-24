@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.18';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T5: Dashboard voice + onboarding');
+const BJ_VERSION = 'v4.19';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase T6: Accessibility + loading states');
 
 // Auth
 async function init() {
