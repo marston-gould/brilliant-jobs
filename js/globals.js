@@ -472,6 +472,8 @@ var _entitlementCacheTTL = 5 * 60 * 1000; // 5 min cache
  * @returns {Promise<object>} Entitlement result from server
  */
 async function checkEntitlement(feature, usageCount) {
+  // Admin bypass — unlimited access to all features
+  if (window._bjUserRole === 'admin') return { allowed: true, behavior: 'fixed', effective_limit: 9999, remaining: 9999 };
   if (!currentUser) return { allowed: false, behavior: 'off', effective_limit: 0, remaining: 0 };
   if (typeof usageCount === 'undefined') usageCount = 0;
   var cacheKey = feature + ':' + usageCount;
