@@ -60,6 +60,19 @@
     .admin-table th{text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
     .admin-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text)}
     .admin-table tr:hover td{background:var(--bg-main)}
+    /* Merchandising tab */
+    .merch-pl-card:hover{background:var(--bg-card-hover) !important}
+    .merch-rule-row:hover{background:var(--bg-card-hover) !important}
+    .merch-btn-sm{padding:4px 10px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:11px;font-family:var(--mono);cursor:pointer;transition:all .15s}
+    .merch-btn-sm:hover{border-color:var(--accent);color:var(--text)}
+    .merch-btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .merch-btn-primary:hover{opacity:.9}
+    .merch-btn-danger:hover{border-color:var(--red);color:var(--red)}
+    .merch-label{display:block;font-size:11px;color:var(--text-faint);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+    .merch-input{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--sans)}
+    .merch-input:focus{outline:none;border-color:var(--accent)}
+    .merch-modal-inner{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto}
+    .merch-modal-inner textarea{resize:vertical}
     .admin-green{color:#4a9a6b}
     .admin-red{color:#c06060}
     .admin-health-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
@@ -121,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.48</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.51</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2341,6 +2354,7 @@
             <button class="admin-tab" data-tab="revenue">Revenue</button>
             <button class="admin-tab" data-tab="ghost">Ghost</button>
             <button class="admin-tab" data-tab="feedback">Feedback</button>
+            <button class="admin-tab" data-tab="merch">Merchandising</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -2711,6 +2725,66 @@
               <div id="afb-detail-meta" style="font-size:12px;color:var(--text-faint);margin-bottom:12px;"></div>
               <div id="afb-detail-content" style="font-size:13px;line-height:1.6;white-space:pre-wrap;"></div>
             </div>
+
+          <div class="admin-panel" id="admin-panel-merch">
+            <!-- Master-Detail Layout -->
+            <div style="display:grid;grid-template-columns:240px 1fr;gap:16px;min-height:500px">
+              <!-- Left: Placement List -->
+              <div style="border-right:1px solid var(--border);padding-right:16px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                  <span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Placements</span>
+                  <button onclick="showAddPlacementForm()" class="merch-btn-sm merch-btn-primary" style="font-size:10px">+ Add</button>
+                </div>
+                <div id="merch-placement-list"></div>
+              </div>
+
+              <!-- Right: Detail -->
+              <div id="merch-detail">
+                <!-- Placement Detail Header -->
+                <div id="merch-detail-header" style="margin-bottom:16px"></div>
+
+                <!-- Rules Section -->
+                <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <span style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Rules</span>
+                    <div style="display:flex;gap:6px">
+                      <span id="merch-rule-controls"></span>
+                      <button onclick="showAddRuleForm()" class="merch-btn-sm merch-btn-primary" style="font-size:10px">+ Add Rule</button>
+                    </div>
+                  </div>
+                  <div id="merch-rules-list" style="display:flex;flex-direction:column;gap:6px"></div>
+                </div>
+
+                <!-- Content Entries Section -->
+                <div style="border-top:1px solid var(--border);padding-top:16px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                    <span id="merch-content-header" style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Content Entries</span>
+                    <div style="display:flex;gap:6px">
+                      <button onclick="showBulkImportModal()" class="merch-btn-sm" style="font-size:10px">Bulk Import</button>
+                      <button onclick="showAddContentModal()" class="merch-btn-sm merch-btn-primary" style="font-size:10px">+ Add Entry</button>
+                    </div>
+                  </div>
+                  <div style="overflow-x:auto">
+                    <table class="admin-table" style="width:100%">
+                      <thead>
+                        <tr>
+                          <th style="width:40px">#</th>
+                          <th>h1 Preview</th>
+                          <th>Sub Preview</th>
+                          <th style="width:90px">Category</th>
+                          <th style="width:80px">Visits</th>
+                          <th style="width:40px;text-align:center">On</th>
+                        </tr>
+                      </thead>
+                      <tbody id="merch-content-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal Overlay -->
+            <div id="merch-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center"></div>
           </div>
 
         </div>
