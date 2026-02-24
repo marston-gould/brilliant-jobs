@@ -291,7 +291,7 @@
     .btn-logout:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.8); }
 
     /* ======================== MAIN ======================== */
-    .main { flex: 1; margin-inline-start: var(--nav-w); height: 100vh; overflow-y: auto; }
+    .main { flex: 1; min-width: 0; width: calc(100% - var(--nav-w)); margin-inline-start: var(--nav-w); height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; overflow-y: auto; }
     .page-header {
       padding: 28px 40px 20px; border-block-end: 1px solid var(--border);
       background: var(--bg-white);
@@ -2064,7 +2064,7 @@
       .nav { width: 60px; }
       .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: none; }
       .nav-item { justify-content: center; padding: 12px; }
-      .main { margin-inline-start: 60px; height: 100vh; overflow-y: auto; }
+      .main { width: calc(100% - 60px); margin-inline-start: 60px; height: 100vh; height: 100dvh; max-height: 100vh; max-height: 100dvh; overflow-y: auto; }
       .page-body { padding: 20px; }
       .page-header { padding: 20px; }
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
