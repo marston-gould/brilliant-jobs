@@ -21,7 +21,7 @@
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=4.47">
+  <link rel="stylesheet" href="styles.css?v=4.48">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -121,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.47</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.48</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2340,6 +2340,7 @@
             <button class="admin-tab" data-tab="users">Users</button>
             <button class="admin-tab" data-tab="revenue">Revenue</button>
             <button class="admin-tab" data-tab="ghost">Ghost</button>
+            <button class="admin-tab" data-tab="feedback">Feedback</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -2639,6 +2640,79 @@
               <div id="ag-ghost-chart" style="height:280px;"></div>
             </div>
           </div>
+          <div class="admin-panel" id="admin-panel-feedback">
+            <!-- Controls Bar -->
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;">
+              <div style="display:flex;gap:4px;" id="afb-type-pills">
+                <button class="admin-period-btn active" data-afb-type="all">All</button>
+                <button class="admin-period-btn" data-afb-type="canny_fr">Feature Requests</button>
+                <button class="admin-period-btn" data-afb-type="canny_bug">Bug Reports</button>
+                <button class="admin-period-btn" data-afb-type="supabase_feedback">Feedback</button>
+                <button class="admin-period-btn" data-afb-type="survey">Surveys</button>
+              </div>
+              <div style="display:flex;gap:4px;" id="afb-status-pills">
+                <button class="admin-period-btn active" data-afb-status="all">All</button>
+                <button class="admin-period-btn" data-afb-status="new">New</button>
+                <button class="admin-period-btn" data-afb-status="reviewing">Reviewing</button>
+                <button class="admin-period-btn" data-afb-status="planned">Planned</button>
+                <button class="admin-period-btn" data-afb-status="in_progress">In Progress</button>
+                <button class="admin-period-btn" data-afb-status="done">Done</button>
+                <button class="admin-period-btn" data-afb-status="wont_fix">Won't Fix</button>
+              </div>
+              <select id="afb-cohort-filter" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--card);">
+                <option value="all">All Cohorts</option>
+              </select>
+              <select id="afb-sort" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--card);">
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="votes">Most Votes</option>
+                <option value="stale">Most Stale</option>
+              </select>
+              <input type="text" id="afb-search" placeholder="Search feedback…" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);font-size:12px;flex:1;min-width:140px;background:var(--card);">
+              <button class="seo-sync-btn" onclick="triggerFeedbackSync()" id="afb-sync-btn" style="font-size:12px;padding:4px 10px;">&#8635; Sync</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="stat-grid" style="margin-bottom:20px;">
+              <div class="stat-card"><div class="stat-label">Total Open</div><div class="stat-val" id="afb-open">—</div></div>
+              <div class="stat-card"><div class="stat-label">New This Week</div><div class="stat-val" id="afb-new-week">—</div></div>
+              <div class="stat-card"><div class="stat-label">Avg Days to Resolve</div><div class="stat-val" id="afb-avg-resolve">—</div></div>
+              <div class="stat-card"><div class="stat-label">Most Requested</div><div class="stat-val" id="afb-top-fr" style="font-size:12px;line-height:1.3;">—</div></div>
+            </div>
+
+            <!-- Table -->
+            <div class="card" style="padding:0;overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;" id="afb-table">
+                <thead>
+                  <tr style="background:var(--bg-alt);border-bottom:2px solid var(--border);">
+                    <th style="padding:8px 10px;text-align:left;width:80px;font-weight:600;font-size:11px;color:var(--text-faint);">Type</th>
+                    <th style="padding:8px 10px;text-align:left;font-weight:600;font-size:11px;color:var(--text-faint);">Title / Content</th>
+                    <th style="padding:8px 10px;text-align:left;width:120px;font-weight:600;font-size:11px;color:var(--text-faint);">User</th>
+                    <th style="padding:8px 10px;text-align:left;width:100px;font-weight:600;font-size:11px;color:var(--text-faint);">Cohort</th>
+                    <th style="padding:8px 10px;text-align:left;width:90px;font-weight:600;font-size:11px;color:var(--text-faint);cursor:pointer;" onclick="sortFeedbackBy('submitted')">Submitted ↕</th>
+                    <th style="padding:8px 10px;text-align:center;width:70px;font-weight:600;font-size:11px;color:var(--text-faint);cursor:pointer;" onclick="sortFeedbackBy('stale')">Days ↕</th>
+                    <th style="padding:8px 10px;text-align:center;width:60px;font-weight:600;font-size:11px;color:var(--text-faint);cursor:pointer;" onclick="sortFeedbackBy('votes')">Votes ↕</th>
+                    <th style="padding:8px 10px;text-align:left;width:110px;font-weight:600;font-size:11px;color:var(--text-faint);">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="afb-tbody"></tbody>
+              </table>
+            </div>
+            <div id="afb-empty" style="display:none;text-align:center;padding:40px;color:var(--text-faint);">
+              No feedback items found. Click <strong>Sync</strong> to pull from Canny and Supabase.
+            </div>
+
+            <!-- Detail Side Panel (hidden by default) -->
+            <div id="afb-detail" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--card);border-left:1px solid var(--border);box-shadow:-4px 0 20px rgba(0,0,0,0.1);z-index:1000;overflow-y:auto;padding:24px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h3 id="afb-detail-title" style="font-size:16px;margin:0;">—</h3>
+                <button onclick="closeFeedbackDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-faint);">&times;</button>
+              </div>
+              <div id="afb-detail-meta" style="font-size:12px;color:var(--text-faint);margin-bottom:12px;"></div>
+              <div id="afb-detail-content" style="font-size:13px;line-height:1.6;white-space:pre-wrap;"></div>
+            </div>
+          </div>
+
         </div>
       </div>
 
