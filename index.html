@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v4.02 - 2026-02-23 -->
+<!-- Brilliant Jobs Landing Page v4.14 - 2026-02-23 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -733,7 +733,7 @@
   <!-- Segment detection — runs before body paint to prevent FOUC (v3.59) -->
   <script>
   (function() {
-    console.log('[BJ] Landing page v4.02');
+    console.log('[BJ] Landing page v4.14');
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -1210,12 +1210,7 @@
   <div class="section fade-up" style="padding-bottom:0;">
     <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
       <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by a job seeker</div>
-      <div style="display:flex;justify-content:center;gap:40px;flex-wrap:wrap;color:var(--text-dim);font-size:14px;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> beta users</div>
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--text);">0</span> applications tracked</div>
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--green);">$0</span> in ad spend</div>
-      </div>
-      <div style="font-size:12px;color:var(--text-faint);margin-top:12px;">These numbers update as we grow. We don't fake metrics.</div>
+      <div style="font-size:14px;color:var(--text-dim);line-height:1.6;">We're in private beta. Early numbers are real and published — we don't fake metrics.</div>
     </div>
   </div>
 
@@ -1291,7 +1286,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v3.91</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.14</p>
   </footer>
 
   <!-- AUTH MODAL -->
