@@ -14306,6 +14306,80 @@ async function loadBoardHealth() {
   }
 }
 
+// ─── Export Boards CSV ───
+async function exportBoardsCsv(type) {
+  var btn = document.getElementById('export-' + type + '-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exporting…'; }
+  try {
+    var sb = window._bjSupa;
+    if (!sb) throw new Error('Supabase not ready');
+
+    var query = sb.from('ats_companies').select('slug,source,company_name,job_count,last_http_status,last_checked,last_refresh_at,created_at');
+
+    if (type === 'dead') {
+      query = query.eq('last_http_status', 404);
+    } else if (type === 'unscraped') {
+      query = query.is('last_refresh_at', null);
+    } else if (type === 'active') {
+      query = query.gt('job_count', 0);
+    }
+    // 'all' = no extra filter
+
+    query = query.eq('is_active', true).order('source').order('slug');
+
+    var allRows = [];
+    var pageSize = 1000;
+    var page = 0;
+    while (true) {
+      var { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) break;
+      page++;
+      if (page > 100) break; // safety
+    }
+
+    if (allRows.length === 0) {
+      if (typeof showToast === 'function') showToast('No boards found for "' + type + '"', { type: 'warn' });
+      return;
+    }
+
+    // Build CSV
+    var headers = ['slug','source','company_name','job_count','last_http_status','last_checked','last_refresh_at','created_at'];
+    var csvLines = [headers.join(',')];
+    allRows.forEach(function(r) {
+      csvLines.push(headers.map(function(h) {
+        var v = r[h];
+        if (v == null) return '';
+        v = String(v);
+        if (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) {
+          return '"' + v.replace(/"/g, '""') + '"';
+        }
+        return v;
+      }).join(','));
+    });
+
+    var blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'boards-' + type + '-' + dateStr + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
+  } catch (err) {
+    console.error('[Admin] Export error:', err);
+    if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Export ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Boards'; }
+  }
+}
+
 // ─── Feed Health Charts (stacked area by platform) ───
 var _fhCharts = {};
 var _platformColors = {
@@ -18522,8 +18596,8 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v4.51';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
+const BJ_VERSION = 'v4.54';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin: Export boards CSV');
 
 // Auth
 async function init() {
