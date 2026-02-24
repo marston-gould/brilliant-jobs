@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.57';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Resume Archive Phase 3 — Archive tab UI');
+const BJ_VERSION = 'v4.58';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Resume Archive Phase 4 — expiry cron + restore');
 
 // Auth
 async function init() {
