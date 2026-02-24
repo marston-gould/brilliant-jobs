@@ -200,11 +200,11 @@ async function loadBoardHealth() {
 // ─── Feed Health Charts (stacked area by platform) ───
 var _fhCharts = {};
 var _platformColors = {
-  greenhouse: '#22c55e',
-  lever: '#3b82f6',
-  ashby: '#f59e0b',
-  workable: '#8b5cf6',
-  recruitee: '#ec4899'
+  greenhouse: '#5b8a72',
+  lever: '#6b82a8',
+  ashby: '#a08858',
+  workable: '#8878a0',
+  recruitee: '#a07080'
 };
 
 async function loadFeedHealthCharts() {
@@ -327,11 +327,11 @@ async function loadRefreshCycle() {
     if (rate6h > 0 && rate1h > 0) {
       var pctChange = Math.round(((rate1h - rate6h) / rate6h) * 100);
       if (pctChange > 10) {
-        rateStr += ' <span style="color:#22c55e;font-size:0.8em">▲ ' + pctChange + '%</span>';
+        rateStr += ' <span style="color:#4a9a6b;font-size:0.8em">▲ ' + pctChange + '%</span>';
       } else if (pctChange < -10) {
-        rateStr += ' <span style="color:#ef4444;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
+        rateStr += ' <span style="color:#c06060;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
       } else {
-        rateStr += ' <span style="color:#94a3b8;font-size:0.8em">● steady</span>';
+        rateStr += ' <span style="color:#8b929e;font-size:0.8em">● steady</span>';
       }
     }
     var rateEl = document.getElementById('ac-cycle-rate');
@@ -364,7 +364,7 @@ async function loadRefreshCycle() {
         grid: { top: 4, right: 4, bottom: 16, left: 30 },
         xAxis: { type: 'category', data: hours, axisLabel: { fontSize: 9, color: '#94a3b8' }, axisLine: { show: false }, axisTick: { show: false } },
         yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
-        series: [{ type: 'bar', data: counts, itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
+        series: [{ type: 'bar', data: counts, itemStyle: { color: '#6b82a8', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
         tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + ': ' + p[0].value.toLocaleString() + ' boards'; } }
       });
     }
@@ -574,8 +574,8 @@ function renderCohortCharts(cohorts) {
       xAxis: { type: 'category', data: names, axisLabel: { color: '#7b829a', fontSize: 11 } },
       yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
       series: [
-        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#94a3b8' } },
-        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#3b82f6' } }
+        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#8b929e' } },
+        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#6b82a8' } }
       ]
     }), true);
     window.addEventListener('resize', function() { planChart.resize(); });
@@ -622,7 +622,7 @@ async function renderCohortGrowthChart() {
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
       yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
-      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#3b82f6', width: 2 }, itemStyle: { color: '#3b82f6' }, areaStyle: { color: 'rgba(59,130,246,0.08)' }, symbol: 'circle', symbolSize: 4 }]
+      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#6b82a8', width: 2 }, itemStyle: { color: '#6b82a8' }, areaStyle: { color: 'rgba(107,130,168,0.06)' }, symbol: 'circle', symbolSize: 4 }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
   } catch (e) { console.error('[Admin] Growth chart error:', e); }
@@ -653,7 +653,7 @@ async function renderCohortSessionsChart() {
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
       yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
-      series: [{ type: 'bar', data: counts, itemStyle: { color: '#22c55e', borderRadius: [3,3,0,0] } }]
+      series: [{ type: 'bar', data: counts, itemStyle: { color: '#5b8a72', borderRadius: [3,3,0,0] } }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
   } catch (e) { console.error('[Admin] Sessions chart error:', e); }
@@ -697,7 +697,7 @@ async function loadUsersTab() {
           grid: { left: 50, right: 16, top: 12, bottom: 32 },
           xAxis: { type: 'category', data: d.signup_by_week.map(function(w) { return w.week; }), axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
           yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
-          series: [{ type: 'bar', data: d.signup_by_week.map(function(w) { return w.count; }), itemStyle: { borderRadius: [4, 4, 0, 0], color: '#4d8eff' }, barWidth: '60%' }]
+          series: [{ type: 'bar', data: d.signup_by_week.map(function(w) { return w.count; }), itemStyle: { borderRadius: [4, 4, 0, 0], color: '#6b82a8' }, barWidth: '60%' }]
         });
         window.addEventListener('resize', function() { chart.resize(); });
       }
@@ -769,7 +769,7 @@ async function fetchSeoData() {
     tech_audits: fetch(SUPABASE_URL + '/rest/v1/seo_tech_audits?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }),
     index_status:fetch(SUPABASE_URL + '/rest/v1/seo_index_status?select=*&order=checked_at.desc' + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '') + '&limit=20', { headers: authHeaders }),
     conversions: fetch(SUPABASE_URL + '/rest/v1/seo_conversions?select=*&order=date.asc' + dateFilter, { headers: authHeaders }),
-    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + urlFilter + '&order=clicks.desc&limit=50', { headers: authHeaders }),
+    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '&url=eq.*') + '&order=clicks.desc&limit=50', { headers: authHeaders }),
   };
 
   var keys = Object.keys(fetches);
@@ -842,6 +842,8 @@ function renderSeoStatCards() {
   setKpi('seo-kpi-indexed', totalInspected > 0 ? indexed + '/' + totalInspected : null, idxColor);
   setKpi('seo-kpi-cf', cfRequests != null ? cfRequests.toLocaleString() : null);
   setKpi('seo-kpi-gsc', gscClicks != null ? gscClicks.toLocaleString() : null);
+  var gscDateEl = document.getElementById('seo-kpi-gsc-date');
+  if (gscDateEl) gscDateEl.textContent = latestSite ? 'sampled ' + latestSite.date : '';
 }
 
 function seoChartTheme() {
@@ -889,7 +891,7 @@ function renderTrafficChart() {
     title: { text: 'PostHog Traffic', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
     yAxis: ax.yAxis,
-    series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 16 }]
+    series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8878a0' }, barMaxWidth: 16 }]
   }), true);
 }
 
@@ -908,8 +910,8 @@ function renderGscChart() {
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
     yAxis: [ax.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
     series: [
-      { name: 'Clicks', type: 'bar', data: data.map(function(r) { return r.clicks || r.total_clicks || 0; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 12 },
-      { name: 'Impressions', type: 'line', yAxisIndex: 1, data: data.map(function(r) { return r.impressions || r.total_impressions || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, smooth: true, symbol: 'none' }
+      { name: 'Clicks', type: 'bar', data: data.map(function(r) { return r.clicks || r.total_clicks || 0; }), itemStyle: { color: '#6b82a8' }, barMaxWidth: 12 },
+      { name: 'Impressions', type: 'line', yAxisIndex: 1, data: data.map(function(r) { return r.impressions || r.total_impressions || 0; }), lineStyle: { color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, smooth: true, symbol: 'none' }
     ]
   }), true);
 }
@@ -933,7 +935,7 @@ function renderPsiChart() {
     var m = latest.metrics || {};
     var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
     var values = [m.performance || 0, m.seo || 0, m.accessibility || 0, m.best_practices || 0];
-    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
+    var colors = ['#a08858', '#5b8a72', '#6b82a8', '#8878a0'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
       title: { text: (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
@@ -962,7 +964,7 @@ function renderPsiChart() {
     
     var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
     var values = [avgMetrics.performance, avgMetrics.seo, avgMetrics.accessibility, avgMetrics.best_practices];
-    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
+    var colors = ['#a08858', '#5b8a72', '#6b82a8', '#8878a0'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
       title: { text: 'Avg Across ' + n + ' Pages', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
@@ -993,7 +995,7 @@ function renderCruxChart() {
     grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
     yAxis: ax.yAxis,
-    series: [{ type: 'bar', data: p75s, itemStyle: { color: function(p) { return ['#34d399','#4d8eff','#f59e0b','#a78bfa','#ef4444'][p.dataIndex % 5]; } }, barMaxWidth: 30 }]
+    series: [{ type: 'bar', data: p75s, itemStyle: { color: function(p) { return ['#5b8a72','#6b82a8','#a08858','#8878a0','#c06060'][p.dataIndex % 5]; } }, barMaxWidth: 30 }]
   }), true);
 }
 
@@ -1106,7 +1108,7 @@ function renderCloudflareChart() {
     series: [
       { name: 'Requests', type: 'bar', data: cfData.map(function(r) { return r.metrics && r.metrics.total_requests || 0; }), itemStyle: { color: 'rgba(77,142,255,0.3)' }, barMaxWidth: 16 },
       { name: 'Page Views', type: 'line', data: cfData.map(function(r) { return r.metrics && r.metrics.page_views || 0; }), lineStyle: { color: '#f97316' }, itemStyle: { color: '#f97316' }, symbol: 'circle', symbolSize: 5 },
-      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics && r.metrics.unique_visitors || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 5 }
+      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics && r.metrics.unique_visitors || 0; }), lineStyle: { color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, symbol: 'circle', symbolSize: 5 }
     ]
   }), true);
 }
@@ -1501,7 +1503,7 @@ function renderSurveyVersionsChart(versions) {
     series: [{
       type: 'bar',
       data: versions.map(function(v) { return v.count; }),
-      itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
+      itemStyle: { color: '#6b82a8', borderRadius: [4, 4, 0, 0] }
     }],
     grid: { left: 50, right: 16, top: 30, bottom: 60 }
   });
@@ -1524,8 +1526,8 @@ function renderSurveyDailyChart(daily) {
       data: daily.map(function(d) { return d.count; }),
       smooth: true,
       areaStyle: { opacity: 0.15 },
-      lineStyle: { color: '#3b82f6' },
-      itemStyle: { color: '#3b82f6' }
+      lineStyle: { color: '#6b82a8' },
+      itemStyle: { color: '#6b82a8' }
     }],
     grid: { left: 40, right: 16, top: 20, bottom: 40 }
   });
@@ -1545,9 +1547,9 @@ function renderSurveyNpsChart(npsMonthly) {
     xAxis: { type: 'category', data: npsMonthly.map(function(m) { return m.month; }) },
     yAxis: { type: 'value' },
     series: [
-      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#22c55e' } },
-      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#f59e0b' } },
-      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#ef4444' } }
+      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#5b8a72' } },
+      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#a08858' } },
+      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#c06060' } }
     ],
     grid: { left: 40, right: 16, top: 20, bottom: 50 }
   });
@@ -1657,7 +1659,7 @@ async function loadGhostTab() {
     if (tbody) {
       tbody.innerHTML = stats.map(function(s) {
         var rate = s.ghost_rate != null ? Math.round(s.ghost_rate * 100) : 0;
-        var rateColor = rate >= 50 ? 'var(--red)' : rate >= 25 ? '#f59e0b' : 'var(--green)';
+        var rateColor = rate >= 50 ? '#c06060' : rate >= 25 ? '#a08858' : '#4a9a6b';
         var responded = (s.total_applications || 0) - (s.ghosted_count || 0);
         var lastActivity = s.updated_at ? new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
         var avgDays = s.avg_response_days > 0 ? s.avg_response_days + 'd' : '—';
@@ -1704,7 +1706,7 @@ function renderAdminGhostChart(stats) {
 
   var names = top.map(function(s) { return (s.company_slug || '').replace(/-/g, ' '); });
   var rates = top.map(function(s) { return Math.round((s.ghost_rate || 0) * 100); });
-  var colors = rates.map(function(r) { return r >= 50 ? '#f56565' : r >= 25 ? '#f59e0b' : '#48bb78'; });
+  var colors = rates.map(function(r) { return r >= 50 ? '#c06060' : r >= 25 ? '#a08858' : '#4a9a6b'; });
 
   var isDark = document.body.classList.contains('dark');
   var textColor = isDark ? '#a0aec0' : '#4a5568';
@@ -1717,7 +1719,7 @@ function renderAdminGhostChart(stats) {
     series: [{
       type: 'bar',
       data: rates.slice().reverse().map(function(v, i) {
-        var c = v >= 50 ? '#f56565' : v >= 25 ? '#f59e0b' : '#48bb78';
+        var c = v >= 50 ? '#c06060' : v >= 25 ? '#a08858' : '#4a9a6b';
         return { value: v, itemStyle: { color: c } };
       }),
       barWidth: 16, itemStyle: { borderRadius: [0, 4, 4, 0] },

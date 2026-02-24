@@ -903,6 +903,9 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
     }
 
     const el = document.createElement('span');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('role', 'button');
+    el.setAttribute('aria-label', 'Filter: ' + pill.values.join(' or ') + '. Press Delete to remove.');
     let cls = 'qb-pill';
     if (pill.type === 'collection') cls += ' collection-pill';
     else if (extraClass) cls += ' ' + extraClass;
@@ -950,6 +953,33 @@ function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, o
 
     el.innerHTML = `<span class="qb-pill-text" data-idx="${i}">${display}</span><span class="qb-pill-remove" data-idx="${i}">×</span>`;
     builder.insertBefore(el, input);
+
+    // Q26: Keyboard navigation
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        pillArray.splice(i, 1);
+        if (onRemove) onRemove();
+        else renderAllPills();
+        // Focus next pill or input
+        const nextPill = builder.querySelector('.qb-pill');
+        if (nextPill) nextPill.focus();
+        else input.focus();
+      } else if (e.key === 'ArrowRight') {
+        const next = el.nextElementSibling;
+        if (next && next.classList.contains('qb-and')) {
+          const pill2 = next.nextElementSibling;
+          if (pill2 && pill2.classList.contains('qb-pill')) pill2.focus();
+        } else if (next && next.classList.contains('qb-pill')) next.focus();
+        else input.focus();
+      } else if (e.key === 'ArrowLeft') {
+        const prev = el.previousElementSibling;
+        if (prev && prev.classList.contains('qb-and')) {
+          const pill2 = prev.previousElementSibling;
+          if (pill2 && pill2.classList.contains('qb-pill')) pill2.focus();
+        } else if (prev && prev.classList.contains('qb-pill')) prev.focus();
+      }
+    });
   });
 
   // Bind per-value remove buttons (for multi-value pills)
@@ -1535,18 +1565,26 @@ async function searchJobs(page = 0) {
   if (checked.length === 0 && !hasBuilderPills) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
-      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved filters or add filters to search jobs</div>
-      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved filters above, or use the filter builder.</div>
+      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
+      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
     </td></tr>`;
     await updateJobStatsFromFilters(null);
     $('#filter-count').textContent = '';
     return;
   }
 
-  // Show loading
-  tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:32px 12px;">
-    <div style="font-size:13px;">Searching jobs…</div>
-  </td></tr>`;
+  // Show skeleton loading
+  tbody.innerHTML = Array.from({length: 8}, () => `<tr class="skel-row">
+    <td><div class="skel-line" style="width:24px;height:14px;"></div></td>
+    <td><div class="skel-line" style="width:70%;"></div></td>
+    <td><div class="skel-line" style="width:60%;"></div></td>
+    <td><div class="skel-line" style="width:50%;"></div></td>
+    <td><div class="skel-line" style="width:40px;"></div></td>
+    <td><div class="skel-line" style="width:55%;"></div></td>
+    <td><div class="skel-line" style="width:50%;"></div></td>
+    <td><div class="skel-line" style="width:30px;"></div></td>
+    <td><div class="skel-line" style="width:45%;"></div></td>
+  </tr>`).join('');
 
   try {
     // Build list of filters to run
@@ -1702,7 +1740,7 @@ async function searchJobs(page = 0) {
 
     if (currentJobs.length === 0) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match these filters</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match — try broadening your search or adjusting your filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
       return;
@@ -2131,7 +2169,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
-      <td class="jt-match">${matchBadge(jobMatchScores[job.greenhouse_id])}</td>
+      <td class="jt-match">${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
         ${saveBtn}${applyBtn}
       </div></td>
@@ -8739,6 +8777,70 @@ const PL_STAGE_LABELS = {
 let _pipelineCache = {};
 let _pipelineLoaded = false;
 
+// ── Pipeline Signals (Phase A) ─────────────────────────────────
+// Pending signals keyed by pipeline_entry_id
+let _pendingSignals = {};
+
+async function loadPendingSignals() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('pipeline_signals')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'pending_confirmation')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    _pendingSignals = {};
+    (data || []).forEach(s => {
+      if (s.pipeline_entry_id) _pendingSignals[s.pipeline_entry_id] = s;
+    });
+    const sigCount = Object.keys(_pendingSignals).length;
+    console.log('[BJ] Loaded', sigCount, 'pending pipeline signals');
+    if (sigCount > 0 && typeof posthog !== 'undefined') {
+      const sources = {};
+      Object.values(_pendingSignals).forEach(s => { sources[s.signal_source] = (sources[s.signal_source] || 0) + 1; });
+      posthog.capture('signal_detected', { count: sigCount, sources: sources });
+    }
+  } catch (e) {
+    console.error('[BJ] Signal load error:', e);
+  }
+}
+
+async function confirmPipelineSignal(signalId, action, correctedStage) {
+  try {
+    // PostHog: track signal actions
+    const sig = Object.values(_pendingSignals).find(s => s.id === signalId);
+    const phEvent = action === 'confirm' ? 'signal_confirmed'
+      : action === 'correct' ? 'signal_confirmed'
+      : action === 'dismiss' ? 'signal_dismissed'
+      : action === 'snooze' ? 'prompt_snoozed' : 'signal_action';
+    if (typeof posthog !== 'undefined') {
+      posthog.capture(phEvent, {
+        signal_id: signalId,
+        signal_source: sig?.signal_source || 'unknown',
+        signal_type: sig?.signal_type || 'unknown',
+        proposed_stage: sig?.proposed_stage,
+        corrected_stage: correctedStage || null,
+        action: action,
+      });
+    }
+
+    const token = (await sb.auth.getSession())?.data?.session?.access_token;
+    const resp = await fetch(sb.supabaseUrl + '/functions/v1/confirm-pipeline-signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ signal_id: signalId, action: action, corrected_stage: correctedStage })
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    // Refresh signals and pipeline
+    await loadPendingSignals();
+    await loadPipelineFromSupabase();
+    renderPipeline();
+  } catch (e) {
+    console.error('[BJ] Signal confirm error:', e);
+  }
+}
+
 // ── Supabase-backed getter (replaces getPipelineMeta) ──────────
 function getPipelineMeta() {
   // Returns the in-memory cache for synchronous access (backward compat).
@@ -8785,6 +8887,13 @@ async function loadPipelineFromSupabase() {
         companySlug: row.company_slug || '',
         companyDomain: row.company_domain || '',
         jobUrl: row.job_url || '',
+        tracking_mode: row.tracking_mode || 'auto',
+        status_note: row.status_note || null,
+        custom_reminder_at: row.custom_reminder_at || null,
+        lastPromptedAt: row.last_prompted_at || null,
+        promptCount: row.prompt_count || 0,
+        stageChangedAt: row.stage_changed_at || null,
+        jobTitle: row.job_title || '',
       };
       // Populate legacy arrays
       if (row.stage !== 'saved') appliedJobIds.push(key);
@@ -8937,6 +9046,7 @@ async function migratePipelineToSupabase() {
 async function initPipeline() {
   await migratePipelineToSupabase();
   await loadPipelineFromSupabase();
+  await loadPendingSignals();
 }
 
 // ── Move job to a new stage ──────────────────────────────────
@@ -9152,6 +9262,18 @@ async function renderPipeline() {
     if (countEl) countEl.textContent = jobs.length;
     if (section && collapseStates[stage]) section.classList.add('collapsed');
 
+    // Signal count badge on stage header
+    const pendingCount = jobs.filter(j => j.meta._dbId && _pendingSignals[j.meta._dbId]).length;
+    const badgeEl = document.getElementById('psig-' + stage);
+    if (badgeEl) {
+      if (pendingCount > 0) {
+        badgeEl.textContent = pendingCount + ' signal' + (pendingCount > 1 ? 's' : '') + ' pending';
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
     const scores = jobs.map(j => j.meta.matchScore).filter(s => typeof s === 'number');
     if (matchEl) {
       if (scores.length > 0) {
@@ -9171,7 +9293,7 @@ async function renderPipeline() {
     let html = '<table class="pl-table"><thead><tr>';
     html += '<th></th><th>Title</th><th>Company</th><th>Resume</th><th>Filters</th>';
     html += '<th>Discovered</th><th>Day Applied</th><th>Days In Stage</th>';
-    html += '<th>Match</th><th>Move</th><th></th>';
+    html += '<th>Last Activity</th><th>Match</th><th>Move</th><th></th>';
     html += '</tr></thead><tbody>';
 
     for (const item of jobs) {
@@ -9193,7 +9315,20 @@ async function renderPipeline() {
       const daysInStage = stageDate ? Math.floor((now - stageDate) / 86400000) : '—';
 
       let staleDot = '';
-      if (typeof daysInStage === 'number') {
+      const dbId = m._dbId; // Supabase row ID for signal lookup
+      const pendingSig = dbId ? _pendingSignals[dbId] : null;
+      const terminalStages = ['offer', 'rejected', 'archived', 'hired'];
+
+      if (terminalStages.includes(stage)) {
+        // Gray — terminal state
+        staleDot = '<span class="pl-dot pl-dot-gray" title="Complete"></span>';
+      } else if (pendingSig && pendingSig.signal_source !== 'time_based') {
+        // Blue pulsing — signal detected (Gmail/Calendar/ATS)
+        staleDot = '<span class="pl-dot pl-dot-blue" title="Signal detected — click to confirm" data-signal-id="' + pendingSig.id + '" onclick="toggleSignalCard(this)"></span>';
+      } else if (pendingSig && pendingSig.signal_source === 'time_based') {
+        // Yellow — prompt due
+        staleDot = '<span class="pl-dot pl-dot-yellow" title="Prompt due — click to update" data-signal-id="' + pendingSig.id + '" onclick="toggleSignalCard(this)"></span>';
+      } else if (typeof daysInStage === 'number') {
         const staleRules = {
           saved:     { yellow: 5, red: 7 },
           applied:   { yellow: 7, red: 14 },
@@ -9204,10 +9339,14 @@ async function renderPipeline() {
         const rule = staleRules[stage];
         if (rule) {
           if (daysInStage >= rule.red) {
-            staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);" title="' + daysInStage + 'd — needs attention"></span>';
+            staleDot = '<span class="pl-dot pl-dot-red" title="' + daysInStage + 'd — needs attention"></span>';
           } else if (daysInStage >= rule.yellow) {
-            staleDot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;" title="' + daysInStage + 'd in stage"></span>';
+            staleDot = '<span class="pl-dot pl-dot-yellow" title="' + daysInStage + 'd in stage"></span>';
+          } else {
+            staleDot = '<span class="pl-dot pl-dot-green" title="On track"></span>';
           }
+        } else {
+          staleDot = '<span class="pl-dot pl-dot-green" title="On track"></span>';
         }
       }
 
@@ -9233,10 +9372,78 @@ async function renderPipeline() {
       html += '<td class="pl-date">' + discovered + '</td>';
       html += '<td class="pl-date">' + dayApplied + '</td>';
       html += '<td class="pl-days">' + daysInStage + (typeof daysInStage === 'number' ? 'd' : '') + '</td>';
+
+      // Last Activity column
+      const lastActivity = pendingSig
+        ? (pendingSig.signal_source === 'time_based'
+            ? 'Prompt ' + _relTime(pendingSig.created_at)
+            : 'Signal ' + _relTime(pendingSig.created_at))
+        : (m.stage_changed_at || m.lastPromptedAt
+            ? _relTime(m.stage_changed_at || m.lastPromptedAt)
+            : '—');
+      html += '<td class="pl-date" style="font-size:11px;color:var(--text-dim);">' + lastActivity + '</td>';
+
       html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
       html += '<td><select class="pl-move-select" onchange="movePipelineStage(\'' + item.id + '\', this.value)"><option value="">Move…</option>' + moveOpts + '</select></td>';
-      html += '<td><button class="job-action-btn hide-btn" onclick="unsaveFromPipeline(\'' + item.id + '\')" style="padding:2px 6px;font-size:9px;" title="Remove from pipeline">✕</button></td>';
+      html += '<td style="position:relative;">';
+      html += '<button class="job-action-btn hide-btn pl-menu-trigger" onclick="togglePlMenu(this,\'' + item.id + '\')" style="padding:2px 8px;font-size:12px;" title="Actions">⋮</button>';
+      html += '<div class="pl-menu" id="plmenu-' + item.id + '">';
+      html += '<div class="pl-menu-item" onclick="setTrackingMode(\'' + item.id + '\',\'' + (m.tracking_mode === 'muted' ? 'auto' : 'muted') + '\')">' + (m.tracking_mode === 'muted' ? 'Unmute prompts' : 'Mute prompts') + '</div>';
+      html += '<div class="pl-menu-item" onclick="showCustomReminder(\'' + item.id + '\')">Set custom reminder</div>';
+      html += '<div class="pl-menu-item" onclick="showStatusNote(\'' + item.id + '\')">Add status note</div>';
+      html += '<div class="pl-menu-sep"></div>';
+      html += '<div class="pl-menu-item pl-menu-danger" onclick="unsaveFromPipeline(\'' + item.id + '\')">Remove from pipeline</div>';
+      html += '</div>';
+      if (m.status_note) html += '<div class="pl-status-note" title="' + m.status_note.replace(/"/g, '&quot;') + '">📌</div>';
+      if (m.tracking_mode === 'muted') html += '<div style="font-size:8px;color:var(--text-faint);position:absolute;bottom:-2px;right:2px;">🔇</div>';
+      html += '</td>';
       html += '</tr>';
+
+      // Inline signal card (hidden by default, toggled by dot click)
+      if (pendingSig) {
+        const isSignal = pendingSig.signal_source !== 'time_based';
+        const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
+        const icon = isSignal ? '✉' : '⏰';
+        const headerText = isSignal
+          ? 'Activity detected for ' + title + ' at ' + company
+          : 'Time to check in on ' + title + ' at ' + company;
+        const evidence = pendingSig.evidence_preview || '';
+
+        html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
+        html += '<td colspan="12" style="padding:0;">';
+        html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
+        html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
+        if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
+
+        if (isSignal && pendingSig.proposed_stage) {
+          // Signal confirmation: Confirm / Different stage / Dismiss
+          html += '<div class="pl-signal-proposed">Move: <strong>' + (PL_STAGE_LABELS[stage] || stage) + ' → ' + (PL_STAGE_LABELS[pendingSig.proposed_stage] || pendingSig.proposed_stage) + '</strong></div>';
+          html += '<div class="pl-signal-actions">';
+          html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'confirm\')">Confirm</button>';
+          html += '<button class="pl-sig-btn pl-sig-correct" onclick="showStageCorrector(\'' + pendingSig.id + '\', this)">Different stage</button>';
+          html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'dismiss\')">Dismiss</button>';
+          html += '</div>';
+        } else {
+          // Time-based prompt: quick actions
+          html += '<div class="pl-signal-actions">';
+          if (stage === 'saved') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'applied\')">Applied</button>';
+          } else if (stage === 'applied') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'responded\')">Got a response</button>';
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'interview\')">Interview scheduled</button>';
+            html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'rejected\')">Rejected</button>';
+          } else if (stage === 'responded') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'interview\')">Interview scheduled</button>';
+          } else if (stage === 'interview') {
+            html += '<button class="pl-sig-btn pl-sig-confirm" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'offer\')">Got an offer</button>';
+            html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'rejected\')">Rejected</button>';
+          }
+          html += '<button class="pl-sig-btn pl-sig-snooze" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'snooze\')">No update yet</button>';
+          html += '<button class="pl-sig-btn pl-sig-dismiss" onclick="confirmPipelineSignal(\'' + pendingSig.id + '\', \'correct\', \'archived\')">Archive</button>';
+          html += '</div>';
+        }
+        html += '</div></td></tr>';
+      }
     }
 
     html += '</tbody></table>';
@@ -9372,6 +9579,186 @@ async function renderGhostMonitor() {
 // Auto-load ghost monitor when page is shown
 function onGhostPageShow() {
   renderGhostMonitor();
+}
+
+// ── Pipeline Signal UI (Phase A) ─────────────────────────────
+// Relative time helper (e.g. "3d ago", "2h ago")
+function _relTime(isoStr) {
+  if (!isoStr) return '—';
+  const ms = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return mins + 'm ago';
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  const days = Math.floor(hrs / 24);
+  return days + 'd ago';
+}
+
+function toggleSignalCard(dotEl) {
+  const signalId = dotEl.getAttribute('data-signal-id');
+  const row = document.getElementById('signal-card-' + signalId);
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function showStageCorrector(signalId, btnEl) {
+  // Replace button with stage picker dropdown
+  const parent = btnEl.parentElement;
+  const select = document.createElement('select');
+  select.className = 'pl-move-select';
+  select.style.marginLeft = '4px';
+  const stages = ['saved','applied','responded','interview','offer','rejected','archived'];
+  const labels = PL_STAGE_LABELS;
+  select.innerHTML = '<option value="">Pick stage…</option>' +
+    stages.map(s => '<option value="' + s + '">' + (labels[s] || s) + '</option>').join('');
+  select.onchange = function() {
+    if (this.value) confirmPipelineSignal(signalId, 'correct', this.value);
+  };
+  btnEl.replaceWith(select);
+}
+
+// ── Per-Application Overrides (Phase D) ──────────────────────
+function togglePlMenu(btn, jobId) {
+  // Close any other open menus
+  document.querySelectorAll('.pl-menu.open').forEach(m => m.classList.remove('open'));
+  const menu = document.getElementById('plmenu-' + jobId);
+  if (menu) menu.classList.toggle('open');
+  // Close on outside click
+  const closer = (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) {
+      menu.classList.remove('open');
+      document.removeEventListener('click', closer);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', closer), 10);
+}
+
+async function setTrackingMode(jobId, mode) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  meta.tracking_mode = mode;
+  try {
+    await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
+    renderPipeline();
+  } catch (e) { console.error('[BJ] Tracking mode error:', e); }
+}
+
+function showCustomReminder(jobId) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  const dateStr = prompt('Remind me about this on (YYYY-MM-DD):', new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
+  if (!dateStr) return;
+  const date = new Date(dateStr + 'T10:00:00');
+  if (isNaN(date.getTime())) { alert('Invalid date'); return; }
+  meta.custom_reminder_at = date.toISOString();
+  sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
+    .then(() => renderPipeline())
+    .catch(e => console.error('[BJ] Custom reminder error:', e));
+}
+
+function showStatusNote(jobId) {
+  const meta = _pipelineCache[jobId];
+  if (!meta?._dbId) return;
+  const note = prompt('Status note (e.g., "Waiting on background check"):', meta.status_note || '');
+  if (note === null) return; // cancelled
+  meta.status_note = note || null;
+  sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
+    .then(() => renderPipeline())
+    .catch(e => console.error('[BJ] Status note error:', e));
+}
+
+// ── Manual Pipeline Entry ────────────────────────────────────
+function showManualPipelineAdd() {
+  const form = document.getElementById('pl-manual-add');
+  if (form) form.style.display = '';
+}
+
+function hideManualPipelineAdd() {
+  const form = document.getElementById('pl-manual-add');
+  if (form) form.style.display = 'none';
+  ['pl-man-title', 'pl-man-company', 'pl-man-url'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+async function saveManualPipelineEntry() {
+  if (!currentUser?.id) return;
+  const title = (document.getElementById('pl-man-title')?.value || '').trim();
+  const company = (document.getElementById('pl-man-company')?.value || '').trim();
+  const url = (document.getElementById('pl-man-url')?.value || '').trim();
+  const stage = document.getElementById('pl-man-stage')?.value || 'applied';
+
+  if (!title || !company) {
+    alert('Job title and company name are required.');
+    return;
+  }
+
+  // Generate a unique ID for this manual entry (not a real ats_jobs ID)
+  const manualId = 'manual-' + crypto.randomUUID().slice(0, 8);
+  const now = new Date().toISOString();
+
+  // Derive company domain from URL or name
+  let companyDomain = '';
+  if (url) {
+    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch (e) {}
+  }
+  if (!companyDomain) {
+    companyDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+  }
+
+  const row = {
+    user_id: currentUser.id,
+    job_id: manualId,
+    ats_source: 'manual',
+    stage: stage,
+    saved_at: now,
+    applied_at: stage !== 'saved' ? now : null,
+    responded_at: ['responded', 'interview', 'offer'].includes(stage) ? now : null,
+    interview_at: ['interview', 'offer'].includes(stage) ? now : null,
+    offer_at: stage === 'offer' ? now : null,
+    stage_changed_at: now,
+    company_name: company,
+    company_domain: companyDomain,
+    job_title: title,
+    job_url: url || null,
+    tracking_mode: 'auto',
+    notes: 'Manually added',
+  };
+
+  try {
+    const { data, error } = await sb.from('user_pipeline')
+      .insert(row)
+      .select('id')
+      .single();
+    if (error) throw error;
+
+    // Add to local cache
+    _pipelineCache[manualId] = {
+      _dbId: data.id,
+      stage: stage,
+      savedAt: now,
+      appliedAt: row.applied_at,
+      respondedAt: row.responded_at,
+      interviewAt: row.interview_at,
+      companyName: company,
+      company: company,
+      title: title,
+      companyDomain: companyDomain,
+      jobUrl: url,
+      notes: 'Manually added',
+      atsSource: 'manual',
+      filterTags: [],
+      tracking_mode: 'auto',
+    };
+
+    hideManualPipelineAdd();
+    renderPipeline();
+    console.log('[BJ] Manual pipeline entry added:', manualId);
+  } catch (e) {
+    console.error('[BJ] Manual add error:', e);
+    alert('Failed to add: ' + (e.message || 'Unknown error'));
+  }
 }
 
 
@@ -10937,7 +11324,8 @@ function renderResumes() {
 
   if (activeResumes.length === 0) {
     grid.innerHTML = `<div class="empty-state" style="padding:32px 20px;">
-      <h3>No resumes uploaded</h3>
+      <h3>Drop your resume here to get started</h3>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:8px;">Upload a resume and we'll show you how it stacks up against real job postings.</p>
       <p>Upload your first resume to get started.</p>
     </div>`;
     renderResumeArchive(archivedResumes);
@@ -11155,7 +11543,7 @@ function updateResumeNavDot() {
   if (activeResumes.length === 0 || sf.length === 0 || allAssignedFilterNames.size === 0) {
     // Red: no resumes or no filters associated
     dot.className = 'ext-status-dot stale';
-    dot.title = 'No resumes assigned to filters';
+    dot.title = 'Assign resumes to saved searches for targeted scoring';
   } else if (sf.every(f => allAssignedFilterNames.has(f.name))) {
     // Green: every filter has a resume
     dot.className = 'ext-status-dot connected';
@@ -11486,10 +11874,10 @@ window.downloadResume = async function(idx) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } else {
-      alert('File data not available. Re-upload this resume to enable downloads.');
+      showToast('File data not available. Re-upload this resume to enable downloads.', { type: 'error' });
     }
   } catch(e) {
-    alert('Download failed: ' + e.message);
+    showToast('Download failed: ' + e.message, { type: 'error' });
   }
 };
 
@@ -11594,7 +11982,7 @@ renderResumes();
 $('#resume-from-level-btn')?.addEventListener('click', async () => {
   const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
   if (levels.length === 0) {
-    alert('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.');
+    showToast('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.', { type: 'info' });
     return;
   }
 
@@ -11602,7 +11990,7 @@ $('#resume-from-level-btn')?.addEventListener('click', async () => {
   const newLevels = levels.filter(l => l.label && !existingNames.includes(l.label.toLowerCase() + ' resume'));
 
   if (newLevels.length === 0) {
-    alert('You already have resume placeholders for all configured levels.');
+    showToast('You already have resume placeholders for all configured levels.', { type: 'info' });
     return;
   }
 
@@ -11978,6 +12366,7 @@ if (currentUser?.email) {
 
 renderAppQueue();
 renderAppHistory();
+loadPipelineIntelligenceSettings();
 
 // Gmail
 $('#gmail-connect-btn').addEventListener('click', () => {
@@ -12572,6 +12961,84 @@ if (currentUser) {
 }
 
 
+// ── Pipeline Intelligence Settings (Phase D) ─────────────────
+async function loadPipelineIntelligenceSettings() {
+  if (!currentUser?.id) return;
+  try {
+    const { data } = await sb.from('pipeline_tracking_settings')
+      .select('*').eq('user_id', currentUser.id).single();
+    if (!data) return;
+    const el = (id) => document.getElementById(id);
+    if (el('pi-smart-prompts')) el('pi-smart-prompts').checked = data.smart_prompts_enabled !== false;
+    if (el('pi-signal-detection')) el('pi-signal-detection').checked = data.signal_detection_enabled === true;
+    if (el('pi-cadence-saved')) el('pi-cadence-saved').value = data.cadence_saved_days || 3;
+    if (el('pi-cadence-applied')) el('pi-cadence-applied').value = data.cadence_applied_days || 7;
+    if (el('pi-cadence-responded')) el('pi-cadence-responded').value = data.cadence_responded_days || 5;
+    if (el('pi-cadence-interview')) el('pi-cadence-interview').value = data.cadence_interview_days || 3;
+    if (el('pi-scan-freq')) el('pi-scan-freq').value = String(data.scan_frequency_minutes || 15);
+    if (el('pi-thread-depth')) el('pi-thread-depth').value = data.email_thread_depth || 50;
+    if (el('pi-cal-lookahead')) el('pi-cal-lookahead').value = data.calendar_lookahead_days || 14;
+    const channels = data.prompt_channels || ['email', 'in_app'];
+    if (el('pi-ch-email')) el('pi-ch-email').checked = channels.includes('email');
+    if (el('pi-ch-inapp')) el('pi-ch-inapp').checked = channels.includes('in_app');
+    if (el('pi-ch-sms')) el('pi-ch-sms').checked = channels.includes('sms');
+    const confRadios = document.querySelectorAll('input[name="pi-confidence"]');
+    confRadios.forEach(r => { r.checked = parseFloat(r.value) === (data.confidence_threshold || 0.6); });
+  } catch (e) {
+    console.log('[BJ] No pipeline intelligence settings yet');
+  }
+  // Show Gmail status
+  try {
+    const { data: conn } = await sb.from('gmail_connections')
+      .select('sync_status').eq('user_id', currentUser.id).single();
+    const statusEl = document.getElementById('pi-gmail-status');
+    if (statusEl) statusEl.style.display = '';
+    if (conn?.sync_status === 'active') {
+      const connEl = document.getElementById('pi-gmail-connected');
+      const btnEl = document.getElementById('pi-gmail-connect');
+      if (connEl) connEl.style.display = '';
+      if (btnEl) btnEl.style.display = 'none';
+    }
+  } catch (e) { /* no connection */ }
+}
+
+async function savePipelineIntelligenceSettings() {
+  if (!currentUser?.id) return;
+  const el = (id) => document.getElementById(id);
+  const confRadio = document.querySelector('input[name="pi-confidence"]:checked');
+  const settings = {
+    user_id: currentUser.id,
+    smart_prompts_enabled: el('pi-smart-prompts')?.checked ?? true,
+    signal_detection_enabled: el('pi-signal-detection')?.checked ?? false,
+    cadence_saved_days: parseInt(el('pi-cadence-saved')?.value) || 3,
+    cadence_applied_days: parseInt(el('pi-cadence-applied')?.value) || 7,
+    cadence_responded_days: parseInt(el('pi-cadence-responded')?.value) || 5,
+    cadence_interview_days: parseInt(el('pi-cadence-interview')?.value) || 3,
+    scan_frequency_minutes: parseInt(el('pi-scan-freq')?.value) || 15,
+    confidence_threshold: confRadio ? parseFloat(confRadio.value) : 0.6,
+    email_thread_depth: parseInt(el('pi-thread-depth')?.value) || 50,
+    calendar_lookahead_days: parseInt(el('pi-cal-lookahead')?.value) || 14,
+    prompt_channels: [
+      ...(el('pi-ch-email')?.checked ? ['email'] : []),
+      ...(el('pi-ch-inapp')?.checked ? ['in_app'] : []),
+      ...(el('pi-ch-sms')?.checked ? ['sms'] : []),
+    ],
+    updated_at: new Date().toISOString(),
+  };
+  try {
+    await sb.from('pipeline_tracking_settings').upsert(settings, { onConflict: 'user_id' });
+    const btn = el('pi-save-btn');
+    if (btn) { btn.textContent = 'Saved!'; setTimeout(() => btn.textContent = 'Save Pipeline Settings', 1500); }
+  } catch (e) {
+    console.error('[BJ] Pipeline settings save error:', e);
+  }
+}
+
+// Load settings when applications page is shown
+if (typeof _origInitApplications === 'undefined') {
+  var _origInitApplications = typeof initApplications === 'function' ? initApplications : null;
+}
+
 
 // === js/settings.js ===
 // Stats — now powered by stats.js (ECharts dashboard)
@@ -12588,19 +13055,19 @@ $('#st-change-pw')?.addEventListener('click', async () => {
   try {
     const { error } = await sb.auth.resetPasswordForEmail(currentUser.email, { redirectTo: window.location.origin });
     if (error) throw error;
-    alert('Password reset email sent! Check your inbox.');
-  } catch (e) { alert('Failed: ' + e.message); }
+    showToast('Password reset email sent — check your inbox.', { type: 'success' });
+  } catch (e) { showToast('Password reset failed: ' + e.message, { type: 'error' }); }
 });
 $('#st-export')?.addEventListener('click', async () => {
   try {
     const { data } = await sb.from('connections').select('*').limit(5000);
-    if (!data?.length) { alert('No data to export yet.'); return; }
+    if (!data?.length) { showToast('Nothing to export yet — start tracking applications first.', { type: 'info' }); return; }
     const csv = [Object.keys(data[0]).join(','), ...data.map(r => Object.values(r).map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `brilliant-jobs-export-${new Date().toISOString().slice(0,10)}.csv`;
     a.click(); URL.revokeObjectURL(a.href);
-  } catch (e) { alert('Export failed: ' + e.message); }
+  } catch (e) { showToast('Export failed: ' + e.message, { type: 'error' }); }
 });
 
 // Logout
@@ -12644,8 +13111,8 @@ function setFbType(type) {
 function handleFbFiles(fileList) {
   for (const file of fileList) {
     if (fbFiles.length >= 3) break;
-    if (file.size > 5 * 1024 * 1024) { alert(file.name + ' is over 5MB'); continue; }
-    if (!file.type.startsWith('image/')) { alert(file.name + ' is not an image'); continue; }
+    if (file.size > 5 * 1024 * 1024) { showToast(file.name + ' is over 5MB', { type: 'error' }); continue; }
+    if (!file.type.startsWith('image/')) { showToast(file.name + ' is not an image', { type: 'error' }); continue; }
     const reader = new FileReader();
     reader.onload = e => {
       fbFiles.push({ file, dataUrl: e.target.result });
@@ -12764,7 +13231,7 @@ async function submitFeedback() {
     $('#fb-success-view').style.display = 'flex';
   } catch (e) {
     console.error('[BJ] Feedback submit error:', e);
-    alert('Failed to submit feedback. Please try again.');
+    showToast('Failed to submit feedback. Please try again.', { type: 'error' });
     btn.disabled = false;
     btn.textContent = 'Submit';
   }
@@ -13767,11 +14234,11 @@ async function loadBoardHealth() {
 // ─── Feed Health Charts (stacked area by platform) ───
 var _fhCharts = {};
 var _platformColors = {
-  greenhouse: '#22c55e',
-  lever: '#3b82f6',
-  ashby: '#f59e0b',
-  workable: '#8b5cf6',
-  recruitee: '#ec4899'
+  greenhouse: '#5b8a72',
+  lever: '#6b82a8',
+  ashby: '#a08858',
+  workable: '#8878a0',
+  recruitee: '#a07080'
 };
 
 async function loadFeedHealthCharts() {
@@ -13894,11 +14361,11 @@ async function loadRefreshCycle() {
     if (rate6h > 0 && rate1h > 0) {
       var pctChange = Math.round(((rate1h - rate6h) / rate6h) * 100);
       if (pctChange > 10) {
-        rateStr += ' <span style="color:#22c55e;font-size:0.8em">▲ ' + pctChange + '%</span>';
+        rateStr += ' <span style="color:#4a9a6b;font-size:0.8em">▲ ' + pctChange + '%</span>';
       } else if (pctChange < -10) {
-        rateStr += ' <span style="color:#ef4444;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
+        rateStr += ' <span style="color:#c06060;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
       } else {
-        rateStr += ' <span style="color:#94a3b8;font-size:0.8em">● steady</span>';
+        rateStr += ' <span style="color:#8b929e;font-size:0.8em">● steady</span>';
       }
     }
     var rateEl = document.getElementById('ac-cycle-rate');
@@ -13931,7 +14398,7 @@ async function loadRefreshCycle() {
         grid: { top: 4, right: 4, bottom: 16, left: 30 },
         xAxis: { type: 'category', data: hours, axisLabel: { fontSize: 9, color: '#94a3b8' }, axisLine: { show: false }, axisTick: { show: false } },
         yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
-        series: [{ type: 'bar', data: counts, itemStyle: { color: '#3b82f6', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
+        series: [{ type: 'bar', data: counts, itemStyle: { color: '#6b82a8', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
         tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + ': ' + p[0].value.toLocaleString() + ' boards'; } }
       });
     }
@@ -13974,25 +14441,6 @@ async function loadCohortTab() {
     window._cohortList = cohorts;
 
     // Build cohort filter chips
-    var filterEl = document.getElementById('ac-cohort-filter');
-    if (filterEl && !filterEl.hasChildNodes()) {
-      var allBtn = document.createElement('button');
-      allBtn.className = 'admin-period-btn active';
-      allBtn.textContent = 'All';
-      allBtn.dataset.cohortId = '__all__';
-      allBtn.addEventListener('click', function() { toggleCohortFilter('__all__'); });
-      filterEl.appendChild(allBtn);
-
-      cohorts.forEach(function(c) {
-        var btn = document.createElement('button');
-        btn.className = 'admin-period-btn';
-        btn.textContent = c.display_id || c.id;
-        btn.dataset.cohortId = c.id;
-        btn.addEventListener('click', function() { toggleCohortFilter(c.id); });
-        filterEl.appendChild(btn);
-      });
-    }
-
     renderCohortData(cohorts);
   } catch (err) {
     console.error('[Admin] loadCohortTab error:', err);
@@ -14000,36 +14448,23 @@ async function loadCohortTab() {
 }
 
 function toggleCohortFilter(id) {
-  var filterEl = document.getElementById('ac-cohort-filter');
-  if (!filterEl) return;
-
-  if (id === '__all__') {
-    _selectedCohortIds = [];
-  } else {
-    var idx = _selectedCohortIds.indexOf(id);
-    if (idx >= 0) {
-      _selectedCohortIds.splice(idx, 1);
-    } else {
-      _selectedCohortIds.push(id);
-    }
-  }
-
-  // Update button states
-  var isAll = _selectedCohortIds.length === 0;
-  filterEl.querySelectorAll('button').forEach(function(btn) {
-    if (btn.dataset.cohortId === '__all__') {
-      btn.classList.toggle('active', isAll);
-    } else {
-      btn.classList.toggle('active', _selectedCohortIds.indexOf(btn.dataset.cohortId) >= 0);
-    }
+  // Driven by table checkboxes now
+  _selectedCohortIds = [];
+  document.querySelectorAll('.cohort-row-cb:checked').forEach(function(cb) {
+    _selectedCohortIds.push(cb.dataset.cohortId);
   });
-
-  // Filter and re-render
-  var filtered = isAll ? _allCohorts : _allCohorts.filter(function(c) {
+  var selectAll = document.getElementById('cohort-select-all');
+  if (selectAll) {
+    var total = document.querySelectorAll('.cohort-row-cb').length;
+    selectAll.checked = _selectedCohortIds.length === total;
+    selectAll.indeterminate = _selectedCohortIds.length > 0 && _selectedCohortIds.length < total;
+  }
+  var filtered = _selectedCohortIds.length === 0 ? _allCohorts : _allCohorts.filter(function(c) {
     return _selectedCohortIds.indexOf(c.id) >= 0;
   });
   renderCohortData(filtered);
 }
+window.updateCohortCharts = function() { toggleCohortFilter(); };
 
 function renderCohortData(cohorts) {
     var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
@@ -14057,6 +14492,7 @@ function renderCohortData(cohorts) {
     var thead = tbody.parentElement.querySelector('thead');
     if (thead) {
       thead.innerHTML = '<tr>' +
+        '<th style="width:32px;"><input type="checkbox" id="cohort-select-all" title="Select all" style="cursor:pointer;" onchange="updateCohortCharts()"></th>' +
         '<th>ID</th><th>Age</th><th>Enrollment</th><th>Users</th><th>Active 7d</th><th>Churned</th>' +
         planOrder.map(function(p) { return '<th>' + p.charAt(0).toUpperCase() + p.slice(1) + '</th>'; }).join('') +
         '<th>Revenue/mo</th><th>LTV</th><th>ARPU</th>' +
@@ -14073,6 +14509,7 @@ function renderCohortData(cohorts) {
       if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { planCounts[pb.plan] = pb.count; });
 
       return '<tr>' +
+        '<td><input type="checkbox" class="cohort-row-cb" data-cohort-id="' + c.id + '" onchange="toggleCohortFilter()" style="cursor:pointer;"></td>' +
         '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + '</td>' +
         '<td>' + (c.age_days || 0) + 'd</td>' +
         '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
@@ -14171,8 +14608,8 @@ function renderCohortCharts(cohorts) {
       xAxis: { type: 'category', data: names, axisLabel: { color: '#7b829a', fontSize: 11 } },
       yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
       series: [
-        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#94a3b8' } },
-        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#3b82f6' } }
+        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#8b929e' } },
+        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#6b82a8' } }
       ]
     }), true);
     window.addEventListener('resize', function() { planChart.resize(); });
@@ -14219,7 +14656,7 @@ async function renderCohortGrowthChart() {
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
       yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
-      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#3b82f6', width: 2 }, itemStyle: { color: '#3b82f6' }, areaStyle: { color: 'rgba(59,130,246,0.08)' }, symbol: 'circle', symbolSize: 4 }]
+      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#6b82a8', width: 2 }, itemStyle: { color: '#6b82a8' }, areaStyle: { color: 'rgba(107,130,168,0.06)' }, symbol: 'circle', symbolSize: 4 }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
   } catch (e) { console.error('[Admin] Growth chart error:', e); }
@@ -14250,7 +14687,7 @@ async function renderCohortSessionsChart() {
       grid: { top: 35, right: 20, bottom: 30, left: 40 },
       xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
       yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
-      series: [{ type: 'bar', data: counts, itemStyle: { color: '#22c55e', borderRadius: [3,3,0,0] } }]
+      series: [{ type: 'bar', data: counts, itemStyle: { color: '#5b8a72', borderRadius: [3,3,0,0] } }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
   } catch (e) { console.error('[Admin] Sessions chart error:', e); }
@@ -14294,7 +14731,7 @@ async function loadUsersTab() {
           grid: { left: 50, right: 16, top: 12, bottom: 32 },
           xAxis: { type: 'category', data: d.signup_by_week.map(function(w) { return w.week; }), axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
           yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
-          series: [{ type: 'bar', data: d.signup_by_week.map(function(w) { return w.count; }), itemStyle: { borderRadius: [4, 4, 0, 0], color: '#4d8eff' }, barWidth: '60%' }]
+          series: [{ type: 'bar', data: d.signup_by_week.map(function(w) { return w.count; }), itemStyle: { borderRadius: [4, 4, 0, 0], color: '#6b82a8' }, barWidth: '60%' }]
         });
         window.addEventListener('resize', function() { chart.resize(); });
       }
@@ -14366,7 +14803,7 @@ async function fetchSeoData() {
     tech_audits: fetch(SUPABASE_URL + '/rest/v1/seo_tech_audits?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }),
     index_status:fetch(SUPABASE_URL + '/rest/v1/seo_index_status?select=*&order=checked_at.desc' + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '') + '&limit=20', { headers: authHeaders }),
     conversions: fetch(SUPABASE_URL + '/rest/v1/seo_conversions?select=*&order=date.asc' + dateFilter, { headers: authHeaders }),
-    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + urlFilter + '&order=clicks.desc&limit=50', { headers: authHeaders }),
+    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '&url=eq.*') + '&order=clicks.desc&limit=50', { headers: authHeaders }),
   };
 
   var keys = Object.keys(fetches);
@@ -14439,6 +14876,8 @@ function renderSeoStatCards() {
   setKpi('seo-kpi-indexed', totalInspected > 0 ? indexed + '/' + totalInspected : null, idxColor);
   setKpi('seo-kpi-cf', cfRequests != null ? cfRequests.toLocaleString() : null);
   setKpi('seo-kpi-gsc', gscClicks != null ? gscClicks.toLocaleString() : null);
+  var gscDateEl = document.getElementById('seo-kpi-gsc-date');
+  if (gscDateEl) gscDateEl.textContent = latestSite ? 'sampled ' + latestSite.date : '';
 }
 
 function seoChartTheme() {
@@ -14486,7 +14925,7 @@ function renderTrafficChart() {
     title: { text: 'PostHog Traffic', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
     yAxis: ax.yAxis,
-    series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8b5cf6' }, barMaxWidth: 16 }]
+    series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8878a0' }, barMaxWidth: 16 }]
   }), true);
 }
 
@@ -14505,8 +14944,8 @@ function renderGscChart() {
     xAxis: Object.assign({}, ax.xAxis, { data: dates }),
     yAxis: [ax.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
     series: [
-      { name: 'Clicks', type: 'bar', data: data.map(function(r) { return r.clicks || r.total_clicks || 0; }), itemStyle: { color: '#4d8eff' }, barMaxWidth: 12 },
-      { name: 'Impressions', type: 'line', yAxisIndex: 1, data: data.map(function(r) { return r.impressions || r.total_impressions || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, smooth: true, symbol: 'none' }
+      { name: 'Clicks', type: 'bar', data: data.map(function(r) { return r.clicks || r.total_clicks || 0; }), itemStyle: { color: '#6b82a8' }, barMaxWidth: 12 },
+      { name: 'Impressions', type: 'line', yAxisIndex: 1, data: data.map(function(r) { return r.impressions || r.total_impressions || 0; }), lineStyle: { color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, smooth: true, symbol: 'none' }
     ]
   }), true);
 }
@@ -14530,7 +14969,7 @@ function renderPsiChart() {
     var m = latest.metrics || {};
     var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
     var values = [m.performance || 0, m.seo || 0, m.accessibility || 0, m.best_practices || 0];
-    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
+    var colors = ['#a08858', '#5b8a72', '#6b82a8', '#8878a0'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
       title: { text: (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
@@ -14559,7 +14998,7 @@ function renderPsiChart() {
     
     var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
     var values = [avgMetrics.performance, avgMetrics.seo, avgMetrics.accessibility, avgMetrics.best_practices];
-    var colors = ['#f59e0b', '#34d399', '#4d8eff', '#a78bfa'];
+    var colors = ['#a08858', '#5b8a72', '#6b82a8', '#8878a0'];
     var t = seoChartTheme(), ax = seoAxis();
     chart.setOption(Object.assign({}, t, {
       title: { text: 'Avg Across ' + n + ' Pages', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
@@ -14590,7 +15029,7 @@ function renderCruxChart() {
     grid: { top: 35, right: 20, bottom: 50, left: 60 },
     xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
     yAxis: ax.yAxis,
-    series: [{ type: 'bar', data: p75s, itemStyle: { color: function(p) { return ['#34d399','#4d8eff','#f59e0b','#a78bfa','#ef4444'][p.dataIndex % 5]; } }, barMaxWidth: 30 }]
+    series: [{ type: 'bar', data: p75s, itemStyle: { color: function(p) { return ['#5b8a72','#6b82a8','#a08858','#8878a0','#c06060'][p.dataIndex % 5]; } }, barMaxWidth: 30 }]
   }), true);
 }
 
@@ -14703,7 +15142,7 @@ function renderCloudflareChart() {
     series: [
       { name: 'Requests', type: 'bar', data: cfData.map(function(r) { return r.metrics && r.metrics.total_requests || 0; }), itemStyle: { color: 'rgba(77,142,255,0.3)' }, barMaxWidth: 16 },
       { name: 'Page Views', type: 'line', data: cfData.map(function(r) { return r.metrics && r.metrics.page_views || 0; }), lineStyle: { color: '#f97316' }, itemStyle: { color: '#f97316' }, symbol: 'circle', symbolSize: 5 },
-      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics && r.metrics.unique_visitors || 0; }), lineStyle: { color: '#34d399' }, itemStyle: { color: '#34d399' }, symbol: 'circle', symbolSize: 5 }
+      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics && r.metrics.unique_visitors || 0; }), lineStyle: { color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, symbol: 'circle', symbolSize: 5 }
     ]
   }), true);
 }
@@ -15017,20 +15456,23 @@ async function loadRevenueTab(daysBack) {
 // ─── P13-10: Survey Analytics Tab ───
 var _surveyDays = 30;
 
-// Period toggle
+// Period toggle — now in Feedback page
 (function() {
-  var toggle = document.getElementById('survey-period-toggle');
+  var toggle = document.getElementById('fb-survey-period-toggle');
   if (!toggle) return;
   toggle.addEventListener('click', function(e) {
     var btn = e.target.closest('.admin-period-btn');
     if (!btn) return;
     toggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
     btn.classList.add('active');
-    _surveyDays = parseInt(btn.dataset.surveyDays);
+    _surveyDays = parseInt(btn.dataset.fbSurveyDays);
     _adminTabInit['surveys'] = false;
     loadSurveysTab();
   });
 })();
+
+// Expose for feedback tab switching
+window.loadSurveyData = loadSurveysTab;
 
 async function loadSurveysTab() {
   console.log('[Admin] loadSurveysTab', _surveyDays, 'days');
@@ -15095,7 +15537,7 @@ function renderSurveyVersionsChart(versions) {
     series: [{
       type: 'bar',
       data: versions.map(function(v) { return v.count; }),
-      itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] }
+      itemStyle: { color: '#6b82a8', borderRadius: [4, 4, 0, 0] }
     }],
     grid: { left: 50, right: 16, top: 30, bottom: 60 }
   });
@@ -15118,8 +15560,8 @@ function renderSurveyDailyChart(daily) {
       data: daily.map(function(d) { return d.count; }),
       smooth: true,
       areaStyle: { opacity: 0.15 },
-      lineStyle: { color: '#3b82f6' },
-      itemStyle: { color: '#3b82f6' }
+      lineStyle: { color: '#6b82a8' },
+      itemStyle: { color: '#6b82a8' }
     }],
     grid: { left: 40, right: 16, top: 20, bottom: 40 }
   });
@@ -15139,9 +15581,9 @@ function renderSurveyNpsChart(npsMonthly) {
     xAxis: { type: 'category', data: npsMonthly.map(function(m) { return m.month; }) },
     yAxis: { type: 'value' },
     series: [
-      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#22c55e' } },
-      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#f59e0b' } },
-      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#ef4444' } }
+      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#5b8a72' } },
+      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#a08858' } },
+      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#c06060' } }
     ],
     grid: { left: 40, right: 16, top: 20, bottom: 50 }
   });
@@ -15251,7 +15693,7 @@ async function loadGhostTab() {
     if (tbody) {
       tbody.innerHTML = stats.map(function(s) {
         var rate = s.ghost_rate != null ? Math.round(s.ghost_rate * 100) : 0;
-        var rateColor = rate >= 50 ? 'var(--red)' : rate >= 25 ? '#f59e0b' : 'var(--green)';
+        var rateColor = rate >= 50 ? '#c06060' : rate >= 25 ? '#a08858' : '#4a9a6b';
         var responded = (s.total_applications || 0) - (s.ghosted_count || 0);
         var lastActivity = s.updated_at ? new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
         var avgDays = s.avg_response_days > 0 ? s.avg_response_days + 'd' : '—';
@@ -15298,7 +15740,7 @@ function renderAdminGhostChart(stats) {
 
   var names = top.map(function(s) { return (s.company_slug || '').replace(/-/g, ' '); });
   var rates = top.map(function(s) { return Math.round((s.ghost_rate || 0) * 100); });
-  var colors = rates.map(function(r) { return r >= 50 ? '#f56565' : r >= 25 ? '#f59e0b' : '#48bb78'; });
+  var colors = rates.map(function(r) { return r >= 50 ? '#c06060' : r >= 25 ? '#a08858' : '#4a9a6b'; });
 
   var isDark = document.body.classList.contains('dark');
   var textColor = isDark ? '#a0aec0' : '#4a5568';
@@ -15311,7 +15753,7 @@ function renderAdminGhostChart(stats) {
     series: [{
       type: 'bar',
       data: rates.slice().reverse().map(function(v, i) {
-        var c = v >= 50 ? '#f56565' : v >= 25 ? '#f59e0b' : '#48bb78';
+        var c = v >= 50 ? '#c06060' : v >= 25 ? '#a08858' : '#4a9a6b';
         return { value: v, itemStyle: { color: c } };
       }),
       barWidth: 16, itemStyle: { borderRadius: [0, 4, 4, 0] },
@@ -16297,9 +16739,745 @@ function initBilling() {
 })();
 
 
+// === js/rewrite.js ===
+// js/rewrite.js — AI Resume Rewrite (JD-match "Boost" feature)
+// Phase B+C: Panel UI, Q&A flow, diff view, accept/reject actions
+// v4.28
+
+// ════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════
+
+var _rwState = {
+  sessionId: null,
+  jobId: null,
+  jobTitle: '',
+  company: '',
+  resumeId: null,
+  originalScore: null,
+  status: null,         // 'analyzing' | 'questions' | 'ready_to_rewrite' | 'rewriting' | 'checking' | 'completed' | 'failed'
+  gapAnalysis: null,
+  questions: [],
+  userAnswers: {},
+  sections: [],
+  quality: null,
+  newScore: null,
+  creditsUsed: 0,
+  retryCount: 0,
+  pollTimer: null,
+};
+
+function _rwReset() {
+  if (_rwState.pollTimer) clearInterval(_rwState.pollTimer);
+  _rwState = {
+    sessionId: null, jobId: null, jobTitle: '', company: '', resumeId: null,
+    originalScore: null, status: null, gapAnalysis: null, questions: [],
+    userAnswers: {}, sections: [], quality: null, newScore: null,
+    creditsUsed: 0, retryCount: 0, pollTimer: null,
+  };
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL OPEN / CLOSE
+// ════════════════════════════════════════════════════════════
+
+function openRewritePanel(jobId, jobTitle, company, resumeId, matchScore) {
+  _rwReset();
+  _rwState.jobId = jobId;
+  _rwState.jobTitle = jobTitle || 'this role';
+  _rwState.company = company || '';
+  _rwState.resumeId = resumeId;
+  _rwState.originalScore = matchScore;
+
+  var panel = document.getElementById('rewrite-panel');
+  if (!panel) return;
+
+  // Set header
+  var titleEl = document.getElementById('rw-panel-title');
+  if (titleEl) titleEl.textContent = _rwState.jobTitle;
+  var metaEl = document.getElementById('rw-panel-meta');
+  if (metaEl) metaEl.textContent = _rwState.company ? 'at ' + _rwState.company : '';
+
+  // Show panel
+  panel.style.display = '';
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(function () { panel.classList.add('rw-open'); });
+
+  // Escape key handler
+  panel._escHandler = function (e) { if (e.key === 'Escape') closeRewritePanel(); };
+  document.addEventListener('keydown', panel._escHandler);
+
+  // Start analysis
+  _rwStartAnalysis();
+}
+
+function closeRewritePanel() {
+  if (_rwState.pollTimer) clearInterval(_rwState.pollTimer);
+  var panel = document.getElementById('rewrite-panel');
+  if (!panel) return;
+  panel.classList.remove('rw-open');
+  document.body.style.overflow = '';
+  if (panel._escHandler) {
+    document.removeEventListener('keydown', panel._escHandler);
+    panel._escHandler = null;
+  }
+  setTimeout(function () { panel.style.display = 'none'; }, 300);
+}
+
+// ════════════════════════════════════════════════════════════
+// ENTITLEMENT + CREDIT CHECKS
+// ════════════════════════════════════════════════════════════
+
+async function _rwCanRewrite() {
+  if (!currentUser) { showToast('Please log in first.', { type: 'error' }); return false; }
+
+  // Check Pro tier
+  var ent = await checkEntitlement('ai_rewrite', 0);
+  if (!ent.allowed) {
+    showUpgradePrompt('AI Resume Rewrite', ent);
+    return false;
+  }
+
+  // Check credit balance
+  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balance < 3) {
+    showToast('This rewrite costs 3 credits. You have ' + balance + '. Purchase more in Settings.', { type: 'error', duration: 5000 });
+    return false;
+  }
+
+  return true;
+}
+
+// ════════════════════════════════════════════════════════════
+// PHASE 1: ANALYSIS
+// ════════════════════════════════════════════════════════════
+
+async function _rwStartAnalysis() {
+  _rwState.status = 'analyzing';
+  _rwRenderBody();
+
+  var session = await sb.auth.getSession();
+  if (!session?.data?.session?.access_token) {
+    showToast('Session expired. Please log in again.', { type: 'error' });
+    closeRewritePanel();
+    return;
+  }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rewrite-resume-analyze', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        resume_id: _rwState.resumeId,
+        job_id: _rwState.jobId,
+        original_score: _rwState.originalScore,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || !data.success) {
+      var errMsg = data.error || 'Analysis failed';
+      if (data.error === 'insufficient_credits') {
+        errMsg = 'Insufficient credits (3 required, you have ' + (data.balance || 0) + ')';
+      } else if (data.error === 'resume_text_not_found') {
+        errMsg = 'Resume text not synced yet. Open your resume on the Resumes page, then try again.';
+      } else if (data.error === 'jd_too_brief') {
+        errMsg = 'This job description is too brief for AI rewrite. Try a different listing.';
+      }
+      _rwState.status = 'failed';
+      _rwRenderError(errMsg);
+      return;
+    }
+
+    _rwState.sessionId = data.session_id;
+    _rwState.gapAnalysis = data.gap_analysis;
+    _rwState.questions = data.questions || [];
+
+    if (_rwState.questions.length > 0) {
+      _rwState.status = 'questions';
+    } else {
+      _rwState.status = 'ready_to_rewrite';
+      // No questions — go straight to rewrite
+      _rwStartRewrite();
+      return;
+    }
+
+    _rwRenderBody();
+
+  } catch (e) {
+    console.error('[rewrite] Analysis error:', e);
+    _rwState.status = 'failed';
+    _rwRenderError('Something went wrong. No credits were deducted. Please try again.');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// PHASE 2: Q&A
+// ════════════════════════════════════════════════════════════
+
+function _rwSubmitAnswers() {
+  // Collect answers from the Q&A cards
+  var answers = {};
+  _rwState.questions.forEach(function (q) {
+    var input = document.getElementById('rw-q-' + q.id);
+    var val = input ? input.value.trim() : '';
+    answers[q.id] = val || null; // null = skipped
+  });
+  _rwState.userAnswers = answers;
+  _rwStartRewrite();
+}
+
+function _rwSkipQuestion(qId) {
+  var card = document.getElementById('rw-card-' + qId);
+  if (card) {
+    card.classList.add('rw-skipped');
+    var input = document.getElementById('rw-q-' + qId);
+    if (input) { input.value = ''; input.disabled = true; }
+  }
+  _rwState.userAnswers[qId] = null;
+}
+
+// ════════════════════════════════════════════════════════════
+// PHASE 3: REWRITE EXECUTION
+// ════════════════════════════════════════════════════════════
+
+async function _rwStartRewrite(feedback) {
+  _rwState.status = 'rewriting';
+  _rwRenderBody();
+
+  var session = await sb.auth.getSession();
+  if (!session?.data?.session?.access_token) {
+    showToast('Session expired.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/rewrite-resume-execute', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        session_id: _rwState.sessionId,
+        user_answers: _rwState.userAnswers,
+        feedback: feedback || null,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || !data.success) {
+      _rwState.status = 'failed';
+      _rwRenderError(data.error || 'Rewrite failed. No credits were deducted.');
+      return;
+    }
+
+    _rwState.sections = data.sections || [];
+    _rwState.quality = data.quality || {};
+    _rwState.newScore = data.new_score;
+    _rwState.creditsUsed += data.credits_used || 0;
+    _rwState.status = 'completed';
+
+    _rwRenderBody();
+
+  } catch (e) {
+    console.error('[rewrite] Execute error:', e);
+    _rwState.status = 'failed';
+    _rwRenderError('Something went wrong. Please try again.');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════════════════════
+
+async function _rwAcceptAll() {
+  var acceptBtn = document.querySelector('.rw-actions .btn-primary');
+  if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Generating document…'; }
+
+  try {
+    // Build the rewritten text by combining accepted sections
+    var fullText = '';
+    (_rwState.sections || []).forEach(function (s) {
+      var text = s.changed ? s.rewritten : s.original;
+      if (text) fullText += text + '\n\n';
+    });
+
+    // Generate DOCX
+    var docBlob = await _rwBuildDocx(_rwState.sections);
+
+    if (!docBlob) {
+      // Fallback: offer plain text download
+      _rwDownloadText(fullText);
+      showToast('DOCX generation unavailable. Plain text downloaded instead.', { type: 'info' });
+      closeRewritePanel();
+      return;
+    }
+
+    // Upload to Supabase Storage
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    var fileName = 'rewrite_' + (_rwState.company || 'job').replace(/[^a-zA-Z0-9]/g, '_') + '_' + new Date().toISOString().slice(0, 10) + '.docx';
+    var storagePath = currentUser.id + '/' + _rwState.sessionId + '/' + fileName;
+
+    var { error: uploadErr } = await sb.storage
+      .from('rewrites')
+      .upload(storagePath, docBlob, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: true,
+      });
+
+    if (uploadErr) {
+      console.warn('[rewrite] Storage upload failed:', uploadErr.message);
+      // Still download locally
+    }
+
+    // Update session record with file path
+    if (_rwState.sessionId) {
+      await sb.from('rewrite_sessions').update({
+        output_file_path: storagePath,
+        status: 'accepted',
+      }).eq('id', _rwState.sessionId);
+    }
+
+    // Auto-download
+    var url = URL.createObjectURL(docBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+
+    showToast('Resume rewrite downloaded! File saved to your account.', { type: 'success', duration: 5000 });
+    closeRewritePanel();
+
+  } catch (e) {
+    console.error('[rewrite] Accept error:', e);
+    showToast('Download failed: ' + e.message, { type: 'error' });
+    if (acceptBtn) { acceptBtn.disabled = false; acceptBtn.textContent = 'Accept All'; }
+  }
+}
+
+// ─── DOCX Builder (client-side via docx-js UMD) ───
+async function _rwBuildDocx(sections) {
+  if (typeof docx === 'undefined') {
+    console.warn('[rewrite] docx library not loaded');
+    return null;
+  }
+
+  var children = [];
+
+  sections.forEach(function (s) {
+    var text = s.changed ? s.rewritten : s.original;
+    if (!text) return;
+
+    // Section heading
+    children.push(new docx.Paragraph({
+      spacing: { before: 240, after: 80 },
+      children: [new docx.TextRun({
+        text: (s.name || 'Section').toUpperCase(),
+        bold: true,
+        size: 24,
+        font: 'Calibri',
+        color: '2B2B2B',
+      })],
+    }));
+
+    // Section content — split by lines
+    text.split('\n').forEach(function (line) {
+      line = line.trim();
+      if (!line) return;
+
+      // Detect bullet points
+      var isBullet = /^[\u2022\-\*]\s/.test(line);
+      var cleanLine = isBullet ? line.replace(/^[\u2022\-\*]\s*/, '') : line;
+
+      if (isBullet) {
+        children.push(new docx.Paragraph({
+          spacing: { after: 40 },
+          indent: { left: 360, hanging: 260 },
+          children: [
+            new docx.TextRun({ text: '\u2022 ', font: 'Calibri', size: 22, color: '666666' }),
+            new docx.TextRun({ text: cleanLine, font: 'Calibri', size: 22, color: '333333' }),
+          ],
+        }));
+      } else {
+        children.push(new docx.Paragraph({
+          spacing: { after: 60 },
+          children: [new docx.TextRun({
+            text: cleanLine,
+            font: 'Calibri',
+            size: 22,
+            color: '333333',
+          })],
+        }));
+      }
+    });
+  });
+
+  var doc = new docx.Document({
+    styles: {
+      default: {
+        document: { run: { font: 'Calibri', size: 22 } },
+      },
+    },
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 12240, height: 15840 },
+          margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 },
+        },
+      },
+      children: children,
+    }],
+  });
+
+  return await docx.Packer.toBlob(doc);
+}
+
+// ─── Plaintext fallback ───
+function _rwDownloadText(text) {
+  var blob = new Blob([text], { type: 'text/plain' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'rewrite_' + new Date().toISOString().slice(0, 10) + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+}
+
+function _rwTryAgain() {
+  if (_rwState.retryCount >= 2) {
+    showToast('Maximum retries reached (2). Please start a new rewrite.', { type: 'error' });
+    return;
+  }
+  _rwState.retryCount++;
+
+  var feedbackInput = document.getElementById('rw-feedback-input');
+  var feedback = feedbackInput ? feedbackInput.value.trim() : '';
+
+  if (!feedback) {
+    showToast('Please describe what you\'d like changed.', { type: 'error' });
+    return;
+  }
+
+  _rwStartRewrite({ text: feedback, retry: _rwState.retryCount });
+}
+
+// ════════════════════════════════════════════════════════════
+// RENDERING
+// ════════════════════════════════════════════════════════════
+
+function _rwRenderBody() {
+  var body = document.getElementById('rw-panel-body');
+  if (!body) return;
+
+  switch (_rwState.status) {
+    case 'analyzing':
+      body.innerHTML = _rwRenderAnalyzing();
+      break;
+    case 'questions':
+      body.innerHTML = _rwRenderQuestions();
+      break;
+    case 'ready_to_rewrite':
+    case 'rewriting':
+    case 'checking':
+      body.innerHTML = _rwRenderRewriting();
+      break;
+    case 'completed':
+      body.innerHTML = _rwRenderResults();
+      break;
+    case 'failed':
+      // Handled by _rwRenderError
+      break;
+    default:
+      body.innerHTML = '';
+  }
+}
+
+function _rwRenderError(msg) {
+  var body = document.getElementById('rw-panel-body');
+  if (!body) return;
+  body.innerHTML = '<div class="rw-error">' +
+    '<div class="rw-error-icon">!</div>' +
+    '<div class="rw-error-msg">' + msg + '</div>' +
+    '<button class="btn btn-sm" onclick="_rwStartAnalysis()" style="margin-top:16px;">Try Again</button>' +
+    '</div>';
+}
+
+// ─── State 1: Analyzing ───
+function _rwRenderAnalyzing() {
+  return '<div class="rw-loading">' +
+    '<div class="rw-spinner"></div>' +
+    '<div class="rw-loading-text">Analyzing your resume against<br><strong>' +
+    _rwState.jobTitle + '</strong>' +
+    (_rwState.company ? ' at <strong>' + _rwState.company + '</strong>' : '') +
+    '</div>' +
+    '<div class="rw-progress-dots">' +
+    '<span class="rw-dot rw-dot-active">Analyze</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot">Questions</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot">Rewrite</span>' +
+    '</div>' +
+    '</div>';
+}
+
+// ─── State 2: Questions ───
+function _rwRenderQuestions() {
+  var ga = _rwState.gapAnalysis || {};
+  var html = '<div class="rw-qa-section">';
+
+  // Summary bar
+  html += '<div class="rw-summary">' +
+    '<div class="rw-summary-row">' +
+    '<span class="rw-stat"><strong>' + (ga.matched_count || 0) + '</strong> matched</span>' +
+    '<span class="rw-stat"><strong>' + (ga.rewritable_count || 0) + '</strong> can improve</span>' +
+    '<span class="rw-stat"><strong>' + (ga.needs_input_count || 0) + '</strong> need your input</span>' +
+    '</div>' +
+    (ga.summary ? '<div class="rw-summary-text">' + ga.summary + '</div>' : '') +
+    '</div>';
+
+  // Progress dots
+  html += '<div class="rw-progress-dots">' +
+    '<span class="rw-dot rw-dot-done">Analyze</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot rw-dot-active">Questions</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot">Rewrite</span>' +
+    '</div>';
+
+  // Question cards
+  _rwState.questions.forEach(function (q, i) {
+    html += '<div class="rw-qa-card" id="rw-card-' + q.id + '">' +
+      '<div class="rw-qa-label">Question ' + (i + 1) + ' of ' + _rwState.questions.length + '</div>' +
+      '<div class="rw-qa-context">' +
+      '<div class="rw-qa-jd"><strong>JD requires:</strong> ' + (q.jd_context || q.skill || '') + '</div>' +
+      (q.resume_context ? '<div class="rw-qa-resume"><strong>Your resume:</strong> ' + q.resume_context + '</div>' : '') +
+      '</div>' +
+      '<div class="rw-qa-question">' + q.question + '</div>' +
+      '<textarea id="rw-q-' + q.id + '" class="rw-qa-input" placeholder="' +
+      (q.placeholder || 'Type your answer...').replace(/"/g, '&quot;') +
+      '" rows="3"></textarea>' +
+      '<button class="rw-skip-btn" onclick="_rwSkipQuestion(\'' + q.id + '\')">Skip this question</button>' +
+      '</div>';
+  });
+
+  // Continue button
+  html += '<div class="rw-qa-actions">' +
+    '<button class="btn btn-primary" onclick="_rwSubmitAnswers()">Continue to Rewrite</button>' +
+    '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// ─── Rewriting loading ───
+function _rwRenderRewriting() {
+  return '<div class="rw-loading">' +
+    '<div class="rw-spinner"></div>' +
+    '<div class="rw-loading-text">Rewriting your resume' +
+    (_rwState.retryCount > 0 ? ' (revision ' + _rwState.retryCount + ')' : '') +
+    '</div>' +
+    '<div class="rw-progress-dots">' +
+    '<span class="rw-dot rw-dot-done">Analyze</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot rw-dot-done">Questions</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot rw-dot-active">Rewrite</span>' +
+    '</div>' +
+    '</div>';
+}
+
+// ─── State 3: Results (diff view) ───
+function _rwRenderResults() {
+  var q = _rwState.quality || {};
+  var html = '<div class="rw-results">';
+
+  // Score improvement bar
+  html += '<div class="rw-score-bar">';
+  if (_rwState.originalScore != null && _rwState.newScore != null) {
+    var improvement = _rwState.newScore - _rwState.originalScore;
+    html += '<div class="rw-score-change">' +
+      '<span class="rw-score-old">' + _rwState.originalScore + '%</span>' +
+      '<span class="rw-score-arrow">&rarr;</span>' +
+      '<span class="rw-score-new">' + _rwState.newScore + '%</span>' +
+      (improvement > 0 ? '<span class="rw-score-delta">+' + improvement + '</span>' : '') +
+      '</div>';
+  }
+  if (q.truthfulness_pass !== false) {
+    html += '<div class="rw-verified">Verified — no fabricated content</div>';
+  } else {
+    html += '<div class="rw-warning">Review flagged — some claims may need verification</div>';
+  }
+  html += '</div>';
+
+  // Progress dots
+  html += '<div class="rw-progress-dots">' +
+    '<span class="rw-dot rw-dot-done">Analyze</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot rw-dot-done">Questions</span>' +
+    '<span class="rw-dot-arrow">&rarr;</span>' +
+    '<span class="rw-dot rw-dot-done">Rewrite</span>' +
+    '</div>';
+
+  // Diff sections
+  html += '<div class="rw-diff">';
+  (_rwState.sections || []).forEach(function (s) {
+    var changed = s.changed;
+    html += '<div class="rw-diff-section' + (changed ? ' rw-diff-changed' : ' rw-diff-unchanged') + '">' +
+      '<div class="rw-diff-header">' +
+      '<span class="rw-diff-name">' + (s.name || 'Section') + '</span>' +
+      (changed ? '<span class="rw-diff-badge">Modified</span>' : '<span class="rw-diff-badge rw-diff-badge-same">No changes</span>') +
+      '</div>';
+
+    if (changed) {
+      html += '<div class="rw-diff-cols">' +
+        '<div class="rw-diff-col rw-diff-original">' +
+        '<div class="rw-diff-col-label">Original</div>' +
+        '<div class="rw-diff-col-text">' + _rwEscapeHtml(s.original || '') + '</div>' +
+        '</div>' +
+        '<div class="rw-diff-col rw-diff-rewritten">' +
+        '<div class="rw-diff-col-label">Rewritten</div>' +
+        '<div class="rw-diff-col-text">' + _rwEscapeHtml(s.rewritten || '') + '</div>' +
+        '</div>' +
+        '</div>';
+      if (s.changes_made && s.changes_made.length > 0) {
+        html += '<div class="rw-diff-changes"><strong>Changes:</strong> ' +
+          s.changes_made.map(function (c) { return _rwEscapeHtml(c); }).join(' · ') +
+          '</div>';
+      }
+    }
+
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Actions
+  html += '<div class="rw-actions">' +
+    '<button class="btn btn-primary" onclick="_rwAcceptAll()">Accept All</button>' +
+    '<div class="rw-retry-section">' +
+    '<textarea id="rw-feedback-input" class="rw-qa-input" placeholder="What should be different? (e.g. too aggressive, keep my summary)" rows="2" style="margin-bottom:8px;"></textarea>' +
+    '<button class="btn btn-sm" onclick="_rwTryAgain()" style="font-size:11px;">' +
+    'Try Again (+1 credit)' + (_rwState.retryCount >= 2 ? ' — max reached' : '') +
+    '</button>' +
+    '</div>' +
+    '<button class="btn btn-sm" onclick="closeRewritePanel()" style="margin-top:8px;font-size:11px;color:var(--text-faint);">Cancel — no credits deducted</button>' +
+    '</div>';
+
+  // Keywords added
+  if (_rwState.sections.some(function (s) { return s.changed; })) {
+    var kws = [];
+    _rwState.sections.forEach(function (s) { if (s.keywords_added) kws = kws.concat(s.keywords_added); });
+    if (_rwState.quality && _rwState.quality.keyword_coverage) {
+      html += '<div class="rw-keywords-bar" style="margin-top:16px;font-size:11px;color:var(--text-faint);">' +
+        'Keyword coverage: <strong>' + _rwState.quality.keyword_coverage + '%</strong> of JD terms' +
+        (kws.length > 0 ? ' · Added: ' + kws.slice(0, 8).join(', ') : '') +
+        '</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function _rwEscapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+}
+
+// ════════════════════════════════════════════════════════════
+// ENTRY POINT: "Boost" CTA on Jobs Feed match column
+// ════════════════════════════════════════════════════════════
+
+function boostMatch(jobId, jobTitle, company) {
+  // Find the assigned resume for the active filter
+  var activeFilter = savedFilters[activeFilterIdx];
+  if (!activeFilter) { showToast('Select a filter first.', { type: 'error' }); return; }
+
+  // Find assigned resume for this filter
+  var assignedResume = null;
+  for (var i = 0; i < resumes.length; i++) {
+    if (!resumes[i].archived && resumes[i].filterAssignments) {
+      var fa = resumes[i].filterAssignments;
+      if (fa[activeFilter.name] || fa[activeFilterIdx]) {
+        assignedResume = resumes[i];
+        break;
+      }
+    }
+  }
+
+  if (!assignedResume) {
+    // Fallback: use default resume
+    assignedResume = resumes.find(function (r) { return !r.archived && r.isDefault; }) ||
+      resumes.find(function (r) { return !r.archived; });
+  }
+
+  if (!assignedResume) {
+    showToast('Upload a resume on the Resumes page first, then come back to Boost.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Check if resume text has been extracted
+  if (!assignedResume.extractedText || assignedResume.extractedText.length < 50) {
+    showToast('Resume text not ready. Open your resume on the Resumes page to extract it, then try again.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  var matchScore = jobMatchScores[jobId];
+  if (typeof matchScore === 'object') matchScore = matchScore.score;
+
+  // Already A+ match — celebrate instead
+  if (matchScore != null && matchScore >= 95) {
+    showToast('Your resume is already a 95%+ match for this role! No rewrite needed.', { type: 'success', duration: 4000 });
+    return;
+  }
+
+  openRewritePanel(jobId, jobTitle, company, assignedResume.id, matchScore);
+}
+
+// ════════════════════════════════════════════════════════════
+// ENHANCED matchBadge — adds "Boost" pill when match < 85%
+// ════════════════════════════════════════════════════════════
+
+var _origMatchBadge = typeof matchBadge === 'function' ? matchBadge : null;
+
+function matchBadgeWithBoost(result, jobId, jobTitle, company) {
+  if (!result) return '<span style="color:var(--text-faint);font-size:10px;">\u2014</span>';
+  var score = typeof result === 'number' ? result : result.score;
+  var rName = typeof result === 'object' ? (result.resumeName || '') : '';
+  var g = scoreToGrade(score);
+  var tooltip = score + '% match' + (rName ? ' \u00b7 ' + rName.replace(/"/g, '&quot;') : '');
+
+  var badge = '<span title="' + tooltip + '" style="font-family:var(--mono);font-size:11px;font-weight:600;color:' + g.color + ';cursor:help;">' + g.grade + '</span>';
+
+  // Add Boost pill for scores < 85 (and user has a resume assigned)
+  if (score != null && score < 85 && jobId) {
+    var safeTitle = (jobTitle || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    var safeCo = (company || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    badge += ' <button class="rw-boost-pill" onclick="event.stopPropagation();boostMatch(\'' +
+      jobId + "','" + safeTitle + "','" + safeCo +
+      '\')" title="AI-rewrite your resume to better match this role">Boost</button>';
+  }
+
+  return badge;
+}
+
+
 // === js/app.js ===
-const BJ_VERSION = 'v4.13';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tiered refresh v13: HOT/WARM/COLD board prioritization');
+const BJ_VERSION = 'v4.33';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin scroll fix, muted color scheme, GSC sync fix');
 
 // Auth
 async function init() {
@@ -16378,9 +17556,58 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Re-init admin page if it was the active tab (tab restore runs before auth)
   if (typeof initAdminPage === 'function') initAdminPage();
-  // Re-hydrate globals from potentially updated localStorage
-  savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  
+  // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
+  const userId = session?.user?.id;
+  
+  // Load filters from Supabase
+  let filtersFromCloud = false;
+  if (userId) {
+    const { data: cloudFilters } = await sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order');
+    if (cloudFilters && cloudFilters.length > 0) {
+      savedFilters = cloudFilters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
+      filtersFromCloud = true;
+    }
+  }
+  if (!filtersFromCloud) {
+    savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    // Migrate localStorage filters to Supabase on first load
+    if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
+      for (let i = 0; i < savedFilters.length; i++) {
+        const f = savedFilters[i];
+        await sb.from('user_filters').insert({
+          user_id: userId,
+          name: f.name || 'Untitled',
+          filter_data: f,
+          sort_order: i,
+        });
+      }
+      localStorage.setItem('bj_filters_migrated', '1');
+      showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
+    }
+  }
+  
+  // Load tuning from Supabase
+  let tuningFromCloud = false;
+  if (userId) {
+    const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
+    if (cloudTuning?.tuning_data && Object.keys(cloudTuning.tuning_data).length > 0) {
+      tuningSettings = cloudTuning.tuning_data;
+      tuningFromCloud = true;
+    }
+  }
+  if (!tuningFromCloud) {
+    tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    // Migrate to Supabase
+    if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
+      await sb.from('user_tuning').upsert({
+        user_id: userId,
+        tuning_data: tuningSettings,
+      }, { onConflict: 'user_id' });
+      localStorage.setItem('bj_tuning_migrated', '1');
+    }
+  }
+  
   tuningLocExclPills = tuningSettings.locationExcludes || [];
   tuningTitleExclPills = tuningSettings.titleExcludes || [];
   tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -16392,6 +17619,33 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   savedJobIds = [];
   appliedJobIds = [];
   resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
+  if (resumes.length === 0 && userId) {
+    try {
+      const { data: prof } = await sb.from('profiles').select('user_data').eq('id', userId).single();
+      const cloudResumes = prof?.user_data?.resumes;
+      if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
+        resumes = cloudResumes;
+        localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+        console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
+      }
+    } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
+  }
+  // Cloud sync is now live via user_filters + user_tuning tables
+  // Q23: Populate global rules crosslink banner
+  const grBanner = document.getElementById('global-rules-banner');
+  const grSummary = document.getElementById('gr-summary');
+  if (grBanner && grSummary) {
+    const parts = [];
+    if (tuningSettings.locationExcludes?.length) parts.push(tuningSettings.locationExcludes.length + ' excluded locations');
+    if (tuningSettings.titleExcludes?.length) parts.push(tuningSettings.titleExcludes.length + ' excluded titles');
+    if (tuningSettings.companyExcludes?.length) parts.push(tuningSettings.companyExcludes.length + ' excluded companies');
+    if (tuningSettings.levelHierarchy?.length) parts.push(tuningSettings.levelHierarchy.length + ' levels');
+    if (parts.length) {
+      grSummary.textContent = parts.join(', ');
+      grBanner.style.display = '';
+    }
+  }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
   if (typeof initPipeline === 'function') await initPipeline();
   // Trigger sparkle flourish
@@ -16508,14 +17762,14 @@ if (lastTab && $(`#page-${lastTab}`)) {
 // Extension detection — check if extension has updated the profile recently
 const _helpContent = {
   feed: { title: 'Jobs Feed', steps: [
-    'Check one or more saved filters in the sidebar to search jobs.',
+    'Check one or more saved searches in the sidebar to search jobs.',
     'Shift+click column headers for multi-column sorting.',
     'Click a job title to open the full description and apply.',
     'Colored number badges show which filter matched each job.',
     'Use the keyword insights panel to see term frequency and resume match scores.',
   ]},
   tuning: { title: 'Search Tuning', steps: [
-    'Set global rules that apply across ALL your saved filters.',
+    'Set global rules that apply across ALL your saved searches.',
     'Location rules: US-only toggle and city/country exclusions.',
     'Title exclusions: remove common false positives (e.g. "intern").',
     'Company exclusions: block specific employers or industries.',
@@ -16526,12 +17780,12 @@ const _helpContent = {
     'Click stage headers to collapse/expand sections.',
     'Use the Move dropdown on any row to advance jobs through stages.',
     'Stats at top show response rates and days-to-response.',
-    'Filter by saved filter using the dropdown above the stages.',
+    'Filter by saved search using the dropdown above the stages.',
   ]},
   resumes: { title: 'Resumes', steps: [
     'Upload a resume for each role type or seniority level you target.',
     'Assign a level (Director, Manager, etc.) to each resume.',
-    'Click filter pills on each card to assign resumes to your saved filters.',
+    'Click filter pills on each card to assign resumes to your saved searches.',
     'When you apply, the matching resume is automatically selected.',
     'Keyword extraction shows how well each resume matches job descriptions.',
   ]},
@@ -16541,7 +17795,7 @@ const _helpContent = {
     'Notifications tab: configure email/SMS preferences for every alert type.',
     'Verify your phone to unlock SMS notifications and escalation.',
     'Set escalation rules: unanswered emails auto-escalate to SMS after your timeout.',
-    'Override notification settings per saved filter for targeted control.',
+    'Override notification settings per saved search for targeted control.',
     'History tab: full audit trail of applications and notification delivery log.',
   ]},
   ghost: { title: 'Ghost Monitor', steps: [
@@ -16734,7 +17988,7 @@ function updateGmailUI(connected, email) {
 window.connectGmail = async function() {
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) { alert('Please log in first.'); return; }
+    if (!session) { showToast('Please log in first.', { type: 'error' }); return; }
     const res = await fetch('/api/auth/gmail/callback?action=connect', {
       headers: { 'Authorization': 'Bearer ' + session.access_token }
     });
@@ -16742,10 +17996,10 @@ window.connectGmail = async function() {
     if (json.url) {
       window.location.href = json.url;
     } else {
-      alert('Failed to start Gmail connection: ' + (json.error || 'Unknown error'));
+      showToast('Failed to start Gmail connection: ' + (json.error || 'Unknown error'), { type: 'error' });
     }
   } catch (e) {
-    alert('Error connecting Gmail: ' + e.message);
+    showToast('Error connecting Gmail: ' + e.message, { type: 'error' });
   }
 };
 
@@ -16762,10 +18016,10 @@ window.disconnectGmail = async function() {
     if (json.success) {
       updateGmailUI(false, '');
     } else {
-      alert('Failed to disconnect: ' + (json.error || 'Unknown error'));
+      showToast('Failed to disconnect: ' + (json.error || 'Unknown error'), { type: 'error' });
     }
   } catch (e) {
-    alert('Error disconnecting Gmail: ' + e.message);
+    showToast('Error disconnecting Gmail: ' + e.message, { type: 'error' });
   }
 };
 
@@ -16779,16 +18033,209 @@ window.disconnectGmail = async function() {
   window.history.replaceState({}, '', url);
   if (gmail === 'connected') {
     initGmailStatus();
-    setTimeout(() => alert('Gmail connected successfully! Ghost Monitor will now scan for company responses.'), 500);
+    showToast('Gmail connected! Ghost Monitor will now scan for company responses.', { type: 'success' });
   } else if (gmail === 'denied') {
-    alert('Gmail connection was cancelled.');
+    showToast('Gmail connection was cancelled.', { type: 'info' });
   } else if (gmail === 'error') {
-    alert('Gmail connection failed. Please try again.');
+    showToast('Gmail connection failed. Please try again.', { type: 'error' });
   }
 })();
 
 // Init Gmail status on load
 initGmailStatus();
+
+// Q22: Switch between List and Board views in My Applications
+window.switchAppView = function(view) {
+
+// Q16-Q19: Resume-First Onboarding
+let _onboardProfile = null;
+
+window.handleOnboardResume = async function(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  
+  // Read file as text (for PDF, we'd need pdf.js — for now handle text-based)
+  const text = await file.text();
+  if (text.length < 50) {
+    showToast('Could not read resume text. Try a .docx or .pdf file.', { type: 'error' });
+    return;
+  }
+
+  // Show loading state
+  const card = document.getElementById('onboard-resume-first');
+  const origHTML = card.querySelector('.btn.btn-primary').innerHTML;
+  card.querySelector('.btn.btn-primary').innerHTML = '<span class="skel-line" style="width:80px;height:12px;display:inline-block;"></span> Analyzing…';
+  card.querySelector('.btn.btn-primary').style.pointerEvents = 'none';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const resp = await fetch(SB_URL + '/functions/v1/extract-resume-profile', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SB_ANON_KEY,
+      },
+      body: JSON.stringify({ resume_text: text }),
+    });
+    const data = await resp.json();
+    
+    if (data.error) {
+      showToast('Profile extraction failed: ' + data.error, { type: 'error' });
+      return;
+    }
+
+    _onboardProfile = data.profile;
+    renderOnboardProfile(data.profile);
+  } catch (e) {
+    showToast('Could not extract profile: ' + e.message, { type: 'error' });
+  } finally {
+    card.querySelector('.btn.btn-primary').innerHTML = origHTML;
+    card.querySelector('.btn.btn-primary').style.pointerEvents = '';
+  }
+};
+
+function renderOnboardProfile(p) {
+  const tag = (text) => `<span style="display:inline-block;padding:2px 8px;background:var(--bg-hover);border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--text);">${text}</span>`;
+
+  document.getElementById('onboard-titles').innerHTML = (p.titles || []).map(tag).join('');
+  document.getElementById('onboard-locations').innerHTML = (p.locations || []).map(tag).join('');
+  document.getElementById('onboard-seniority').textContent = (p.seniority || 'unknown').replace('_', ' ');
+  document.getElementById('onboard-industries').innerHTML = (p.industries || []).map(tag).join('');
+  document.getElementById('onboard-skills').innerHTML = (p.skills || []).slice(0, 8).map(tag).join('');
+
+  document.getElementById('onboard-profile-card').style.display = '';
+  document.getElementById('onboard-profile-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+window.createFilterFromProfile = function() {
+  if (!_onboardProfile) return;
+  const p = _onboardProfile;
+
+  // Build pills from profile
+  const newFilter = {
+    name: (p.titles?.[0] || 'My Search') + ' — auto-generated',
+    whatPills: (p.titles || []).slice(0, 3).map(t => ({ values: [t], type: 'keyword' })),
+    wherePills: (p.locations || []).slice(0, 2).map(l => ({ values: [l], type: 'location', locType: 'text' })),
+    whenPills: [],
+    whoPills: [],
+    payPills: [],
+    whatNotPills: [],
+    whereNotPills: [],
+    whoNotPills: [],
+    includeNoSalary: true,
+    includeRemote: p.remote_preference === 'remote',
+    created: new Date().toISOString(),
+  };
+
+  // Add to saved filters
+  savedFilters.push(newFilter);
+  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  
+  // Update onboarding step
+  updateOnboardingStep(2);
+
+  // Navigate to Jobs page and run search
+  showToast('Search created from your resume! Running your first search…', { type: 'success' });
+  document.querySelector('[data-page=feed]').click();
+  
+  // Check the new filter and trigger search
+  setTimeout(() => {
+    if (typeof renderSavedFilters === 'function') renderSavedFilters();
+    if (typeof searchJobs === 'function') searchJobs();
+  }, 300);
+};
+
+// Q20: Onboarding milestone tracking
+// Steps: 0=new, 1=resume uploaded, 2=filter created, 3=first search run, 4=pipeline used
+function getOnboardingStep() {
+  return parseInt(localStorage.getItem('bj_onboarding_step') || '0');
+}
+
+function updateOnboardingStep(step) {
+  const current = getOnboardingStep();
+  if (step > current) {
+    localStorage.setItem('bj_onboarding_step', String(step));
+    applyProgressiveNav(step);
+  }
+}
+
+// Q21: Progressive nav disclosure
+function applyProgressiveNav(step) {
+  // Step 0-1: Show Get Started, Jobs, Settings only
+  // Step 2+: Unlock Tuning, Resumes
+  // Step 3+: Unlock Pipeline/Applications, Stats
+  // Step 4+: Full nav
+  const navItems = {
+    'tuning': 2,
+    'resumes': 1,
+    'applications': 3,
+    'ghost': 4,
+    'stats': 3,
+    'notifications': 3,
+    'feedback': 2,
+  };
+
+  for (const [page, minStep] of Object.entries(navItems)) {
+    const el = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (el) {
+      if (step < minStep) {
+        el.style.opacity = '0.35';
+        el.style.pointerEvents = 'none';
+        el.setAttribute('title', 'Complete onboarding to unlock');
+      } else {
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+        el.removeAttribute('title');
+      }
+    }
+  }
+}
+
+// Init progressive nav on load
+(function initOnboarding() {
+  const step = getOnboardingStep();
+  // Auto-detect milestones from existing data
+  if (step < 1 && resumes && resumes.length > 0) updateOnboardingStep(1);
+  if (step < 2 && savedFilters && savedFilters.length > 0) updateOnboardingStep(2);
+  if (step < 3 && localStorage.getItem('bj_first_search_done')) updateOnboardingStep(3);
+  if (step < 4 && localStorage.getItem('bj_pipeline_used')) updateOnboardingStep(4);
+  
+  applyProgressiveNav(getOnboardingStep());
+  
+  // Hide resume-first prompt if they already have filters
+  if (savedFilters.length > 0) {
+    const prompt = document.getElementById('onboard-resume-first');
+    if (prompt) prompt.style.display = 'none';
+  }
+})();
+
+
+  const listPanel = document.getElementById('app-view-list-panel');
+  const boardPanel = document.getElementById('app-view-board-panel');
+  const listBtn = document.getElementById('app-view-list');
+  const boardBtn = document.getElementById('app-view-board');
+  if (!listPanel || !boardPanel) return;
+
+  if (view === 'board') {
+    listPanel.style.display = 'none';
+    boardPanel.style.display = '';
+    listBtn.classList.remove('active');
+    boardBtn.classList.add('active');
+    // Move pipeline stages into board panel
+    const stages = document.getElementById('pl-stages-container');
+    const target = document.getElementById('app-view-board-panel');
+    if (stages && target && !target.contains(stages)) {
+      target.appendChild(stages);
+    }
+    if (typeof renderPipeline === 'function') renderPipeline();
+  } else {
+    listPanel.style.display = '';
+    boardPanel.style.display = 'none';
+    listBtn.classList.add('active');
+    boardBtn.classList.remove('active');
+  }
+};
 
 
 
