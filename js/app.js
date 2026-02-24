@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.54';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin: Export boards CSV');
+const BJ_VERSION = 'v4.55';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Resume Archive + Metrics schema (Phase 1+5)');
 
 // Auth
 async function init() {
