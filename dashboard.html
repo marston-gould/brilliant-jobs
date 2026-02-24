@@ -21,7 +21,7 @@
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=4.44">
+  <link rel="stylesheet" href="styles.css?v=4.45">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -121,7 +121,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.44</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.45</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -779,8 +779,8 @@
                 <span class="qb-salary-prefix">$</span>
                 <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
               </div>
-              <div id="qb-pay-pill-inline" style="display:flex;align-items:center;gap:4px;margin-left:8px;"></div>
             </div>
+            <div id="qb-pay-pill-inline" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0 0 0;grid-column:1/-1;"></div>
           </div>
           <div class="qb-hint">
             <kbd>Enter</kbd> to add filter &nbsp; <kbd>or</kbd> before a term to add alternatives &nbsp; Click a tag to add options &nbsp; <kbd>Backspace</kbd> to remove last
@@ -798,6 +798,7 @@
               </label>
               <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
             </div>
+            <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:4px 12px;font-size:11px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);border-radius:6px;cursor:pointer;white-space:nowrap;font-weight:600;" title="Generate filter from your resume using AI">✦ Generate from Resume</button>
             <div class="filter-count" id="filter-count"></div>
           </div>
           </div>
@@ -816,7 +817,6 @@
                 <span class="sf-title">Select / Deselect All</span>
               </div>
               <div style="display:flex;align-items:center;gap:8px;">
-                <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);border-radius:4px;cursor:pointer;white-space:nowrap;" title="Generate filter from your resume using AI">✦ AI Suggest</button>
                 <button class="btn btn-sm" id="sf-delete-selected" style="display:none;padding:3px 10px;font-size:10px;background:var(--red-dim);color:var(--red);border:none;border-radius:4px;cursor:pointer;">Delete Selected</button>
                 <input type="text" class="sf-search" id="sf-search" placeholder="Search…">
               </div>
@@ -826,31 +826,7 @@
           </div>
 
           <!-- Sort bar -->
-          <!-- Resume → Filter CTA (shown when resumes exist but no filters) -->
-          <div id="resume-filter-cta" style="display:none;margin-bottom:12px;padding:12px 16px;background:linear-gradient(135deg,rgba(77,142,255,0.06),rgba(167,139,250,0.06));border:1px solid rgba(77,142,255,0.15);border-radius:10px;cursor:pointer;" onclick="document.getElementById('ai-suggest-filter-btn').click()">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span style="font-size:18px;">✦</span>
-              <div style="flex:1;">
-                <div style="font-size:12px;font-weight:600;color:var(--accent);">Generate a search filter from your resume</div>
-                <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">AI will analyze your resume and suggest job titles, locations, and keywords to search for.</div>
-              </div>
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-            </div>
-          </div>
-          <div class="sort-bar" id="sort-bar">
-            <span class="sort-bar-label">Sort by:</span>
-            <div class="sort-pills" id="sort-pills"></div>
-            <div class="sort-add-wrap">
-              <button class="sort-add-btn" id="sort-add-btn">+ Add sort</button>
-              <div class="sort-dropdown" id="sort-dropdown" style="display:none;">
-                <div class="sort-opt" data-field="updated_at" data-label="Days">Days (newest)</div>
-                <div class="sort-opt" data-field="level" data-label="Level">Level (highest)</div>
-                <div class="sort-opt" data-field="title" data-label="Title">Title (A→Z)</div>
-                <div class="sort-opt" data-field="company_name" data-label="Company">Company (A→Z)</div>
-                <div class="sort-opt" data-field="location" data-label="Location">Location (A→Z)</div>
-              </div>
-            </div>
-            <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
+                      <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
           </div>
 
           <!-- Job results table -->
