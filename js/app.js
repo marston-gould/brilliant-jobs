@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.33';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin scroll fix, muted color scheme, GSC sync fix');
+const BJ_VERSION = 'v4.34';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Tailwind rebuild — restore 20KB missing nav + layout rules');
 
 // Auth
 async function init() {
