@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.44 - 2026-02-24 — Fix account pages outside .main, patch nav styling -->
+<!-- Brilliant Jobs Dashboard v4.54 - 2026-02-24 — Admin: Export dead/unscraped/active/all boards as CSV -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.53</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.54</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2410,6 +2410,14 @@
               <tbody id="admin-platform-body"></tbody>
               <tfoot id="admin-platform-foot"></tfoot>
             </table>
+
+            <!-- Export buttons -->
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button onclick="exportBoardsCsv('dead')" class="admin-period-btn" id="export-dead-btn">⬇ Export Dead Boards</button>
+              <button onclick="exportBoardsCsv('unscraped')" class="admin-period-btn" id="export-unscraped-btn">⬇ Export Unscraped</button>
+              <button onclick="exportBoardsCsv('active')" class="admin-period-btn" id="export-active-btn">⬇ Export Active Boards</button>
+              <button onclick="exportBoardsCsv('all')" class="admin-period-btn" id="export-all-btn">⬇ Export All Boards</button>
+            </div>
 
             <!-- Feed Health Charts -->
             <div style="margin-top:24px">

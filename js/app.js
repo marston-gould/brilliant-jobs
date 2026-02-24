@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.51';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
+const BJ_VERSION = 'v4.54';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin: Export boards CSV');
 
 // Auth
 async function init() {
