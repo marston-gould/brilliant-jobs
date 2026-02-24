@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 24, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 17 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking (signal detection + smart prompts) · Roadmap filter bar
+    Brilliant Jobs · Internal Roadmap · Updated February 24, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 17 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking (signal detection + smart prompts) · Roadmap filter bar · Merchandising System (database-driven rotating content)
   </div>
 
 </div>
@@ -1459,6 +1459,12 @@ function render() {
 
   // Bug Fix (v4.48.1)
   { s: 'done', n: 'F22: Null ref TypeError fix', d: 'sort-bar.js: $("#sort-add-btn").addEventListener crashed at parse time (element not in DOM). Added optional chaining (?.) to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js.', p: 31 },
+  // Phase 33: Merchandising System (v4.51) — 2026-02-24
+  { s: 'done', n: 'Merch: Database schema + RPC', d: 'Three tables (merch_placements, merch_rules, merch_content) with RLS, indexes, SECURITY DEFINER get_merch_content() RPC. Priority cascade: cohort-specific > all-cohorts, audience-specific > all. Visit gating (min/max_visits), seasonal filtering (month array). cohort_id is TEXT FK to cohorts table.', p: 33 },
+  { s: 'done', n: 'Merch: Copy bank migration (52 entries)', d: 'Migrated 34 returning + 18 lapsed entries from ROTATING_HERO_COPY_SPEC into merch_content. 5 deep-visit entries gated at min_visits=3. Categories: persistence, empathy, encouragement, differentiation, humor, urgency, deep_visit, welcome_back.', p: 33 },
+  { s: 'done', n: 'Merch: Admin Merchandising tab', d: 'New admin tab (9th) in dashboard.html with master-detail layout. Left panel: placement list grouped by page URL. Right panel: placement detail + rules section (cohort × audience × priority) + content entries table (sort order, h1/sub preview, category badge, visit gating). Edit modal with live HTML preview and {JOBS}/{COMPANIES} hydration. Bulk JSON import. Full CRUD for placements, rules, content.', p: 33 },
+  { s: 'done', n: 'Merch: Frontend merch-client.js', d: 'Lightweight IIFE on landing page. Fetches rotating content from get_merch_content RPC (raw fetch, no SDK dependency). Picks unseen entry via localStorage rotation tracking. Injects into DOM via data-merch-field attributes on returning + lapsed hero sections. Hydrates {JOBS}/{COMPANIES} placeholders. PostHog: merch_content_shown on inject, merch_content_click on hero CTAs. Static content = progressive enhancement fallback.', p: 33 },
+  { s: 'done', n: 'Merch: Version sync v4.51', d: 'dashboard.html nav-version, js/app.js BJ_VERSION + console.log, dist/dashboard.min.js all updated to v4.51. Bundle rebuilt (19 files, 566.9KB minified). QA: 28/28 tests pass (audience segments, deep-visit gating, cohort fallback, seasonal filtering, RLS, admin CRUD cascade, production frontend, data integrity).', p: 33 },
 ],
           'needs-users': ['bt-postlaunch', 'NEEDS USERS'],
           'dependency': ['bt-dependency', 'DEPENDENCY'],
