@@ -14,23 +14,11 @@ const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!;
 
-const ALLOWED_ORIGINS = [
-  'https://brilliantjobs.app',
-  'https://dev.brilliantjobs.app',
-  'https://staging.brilliantjobs.app',
-  'http://localhost:3000',
-  'http://localhost:5173',
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, apikey',
-  };
-}
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': 'https://brilliantjobs.app',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, apikey',
+};
 
 async function stripeRequest(method: string, endpoint: string, params?: Record<string, string>) {
   const url = `https://api.stripe.com/v1${endpoint}`;
@@ -50,7 +38,7 @@ async function stripeRequest(method: string, endpoint: string, params?: Record<s
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: getCorsHeaders(req) });
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
 
   if (req.method === 'GET') {
@@ -72,7 +60,7 @@ serve(async (req: Request) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
@@ -82,7 +70,7 @@ serve(async (req: Request) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'unauthorized' }), {
         status: 401,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
@@ -131,7 +119,7 @@ serve(async (req: Request) => {
         logger.error('SetupIntent creation failed', { error: si.error.message });
         return new Response(JSON.stringify({ error: si.error.message }), {
           status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         });
       }
 
@@ -142,7 +130,7 @@ serve(async (req: Request) => {
         setup_intent_id: si.id,
       }), {
         status: 200,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
@@ -153,7 +141,7 @@ serve(async (req: Request) => {
       if (!amount_cents || amount_cents < 100) {
         return new Response(JSON.stringify({ error: 'amount_cents must be >= 100' }), {
           status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         });
       }
 
@@ -162,7 +150,7 @@ serve(async (req: Request) => {
       if (!paymentMethodId) {
         return new Response(JSON.stringify({ error: 'no_payment_method', message: 'No payment method on file. Please set up hire fee authorization first.' }), {
           status: 400,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         });
       }
 
@@ -197,7 +185,7 @@ serve(async (req: Request) => {
           code: pi.error.code,
         }), {
           status: 200,
-          headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         });
       }
 
@@ -230,7 +218,7 @@ serve(async (req: Request) => {
         status: pi.status,
       }), {
         status: 200,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
@@ -258,20 +246,20 @@ serve(async (req: Request) => {
         last_charge: lastCharge,
       }), {
         status: 200,
-        headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
     return new Response(JSON.stringify({ error: 'invalid action — use setup, charge, or status' }), {
       status: 400,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
 
   } catch (err) {
     logger.error('Hire fee error', { error: (err as Error).message });
     return new Response(JSON.stringify({ error: 'internal' }), {
       status: 500,
-      headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' },
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
   }
 });
