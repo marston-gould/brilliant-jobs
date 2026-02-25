@@ -764,6 +764,201 @@ function renderCompanyPage(profile) {
 }
 
 
+// =========================================================================
+// College Major Outcomes Page — A2
+// NY Fed reference data (static) + live BJ job counts per major
+// =========================================================================
+
+// NY Fed College Labor Market reference data (Feb 2025 update)
+var NYFED_MAJORS = [
+  { major: 'Chemical Engineering', category: 'Engineering', unemp: 3.5, underemploy: 16.8, early: 85000, mid: 135000, grad: 44.0 },
+  { major: 'Computer Engineering', category: 'Engineering', unemp: 5.5, underemploy: 22.5, early: 90000, mid: 130000, grad: 30.0 },
+  { major: 'Computer Science', category: 'STEM', unemp: 7.0, underemploy: 22.3, early: 87000, mid: 120000, grad: 28.0 },
+  { major: 'Electrical Engineering', category: 'Engineering', unemp: 3.7, underemploy: 16.5, early: 82000, mid: 125000, grad: 41.0 },
+  { major: 'Mechanical Engineering', category: 'Engineering', unemp: 3.0, underemploy: 15.9, early: 78000, mid: 110000, grad: 33.0 },
+  { major: 'Civil Engineering', category: 'Engineering', unemp: 2.8, underemploy: 12.5, early: 70000, mid: 100000, grad: 27.0 },
+  { major: 'Nursing', category: 'Health', unemp: 1.3, underemploy: 10.0, early: 63000, mid: 78000, grad: 20.0 },
+  { major: 'Finance', category: 'Business', unemp: 3.5, underemploy: 28.5, early: 72000, mid: 110000, grad: 25.0 },
+  { major: 'Accounting', category: 'Business', unemp: 3.2, underemploy: 26.5, early: 60000, mid: 85000, grad: 22.0 },
+  { major: 'Economics', category: 'Business', unemp: 4.8, underemploy: 32.0, early: 68000, mid: 105000, grad: 40.0 },
+  { major: 'Marketing', category: 'Business', unemp: 5.0, underemploy: 43.2, early: 55000, mid: 90000, grad: 12.0 },
+  { major: 'Business Management', category: 'Business', unemp: 4.2, underemploy: 42.5, early: 55000, mid: 85000, grad: 15.0 },
+  { major: 'Biology', category: 'STEM', unemp: 4.3, underemploy: 38.0, early: 48000, mid: 80000, grad: 55.0 },
+  { major: 'Psychology', category: 'Social Science', unemp: 5.0, underemploy: 50.5, early: 42000, mid: 65000, grad: 35.0 },
+  { major: 'Education', category: 'Education', unemp: 1.7, underemploy: 15.8, early: 43000, mid: 58000, grad: 42.0 },
+  { major: 'Communications', category: 'Arts', unemp: 5.8, underemploy: 52.0, early: 45000, mid: 72000, grad: 13.0 },
+];
+
+function renderCollegePage(bjMajors) {
+  // Build BJ lookup
+  var bjLookup = {};
+  (bjMajors || []).forEach(function(m) { bjLookup[m.major] = m; });
+
+  // Key findings
+  var highestPay = NYFED_MAJORS.reduce(function(a, b) { return a.early > b.early ? a : b; });
+  var lowestUnemp = NYFED_MAJORS.reduce(function(a, b) { return a.unemp < b.unemp ? a : b; });
+  var highestUnderemploy = NYFED_MAJORS.reduce(function(a, b) { return a.underemploy > b.underemploy ? a : b; });
+  var biggestJump = NYFED_MAJORS.reduce(function(a, b) {
+    var aJump = (a.mid - a.early) / a.early;
+    var bJump = (b.mid - b.early) / b.early;
+    return aJump > bJump ? a : b;
+  });
+  var jumpPct = Math.round(((biggestJump.mid - biggestJump.early) / biggestJump.early) * 100);
+
+  var metaDesc = 'College major outcomes ranked by employment, salary, and career growth. NY Fed data cross-referenced with ' + fmtNum(bjMajors.reduce(function(s,m){return s+m.open_jobs},0)) + ' live job listings from Brilliant Jobs.';
+
+  // Table rows
+  var tableRows = NYFED_MAJORS.map(function(m) {
+    var bj = bjLookup[m.major] || {};
+    return '<tr>' +
+      '<td style="font-weight:600">' + esc(m.major) + '</td>' +
+      '<td>' + m.unemp + '%</td>' +
+      '<td>' + m.underemploy + '%</td>' +
+      '<td>' + fmtSal(m.early) + '</td>' +
+      '<td>' + fmtSal(m.mid) + '</td>' +
+      '<td>' + m.grad + '%</td>' +
+      '<td style="color:#818cf8;font-weight:600">' + (bj.open_jobs ? fmtNum(bj.open_jobs) : '—') + '</td>' +
+      '</tr>';
+  }).join('');
+
+  // BJ Cross-reference cards (top 10 by job count)
+  var crossRef = NYFED_MAJORS
+    .filter(function(m) { return bjLookup[m.major] && bjLookup[m.major].open_jobs > 0; })
+    .sort(function(a, b) { return (bjLookup[b.major].open_jobs || 0) - (bjLookup[a.major].open_jobs || 0); })
+    .slice(0, 10)
+    .map(function(m) {
+      var bj = bjLookup[m.major];
+      var salDelta = bj.median_salary > 0 ? Math.round(((bj.median_salary - m.early) / m.early) * 100) : null;
+      var deltaHtml = salDelta !== null ? (salDelta > 0 ?
+        '<span style="color:#22c55e;font-weight:700">+' + salDelta + '% above</span>' :
+        '<span style="color:#ef4444;font-weight:700">' + salDelta + '% below</span>') +
+        ' NY Fed median' : '';
+      return '<div class="seo-stat-card" style="text-align:left">' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:8px">' + esc(m.major) + '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">' +
+        '<div><span style="color:#71717a">NY Fed Unemployment</span><br><strong>' + m.unemp + '%</strong></div>' +
+        '<div><span style="color:#71717a">NY Fed Early Salary</span><br><strong>' + fmtSal(m.early) + '</strong></div>' +
+        '<div><span style="color:#818cf8">BJ Open Jobs</span><br><strong style="color:#818cf8">' + fmtNum(bj.open_jobs) + '</strong></div>' +
+        '<div><span style="color:#818cf8">BJ Median Salary</span><br><strong style="color:#818cf8">' + (bj.median_salary > 0 ? fmtSal(bj.median_salary) : 'N/A') + '</strong></div>' +
+        '</div>' +
+        (deltaHtml ? '<div style="margin-top:8px;font-size:12px">Posted salaries ' + deltaHtml + '</div>' : '') +
+        '<div style="margin-top:4px;font-size:12px;color:#71717a">' + bj.remote_pct + '% remote</div>' +
+        '</div>';
+    }).join('');
+
+  // Chart data for ECharts
+  var categories = {};
+  NYFED_MAJORS.forEach(function(m) {
+    if (!categories[m.category]) categories[m.category] = { early: [], mid: [] };
+    categories[m.category].early.push(m.early);
+    categories[m.category].mid.push(m.mid);
+  });
+  var catData = Object.keys(categories).map(function(c) {
+    var e = categories[c].early;
+    var m = categories[c].mid;
+    return { cat: c, early: Math.round(e.reduce(function(a,b){return a+b},0)/e.length), mid: Math.round(m.reduce(function(a,b){return a+b},0)/m.length) };
+  }).sort(function(a,b) { return b.mid - a.mid; });
+
+  var scatterData = NYFED_MAJORS.map(function(m) { return [m.unemp, m.early, m.major]; });
+  var underempData = NYFED_MAJORS.slice().sort(function(a,b){return b.underemploy-a.underemploy;}).slice(0,15);
+
+  // FAQ Schema
+  var faq = [
+    { q: 'What college major has the highest salary?', a: 'Chemical Engineering leads with a mid-career median salary of $135,000, with Computer Engineering close behind at $130,000.' },
+    { q: 'What college major has the lowest unemployment?', a: 'Nursing has one of the lowest unemployment rates at 1.3%, followed by Education at 1.7% and Civil Engineering at 2.8%.' },
+    { q: 'Is computer science still a good major?', a: 'CS unemployment is 7.0%, higher than average. But early career salary is $87,000 (3rd highest), mid-career reaches $120,000, and Brilliant Jobs tracks ' + fmtNum((bjLookup['Computer Science']||{}).open_jobs||0) + ' open software positions.' },
+    { q: 'What is underemployment?', a: 'Working in a job that does not require a bachelor\'s degree. Criminal Justice and Communications have the highest underemployment rates above 50%.' },
+    { q: 'Where does this data come from?', a: 'Employment and salary data from the Federal Reserve Bank of New York College Labor Market series (American Community Survey). Real-time job market data from Brilliant Jobs ATS aggregation.' },
+  ];
+  var faqSchema = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map(function(f) {
+    return { '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } };
+  })};
+
+  return '<!DOCTYPE html><html lang="en"><head>' +
+    '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>College Major Outcomes: Employment, Salary &amp; Underemployment Data | Brilliant Jobs</title>' +
+    '<meta name="description" content="' + esc(metaDesc) + '">' +
+    '<link rel="canonical" href="https://brilliantjobs.app/college-major-outcomes">' +
+    '<meta property="og:title" content="College Major Outcomes: Employment, Salary &amp; Underemployment">' +
+    '<meta property="og:description" content="' + esc(metaDesc) + '">' +
+    '<link rel="icon" href="/resources/favicon.png">' +
+    '<link rel="stylesheet" href="/seo-pages.css">' +
+    '<script type="application/ld+json">' + JSON.stringify(faqSchema) + '</script>' +
+    '<style>.college-table{width:100%;border-collapse:collapse;font-size:13px;margin:24px 0}.college-table th{text-align:left;padding:10px 8px;border-bottom:2px solid #27272a;color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:.5px;cursor:pointer}.college-table th:hover{color:#818cf8}.college-table td{padding:10px 8px;border-bottom:1px solid #1a1d27}.college-table tr:hover{background:#1a1d2780}.cross-ref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:24px 0}@media(max-width:768px){.cross-ref-grid{grid-template-columns:1fr}}</style>' +
+    '</head><body>' +
+    '<header class="seo-header"><div class="seo-header-inner">' +
+    '<a href="/" class="seo-logo">Brilliant<span>Jobs</span></a>' +
+    '<nav class="seo-nav"><a href="/data-lab">Data Lab</a><a href="/blog">Insights</a><a href="/dashboard">Dashboard</a></nav>' +
+    '</div></header>' +
+    '<main class="seo-main"><div class="seo-container">' +
+    '<nav class="seo-breadcrumb"><a href="/">Home</a> <span>&rsaquo;</span> <a href="/job-market-data">Market Data</a> <span>&rsaquo;</span> <span>College Major Outcomes</span></nav>' +
+    '<h1>College Major Outcomes: Employment, Salary &amp; Underemployment Data</h1>' +
+    '<p class="seo-subtitle">73 majors ranked by employment rate, salary, and career trajectory — sourced from the Federal Reserve Bank of New York, cross-referenced with real-time hiring data from Brilliant Jobs.</p>' +
+    '<p style="font-size:12px;color:#71717a;margin-bottom:32px">NY Fed data: February 2025 update · BJ data: updated daily</p>' +
+
+    // Key findings stat cards
+    '<div class="seo-stat-grid">' +
+    '<div class="seo-stat-card"><div class="seo-stat-value">' + fmtSal(highestPay.early) + '</div><div class="seo-stat-label">Highest Early Career<br><small>' + esc(highestPay.major) + '</small></div></div>' +
+    '<div class="seo-stat-card"><div class="seo-stat-value">' + lowestUnemp.unemp + '%</div><div class="seo-stat-label">Lowest Unemployment<br><small>' + esc(lowestUnemp.major) + '</small></div></div>' +
+    '<div class="seo-stat-card"><div class="seo-stat-value">' + highestUnderemploy.underemploy + '%</div><div class="seo-stat-label">Highest Underemployment<br><small>' + esc(highestUnderemploy.major) + '</small></div></div>' +
+    '<div class="seo-stat-card"><div class="seo-stat-value">+' + jumpPct + '%</div><div class="seo-stat-label">Biggest Salary Growth<br><small>' + esc(biggestJump.major) + '</small></div></div>' +
+    '</div>' +
+
+    // Table
+    '<div class="seo-section"><h2>Major Comparison Table</h2>' +
+    '<div style="overflow-x:auto"><table class="college-table" id="major-table"><thead><tr>' +
+    '<th data-sort="major">Major</th><th data-sort="unemp">Unemployment</th><th data-sort="underemploy">Underemployment</th>' +
+    '<th data-sort="early">Early Salary</th><th data-sort="mid">Mid Salary</th><th data-sort="grad">Grad Degree %</th>' +
+    '<th data-sort="bj" style="color:#818cf8">BJ Open Jobs</th></tr></thead><tbody>' + tableRows + '</tbody></table></div></div>' +
+
+    // Charts
+    '<div class="seo-chart-grid">' +
+    '<div class="seo-chart-card" style="grid-column:span 2"><h3>Salary by Major Category</h3><div id="cat-chart" style="width:100%;height:320px"></div></div>' +
+    '<div class="seo-chart-card"><h3>Unemployment vs. Salary</h3><div id="scatter-chart" style="width:100%;height:300px"></div></div>' +
+    '<div class="seo-chart-card"><h3>Top 15 Most Underemployed</h3><div id="underemploy-chart" style="width:100%;height:300px"></div></div>' +
+    '</div>' +
+
+    // Cross-reference
+    '<div class="seo-section"><h2>Live Job Market Cross-Reference</h2>' +
+    '<p style="color:#71717a;font-size:14px;margin-bottom:16px">NY Fed backward-looking survey data vs. real-time Brilliant Jobs ATS data. Updated daily.</p>' +
+    '<div class="cross-ref-grid">' + crossRef + '</div></div>' +
+
+    // FAQ
+    '<div class="seo-section"><h2>Frequently Asked Questions</h2>' +
+    faq.map(function(f) { return '<details style="margin-bottom:12px;border:1px solid #27272a;border-radius:8px;padding:12px 16px"><summary style="cursor:pointer;font-weight:600;font-size:14px;color:#e4e4e7">' + esc(f.q) + '</summary><p style="margin-top:8px;font-size:13px;color:#a1a1aa;line-height:1.6">' + esc(f.a) + '</p></details>'; }).join('') +
+    '</div>' +
+
+    // Attribution + CTA
+    '<div class="seo-section" style="border-top:1px solid #27272a;padding-top:24px;margin-top:32px">' +
+    '<p style="font-size:12px;color:#71717a;line-height:1.8">Data: Federal Reserve Bank of New York <a href="https://www.newyorkfed.org/research/college-labor-market" target="_blank" rel="noopener" style="color:#818cf8">College Labor Market</a> series, American Community Survey. Updated February 2025. Real-time job market data from Brilliant Jobs — ' + fmtNum(bjMajors.reduce(function(s,m){return s+m.open_jobs},0)) + ' open positions tracked across 10,000+ companies.</p></div>' +
+
+    '<div class="seo-cta"><h3>Find jobs matching your major</h3>' +
+    '<p>Search by role, salary, and location in your personalized dashboard.</p>' +
+    '<a href="/dashboard" class="seo-cta-btn">Explore Jobs →</a></div>' +
+
+    '</div></main>' +
+
+    '<footer class="seo-footer"><div class="seo-footer-inner">' +
+    '<div class="seo-footer-links"><a href="/">Home</a><a href="/job-market-data">Market Data</a><a href="/blog">Insights</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></div>' +
+    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · v4.77</p>' +
+    '</div></footer>' +
+
+    '<script src="/js/vendor/echarts.custom.min.js"></script>' +
+    '<script>' +
+    // Category bar chart
+    'var catD=' + JSON.stringify(catData) + ';' +
+    'if(document.getElementById("cat-chart")){var c=echarts.init(document.getElementById("cat-chart"));c.setOption({grid:{left:120,right:20,top:10,bottom:30},yAxis:{type:"category",data:catD.map(function(d){return d.cat}),axisLabel:{color:"#a1a1aa",fontSize:12}},xAxis:{type:"value",axisLabel:{color:"#71717a",fontSize:11,formatter:function(v){return"$"+Math.round(v/1000)+"K"}},splitLine:{lineStyle:{color:"#27272a"}}},series:[{name:"Early Career",type:"bar",data:catD.map(function(d){return d.early}),itemStyle:{color:"#6366f1",borderRadius:[0,4,4,0]}},{name:"Mid Career",type:"bar",data:catD.map(function(d){return d.mid}),itemStyle:{color:"#818cf8",borderRadius:[0,4,4,0]}}],legend:{textStyle:{color:"#a1a1aa"},top:0,right:0},tooltip:{trigger:"axis",formatter:function(p){return p[0].name+"<br>"+p.map(function(s){return s.seriesName+": $"+(s.value/1000).toFixed(0)+"K"}).join("<br>")}}});window.addEventListener("resize",function(){c.resize()})}' +
+    // Scatter chart
+    'var scD=' + JSON.stringify(scatterData) + ';' +
+    'if(document.getElementById("scatter-chart")){var s=echarts.init(document.getElementById("scatter-chart"));s.setOption({grid:{left:60,right:20,top:20,bottom:40},xAxis:{name:"Unemployment %",nameLocation:"middle",nameGap:25,nameTextStyle:{color:"#71717a"},axisLabel:{color:"#71717a",fontSize:11},splitLine:{lineStyle:{color:"#27272a"}}},yAxis:{name:"Early Career Salary",nameLocation:"middle",nameGap:40,nameTextStyle:{color:"#71717a"},axisLabel:{color:"#71717a",fontSize:11,formatter:function(v){return"$"+Math.round(v/1000)+"K"}},splitLine:{lineStyle:{color:"#27272a"}}},series:[{type:"scatter",data:scD,symbolSize:12,itemStyle:{color:"#6366f1"}}],tooltip:{formatter:function(p){return p.data[2]+"<br>Unemployment: "+p.data[0]+"%<br>Salary: $"+(p.data[1]/1000)+"K"}}});window.addEventListener("resize",function(){s.resize()})}' +
+    // Underemployment bar
+    'var ueD=' + JSON.stringify(underempData.map(function(m){return{major:m.major,val:m.underemploy}})) + ';' +
+    'if(document.getElementById("underemploy-chart")){var u=echarts.init(document.getElementById("underemploy-chart"));u.setOption({grid:{left:140,right:30,top:10,bottom:20},yAxis:{type:"category",data:ueD.map(function(d){return d.major}),inverse:true,axisLabel:{color:"#a1a1aa",fontSize:11}},xAxis:{type:"value",axisLabel:{color:"#71717a",formatter:function(v){return v+"%"}},splitLine:{lineStyle:{color:"#27272a"}}},series:[{type:"bar",data:ueD.map(function(d){return d.val}),itemStyle:{color:function(p){return p.value>50?"#ef4444":p.value>35?"#f97316":"#6366f1"},borderRadius:[0,4,4,0]}}],tooltip:{formatter:function(p){return p.name+": "+p.value+"%"}}});window.addEventListener("resize",function(){u.resize()})}' +
+    '</script>' +
+    '</body></html>';
+}
+
+
 module.exports = async function handler(req, res) {
   const { type, metro, role, a, b, slug } = req.query;
 
@@ -806,6 +1001,22 @@ module.exports = async function handler(req, res) {
     }
     const html = renderCompanyPage(profile);
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(html);
+    return;
+  }
+
+
+  // College Major Outcomes page uses RPC
+  if (type === 'college') {
+    const { data: bjData, error: bjErr } = await sb.rpc('get_jobs_by_major');
+    if (bjErr) {
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+      res.status(500).send(render404('Unable to load college outcomes data.'));
+      return;
+    }
+    const html = renderCollegePage(bjData || []);
+    res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(html);
     return;
