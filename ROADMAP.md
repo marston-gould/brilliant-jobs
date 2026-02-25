@@ -1542,4 +1542,20 @@ All 16 spec items verified against live infrastructure:
 
 **Phase 36 total:** 7 items | All complete.
 
+---
+
+## Phase 38: Styling Fixes (v4.79a) — 2026-02-25
+
+**Goal:** Fix two styling bugs: missing CSS for hidden job cards on Tuning page, and inconsistent heading accent colors across onboarding heroes.
+
+**Source:** Pod 1 visual QA
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S1 | Hidden job card CSS (Tuning page) | v4.79a | ✅ | Added 6 missing CSS classes to styles.css: `.poor-match-card`, `.poor-match-info`, `.poor-match-title`, `.poor-match-meta`, `.poor-match-reason`, `.poor-match-unhide`. Flex layout, text truncation, hover states, button styling. |
+| S2 | Hero heading color consistency | v4.79a | ✅ | Wrapped accent phrases in `<span style="color:#f59e0b">` to match index page "Your search continues" amber. Affected: "This is how you take control." (Get Started), "Track everything." (Setup), "Better matches." (Tuning). |
+| S3 | CSS cache bust | v4.79a | ✅ | Bumped `styles.css?v=4.78e` → `?v=4.79a` in dashboard.html. |
+| S4 | Vercel deploy | v4.79a | ✅ | Deploy triggered and verified live. New CSS confirmed serving in production. |
+
+**Phase 38 total:** 4 items | All complete | Styling-only — no version bump to dashboard.
 
