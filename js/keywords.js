@@ -3101,7 +3101,7 @@ function markAppliedFromModal(jobId) {
     
     // Refresh pipeline in background
     renderPipelineSaved();
-    updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+    updateJobStats($('#j-total').textContent, $('#j-companies').textContent, ($('#j-new-login')||{textContent:'0'}).textContent, $('#j-new').textContent);
   });
 }
 
@@ -3135,7 +3135,7 @@ function modalSave(jobId, btn) {
       }
     }
   }
-  updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+  updateJobStats($('#j-total').textContent, $('#j-companies').textContent, ($('#j-new-login')||{textContent:'0'}).textContent, $('#j-new').textContent);
 }
 
 function modalHide(jobId) {
