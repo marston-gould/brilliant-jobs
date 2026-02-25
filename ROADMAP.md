@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-25
 **Target launch:** March 2026
-**Current version:** v4.71
+**Current version:** v4.79a
 
 ---
 
