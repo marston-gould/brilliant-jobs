@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.81';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — A6: Filter-Driven Trend Indicators');
+const BJ_VERSION = 'v4.82';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
 
 // Auth
 async function init() {
