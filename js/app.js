@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.76';
+const BJ_VERSION = 'v4.77';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — A6: Filter-Driven Trend Indicators');
 
 // Auth

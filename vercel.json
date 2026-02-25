@@ -114,6 +114,10 @@
       "destination": "/api/content?mode=merch-dashboard"
     },
     {
+      "source": "/college-major-outcomes",
+      "destination": "/api/seo-page?type=college"
+    },
+    {
       "source": "/company/:slug",
       "destination": "/api/seo-page?type=company&slug=:slug"
     },
