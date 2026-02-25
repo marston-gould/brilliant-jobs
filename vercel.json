@@ -74,26 +74,6 @@
   ],
   "rewrites": [
     {
-      "source": "/economic-api/dashboard",
-      "destination": "/api/economic?mode=dashboard"
-    },
-    {
-      "source": "/economic-api/series",
-      "destination": "/api/economic?mode=series"
-    },
-    {
-      "source": "/economic-api/context",
-      "destination": "/api/economic?mode=context"
-    },
-    {
-      "source": "/economic-api/correlations",
-      "destination": "/api/economic?mode=correlations"
-    },
-    {
-      "source": "/economic-api/all-series",
-      "destination": "/api/economic?mode=all-series"
-    },
-    {
       "source": "/blog/feed.xml",
       "destination": "/api/content?mode=rss"
     },
