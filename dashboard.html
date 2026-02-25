@@ -347,29 +347,21 @@
           <h2>Get Started</h2>
           <p>Your setup guide — five steps, three minutes. Then your search runs itself.</p>
         </div>
-        <div class="page-body" style="max-width:800px;">
+        <div class="page-body" style="max-width:760px;">
 
           <!-- Resume-first onboarding prompt -->
-          <div id="onboard-resume-first" style="background:linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(61,126,255,0.06) 100%); border:2px solid rgba(34,197,94,0.18); border-radius:14px; padding:28px 32px; margin-bottom:24px;">
-            <div style="display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap;">
-              <div style="flex:1;min-width:260px;">
-                <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;">Skip the setup. Drop your resume.</div>
-                <div style="font-size:14px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;">
-                  Upload a resume and we'll extract your target titles, locations, and seniority — then build your first search filter automatically. No forms, no guessing.
-                </div>
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                  <label class="btn btn-primary" style="gap:6px;cursor:pointer;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Upload Resume
-                    <input type="file" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleOnboardResume(this)">
-                  </label>
-                  <span style="font-size:12px;color:var(--text-faint);">or keep scrolling for the manual setup ↓</span>
-                </div>
-              </div>
-              <div style="width:80px;height:80px;border-radius:16px;background:rgba(34,197,94,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              </div>
+          <div id="onboard-resume-first" class="gs-resume-drop" onclick="document.getElementById('resume-input-gs').click()">
+            <div class="gs-resume-drop-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
+            <div style="font-size:17px;font-weight:700;margin-bottom:4px;">Want to skip the manual setup?</div>
+            <div style="font-size:13px;color:var(--text-dim);margin-bottom:16px;max-width:420px;margin-left:auto;margin-right:auto;">Drop your resume and we'll extract titles, locations, and seniority to build your first search automatically.</div>
+            <button class="btn btn-primary" style="gap:6px;" onclick="event.stopPropagation(); document.getElementById('resume-input-gs').click()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Resume
+            </button>
+            <div style="font-size:11px;color:var(--text-faint);margin-top:10px;">PDF or DOCX &middot; Or keep scrolling to set up manually</div>
+            <input type="file" id="resume-input-gs" accept=".pdf,.doc,.docx" style="display:none;" onchange="handleOnboardResume(this)">
           </div>
 
           <!-- Q18: Resume intelligence summary card (hidden until extraction completes) -->
@@ -410,117 +402,175 @@
           </div>
 
           <!-- Hero -->
-          <div style="background:linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(168,85,247,0.06) 100%); border:1px solid rgba(99,102,241,0.12); border-radius:12px; padding:32px; margin-bottom:24px;">
-            <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px;">Brilliant Jobs is not another job board.</div>
-            <div style="font-size:14px;color:var(--text-dim);line-height:1.7;">
-              It's an intelligence platform that scans company hiring pages directly, bypasses job board noise, and gives you a real-time feed of exactly what matches your criteria — before most applicants even know the role exists.
+          <div class="gs-hero">
+            <div style="font-size:22px;font-weight:800;line-height:1.25;margin-bottom:8px;">This is not another job board.<br>This is how you take control.</div>
+            <div style="font-size:14px;color:var(--text-dim);line-height:1.7;max-width:560px;">
+              Brilliant Jobs scans 38,000+ company career pages directly &mdash; bypassing the noise, the recycled posts, and the ghost listings. Build your search once, and we surface exactly what matches. Same-day. Every day.
             </div>
           </div>
 
-          <!-- Step 1 -->
-          <div class="card" style="border-left:3px solid var(--accent);">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:var(--accent);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">1</span>
-              <div class="card-title" style="margin:0;">Install Your Extension</div>
+          <!-- Step 1: Extension -->
+          <div class="gs-step">
+            <div class="gs-step-header">
+              <div class="gs-step-icon" style="background:var(--indigo-dim);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+              </div>
+              <div>
+                <div class="gs-step-num">Step 1</div>
+                <div class="gs-step-title">Install the Chrome Extension</div>
+              </div>
             </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Head to <strong>Setup</strong> and download your personalized Chrome extension. It's unique to your account — your own stealth scanner that harvests your LinkedIn network connections and maps them to companies hiring right now. The extension runs in the background while you browse, visiting profiles during business hours at human-like intervals.
+            <div class="gs-step-body">
+              Your extension works quietly in the background, identifying opportunities at companies where you already have professional connections. It maps your network to active hiring &mdash; so when a company you're connected to posts a role, you'll know before most applicants do.
+            </div>
+            <div class="gs-tip">
+              <span class="gs-tip-label">Heads up</span>
+              <span>Each extension is unique to your account with its own security parameters. Download it from the <strong>Setup</strong> page after signing in.</span>
             </div>
           </div>
 
-          <!-- Step 2 -->
-          <div class="card" style="border-left:3px solid var(--warm);">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:var(--warm);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">2</span>
-              <div class="card-title" style="margin:0;">Build Your Filters</div>
-            </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Go to <strong>Jobs Feed</strong> and open the filter builder. Think of it like building a search radar:
-            </div>
-            <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div style="background:rgba(61,126,255,0.06);border-radius:8px;padding:10px 14px;">
-                <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">What</div>
-                <div style="font-size:12px;color:var(--text-dim);">Job titles and keywords. "director of marketing", "growth", "SEO"</div>
+          <!-- Step 2: Connect Accounts -->
+          <div class="gs-step">
+            <div class="gs-step-header">
+              <div class="gs-step-icon" style="background:var(--green-dim);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
               </div>
-              <div style="background:rgba(148,163,184,0.06);border-radius:8px;padding:10px 14px;">
-                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Not</div>
-                <div style="font-size:12px;color:var(--text-dim);">Exclude noise. "intern", "assistant", "part-time"</div>
-              </div>
-              <div style="background:rgba(245,158,11,0.06);border-radius:8px;padding:10px 14px;">
-                <div style="font-size:11px;font-weight:700;color:var(--warm);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Where</div>
-                <div style="font-size:12px;color:var(--text-dim);">Locations and work styles. "United States", "remote", "Seattle"</div>
-              </div>
-              <div style="background:rgba(236,72,153,0.06);border-radius:8px;padding:10px 14px;">
-                <div style="font-size:11px;font-weight:700;color:var(--pink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Who</div>
-                <div style="font-size:12px;color:var(--text-dim);">Target or exclude companies. "Stripe", "Google"</div>
+              <div>
+                <div class="gs-step-num">Step 2</div>
+                <div class="gs-step-title">Connect Your Accounts</div>
               </div>
             </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
-              <strong>Pro tip:</strong> Type <kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">or</kbd> before a term to add alternatives. "director" then "or VP" matches either. Save each search as a named filter — they run in parallel.
+            <div class="gs-step-body">
+              Authorize read-only access so Brilliant Jobs can help track your application pipeline &mdash; detecting responses, scheduling interviews, and flagging companies that go silent.
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;">
+              <div class="gs-connect-card">
+                <div style="width:36px;height:36px;border-radius:10px;background:hsla(4,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                  <svg width="18" height="14" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+                </div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Gmail</div>
+                <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">Detects confirmations, rejections, and interview requests</div>
+              </div>
+              <div class="gs-connect-card">
+                <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/></svg>
+                </div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Calendar</div>
+                <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">Tracks interview schedules and follow-up timelines</div>
+              </div>
+              <div class="gs-connect-card">
+                <div style="width:36px;height:36px;border-radius:10px;background:hsla(217,80%,56%,0.08);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M8 3L1.5 14.4h6.5L14.5 3H8z" fill="#0066DA"/><path d="M16 21l6.5-6.6H16L9.5 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.25 6.6 6.5-6.6H1.5z" fill="#EA4335"/></svg>
+                </div>
+                <div style="font-size:12px;font-weight:600;margin-bottom:4px;">Drive</div>
+                <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">Keep resumes synced &mdash; edit in Docs, always current here</div>
+              </div>
+            </div>
+            <div class="gs-tip">
+              <span class="gs-tip-label">Why?</span>
+              <span>Gmail and Calendar are the backbone of your application pipeline &mdash; they detect confirmations, rejections, interview invites, and ghosting patterns so your dashboard stays current without you updating it manually.</span>
             </div>
           </div>
 
-          <!-- Step 3 -->
-          <div class="card" style="border-left:3px solid var(--purple);">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:var(--purple);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">3</span>
-              <div class="card-title" style="margin:0;">Tune Your Results</div>
+          <!-- Step 3: Build Filters -->
+          <div class="gs-step">
+            <div class="gs-step-header">
+              <div class="gs-step-icon" style="background:var(--accent-dim);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              </div>
+              <div>
+                <div class="gs-step-num">Step 3</div>
+                <div class="gs-step-title">Build Your Search Filters</div>
+              </div>
             </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Getting noise? Head to <strong>Search Tuning</strong> to set global rules that apply across all your filters:
+            <div class="gs-step-body">
+              This is where Brilliant Jobs pulls away from everything else. Build a search that no job board can match &mdash; combine keywords, locations, salary ranges, seniority levels, and company targets into a single filter. Create as many as you want. Each one runs in parallel, scanning thousands of career pages daily.
             </div>
-            <div style="margin-top:10px;font-size:12px;color:var(--text-dim);line-height:1.8;">
-              <span style="font-weight:600;color:var(--accent);">Location lock</span> — restrict everything to US-only with one checkbox<br>
-              <span style="font-weight:600;color:var(--accent);">Global exclusions</span> — block titles, companies, or locations forever<br>
-              <span style="font-weight:600;color:var(--accent);">Level matching</span> — check "Director" and "VP" to soft-match both seniority levels<br>
-              <span style="font-weight:600;color:var(--accent);">Poor match analysis</span> — hidden jobs get analyzed for patterns to suggest exclusions
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;margin-bottom:14px;">
+              <div class="gs-filter-chip" style="background:hsla(var(--accent-hsl),0.05);border:1px solid hsla(var(--accent-hsl),0.12);">
+                <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--accent);"></span> What</div>
+                <div style="font-size:13px;color:var(--text-dim);line-height:1.6;">Job titles and keywords you're targeting</div>
+                <div style="margin-top:8px;font-size:12px;color:var(--text-faint);font-style:italic;">"director of marketing", "growth lead", "SEO"</div>
+              </div>
+              <div class="gs-filter-chip" style="background:hsl(228,14%,95%);border:1px solid var(--border);">
+                <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--text-faint);"></span> Not</div>
+                <div style="font-size:13px;color:var(--text-dim);line-height:1.6;">Terms you want excluded from results</div>
+                <div style="margin-top:8px;font-size:12px;color:var(--text-faint);font-style:italic;">"intern", "assistant", "part-time"</div>
+              </div>
+              <div class="gs-filter-chip" style="background:hsla(var(--warm-hsl),0.05);border:1px solid hsla(var(--warm-hsl),0.15);">
+                <div style="font-size:13px;font-weight:700;color:var(--warm);margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--warm);"></span> Where</div>
+                <div style="font-size:13px;color:var(--text-dim);line-height:1.6;">Locations and work arrangements</div>
+                <div style="margin-top:8px;font-size:12px;color:var(--text-faint);font-style:italic;">"Remote", "Seattle", "United States"</div>
+              </div>
+              <div class="gs-filter-chip" style="background:hsla(var(--pink-hsl),0.04);border:1px solid hsla(var(--pink-hsl),0.12);">
+                <div style="font-size:13px;font-weight:700;color:var(--pink);margin-bottom:6px;display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--pink);"></span> Who</div>
+                <div style="font-size:13px;color:var(--text-dim);line-height:1.6;">Target or exclude specific companies</div>
+                <div style="margin-top:8px;font-size:12px;color:var(--text-faint);font-style:italic;">"Stripe", "Google", "Not: Amazon"</div>
+              </div>
+            </div>
+            <div class="gs-tip">
+              <span class="gs-tip-label">Tip</span>
+              <span>Type <kbd style="background:var(--bg-input);padding:1px 6px;border-radius:4px;font-size:11px;border:1px solid var(--border);">or</kbd> before a term to add alternatives &mdash; "director" then "or VP" matches either. Save each combination as a named filter and they all run simultaneously.</span>
             </div>
           </div>
 
-          <!-- Step 4 -->
-          <div class="card" style="border-left:3px solid var(--green);">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:var(--green);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">4</span>
-              <div class="card-title" style="margin:0;">Work Your Feed Daily</div>
-            </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Each row in your feed has three actions:
-            </div>
-            <div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;">
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span class="job-action-btn" style="pointer-events:none;font-size:10px;">Save</span>
-                <span style="font-size:12px;color:var(--text-faint);">Bookmark for later — appears in Pipeline</span>
+          <!-- Step 4: Tune Results -->
+          <div class="gs-step">
+            <div class="gs-step-header">
+              <div class="gs-step-icon" style="background:var(--purple-dim);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span class="apply-btn apply-btn-default" style="pointer-events:none;font-size:10px;padding:4px 10px;">Apply →</span>
-                <span style="font-size:12px;color:var(--text-faint);">Opens the ATS page and tracks it as Applied</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <span class="job-action-btn hide-btn" style="pointer-events:none;font-size:10px;padding:2px 6px;">✕</span>
-                <span style="font-size:12px;color:var(--text-faint);">Hide irrelevant jobs — helps tune future results</span>
+              <div>
+                <div class="gs-step-num">Step 4</div>
+                <div class="gs-step-title">Fine-Tune Your Results</div>
               </div>
             </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
-              Colored number badges next to titles show which saved search matched that job. Use multi-sort (<kbd style="background:var(--bg-hover);padding:1px 5px;border-radius:4px;font-size:11px;">Shift+Click</kbd> column headers) to prioritize by Days, Company, or Title.
+            <div class="gs-step-body">
+              Getting noise? <strong>Search Tuning</strong> gives you global rules that apply across every filter &mdash; restrict to US-only, block specific titles or companies permanently, set seniority-level matching, and let our poor-match analysis suggest exclusions based on the jobs you hide.
             </div>
           </div>
 
-          <!-- Step 5 -->
-          <div class="card" style="border-left:3px solid var(--pink);">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <span style="background:var(--pink);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;">5</span>
-              <div class="card-title" style="margin:0;">Track Everything in Pipeline</div>
+          <!-- Step 5: Work Your Feed -->
+          <div class="gs-step">
+            <div class="gs-step-header">
+              <div class="gs-step-icon" style="background:var(--warm-dim);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+              </div>
+              <div>
+                <div class="gs-step-num">Step 5</div>
+                <div class="gs-step-title">Work Your Feed Daily</div>
+              </div>
             </div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Saved jobs land in the <strong>Pipeline</strong> Saved column. When you apply, they move to Applied. From there, track Responded → Interview → Offer or Rejected/Ghosted. The stat cards at the top show your response rate and average days to response — the numbers that actually matter.
+            <div class="gs-step-body">
+              Every job in your feed is scored against your resume so you can see your match strength before you invest time. For your strongest matches, use <strong>1-click apply</strong> to submit instantly. Select multiple jobs and <strong>apply in bulk</strong> when you're ready to move fast. Or set up <strong>auto-apply</strong> rules that submit your resume automatically when a job hits a score threshold you choose.
+            </div>
+            <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+              <div class="gs-feed-action"><span class="job-action-btn" style="pointer-events:none;font-size:10px;background:var(--accent-dim);color:var(--accent);">Save</span> <span>Bookmark for later</span></div>
+              <div class="gs-feed-action"><span class="apply-btn apply-btn-default" style="pointer-events:none;font-size:10px;padding:4px 10px;">Apply &rarr;</span> <span>One job or select many to apply in bulk</span></div>
+              <div class="gs-feed-action"><span class="job-action-btn hide-btn" style="pointer-events:none;font-size:10px;padding:2px 6px;">&times;</span> <span>Hide and improve future results</span></div>
+            </div>
+            <div class="gs-tip">
+              <span class="gs-tip-label">Pro</span>
+              <span>Upload multiple resumes and assign them to different filters. Brilliant Jobs scores each one against incoming jobs and can <strong>customize which resume gets submitted</strong> based on the best match &mdash; so every application puts your strongest foot forward.</span>
             </div>
           </div>
 
           <!-- Data advantage -->
-          <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.12);border-radius:12px;padding:24px;margin-top:8px;">
-            <div class="card-title" style="margin-bottom:6px;">Your data advantage</div>
-            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;">
-              Brilliant Jobs currently indexes <strong>350,000+ open positions</strong> across <strong>38,000+ company career pages</strong> from Greenhouse, Lever, Ashby, Workable, Recruitee, and USAJobs — with more sources expanding the index. Unlike job boards that show you stale postings, we pull directly from the source. When a company posts a role at 9am, it's in your feed by 9:01am.
+          <div class="gs-advantage">
+            <div style="font-size:15px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              Your data advantage
+            </div>
+            <div style="font-size:14px;color:var(--text-dim);line-height:1.7;">
+              While job boards recycle stale postings, Brilliant Jobs pulls directly from the source. When a company posts a new role, it lands in your feed the same day &mdash; filtered, scored, and matched to your criteria.
+            </div>
+            <div style="font-size:14px;color:var(--text-dim);line-height:1.7;margin-top:12px;">
+              And unlike generic market reports, your <strong>Stats dashboard</strong> shows data about <em>your</em> job market &mdash; salary ranges, hiring velocity, top companies, and competition levels based only on roles that match your filters. Not the world's numbers. Yours.
+            </div>
+            <div style="display:flex;gap:32px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid var(--border);">
+              <div><div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;color:var(--accent);">350,000+</div><div style="font-size:11px;color:var(--text-faint);">open positions</div></div>
+              <div><div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;color:var(--accent);">38,000+</div><div style="font-size:11px;color:var(--text-faint);">career pages tracked</div></div>
+              <div><div style="font-size:24px;font-weight:800;letter-spacing:-0.5px;color:var(--accent);">6</div><div style="font-size:11px;color:var(--text-faint);">hiring platforms covered</div></div>
             </div>
           </div>
 
@@ -535,164 +585,164 @@
         </div>
         <div class="page-body">
 
-          <!-- ============ SECTION 1: Chrome Extension ============ -->
-          <div class="card card-flush">
-            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
-              <div style="width:36px;height:36px;border-radius:8px;background:rgba(99,102,241,0.08);display:flex;align-items:center;justify-content:center;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-              </div>
-              <div style="flex:1;">
-                <div class="card-title" style="margin-bottom:0;">Chrome Extension</div>
-                <div style="font-size:11px;color:var(--text-faint);">Scans your LinkedIn network to find jobs at companies where you have connections</div>
-              </div>
-              <div class="ext-dot off" id="ext-dot" role="status" aria-label="Extension not connected"></div>
-            </div>
-            <div style="padding:20px 24px;">
-              <div class="ext-status" id="ext-status-bar" style="margin-bottom:16px;">
-                <div>
-                  <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
-                  <div style="font-size:11px;color:var(--text-faint);" id="ext-status-detail">Download and install below</div>
-                </div>
-              </div>
-
-              <div class="download-box" id="download-box">
-                <h3>Download Your Extension</h3>
-                <p>Your extension is personalized to your account with unique security parameters and behavioral profile.</p>
-                <button class="btn btn-primary btn-lg" id="download-btn">Download Extension</button>
-                <div class="download-status" id="download-status"></div>
-              </div>
-
-              <div class="card" id="instance-card" style="display:none;margin-top:16px;">
-                <div class="card-title">Your Extension Instance</div>
-                <div class="card-sub">Unique parameters for this build</div>
-                <div class="instance-info">
-                  <div>Instance ID: <span id="ext-instance-id">—</span></div>
-                  <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
-                </div>
-              </div>
-
-              <details style="margin-top:16px;">
-                <summary style="font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;padding:4px 0;">Installation Guide</summary>
-                <div class="install-steps" style="margin-top:12px;">
-                  <div class="install-step">
-                    <div class="step-num-circle">1</div>
-                    <div class="step-content">
-                      <h4>Unzip the download</h4>
-                      <p>Extract the file to a permanent folder on your computer. Don't delete this folder — Chrome needs it.</p>
-                    </div>
-                  </div>
-                  <div class="install-step">
-                    <div class="step-num-circle">2</div>
-                    <div class="step-content">
-                      <h4>Open Chrome Extensions</h4>
-                      <p>Navigate to <code>chrome://extensions</code> and enable <strong>Developer mode</strong> using the toggle in the top right.</p>
-                    </div>
-                  </div>
-                  <div class="install-step">
-                    <div class="step-num-circle">3</div>
-                    <div class="step-content">
-                      <h4>Load the extension</h4>
-                      <p>Click <strong>Load unpacked</strong> and select the unzipped folder. The extension will appear in your toolbar.</p>
-                    </div>
-                  </div>
-                  <div class="install-step">
-                    <div class="step-num-circle">4</div>
-                    <div class="step-content">
-                      <h4>Pin and open</h4>
-                      <p>Click the puzzle piece icon in Chrome's toolbar and pin the extension for easy access. Then open it to get started.</p>
-                    </div>
-                  </div>
-                </div>
-              </details>
+          <!-- Setup hero -->
+          <div class="setup-hero">
+            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Connect once. Track everything.</div>
+            <div style="font-size:13px;color:var(--text-dim);line-height:1.7;max-width:540px;">
+              These integrations let Brilliant Jobs handle most of your application tracking automatically — detecting responses, scheduling interviews, and flagging silence. Less spreadsheet maintenance, more time preparing.
             </div>
           </div>
 
-          <!-- Integration cards grid -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;">
-<!-- ============ SECTION 2: Gmail ============ -->
-          <div class="card card-flush">
-            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
-              <div style="width:36px;height:36px;border-radius:8px;background:rgba(234,67,53,0.08);display:flex;align-items:center;justify-content:center;">
-                <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
-              </div>
-              <div style="flex:1;">
-                <div class="card-title" style="margin-bottom:0;">Gmail — Ghost Monitor</div>
-                <div style="font-size:11px;color:var(--text-faint);">Track which companies respond and which ghost you after applying</div>
-              </div>
-              <div class="setup-dot" id="gmail-dot"></div>
+          <!-- Status bar -->
+          <div class="setup-status-bar">
+            <div style="font-size:13px;font-weight:600;">Connections</div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-ext"></span> Extension</div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-gmail"></span> Gmail</div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-gcal"></span> Calendar</div>
+              <div class="setup-status-item"><span class="setup-status-dot" id="status-gdrive"></span> Drive</div>
             </div>
-            <div style="padding:20px 24px;">
-              <div id="gmail-setup-connected" style="display:none;margin-bottom:12px;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                  <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
-                  <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+          </div>
+
+          <!-- Integration grid — all four equal -->
+          <div class="setup-grid">
+
+            <!-- Chrome Extension -->
+            <div class="setup-int-card">
+              <div class="setup-int-header">
+                <div class="setup-int-icon" style="background:var(--indigo-dim);">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
                 </div>
-                <button class="btn btn-sm btn-secondary" onclick="disconnectGmail()" style="font-size:11px;">Disconnect Gmail</button>
+                <div style="flex:1;">
+                  <div class="card-title" style="margin-bottom:0;">Chrome Extension</div>
+                  <div style="font-size:11px;color:var(--text-dim);">Your network mapped to active hiring</div>
+                </div>
+                <div class="ext-dot off" id="ext-dot" role="status" aria-label="Extension not connected"></div>
               </div>
-              <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                <button class="btn btn-sm btn-primary" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
-              </div>
-              <div style="font-size:12px;color:var(--text-faint);line-height:1.6;">
-                When connected, Ghost Monitor will automatically detect confirmation emails, rejection notices, and interview scheduling — giving you real-time visibility into your application status without manual tracking.
+              <div class="setup-int-body">
+                <div class="ext-status" id="ext-status-bar" style="margin-bottom:14px;">
+                  <div>
+                    <div style="font-size:13px;font-weight:600;" id="ext-status-text">Extension not detected</div>
+                    <div style="font-size:11px;color:var(--text-faint);" id="ext-status-detail">Download and install below</div>
+                  </div>
+                </div>
+                <div id="download-box" style="margin-bottom:12px;">
+                  <button class="btn btn-primary btn-sm" id="download-btn">Download Extension</button>
+                  <div class="download-status" id="download-status"></div>
+                </div>
+                <div class="card" id="instance-card" style="display:none;margin-top:12px;">
+                  <div class="card-title">Your Extension Instance</div>
+                  <div class="card-sub">Unique parameters for this build</div>
+                  <div class="instance-info">
+                    <div>Instance ID: <span id="ext-instance-id">—</span></div>
+                    <div>Built: <span id="ext-built-at" style="color:var(--text);">—</span></div>
+                  </div>
+                </div>
+                <details style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+                  <summary style="font-size:12px;font-weight:600;color:var(--text-dim);cursor:pointer;padding:4px 0;">Installation guide</summary>
+                  <div class="install-steps" style="margin-top:12px;">
+                    <div class="install-step"><div class="step-num-circle">1</div><div class="step-content"><h4>Unzip the download</h4><p>Extract to a permanent folder. Don't delete it — Chrome needs it.</p></div></div>
+                    <div class="install-step"><div class="step-num-circle">2</div><div class="step-content"><h4>Open Chrome Extensions</h4><p>Go to <code>chrome://extensions</code> and turn on <strong>Developer mode</strong>.</p></div></div>
+                    <div class="install-step"><div class="step-num-circle">3</div><div class="step-content"><h4>Load the extension</h4><p>Click <strong>Load unpacked</strong> and select the unzipped folder.</p></div></div>
+                    <div class="install-step"><div class="step-num-circle">4</div><div class="step-content"><h4>Pin and open</h4><p>Click the puzzle icon in Chrome's toolbar and pin the extension.</p></div></div>
+                  </div>
+                </details>
               </div>
             </div>
-          </div>
 
-<!-- ============ SECTION 3: Google Drive ============ -->
-          <div class="card card-flush">
-            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
-              <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
+            <!-- Gmail -->
+            <div class="setup-int-card">
+              <div class="setup-int-header">
+                <div class="setup-int-icon" style="background:hsla(4,80%,56%,0.08);">
+                  <svg width="20" height="16" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5L12 10.5L22.5 4.5V15.75C22.5 16.575 21.825 17.25 21 17.25H3C2.175 17.25 1.5 16.575 1.5 15.75V4.5Z" fill="#EA4335" opacity="0.8"/><path d="M22.5 2.25C22.5 1.425 21.825 0.75 21 0.75H3C2.175 0.75 1.5 1.425 1.5 2.25L12 8.25L22.5 2.25Z" fill="#EA4335"/></svg>
+                </div>
+                <div style="flex:1;">
+                  <div class="card-title" style="margin-bottom:0;">Gmail</div>
+                  <div style="font-size:11px;color:var(--text-dim);">Your application pipeline, mostly on autopilot</div>
+                </div>
+                <div class="setup-dot" id="gmail-dot"></div>
               </div>
-              <div style="flex:1;">
-                <div class="card-title" style="margin-bottom:0;">Google Drive</div>
-                <div style="font-size:11px;color:var(--text-faint);">Store and sync resumes from Google Docs or Drive files</div>
+              <div class="setup-int-body">
+                <div id="gmail-setup-connected" style="display:none;margin-bottom:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div class="phone-verified-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Connected</div>
+                    <span id="gmail-address" style="font-size:12px;color:var(--text-dim);font-family:var(--mono);"></span>
+                  </div>
+                  <button class="btn btn-sm btn-secondary" onclick="disconnectGmail()" style="font-size:11px;">Disconnect Gmail</button>
+                </div>
+                <div id="gmail-setup-disconnected" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                  <button class="btn btn-sm btn-primary" id="gmail-setup-connect-btn" onclick="connectGmail()">Connect Gmail</button>
+                  <span style="font-size:11px;color:var(--text-faint);">Read-only access</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);line-height:1.6;">
+                  Detects confirmation emails, interview requests, and rejections — so your dashboard tracks application status without manual updates.
+                </div>
               </div>
-              <div class="setup-dot" id="gdrive-dot"></div>
             </div>
-            <div style="padding:20px 24px;">
-              <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Google Drive</button>
-                <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
-              </div>
-              <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
-                <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
-                <div id="gdrive-file-list"></div>
-                <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
-              </div>
-              <div style="margin-top:12px;font-size:12px;color:var(--text-faint);line-height:1.6;">
-                Linked docs stay in sync — edit in Drive, and Brilliant Jobs always has the latest version when applying.
-              </div>
-            </div>
-          </div>
 
-          <!-- ============ SECTION 4: Google Calendar ============ -->
-          <div class="card card-flush">
-            <div style="display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);">
-              <div style="width:36px;height:36px;border-radius:8px;background:rgba(66,133,244,0.08);display:flex;align-items:center;justify-content:center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><path d="M9 4V2M15 4V2" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/><circle cx="16" cy="14" r="1.5" fill="#FBBC05"/></svg>
+            <!-- Google Calendar -->
+            <div class="setup-int-card">
+              <div class="setup-int-header">
+                <div class="setup-int-icon" style="background:hsla(217,80%,56%,0.08);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" stroke-width="2"/><path d="M3 9h18" stroke="#4285F4" stroke-width="2"/><path d="M9 4V2M15 4V2" stroke="#4285F4" stroke-width="2" stroke-linecap="round"/><circle cx="8" cy="14" r="1.5" fill="#EA4335"/><circle cx="12" cy="14" r="1.5" fill="#34A853"/><circle cx="16" cy="14" r="1.5" fill="#FBBC05"/></svg>
+                </div>
+                <div style="flex:1;">
+                  <div class="card-title" style="margin-bottom:0;">Google Calendar</div>
+                  <div style="font-size:11px;color:var(--text-dim);">Never miss an interview or follow-up window</div>
+                </div>
+                <div class="setup-dot" id="gcal-dot"></div>
               </div>
-              <div style="flex:1;">
-                <div class="card-title" style="margin-bottom:0;">Google Calendar</div>
-                <div style="font-size:11px;color:var(--text-faint);">Sync interview schedules and application deadlines</div>
+              <div class="setup-int-body">
+                <div id="gcal-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                  <span style="font-size:12px;color:var(--text-dim);" id="gcal-status-text">Not connected</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <button class="btn btn-primary btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Calendar</button>
+                  <span style="font-size:11px;color:var(--text-faint);">Read-only access</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:12px;">
+                  Picks up interview schedules and follow-up timelines. Paired with Gmail, gives you a complete picture of every application.
+                </div>
               </div>
-              <div class="setup-dot" id="gcal-dot"></div>
             </div>
-            <div style="padding:20px 24px;">
-              <div id="gcal-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-                <span style="font-size:12px;color:var(--text-dim);" id="gcal-status-text">Not connected</span>
+
+            <!-- Google Drive -->
+            <div class="setup-int-card">
+              <div class="setup-int-header">
+                <div class="setup-int-icon" style="background:hsla(217,80%,56%,0.08);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8.006 3L1.5 14.4h6.506L14.512 3H8.006z" fill="#0066DA"/><path d="M16.005 21l6.495-6.6H15.99L9.506 21h6.5z" fill="#00AC47"/><path d="M1.5 14.4l3.253 6.6 6.506-6.6H1.5z" fill="#EA4335"/><path d="M16.005 21l-3.247-6.6H6.253L9.506 21h6.5z" fill="#00832D"/><path d="M14.512 3l-1.754 3.6 3.247 7.8h6.495L14.512 3z" fill="#2684FC"/><path d="M12.758 6.6L8.006 14.4h4.752l3.247-7.8-3.247-3z" fill="#FFBA00"/></svg>
+                </div>
+                <div style="flex:1;">
+                  <div class="card-title" style="margin-bottom:0;">Google Drive</div>
+                  <div style="font-size:11px;color:var(--text-dim);">Edit once, always up to date</div>
+                </div>
+                <div class="setup-dot" id="gdrive-dot"></div>
               </div>
-              <button class="btn btn-primary btn-sm" id="gcal-connect-btn" onclick="connectGoogleCalendar()">Connect Google Calendar</button>
-              <p style="font-size:11px;color:var(--text-faint);margin-top:12px;">When connected, interview confirmations and application deadlines will sync to your calendar automatically.</p>
+              <div class="setup-int-body">
+                <div id="gdrive-status" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                  <span style="font-size:12px;color:var(--text-dim);" id="gdrive-status-text">Not connected</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                  <button class="btn btn-sm btn-primary" id="gdrive-connect-btn" onclick="connectGoogleDrive()">Connect Drive</button>
+                  <button class="btn btn-sm btn-secondary" id="gdrive-disconnect-btn" style="display:none;" onclick="disconnectGoogleDrive()">Disconnect</button>
+                  <span style="font-size:11px;color:var(--text-faint);">Read-only access</span>
+                </div>
+                <div id="gdrive-files" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">
+                  <div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Linked Resume Files</div>
+                  <div id="gdrive-file-list"></div>
+                  <button class="btn btn-sm" id="gdrive-add-file" style="margin-top:8px;padding:4px 14px;font-size:11px;background:transparent;color:var(--accent);border:1px solid var(--accent);cursor:pointer;" onclick="addGdriveFile()">+ Link a Google Doc</button>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:12px;">
+                  Resumes stay synced from Google Docs. Optional — you can also upload files directly.
+                </div>
+              </div>
             </div>
-          </div>
+
           </div>
 
         </div>
       </div>
+
 
       <!-- ============ JOBS ============ -->
       <div class="page" id="page-jobs">
