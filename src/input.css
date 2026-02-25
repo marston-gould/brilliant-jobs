@@ -795,7 +795,17 @@
       .setup-status-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
     }
     @media (max-width: 600px) {
+      .gs-hero { padding: 24px 20px; margin-bottom: 16px; }
+      .gs-hero > div:first-child { font-size: 18px !important; }
+      .gs-hero > div:last-child { font-size: 13px !important; }
       .gs-step { padding: 22px 20px 20px; }
+      .gs-step-title { font-size: 15px; }
+      .gs-step-body { font-size: 13px; }
+      .gs-connect-card { padding: 14px 10px; }
+      .gs-filter-chip { padding: 14px 16px !important; }
+      .gs-advantage { padding: 22px 20px; }
+      .setup-hero { padding: 24px 20px; }
+      .setup-hero > div:first-child { font-size: 16px !important; }
     }
 
     /* ======================== JOBS ======================== */
