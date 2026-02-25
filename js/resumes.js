@@ -162,8 +162,9 @@ function renderResumes() {
     // Score badge from cache
     const cachedScore = readinessCache && readinessCache.scores && readinessCache.scores[i];
     const scoreVal = cachedScore ? cachedScore.overallScore : null;
-    const scoreClass = scoreVal >= 70 ? 'high' : scoreVal >= 40 ? 'mid' : scoreVal !== null ? 'low' : 'none';
-    const scoreDisplay = scoreVal !== null ? scoreVal + '%' : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
+    const scoreClass = scoreVal >= 75 ? 'high' : scoreVal >= 50 ? 'mid' : scoreVal !== null ? 'low' : 'none';
+    const scoreLabel = scoreVal >= 75 ? 'Strong' : scoreVal >= 50 ? 'Partial' : scoreVal !== null ? 'Weak' : '';
+    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
 
     // Filter dots (compact representation for row)
     const filterDots = sf.map((f, fi) => {
@@ -410,31 +411,35 @@ window.setResumeLevel = function(idx, selectEl) {
 
 window.archiveResume = async function(idx) {
   if (!confirm(`Archive "${resumes[idx].name}"? It will be moved to the archive section.`)) return;
-  // Write to Supabase first (source of truth)
+  // Write to Supabase first (source of truth) — only update local state on success
   if (resumes[idx].archiveId && typeof sb !== 'undefined') {
     try {
-      await sb.from('resume_archive')
+      const { error } = await sb.from('resume_archive')
         .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
         .eq('resume_id', resumes[idx].archiveId);
-    } catch (e) { console.warn('[resume-sync] Archive DB write failed:', e); }
+      if (error) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write failed:', error); return; }
+    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write exception:', e); return; }
   }
   resumes[idx].archived = true;
   resumes[idx].archivedAt = new Date().toLocaleDateString();
+  resumes[idx]._archivedLocallyAt = Date.now();
   saveResumes();
   renderResumes();
 };
 
 window.unarchiveResume = async function(idx) {
-  // Write to Supabase first (source of truth)
+  // Write to Supabase first (source of truth) — only update local state on success
   if (resumes[idx].archiveId && typeof sb !== 'undefined') {
     try {
-      await sb.from('resume_archive')
+      const { error } = await sb.from('resume_archive')
         .update({ is_active: true, is_archived: false, archived_at: null })
         .eq('resume_id', resumes[idx].archiveId);
-    } catch (e) { console.warn('[resume-sync] Restore DB write failed:', e); }
+      if (error) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write failed:', error); return; }
+    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write exception:', e); return; }
   }
   resumes[idx].archived = false;
   delete resumes[idx].archivedAt;
+  resumes[idx]._archivedLocallyAt = Date.now();
   saveResumes();
   renderResumes();
 };
@@ -481,15 +486,18 @@ async function reconcileResumeArchive() {
           dirty = true;
         }
         matchedArchiveIds[match.resume_id] = true;
-        // Sync archive state → localStorage
-        if (match.is_archived && !r.archived) {
-          r.archived = true;
-          r.archivedAt = match.created_at ? new Date(match.created_at).toLocaleDateString() : new Date().toLocaleDateString();
-          dirty = true;
-        } else if (!match.is_archived && match.is_active && r.archived) {
-          r.archived = false;
-          delete r.archivedAt;
-          dirty = true;
+        // Sync archive state → localStorage (skip if recently changed locally)
+        const recentlyChanged = r._archivedLocallyAt && (Date.now() - r._archivedLocallyAt) < 60000;
+        if (!recentlyChanged) {
+          if (match.is_archived && !r.archived) {
+            r.archived = true;
+            r.archivedAt = match.created_at ? new Date(match.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+            dirty = true;
+          } else if (!match.is_archived && match.is_active && r.archived) {
+            r.archived = false;
+            delete r.archivedAt;
+            dirty = true;
+          }
         }
       }
     });
