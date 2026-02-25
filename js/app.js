@@ -1,4 +1,4 @@
-const BJ_VERSION = 'v4.60';
+const BJ_VERSION = 'v4.61';
 console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 7+8: Tier gating + pipeline tracking');
 
 // Auth

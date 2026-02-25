@@ -18595,9 +18595,849 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
 }
 
 
+// === js/resume-archive.js ===
+// === Resume Archive Module ===
+// Phase 3: Archive tab UI with database-backed storage, version tracking, and tier info
+
+// Tab switching
+window.switchResumeTab = function(tab) {
+  const activeContent = $('#resume-tab-content-active');
+  const archiveContent = $('#resume-tab-content-archive');
+  const activeBtn = $('#resume-tab-active');
+  const archiveBtn = $('#resume-tab-archive');
+  if (!activeContent || !archiveContent) return;
+
+  if (tab === 'archive') {
+    activeContent.style.display = 'none';
+    archiveContent.style.display = '';
+    activeBtn.classList.remove('active');
+    archiveBtn.classList.add('active');
+    loadResumeArchive();
+  } else {
+    activeContent.style.display = '';
+    archiveContent.style.display = 'none';
+    activeBtn.classList.add('active');
+    archiveBtn.classList.remove('active');
+  }
+
+  // Support URL hash linking: #resumes?tab=archive
+  if (tab === 'archive') {
+    history.replaceState(null, '', '#resumes?tab=archive');
+  } else {
+    history.replaceState(null, '', '#resumes');
+  }
+};
+
+// Check URL hash on page load for deep-link
+function checkArchiveDeepLink() {
+  const hash = location.hash;
+  if (hash.includes('tab=archive')) {
+    setTimeout(function() { switchResumeTab('archive'); }, 200);
+  }
+  // Also check for specific resume ID
+  const match = hash.match(/id=([a-f0-9-]+)/);
+  if (match) {
+    _archiveHighlightId = match[1];
+  }
+}
+var _archiveHighlightId = null;
+
+// Load archive data from Supabase
+window.loadResumeArchive = async function() {
+  const body = $('#archive-table-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">Loading…</td></tr>';
+
+  try {
+    // Fetch archive data
+    const { data: archives, error } = await sb
+      .from('resume_archive')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Fetch tier limits
+    const { data: limits, error: limErr } = await sb.rpc('check_resume_limits', {
+      p_user_id: (await sb.auth.getUser()).data.user.id
+    });
+
+    if (!limErr && limits) {
+      updateStorageBar(limits);
+      updateArchiveStats(archives, limits);
+    }
+
+    renderArchiveTable(archives || []);
+  } catch (e) {
+    console.log('[BJ] Archive load error:', e.message);
+    body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--red);">Failed to load archive: ' + e.message + '</td></tr>';
+  }
+};
+
+function updateStorageBar(limits) {
+  const bar = $('#archive-storage-bar');
+  const label = $('#archive-storage-label');
+  const cta = $('#archive-tier-cta');
+  if (!bar || !label) return;
+
+  const used = limits.current_storage || 0;
+  const max = limits.limits?.storage_bytes || 52428800;
+  const pct = Math.min((used / max) * 100, 100);
+
+  bar.style.width = pct.toFixed(1) + '%';
+  bar.style.background = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--warm)' : 'var(--accent)';
+  label.textContent = formatBytes(used) + ' / ' + formatBytes(max);
+
+  if (cta) {
+    cta.style.display = pct > 80 && limits.tier !== 'pro' ? '' : 'none';
+  }
+}
+
+function updateArchiveStats(archives, limits) {
+  const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  el('arch-total', archives.length);
+  el('arch-active', archives.filter(a => a.is_active).length);
+  el('arch-versions', archives.reduce((sum, a) => sum + a.version_number, 0));
+  el('arch-tier', (limits.tier || 'free').charAt(0).toUpperCase() + (limits.tier || 'free').slice(1));
+}
+
+function renderArchiveTable(archives) {
+  const body = $('#archive-table-body');
+  const search = $('#archive-search');
+  if (!body) return;
+
+  // Filter by search
+  let filtered = archives;
+  if (search && search.value.trim()) {
+    const q = search.value.trim().toLowerCase();
+    filtered = archives.filter(a =>
+      a.display_name.toLowerCase().includes(q) ||
+      (a.file_type || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">No archived resumes found</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtered.map(a => {
+    const isExpired = a.metadata_snapshot?.soft_deleted === true;
+    const statusBadge = isExpired
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--red)15;color:var(--red);font-size:10px;font-weight:600;">Expired</span>'
+      : a.is_active
+        ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--green)15;color:var(--green);font-size:10px;font-weight:600;">Active</span>'
+        : a.is_archived
+          ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--warm)15;color:var(--warm);font-size:10px;font-weight:600;">Archived</span>'
+          : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--text-faint)15;color:var(--text-faint);font-size:10px;font-weight:600;">Inactive</span>';
+
+    // Show expiry countdown for archived resumes
+    const expiryInfo = a.is_archived && a.archive_expires_at && !isExpired
+      ? (() => {
+          const days = Math.ceil((new Date(a.archive_expires_at) - new Date()) / 86400000);
+          if (days <= 7) return `<div style="font-size:9px;color:var(--red);margin-top:2px;">Expires in ${days}d</div>`;
+          if (days <= 30) return `<div style="font-size:9px;color:var(--warm);margin-top:2px;">Expires in ${days}d</div>`;
+          return '';
+        })()
+      : '';
+
+    const levelBadge = a.metadata_snapshot?.level_label
+      ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:${a.metadata_snapshot.level_color || '#94a3b8'}15;color:${a.metadata_snapshot.level_color || '#94a3b8'};">${a.metadata_snapshot.level_label}</span>`
+      : '';
+
+    const highlight = _archiveHighlightId === a.resume_id ? 'background:var(--accent)08;' : '';
+
+    return `<tr style="border-bottom:1px solid var(--border);${highlight}" data-resume-id="${a.resume_id}">
+      <td style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div>
+            <div style="font-weight:600;color:var(--text);">${a.display_name}</div>
+            <div style="font-size:10px;color:var(--text-faint);">${a.file_type.toUpperCase()} ${levelBadge}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">v${a.version_number}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);">${formatDate(a.created_at)}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);">${a.last_used_at ? formatDate(a.last_used_at) : '—'}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);font-family:var(--mono);">${formatBytes(a.compressed_size_bytes || a.file_size_bytes)}</td>
+      <td style="padding:10px 12px;">${statusBadge}${expiryInfo}</td>
+      <td style="padding:10px 12px;">
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-sm" onclick="showVersionTimeline('${a.resume_id}')" style="font-size:10px;padding:3px 8px;" title="Version history">History</button>
+          ${a.is_archived || isExpired ? `<button class="btn btn-sm" onclick="restoreArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--accent);color:#fff;" title="Restore">${isExpired ? 'Restore ↑' : 'Restore'}</button>` : ''}
+          ${a.is_active ? `<button class="btn btn-sm" onclick="archiveDbResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--warm);color:#000;" title="Archive">Archive</button>` : ''}
+          <button class="btn btn-sm" onclick="deleteArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--red);color:#fff;" title="Delete">Del</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  _archiveHighlightId = null;
+}
+
+// Version timeline
+window.showVersionTimeline = async function(resumeId) {
+  const timeline = $('#archive-version-timeline');
+  const list = $('#archive-version-list');
+  if (!timeline || !list) return;
+
+  timeline.style.display = '';
+  list.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;">Loading versions…</div>';
+
+  try {
+    // Get the resume and all versions in its lineage
+    const { data: resume } = await sb.from('resume_archive').select('*').eq('resume_id', resumeId).single();
+    if (!resume) return;
+
+    // Find all versions: same display_name or linked by parent
+    const { data: versions } = await sb.from('resume_archive')
+      .select('*')
+      .eq('user_id', resume.user_id)
+      .eq('display_name', resume.display_name)
+      .order('version_number', { ascending: false });
+
+    if (!versions || versions.length === 0) {
+      list.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;">No version history found</div>';
+      return;
+    }
+
+    list.innerHTML = versions.map((v, idx) => {
+      const isCurrent = v.resume_id === resumeId;
+      const dot = v.is_active
+        ? '<div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>'
+        : '<div style="width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0;"></div>';
+      const connector = idx < versions.length - 1
+        ? '<div style="position:absolute;left:4px;top:14px;bottom:-14px;width:2px;background:var(--border);"></div>'
+        : '';
+
+      return `<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0;position:relative;${isCurrent ? 'background:var(--bg-input);border-radius:8px;padding:8px 12px;margin:-4px -12px;' : ''}">
+        <div style="position:relative;">${dot}${connector}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:600;font-size:12px;color:var(--text);">v${v.version_number}</span>
+            ${v.is_active ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--green)15;color:var(--green);font-weight:600;">Current</span>' : ''}
+            ${v.is_archived ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--warm)15;color:var(--warm);font-weight:600;">Archived</span>' : ''}
+          </div>
+          <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">
+            ${formatDate(v.created_at)} · ${formatBytes(v.compressed_size_bytes || v.file_size_bytes)} · ${v.file_type.toUpperCase()}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div style="padding:16px;color:var(--red);font-size:12px;">Error: ' + e.message + '</div>';
+  }
+};
+
+// Archive a resume (move from active to archived)
+window.archiveDbResume = async function(resumeId) {
+  if (!confirm('Archive this resume? It will be compressed and moved to cold storage.')) return;
+  try {
+    // Get tier to set expiry
+    const userId = (await sb.auth.getUser()).data.user.id;
+    const { data: limits } = await sb.rpc('check_resume_limits', { p_user_id: userId });
+    const tier = limits?.tier || 'free';
+
+    // Calculate expiry: Free=30d, Starter=90d, Pro=null
+    let expiresAt = null;
+    if (tier === 'free') {
+      expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+    } else if (tier === 'starter') {
+      expiresAt = new Date(Date.now() + 90 * 86400000).toISOString();
+    }
+
+    const { error } = await sb.from('resume_archive')
+      .update({
+        is_active: false,
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+        archive_expires_at: expiresAt
+      })
+      .eq('resume_id', resumeId);
+    if (error) throw error;
+    loadResumeArchive();
+  } catch (e) {
+    alert('Archive failed: ' + e.message);
+  }
+};
+
+// Restore an archived resume
+window.restoreArchiveResume = async function(resumeId) {
+  try {
+    const { error } = await sb.from('resume_archive')
+      .update({ is_active: true, is_archived: false, archived_at: null })
+      .eq('resume_id', resumeId);
+    if (error) throw error;
+    loadResumeArchive();
+  } catch (e) {
+    alert('Restore failed: ' + e.message);
+  }
+};
+
+// Delete a resume from archive
+window.deleteArchiveResume = async function(resumeId) {
+  if (!confirm('Permanently delete this resume from the archive? This cannot be undone.')) return;
+  try {
+    const { error } = await sb.from('resume_archive')
+      .delete()
+      .eq('resume_id', resumeId);
+    if (error) throw error;
+    loadResumeArchive();
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+};
+
+// Helpers
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function formatDate(isoStr) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Search filter
+(function() {
+  const searchEl = document.getElementById('archive-search');
+  if (searchEl) {
+    let _debounce;
+    searchEl.addEventListener('input', function() {
+      clearTimeout(_debounce);
+      _debounce = setTimeout(function() { loadResumeArchive(); }, 300);
+    });
+  }
+})();
+
+// Check deep link on load
+if (typeof checkArchiveDeepLink === 'function') checkArchiveDeepLink();
+
+// Phase 4: Enhanced restore using server-side function
+window.restoreArchiveResume = async function(resumeId) {
+  try {
+    const { data, error } = await sb.rpc('restore_archived_resume', {
+      p_resume_id: resumeId
+    });
+    if (error) throw error;
+    if (data && !data.success) {
+      if (data.error === 'EXPIRED_UPGRADE_REQUIRED') {
+        if (confirm(data.message + '\n\nGo to subscription page?')) {
+          showPage('subscription');
+        }
+        return;
+      }
+      alert('Restore failed: ' + (data.error || 'Unknown error'));
+      return;
+    }
+    loadResumeArchive();
+  } catch (e) {
+    alert('Restore failed: ' + e.message);
+  }
+};
+
+
+// === js/resume-metrics.js ===
+// === Resume Metrics Module ===
+// Phase 6: Resume Metrics Intelligence UI — score history, level fit, pipeline funnel, usage log
+
+var _metricsCharts = {};
+
+// Tab switching for Stats page
+window.switchStatsTab = function(tab) {
+  const marketContent = $('#stats-tab-content-market');
+  const resumeContent = $('#stats-tab-content-resume');
+  const marketBtn = $('#stats-tab-market');
+  const resumeBtn = $('#stats-tab-resume');
+  if (!marketContent || !resumeContent) return;
+
+  if (tab === 'resume') {
+    marketContent.style.display = 'none';
+    resumeContent.style.display = '';
+    marketBtn.classList.remove('active');
+    resumeBtn.classList.add('active');
+    populateResumeSelector();
+    // Check URL for pre-selected resume
+    const match = location.hash.match(/resume=([a-f0-9-]+)/);
+    if (match) {
+      const sel = $('#metrics-resume-select');
+      if (sel) { sel.value = match[1]; loadResumeMetrics(); }
+    }
+  } else {
+    marketContent.style.display = '';
+    resumeContent.style.display = 'none';
+    marketBtn.classList.add('active');
+    resumeBtn.classList.remove('active');
+    // Dispose metrics charts to free memory
+    Object.values(_metricsCharts).forEach(c => { try { c.dispose(); } catch(e) {} });
+    _metricsCharts = {};
+  }
+};
+
+// Populate resume dropdown from resume_archive
+async function populateResumeSelector() {
+  const sel = $('#metrics-resume-select');
+  if (!sel) return;
+
+  try {
+    const { data, error } = await sb.from('resume_archive')
+      .select('resume_id, display_name, version_number, is_active, metadata_snapshot')
+      .eq('is_active', true)
+      .order('display_name');
+
+    if (error) throw error;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">Select a resume…</option>';
+    (data || []).forEach(r => {
+      const level = r.metadata_snapshot?.level_label || '';
+      const opt = document.createElement('option');
+      opt.value = r.resume_id;
+      opt.textContent = r.display_name + (level ? ' (' + level + ')' : '') + ' v' + r.version_number;
+      sel.appendChild(opt);
+    });
+    if (currentVal) sel.value = currentVal;
+  } catch (e) {
+    console.log('[BJ] Resume selector error:', e.message);
+  }
+}
+
+// Load metrics for selected resume
+window.loadResumeMetrics = async function() {
+  const sel = $('#metrics-resume-select');
+  const resumeId = sel ? sel.value : '';
+  const empty = $('#metrics-empty');
+  const summary = $('#metrics-score-summary');
+  const grid = $('#metrics-charts-grid');
+  const log = $('#metrics-usage-log');
+
+  if (!resumeId) {
+    if (empty) empty.style.display = '';
+    if (summary) summary.style.display = 'none';
+    if (grid) grid.style.display = 'none';
+    if (log) log.style.display = 'none';
+    return;
+  }
+
+  if (empty) empty.style.display = 'none';
+
+  try {
+    // Fetch score history
+    const { data: scores, error: scoreErr } = await sb
+      .from('resume_score_history')
+      .select('*')
+      .eq('resume_id', resumeId)
+      .order('scored_at', { ascending: false })
+      .limit(50);
+
+    // Fetch job usage
+    const { data: usage, error: usageErr } = await sb
+      .from('resume_job_usage')
+      .select('*')
+      .eq('resume_id', resumeId)
+      .order('applied_at', { ascending: false })
+      .limit(100);
+
+    renderScoreSummary(scores || []);
+    renderLevelFitChart(scores || []);
+    renderPipelineFunnel(usage || []);
+    renderUsageLog(usage || []);
+
+    if (summary) summary.style.display = '';
+    if (grid) grid.style.display = '';
+    if (log) log.style.display = (usage && usage.length > 0) ? '' : 'none';
+
+    // Update archive cross-link
+    const archiveLink = $('#metrics-view-archive');
+    if (archiveLink) {
+      archiveLink.href = '#resumes?tab=archive&id=' + resumeId;
+    }
+  } catch (e) {
+    console.log('[BJ] Metrics load error:', e.message);
+  }
+};
+
+// Score summary + sparkline
+function renderScoreSummary(scores) {
+  const lastScoreEl = $('#metrics-last-score');
+  const typeEl = $('#metrics-last-score-type');
+  const detailEl = $('#metrics-last-score-detail');
+
+  if (scores.length === 0) {
+    if (lastScoreEl) lastScoreEl.textContent = '—';
+    if (typeEl) typeEl.textContent = 'No scores yet';
+    if (detailEl) detailEl.textContent = 'Score a resume against job descriptions to see metrics here.';
+    renderSparkline([]);
+    return;
+  }
+
+  const latest = scores[0];
+  if (lastScoreEl) lastScoreEl.textContent = latest.match_score != null ? Math.round(latest.match_score) : '—';
+  if (typeEl) typeEl.textContent = (latest.score_type === 'ai' ? 'AI Score' : latest.score_type === 'ngram' ? 'Keyword Match' : 'Manual') +
+    (latest.job_title ? ' · ' + latest.job_title : '');
+  if (detailEl) detailEl.textContent = (latest.fit_status || '') +
+    (latest.company_name ? ' · ' + latest.company_name : '') +
+    ' · ' + formatMetricsDate(latest.scored_at);
+
+  // Sparkline data (last 10, chronological)
+  const sparkData = scores.slice(0, 10).reverse().map(s => ({
+    date: formatMetricsDate(s.scored_at),
+    score: s.match_score ? Math.round(s.match_score) : 0
+  }));
+  renderSparkline(sparkData);
+}
+
+function renderSparkline(data) {
+  const el = document.getElementById('metrics-sparkline');
+  if (!el || typeof echarts === 'undefined') return;
+
+  if (_metricsCharts.sparkline) { try { _metricsCharts.sparkline.dispose(); } catch(e) {} }
+  if (data.length < 2) { el.innerHTML = ''; return; }
+
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  _metricsCharts.sparkline = chart;
+
+  chart.setOption({
+    grid: { top: 4, right: 4, bottom: 4, left: 4 },
+    xAxis: { type: 'category', show: false, data: data.map(d => d.date) },
+    yAxis: { type: 'value', show: false, min: 0, max: 100 },
+    series: [{
+      type: 'line',
+      data: data.map(d => d.score),
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 4,
+      lineStyle: { color: '#3b82f6', width: 2 },
+      itemStyle: { color: '#3b82f6' },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+        { offset: 0, color: 'rgba(59,130,246,0.3)' },
+        { offset: 1, color: 'rgba(59,130,246,0.02)' }
+      ]}}
+    }]
+  });
+}
+
+// Level fit bar chart
+function renderLevelFitChart(scores) {
+  const el = document.getElementById('metrics-level-chart');
+  const insightEl = $('#metrics-level-fit-insight');
+  if (!el || typeof echarts === 'undefined') return;
+
+  if (_metricsCharts.levelFit) { try { _metricsCharts.levelFit.dispose(); } catch(e) {} }
+
+  // Group scores by level_fit
+  const levels = ['Entry', 'Mid', 'Senior', 'Lead', 'Executive'];
+  const levelScores = {};
+  levels.forEach(l => { levelScores[l] = []; });
+
+  scores.forEach(s => {
+    if (s.level_fit) {
+      const key = s.level_fit.charAt(0).toUpperCase() + s.level_fit.slice(1);
+      if (levelScores[key]) levelScores[key].push(s.match_score || 0);
+    }
+  });
+
+  const chartData = levels.map(l => ({
+    name: l,
+    avg: levelScores[l].length > 0 ? Math.round(levelScores[l].reduce((a,b) => a+b, 0) / levelScores[l].length) : 0,
+    count: levelScores[l].length
+  })).filter(d => d.count > 0);
+
+  if (chartData.length === 0) {
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:12px;">No level data yet</div>';
+    if (insightEl) insightEl.textContent = '';
+    return;
+  }
+
+  // Generate insight
+  if (insightEl && chartData.length >= 2) {
+    const sorted = [...chartData].sort((a, b) => b.avg - a.avg);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const diff = best.avg - worst.avg;
+    insightEl.textContent = `This resume scores ${diff}% higher on ${best.name}-level roles than ${worst.name}-level roles`;
+  }
+
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  _metricsCharts.levelFit = chart;
+
+  chart.setOption({
+    grid: { top: 8, right: 16, bottom: 24, left: 80 },
+    xAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#94a3b8', fontSize: 10 }, splitLine: { lineStyle: { color: '#2a2d35' } } },
+    yAxis: { type: 'category', data: chartData.map(d => d.name), axisLabel: { color: '#f0f1f3', fontSize: 11 } },
+    series: [{
+      type: 'bar',
+      data: chartData.map(d => ({
+        value: d.avg,
+        itemStyle: { color: d.avg >= 70 ? '#22c55e' : d.avg >= 50 ? '#f59e0b' : '#ef4444', borderRadius: [0, 4, 4, 0] }
+      })),
+      barWidth: 20,
+      label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: '{c}%' }
+    }]
+  });
+}
+
+// Pipeline funnel
+function renderPipelineFunnel(usage) {
+  const el = document.getElementById('metrics-funnel-chart');
+  if (!el || typeof echarts === 'undefined') return;
+
+  if (_metricsCharts.funnel) { try { _metricsCharts.funnel.dispose(); } catch(e) {} }
+
+  const stages = ['applied', 'screened', 'interview', 'offer'];
+  const stageLabels = { applied: 'Applied', screened: 'Screened', interview: 'Interview', offer: 'Offer' };
+  const rejected = usage.filter(u => u.pipeline_stage === 'rejected').length;
+
+  const funnelData = stages.map(s => ({
+    name: stageLabels[s],
+    value: usage.filter(u => {
+      const idx = stages.indexOf(u.pipeline_stage);
+      return idx >= stages.indexOf(s);
+    }).length
+  }));
+
+  if (funnelData[0].value === 0) {
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:12px;">No pipeline data yet</div>';
+    return;
+  }
+
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  _metricsCharts.funnel = chart;
+
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: function(p) {
+      const pct = funnelData[0].value > 0 ? Math.round((p.value / funnelData[0].value) * 100) : 0;
+      return p.name + ': ' + p.value + ' (' + pct + '%)';
+    }},
+    series: [{
+      type: 'funnel',
+      left: '10%', right: '10%', top: 16, bottom: 16,
+      width: '80%',
+      sort: 'descending',
+      gap: 4,
+      label: { show: true, position: 'inside', color: '#fff', fontSize: 11, formatter: function(p) {
+        const pct = funnelData[0].value > 0 ? Math.round((p.value / funnelData[0].value) * 100) : 0;
+        return p.name + '\n' + p.value + ' (' + pct + '%)';
+      }},
+      itemStyle: { borderWidth: 0 },
+      data: [
+        { value: funnelData[0].value, name: 'Applied', itemStyle: { color: '#3b82f6' } },
+        { value: funnelData[1].value, name: 'Screened', itemStyle: { color: '#06b6d4' } },
+        { value: funnelData[2].value, name: 'Interview', itemStyle: { color: '#22c55e' } },
+        { value: funnelData[3].value, name: 'Offer', itemStyle: { color: '#f59e0b' } }
+      ]
+    }]
+  });
+}
+
+// Usage log table
+function renderUsageLog(usage) {
+  const body = $('#metrics-log-body');
+  if (!body) return;
+
+  if (!usage || usage.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-faint);">No applications tracked for this resume</td></tr>';
+    return;
+  }
+
+  const search = $('#metrics-log-search');
+  let filtered = usage;
+  if (search && search.value.trim()) {
+    const q = search.value.trim().toLowerCase();
+    filtered = usage.filter(u =>
+      (u.company_name || '').toLowerCase().includes(q) ||
+      (u.job_title || '').toLowerCase().includes(q)
+    );
+  }
+
+  const stageBadge = (stage) => {
+    const colors = { applied: '--accent', screened: '--green', interview: '--green', offer: '--warm', rejected: '--red' };
+    const color = colors[stage] || '--text-faint';
+    return `<span style="padding:2px 8px;border-radius:4px;background:var(${color})15;color:var(${color});font-size:10px;font-weight:600;">${(stage||'—').charAt(0).toUpperCase()+(stage||'').slice(1)}</span>`;
+  };
+
+  body.innerHTML = filtered.map(u => `<tr style="border-bottom:1px solid var(--border);">
+    <td style="padding:8px 12px;color:var(--text);">${u.company_name || '—'}</td>
+    <td style="padding:8px 12px;color:var(--text-dim);">${u.job_title || '—'}</td>
+    <td style="padding:8px 12px;color:var(--text-dim);font-size:11px;">${formatMetricsDate(u.applied_at)}</td>
+    <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">${u.match_score != null ? Math.round(u.match_score) + '%' : '—'}</td>
+    <td style="padding:8px 12px;">${stageBadge(u.pipeline_stage)}</td>
+  </tr>`).join('');
+}
+
+function formatMetricsDate(isoStr) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Resize handler
+window.addEventListener('resize', function() {
+  Object.values(_metricsCharts).forEach(c => { try { c.resize(); } catch(e) {} });
+});
+
+// Search filter for usage log
+(function() {
+  const el = document.getElementById('metrics-log-search');
+  if (el) {
+    let _t;
+    el.addEventListener('input', function() {
+      clearTimeout(_t);
+      _t = setTimeout(function() { loadResumeMetrics(); }, 300);
+    });
+  }
+})();
+
+// Deep-link check
+(function() {
+  if (location.hash.includes('tab=resume') && location.hash.includes('intelligence')) {
+    setTimeout(function() { switchStatsTab('resume'); }, 300);
+  }
+})();
+
+
+// === js/tier-gating.js ===
+// === Tier Gating Module ===
+// Phase 7: Reusable tier gate component for Archive + Metrics feature gating
+
+// Tier gate configuration
+const TIER_GATES = {
+  archive_storage:    { free: 2097152, starter: 10485760, pro: 52428800 },
+  archive_retention:  { free: 30, starter: 90, pro: Infinity },
+  max_resumes:        { free: 3, starter: 10, pro: Infinity },
+  max_versions:       { free: 1, starter: 5, pro: Infinity },
+  score_sparkline:    { free: false, starter: 10, pro: Infinity },
+  level_fit:          { free: false, starter: true, pro: true },
+  pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
+  job_log:            { free: false, starter: 10, pro: Infinity },
+  ai_scoring:         { free: false, starter: false, pro: true }
+};
+
+// Get current user tier
+function getUserTier() {
+  // Use billing system's _userPricing if available
+  if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
+    return _userPricing.tier;
+  }
+  // Fallback: check profiles
+  if (typeof currentUser !== 'undefined' && currentUser?.user_metadata?.plan) {
+    return currentUser.user_metadata.plan;
+  }
+  return 'free';
+}
+
+// Check if a feature is available at current tier
+function canAccess(feature) {
+  const tier = getUserTier();
+  const gate = TIER_GATES[feature];
+  if (!gate) return true;
+  const val = gate[tier];
+  if (val === false) return false;
+  if (val === true || val === Infinity) return true;
+  return val;
+}
+
+// Get the minimum tier required for a feature
+function requiredTier(feature) {
+  const gate = TIER_GATES[feature];
+  if (!gate) return 'free';
+  if (gate.free !== false) return 'free';
+  if (gate.starter !== false) return 'starter';
+  return 'pro';
+}
+
+// Show tier gate overlay on an element
+// Usage: showTierGate(element, 'starter', 'Score history requires Starter plan')
+window.showTierGate = function(el, minTier, message) {
+  if (!el) return;
+  el.style.position = 'relative';
+
+  // Remove existing gate if any
+  var existing = el.querySelector('.tier-gate-overlay');
+  if (existing) existing.remove();
+
+  const tierNames = { starter: 'Starter', pro: 'Pro' };
+  const overlay = document.createElement('div');
+  overlay.className = 'tier-gate-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;background:rgba(15,17,23,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:inherit;';
+  overlay.innerHTML = `
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--warm)" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">${message || (tierNames[minTier] || 'Upgrade') + ' plan required'}</div>
+    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();showPage('subscription');" style="font-size:10px;padding:4px 14px;margin-top:6px;">Upgrade to ${tierNames[minTier] || 'Pro'}</button>
+  `;
+  el.appendChild(overlay);
+};
+
+// Remove tier gate
+window.removeTierGate = function(el) {
+  if (!el) return;
+  var overlay = el.querySelector('.tier-gate-overlay');
+  if (overlay) overlay.remove();
+};
+
+// Apply tier gating across Resume Metrics
+function applyMetricsTierGating() {
+  const tier = getUserTier();
+
+  // Sparkline: Free gets nothing
+  if (tier === 'free') {
+    var sparkEl = document.getElementById('metrics-sparkline');
+    if (sparkEl && sparkEl.parentElement) {
+      showTierGate(sparkEl.parentElement, 'starter', 'Score history requires Starter plan');
+    }
+  }
+
+  // Level fit: Free gets nothing
+  if (tier === 'free') {
+    var levelEl = document.getElementById('metrics-level-chart');
+    if (levelEl && levelEl.closest('.stats-chart-card')) {
+      showTierGate(levelEl.closest('.stats-chart-card'), 'starter', 'Level fit analysis requires Starter plan');
+    }
+  }
+
+  // Pipeline: Free gets nothing
+  if (tier === 'free') {
+    var funnelEl = document.getElementById('metrics-funnel-chart');
+    if (funnelEl && funnelEl.closest('.stats-chart-card')) {
+      showTierGate(funnelEl.closest('.stats-chart-card'), 'starter', 'Pipeline analytics requires Starter plan');
+    }
+  }
+
+  // Job log: Free gets nothing, Starter gets last 10
+  if (tier === 'free') {
+    var logEl = document.getElementById('metrics-usage-log');
+    if (logEl) showTierGate(logEl, 'starter', 'Application log requires Starter plan');
+  }
+}
+
+// Apply tier gating across Resume Archive
+function applyArchiveTierGating() {
+  // Archive gating is mostly server-side (check_resume_limits)
+  // Client-side we just show the storage bar and CTA from Phase 3
+}
+
+// Hook into metrics load to apply gating after render
+var _origLoadResumeMetrics = window.loadResumeMetrics;
+if (_origLoadResumeMetrics) {
+  window.loadResumeMetrics = async function() {
+    await _origLoadResumeMetrics();
+    applyMetricsTierGating();
+  };
+}
+
+// Expose for use by other modules
+window.canAccessFeature = canAccess;
+window.getUserTier = getUserTier;
+window.requiredTierFor = requiredTier;
+
+
 // === js/app.js ===
-const BJ_VERSION = 'v4.54';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Admin: Export boards CSV');
+const BJ_VERSION = 'v4.61';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 7+8: Tier gating + pipeline tracking');
 
 // Auth
 async function init() {
