@@ -848,6 +848,7 @@
       display: inline-flex; align-items: center;
       background: var(--accent-glow); border: 1px solid hsla(var(--accent-hsl), 0.2);
       border-radius: 8px; overflow: hidden; font-size: 12px; font-weight: 600;
+      font-family: var(--sans);
       animation: pillIn 0.15s ease;
     }
     @keyframes pillIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
@@ -1814,8 +1815,9 @@
       min-width: 44px; text-align: center; padding: 4px 8px; border-radius: 6px;
     }
     .nri-score.high { color: var(--green); background: var(--green-dim); }
-    .nri-score.mid { color: var(--accent); background: var(--accent-dim); }
-    .nri-score.low { color: var(--warm); background: var(--warm-dim); }
+    .nri-score.mid { color: var(--warm); background: var(--warm-dim); }
+    .nri-score.low { color: var(--red); background: var(--red-dim); }
+    .nri-score-label { font-size: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; opacity: 0.85; }
     .nri-score.none {
       color: var(--text-faint); background: var(--bg-input);
       font-size: 11px; font-weight: 500; font-family: var(--sans);
@@ -2323,11 +2325,6 @@
     @media (max-width: 720px) {
       .resume-row { flex-direction: column; }
       .resume-row > .resume-card { flex: 1 1 auto; }
-      .nri-actions { display: none; }
-      .nri-filters { max-width: 120px; }
-      .nri-score { font-size: 14px; min-width: 36px; }
-      .ai-rewrite-promo { flex-direction: column; }
-      .ai-interview-preview { flex-direction: column; }
     }
 
     /* mobile nav — v4.78d */
