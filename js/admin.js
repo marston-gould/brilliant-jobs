@@ -3189,7 +3189,48 @@ async function loadEnrichmentTab() {
     }
 
     _adminTabInit['enrichment'] = true;
+
+    // Load refresh schedule (A5)
+    loadRefreshSchedule();
   } catch(e) {
     console.error('[Admin] Enrichment error:', e);
+  }
+}
+
+async function loadRefreshSchedule() {
+  try {
+    var res = await sb.rpc('get_refresh_schedule');
+    if (res.error || !res.data) return;
+    var pages = res.data;
+
+    var dueCount = pages.filter(function(p) { return p.needs_refresh; }).length;
+    var summaryEl = document.getElementById('en-refresh-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = dueCount > 0
+        ? '<span style="color:#a08858">' + dueCount + ' pages due for refresh</span>'
+        : '<span style="color:#4a9a6b">All pages fresh ✓</span>';
+    }
+
+    var tbody = document.getElementById('en-refresh-body');
+    if (tbody) {
+      tbody.innerHTML = pages.map(function(p) {
+        var hrsAgo = Math.floor(p.hours_since_refresh);
+        var hrsDue = Math.floor(p.hours_until_due || 0);
+        var freshLabel = hrsAgo < 1 ? '<1h ago' : hrsAgo < 24 ? hrsAgo + 'h ago' : Math.floor(hrsAgo/24) + 'd ago';
+        var dueLabel = p.needs_refresh ? 'Overdue' : (hrsDue < 1 ? '<1h' : hrsDue < 24 ? hrsDue + 'h' : Math.floor(hrsDue/24) + 'd');
+        var statusColor = p.needs_refresh ? '#c06060' : hrsDue < 24 ? '#a08858' : '#4a9a6b';
+        var statusIcon = p.needs_refresh ? '⚠' : '✓';
+        return '<tr>' +
+          '<td style="font-family:var(--mono);font-size:12px">' + p.cache_key + '</td>' +
+          '<td>' + p.page_type + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + p.refresh_interval_days + 'd</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + freshLabel + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + dueLabel + '</td>' +
+          '<td style="text-align:center;color:' + statusColor + '">' + statusIcon + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch(e) {
+    console.error('[Admin] Refresh schedule error:', e);
   }
 }
