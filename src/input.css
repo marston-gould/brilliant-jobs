@@ -2215,11 +2215,19 @@
       .resume-row > .resume-card { flex: 1 1 auto; }
     }
 
-    /* mobile nav — v4.78c */
+    /* mobile nav — v4.78d */
     @media (max-width: 768px) {
       .nav { width: 60px; overflow: hidden; }
       .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: none; }
-      .nav-item { justify-content: center; padding: 10px; }
+      .nav-item { justify-content: center; padding: 10px; position: relative; }
+      .nav-item .ext-status-dot {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 6px;
+        height: 6px;
+        margin: 0;
+      }
       .nav-brand { padding: 12px; justify-content: center; }
       .nav-menu { padding: 6px; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
       .nav-footer { padding: 6px; flex-shrink: 0; overflow: hidden; }
