@@ -350,7 +350,7 @@
         <div class="page-body" style="max-width:760px;">
 
           <!-- Resume-first onboarding prompt -->
-          <div id="onboard-resume-first" class="gs-resume-drop" onclick="document.getElementById('resume-input-gs').click()">
+          <div id="onboard-resume-first" class="gs-resume-drop" role="button" tabindex="0" aria-label="Upload your resume to auto-build your first search" onclick="document.getElementById('resume-input-gs').click()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('resume-input-gs').click()}">
             <div class="gs-resume-drop-icon">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
