@@ -746,7 +746,7 @@ Assess. Return ONLY JSON.`;
       };
     }
 
-    console.log(`[score-resume] user=${user.id} tier=${result.tier} mode=${mode} jds=${jds.length} score=${result.match_score || result.overall_score}
+    console.log(`[score-resume] user=${user.id} tier=${result.tier} mode=${mode} jds=${jds.length} score=${result.match_score || result.overall_score} pro=${isPro}`);
 
     // ─── Phase 5: Dual-write to resume_score_history ───
     try {
@@ -820,7 +820,7 @@ Assess. Return ONLY JSON.`;
     } catch (histErr) {
       // Non-blocking — don't fail the scoring response
       console.error('[score-resume] History dual-write error:', histErr);
-    } pro=${isPro}`);
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
