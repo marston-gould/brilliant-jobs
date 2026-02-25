@@ -1335,6 +1335,13 @@ const features = [
   { s: 'done', n: 'decay_signal_patterns() RPC + cron (v4.62)', d: 'Weekly 5% decay on patterns >30d stale. Auto-delete junk patterns (>90d, 0 confirms, 3+ dismissals). pg_cron: decay-signal-patterns weekly Sun 5am UTC.', p: 37 },
   { s: 'done', n: 'Frontend: calendar icon + round badge (v4.62)', d: 'Calendar signals show 📅 icon. Interview round rendered as accent-colored pill badge. Confidence % indicator on all signal cards (green/amber/red).', p: 37 },
   { s: 'done', n: 'Version sync v4.62', d: 'dashboard.html, js/app.js, dist/dashboard.min.js, styles.css all v4.62. CSS cache buster updated.', p: 37 },
+
+  // Phase 36: Signal Analytics + Notification Templates (v4.63) — 2026-02-25
+  { s: 'done', n: 'Admin Signals tab (v4.63)', d: '10th admin tab. 5 KPIs, signals-by-source pie chart, pattern confidence distribution bar chart, learned patterns table, recent signals table. Full visibility into cross-user learning system.', p: 38 },
+  { s: 'done', n: 'PostHog: pipeline_stage_changed (v4.63)', d: 'Fires on every stage transition. Tracks job_id, new_stage, company, company_domain.', p: 38 },
+  { s: 'done', n: 'PostHog: pipeline_entry_created (v4.63)', d: 'Fires on first pipeline save. Tracks job_id, stage, company, ats_source.', p: 38 },
+  { s: 'done', n: 'Notification types: signal_calendar, signal_email, pipeline_prompt (v4.63)', d: 'Three new notification types registered. signal_calendar is SMS-enabled. pipeline_prompt defaults to daily digest.', p: 38 },
+  { s: 'done', n: 'Version sync v4.63', d: 'dashboard.html, js/app.js, dist/dashboard.min.js all v4.63.', p: 38 },
 ];
 
 
@@ -1459,7 +1466,8 @@ function render() {
     34: 'Layout & Query Builder Fixes',
     35: 'Resume Archive + Metrics',
     36: 'Pipeline Intelligence Version Sync',
-    37: 'Calendar Intelligence + Cross-User Learning'
+    37: 'Calendar Intelligence + Cross-User Learning',
+    38: 'Signal Analytics + Notification Templates'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
