@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.82 - 2026-02-25 — Bug fixes: archive state, score badges, poor match patterns -->
+<!-- Brilliant Jobs Dashboard v4.80 - 2026-02-25 — Get Started + Setup redesign, Insights nav fix -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=4.82" defer></script>
+  <script src="dist/dashboard.min.js" defer></script>
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.82</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.80</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -545,7 +545,7 @@
               Every job in your feed is scored against your resume so you can see your match strength before you invest time. <strong>Save</strong> jobs to your Pipeline where you can score them against the full JD, then <strong>apply in bulk</strong> from there. Or use <strong>Apply</strong> to go directly to the company&rsquo;s ATS for a single job. Set up <strong>auto-apply</strong> rules that submit your resume automatically when a job hits a score threshold you choose.
             </div>
             <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-              <div class="gs-feed-action"><span class="job-action-btn" style="pointer-events:none;font-size:10px;background:var(--accent-dim);color:var(--accent);">Save</span> <span>Send to your Pipeline to track, score, and apply in bulk</span></div>
+              <div class="gs-feed-action"><span class="job-action-btn" style="pointer-events:none;font-size:10px;background:var(--accent-dim);color:var(--accent);">Pipeline</span> <span>Save to your Pipeline to track, score, and apply in bulk</span></div>
               <div class="gs-feed-action"><span class="apply-btn apply-btn-default" style="pointer-events:none;font-size:10px;padding:4px 10px;">Apply &rarr;</span> <span>Apply to this job directly through the company&rsquo;s ATS</span></div>
               <div class="gs-feed-action"><span class="job-action-btn hide-btn" style="pointer-events:none;font-size:10px;padding:2px 6px;">&times;</span> <span>Hide and improve future results</span></div>
             </div>
@@ -925,15 +925,16 @@
             <table class="job-table" id="job-table">
               <thead>
                 <tr>
-                  <th style="width:36px;cursor:default;"></th>
+                  <th style="width:30px;cursor:default;"></th>
                   <th data-sort="title" style="width:22%;">Title <span class="sort-arrow">↕</span></th>
-                  <th data-sort="level" style="width:7%;">Level <span class="sort-arrow">↕</span></th>
-                  <th data-sort="company" style="width:14%;">Company <span class="sort-arrow">↕</span></th>
-                  <th data-sort="location" style="width:14%;">Location <span class="sort-arrow">↕</span></th>
-                  <th data-sort="salary" style="width:10%;">Salary <span class="sort-arrow">↕</span></th>
+                  <th data-sort="level" style="width:6%;">Level <span class="sort-arrow">↕</span></th>
+                  <th data-sort="company" style="width:12%;">Company <span class="sort-arrow">↕</span></th>
+                  <th data-sort="ghost" style="width:4%;cursor:help;" title="Ghost Rate — how often this company ghosts applicants">Ghost</th>
+                  <th data-sort="location" style="width:10%;">Location <span class="sort-arrow">↕</span></th>
+                  <th data-sort="salary" style="width:8%;">Salary <span class="sort-arrow">↕</span></th>
                   <th data-sort="days" style="width:5%;">Days <span class="sort-arrow">↕</span></th>
                   <th data-sort="match" style="width:5%;">Match <span class="sort-arrow">↕</span></th>
-                  <th style="width:140px;cursor:default;">
+                  <th style="width:130px;cursor:default;">
                     <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:500;font-size:10px;color:var(--text-faint);white-space:nowrap;" title="Show job description previews">
                       <input type="checkbox" id="preview-toggle" style="margin:0;cursor:pointer;"> Preview Job Spec
                     </label>
