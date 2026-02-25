@@ -1321,6 +1321,11 @@ const features = [
   { s: 'done', n: 'Resume Metrics: Intelligence UI (v4.59)', d: 'Market Stats / Resume Metrics tab toggle on Stats page. Resume selector dropdown. Score Summary card with ECharts sparkline (last 10). Level Fit horizontal bar chart with auto-insight. Pipeline Funnel (Applied→Screened→Interview→Offer). Application Log table with stage badges + filter. Cross-linking (Archive↔Metrics). New js/resume-metrics.js (21st module).', p: 35 },
   { s: 'done', n: 'Tier Gating + Pipeline Tracking (v4.60)', d: 'New js/tier-gating.js (22nd module). TIER_GATES config for 9 features across Free/Starter/Pro. showTierGate() blurred overlay with lock icon + upgrade CTA. Free tier gating on sparkline, level fit, pipeline, usage log. Pipeline→usage DB trigger (trg_pipeline_to_usage) auto-syncs user_pipeline to resume_job_usage. Resolves resume name → ID. Unique index prevents dupes.', p: 35 },
   { s: 'todo', n: 'UX: Resume scoring button labels', d: 'Resume card "Analyze" and "✨ Deep" buttons have unclear labels — user cannot tell what each does. "Deep" has a ✨ sparkle icon that looks like a 3D cube on some displays. Rename to clearly describe the difference: Analyze = ngram keyword match scoring (free), Deep = multi-agent AI analysis with coaching (Pro, credit-based). Remove misleading icon. Consider single "Score" button with tier-gated upsell to deep mode.', p: 17 },
+
+  // Phase 34: Pipeline Intelligence Version Sync (v4.61) — 2026-02-25
+  { s: 'done', n: 'gmail-auth calendar scope (v4.61)', d: 'Added calendar.events.readonly to OAuth scope string in gmail-auth EF. Required for scan-pipeline-signals to read Google Calendar events. EF redeployed.', p: 36 },
+  { s: 'done', n: 'Version sync v4.61', d: 'dashboard.html v4.54→v4.61, js/app.js v4.60→v4.61, dist/dashboard.min.js rebuilt (22 files, 589.9KB). All 3 version stamps synchronized.', p: 36 },
+  { s: 'done', n: 'Phase A/B verification audit', d: 'Full audit of all 16 Phase A/B spec items against live infrastructure. All 6 tables exist (user_pipeline 34 cols, pipeline_signals 13 cols, pipeline_tracking_settings 13 cols, signal_patterns 21 seeds, gmail_connections 1 active, email_signals 10 cols). All 4 EFs live. All 4 pg_cron schedules active.', p: 36 },
 ];
 
 
@@ -1443,7 +1448,8 @@ function render() {
     32: 'Merchandising System',
     33: 'Merchandising System',
     34: 'Layout & Query Builder Fixes',
-    35: 'Resume Archive + Metrics'
+    35: 'Resume Archive + Metrics',
+    36: 'Pipeline Intelligence Version Sync'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
