@@ -2213,20 +2213,21 @@
       .resume-row > .resume-card { flex: 1 1 auto; }
     }
 
+    /* mobile nav — v4.78c */
     @media (max-width: 768px) {
-      .nav { width: 60px; }
+      .nav { width: 60px; overflow: hidden; }
       .nav-brand-text, .nav-item span, .nav-badge, .nav-user-info, .nav-section-label { display: none; }
       .nav-item { justify-content: center; padding: 10px; }
       .nav-brand { padding: 12px; justify-content: center; }
-      .nav-menu { padding: 6px; min-height: 0; -webkit-overflow-scrolling: touch; }
-      .nav-footer { padding: 6px; flex-shrink: 0; }
+      .nav-menu { padding: 6px; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .nav-footer { padding: 6px; flex-shrink: 0; overflow: hidden; }
       .nav-user { justify-content: center; padding: 2px 0; }
       .nav-avatar { width: 28px; height: 28px; font-size: 11px; }
       .btn-logout { padding: 4px; font-size: 9px; margin-top: 4px; }
-      .credit-balance { padding: 3px 6px; margin: 3px 6px; justify-content: center; gap: 4px; }
-      .credit-balance-label { display: none; }
+      .credit-balance { padding: 3px 4px; margin: 3px 4px; justify-content: center; overflow: hidden; }
+      .credit-balance-label { display: none !important; }
       .credit-balance-count { font-size: 12px; }
-      .credit-icon { width: 14px; height: 14px; }
+      .credit-icon svg, .credit-icon { width: 14px !important; height: 14px !important; }
       .main { margin-inline-start: 60px; height: 100vh; overflow-y: auto; }
       .page-body { padding: 20px; }
       .page-header { padding: 20px; }
