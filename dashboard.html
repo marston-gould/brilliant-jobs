@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.44 - 2026-02-24 — Fix account pages outside .main, patch nav styling -->
+<!-- Brilliant Jobs Dashboard v4.60 - 2026-02-25 — Phase 7+8: Tier gating + pipeline tracking -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -21,7 +21,7 @@
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=4.48">
+  <link rel="stylesheet" href="styles.css?v=4.62">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.51</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.62</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -842,6 +842,21 @@
                       <button class="btn btn-sm" id="improve-filters-btn" onclick="bjImproveFiltersFromHidden()" style="display:none;margin-left:auto;padding:3px 10px;font-size:10px;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border:1px solid rgba(245,158,11,0.3);color:var(--warm);font-weight:600;" title="Analyze hidden jobs to suggest NOT filters">🔧 Improve Filters</button>
           </div>
 
+          <div style="display:flex;align-items:center;gap:8px;margin:8px 12px;flex-wrap:wrap;">
+            <div id="sort-pills" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+            <div class="sort-add-wrap" style="position:relative;">
+              <button id="sort-add-btn" class="btn btn-sm" style="padding:2px 8px;font-size:10px;color:var(--text-faint);border:1px dashed var(--border);background:transparent;cursor:pointer;">+ Sort</button>
+              <div id="sort-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:50;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px;min-width:120px;">
+                <div class="sort-opt" data-field="title" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Title</div>
+                <div class="sort-opt" data-field="company_name" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Company</div>
+                <div class="sort-opt" data-field="location" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Location</div>
+                <div class="sort-opt" data-field="updated_at" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Days</div>
+                <div class="sort-opt" data-field="level" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Level</div>
+                <div class="sort-opt" data-field="salary_max" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Salary</div>
+              </div>
+            </div>
+          </div>
+
           <!-- Job results table -->
           <div style="overflow-x:auto;">
             <table class="job-table" id="job-table">
@@ -876,7 +891,6 @@
             </table>
           </div>
         </div>
-      </div>
 
       <!-- ============ TUNING ============ -->
       <div class="page" id="page-tuning">
@@ -1142,6 +1156,19 @@
         </div>
         <div class="page-body">
 
+          <!-- Resume Tab Toggle -->
+          <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
+            <button class="btn btn-sm resume-tab-toggle active" id="resume-tab-active" onclick="switchResumeTab('active')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+              Active Resumes
+            </button>
+            <button class="btn btn-sm resume-tab-toggle" id="resume-tab-archive" onclick="switchResumeTab('archive')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+              Archive
+            </button>
+          </div>
+
+          <!-- === Active Resumes Tab === -->
+          <div id="resume-tab-content-active">
+
           <!-- Stats -->
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
@@ -1183,7 +1210,76 @@
             </div>
           </div>
 
-          <!-- Resume Archive -->
+          </div><!-- /resume-tab-content-active -->
+
+          <!-- === Archive Tab === -->
+          <div id="resume-tab-content-archive" style="display:none;">
+
+            <!-- Storage Usage Bar -->
+            <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div class="card-title" style="margin:0;">Storage Usage</div>
+                <span id="archive-storage-label" style="font-size:11px;color:var(--text-faint);">0 KB / 50 MB</span>
+              </div>
+              <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+                <div id="archive-storage-bar" style="height:100%;background:var(--accent);border-radius:3px;width:0%;transition:width 0.3s;"></div>
+              </div>
+              <div id="archive-tier-cta" style="display:none;font-size:10px;color:var(--warm);margin-top:6px;">
+                Approaching storage limit. <a href="#" onclick="event.preventDefault();showPage('subscription');" style="color:var(--accent);text-decoration:underline;">Upgrade plan</a>
+              </div>
+            </div>
+
+            <!-- Archive Stats Row -->
+            <div class="stat-grid" style="margin-bottom:16px;">
+              <div class="stat-card"><div class="stat-val" id="arch-total">0</div><div class="stat-label">Total Archived</div></div>
+              <div class="stat-card"><div class="stat-val" id="arch-active">0</div><div class="stat-label">Active Versions</div></div>
+              <div class="stat-card"><div class="stat-val" id="arch-versions">0</div><div class="stat-label">Total Versions</div></div>
+              <div class="stat-card"><div class="stat-val" id="arch-tier">—</div><div class="stat-label">Your Plan</div></div>
+            </div>
+
+            <!-- Archive Table -->
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+                <div class="card-title" style="margin:0;">Resume Archive</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input id="archive-search" type="text" placeholder="Search…" style="font-size:11px;padding:4px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);width:140px;">
+                  <button class="btn btn-sm btn-secondary" id="archive-refresh-btn" onclick="loadResumeArchive()" style="font-size:10px;">Refresh</button>
+                </div>
+              </div>
+              <div id="archive-table-wrap" style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                  <thead>
+                    <tr style="background:var(--bg-input);text-align:left;">
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Name</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Version</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Created</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Last Used</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Size</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Status</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="archive-table-body">
+                    <tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">Loading archive…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Version Timeline (shown when a resume row is expanded) -->
+            <div id="archive-version-timeline" style="display:none;margin-top:16px;">
+              <div class="card" style="padding:16px 20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                  <div class="card-title" style="margin:0;">Version History</div>
+                  <button class="btn btn-sm btn-secondary" onclick="document.getElementById('archive-version-timeline').style.display='none';" style="font-size:10px;">Close</button>
+                </div>
+                <div id="archive-version-list"></div>
+              </div>
+            </div>
+
+          </div><!-- /resume-tab-content-archive -->
+
+          <!-- Resume Archive (legacy — kept for localStorage archived resumes) -->
           <div id="resume-archive-section" style="display:none;margin-top:24px;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div class="card-title">Archived Resumes</div>
@@ -1982,6 +2078,18 @@
           <p>Your data filtered, visualized <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('stats')">How this works →</a> · <a class="page-how-link" href="/data-lab" target="_blank" style="color:var(--accent)">Explore Data Lab →</a></p>
         </div>
         <div class="page-body">
+          <!-- Stats/Metrics Tab Toggle -->
+          <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
+            <button class="btn btn-sm stats-tab-toggle active" id="stats-tab-market" onclick="switchStatsTab('market')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+              Market Stats
+            </button>
+            <button class="btn btn-sm stats-tab-toggle" id="stats-tab-resume" onclick="switchStatsTab('resume')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+              Resume Metrics
+            </button>
+          </div>
+
+          <!-- === Market Stats Tab === -->
+          <div id="stats-tab-content-market">
           <!-- Filter selector -->
           <div id="stats-filter-bar" class="stats-filter-bar">
             <div id="stats-filter-pills"></div>
@@ -2043,6 +2151,84 @@
                 <div id="chart-geo-list" style="width:260px;max-height:400px;overflow-y:auto;font-size:12px;font-family:'JetBrains Mono',monospace"></div>
               </div>
             </div>
+
+          </div><!-- /stats-tab-content-market -->
+
+          <!-- === Resume Metrics Tab === -->
+          <div id="stats-tab-content-resume" style="display:none;">
+
+            <!-- Resume Selector -->
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+              <label style="font-size:12px;color:var(--text-dim);font-weight:600;">Resume:</label>
+              <select id="metrics-resume-select" onchange="loadResumeMetrics()" style="font-size:12px;padding:6px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;color:var(--text);min-width:200px;">
+                <option value="">Select a resume…</option>
+              </select>
+              <a href="#" id="metrics-view-archive" onclick="event.preventDefault();switchResumeTab&&switchResumeTab('archive');showPage('resumes');" style="font-size:10px;color:var(--accent);">View in Archive →</a>
+            </div>
+
+            <!-- Score Summary Card -->
+            <div class="card" id="metrics-score-summary" style="padding:16px 20px;margin-bottom:16px;display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Last Score</div>
+                  <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;">
+                    <span id="metrics-last-score" style="font-size:32px;font-weight:700;color:var(--accent);font-family:var(--mono);">—</span>
+                    <span id="metrics-last-score-type" style="font-size:11px;color:var(--text-faint);">—</span>
+                  </div>
+                  <div id="metrics-last-score-detail" style="font-size:11px;color:var(--text-dim);margin-top:4px;">—</div>
+                </div>
+                <div style="width:180px;height:60px;">
+                  <div class="ec" id="metrics-sparkline" style="width:100%;height:100%;"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Metrics Charts Grid -->
+            <div class="stats-grid" id="metrics-charts-grid" style="display:none;">
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">Level Fit</div>
+                <div id="metrics-level-fit-insight" style="font-size:10px;color:var(--text-faint);margin-bottom:8px;"></div>
+                <div class="ec" id="metrics-level-chart" style="width:100%;height:280px;"></div>
+              </div>
+              <div class="stats-chart-card">
+                <div class="stats-chart-title">Pipeline Funnel</div>
+                <div class="ec" id="metrics-funnel-chart" style="width:100%;height:280px;"></div>
+              </div>
+            </div>
+
+            <!-- Job/Company Usage Log -->
+            <div class="card" id="metrics-usage-log" style="padding:0;overflow:hidden;margin-top:16px;display:none;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+                <div class="card-title" style="margin:0;">Application Log</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input id="metrics-log-search" type="text" placeholder="Filter…" style="font-size:11px;padding:4px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);width:120px;">
+                </div>
+              </div>
+              <div style="overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                  <thead>
+                    <tr style="background:var(--bg-input);text-align:left;">
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Company</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Job Title</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Applied</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Score</th>
+                      <th style="padding:8px 12px;font-weight:600;color:var(--text-dim);font-size:11px;">Stage</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metrics-log-body">
+                    <tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-faint);">Select a resume to view application history</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Empty state -->
+            <div id="metrics-empty" style="text-align:center;padding:48px 20px;color:var(--text-faint);">
+              <div style="font-size:14px;font-weight:600;margin-bottom:8px;">Select a resume above to view its metrics</div>
+              <div style="font-size:12px;">Score history, level fit analysis, and pipeline data will appear here.</div>
+            </div>
+
+          </div><!-- /stats-tab-content-resume -->
 
         </div>
       </div>
@@ -2385,15 +2571,25 @@
               <div class="stat-card"><div class="stat-val" id="ah-total">&mdash;</div><div class="stat-label">Total Boards</div><div class="stat-delta" id="ah-total-delta"></div></div>
               <div class="stat-card"><div class="stat-val" id="ah-with-jobs">&mdash;</div><div class="stat-label">With Jobs</div><div class="stat-delta" id="ah-with-jobs-delta"></div></div>
               <div class="stat-card"><div class="stat-val" id="ah-4xx">&mdash;</div><div class="stat-label">4xx Errors</div><div class="stat-delta" id="ah-4xx-delta"></div></div>
+              <div class="stat-card"><div class="stat-val admin-red" id="ah-dead">&mdash;</div><div class="stat-label">Dead Boards</div><div class="stat-delta" id="ah-dead-delta"></div></div>
+              <div class="stat-card"><div class="stat-val admin-amber" id="ah-unscraped">&mdash;</div><div class="stat-label">Unscraped</div><div class="stat-delta" id="ah-unscraped-delta"></div></div>
               <div class="stat-card"><div class="stat-val" id="ah-jobs">&mdash;</div><div class="stat-label">Total Jobs</div><div class="stat-delta" id="ah-jobs-delta"></div></div>
               <div class="stat-card"><div class="stat-val" id="ah-net">&mdash;</div><div class="stat-label">Net Change</div><div class="stat-delta" id="ah-net-delta"></div></div>
             </div>
 
             <table class="admin-table" style="width:100%">
-              <thead><tr><th>Platform</th><th style="text-align:right">Boards</th><th style="text-align:right">Active %</th><th style="text-align:right">4xx</th><th style="text-align:right">Jobs</th><th style="text-align:right">Jobs/Board</th></tr></thead>
+              <thead><tr><th>Platform</th><th style="text-align:right">Boards</th><th style="text-align:right">Active %</th><th style="text-align:right">Dead</th><th style="text-align:right">Unscraped</th><th style="text-align:right">Jobs</th><th style="text-align:right">Jobs/Board</th></tr></thead>
               <tbody id="admin-platform-body"></tbody>
               <tfoot id="admin-platform-foot"></tfoot>
             </table>
+
+            <!-- Export buttons -->
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button onclick="exportBoardsCsv('dead')" class="admin-period-btn" id="export-dead-btn">⬇ Export Dead Boards</button>
+              <button onclick="exportBoardsCsv('unscraped')" class="admin-period-btn" id="export-unscraped-btn">⬇ Export Unscraped</button>
+              <button onclick="exportBoardsCsv('active')" class="admin-period-btn" id="export-active-btn">⬇ Export Active Boards</button>
+              <button onclick="exportBoardsCsv('all')" class="admin-period-btn" id="export-all-btn">⬇ Export All Boards</button>
+            </div>
 
             <!-- Feed Health Charts -->
             <div style="margin-top:24px">
@@ -2726,6 +2922,8 @@
               <div id="afb-detail-content" style="font-size:13px;line-height:1.6;white-space:pre-wrap;"></div>
             </div>
 
+          </div>
+
           <div class="admin-panel" id="admin-panel-merch">
             <!-- Master-Detail Layout -->
             <div style="display:grid;grid-template-columns:240px 1fr;gap:16px;min-height:500px">
@@ -2966,6 +3164,10 @@ document.addEventListener('DOMContentLoaded', function() {
 /* Q22: App view toggle */
 .app-view-toggle { background: transparent !important; color: var(--text-dim) !important; border: none !important; }
 .app-view-toggle.active { background: var(--bg-card) !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.resume-tab-toggle { background: transparent !important; color: var(--text-dim) !important; border: none !important; }
+.resume-tab-toggle.active { background: var(--bg-card) !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.stats-tab-toggle { background: transparent !important; color: var(--text-dim) !important; border: none !important; }
+.stats-tab-toggle.active { background: var(--bg-card) !important; color: var(--text) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 /* Q26: Keyboard focus on pills */
 .qb-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 /* Q28: Skeleton loading */
