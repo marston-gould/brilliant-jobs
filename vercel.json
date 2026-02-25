@@ -74,6 +74,30 @@
   ],
   "rewrites": [
     {
+      "source": "/blog/feed",
+      "destination": "/api/content?mode=rss"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/api/content?mode=story&slug=:slug"
+    },
+    {
+      "source": "/blog",
+      "destination": "/api/content?mode=blog"
+    },
+    {
+      "source": "/api/content/feed",
+      "destination": "/api/content?mode=feed"
+    },
+    {
+      "source": "/api/content/pulse",
+      "destination": "/api/content?mode=pulse"
+    },
+    {
+      "source": "/api/content/embed/:id",
+      "destination": "/api/content?mode=embed&id=:id"
+    },
+    {
       "source": "/jobs-:a-vs-:b",
       "destination": "/api/seo-page?type=comparison&a=:a&b=:b"
     },
