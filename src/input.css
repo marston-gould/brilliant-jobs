@@ -795,19 +795,21 @@
       .setup-status-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
     }
     @media (max-width: 600px) {
-      .gs-hero { padding: 24px 20px; margin-bottom: 16px; }
+      .gs-hero { padding: 20px 18px; margin-bottom: 14px; }
       .gs-hero > div:first-child { font-size: 18px !important; }
-      .gs-hero > div:last-child { font-size: 13px !important; }
+      .gs-hero > div:last-child { font-size: 12px !important; line-height: 1.5 !important; }
       .gs-step { padding: 22px 20px 20px; }
       .gs-step-title { font-size: 15px; }
       .gs-step-body { font-size: 13px; }
       .gs-connect-card { padding: 14px 10px; }
       .gs-filter-chip { padding: 14px 16px !important; }
       .gs-advantage { padding: 22px 20px; }
-      .setup-hero { padding: 24px 20px; }
+      .setup-hero { padding: 20px 18px; margin-bottom: 14px; }
       .setup-hero > div:first-child { font-size: 16px !important; }
-      .tuning-hero { padding: 24px 20px; }
+      .setup-hero > div:last-child { font-size: 12px !important; line-height: 1.5 !important; }
+      .tuning-hero { padding: 20px 18px; margin-bottom: 14px; }
       .tuning-hero > div:first-child { font-size: 16px !important; }
+      .tuning-hero > div:last-child { font-size: 12px !important; line-height: 1.5 !important; }
       .tuning-card-sub { padding-left: 20px; }
     }
 
