@@ -1,7 +1,8 @@
-// confirm-pipeline-signal Edge Function (Phase A/B)
+// confirm-pipeline-signal Edge Function v2 (Phase C)
 // ROLE: user-action
 // Called by frontend when user acts on a pipeline signal.
 // Actions: confirm, correct (different stage), dismiss, snooze (no update yet)
+// Cross-user learning: updates signal_patterns table so all users benefit.
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -37,7 +38,7 @@ serve(async (req: Request) => {
     // Fetch the signal (verify ownership)
     const { data: signal, error: sigErr } = await sb
       .from("pipeline_signals")
-      .select("*, user_pipeline!pipeline_signals_pipeline_entry_id_fkey(id, stage)")
+      .select("*")
       .eq("id", signal_id)
       .eq("user_id", user.id)
       .single();
@@ -47,17 +48,17 @@ serve(async (req: Request) => {
     }
 
     const now = new Date().toISOString();
+    const stageOrder = ["saved", "applied", "responded", "interview", "offer", "rejected", "hired", "archived"];
 
     if (action === "confirm") {
       // Move pipeline entry to proposed stage
       if (signal.proposed_stage && signal.pipeline_entry_id) {
-        const stageTimestampCol = signal.proposed_stage + "_at";
         const updateData: Record<string, any> = {
           stage: signal.proposed_stage,
           stage_changed_at: now,
         };
-        // Set the stage-specific timestamp if column exists
-        if (["applied", "responded", "interview", "offer", "rejected", "hired", "archived"].includes(signal.proposed_stage)) {
+        const stageTimestampCol = signal.proposed_stage + "_at";
+        if (stageOrder.includes(signal.proposed_stage)) {
           updateData[stageTimestampCol] = now;
         }
         await sb.from("user_pipeline").update(updateData).eq("id", signal.pipeline_entry_id);
@@ -68,18 +69,18 @@ serve(async (req: Request) => {
         resolved_at: now,
       }).eq("id", signal_id);
 
-      // Update signal_patterns confidence (increment confirmations)
+      // Cross-user learning: increment confirmations on matching patterns
       await updatePatternConfidence(signal, true);
 
     } else if (action === "correct") {
       // User chose a different stage than proposed
       if (corrected_stage && signal.pipeline_entry_id) {
-        const stageTimestampCol = corrected_stage + "_at";
         const updateData: Record<string, any> = {
           stage: corrected_stage,
           stage_changed_at: now,
         };
-        if (["applied", "responded", "interview", "offer", "rejected", "hired", "archived"].includes(corrected_stage)) {
+        const stageTimestampCol = corrected_stage + "_at";
+        if (stageOrder.includes(corrected_stage)) {
           updateData[stageTimestampCol] = now;
         }
         await sb.from("user_pipeline").update(updateData).eq("id", signal.pipeline_entry_id);
@@ -91,7 +92,7 @@ serve(async (req: Request) => {
         resolved_at: now,
       }).eq("id", signal_id);
 
-      // Pattern still gets partial credit if it was in the right direction
+      // Still counts as partial confirmation (right signal, just wrong stage)
       await updatePatternConfidence(signal, true);
 
     } else if (action === "dismiss") {
@@ -100,11 +101,10 @@ serve(async (req: Request) => {
         resolved_at: now,
       }).eq("id", signal_id);
 
-      // Decrease pattern confidence
+      // Cross-user learning: increment dismissals on matching patterns
       await updatePatternConfidence(signal, false);
 
     } else if (action === "snooze") {
-      // "No update yet" — reset the prompt timer, mark signal expired
       await sb.from("pipeline_signals").update({
         status: "expired",
         resolved_at: now,
@@ -127,30 +127,72 @@ serve(async (req: Request) => {
   }
 });
 
+// ── Cross-user learning ─────────────────────────────────────────
+// When a user confirms or dismisses a signal, update the signal_patterns
+// table so that future detection for ALL users improves.
 async function updatePatternConfidence(signal: any, confirmed: boolean) {
   if (!signal.evidence_metadata) return;
   const meta = signal.evidence_metadata;
 
-  // Find matching patterns and update their scores
-  const patterns = [];
-  if (meta.sender_domain) patterns.push({ type: "sender_domain", value: meta.sender_domain });
-  if (meta.subject_keywords) {
+  const patternsToUpdate: { type: string; value: string }[] = [];
+
+  // Calendar signals → update calendar_format patterns
+  if (signal.signal_source === "calendar" && meta.matched_pattern) {
+    patternsToUpdate.push({ type: "calendar_format", value: meta.matched_pattern });
+  }
+  if (signal.signal_source === "calendar" && meta.calendar_title) {
+    // Also try to learn new calendar patterns from the full title
+    patternsToUpdate.push({ type: "calendar_format", value: meta.calendar_title });
+  }
+
+  // Email signals → update sender_domain and subject_keyword patterns
+  if (meta.sender_domain) {
+    patternsToUpdate.push({ type: "sender_domain", value: meta.sender_domain });
+  }
+  if (meta.subject_keywords && Array.isArray(meta.subject_keywords)) {
     for (const kw of meta.subject_keywords) {
-      patterns.push({ type: "subject_keyword", value: kw });
+      patternsToUpdate.push({ type: "subject_keyword", value: kw });
     }
   }
-  if (meta.calendar_title) patterns.push({ type: "calendar_format", value: meta.calendar_title });
 
-  for (const p of patterns) {
-    const col = confirmed ? "confirmations" : "dismissals";
-    // Upsert pattern: increment the right counter, recalculate confidence
-    await sb.rpc("exec_sql", {
-      query: `INSERT INTO signal_patterns (pattern_type, pattern_value, associated_signal_type, ${col}, confidence_score, last_seen_at)
-              VALUES ('${p.type}', '${p.value.replace(/'/g, "''")}', '${signal.signal_type}', 1, ${confirmed ? 0.6 : 0.4}, now())
-              ON CONFLICT (pattern_type, pattern_value, associated_signal_type)
-              DO UPDATE SET ${col} = signal_patterns.${col} + 1,
-                           confidence_score = (signal_patterns.confirmations${confirmed ? ' + 1' : ''})::float / GREATEST(signal_patterns.confirmations${confirmed ? ' + 1' : ''} + signal_patterns.dismissals${confirmed ? '' : ' + 1'}, 1)::float,
-                           last_seen_at = now();`
-    });
+  for (const p of patternsToUpdate) {
+    try {
+      // Try to find existing pattern
+      const { data: existing } = await sb
+        .from("signal_patterns")
+        .select("id, confirmations, dismissals")
+        .eq("pattern_type", p.type)
+        .eq("pattern_value", p.value)
+        .eq("associated_signal_type", signal.signal_type || "interview_invite")
+        .single();
+
+      if (existing) {
+        // Update existing pattern
+        const newConf = existing.confirmations + (confirmed ? 1 : 0);
+        const newDis = existing.dismissals + (confirmed ? 0 : 1);
+        const total = newConf + newDis;
+        const newScore = total > 0 ? newConf / total : 0.5;
+
+        await sb.from("signal_patterns").update({
+          confirmations: newConf,
+          dismissals: newDis,
+          confidence_score: Math.round(newScore * 100) / 100,
+          last_seen_at: new Date().toISOString(),
+        }).eq("id", existing.id);
+      } else {
+        // Insert new pattern (learned from user behavior)
+        await sb.from("signal_patterns").insert({
+          pattern_type: p.type,
+          pattern_value: p.value,
+          associated_signal_type: signal.signal_type || "interview_invite",
+          confirmations: confirmed ? 1 : 0,
+          dismissals: confirmed ? 0 : 1,
+          confidence_score: confirmed ? 0.6 : 0.4,
+          last_seen_at: new Date().toISOString(),
+        });
+      }
+    } catch (e) {
+      console.warn(`[confirm-pipeline-signal] Pattern update failed for ${p.type}:${p.value}:`, e);
+    }
   }
 }

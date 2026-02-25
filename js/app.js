@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.51';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
+const BJ_VERSION = 'v4.62';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase C: Calendar intelligence + cross-user learning');
 
 // Auth
 async function init() {
