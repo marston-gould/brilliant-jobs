@@ -874,7 +874,16 @@
               </label>
               <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
             </div>
-            <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:4px 12px;font-size:11px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);border-radius:6px;cursor:pointer;white-space:nowrap;font-weight:600;" title="Generate filter from your resume using AI">✦ Generate from Resume</button>
+
+            <!-- AI Filter Generation — prominent CTA -->
+            <div id="ai-filter-cta" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin-top:8px;background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(77,142,255,0.06));border:1px solid rgba(77,142,255,0.2);border-radius:10px;">
+              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">✦</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;font-weight:700;color:var(--accent);">Generate filters from your resume</div>
+                <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">AI reads your resume and creates keyword, location, and level filters automatically</div>
+              </div>
+              <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:6px 16px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-weight:600;">Generate</button>
+            </div>
             <div class="filter-count" id="filter-count"></div>
           </div>
           </div>
