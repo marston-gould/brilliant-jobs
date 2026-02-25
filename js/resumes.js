@@ -1053,3 +1053,98 @@ setTimeout(() => {
     setTimeout(() => clearInterval(waitForMammoth), 10000); // Give up after 10s
   }
 }, 1500);
+// ════════════════════════════════════════════════════════════
+// LAUNCH REWRITE INTERVIEW FROM RESUME ROW
+// ════════════════════════════════════════════════════════════
+
+window.launchRewriteInterview = function(idx) {
+  var r = resumes[idx];
+  if (!r || r.archived) { showToast('Resume not found.', { type: 'error' }); return; }
+
+  // Check extracted text
+  if (!r.extractedText || r.extractedText.length < 50) {
+    showToast('Resume text not ready. Please wait for extraction to complete.', { type: 'error', duration: 4000 });
+    return;
+  }
+
+  // Find assigned filters
+  var assignedFilters = [];
+  if (r.filterAssignments) {
+    for (var key in r.filterAssignments) {
+      if (r.filterAssignments[key]) assignedFilters.push(key);
+    }
+  }
+
+  if (assignedFilters.length === 0) {
+    showToast('Assign this resume to a filter first so we know which roles to target.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Find the weakest filter (lowest readiness score) for max rewrite impact
+  var targetFilterName = assignedFilters[0];
+  var lowestScore = 999;
+  if (readinessCache && readinessCache.scores && readinessCache.scores[idx]) {
+    var filterScores = readinessCache.scores[idx].filters || {};
+    for (var fn in filterScores) {
+      if (assignedFilters.indexOf(fn) >= 0 && filterScores[fn].score < lowestScore) {
+        lowestScore = filterScores[fn].score;
+        targetFilterName = fn;
+      }
+    }
+  }
+
+  // Find a representative job from this filter's loaded feed
+  var targetJobId = null;
+  var targetJobTitle = null;
+  var targetCompany = null;
+
+  // Try feedCache first (loaded jobs from the jobs tab)
+  if (window.feedCache && Array.isArray(window.feedCache)) {
+    var filterObj = savedFilters.find(function(f){ return f.name === targetFilterName; });
+    if (filterObj) {
+      // Find a job from this filter
+      for (var j = 0; j < window.feedCache.length; j++) {
+        var job = window.feedCache[j];
+        if (job && job.id) {
+          targetJobId = job.id;
+          targetJobTitle = job.title || 'Target Role';
+          targetCompany = job.company || '';
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback: use first job from jdCache (locally cached JDs from readiness analysis)
+  if (!targetJobId && window.jdCache) {
+    var jdKeys = Object.keys(window.jdCache);
+    if (jdKeys.length > 0) {
+      targetJobId = jdKeys[0];
+      var jd = window.jdCache[jdKeys[0]];
+      targetJobTitle = (jd && jd.title) || 'Target Role';
+      targetCompany = (jd && jd.company) || '';
+    }
+  }
+
+  if (!targetJobId) {
+    showToast('No job data loaded for this filter yet. Run a readiness analysis first, then try again.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  var matchScore = lowestScore < 999 ? lowestScore : null;
+
+  // Open the existing rewrite panel
+  if (typeof openRewritePanel === 'function') {
+    openRewritePanel(targetJobId, targetJobTitle, targetCompany, r.id, matchScore);
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('rewrite_interview_launched', {
+        resume_index: idx,
+        resume_name: r.name,
+        target_filter: targetFilterName,
+        match_score: matchScore
+      });
+    }
+  } else {
+    showToast('Rewrite module not loaded. Please refresh the page.', { type: 'error' });
+  }
+};
