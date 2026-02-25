@@ -377,20 +377,153 @@ window.setResumeLevel = function(idx, selectEl) {
   renderResumes();
 };
 
-window.archiveResume = function(idx) {
+window.archiveResume = async function(idx) {
   if (!confirm(`Archive "${resumes[idx].name}"? It will be moved to the archive section.`)) return;
+  // Write to Supabase first (source of truth)
+  if (resumes[idx].archiveId && typeof sb !== 'undefined') {
+    try {
+      await sb.from('resume_archive')
+        .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
+        .eq('resume_id', resumes[idx].archiveId);
+    } catch (e) { console.warn('[resume-sync] Archive DB write failed:', e); }
+  }
   resumes[idx].archived = true;
   resumes[idx].archivedAt = new Date().toLocaleDateString();
   saveResumes();
   renderResumes();
 };
 
-window.unarchiveResume = function(idx) {
+window.unarchiveResume = async function(idx) {
+  // Write to Supabase first (source of truth)
+  if (resumes[idx].archiveId && typeof sb !== 'undefined') {
+    try {
+      await sb.from('resume_archive')
+        .update({ is_active: true, is_archived: false, archived_at: null })
+        .eq('resume_id', resumes[idx].archiveId);
+    } catch (e) { console.warn('[resume-sync] Restore DB write failed:', e); }
+  }
   resumes[idx].archived = false;
   delete resumes[idx].archivedAt;
   saveResumes();
   renderResumes();
 };
+
+// ─── Resume Archive Reconciliation ───
+// Syncs localStorage bj_resumes ↔ Supabase resume_archive on page load.
+// resume_archive is the source of truth for metadata; localStorage is cache.
+async function reconcileResumeArchive() {
+  if (typeof sb === 'undefined' || !currentUser) return;
+  try {
+    var userId = currentUser.id;
+    var { data: archiveRows, error } = await sb
+      .from('resume_archive')
+      .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at')
+      .eq('user_id', userId);
+    if (error || !archiveRows) { console.warn('[resume-sync] Failed to fetch archive:', error); return; }
+
+    // Build lookup: storage_path → archive row
+    var byPath = {};
+    var byName = {};
+    archiveRows.forEach(function(row) {
+      if (row.storage_path) byPath[row.storage_path] = row;
+      if (row.display_name) {
+        var key = row.display_name.toLowerCase();
+        if (!byName[key]) byName[key] = row;
+      }
+    });
+
+    // Track which archive rows got matched
+    var matchedArchiveIds = {};
+    var dirty = false;
+
+    // Step 1: Link localStorage resumes to archive rows
+    resumes.forEach(function(r) {
+      var match = null;
+      if (r.storagePath && byPath[r.storagePath]) {
+        match = byPath[r.storagePath];
+      } else if (r.name && byName[r.name.toLowerCase()]) {
+        match = byName[r.name.toLowerCase()];
+      }
+      if (match) {
+        if (r.archiveId !== match.resume_id) {
+          r.archiveId = match.resume_id;
+          dirty = true;
+        }
+        matchedArchiveIds[match.resume_id] = true;
+        // Sync archive state → localStorage
+        if (match.is_archived && !r.archived) {
+          r.archived = true;
+          r.archivedAt = match.created_at ? new Date(match.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+          dirty = true;
+        } else if (!match.is_archived && match.is_active && r.archived) {
+          r.archived = false;
+          delete r.archivedAt;
+          dirty = true;
+        }
+      }
+    });
+
+    // Step 2: Insert unmatched localStorage resumes into resume_archive
+    var unmatched = resumes.filter(function(r) { return !r.archiveId && r.storagePath; });
+    for (var i = 0; i < unmatched.length; i++) {
+      var r = unmatched[i];
+      var sizeBytes = 0;
+      var sizeMatch = (r.size || '').match(/([\d.]+)\s*(KB|MB)/i);
+      if (sizeMatch) {
+        sizeBytes = parseFloat(sizeMatch[1]) * (sizeMatch[2].toUpperCase() === 'MB' ? 1048576 : 1024);
+      }
+      var { data: inserted, error: insErr } = await sb.from('resume_archive').insert({
+        user_id: userId,
+        display_name: r.name || r.fileName || 'Untitled',
+        file_hash: r.id || '',
+        file_size_bytes: Math.round(sizeBytes) || 0,
+        file_type: /\.pdf$/i.test(r.fileName || '') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        storage_path: r.storagePath,
+        is_active: !r.archived,
+        is_archived: !!r.archived
+      }).select('resume_id').single();
+      if (!insErr && inserted) {
+        r.archiveId = inserted.resume_id;
+        dirty = true;
+        console.log('[resume-sync] Inserted into archive:', r.name);
+      }
+    }
+
+    // Step 3: Pull active archive rows not in localStorage
+    archiveRows.forEach(function(row) {
+      if (matchedArchiveIds[row.resume_id]) return;
+      if (!row.is_active || row.is_archived) return;
+      // Active resume in DB but missing from localStorage — create stub
+      var stub = {
+        id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        name: row.display_name || 'Synced Resume',
+        fileName: row.display_name || 'synced-resume',
+        size: row.file_size_bytes ? (row.file_size_bytes < 1048576 ? Math.round(row.file_size_bytes / 1024) + ' KB' : (row.file_size_bytes / 1048576).toFixed(1) + ' MB') : '—',
+        filterIds: [],
+        uploadedAt: row.created_at ? new Date(row.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+        levelLabel: '',
+        levelColor: '',
+        archived: false,
+        extractedText: '',
+        keywords: [],
+        textStatus: 'needs-reextract',
+        storagePath: row.storage_path,
+        archiveId: row.resume_id
+      };
+      resumes.push(stub);
+      dirty = true;
+      console.log('[resume-sync] Pulled from archive:', row.display_name);
+    });
+
+    if (dirty) {
+      saveResumes();
+      renderResumes();
+      console.log('[resume-sync] Reconciliation complete — synced ' + resumes.length + ' resumes');
+    }
+  } catch (e) {
+    console.warn('[resume-sync] Reconciliation error:', e);
+  }
+}
 
 // ============================================================
 // RESUME TEXT EXTRACTION (P4)
@@ -822,6 +955,22 @@ $('#resume-from-level-btn')?.addEventListener('click', async () => {
 
 // Init nav dots
 setTimeout(() => { updatePipelineNavDot(); }, 1200);
+
+// Reconcile localStorage ↔ Supabase resume_archive on load
+setTimeout(() => {
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    reconcileResumeArchive();
+  } else {
+    // Wait for auth
+    var waitAuth = setInterval(() => {
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        clearInterval(waitAuth);
+        reconcileResumeArchive();
+      }
+    }, 500);
+    setTimeout(() => clearInterval(waitAuth), 8000);
+  }
+}, 800);
 
 // Auto re-extract DOCX resumes stuck at "no-text" once mammoth.js is loaded
 setTimeout(() => {
