@@ -1988,11 +1988,29 @@ function updateReadinessSidePanels(scores) {
   var indices = Object.keys(scores);
   for (var si = 0; si < indices.length; si++) {
     var ri = indices[si];
+    // Legacy: readiness-side-{ri} inside old layout
     var existing = document.getElementById('readiness-side-' + ri);
     if (existing) {
       var tmp = document.createElement('div');
       tmp.innerHTML = buildReadinessSide(ri, scores[ri]);
       existing.replaceWith(tmp.firstChild);
+    }
+
+    // New row layout: ai-panel-content-{ri}
+    var panelContent = document.getElementById('ai-panel-content-' + ri);
+    if (panelContent) {
+      panelContent.innerHTML = buildReadinessSide(ri, scores[ri]);
+    }
+
+    // Update inline score badge on new-resume-item row
+    var nriEl = document.getElementById('nri-' + ri);
+    if (nriEl && scores[ri]) {
+      var scoreBadge = nriEl.querySelector('.nri-score');
+      if (scoreBadge) {
+        var s = scores[ri].overallScore;
+        scoreBadge.className = 'nri-score ' + (s >= 70 ? 'high' : s >= 40 ? 'mid' : 'low');
+        scoreBadge.textContent = s + '%';
+      }
     }
 
     // Initialize gap interview + acceptance UI for premium results
