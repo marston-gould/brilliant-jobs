@@ -959,18 +959,29 @@
       <div class="page" id="page-tuning">
         <div class="page-header">
           <h2>Search Tuning</h2>
-          <p>Global filters, title matching, and exclusion rules that apply across all saved searches <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
+          <p>Global rules that sharpen every search at once <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('tuning')">How this works →</a></p>
         </div>
-        <div class="page-body">
+        <div class="page-body" style="max-width:760px;">
+
+          <!-- Hero -->
+          <div class="tuning-hero">
+            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">Less noise. Better matches.</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.88);line-height:1.7;max-width:540px;">
+              Rules you set here apply across every saved search &mdash; block entire companies, restrict locations, set seniority levels, and let poor-match analysis suggest what to exclude next. Your filters get smarter the more you use them.
+            </div>
+          </div>
 
           <!-- Global Location -->
-          <div class="tuning-card" id="tc-location">
+          <div class="tuning-card" id="tc-location" style="border-left:3px solid var(--warm);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <div class="tuning-card-icon" style="background:var(--warm-dim);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">Location Rules</span>
               <span class="tuning-card-badge empty" id="tc-loc-badge"></span>
             </div>
-            <div class="tuning-card-sub">applied globally to every search</div>
+            <div class="tuning-card-sub">Restrict where jobs can be located &mdash; applied globally to every search</div>
             <div class="tuning-card-body">
               <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim);cursor:pointer;margin-bottom:10px;">
                 <input type="checkbox" id="tuning-us-only" style="margin:0;"> only show jobs in the united states
@@ -988,13 +999,16 @@
           </div>
 
           <!-- Global Company Exclusions -->
-          <div class="tuning-card" id="tc-company">
+          <div class="tuning-card" id="tc-company" style="border-left:3px solid var(--pink);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <div class="tuning-card-icon" style="background:var(--pink-dim);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/></svg>
+              </div>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">Company Exclusions</span>
               <span class="tuning-card-badge empty" id="tc-co-badge"></span>
             </div>
-            <div class="tuning-card-sub">jobs from these companies will be hidden from all filters</div>
+            <div class="tuning-card-sub">Jobs from these companies will be hidden from all filters</div>
             <div class="tuning-card-body">
               <div class="query-builder" id="tuning-company-exclude" style="min-height:40px;position:relative;">
                 <input type="text" class="qb-input" id="tuning-co-excl-input" placeholder="add companies to always exclude… e.g. staffing corp, recruiting agency" autocomplete="off" style="padding-right:70px;">
@@ -1005,13 +1019,16 @@
           </div>
 
           <!-- Global Industry Exclusions -->
-          <div class="tuning-card" id="tc-industry">
+          <div class="tuning-card" id="tc-industry" style="border-left:3px solid var(--indigo);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <div class="tuning-card-icon" style="background:var(--indigo-dim);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              </div>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">Industry Exclusions</span>
               <span class="tuning-card-badge empty" id="tc-ind-badge"></span>
             </div>
-            <div class="tuning-card-sub">jobs from companies in these industries will be hidden from all filters</div>
+            <div class="tuning-card-sub">Jobs from companies in these industries will be hidden from all filters</div>
             <div class="tuning-card-body">
               <div class="query-builder" id="tuning-industry-exclude" style="min-height:40px;position:relative;">
                 <input type="text" class="qb-input" id="tuning-ind-excl-input" placeholder="type to search industries… e.g. staffing, insurance, military" autocomplete="off" style="padding-right:70px;">
@@ -1022,13 +1039,16 @@
           </div>
 
           <!-- Title Rules — Hierarchy + Exclusions -->
-          <div class="tuning-card" id="tc-title">
+          <div class="tuning-card" id="tc-title" style="border-left:3px solid var(--purple);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <div class="tuning-card-icon" style="background:var(--purple-dim);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+              </div>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">Title Rules</span>
               <span class="tuning-card-badge empty" id="tc-title-badge"></span>
             </div>
-            <div class="tuning-card-sub">default seniority levels (each saved search can override via the ⚙ icon) and global title exclusions</div>
+            <div class="tuning-card-sub">Set default seniority levels and global title exclusions &mdash; each saved search can override via its ⚙ icon</div>
             <div class="tuning-card-body">
 
               <!-- Default Level Hierarchy -->
@@ -1063,13 +1083,16 @@
           </div>
 
           <!-- Match Quality Suggestions -->
-          <div class="tuning-card" id="tc-poor">
+          <div class="tuning-card" id="tc-poor" style="border-left:3px solid var(--green);">
             <div class="tuning-card-header" onclick="toggleTuningCard(this)">
+              <div class="tuning-card-icon" style="background:var(--green-dim);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 00-6 0v4"/><rect x="2" y="9" width="20" height="12" rx="2"/><circle cx="12" cy="16" r="1"/></svg>
+              </div>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="tuning-card-chevron"><polyline points="6 9 12 15 18 9"/></svg>
               <span class="tuning-card-title">Recent Poor Matches</span>
               <span class="tuning-card-badge empty" id="tc-poor-badge"></span>
             </div>
-            <div class="tuning-card-sub">jobs you've hidden from the feed — unhide or use patterns to refine exclusions</div>
+            <div class="tuning-card-sub">Jobs you've hidden from the feed &mdash; unhide or use patterns to refine exclusions</div>
             <div class="tuning-card-body">
               <div id="tuning-poor-matches"></div>
               <div id="tuning-suggestions" style="margin-top:16px;"></div>
