@@ -1326,6 +1326,15 @@ const features = [
   { s: 'done', n: 'gmail-auth calendar scope (v4.61)', d: 'Added calendar.events.readonly to OAuth scope string in gmail-auth EF. Required for scan-pipeline-signals to read Google Calendar events. EF redeployed.', p: 36 },
   { s: 'done', n: 'Version sync v4.61', d: 'dashboard.html v4.54→v4.61, js/app.js v4.60→v4.61, dist/dashboard.min.js rebuilt (22 files, 589.9KB). All 3 version stamps synchronized.', p: 36 },
   { s: 'done', n: 'Phase A/B verification audit', d: 'Full audit of all 16 Phase A/B spec items against live infrastructure. All 6 tables exist (user_pipeline 34 cols, pipeline_signals 13 cols, pipeline_tracking_settings 13 cols, signal_patterns 21 seeds, gmail_connections 1 active, email_signals 10 cols). All 4 EFs live. All 4 pg_cron schedules active.', p: 36 },
+
+  // Phase 35: Calendar Intelligence + Cross-User Learning (v4.62) — 2026-02-25
+  { s: 'done', n: 'scan-pipeline-signals v3: learned patterns (v4.62)', d: 'Reads signal_patterns table for cross-user learned confidence scores instead of hardcoded values. All users benefit from confirmations/dismissals.', p: 37 },
+  { s: 'done', n: 'Interview round detection (v4.62)', d: 'Regex-based round extraction: final, onsite, panel, technical, hiring manager, phone screen, intro, round 1/2, late stage. Stored in evidence_metadata.interview_round.', p: 37 },
+  { s: 'done', n: 'Match method + confidence boost (v4.62)', d: 'evidence_metadata.match_method tracks attendee_domain vs title_match. Domain matches get +5% confidence boost.', p: 37 },
+  { s: 'done', n: 'confirm-pipeline-signal v2: cross-user learning (v4.62)', d: 'Fixed broken exec_sql pattern update → direct Supabase queries. Confirm/dismiss updates signal_patterns for ALL users. New patterns auto-inserted on first encounter.', p: 37 },
+  { s: 'done', n: 'decay_signal_patterns() RPC + cron (v4.62)', d: 'Weekly 5% decay on patterns >30d stale. Auto-delete junk patterns (>90d, 0 confirms, 3+ dismissals). pg_cron: decay-signal-patterns weekly Sun 5am UTC.', p: 37 },
+  { s: 'done', n: 'Frontend: calendar icon + round badge (v4.62)', d: 'Calendar signals show 📅 icon. Interview round rendered as accent-colored pill badge. Confidence % indicator on all signal cards (green/amber/red).', p: 37 },
+  { s: 'done', n: 'Version sync v4.62', d: 'dashboard.html, js/app.js, dist/dashboard.min.js, styles.css all v4.62. CSS cache buster updated.', p: 37 },
 ];
 
 
@@ -1449,7 +1458,8 @@ function render() {
     33: 'Merchandising System',
     34: 'Layout & Query Builder Fixes',
     35: 'Resume Archive + Metrics',
-    36: 'Pipeline Intelligence Version Sync'
+    36: 'Pipeline Intelligence Version Sync',
+    37: 'Calendar Intelligence + Cross-User Learning'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
