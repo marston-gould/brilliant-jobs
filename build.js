@@ -22,6 +22,7 @@ const jsFiles = [
   'js/rewrite.js',
   'js/resume-archive.js',
   'js/resume-metrics.js',
+  'js/tier-gating.js',
   'js/app.js',
 ];
 
