@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.68';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 5: Economic data ingestion + API');
+const BJ_VERSION = 'v4.69';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 6: Silent data enrichment');
 
 // Auth
 async function init() {
