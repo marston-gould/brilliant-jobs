@@ -5,6 +5,15 @@
 function renderSortPills() {
   const container = $('#sort-pills');
   if (!container) return;
+
+  // Dedup guard — remove duplicate fields, keep first occurrence
+  const seen = new Set();
+  jobSortStack = jobSortStack.filter(s => {
+    if (seen.has(s.field)) return false;
+    seen.add(s.field);
+    return true;
+  });
+
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
