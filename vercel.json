@@ -74,6 +74,10 @@
   ],
   "rewrites": [
     {
+      "source": "/blog/feed.xml",
+      "destination": "/api/content?mode=rss"
+    },
+    {
       "source": "/blog/feed",
       "destination": "/api/content?mode=rss"
     },
@@ -96,6 +100,18 @@
     {
       "source": "/api/content/embed/:id",
       "destination": "/api/content?mode=embed&id=:id"
+    },
+    {
+      "source": "/api/content/merch/index",
+      "destination": "/api/content?mode=merch-index"
+    },
+    {
+      "source": "/api/content/merch/datalab",
+      "destination": "/api/content?mode=merch-datalab"
+    },
+    {
+      "source": "/api/content/merch/dashboard",
+      "destination": "/api/content?mode=merch-dashboard"
     },
     {
       "source": "/jobs-:a-vs-:b",
