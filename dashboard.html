@@ -21,7 +21,7 @@
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=4.82">
+  <link rel="stylesheet" href="styles.css?v=4.83">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.82</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.83</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -751,25 +751,45 @@
           <p>Openings aggregated from multiple sources <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('feed')">How this works →</a></p>
         </div>
         <div class="page-body">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="j-total">0</div><div class="stat-label">Total Jobs</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-companies">0</div><div class="stat-label">Companies</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-new-login" style="color:var(--accent);">0</div><div class="stat-label">New Since Last Login</div></div>
-            <div class="stat-card"><div class="stat-val" id="j-new">0</div><div class="stat-label">New 1D</div></div>
-            <div class="stat-card" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="stat-val" id="j-saved">0</div><div class="stat-label">Saved Jobs</div></div>
+
+          <!-- Feed Hero with embedded stats -->
+          <div class="feed-hero">
+            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">Your market. <span style="color:#f59e0b;">Your numbers.</span></div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">Every job below comes direct from company career pages &mdash; not recycled posts, not ghost listings. Scored against your resume and filtered by your rules.</div>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="hero-stat-val" id="j-total">0</div><div class="hero-stat-label">Total Jobs</div></div>
+              <div class="hero-stat"><div class="hero-stat-val" id="j-companies">0</div><div class="hero-stat-label">Companies</div></div>
+              <div class="hero-stat"><div class="hero-stat-val hs-accent" id="j-new">0</div><div class="hero-stat-label">New Today</div></div>
+              <div class="hero-stat" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="hero-stat-val hs-green" id="j-saved">0</div><div class="hero-stat-label">Pipeline</div></div>
+            </div>
           </div>
 
-          <!-- Market Intelligence Cards (Pod 1 spec: 2 cards, dismissible) -->
-          <div id="insight-section" style="display:none;margin:0 0 12px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-              <span style="font-size:13px;font-weight:600;color:var(--text-dim)">&#128202; Market Intelligence</span>
-              <button id="insight-dismiss-all" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px" title="Dismiss">&times;</button>
+          <!-- Intelligence / Merch slot (2-card grid, dismissible, merch-client rotatable) -->
+          <div class="feed-intel" id="intel-section">
+            <div class="intel-card" id="intel-card-insight">
+              <div class="intel-icon" style="background:rgba(34,197,94,0.08);">💰</div>
+              <div class="intel-card-body">
+                <span class="intel-card-type" style="background:rgba(34,197,94,0.1);color:var(--green);">Your Market</span>
+                <div class="intel-card-title" id="intel-insight-title">Loading market data…</div>
+                <div class="intel-card-sub" id="intel-insight-sub"></div>
+                <a class="intel-card-cta" id="intel-insight-cta" href="#" style="display:none;">See details →</a>
+              </div>
+              <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
             </div>
-            <div id="insight-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+            <div class="intel-card" id="intel-card-merch" data-merch-slot="feed-intel">
+              <div class="intel-icon" style="background:var(--accent-dim);">⚡</div>
+              <div class="intel-card-body">
+                <span class="intel-card-type" style="background:var(--accent-dim);color:var(--accent);">Pro Tip</span>
+                <div class="intel-card-title" id="intel-merch-title">Score your resume against these jobs</div>
+                <div class="intel-card-sub" id="intel-merch-sub">See how well your resume matches before you apply</div>
+                <a class="intel-card-cta" href="#" onclick="event.preventDefault();document.querySelector('[data-page=resumes]').click()">Score my resume →</a>
+              </div>
+              <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
+            </div>
           </div>
 
           <!-- Q23: Global Rules crosslink -->
-          <div id="global-rules-banner" style="display:none;margin:0 12px 8px;padding:8px 12px;background:linear-gradient(135deg,rgba(77,142,255,0.05),rgba(167,139,250,0.05));border:1px solid rgba(77,142,255,0.12);border-radius:8px;font-size:11px;color:var(--text-dim);cursor:pointer;" onclick="document.querySelector('[data-page=tuning]').click()">
+          <div id="global-rules-banner" style="display:none;margin:0 0 8px;padding:8px 12px;background:linear-gradient(135deg,rgba(77,142,255,0.05),rgba(167,139,250,0.05));border:1px solid rgba(77,142,255,0.12);border-radius:8px;font-size:11px;color:var(--text-dim);cursor:pointer;" onclick="document.querySelector('[data-page=tuning]').click()">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;opacity:0.5;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
             Global rules applying to ALL searches: <strong id="gr-summary">loading…</strong> <span style="color:var(--accent);margin-left:4px;">Edit Global Rules →</span>
           </div>
@@ -1251,13 +1271,20 @@
         </div>
         <div class="page-body">
 
-          <!-- Resume Hero Banner -->
+          <!-- Resume Hero Banner with embedded stats -->
           <div class="resume-hero">
-            <div style="font-size:18px;font-weight:800;margin-bottom:6px;">
+            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">
               One role, one resume. <span style="color:#f59e0b;">Built to compete.</span>
             </div>
-            <div style="font-size:13px;color:rgba(255,255,255,0.88);line-height:1.7;max-width:540px;">
-              Every saved search gets its own resume. We score each version against live job postings so you know exactly where you stand — and what to fix — before you apply.
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">
+              Every saved search gets its own resume. We score each version against live job postings so you know where you stand &mdash; and what to fix &mdash; before you apply.
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="hero-stat-val" id="r-total">0</div><div class="hero-stat-label">Active</div></div>
+              <div class="hero-stat"><div class="hero-stat-val" id="r-levels">0</div><div class="hero-stat-label">Levels</div></div>
+              <div class="hero-stat"><div class="hero-stat-val hs-green" id="r-assigned">0</div><div class="hero-stat-label">Assigned</div></div>
+              <div class="hero-stat" id="r-coverage-card"><div class="hero-stat-val hs-accent" id="r-coverage">&mdash;</div><div class="hero-stat-label">Coverage</div></div>
+              <div class="hero-stat"><div class="hero-stat-val hs-dim" id="r-archived">0</div><div class="hero-stat-label">Archived</div></div>
             </div>
           </div>
 
@@ -1273,15 +1300,6 @@
 
           <!-- === Active Resumes Tab === -->
           <div id="resume-tab-content-active">
-
-          <!-- Stats -->
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="r-total">0</div><div class="stat-label">Active Resumes</div></div>
-            <div class="stat-card"><div class="stat-val" id="r-levels">0</div><div class="stat-label">Levels Covered</div></div>
-            <div class="stat-card"><div class="stat-val" id="r-assigned">0</div><div class="stat-label">Filters Assigned</div></div>
-            <div class="stat-card" id="r-coverage-card"><div class="stat-val" id="r-coverage">—</div><div class="stat-label">Filter Coverage</div></div>
-            <div class="stat-card"><div class="stat-val" id="r-archived">0</div><div class="stat-label">Archived</div></div>
-          </div>
 
           <!-- Coverage Alert -->
           <div id="resume-coverage-alert" style="display:none;background:var(--bg-input);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:12px;color:var(--text-dim);">
