@@ -93,6 +93,7 @@ function switchAdminTab(tabId) {
       case 'ghost': loadGhostTab(); break;
       case 'feedback': loadFeedbackTab(); break;
       case 'merch': loadMerchTab(); break;
+      case 'signals': loadAdminSignals(); break;
     }
   }
 }
@@ -139,6 +140,8 @@ async function loadBoardHealth() {
     setAdminText('ah-total', fmtAdminNum(d.total_feeds));
     setAdminText('ah-with-jobs', fmtAdminNum(d.feeds_with_jobs));
     setAdminText('ah-4xx', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-dead', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-unscraped', fmtAdminNum(d.feeds_never_scraped || 0));
     setAdminText('ah-jobs', fmtAdminNum(d.total_jobs));
 
     var net = (d.jobs_added || 0) - (d.jobs_lost || 0);
@@ -147,6 +150,8 @@ async function loadBoardHealth() {
     setDelta('ah-total-delta', d.boards_added, '+');
     setDelta('ah-with-jobs-delta', null);
     setDelta('ah-4xx-delta', d.boards_lost, '+', true);
+    setDelta('ah-dead-delta', null);
+    setDelta('ah-unscraped-delta', null);
     setDelta('ah-jobs-delta', d.jobs_added, '+');
     setDelta('ah-net-delta', d.jobs_lost, '-', true);
 
@@ -162,17 +167,20 @@ async function loadBoardHealth() {
       var tbody = document.getElementById('admin-platform-body');
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
-        var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
+        var totBoards = 0, totWithJobs = 0, totDead = 0, totUnscraped = 0, totJobs = 0;
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
           var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
-          totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
+          var dead = p.dead || 0;
+          var unscraped = p.never_scraped || 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; totDead += dead; totUnscraped += unscraped; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
             '<td class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
+            '<td class="' + (dead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(dead) + '</td>' +
+            '<td class="' + (unscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(unscraped) + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
@@ -184,7 +192,8 @@ async function loadBoardHealth() {
             '<td>Total</td>' +
             '<td>' + fmtAdminNum(totBoards) + '</td>' +
             '<td>' + totPct + '%</td>' +
-            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td class="' + (totDead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(totDead) + '</td>' +
+            '<td class="' + (totUnscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(totUnscraped) + '</td>' +
             '<td>' + fmtAdminNum(totJobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
@@ -196,6 +205,80 @@ async function loadBoardHealth() {
     loadFeedHealthCharts();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
+  }
+}
+
+// ─── Export Boards CSV ───
+async function exportBoardsCsv(type) {
+  var btn = document.getElementById('export-' + type + '-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exporting…'; }
+  try {
+    var sb = window._bjSupa;
+    if (!sb) throw new Error('Supabase not ready');
+
+    var query = sb.from('ats_companies').select('slug,source,company_name,job_count,last_http_status,last_checked,last_refresh_at,created_at');
+
+    if (type === 'dead') {
+      query = query.eq('last_http_status', 404);
+    } else if (type === 'unscraped') {
+      query = query.is('last_refresh_at', null);
+    } else if (type === 'active') {
+      query = query.gt('job_count', 0);
+    }
+    // 'all' = no extra filter
+
+    query = query.eq('is_active', true).order('source').order('slug');
+
+    var allRows = [];
+    var pageSize = 1000;
+    var page = 0;
+    while (true) {
+      var { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) break;
+      page++;
+      if (page > 100) break; // safety
+    }
+
+    if (allRows.length === 0) {
+      if (typeof showToast === 'function') showToast('No boards found for "' + type + '"', { type: 'warn' });
+      return;
+    }
+
+    // Build CSV
+    var headers = ['slug','source','company_name','job_count','last_http_status','last_checked','last_refresh_at','created_at'];
+    var csvLines = [headers.join(',')];
+    allRows.forEach(function(r) {
+      csvLines.push(headers.map(function(h) {
+        var v = r[h];
+        if (v == null) return '';
+        v = String(v);
+        if (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) {
+          return '"' + v.replace(/"/g, '""') + '"';
+        }
+        return v;
+      }).join(','));
+    });
+
+    var blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'boards-' + type + '-' + dateStr + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
+  } catch (err) {
+    console.error('[Admin] Export error:', err);
+    if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Export ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Boards'; }
   }
 }
 
@@ -2699,4 +2782,107 @@ function escHtml(s) {
 function escAttr(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Admin: Signals Tab (Phase D) ─────────────────────────────────
+async function loadAdminSignals() {
+  try {
+    // KPIs
+    var total = 0, pending = 0, confirmed = 0, dismissed = 0;
+    var sourceCounts = {};
+    var recentRows = [];
+
+    var { data: signals } = await sb.from('pipeline_signals')
+      .select('id, signal_source, signal_type, proposed_stage, confidence, status, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (signals) {
+      total = signals.length;
+      signals.forEach(function(s) {
+        if (s.status === 'pending_confirmation') pending++;
+        else if (s.status === 'confirmed') confirmed++;
+        else if (s.status === 'dismissed') dismissed++;
+        sourceCounts[s.signal_source] = (sourceCounts[s.signal_source] || 0) + 1;
+      });
+      recentRows = signals.slice(0, 50);
+    }
+
+    var rate = (confirmed + dismissed) > 0 ? Math.round((confirmed / (confirmed + dismissed)) * 100) + '%' : '—';
+    var el;
+    el = document.getElementById('sig-total'); if (el) el.textContent = total;
+    el = document.getElementById('sig-pending'); if (el) el.textContent = pending;
+    el = document.getElementById('sig-confirmed'); if (el) el.textContent = confirmed;
+    el = document.getElementById('sig-dismissed'); if (el) el.textContent = dismissed;
+    el = document.getElementById('sig-rate'); if (el) el.textContent = rate;
+
+    // Signals by Source chart
+    var sourceEl = document.getElementById('sig-chart-source');
+    if (sourceEl && typeof echarts !== 'undefined') {
+      var srcChart = echarts.init(sourceEl);
+      var srcData = Object.entries(sourceCounts).map(function(e) { return { name: e[0], value: e[1] }; });
+      srcChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: srcData,
+          label: { color: 'var(--text-dim)', fontSize: 11 },
+          itemStyle: { borderRadius: 4, borderColor: 'var(--bg-input)', borderWidth: 2 }
+        }]
+      });
+    }
+
+    // Pattern Confidence Distribution
+    var { data: patterns } = await sb.from('signal_patterns')
+      .select('pattern_type, pattern_value, associated_signal_type, confidence_score, confirmations, dismissals, last_seen_at')
+      .order('confidence_score', { ascending: false });
+
+    var patternEl = document.getElementById('sig-chart-patterns');
+    if (patternEl && patterns && typeof echarts !== 'undefined') {
+      var patChart = echarts.init(patternEl);
+      var buckets = { '90-100': 0, '70-89': 0, '50-69': 0, '30-49': 0, '<30': 0 };
+      patterns.forEach(function(p) {
+        var s = Math.round(p.confidence_score * 100);
+        if (s >= 90) buckets['90-100']++;
+        else if (s >= 70) buckets['70-89']++;
+        else if (s >= 50) buckets['50-69']++;
+        else if (s >= 30) buckets['30-49']++;
+        else buckets['<30']++;
+      });
+      patChart.setOption({
+        tooltip: {},
+        xAxis: { type: 'category', data: Object.keys(buckets), axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        series: [{ type: 'bar', data: Object.values(buckets), itemStyle: { color: 'var(--accent)', borderRadius: [4, 4, 0, 0] } }]
+      });
+    }
+
+    // Patterns table
+    var patBody = document.getElementById('sig-patterns-body');
+    if (patBody && patterns) {
+      patBody.innerHTML = patterns.map(function(p) {
+        var confPct = Math.round(p.confidence_score * 100);
+        var confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+        var lastSeen = p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString() : '—';
+        return '<tr><td>' + escHtml(p.pattern_type) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.pattern_value) +
+          '</td><td>' + escHtml(p.associated_signal_type) + '</td><td style="color:' + confColor + ';font-weight:600">' + confPct + '%</td><td>' + p.confirmations +
+          '</td><td>' + p.dismissals + '</td><td>' + lastSeen + '</td></tr>';
+      }).join('');
+    }
+
+    // Recent signals table
+    var sigBody = document.getElementById('sig-recent-body');
+    if (sigBody) {
+      sigBody.innerHTML = recentRows.map(function(s) {
+        var confPct = s.confidence ? Math.round(s.confidence * 100) + '%' : '—';
+        var statusColor = s.status === 'confirmed' ? '#22c55e' : s.status === 'dismissed' ? '#ef4444' : '#f59e0b';
+        var dt = new Date(s.created_at);
+        var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return '<tr><td style="font-size:10px">' + (s.user_id || '').substring(0, 8) + '…</td><td>' + escHtml(s.signal_source) +
+          '</td><td>' + escHtml(s.signal_type) + '</td><td>' + escHtml(s.proposed_stage || '—') +
+          '</td><td>' + confPct + '</td><td style="color:' + statusColor + '">' + escHtml(s.status) +
+          '</td><td style="font-size:11px">' + dateStr + '</td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('[Admin] Signals tab error:', e);
+  }
 }
