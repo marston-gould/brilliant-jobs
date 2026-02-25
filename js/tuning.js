@@ -1141,6 +1141,22 @@ async function updatePoorMatchSuggestions() {
   const recent = [...hiddenJobIds].reverse().slice(0, 20);
   let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} hidden job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
 
+  // Pre-compute title word frequencies for per-card annotations
+  const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
+  const titleWordCounts = {};
+  const companyCountsAll = {};
+  hiddenJobIds.forEach(h => {
+    if (h.title) {
+      const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+      const seen = new Set();
+      words.forEach(w => { if (!seen.has(w)) { titleWordCounts[w] = (titleWordCounts[w] || 0) + 1; seen.add(w); } });
+    }
+    if (h.company) {
+      const co = h.company.trim();
+      if (co) companyCountsAll[co] = (companyCountsAll[co] || 0) + 1;
+    }
+  });
+
   recent.forEach((h, i) => {
     const reasonLabel = HIDE_REASONS.find(r => r.key === h.reason)?.label || h.reason || 'Hidden';
     const dateStr = h.hiddenAt ? new Date(h.hiddenAt).toLocaleDateString() : '';
@@ -1149,10 +1165,26 @@ async function updatePoorMatchSuggestions() {
     const titleHtml = jobUrl
       ? `<a href="${jobUrl}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text)'">${titleText}</a>`
       : titleText;
+
+    // Per-card pattern notes: show recurring keywords from this job's title
+    let patternNote = '';
+    if (h.title) {
+      const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+      const recurring = words.filter(w => titleWordCounts[w] >= 2);
+      if (recurring.length > 0) {
+        const unique = [...new Set(recurring)].slice(0, 3);
+        patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">Pattern: "${unique.join('", "')}" appears in ${Math.max(...unique.map(w => titleWordCounts[w]))} hidden jobs</div>`;
+      }
+    }
+    if (!patternNote && h.company && companyCountsAll[h.company.trim()] >= 2) {
+      patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">Pattern: ${h.company} hidden ${companyCountsAll[h.company.trim()]} times</div>`;
+    }
+
     html += `<div class="poor-match-card">
       <div class="poor-match-info">
         <div class="poor-match-title" title="${(h.title||'').replace(/"/g,'&quot;')}">${titleHtml}</div>
         <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
+        ${patternNote}
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
       <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
@@ -1169,38 +1201,17 @@ async function updatePoorMatchSuggestions() {
   // Pattern analysis — suggest exclusions based on common words in hidden job titles/companies
   if (!sugContainer) return;
 
-  // Analyze title words (2+ occurrences)
-  const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
-  const titleWords = {};
-  const compCounts = {};
-
-  hiddenJobIds.forEach(h => {
-    // Count title keywords
-    if (h.title) {
-      const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-      const seen = new Set();
-      words.forEach(w => {
-        if (!seen.has(w)) { titleWords[w] = (titleWords[w] || 0) + 1; seen.add(w); }
-      });
-    }
-    // Count companies
-    if (h.company) {
-      const co = h.company.trim();
-      if (co) compCounts[co] = (compCounts[co] || 0) + 1;
-    }
-  });
-
   // Get tuning exclusions to avoid suggesting already-excluded terms
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
   const existingTitleExcl = new Set((tuning.titleExcludes || []).map(t => t.toLowerCase()));
   const existingCoExcl = new Set((tuning.companyExcludes || []).map(c => c.toLowerCase()));
 
-  const titleSuggestions = Object.entries(titleWords)
+  const titleSuggestions = Object.entries(titleWordCounts)
     .filter(([w, c]) => c >= 2 && !existingTitleExcl.has(w))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
-  const companySuggestions = Object.entries(compCounts)
+  const companySuggestions = Object.entries(companyCountsAll)
     .filter(([co, c]) => c >= 2 && !existingCoExcl.has(co.toLowerCase()))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
@@ -1213,6 +1224,8 @@ async function updatePoorMatchSuggestions() {
   let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Suggested exclusions</div>';
 
   if (titleSuggestions.length > 0) {
+    const topWord = titleSuggestions[0];
+    sugHtml += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;padding:8px 12px;background:var(--bg-input);border-radius:8px;border-left:3px solid var(--warm);">You've hidden ${hiddenJobIds.length} jobs — <strong>"${topWord[0]}"</strong> appears in ${topWord[1]} of them. Add it as an exclusion?</div>`;
     sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Title keywords appearing in multiple hidden jobs:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     titleSuggestions.forEach(([word, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('title', '${word}', this)">${word} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
