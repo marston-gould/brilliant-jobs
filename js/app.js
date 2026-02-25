@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.66';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 3: Content distribution + blog');
+const BJ_VERSION = 'v4.67';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Content engine: Pod 1 spec alignment + merchandising');
 
 // Auth
 async function init() {
