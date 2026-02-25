@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-24
+**Last updated:** 2026-02-25
 **Target launch:** March 2026
-**Current version:** v4.48.1
+**Current version:** v4.60
 
 ---
 
@@ -924,7 +924,11 @@
 | **S2** Survey System Hardening | 6/6 | v4.29 | ✅ Complete |
 | **T** Intelligent Pipeline Tracking | 22/22 | v4.30–v4.32 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **279+ items** | **v2.68–v4.32** | **17 items 🚫 BLOCKED** |
+| **31** Daily Fixes & Admin Panel | 22/22 | v4.42–v4.48.1 | ✅ Complete |
+| **31b** Merchandising System | 5/5 | v4.51 | ✅ Complete |
+| **32** Layout & Query Builder Fixes | 4/4 | v4.52–v4.54 | ✅ Complete |
+| **33** Resume Archive + Metrics | 31/31 | v4.55–v4.60 | ✅ Complete (all 8 phases) |
+| **Total built** | **340+ items** | **v2.68–v4.60** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -970,6 +974,10 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-25 | 33 | RA1–RA31 | **Phase 33: Resume Archive + Metrics (v4.55–v4.60).** All 8 phases in single session. 3 new tables (resume_archive, resume_score_history, resume_job_usage). 7 functions + 2 triggers + 1 pg_cron. Archive tab UI with storage bar + version timeline. Expiry cron (daily 3AM) with tier-gated restore. Resume Metrics tab on Stats page: sparkline, level fit, pipeline funnel, usage log. Tier gating module. Pipeline→usage auto-sync trigger. 3 new JS modules (22 total, 604KB minified). 24 cron jobs. |
+| 2026-02-24 | 32 | F23–F26 | **Phase 32: Layout & Query Builder Fixes (v4.52–v4.54).** `.main` div nesting fix, sort-pills HTML, roadmap JS parser fix, admin CSV export. |
+| 2026-02-24 | 31b | M1–M5 | **Merchandising System (v4.51).** 3 tables (merch_placements, merch_rules, merch_content). 52-entry copy bank migration. Admin tab with master-detail editing. Frontend merch-client.js. |
+| 2026-02-24 | 31 | F1–F22 | **Phase 31: Daily Fixes & Admin Panel (v4.42–v4.48.1).** 22 items across 7 versions + 2 Edge Functions + Nano→Small upgrade. Tailwind safelist, HTML nesting, forgot password, setup cards, resume Storage persistence, SEO Extract Report, admin feedback system, merchandising. |
 | 2026-02-24 | T | T1–T22 | **Phase T: Intelligent Pipeline Tracking (v4.30–v4.32).** 4 new DB tables (pipeline_tracking_settings, pipeline_signals, signal_patterns + 21 seeds, user_pipeline +7 columns). 3 new Edge Functions (prompt-pipeline-updates, confirm-pipeline-signal, scan-pipeline-signals). gmail-scan refactored: auto-advance → confirmation-first pipeline_signals. 5-color dot system (green/blue-pulse/yellow/red/gray). Inline signal + prompt cards. ⋮ context menu (mute/reminder/note). Pipeline Intelligence settings UI. PostHog events (5). Last Activity column. Stage header signal badges. 32 Edge Functions total, 17 pg_cron jobs. |
 | 2026-02-24 | S2 | M-R1–R6 | **Survey system hardening (v4.29).** nps-pulse EF deployed (bug fix: last_sign_in_at → last_seen_at) + pg_cron. periodic-survey-pulse EF + cron. NPS formula fixed (avg → standard). survey_social_proof anon access fixed. micro-survey priority already built. 29 Edge Functions, 14 pg_cron. |
 | 2026-02-24 | R | R1–R9 | **Phase R: AI Rewrite JD-Match Boost (v4.28).** Complete "Boost Match" pipeline: 2 new Edge Functions (rewrite-resume-analyze, rewrite-resume-execute), 4 AI agents (Gap Analyzer + Question Generator on Haiku, Resume Rewriter on Sonnet, Quality Checker on Haiku). Slide-out panel UI (analyze → Q&A → diff → accept). Boost pill on Jobs Feed match column (< 85%). Client-side DOCX generation via docx-js + Supabase Storage upload. resume_texts table + 11 new rewrite_sessions columns + init_rewrite_session RPC. Build hardening: fixed esbuild scope collision. 27 Edge Functions total. |
@@ -1176,6 +1184,7 @@ M-R1–R6 complete — see **Phase S2** above (v4.29).
 | — | 30 * * * * | prompt-pipeline-hourly | Phase T |
 | — | */15 * * * * | scan-pipeline-signals-15m | Phase T |
 | — | 0 4 * * 0 | pattern-confidence-decay | Phase T |
+| — | 0 3 * * * | expire-archived-resumes | Phase 33 |
 
 ---
 
@@ -1285,3 +1294,118 @@ Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge
 | Edge | seo-sync/index.ts | JWT base64 + PEM fix |
 | Edge | sync-feedback/index.ts | New: Canny + feedback sync |
 | v4.51 | dashboard.html, js/admin.js, js/app.js, index.html, js/merch-client.js, dist/* | Merchandising system: DB schema, admin tab, frontend integration |
+
+---
+
+## Phase 32: Layout & Query Builder Fixes (v4.52–v4.54) — 2026-02-24
+
+**Status:** ✅ COMPLETE
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| F23 | `.main` div nesting fix | v4.52 | ✅ | Extra `</div>` after page-stats closed `.main` prematurely. All 16 pages now inside `.main`. |
+| F24 | Sort-pills HTML element | v4.53 | ✅ | Missing `#sort-pills` blocked all query builder event handlers from binding. |
+| F25 | Roadmap JS parser fix | v4.53 | ✅ | Phase 31-33 items were jammed inside `blockedMap` object literal. Moved to `features` array. |
+| F26 | Admin CSV export | v4.54 | ✅ | Export dead/unscraped/active/all boards as CSV from admin panel. |
+
+---
+
+## Phase 33: Resume Archive + Metrics (v4.55–v4.60) — 2026-02-25
+
+**Estimated:** ~10 sessions | **Actual:** Single session | **Status:** ✅ COMPLETE (all 8 phases)
+
+Implemented the full Resume Archive + Resume Metrics Intelligence system from the Pod 1 handoff spec. 3 new tables, 7 functions, 2 triggers, 1 cron job, 3 new JS modules (22 total in bundle).
+
+### Phase 1: Schema + Storage Foundation (v4.55)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA1 | `resume_archive` table (18 cols) | ✅ | UUID PK, version tracking, SHA-256 dedup, JSONB metadata_snapshot, 4 RLS policies, 4 indexes |
+| RA2 | `resume_score_history` table (13 cols) | ✅ | Score type (ai/ngram/manual), scoring model, analysis_json JSONB, 2 RLS, 3 indexes |
+| RA3 | `resume_job_usage` table (11 cols) | ✅ | Pipeline stage tracking, denormalized company/title, 3 RLS, 3 indexes |
+| RA4 | Helper functions (3) | ✅ | `check_resume_dedup`, `next_version_number`, `check_resume_limits` (fixed to use `profiles.plan`) |
+
+### Phase 2: Data Migration + Sync (v4.56)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA5 | Migrate 3 resumes | ✅ | SallieMae (real SHA-256 from Storage), NinjaTrader + Redfin (from profiles.user_data.resumes) |
+| RA6 | `sync_resume_to_archive()` | ✅ | Dedup detection, version lineage, tier limit enforcement. Returns success/error JSON. |
+| RA7 | `migrate_resumes_to_archive()` | ✅ | Batch migration function for existing `resumes` table rows (50 per batch) |
+| RA8 | `updated_at` trigger | ✅ | Auto-updates `updated_at` on any resume_archive row change |
+
+### Phase 3: Archive Tab UI (v4.57)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA9 | Active/Archive tab toggle | ✅ | Pill-button pattern matching Applications List/Board toggle |
+| RA10 | Storage usage bar | ✅ | Current usage vs tier limit, color-coded (green/amber/red), upgrade CTA at 80% |
+| RA11 | Archive table | ✅ | Name, Version, Created, Last Used, Size, Status badges, search filter, actions |
+| RA12 | Version timeline | ✅ | Expandable panel with green/gray dots + connector lines |
+| RA13 | `js/resume-archive.js` | ✅ | 20th JS module. Tab switching, archive load, actions, deep-linking (`#resumes?tab=archive`) |
+
+### Phase 4: Expiry Cron + Restore (v4.58)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA14 | `expire_archived_resumes()` | ✅ | Soft-deletes expired archives (retains metadata_snapshot, marks storage_path as expired) |
+| RA15 | pg_cron: `expire-archived-resumes` | ✅ | Daily at 3 AM UTC. 24th cron job. |
+| RA16 | `restore_archived_resume()` | ✅ | Tier-gated: Free expired → EXPIRED_UPGRADE_REQUIRED → subscription redirect. Starter/Pro → restore. |
+| RA17 | Tier-based expiry | ✅ | Archive sets `archive_expires_at`: Free=30d, Starter=90d, Pro=unlimited |
+| RA18 | Expired UI state | ✅ | Red "Expired" badge, expiry countdown for archived resumes, "Restore ↑" button |
+
+### Phase 5: Score History Wiring — DEFERRED TO NEXT
+
+Tables created in Phase 1. Edge Function dual-write pending.
+
+### Phase 6: Resume Metrics Intelligence UI (v4.59)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA19 | Market Stats / Resume Metrics tab toggle | ✅ | Pill toggle on Stats page (same pattern as Resumes) |
+| RA20 | Resume selector dropdown | ✅ | Populated from `resume_archive` where `is_active = true` |
+| RA21 | Score Summary card + sparkline | ✅ | Last score (large), type, detail. ECharts sparkline of last 10 scores. |
+| RA22 | Level Fit bar chart | ✅ | Horizontal bar by Entry/Mid/Senior/Lead/Executive with auto-insight text |
+| RA23 | Pipeline Funnel | ✅ | ECharts funnel: Applied → Screened → Interview → Offer with counts + % |
+| RA24 | Application Log table | ✅ | Company, Job Title, Applied date, Score, Stage. Filterable. |
+| RA25 | Cross-linking | ✅ | Archive → Metrics and Metrics → Archive navigation |
+| RA26 | `js/resume-metrics.js` | ✅ | 21st JS module. ECharts dispose/resize, deep-linking. |
+
+### Phase 7+8: Tier Gating + Pipeline Tracking (v4.60)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA27 | `js/tier-gating.js` | ✅ | 22nd JS module. TIER_GATES config, `showTierGate()` overlay, `canAccessFeature()`, `getUserTier()` |
+| RA28 | Free tier gating | ✅ | Sparkline, level fit, pipeline, usage log all gated with blurred overlay + upgrade CTA |
+| RA29 | `trg_pipeline_to_usage` trigger | ✅ | Auto-syncs user_pipeline INSERT/UPDATE → resume_job_usage. Resolves resume name → ID. |
+| RA30 | `sync_pipeline_to_resume_usage()` | ✅ | Manual RPC for backfill. Tested: resolves resume names, updates `last_used_at`. |
+| RA31 | Unique index on usage | ✅ | `idx_job_usage_unique ON resume_job_usage(user_id, job_id)` prevents dupes |
+
+### Deployment Summary
+
+| Version | Commit | Files | Changes |
+|---------|--------|-------|---------|
+| v4.55 | `4dcff0fa` + `c3292c41` | dashboard.html, js/app.js, dist/* | Schema: 3 tables, RLS, indexes, helper functions |
+| v4.56 | `fd311ee7` + `27deaa05` | dashboard.html, js/app.js, dist/* | Migration: 3 resumes, sync function, version tracking |
+| v4.57 | `94ac1e5e` | dashboard.html, js/app.js, js/resume-archive.js, build.js, dist/* | Archive tab UI |
+| v4.58 | `f87751e7` | dashboard.html, js/app.js, js/resume-archive.js, dist/* | Expiry cron + restore flow |
+| v4.59 | `2a09d069` | dashboard.html, js/app.js, js/resume-metrics.js, build.js, dist/* | Resume Metrics Intelligence UI |
+| v4.60 | `1a6f591a` | dashboard.html, js/app.js, js/tier-gating.js, build.js, dist/* | Tier gating + pipeline tracking |
+
+### New Database Objects
+
+| Type | Name | Notes |
+|------|------|-------|
+| Table | `resume_archive` | 18 columns, 4 RLS, 4 indexes |
+| Table | `resume_score_history` | 13 columns, 2 RLS, 3 indexes |
+| Table | `resume_job_usage` | 11 columns, 3 RLS, 3+1 indexes |
+| Function | `check_resume_dedup` | SHA-256 dedup check |
+| Function | `next_version_number` | Auto-increment within lineage |
+| Function | `check_resume_limits` | Tier-aware usage/limit check |
+| Function | `sync_resume_to_archive` | Client-facing: dedup + version + limits |
+| Function | `expire_archived_resumes` | Soft-delete expired archives |
+| Function | `restore_archived_resume` | Tier-gated restore |
+| Function | `sync_pipeline_to_resume_usage` | Manual pipeline→usage bridge |
+| Trigger | `update_resume_archive_updated_at` | Auto-update timestamp |
+| Trigger | `trg_pipeline_to_usage` | Auto-sync pipeline→usage on INSERT/UPDATE |
+| Cron | `expire-archived-resumes` | Daily 3 AM UTC (24th cron job) |

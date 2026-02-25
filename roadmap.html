@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 24, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 5 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 17 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking (signal detection + smart prompts) · Roadmap filter bar · Merchandising System (database-driven rotating content)
+    Brilliant Jobs · Internal Roadmap · Updated February 25, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 24 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules)
   </div>
 
 </div>
@@ -1306,6 +1306,20 @@ const features = [
   { s: 'done', n: 'Merch: Admin Merchandising tab', d: 'New admin tab (9th) in dashboard.html with master-detail layout. Left panel: placement list grouped by page URL. Right panel: placement detail + rules section (cohort × audience × priority) + content entries table (sort order, h1/sub preview, category badge, visit gating). Edit modal with live HTML preview and {JOBS}/{COMPANIES} hydration. Bulk JSON import. Full CRUD for placements, rules, content.', p: 33 },
   { s: 'done', n: 'Merch: Frontend merch-client.js', d: 'Lightweight IIFE on landing page. Fetches rotating content from get_merch_content RPC (raw fetch, no SDK dependency). Picks unseen entry via localStorage rotation tracking. Injects into DOM via data-merch-field attributes on returning + lapsed hero sections. Hydrates {JOBS}/{COMPANIES} placeholders. PostHog: merch_content_shown on inject, merch_content_click on hero CTAs. Static content = progressive enhancement fallback.', p: 33 },
   { s: 'done', n: 'Merch: Version sync v4.51', d: 'dashboard.html nav-version, js/app.js BJ_VERSION + console.log, dist/dashboard.min.js all updated to v4.51. Bundle rebuilt (19 files, 566.9KB minified). QA: 28/28 tests pass (audience segments, deep-visit gating, cohort fallback, seasonal filtering, RLS, admin CRUD cascade, production frontend, data integrity).', p: 33 },
+
+  // Phase 34: Layout & Query Builder Fixes (v4.52–v4.54) — 2026-02-24
+  { s: 'done', n: '.main div nesting fix (v4.52)', d: 'Extra </div> after page-stats closed .main prematurely. All 16 pages now properly inside .main container.', p: 34 },
+  { s: 'done', n: 'Sort-pills HTML element (v4.53)', d: 'Missing #sort-pills element blocked all query builder event handlers from binding. Pills now render on Enter.', p: 34 },
+  { s: 'done', n: 'Roadmap JS parser fix (v4.53)', d: 'Phase 31-33 items were jammed inside blockedMap object literal, breaking the JS parser. Moved back to features array.', p: 34 },
+  { s: 'done', n: 'Admin CSV export (v4.54)', d: 'Export dead/unscraped/active/all boards as CSV from admin panel.', p: 34 },
+
+  // Phase 35: Resume Archive + Metrics (v4.55–v4.60) — 2026-02-25
+  { s: 'done', n: 'Resume Archive: Schema + Storage (v4.55)', d: '3 new tables: resume_archive (18 cols, 4 RLS, 4 indexes), resume_score_history (13 cols, 2 RLS, 3 indexes), resume_job_usage (11 cols, 3 RLS, 3 indexes). Helper functions: check_resume_dedup, next_version_number, check_resume_limits.', p: 35 },
+  { s: 'done', n: 'Resume Archive: Data Migration (v4.56)', d: 'Migrated 3 resumes into resume_archive. sync_resume_to_archive() with dedup + version lineage + tier enforcement. migrate_resumes_to_archive() batch function. Fixed check_resume_limits to use profiles.plan.', p: 35 },
+  { s: 'done', n: 'Resume Archive: Tab UI (v4.57)', d: 'Archive tab on Resumes page with pill toggle. Storage usage bar (green/amber/red + upgrade CTA). Stats row. Sortable table with status badges (Active/Archived/Inactive). Version timeline panel. Search filter. Deep-linking (#resumes?tab=archive). New js/resume-archive.js (20th module).', p: 35 },
+  { s: 'done', n: 'Resume Archive: Expiry Cron + Restore (v4.58)', d: 'expire_archived_resumes() soft-deletes expired archives. pg_cron daily at 3 AM UTC (24th cron). restore_archived_resume() with tier-gated restore (Free expired → upgrade required). Tier-based expiry: Free=30d, Starter=90d, Pro=unlimited. Expired UI state (red badge, countdown, Restore ↑ button).', p: 35 },
+  { s: 'done', n: 'Resume Metrics: Intelligence UI (v4.59)', d: 'Market Stats / Resume Metrics tab toggle on Stats page. Resume selector dropdown. Score Summary card with ECharts sparkline (last 10). Level Fit horizontal bar chart with auto-insight. Pipeline Funnel (Applied→Screened→Interview→Offer). Application Log table with stage badges + filter. Cross-linking (Archive↔Metrics). New js/resume-metrics.js (21st module).', p: 35 },
+  { s: 'done', n: 'Tier Gating + Pipeline Tracking (v4.60)', d: 'New js/tier-gating.js (22nd module). TIER_GATES config for 9 features across Free/Starter/Pro. showTierGate() blurred overlay with lock icon + upgrade CTA. Free tier gating on sparkline, level fit, pipeline, usage log. Pipeline→usage DB trigger (trg_pipeline_to_usage) auto-syncs user_pipeline to resume_job_usage. Resolves resume name → ID. Unique index prevents dupes.', p: 35 },
   { s: 'backlog', n: 'UX: Resume scoring button labels', d: 'Resume card "Analyze" and "✨ Deep" buttons have unclear labels — user cannot tell what each does. "Deep" has a ✨ sparkle icon that looks like a 3D cube on some displays. Rename to clearly describe the difference: Analyze = ngram keyword match scoring (free), Deep = multi-agent AI analysis with coaching (Pro, credit-based). Remove misleading icon. Consider single "Score" button with tier-gated upsell to deep mode.', p: 17 },
 ];
 
@@ -1425,7 +1439,11 @@ function render() {
     28: 'AI Rewrite: JD-Match Boost',
     29: 'Survey System Hardening',
     30: 'Intelligent Pipeline Tracking',
-    31: 'Daily Fixes & Admin Panel'
+    31: 'Daily Fixes & Admin Panel',
+    32: 'Merchandising System',
+    33: 'Merchandising System',
+    34: 'Layout & Query Builder Fixes',
+    35: 'Resume Archive + Metrics'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
