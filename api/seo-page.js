@@ -615,8 +615,157 @@ function render404(msg) {
 // =========================================================================
 // Handler
 // =========================================================================
+
+// =========================================================================
+// Company Profile Page — A1
+// =========================================================================
+function renderCompanyPage(profile) {
+  var co = profile.company || {};
+  var st = profile.stats || {};
+  var roles = profile.top_roles || [];
+  var depts = profile.top_departments || [];
+  var locs = profile.locations || [];
+  var timeline = profile.hiring_timeline || [];
+  var salaries = profile.salary_ranges || [];
+
+  var name = esc(co.name || co.slug);
+  var openJobs = Number(st.open_jobs || 0);
+  var remoteJobs = Number(st.remote_jobs || 0);
+  var hybridJobs = Number(st.hybrid_jobs || 0);
+  var onsiteJobs = Number(st.onsite_jobs || 0);
+  var remotePct = openJobs > 0 ? Math.round((remoteJobs / openJobs) * 100) : 0;
+
+  var metaDesc = name + ' has ' + fmtNum(openJobs) + ' open positions' +
+    (co.industry ? ' in ' + esc(co.industry) : '') +
+    '. View hiring trends, salary data, top roles, and locations.';
+
+  // Schema.org Organization JSON-LD
+  var schemaOrg = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: co.name || co.slug,
+    url: co.website || ('https://brilliantjobs.app/company/' + co.slug),
+  };
+  if (co.industry) schemaOrg.industry = co.industry;
+  if (co.founded) schemaOrg.foundingDate = String(co.founded);
+  if (co.locality && co.region) {
+    schemaOrg.address = { '@type': 'PostalAddress', addressLocality: co.locality, addressRegion: co.region };
+  }
+
+  // Stat cards
+  var statCards = [
+    { label: 'Open Positions', value: fmtNum(openJobs) },
+    { label: 'Remote', value: remotePct + '%' + (remoteJobs > 0 ? ' (' + fmtNum(remoteJobs) + ')' : '') },
+    { label: 'Departments', value: st.dept_count > 0 ? fmtNum(st.dept_count) : 'N/A' },
+    { label: 'Avg Salary', value: st.avg_salary_min ? fmtSal(st.avg_salary_min) + (st.avg_salary_max ? ' – ' + fmtSal(st.avg_salary_max) : '') : 'Not listed' },
+  ];
+
+  // Roles table
+  var rolesHtml = roles.length > 0 ? '<div class="seo-section"><h2>Top Roles</h2><table class="seo-table"><thead><tr><th>Role</th><th>Openings</th></tr></thead><tbody>' +
+    roles.map(function(r) { return '<tr><td>' + esc(r.title) + '</td><td>' + fmtNum(r.count) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>' : '';
+
+  // Departments
+  var deptsHtml = depts.length > 0 ? '<div class="seo-section"><h2>Departments</h2><div class="seo-tag-cloud">' +
+    depts.map(function(d) { return '<span class="seo-tag">' + esc(d.department) + ' <strong>' + fmtNum(d.count) + '</strong></span>'; }).join('') +
+    '</div></div>' : '';
+
+  // Locations
+  var locsHtml = locs.length > 0 ? '<div class="seo-section"><h2>Hiring Locations</h2><table class="seo-table"><thead><tr><th>Location</th><th>Jobs</th></tr></thead><tbody>' +
+    locs.map(function(l) { return '<tr><td>' + esc(l.location) + '</td><td>' + fmtNum(l.count) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>' : '';
+
+  // Salary table
+  var salaryHtml = salaries.length > 0 ? '<div class="seo-section"><h2>Salary Ranges by Role</h2><table class="seo-table"><thead><tr><th>Role</th><th>Salary Range</th><th>Jobs</th></tr></thead><tbody>' +
+    salaries.map(function(s) { return '<tr><td>' + esc(s.title) + '</td><td>' + fmtSal(s.min) + ' – ' + fmtSal(s.max) + '</td><td>' + fmtNum(s.count) + '</td></tr>'; }).join('') +
+    '</tbody></table></div>' : '';
+
+  // Timeline chart data (for ECharts)
+  var timelineChartData = timeline.length > 0 ? JSON.stringify({
+    weeks: timeline.map(function(t) { return t.week; }),
+    counts: timeline.map(function(t) { return t.count; })
+  }) : 'null';
+
+  // Work model chart data
+  var workModelData = JSON.stringify({
+    labels: ['Remote', 'Hybrid', 'Onsite', 'Unspecified'],
+    values: [remoteJobs, hybridJobs, onsiteJobs, Math.max(0, openJobs - remoteJobs - hybridJobs - onsiteJobs)]
+  });
+
+  return '<!DOCTYPE html><html lang="en"><head>' +
+    '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + name + ' Jobs &amp; Hiring Data | Brilliant Jobs</title>' +
+    '<meta name="description" content="' + esc(metaDesc) + '">' +
+    '<link rel="canonical" href="https://brilliantjobs.app/company/' + esc(co.slug) + '">' +
+    '<meta property="og:title" content="' + name + ' Jobs &amp; Hiring Data">' +
+    '<meta property="og:description" content="' + esc(metaDesc) + '">' +
+    '<meta property="og:type" content="website">' +
+    '<meta property="og:url" content="https://brilliantjobs.app/company/' + esc(co.slug) + '">' +
+    '<link rel="icon" href="/resources/favicon.png">' +
+    '<link rel="stylesheet" href="/seo-pages.css">' +
+    '<script type="application/ld+json">' + JSON.stringify(schemaOrg) + '</script>' +
+    '</head><body>' +
+    '<header class="seo-header"><div class="seo-header-inner">' +
+    '<a href="/" class="seo-logo">Brilliant<span>Jobs</span></a>' +
+    '<nav class="seo-nav"><a href="/data-lab">Data Lab</a><a href="/blog">Insights</a><a href="/dashboard">Dashboard</a></nav>' +
+    '</div></header>' +
+    '<main class="seo-main"><div class="seo-container">' +
+    '<nav class="seo-breadcrumb"><a href="/">Home</a> <span>&rsaquo;</span> <a href="/job-market-data">Market Data</a> <span>&rsaquo;</span> <span>' + name + '</span></nav>' +
+    '<h1>' + name + '</h1>' +
+    (co.industry ? '<p class="seo-subtitle">' + esc(co.industry) + (co.locality ? ' · ' + esc(co.locality) + (co.region ? ', ' + esc(co.region) : '') : '') + (co.founded ? ' · Founded ' + co.founded : '') + '</p>' : '') +
+    (co.website ? '<p style="margin-bottom:24px"><a href="' + esc(co.website) + '" target="_blank" rel="noopener" style="font-size:13px;color:#818cf8">' + esc(co.website) + ' ↗</a></p>' : '') +
+
+    // Stat cards
+    '<div class="seo-stat-grid">' +
+    statCards.map(function(c) {
+      return '<div class="seo-stat-card"><div class="seo-stat-value">' + c.value + '</div><div class="seo-stat-label">' + c.label + '</div></div>';
+    }).join('') +
+    '</div>' +
+
+    // Charts section
+    '<div class="seo-chart-grid">' +
+    (timeline.length > 0 ? '<div class="seo-chart-card" style="grid-column:span 2"><h3>Hiring Timeline (90 days)</h3><div id="timeline-chart" style="width:100%;height:280px"></div></div>' : '') +
+    '<div class="seo-chart-card"><h3>Work Model</h3><div id="workmodel-chart" style="width:100%;height:280px"></div></div>' +
+    '</div>' +
+
+    rolesHtml + deptsHtml + locsHtml + salaryHtml +
+
+    // CTA
+    '<div class="seo-cta"><h3>Explore ' + name + ' jobs on Brilliant Jobs</h3>' +
+    '<p>Filter by role, level, salary, and location in your personalized dashboard.</p>' +
+    '<a href="/dashboard" class="seo-cta-btn">Search ' + name + ' Jobs →</a></div>' +
+
+    '</div></main>' +
+
+    // Footer
+    '<footer class="seo-footer"><div class="seo-footer-inner">' +
+    '<div class="seo-footer-links"><a href="/">Home</a><a href="/job-market-data">Market Data</a><a href="/blog">Insights</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></div>' +
+    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · v4.75</p>' +
+    '</div></footer>' +
+
+    // ECharts
+    '<script src="/js/vendor/echarts.custom.min.js"></script>' +
+    '<script>' +
+    'var tData=' + timelineChartData + ';' +
+    'var wData=' + workModelData + ';' +
+    'if(tData&&document.getElementById("timeline-chart")){' +
+    'var c=echarts.init(document.getElementById("timeline-chart"));' +
+    'c.setOption({grid:{left:40,right:16,top:16,bottom:40},xAxis:{type:"category",data:tData.weeks.map(function(w){return w.substring(5)}),axisLabel:{color:"#71717a",fontSize:11}},yAxis:{type:"value",axisLabel:{color:"#71717a",fontSize:11},splitLine:{lineStyle:{color:"#27272a"}}},series:[{type:"bar",data:tData.counts,itemStyle:{color:"#6366f1",borderRadius:[4,4,0,0]}}],tooltip:{trigger:"axis"}});' +
+    'window.addEventListener("resize",function(){c.resize()});' +
+    '}' +
+    'if(wData&&document.getElementById("workmodel-chart")){' +
+    'var d=echarts.init(document.getElementById("workmodel-chart"));' +
+    'd.setOption({series:[{type:"pie",radius:["40%","70%"],data:wData.labels.map(function(l,i){return{name:l,value:wData.values[i]}}).filter(function(d){return d.value>0}),label:{color:"#a1a1aa",fontSize:12},itemStyle:{borderColor:"#0f1117",borderWidth:2},color:["#8b5cf6","#6366f1","#3b82f6","#27272a"]}],tooltip:{trigger:"item"}});' +
+    'window.addEventListener("resize",function(){d.resize()});' +
+    '}' +
+    '</script>' +
+
+    '</body></html>';
+}
+
+
 module.exports = async function handler(req, res) {
-  const { type, metro, role, a, b } = req.query;
+  const { type, metro, role, a, b, slug } = req.query;
 
   if (!type) {
     res.status(400).send('Missing type parameter');
@@ -635,6 +784,27 @@ module.exports = async function handler(req, res) {
       return;
     }
     const html = renderLocationPage(stateRes.data, metroRes.data);
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(html);
+    return;
+  }
+
+
+  // Company profile page uses RPC
+  if (type === 'company') {
+    const slug = req.query.slug;
+    if (!slug) {
+      res.status(400).send('Missing slug parameter');
+      return;
+    }
+    const { data: profile, error: profileErr } = await sb.rpc('get_company_profile', { p_slug: slug });
+    if (profileErr || !profile) {
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+      res.status(404).send(render404('Company not found.'));
+      return;
+    }
+    const html = renderCompanyPage(profile);
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(html);
