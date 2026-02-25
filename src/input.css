@@ -806,6 +806,9 @@
       .gs-advantage { padding: 22px 20px; }
       .setup-hero { padding: 24px 20px; }
       .setup-hero > div:first-child { font-size: 16px !important; }
+      .tuning-hero { padding: 24px 20px; }
+      .tuning-hero > div:first-child { font-size: 16px !important; }
+      .tuning-card-sub { padding-left: 20px; }
     }
 
     /* ======================== JOBS ======================== */
@@ -1398,24 +1401,45 @@
     .hide-reason-btn:hover { background: var(--bg-hover); color: var(--text); }
 
     /* Collapsible tuning cards */
-    .tuning-card { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); margin-block-end: 10px; }
+    /* Tuning hero */
+    .tuning-hero {
+      background: #1b3e6f; color: #fff; border-radius: 14px; padding: 32px 36px;
+      margin-bottom: 20px; position: relative; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .tuning-hero::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 70% 60% at 10% 100%, rgba(61,135,255,0.15), transparent),
+                  radial-gradient(ellipse 50% 50% at 90% 0%, rgba(137,90,246,0.10), transparent);
+    }
+    .tuning-hero > * { position: relative; }
+
+    /* Tuning cards */
+    .tuning-card {
+      border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card); margin-block-end: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .tuning-card:hover { border-color: var(--border-hover); box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
     .tuning-card.collapsed { overflow: hidden; }
     .tuning-card-header {
-      display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+      display: flex; align-items: center; gap: 10px; padding: 16px 20px;
       cursor: pointer; user-select: none; transition: background 0.1s;
     }
-    .tuning-card-header:hover { background: rgba(255,255,255,0.02); }
+    .tuning-card-header:hover { background: var(--bg-hover); }
+    .tuning-card-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
     .tuning-card-chevron { color: var(--text-faint); transition: transform 0.2s; flex-shrink: 0; }
     .tuning-card.collapsed .tuning-card-chevron { transform: rotate(-90deg); }
-    .tuning-card-title { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+    .tuning-card-title { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; }
     .tuning-card-badge {
       font-family: var(--mono); font-size: 10px; font-weight: 600; padding: 2px 7px;
       border-radius: 4px; background: hsla(var(--accent-hsl), 0.1); color: var(--accent);
     }
     .tuning-card-badge.empty { display: none; }
-    .tuning-card-sub { font-size: 11px; color: var(--text-faint); padding: 0 18px; margin-block-start: -6px; }
+    .tuning-card-sub { font-size: 12px; color: var(--text-dim); padding: 0 20px 0 62px; margin-block-start: -4px; margin-block-end: 4px; line-height: 1.5; }
     .tuning-card-body {
-      padding: 8px 18px 16px; transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.2s ease; overflow: visible;
+      padding: 14px 20px 20px; transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.2s ease; overflow: visible;
     }
     .tuning-card.collapsed .tuning-card-body { max-height: 0 !important; opacity: 0; padding-block-start: 0; padding-block-end: 0; overflow: hidden; }
     .tuning-card.collapsed .tuning-card-sub { display: none; }
