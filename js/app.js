@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.73';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — A5: Content Freshness Rotation — tiered refresh + timestamps');
+const BJ_VERSION = 'v4.74';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — A6: Filter-Driven Trend Indicators');
 
 // Auth
 async function init() {
