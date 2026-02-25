@@ -1,4 +1,7 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// detect-editorial-insights Edge Function
+// Content Engine Phase 2B + Wave 4 (B1 Metro Comparison, B5 NY Fed Crossover)
+// Runs daily via pg_cron. Detects anomalies in ats_jobs data, scores them, writes candidates to content_stories.
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,643 +9,746 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface DetectedInsight {
+interface DetectedAnomaly {
   story_type: string;
   category: string;
   data_points: Record<string, unknown>;
   score: number;
-  dedup_key: string;
+  headline: string;
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+// ─── Scoring Formula ───
+// score = (magnitude × 0.30) + (breadth × 0.25) + (novelty × 0.20) + (recency × 0.15) + (shareability × 0.10)
+function computeScore(factors: {
+  magnitude: number;
+  breadth: number;
+  novelty: number;
+  recency: number;
+  shareability: number;
+}): number {
+  return Math.round(
+    (factors.magnitude * 0.30 +
+      factors.breadth * 0.25 +
+      factors.novelty * 0.20 +
+      factors.recency * 0.15 +
+      factors.shareability * 0.10) * 100
+  ) / 100;
+}
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
+function magnitudeScore(pctChange: number, threshold: number): number {
+  const ratio = Math.abs(pctChange) / threshold;
+  if (ratio >= 3) return 90;
+  if (ratio >= 2) return 70;
+  if (ratio >= 1.5) return 50;
+  if (ratio >= 1) return 30;
+  return 10;
+}
 
-  const insights: DetectedInsight[] = [];
-  const now = new Date();
-  const today = now.toISOString().split("T")[0];
+const SHAREABILITY: Record<string, number> = {
+  salary: 80,
+  company: 70,
+  remote: 70,
+  location: 50,
+  trend: 40,
+  milestone: 90,
+  nyfed: 85, // College major data is highly shareable
+};
 
-  // ──────────────────────────────────────────────
-  // HELPER: Score calculation per editorial rules
-  // ──────────────────────────────────────────────
-  function calcScore(opts: {
-    magnitude: number;     // 0-100
-    breadth: number;       // 0-100
-    novelty: number;       // 0-100
-    recency: number;       // 0-100
-    shareability: number;  // 0-100
-  }): number {
-    return (
-      opts.magnitude * 0.30 +
-      opts.breadth * 0.25 +
-      opts.novelty * 0.20 +
-      opts.recency * 0.15 +
-      opts.shareability * 0.10
-    );
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
   }
 
-  // ──────────────────────────────────────────────
-  // HELPER: Check dedup — has this been reported recently?
-  // ──────────────────────────────────────────────
-  async function isDuplicate(dedupKey: string, windowDays: number): Promise<boolean> {
-    const cutoff = new Date(now.getTime() - windowDays * 86400000).toISOString();
-    const { data } = await supabase
-      .from("content_stories")
-      .select("id")
-      .eq("story_type", dedupKey.split(":")[0])
-      .gte("created_at", cutoff)
-      .like("data_points", `%${dedupKey.split(":").slice(1).join(":")}%`)
-      .limit(1);
-    return (data?.length ?? 0) > 0;
-  }
-
-  // ──────────────────────────────────────────────
-  // HELPER: Novelty score based on recent stories
-  // ──────────────────────────────────────────────
-  async function noveltyScore(storyType: string, entitySlug: string): Promise<number> {
-    const { data: recent30 } = await supabase
-      .from("content_stories")
-      .select("id")
-      .eq("story_type", storyType)
-      .gte("created_at", new Date(now.getTime() - 30 * 86400000).toISOString())
-      .like("data_points", `%${entitySlug}%`)
-      .limit(1);
-    if (recent30?.length) return 10;
-    
-    const { data: recent90 } = await supabase
-      .from("content_stories")
-      .select("id")
-      .eq("story_type", storyType)
-      .gte("created_at", new Date(now.getTime() - 90 * 86400000).toISOString())
-      .like("data_points", `%${entitySlug}%`)
-      .limit(1);
-    if (recent90?.length) return 40;
-
-    const { data: recent180 } = await supabase
-      .from("content_stories")
-      .select("id")
-      .eq("story_type", storyType)
-      .gte("created_at", new Date(now.getTime() - 180 * 86400000).toISOString())
-      .like("data_points", `%${entitySlug}%`)
-      .limit(1);
-    if (recent180?.length) return 70;
-
-    return 100; // never reported
-  }
-
-  // ──────────────────────────────────────────────
-  // RULE 1: Volume Spike (Role/Keyword) — ±10%, abs ≥ 20, min 50 baseline
-  // ──────────────────────────────────────────────
   try {
-    const { data: roleSnapshots } = await supabase
-      .from("content_snapshots")
-      .select("entity_slug, metrics, snapshot_date")
-      .eq("entity_type", "role")
-      .gte("snapshot_date", new Date(now.getTime() - 14 * 86400000).toISOString().split("T")[0])
-      .order("snapshot_date", { ascending: false });
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
 
-    if (roleSnapshots?.length) {
-      // Group by slug, compare latest vs prior week
-      const bySlug = new Map<string, Array<{ date: string; count: number }>>();
-      for (const s of roleSnapshots) {
-        const slug = s.entity_slug;
-        if (!bySlug.has(slug)) bySlug.set(slug, []);
-        bySlug.get(slug)!.push({
-          date: s.snapshot_date,
-          count: (s.metrics as any)?.job_count ?? 0,
-        });
+    const detected: DetectedAnomaly[] = [];
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+
+    // ─── Helper: Check dedup window ───
+    async function isDuplicate(
+      storyType: string,
+      entityKey: string,
+      windowDays: number
+    ): Promise<boolean> {
+      const since = new Date(now.getTime() - windowDays * 86400000).toISOString();
+      const { data } = await supabase
+        .from("content_stories")
+        .select("id")
+        .eq("story_type", storyType)
+        .gte("created_at", since)
+        .limit(1);
+
+      if (!data || data.length === 0) return false;
+
+      // Check if same entity in data_points
+      const { data: stories } = await supabase
+        .from("content_stories")
+        .select("data_points")
+        .eq("story_type", storyType)
+        .gte("created_at", since);
+
+      return (stories || []).some((s) => {
+        const dp = s.data_points as Record<string, unknown>;
+        return JSON.stringify(dp).includes(entityKey);
+      });
+    }
+
+    // ─── Helper: Get novelty score ───
+    async function noveltyScore(storyType: string): Promise<number> {
+      const windows = [
+        { days: 30, score: 10 },
+        { days: 90, score: 40 },
+        { days: 180, score: 70 },
+      ];
+      for (const w of windows) {
+        const since = new Date(now.getTime() - w.days * 86400000).toISOString();
+        const { count } = await supabase
+          .from("content_stories")
+          .select("*", { count: "exact", head: true })
+          .eq("story_type", storyType)
+          .gte("created_at", since);
+        if ((count || 0) > 0) return w.score;
       }
+      return 100; // Never reported before
+    }
 
-      for (const [slug, snapshots] of bySlug) {
-        if (snapshots.length < 2) continue;
-        const current = snapshots[0].count;
-        const prior = snapshots[1].count;
-        if (prior < 50) continue; // min sample
+    // ═══════════════════════════════════════════════════════
+    // RULE 1: Volume Spike (by role keyword)
+    // Threshold: ±10% WoW AND absolute change ≥ 20 jobs
+    // Min sample: 50 jobs in baseline week
+    // Dedup: 7 days same keyword
+    // ═══════════════════════════════════════════════════════
+    {
+      const { data: roleSnapshots } = await supabase
+        .from("content_snapshots")
+        .select("entity_slug, metrics")
+        .eq("entity_type", "role")
+        .eq("snapshot_date", today);
+
+      for (const snap of roleSnapshots || []) {
+        const m = snap.metrics as Record<string, number>;
+        const current = m?.job_count || 0;
+        const prior = m?.prior_week_count || m?.avg_prior || 0;
+        if (prior < 50 || current < 50) continue;
+
         const pctChange = ((current - prior) / prior) * 100;
         const absChange = Math.abs(current - prior);
+
         if (Math.abs(pctChange) >= 10 && absChange >= 20) {
-          const dedupKey = `volume_spike:${slug}`;
-          if (await isDuplicate(dedupKey, 7)) continue;
-          const nov = await noveltyScore("volume_spike", slug);
-          const magScore = Math.min(100, 30 + (Math.abs(pctChange) / 10) * 20);
-          insights.push({
+          if (await isDuplicate("volume_spike", snap.entity_slug, 7)) continue;
+
+          const score = computeScore({
+            magnitude: magnitudeScore(pctChange, 10),
+            breadth: 40, // single role
+            novelty: await noveltyScore("volume_spike"),
+            recency: 100,
+            shareability: SHAREABILITY.trend,
+          });
+
+          detected.push({
             story_type: "volume_spike",
             category: "trend",
             data_points: {
-              role: slug,
-              current_week: current,
-              prior_week: prior,
+              role: snap.entity_slug,
+              recent: current,
+              avg_prior: prior,
               pct_change: Math.round(pctChange * 10) / 10,
-              abs_change: absChange,
-              timeline: snapshots.slice(0, 8).reverse(),
+              timeline: m?.timeline || [],
             },
-            score: calcScore({ magnitude: magScore, breadth: 40, novelty: nov, recency: 100, shareability: 40 }),
-            dedup_key: dedupKey,
+            score,
+            headline: `${snap.entity_slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} Hiring ${pctChange > 0 ? "Up" : "Down"} ${Math.abs(Math.round(pctChange))}% This Week`,
           });
         }
       }
     }
-  } catch (e) { console.error("Rule 1 error:", e); }
 
-  // ──────────────────────────────────────────────
-  // RULE 2: Volume Spike (Location) — ±15%, abs ≥ 15, min 30 baseline
-  // ──────────────────────────────────────────────
-  try {
-    const { data: metroSnapshots } = await supabase
-      .from("content_snapshots")
-      .select("entity_slug, metrics, snapshot_date")
-      .eq("entity_type", "metro")
-      .gte("snapshot_date", new Date(now.getTime() - 14 * 86400000).toISOString().split("T")[0])
-      .order("snapshot_date", { ascending: false });
+    // ═══════════════════════════════════════════════════════
+    // RULE 2: Volume Spike (by location/metro)
+    // Threshold: ±15% WoW AND absolute change ≥ 15 jobs
+    // Min sample: 30 jobs in baseline week
+    // Dedup: 7 days same location
+    // ═══════════════════════════════════════════════════════
+    {
+      const { data: metroSnapshots } = await supabase
+        .from("content_snapshots")
+        .select("entity_slug, metrics")
+        .eq("entity_type", "metro")
+        .eq("snapshot_date", today);
 
-    if (metroSnapshots?.length) {
-      const bySlug = new Map<string, Array<{ date: string; count: number; salary: number }>>();
-      for (const s of metroSnapshots) {
-        const slug = s.entity_slug;
-        if (!bySlug.has(slug)) bySlug.set(slug, []);
-        bySlug.get(slug)!.push({
-          date: s.snapshot_date,
-          count: (s.metrics as any)?.job_count ?? 0,
-          salary: (s.metrics as any)?.median_salary ?? 0,
-        });
-      }
+      for (const snap of metroSnapshots || []) {
+        const m = snap.metrics as Record<string, number>;
+        const current = m?.job_count || 0;
+        const prior = m?.prior_week_count || m?.avg_prior || 0;
+        if (prior < 30 || current < 30) continue;
 
-      for (const [slug, snapshots] of bySlug) {
-        if (snapshots.length < 2) continue;
-        const current = snapshots[0].count;
-        const prior = snapshots[1].count;
-        if (prior < 30) continue;
         const pctChange = ((current - prior) / prior) * 100;
         const absChange = Math.abs(current - prior);
+
         if (Math.abs(pctChange) >= 15 && absChange >= 15) {
-          const dedupKey = `metro_volume_spike:${slug}`;
-          if (await isDuplicate(dedupKey, 7)) continue;
-          const nov = await noveltyScore("metro_volume_spike", slug);
-          const magScore = Math.min(100, 30 + (Math.abs(pctChange) / 15) * 20);
-          insights.push({
+          if (await isDuplicate("metro_volume_spike", snap.entity_slug, 7)) continue;
+
+          const score = computeScore({
+            magnitude: magnitudeScore(pctChange, 15),
+            breadth: 40,
+            novelty: await noveltyScore("metro_volume_spike"),
+            recency: 100,
+            shareability: SHAREABILITY.location,
+          });
+
+          detected.push({
             story_type: "metro_volume_spike",
             category: "location",
             data_points: {
-              city: slug,
-              current_week: current,
-              prior_week: prior,
+              metro: snap.entity_slug,
+              recent: current,
+              avg_prior: prior,
               pct_change: Math.round(pctChange * 10) / 10,
-              median_salary: snapshots[0].salary,
-              timeline: snapshots.slice(0, 8).reverse(),
             },
-            score: calcScore({ magnitude: magScore, breadth: 40, novelty: nov, recency: 100, shareability: 50 }),
-            dedup_key: dedupKey,
+            score,
+            headline: `${snap.entity_slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} Job Market ${pctChange > 0 ? "Surging" : "Cooling"} — ${Math.abs(Math.round(pctChange))}% Change This Week`,
           });
         }
       }
     }
-  } catch (e) { console.error("Rule 2 error:", e); }
 
-  // ──────────────────────────────────────────────
-  // RULE 5: Company Surge — 2x avg weekly, abs ≥ 10
-  // ──────────────────────────────────────────────
-  try {
-    const { data: companySnapshots } = await supabase
-      .from("content_snapshots")
-      .select("entity_slug, metrics, snapshot_date")
-      .eq("entity_type", "company")
-      .gte("snapshot_date", new Date(now.getTime() - 30 * 86400000).toISOString().split("T")[0])
-      .order("snapshot_date", { ascending: false });
-
-    if (companySnapshots?.length) {
-      const bySlug = new Map<string, Array<{ date: string; count: number }>>();
-      for (const s of companySnapshots) {
-        const slug = s.entity_slug;
-        if (!bySlug.has(slug)) bySlug.set(slug, []);
-        bySlug.get(slug)!.push({
-          date: s.snapshot_date,
-          count: (s.metrics as any)?.job_count ?? 0,
-        });
-      }
-
-      for (const [slug, snapshots] of bySlug) {
-        if (snapshots.length < 2) continue;
-        const current = snapshots[0].count;
-        const priorCounts = snapshots.slice(1).map(s => s.count);
-        const avg = priorCounts.reduce((a, b) => a + b, 0) / priorCounts.length;
-        if (avg < 5) continue; // min baseline
-        const multiplier = current / avg;
-        if (multiplier >= 2 && current >= 10) {
-          const dedupKey = `company_surge:${slug}`;
-          if (await isDuplicate(dedupKey, 14)) continue;
-          const nov = await noveltyScore("company_surge", slug);
-          const magScore = Math.min(100, 50 + (multiplier - 2) * 20);
-          insights.push({
-            story_type: "company_surge",
-            category: "company",
-            data_points: {
-              company: slug,
-              current_week: current,
-              avg_weekly: Math.round(avg),
-              multiplier: Math.round(multiplier * 10) / 10,
-            },
-            score: calcScore({ magnitude: magScore, breadth: 20, novelty: nov, recency: 100, shareability: 70 }),
-            dedup_key: dedupKey,
-          });
-        }
-      }
-    }
-  } catch (e) { console.error("Rule 5 error:", e); }
-
-  // ──────────────────────────────────────────────
-  // RULE 7: New Entrant — 0 jobs in prior 30d, now ≥ 5
-  // ──────────────────────────────────────────────
-  try {
-    const { data: newEntrants } = await supabase.rpc("detect_new_entrants").select("*");
-    // Fallback: query directly if RPC doesn't exist
-    if (!newEntrants) {
-      // Direct query: companies with current jobs but no history
-      const { data: recentCompanies } = await supabase
+    // ═══════════════════════════════════════════════════════
+    // RULE 5: Company Surge
+    // Threshold: 2x or more vs 30-day weekly average AND absolute ≥ 10 new jobs
+    // Min sample: 5 jobs in 30-day baseline
+    // Dedup: 14 days same company
+    // ═══════════════════════════════════════════════════════
+    {
+      const { data: companySnapshots } = await supabase
         .from("content_snapshots")
         .select("entity_slug, metrics")
         .eq("entity_type", "company")
         .eq("snapshot_date", today);
 
-      if (recentCompanies) {
-        for (const co of recentCompanies) {
-          const count = (co.metrics as any)?.job_count ?? 0;
-          if (count < 5) continue;
-          // Check if they had jobs before
-          const { data: prior } = await supabase
-            .from("content_snapshots")
-            .select("id")
-            .eq("entity_type", "company")
-            .eq("entity_slug", co.entity_slug)
-            .lt("snapshot_date", today)
-            .limit(1);
-          if (prior?.length) continue; // had prior data — not new
-          const dedupKey = `new_entrant:${co.entity_slug}`;
-          if (await isDuplicate(dedupKey, 30)) continue;
-          insights.push({
-            story_type: "new_entrant",
+      for (const snap of companySnapshots || []) {
+        const m = snap.metrics as Record<string, number>;
+        const current = m?.job_count || m?.current_week_count || 0;
+        const avg = m?.avg_weekly_count || m?.avg_prior || 0;
+        if (avg < 5 || current < 10) continue;
+
+        const multiplier = current / avg;
+        if (multiplier >= 2) {
+          if (await isDuplicate("company_surge", snap.entity_slug, 14)) continue;
+
+          const score = computeScore({
+            magnitude: multiplier >= 3 ? 90 : 70,
+            breadth: 20, // single company
+            novelty: await noveltyScore("company_surge"),
+            recency: 100,
+            shareability: SHAREABILITY.company,
+          });
+
+          detected.push({
+            story_type: "company_surge",
             category: "company",
             data_points: {
-              company: co.entity_slug,
-              count,
-              roles: (co.metrics as any)?.top_roles ?? [],
-              locations: (co.metrics as any)?.locations ?? [],
+              company: snap.entity_slug,
+              count: current,
+              avg_weekly: avg,
+              multiplier: Math.round(multiplier * 10) / 10,
             },
-            score: calcScore({ magnitude: 60, breadth: 20, novelty: 100, recency: 100, shareability: 70 }),
-            dedup_key: dedupKey,
+            score,
+            headline: `${snap.entity_slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} ${multiplier >= 3 ? "Triples" : "Doubles"} Hiring — ${current} New Roles This Week`,
           });
         }
       }
     }
-  } catch (e) { console.error("Rule 7 error:", e); }
 
-  // ──────────────────────────────────────────────
-  // RULE 6 (B1): Metro Crossover — rank change in top 20
-  // ──────────────────────────────────────────────
-  try {
-    const { data: metroData } = await supabase
-      .from("content_snapshots")
-      .select("entity_slug, metrics, snapshot_date")
-      .eq("entity_type", "metro")
-      .gte("snapshot_date", new Date(now.getTime() - 21 * 86400000).toISOString().split("T")[0])
-      .order("snapshot_date", { ascending: false });
+    // ═══════════════════════════════════════════════════════
+    // RULE 7: New Entrant
+    // Threshold: Company with 0 jobs in prior 30 days, now has ≥ 5
+    // Dedup: 30 days same company
+    // ═══════════════════════════════════════════════════════
+    {
+      const { data: newEntrants } = await supabase.rpc("detect_new_entrants").select("*");
 
-    if (metroData?.length) {
-      // Get unique dates
-      const dates = [...new Set(metroData.map(m => m.snapshot_date))].sort().reverse();
-      if (dates.length >= 2) {
-        const currentDate = dates[0];
-        const priorDate = dates[1];
-        const currentRanking = metroData
-          .filter(m => m.snapshot_date === currentDate)
-          .sort((a, b) => ((b.metrics as any)?.job_count ?? 0) - ((a.metrics as any)?.job_count ?? 0));
-        const priorRanking = metroData
-          .filter(m => m.snapshot_date === priorDate)
-          .sort((a, b) => ((b.metrics as any)?.job_count ?? 0) - ((a.metrics as any)?.job_count ?? 0));
+      for (const entry of newEntrants || []) {
+        if ((entry.current_count || 0) < 5) continue;
+        if (await isDuplicate("new_entrant", entry.company_slug || entry.company, 30)) continue;
 
-        // Check for rank swaps in top 20
-        const currentRanks = new Map<string, number>();
-        const priorRanks = new Map<string, number>();
-        currentRanking.forEach((m, i) => currentRanks.set(m.entity_slug, i + 1));
-        priorRanking.forEach((m, i) => priorRanks.set(m.entity_slug, i + 1));
+        const score = computeScore({
+          magnitude: 50,
+          breadth: 20,
+          novelty: 100, // first time by definition
+          recency: 100,
+          shareability: SHAREABILITY.company,
+        });
 
-        for (const [slug, currentRank] of currentRanks) {
-          if (currentRank > 20) continue;
-          const priorRank = priorRanks.get(slug);
-          if (!priorRank || priorRank <= currentRank) continue;
-          // This city moved up — find who it passed
-          for (const [otherSlug, otherCurrent] of currentRanks) {
-            if (otherSlug === slug) continue;
-            const otherPrior = priorRanks.get(otherSlug);
-            if (!otherPrior) continue;
-            if (otherPrior < priorRank && otherCurrent > currentRank) {
-              // slug overtook otherSlug
-              const bothHaveMinJobs = ((currentRanking.find(m => m.entity_slug === slug)?.metrics as any)?.job_count ?? 0) >= 50 &&
-                ((currentRanking.find(m => m.entity_slug === otherSlug)?.metrics as any)?.job_count ?? 0) >= 50;
-              if (!bothHaveMinJobs) continue;
+        detected.push({
+          story_type: "new_entrant",
+          category: "company",
+          data_points: {
+            company: entry.company_slug || entry.company,
+            current_count: entry.current_count,
+          },
+          score,
+          headline: `${(entry.company_slug || entry.company).replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} Enters the Hiring Market with ${entry.current_count} Openings`,
+        });
+      }
+    }
 
-              const dedupKey = `metro_crossover:${slug}:${otherSlug}`;
-              if (await isDuplicate(dedupKey, 30)) continue;
-              const nov = await noveltyScore("metro_crossover", `${slug}:${otherSlug}`);
+    // ═══════════════════════════════════════════════════════
+    // RULE 6: Metro Crossover (B1 — NEW in Wave 4)
+    // Threshold: City A overtakes City B in weekly job volume (top 20 rank change)
+    // Also fires when salary differential changes 10%+ or volume ratio shifts 20%+
+    // Min sample: Both cities ≥ 50 jobs
+    // Dedup: 30 days same pair
+    // ═══════════════════════════════════════════════════════
+    {
+      // Get all metro snapshots sorted by job count
+      const { data: metros } = await supabase
+        .from("content_snapshots")
+        .select("entity_slug, metrics")
+        .eq("entity_type", "metro")
+        .eq("snapshot_date", today)
+        .order("entity_slug");
 
-              const cityAData = currentRanking.find(m => m.entity_slug === slug);
-              const cityBData = currentRanking.find(m => m.entity_slug === otherSlug);
+      if (metros && metros.length >= 2) {
+        // Build ranked list by current job count
+        const ranked = metros
+          .map((m) => ({
+            slug: m.entity_slug,
+            count: (m.metrics as Record<string, number>)?.job_count || 0,
+            salary_median: (m.metrics as Record<string, number>)?.salary_median || 0,
+            prior_count: (m.metrics as Record<string, number>)?.prior_week_count || (m.metrics as Record<string, number>)?.avg_prior || 0,
+            prior_rank: (m.metrics as Record<string, number>)?.prior_rank || 0,
+          }))
+          .filter((m) => m.count >= 50)
+          .sort((a, b) => b.count - a.count);
 
-              insights.push({
-                story_type: "metro_crossover",
-                category: "location",
+        // Check for rank changes in top 20
+        for (let i = 0; i < Math.min(ranked.length, 20); i++) {
+          const city = ranked[i];
+          if (city.prior_rank && city.prior_rank > i + 1) {
+            // This city moved up — find who it overtook
+            const overtaken = ranked.find(
+              (r) => r.prior_rank && r.prior_rank === i + 1 && r.slug !== city.slug
+            );
+            if (!overtaken) continue;
+
+            const pairKey = [city.slug, overtaken.slug].sort().join("_vs_");
+            if (await isDuplicate("metro_crossover", pairKey, 30)) continue;
+
+            const salaryDiff = city.salary_median && overtaken.salary_median
+              ? ((city.salary_median - overtaken.salary_median) / overtaken.salary_median) * 100
+              : 0;
+
+            const score = computeScore({
+              magnitude: 70,
+              breadth: 80, // multi-city
+              novelty: await noveltyScore("metro_crossover"),
+              recency: 100,
+              shareability: SHAREABILITY.location,
+            });
+
+            detected.push({
+              story_type: "metro_crossover",
+              category: "location",
+              data_points: {
+                city_a: city.slug,
+                city_b: overtaken.slug,
+                city_a_count: city.count,
+                city_b_count: overtaken.count,
+                city_a_salary: city.salary_median,
+                city_b_salary: overtaken.salary_median,
+                salary_diff_pct: Math.round(salaryDiff * 10) / 10,
+                role_or_all: "all",
+              },
+              score,
+              headline: `${city.slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} Surpasses ${overtaken.slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} in Job Postings`,
+            });
+          }
+        }
+
+        // Also check for salary differential shifts (10%+) between adjacent metros
+        for (let i = 0; i < ranked.length - 1; i++) {
+          const a = ranked[i];
+          const b = ranked[i + 1];
+          if (!a.salary_median || !b.salary_median) continue;
+          if (a.count < 50 || b.count < 50) continue;
+
+          const pairKey = [a.slug, b.slug].sort().join("_salary_");
+          if (await isDuplicate("metro_comparison", pairKey, 30)) continue;
+
+          // We would need historical salary diff to detect 10%+ change
+          // For now, detect when salary gap > 15% between adjacent-ranked metros
+          const salaryGap = Math.abs(
+            ((a.salary_median - b.salary_median) / b.salary_median) * 100
+          );
+          if (salaryGap >= 15) {
+            const score = computeScore({
+              magnitude: magnitudeScore(salaryGap, 10),
+              breadth: 80,
+              novelty: await noveltyScore("metro_comparison"),
+              recency: 100,
+              shareability: SHAREABILITY.salary,
+            });
+
+            detected.push({
+              story_type: "metro_comparison",
+              category: "salary",
+              data_points: {
+                city_a: a.slug,
+                city_b: b.slug,
+                city_a_count: a.count,
+                city_b_count: b.count,
+                city_a_salary: a.salary_median,
+                city_b_salary: b.salary_median,
+                salary_gap_pct: Math.round(salaryGap * 10) / 10,
+              },
+              score,
+              headline: `${a.slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())} Jobs Pay ${Math.round(salaryGap)}% More Than ${b.slug.replace(/-/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
+            });
+          }
+        }
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // RULE 11: NY Fed Quarterly Update (B5 — NEW in Wave 4)
+    // Trigger: New NY Fed data detected (updated date changed)
+    // Dedup: 90 days
+    // ═══════════════════════════════════════════════════════
+    {
+      const { data: nyfedIndicators } = await supabase
+        .from("economic_indicators")
+        .select("series_id, indicator_name, value, unit, period_start, ingested_at")
+        .eq("source", "nyfed");
+
+      if (nyfedIndicators && nyfedIndicators.length > 0) {
+        // Template 11: Quarterly Update — fires when data exists and hasn't been reported
+        if (!(await isDuplicate("nyfed_quarterly", "nyfed_update", 90))) {
+          const unemploymentRate = nyfedIndicators.find(
+            (i) => i.series_id === "NYFED_UNDEREMPLOY_RECENT"
+          );
+          const medianWage = nyfedIndicators.find(
+            (i) => i.series_id === "NYFED_MEDIAN_WAGE_RECENT"
+          );
+
+          if (unemploymentRate && medianWage) {
+            // Get total open jobs from platform
+            const { count: totalJobs } = await supabase
+              .from("ats_jobs")
+              .select("*", { count: "exact", head: true })
+              .eq("status", "open");
+
+            const score = computeScore({
+              magnitude: 70,
+              breadth: 100, // platform-wide
+              novelty: await noveltyScore("nyfed_quarterly"),
+              recency: 80,
+              shareability: SHAREABILITY.nyfed,
+            });
+
+            // Scoring adjustments per spec: +20 novelty, +15 shareability
+            const adjustedScore = Math.min(100, score + 5); // net effect of bonuses
+
+            detected.push({
+              story_type: "nyfed_quarterly",
+              category: "trend",
+              data_points: {
+                underemployment_rate: unemploymentRate.value,
+                median_wage: medianWage.value,
+                total_open_jobs: totalJobs || 0,
+                data_period: unemploymentRate.period_start,
+                nyfed_indicators: nyfedIndicators.map((i) => ({
+                  series: i.series_id,
+                  value: i.value,
+                  unit: i.unit,
+                })),
+              },
+              score: adjustedScore,
+              headline: `Recent Graduate Underemployment at ${unemploymentRate.value}% — Meanwhile, ${((totalJobs || 0) / 1000).toFixed(0)}K+ Positions Open`,
+            });
+          }
+        }
+
+        // Template 12: Major Spotlight (Monthly rotation)
+        // Rotate through top majors monthly
+        if (!(await isDuplicate("nyfed_major_spotlight", "major_spotlight", 30))) {
+          const { data: majorCache } = await supabase
+            .from("major_job_cache")
+            .select("major_category, open_jobs, median_salary, remote_pct")
+            .order("open_jobs", { ascending: false })
+            .limit(10);
+
+          if (majorCache && majorCache.length > 0) {
+            // Pick major based on month rotation
+            const monthIndex = now.getMonth() % (majorCache.length || 1);
+            const spotlight = majorCache[monthIndex];
+
+            const unemploymentRate = nyfedIndicators.find(
+              (i) => i.series_id === "NYFED_UNDEREMPLOY_RECENT"
+            );
+
+            const score = computeScore({
+              magnitude: 60,
+              breadth: 60, // single industry/major
+              novelty: await noveltyScore("nyfed_major_spotlight"),
+              recency: 80,
+              shareability: SHAREABILITY.nyfed,
+            });
+
+            detected.push({
+              story_type: "nyfed_major_spotlight",
+              category: "trend",
+              data_points: {
+                major: spotlight.major_category,
+                open_jobs: spotlight.open_jobs,
+                median_salary: spotlight.median_salary,
+                remote_pct: spotlight.remote_pct,
+                underemployment_rate: unemploymentRate?.value || null,
+                nyfed_wage: nyfedIndicators.find(
+                  (i) => i.series_id === "NYFED_MEDIAN_WAGE_RECENT"
+                )?.value,
+              },
+              score: Math.min(100, score + 5),
+              headline: `${spotlight.major_category} Grads: ${spotlight.open_jobs} Open Positions Paying $${((spotlight.median_salary || 0) / 1000).toFixed(0)}K`,
+            });
+          }
+        }
+
+        // Template 13: Salary Divergence
+        // Trigger: BJ median diverges from NY Fed median by >15% for any major
+        if (!(await isDuplicate("nyfed_salary_divergence", "salary_diverge", 30))) {
+          const nyfedMedianWage = nyfedIndicators.find(
+            (i) => i.series_id === "NYFED_MEDIAN_WAGE_RECENT"
+          );
+
+          if (nyfedMedianWage) {
+            const { data: majorCache } = await supabase
+              .from("major_job_cache")
+              .select("major_category, median_salary, open_jobs")
+              .not("median_salary", "is", null)
+              .order("open_jobs", { ascending: false })
+              .limit(15);
+
+            for (const major of majorCache || []) {
+              if (!major.median_salary || major.open_jobs < 20) continue;
+              const nyfedVal = Number(nyfedMedianWage.value) || 60000;
+              const divergence =
+                ((major.median_salary - nyfedVal) / nyfedVal) * 100;
+
+              if (Math.abs(divergence) >= 15) {
+                const score = computeScore({
+                  magnitude: magnitudeScore(divergence, 15),
+                  breadth: 60,
+                  novelty: await noveltyScore("nyfed_salary_divergence"),
+                  recency: 80,
+                  shareability: SHAREABILITY.nyfed,
+                });
+
+                detected.push({
+                  story_type: "nyfed_salary_divergence",
+                  category: "salary",
+                  data_points: {
+                    major: major.major_category,
+                    bj_median: major.median_salary,
+                    nyfed_median: nyfedVal,
+                    divergence_pct: Math.round(divergence * 10) / 10,
+                    open_jobs: major.open_jobs,
+                  },
+                  score: Math.min(100, score + 5),
+                  headline: `Posted ${major.major_category} Salaries ${Math.round(Math.abs(divergence))}% ${divergence > 0 ? "Above" : "Below"} the NY Fed Reported Median`,
+                });
+                break; // Only report the most significant divergence
+              }
+            }
+          }
+        }
+
+        // Template 14: College Premium (Annual — February only)
+        if (now.getMonth() === 1 && !(await isDuplicate("nyfed_college_premium", "college_premium", 365))) {
+          const medianWage = nyfedIndicators.find(
+            (i) => i.series_id === "NYFED_MEDIAN_WAGE_RECENT"
+          );
+
+          if (medianWage) {
+            const score = computeScore({
+              magnitude: 60,
+              breadth: 100,
+              novelty: 100, // annual = always novel
+              recency: 80,
+              shareability: SHAREABILITY.nyfed,
+            });
+
+            detected.push({
+              story_type: "nyfed_college_premium",
+              category: "salary",
+              data_points: {
+                ba_median: Number(medianWage.value),
+                // HS median from NY Fed is ~$40K
+                hs_median: 40000,
+                premium_pct: Math.round(
+                  ((Number(medianWage.value) - 40000) / 40000) * 100
+                ),
+                year: now.getFullYear(),
+              },
+              score: Math.min(100, score + 5),
+              headline: `College Premium Holds: BA Median $${(Number(medianWage.value) / 1000).toFixed(0)}K vs HS $40K — ${Math.round(((Number(medianWage.value) - 40000) / 40000) * 100)}% Gap`,
+            });
+          }
+        }
+
+        // Template 15: Underemployment × Hiring Reality
+        // Trigger: Quarterly, paired with NY Fed update
+        if (!(await isDuplicate("nyfed_underemploy_hiring", "underemploy_hiring", 90))) {
+          const underemployRate = nyfedIndicators.find(
+            (i) => i.series_id === "NYFED_UNDEREMPLOY_RECENT"
+          );
+
+          if (underemployRate) {
+            // Find major with highest underemployment but also decent BJ job count
+            const { data: majorCache } = await supabase
+              .from("major_job_cache")
+              .select("major_category, open_jobs, median_salary")
+              .order("open_jobs", { ascending: false })
+              .limit(15);
+
+            // Pick Communications (52% underemployment) or the top major by job count
+            const spotlightMajor =
+              majorCache?.find((m) => m.major_category === "Communications") ||
+              majorCache?.[0];
+
+            if (spotlightMajor) {
+              const score = computeScore({
+                magnitude: 70,
+                breadth: 100,
+                novelty: await noveltyScore("nyfed_underemploy_hiring"),
+                recency: 80,
+                shareability: SHAREABILITY.nyfed,
+              });
+
+              detected.push({
+                story_type: "nyfed_underemploy_hiring",
+                category: "trend",
                 data_points: {
-                  city_a: slug,
-                  city_b: otherSlug,
-                  city_a_count: (cityAData?.metrics as any)?.job_count ?? 0,
-                  city_b_count: (cityBData?.metrics as any)?.job_count ?? 0,
-                  city_a_rank: currentRank,
-                  city_b_rank: otherCurrent,
-                  city_a_prior_rank: priorRank,
-                  city_b_prior_rank: otherPrior,
-                  city_a_salary: (cityAData?.metrics as any)?.median_salary ?? 0,
-                  city_b_salary: (cityBData?.metrics as any)?.median_salary ?? 0,
+                  major: spotlightMajor.major_category,
+                  underemployment_rate: underemployRate.value,
+                  open_jobs: spotlightMajor.open_jobs,
+                  median_salary: spotlightMajor.median_salary,
                 },
-                score: calcScore({ magnitude: 60, breadth: 80, novelty: nov, recency: 100, shareability: 50 }),
-                dedup_key: dedupKey,
+                score: Math.min(100, score + 5),
+                headline: `${underemployRate.value}% of ${spotlightMajor.major_category} Grads Are Underemployed — But We Found ${spotlightMajor.open_jobs} Matching Jobs`,
               });
             }
           }
         }
       }
     }
-  } catch (e) { console.error("Rule 6 (metro crossover) error:", e); }
 
-  // ──────────────────────────────────────────────
-  // B5: NY Fed Crossover Stories
-  // ──────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════
+    // APPLY CATEGORY BALANCE + DAILY CAP
+    // Max 2 stories per day published
+    // Max 3 per category per week
+    // No same-category back-to-back
+    // ═══════════════════════════════════════════════════════
 
-  // B5a: Major Spotlight — when BJ data diverges from NY Fed expectations
-  try {
-    const { data: majorCache } = await supabase
-      .from("major_job_cache")
-      .select("*");
+    // Sort by score descending
+    detected.sort((a, b) => b.score - a.score);
 
-    if (majorCache?.length) {
-      // Reference NY Fed data (hardcoded from spec — same as A2 college page)
-      const nyfedData: Record<string, { unemployment: number; underemployment: number; early_salary: number; mid_salary: number }> = {
-        "Computer Science": { unemployment: 3.5, underemployment: 22, early_salary: 78000, mid_salary: 120000 },
-        "Nursing": { unemployment: 1.3, underemployment: 10, early_salary: 62000, mid_salary: 82000 },
-        "Finance": { unemployment: 3.8, underemployment: 25, early_salary: 60000, mid_salary: 105000 },
-        "Marketing": { unemployment: 4.2, underemployment: 42, early_salary: 45000, mid_salary: 72000 },
-        "Accounting": { unemployment: 3.0, underemployment: 28, early_salary: 55000, mid_salary: 85000 },
-        "Mechanical Engineering": { unemployment: 3.2, underemployment: 18, early_salary: 72000, mid_salary: 105000 },
-        "Electrical Engineering": { unemployment: 3.8, underemployment: 20, early_salary: 75000, mid_salary: 112000 },
-        "Biology": { unemployment: 4.5, underemployment: 40, early_salary: 38000, mid_salary: 65000 },
-        "Psychology": { unemployment: 4.0, underemployment: 48, early_salary: 35000, mid_salary: 60000 },
-        "Business Management": { unemployment: 4.0, underemployment: 38, early_salary: 50000, mid_salary: 80000 },
-        "Communications": { unemployment: 4.5, underemployment: 52, early_salary: 40000, mid_salary: 65000 },
-        "Economics": { unemployment: 3.5, underemployment: 30, early_salary: 58000, mid_salary: 95000 },
-        "Civil Engineering": { unemployment: 2.8, underemployment: 15, early_salary: 68000, mid_salary: 98000 },
-        "Computer Engineering": { unemployment: 2.5, underemployment: 16, early_salary: 80000, mid_salary: 125000 },
-        "Education": { unemployment: 2.0, underemployment: 15, early_salary: 38000, mid_salary: 55000 },
-      };
+    // Check today's already-published count
+    const { count: publishedToday } = await supabase
+      .from("content_stories")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", `${today}T00:00:00Z`)
+      .in("status", ["published", "pending"]);
 
-      for (const major of majorCache) {
-        const nyfed = nyfedData[major.major_category];
-        if (!nyfed || !major.median_salary) continue;
+    const remainingSlots = Math.max(0, 2 - (publishedToday || 0));
 
-        // Check salary divergence: BJ median vs NY Fed early career
-        const salaryDelta = ((major.median_salary - nyfed.early_salary) / nyfed.early_salary) * 100;
+    // Check weekly category counts
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+    const weekStartStr = weekStart.toISOString();
 
-        // Fire if posted salaries diverge > 15% from NY Fed median
-        if (Math.abs(salaryDelta) >= 15 && major.open_jobs >= 10) {
-          const dedupKey = `nyfed_salary_divergence:${major.major_category}`;
-          if (await isDuplicate(dedupKey, 30)) continue;
+    const { data: weeklyStories } = await supabase
+      .from("content_stories")
+      .select("category")
+      .gte("created_at", weekStartStr)
+      .in("status", ["published", "pending"]);
 
-          insights.push({
-            story_type: "nyfed_salary_divergence",
-            category: "salary",
-            data_points: {
-              major: major.major_category,
-              bj_median_salary: major.median_salary,
-              nyfed_early_salary: nyfed.early_salary,
-              nyfed_mid_salary: nyfed.mid_salary,
-              salary_delta_pct: Math.round(salaryDelta * 10) / 10,
-              bj_open_jobs: major.open_jobs,
-              bj_remote_pct: major.remote_pct,
-              nyfed_unemployment: nyfed.unemployment,
-              nyfed_underemployment: nyfed.underemployment,
-            },
-            score: calcScore({ magnitude: Math.min(100, 50 + Math.abs(salaryDelta)), breadth: 60, novelty: 100, recency: 80, shareability: 80 }),
-            dedup_key: dedupKey,
-          });
-        }
-
-        // Underemployment vs Hiring: high underemployment + high BJ job count = story
-        if (nyfed.underemployment >= 35 && major.open_jobs >= 50) {
-          const dedupKey = `nyfed_underemploy_hiring:${major.major_category}`;
-          if (await isDuplicate(dedupKey, 30)) continue;
-
-          insights.push({
-            story_type: "nyfed_underemploy_hiring",
-            category: "trend",
-            data_points: {
-              major: major.major_category,
-              underemployment_rate: nyfed.underemployment,
-              bj_open_jobs: major.open_jobs,
-              bj_median_salary: major.median_salary,
-              bj_remote_pct: major.remote_pct,
-              nyfed_early_salary: nyfed.early_salary,
-            },
-            score: calcScore({ magnitude: 60, breadth: 60, novelty: 100, recency: 80, shareability: 70 }),
-            dedup_key: dedupKey,
-          });
-        }
-      }
+    const categoryCounts: Record<string, number> = {};
+    for (const s of weeklyStories || []) {
+      categoryCounts[s.category] = (categoryCounts[s.category] || 0) + 1;
     }
-  } catch (e) { console.error("B5 NY Fed error:", e); }
 
-  // ──────────────────────────────────────────────
-  // B3: Economic Overlay Stories
-  // ──────────────────────────────────────────────
+    // Get last published category for back-to-back check
+    const { data: lastStory } = await supabase
+      .from("content_stories")
+      .select("category")
+      .in("status", ["published", "pending"])
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-  // B3a: Economic Divergence — when BJ hiring trends diverge from macro indicators
-  try {
-    // Get latest economic indicators
-    const { data: econRecent } = await supabase
-      .from("economic_indicators")
-      .select("indicator_name, value, period_start, source")
-      .order("period_start", { ascending: false })
-      .limit(100);
+    const lastCategory = lastStory?.[0]?.category;
 
-    // Get platform-level job count trend
-    const { data: platformSnapshot } = await supabase
-      .from("content_snapshots")
-      .select("metrics, snapshot_date")
-      .eq("entity_type", "platform")
-      .order("snapshot_date", { ascending: false })
-      .limit(4);
-
-    if (econRecent?.length && platformSnapshot?.length) {
-      // Group econ by indicator
-      const byIndicator = new Map<string, Array<{ value: number; period: string }>>();
-      for (const e of econRecent) {
-        const key = e.indicator_name;
-        if (!byIndicator.has(key)) byIndicator.set(key, []);
-        byIndicator.get(key)!.push({ value: Number(e.value), period: e.period_start });
-      }
-
-      // Check JOLTS vs BJ platform trend
-      const jolts = byIndicator.get("JOLTS Job Openings") ?? byIndicator.get("JOLTS Job Openings (FRED)");
-      if (jolts && jolts.length >= 2) {
-        const joltsChange = ((jolts[0].value - jolts[1].value) / jolts[1].value) * 100;
-        const bjJobs = (platformSnapshot[0]?.metrics as any)?.total_jobs ?? 0;
-        const bjPrior = platformSnapshot.length > 1 ? (platformSnapshot[1]?.metrics as any)?.total_jobs ?? bjJobs : bjJobs;
-        const bjChange = bjPrior > 0 ? ((bjJobs - bjPrior) / bjPrior) * 100 : 0;
-
-        // Divergence: JOLTS going one way, BJ going the other by significant margin
-        if (Math.sign(joltsChange) !== Math.sign(bjChange) && Math.abs(joltsChange - bjChange) >= 5) {
-          const dedupKey = `econ_divergence:jolts`;
-          if (!(await isDuplicate(dedupKey, 30))) {
-            insights.push({
-              story_type: "econ_divergence",
-              category: "trend",
-              data_points: {
-                indicator: "JOLTS Job Openings",
-                indicator_change_pct: Math.round(joltsChange * 10) / 10,
-                indicator_latest: jolts[0].value,
-                indicator_period: jolts[0].period,
-                bj_total_jobs: bjJobs,
-                bj_change_pct: Math.round(bjChange * 10) / 10,
-                divergence: Math.round(Math.abs(joltsChange - bjChange) * 10) / 10,
-              },
-              score: calcScore({ magnitude: 70, breadth: 100, novelty: 100, recency: 80, shareability: 40 }),
-              dedup_key: dedupKey,
-            });
+    // Write all detected anomalies to content_stories
+    let inserted = 0;
+    for (const anomaly of detected) {
+      // Determine status
+      let status = "rejected";
+      if (anomaly.score >= 60) {
+        if (inserted < remainingSlots) {
+          // Check category balance
+          const catCount = categoryCounts[anomaly.category] || 0;
+          if (catCount >= 3 && anomaly.story_type !== "milestone") {
+            status = "held_balance";
+          } else if (inserted === 0 && anomaly.category === lastCategory) {
+            // Back-to-back same category — hold unless it's the only one
+            if (detected.filter((d) => d.category !== lastCategory && d.score >= 60).length > 0) {
+              status = "held_balance";
+            } else {
+              status = "pending";
+              inserted++;
+              categoryCounts[anomaly.category] = catCount + 1;
+            }
+          } else {
+            status = "pending";
+            inserted++;
+            categoryCounts[anomaly.category] = catCount + 1;
           }
+        } else {
+          status = "queued"; // above threshold but daily cap reached
         }
       }
 
-      // Check unemployment rate milestones
-      const unemployment = byIndicator.get("Unemployment Rate") ?? byIndicator.get("Unemployment Rate (FRED)");
-      if (unemployment && unemployment.length >= 2) {
-        const uChange = unemployment[0].value - unemployment[1].value;
-        // Fire if unemployment changed by 0.3+ pp
-        if (Math.abs(uChange) >= 0.3) {
-          const dedupKey = `econ_inflection:unemployment`;
-          if (!(await isDuplicate(dedupKey, 30))) {
-            insights.push({
-              story_type: "econ_inflection",
-              category: "trend",
-              data_points: {
-                indicator: "Unemployment Rate",
-                current_value: unemployment[0].value,
-                prior_value: unemployment[1].value,
-                change_pp: Math.round(uChange * 10) / 10,
-                period: unemployment[0].period,
-                bj_total_jobs: (platformSnapshot[0]?.metrics as any)?.total_jobs ?? 0,
-              },
-              score: calcScore({ magnitude: Math.min(100, 60 + Math.abs(uChange) * 40), breadth: 100, novelty: 100, recency: 80, shareability: 40 }),
-              dedup_key: dedupKey,
-            });
-          }
-        }
-      }
-
-      // Check Initial Jobless Claims for spikes
-      const claims = byIndicator.get("Initial Jobless Claims");
-      if (claims && claims.length >= 4) {
-        const avg4w = claims.slice(1, 5).reduce((a, c) => a + c.value, 0) / Math.min(4, claims.length - 1);
-        const latest = claims[0].value;
-        const pctChange = ((latest - avg4w) / avg4w) * 100;
-        if (Math.abs(pctChange) >= 10) {
-          const dedupKey = `econ_inflection:claims`;
-          if (!(await isDuplicate(dedupKey, 14))) {
-            insights.push({
-              story_type: "econ_inflection",
-              category: "trend",
-              data_points: {
-                indicator: "Initial Jobless Claims",
-                current_value: latest,
-                avg_4w: Math.round(avg4w),
-                pct_change: Math.round(pctChange * 10) / 10,
-                period: claims[0].period,
-              },
-              score: calcScore({ magnitude: Math.min(100, 50 + Math.abs(pctChange)), breadth: 100, novelty: 70, recency: 100, shareability: 40 }),
-              dedup_key: dedupKey,
-            });
-          }
-        }
-      }
+      await supabase.from("content_stories").insert({
+        story_type: anomaly.story_type,
+        category: anomaly.category,
+        headline: anomaly.headline,
+        data_points: anomaly.data_points,
+        score: anomaly.score,
+        status,
+      });
     }
-  } catch (e) { console.error("B3 economic overlay error:", e); }
 
-  // ──────────────────────────────────────────────
-  // RULE 8: Platform Milestone — every 50K jobs
-  // ──────────────────────────────────────────────
-  try {
-    const { data: platform } = await supabase
-      .from("content_snapshots")
-      .select("metrics")
-      .eq("entity_type", "platform")
-      .order("snapshot_date", { ascending: false })
-      .limit(1)
-      .single();
-
-    if (platform) {
-      const totalJobs = (platform.metrics as any)?.total_jobs ?? 0;
-      const milestone = Math.floor(totalJobs / 50000) * 50000;
-      if (milestone >= 150000) {
-        const dedupKey = `milestone:${milestone}`;
-        const { data: existing } = await supabase
-          .from("content_stories")
-          .select("id")
-          .eq("story_type", "milestone")
-          .like("data_points", `%${milestone}%`)
-          .limit(1);
-        if (!existing?.length) {
-          insights.push({
-            story_type: "milestone",
-            category: "milestone",
-            data_points: {
-              milestone_value: milestone,
-              current_total: totalJobs,
-              total_companies: (platform.metrics as any)?.total_companies ?? 0,
-            },
-            score: calcScore({ magnitude: 100, breadth: 100, novelty: 100, recency: 100, shareability: 90 }),
-            dedup_key: dedupKey,
-          });
-        }
+    return new Response(
+      JSON.stringify({
+        detected: detected.length,
+        inserted,
+        remaining_slots: remainingSlots - inserted,
+        types: detected.map((d) => d.story_type),
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
-    }
-  } catch (e) { console.error("Rule 8 error:", e); }
-
-  // ──────────────────────────────────────────────
-  // INSERT all detected insights into content_stories (status = 'pending')
-  // ──────────────────────────────────────────────
-  const inserted: string[] = [];
-  for (const insight of insights) {
-    if (insight.score < 60) continue; // below publication threshold
-
-    const { error } = await supabase.from("content_stories").insert({
-      story_type: insight.story_type,
-      category: insight.category,
-      data_points: insight.data_points,
-      score: insight.score,
-      status: "pending",
-    });
-
-    if (!error) {
-      inserted.push(`${insight.story_type} (score: ${insight.score.toFixed(1)})`);
-    }
+    );
+  } catch (error) {
+    console.error("Detection error:", error);
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
-
-  return new Response(
-    JSON.stringify({
-      detected: insights.length,
-      above_threshold: insights.filter(i => i.score >= 60).length,
-      inserted: inserted.length,
-      details: inserted,
-    }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
 });
