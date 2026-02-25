@@ -159,37 +159,68 @@ function renderResumes() {
       ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">${jobsApplied} applied \u00b7 ${responded} responded \u00b7 ${responseRate}% rate</div>`
       : '';
 
+    // Score badge from cache
+    const cachedScore = readinessCache && readinessCache.scores && readinessCache.scores[i];
+    const scoreVal = cachedScore ? cachedScore.overallScore : null;
+    const scoreClass = scoreVal >= 70 ? 'high' : scoreVal >= 40 ? 'mid' : scoreVal !== null ? 'low' : 'none';
+    const scoreDisplay = scoreVal !== null ? scoreVal + '%' : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
+
+    // Filter dots (compact representation for row)
+    const filterDots = sf.map((f, fi) => {
+      const color = filterColors[fi % filterColors.length];
+      const isActive = assignedIds.includes(f.name);
+      return isActive ? `<span class="nri-filter-dot active" style="background:${color};" title="${f.name}"></span>` : '';
+    }).filter(Boolean).join('');
+
     return `
-    <div class="resume-row ${isPlaceholder ? 'is-placeholder' : ''}">
-      <div class="resume-card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div class="rc-icon-sm ${icon.cls}" style="font-size:9px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-          <div style="min-width:0;flex:1;">
-            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}</div>
-            ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
-          </div>
-          ${gdriveIcon}${tierBadge}
+    <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
+      <div class="nri-row">
+        <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
+        <div class="nri-info">
+          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}</div>
+          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${r.levelLabel ? ' \u00b7 ' + r.levelLabel : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
         </div>
-        ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-        <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
-        ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
-        <div style="margin:8px 0;">${levelSelect}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">${filterPills}</div>
-        ${statsLine}
-        <div class="rc-actions">
-          <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
-          <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
-          <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
-          <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+        <div class="nri-filters">${filterDots}</div>
+        <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
+        <div class="nri-actions" onclick="event.stopPropagation()">
+          <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
+          <button onclick="renameResume(${i})" title="Rename">\u270e</button>
+          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
+          <button class="danger" onclick="removeResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
-      <div class="readiness-side-slot" id="readiness-side-slot-${i}">${
-        !isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]
-          ? buildReadinessSide(i, readinessCache.scores[i])
-          : (assignedIds.length > 0 && !isPlaceholder
-              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;gap:8px;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep</button></div>'
-              : '<div class="readiness-side" id="readiness-side-' + i + '"></div>')
-      }</div>
+      <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
+      <!-- AI Analysis Panel (expanded on click) -->
+      <div class="ai-panel" id="ai-panel-${i}">
+        <div id="ai-panel-content-${i}">
+          ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
+            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep Analyze</button></div>'
+            : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
+              ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
+              : '<div style="font-size:12px;color:var(--text-faint);">Assign a filter to see readiness analysis</div>') + '</div>')}
+        </div>
+        ${!isPlaceholder ? `
+        <div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Filters:</span>
+          ${filterPills}
+        </div>
+        <div style="margin-top:8px;">${levelSelect}</div>` : ''}
+        <!-- Rewrite Interview Promo -->
+        ${cachedScore && cachedScore.overallScore < 85 && !isPlaceholder ? `
+        <div class="ai-rewrite-promo">
+          <div class="ai-rewrite-promo-text">
+            <h4>\u2728 Guided Rewrite Interview</h4>
+            <p>Fill gaps, quantify impact, and strategically position your experience. Get a tailored rewrite with a side-by-side diff.</p>
+            <div class="ai-interview-preview">
+              <div class="ai-interview-step"><strong>1</strong>Fill Gaps</div>
+              <div class="ai-interview-step"><strong>2</strong>Quantify</div>
+              <div class="ai-interview-step"><strong>3</strong>Position</div>
+              <div class="ai-interview-step"><strong>4</strong>Rewrite</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="event.stopPropagation();launchRewriteInterview(${i})" style="white-space:nowrap;flex-shrink:0;">Start Rewrite</button>
+        </div>` : ''}
+      </div>
     </div>`;
   }
 
@@ -710,6 +741,41 @@ async function addResume(file) {
 window.toggleResumeKeywords = function(idx) {
   const el = document.getElementById(`rc-kw-${idx}`);
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+};
+
+// Row click → expand/collapse AI analysis panel (only one at a time)
+var _activeResumePanel = -1;
+window.toggleResumePanel = function(idx, event) {
+  // Don't toggle if clicking action buttons or inputs
+  if (event && event.target.closest('.nri-actions, select, button, input, .rc-filter-pill')) return;
+
+  const panel = document.getElementById('ai-panel-' + idx);
+  const row = document.getElementById('nri-' + idx);
+  if (!panel || !row) return;
+
+  if (_activeResumePanel === idx) {
+    // Collapse current
+    panel.classList.remove('open');
+    row.classList.remove('selected');
+    _activeResumePanel = -1;
+  } else {
+    // Collapse previous
+    if (_activeResumePanel >= 0) {
+      var prevPanel = document.getElementById('ai-panel-' + _activeResumePanel);
+      var prevRow = document.getElementById('nri-' + _activeResumePanel);
+      if (prevPanel) prevPanel.classList.remove('open');
+      if (prevRow) prevRow.classList.remove('selected');
+    }
+    // Expand new
+    panel.classList.add('open');
+    row.classList.add('selected');
+    _activeResumePanel = idx;
+
+    // Track PostHog event
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('resume_panel_expanded', { resume_index: idx, resume_name: resumes[idx]?.name });
+    }
+  }
 };
 
 window.renameResume = function(idx) {
