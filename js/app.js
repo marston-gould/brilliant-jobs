@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.69';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 6: Silent data enrichment');
+const BJ_VERSION = 'v4.70';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Roadmap trim: removed pipeline-dependent items');
 
 // Auth
 async function init() {
