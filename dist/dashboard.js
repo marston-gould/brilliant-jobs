@@ -8962,7 +8962,18 @@ async function savePipelineEntry(jobId, meta) {
       .select('id')
       .single();
     if (error) throw error;
-    if (data) meta._dbId = data.id;
+    if (data) {
+      var isNew = !meta._dbId;
+      meta._dbId = data.id;
+      if (isNew && typeof posthog !== 'undefined') {
+        posthog.capture('pipeline_entry_created', {
+          job_id: jobId,
+          stage: meta.stage || 'saved',
+          company: meta.companyName || meta.company || '',
+          ats_source: meta.atsSource || 'greenhouse'
+        });
+      }
+    }
   } catch (e) {
     console.error('[BJ] Pipeline save error:', e);
   }
@@ -9095,6 +9106,16 @@ function movePipelineStage(jobId, newStage) {
 
   // Save to Supabase (async, non-blocking for UI)
   savePipelineEntry(jobId, m);
+
+  // PostHog: track stage changes
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('pipeline_stage_changed', {
+      job_id: jobId,
+      new_stage: newStage,
+      company: m.companyName || '',
+      company_domain: m.companyDomain || ''
+    });
+  }
 
   // Keep legacy arrays in sync
   if (newStage !== 'saved' && !appliedJobIds.includes(jobId)) {
@@ -9419,18 +9440,32 @@ async function renderPipeline() {
       // Inline signal card (hidden by default, toggled by dot click)
       if (pendingSig) {
         const isSignal = pendingSig.signal_source !== 'time_based';
+        const isCalendar = pendingSig.signal_source === 'calendar';
         const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
-        const icon = isSignal ? '✉' : '⏰';
-        const headerText = isSignal
-          ? 'Activity detected for ' + title + ' at ' + company
-          : 'Time to check in on ' + title + ' at ' + company;
+        const icon = isCalendar ? '📅' : isSignal ? '✉' : '⏰';
+        const headerText = isCalendar
+          ? 'Interview detected for ' + title + ' at ' + company
+          : isSignal
+            ? 'Activity detected for ' + title + ' at ' + company
+            : 'Time to check in on ' + title + ' at ' + company;
         const evidence = pendingSig.evidence_preview || '';
+        // Interview round badge from calendar metadata
+        const meta = pendingSig.evidence_metadata || {};
+        const roundLabel = meta.interview_round
+          ? { final: 'Final Round', onsite: 'On-site', panel: 'Panel', technical: 'Technical', hm: 'Hiring Manager', phone_screen: 'Phone Screen', intro: 'Intro', '1': 'Round 1', '2': 'Round 2', late: 'Late Stage' }[meta.interview_round] || meta.interview_round
+          : null;
 
         html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
         html += '<td colspan="12" style="padding:0;">';
         html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
         html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
         if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
+        if (roundLabel) html += '<div class="pl-signal-round"><span class="pl-round-badge">' + roundLabel + '</span></div>';
+        if (pendingSig.confidence) {
+          const confPct = Math.round(pendingSig.confidence * 100);
+          const confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+          html += '<div class="pl-signal-confidence" style="color:' + confColor + ';font-size:11px;margin:2px 0;">' + confPct + '% confidence</div>';
+        }
 
         if (isSignal && pendingSig.proposed_stage) {
           // Signal confirmation: Confirm / Different stage / Dismiss
@@ -12468,6 +12503,10 @@ const NOTIF_TYPES = [
   { id: 'autorefill_success', label: 'Auto-refill confirmations', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
   { id: 'autorefill_failed', label: 'Auto-refill failed', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
   { id: 'credit_exhausted', label: 'Credits exhausted mid-month', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  // v2: Pipeline signals
+  { id: 'signal_calendar', label: 'Calendar interview detected', tier: 'realtime', defaultFreq: 'realtime', smsDefault: true },
+  { id: 'signal_email', label: 'Email signal detected', tier: 'realtime', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'pipeline_prompt', label: 'Pipeline check-in prompts', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
 ];
 
 let notifPrefs = null;   // notification_preferences row
@@ -14192,6 +14231,8 @@ function switchAdminTab(tabId) {
       case 'ghost': loadGhostTab(); break;
       case 'feedback': loadFeedbackTab(); break;
       case 'merch': loadMerchTab(); break;
+      case 'signals': loadAdminSignals(); break;
+      case 'content': loadContentTab(); break;
     }
   }
 }
@@ -16882,6 +16923,281 @@ function escAttr(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── Admin: Signals Tab (Phase D) ─────────────────────────────────
+async function loadAdminSignals() {
+  try {
+    // KPIs
+    var total = 0, pending = 0, confirmed = 0, dismissed = 0;
+    var sourceCounts = {};
+    var recentRows = [];
+
+    var { data: signals } = await sb.from('pipeline_signals')
+      .select('id, signal_source, signal_type, proposed_stage, confidence, status, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (signals) {
+      total = signals.length;
+      signals.forEach(function(s) {
+        if (s.status === 'pending_confirmation') pending++;
+        else if (s.status === 'confirmed') confirmed++;
+        else if (s.status === 'dismissed') dismissed++;
+        sourceCounts[s.signal_source] = (sourceCounts[s.signal_source] || 0) + 1;
+      });
+      recentRows = signals.slice(0, 50);
+    }
+
+    var rate = (confirmed + dismissed) > 0 ? Math.round((confirmed / (confirmed + dismissed)) * 100) + '%' : '—';
+    var el;
+    el = document.getElementById('sig-total'); if (el) el.textContent = total;
+    el = document.getElementById('sig-pending'); if (el) el.textContent = pending;
+    el = document.getElementById('sig-confirmed'); if (el) el.textContent = confirmed;
+    el = document.getElementById('sig-dismissed'); if (el) el.textContent = dismissed;
+    el = document.getElementById('sig-rate'); if (el) el.textContent = rate;
+
+    // Signals by Source chart
+    var sourceEl = document.getElementById('sig-chart-source');
+    if (sourceEl && typeof echarts !== 'undefined') {
+      var srcChart = echarts.init(sourceEl);
+      var srcData = Object.entries(sourceCounts).map(function(e) { return { name: e[0], value: e[1] }; });
+      srcChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: srcData,
+          label: { color: 'var(--text-dim)', fontSize: 11 },
+          itemStyle: { borderRadius: 4, borderColor: 'var(--bg-input)', borderWidth: 2 }
+        }]
+      });
+    }
+
+    // Pattern Confidence Distribution
+    var { data: patterns } = await sb.from('signal_patterns')
+      .select('pattern_type, pattern_value, associated_signal_type, confidence_score, confirmations, dismissals, last_seen_at')
+      .order('confidence_score', { ascending: false });
+
+    var patternEl = document.getElementById('sig-chart-patterns');
+    if (patternEl && patterns && typeof echarts !== 'undefined') {
+      var patChart = echarts.init(patternEl);
+      var buckets = { '90-100': 0, '70-89': 0, '50-69': 0, '30-49': 0, '<30': 0 };
+      patterns.forEach(function(p) {
+        var s = Math.round(p.confidence_score * 100);
+        if (s >= 90) buckets['90-100']++;
+        else if (s >= 70) buckets['70-89']++;
+        else if (s >= 50) buckets['50-69']++;
+        else if (s >= 30) buckets['30-49']++;
+        else buckets['<30']++;
+      });
+      patChart.setOption({
+        tooltip: {},
+        xAxis: { type: 'category', data: Object.keys(buckets), axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        series: [{ type: 'bar', data: Object.values(buckets), itemStyle: { color: 'var(--accent)', borderRadius: [4, 4, 0, 0] } }]
+      });
+    }
+
+    // Patterns table
+    var patBody = document.getElementById('sig-patterns-body');
+    if (patBody && patterns) {
+      patBody.innerHTML = patterns.map(function(p) {
+        var confPct = Math.round(p.confidence_score * 100);
+        var confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+        var lastSeen = p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString() : '—';
+        return '<tr><td>' + escHtml(p.pattern_type) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.pattern_value) +
+          '</td><td>' + escHtml(p.associated_signal_type) + '</td><td style="color:' + confColor + ';font-weight:600">' + confPct + '%</td><td>' + p.confirmations +
+          '</td><td>' + p.dismissals + '</td><td>' + lastSeen + '</td></tr>';
+      }).join('');
+    }
+
+    // Recent signals table
+    var sigBody = document.getElementById('sig-recent-body');
+    if (sigBody) {
+      sigBody.innerHTML = recentRows.map(function(s) {
+        var confPct = s.confidence ? Math.round(s.confidence * 100) + '%' : '—';
+        var statusColor = s.status === 'confirmed' ? '#22c55e' : s.status === 'dismissed' ? '#ef4444' : '#f59e0b';
+        var dt = new Date(s.created_at);
+        var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return '<tr><td style="font-size:10px">' + (s.user_id || '').substring(0, 8) + '…</td><td>' + escHtml(s.signal_source) +
+          '</td><td>' + escHtml(s.signal_type) + '</td><td>' + escHtml(s.proposed_stage || '—') +
+          '</td><td>' + confPct + '</td><td style="color:' + statusColor + '">' + escHtml(s.status) +
+          '</td><td style="font-size:11px">' + dateStr + '</td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('[Admin] Signals tab error:', e);
+  }
+}
+
+
+// --- TAB: CONTENT (Editorial Engine) ---
+async function loadContentTab() {
+  console.log("[Admin] Loading Content tab");
+  try {
+    var statusSel = document.getElementById("ct-filter-status");
+    var catSel = document.getElementById("ct-filter-category");
+    var refreshBtn = document.getElementById("ct-refresh-btn");
+    var detectBtn = document.getElementById("ct-detect-btn");
+    var generateBtn = document.getElementById("ct-generate-btn");
+    var closePreview = document.getElementById("ct-close-preview");
+    var actionStatus = document.getElementById("ct-action-status");
+
+    if (refreshBtn) refreshBtn.onclick = function() { fetchContentStories(); };
+    if (statusSel) statusSel.onchange = function() { fetchContentStories(); };
+    if (catSel) catSel.onchange = function() { fetchContentStories(); };
+    if (closePreview) closePreview.onclick = function() {
+      document.getElementById("ct-preview-panel").style.display = "none";
+    };
+
+    if (detectBtn) detectBtn.onclick = async function() {
+      detectBtn.disabled = true;
+      actionStatus.textContent = "Running detection...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/detect-editorial-insights", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Detected " + (data.detected || 0) + " stories (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Detection failed: " + e.message;
+      }
+      detectBtn.disabled = false;
+    };
+
+    if (generateBtn) generateBtn.onclick = async function() {
+      generateBtn.disabled = true;
+      actionStatus.textContent = "Generating content (this may take ~60s)...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/generate-editorial-content", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Generated " + (data.generated || 0) + " / Failed " + (data.failed || 0) + " (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Generation failed: " + e.message;
+      }
+      generateBtn.disabled = false;
+    };
+
+    fetchContentStories();
+  } catch (e) {
+    console.error("[Admin] Content tab error:", e);
+  }
+}
+
+async function fetchContentStories() {
+  try {
+    var statusFilter = document.getElementById("ct-filter-status").value;
+    var catFilter = document.getElementById("ct-filter-category").value;
+
+    var url = SUPABASE_URL + "/rest/v1/content_stories?select=id,story_type,category,headline,lede,body_html,meta_description,social_snippet,chart_config,evergreen_link,score,status,tags,created_at&order=score.desc,created_at.desc&limit=100";
+    if (statusFilter) url += "&status=eq." + statusFilter;
+    if (catFilter) url += "&category=eq." + catFilter;
+
+    var resp = await fetch(url, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var stories = await resp.json();
+
+    var allUrl = SUPABASE_URL + "/rest/v1/content_stories?select=status";
+    var allResp = await fetch(allUrl, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var allStories = await allResp.json();
+    var counts = { total: allStories.length, pending: 0, approved: 0, published: 0, rejected: 0 };
+    allStories.forEach(function(s) {
+      if (counts[s.status] !== undefined) counts[s.status]++;
+    });
+    document.getElementById("ct-total").textContent = counts.total;
+    document.getElementById("ct-pending").textContent = counts.pending;
+    document.getElementById("ct-approved").textContent = counts.approved;
+    document.getElementById("ct-published").textContent = counts.published;
+    document.getElementById("ct-rejected").textContent = counts.rejected;
+
+    var tbody = document.getElementById("ct-stories-body");
+    if (!tbody) return;
+
+    if (!stories.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No stories found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = stories.map(function(s) {
+      var dt = new Date(s.created_at);
+      var dateStr = dt.toLocaleDateString() + " " + dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      var statusColors = { pending: "#f59e0b", approved: "#22c55e", published: "#3b82f6", scheduled: "#8b5cf6", rejected: "#ef4444" };
+      var statusColor = statusColors[s.status] || "#888";
+      var hasContent = s.body_html ? "Y" : "N";
+      var scoreColor = s.score >= 70 ? "#22c55e" : s.score >= 40 ? "#f59e0b" : "#888";
+
+      var actions = "";
+      if (s.status === "pending") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'approved\')" style="padding:2px 8px;font-size:11px;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:4px" title="Approve">V</button>' +
+                  '<button onclick="contentAction(' + s.id + ',\'rejected\')" style="padding:2px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer" title="Reject">X</button>';
+      } else if (s.status === "approved") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'published\')" style="padding:2px 8px;font-size:11px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer">Publish</button>';
+      }
+
+      return '<tr style="cursor:pointer" onclick="previewStory(' + s.id + ')">' +
+        '<td style="color:' + scoreColor + ';font-weight:600">' + s.score + '</td>' +
+        '<td style="font-size:11px">' + hasContent + ' ' + escHtml(s.story_type) + '</td>' +
+        '<td>' + escHtml(s.category) + '</td>' +
+        '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(s.headline) + '</td>' +
+        '<td><span style="color:' + statusColor + ';font-weight:600;font-size:12px">' + s.status.toUpperCase() + '</span></td>' +
+        '<td style="font-size:11px;white-space:nowrap">' + dateStr + '</td>' +
+        '<td style="text-align:right" onclick="event.stopPropagation()">' + actions + '</td></tr>';
+    }).join("");
+
+    window._contentStories = {};
+    stories.forEach(function(s) { window._contentStories[s.id] = s; });
+  } catch(e) {
+    console.error("[Admin] Fetch content stories error:", e);
+  }
+}
+
+function previewStory(id) {
+  var s = window._contentStories && window._contentStories[id];
+  if (!s) return;
+  var panel = document.getElementById("ct-preview-panel");
+  panel.style.display = "block";
+  document.getElementById("ct-preview-headline").textContent = s.headline || "--";
+  document.getElementById("ct-preview-lede").textContent = s.lede || "--";
+  document.getElementById("ct-preview-body").innerHTML = s.body_html || "<em>No content generated yet</em>";
+  document.getElementById("ct-preview-meta").textContent = s.meta_description || "--";
+  document.getElementById("ct-preview-social").textContent = s.social_snippet || "--";
+  document.getElementById("ct-preview-link").textContent = s.evergreen_link || "--";
+  document.getElementById("ct-preview-chart").textContent = s.chart_config ? JSON.stringify(s.chart_config) : "--";
+  panel.scrollIntoView({ behavior: "smooth" });
+}
+
+async function contentAction(id, newStatus) {
+  try {
+    var updates = { status: newStatus };
+    if (newStatus === "published") {
+      updates.published_at = new Date().toISOString();
+    }
+    var resp = await fetch(SUPABASE_URL + "/rest/v1/content_stories?id=eq." + id, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(updates)
+    });
+    if (resp.ok) {
+      document.getElementById("ct-action-status").textContent = "Story #" + id + " -> " + newStatus;
+      fetchContentStories();
+    } else {
+      document.getElementById("ct-action-status").textContent = "Update failed";
+    }
+  } catch(e) {
+    document.getElementById("ct-action-status").textContent = e.message;
+  }
+}
+
 
 // === js/billing.js ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
@@ -19436,8 +19752,8 @@ window.requiredTierFor = requiredTier;
 
 
 // === js/app.js ===
-const BJ_VERSION = 'v4.61';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 7+8: Tier gating + pipeline tracking');
+const BJ_VERSION = 'v4.71';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — CE Handoff v3: 17 items across 4 categories');
 
 // Auth
 async function init() {
