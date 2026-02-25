@@ -90,27 +90,27 @@
       "destination": "/api/content?mode=blog"
     },
     {
-      "source": "/api/content/feed",
+      "source": "/content-api/feed",
       "destination": "/api/content?mode=feed"
     },
     {
-      "source": "/api/content/pulse",
+      "source": "/content-api/pulse",
       "destination": "/api/content?mode=pulse"
     },
     {
-      "source": "/api/content/embed/:id",
+      "source": "/content-api/embed/:id",
       "destination": "/api/content?mode=embed&id=:id"
     },
     {
-      "source": "/api/content/merch/index",
+      "source": "/content-api/merch-index",
       "destination": "/api/content?mode=merch-index"
     },
     {
-      "source": "/api/content/merch/datalab",
+      "source": "/content-api/merch-datalab",
       "destination": "/api/content?mode=merch-datalab"
     },
     {
-      "source": "/api/content/merch/dashboard",
+      "source": "/content-api/merch-dashboard",
       "destination": "/api/content?mode=merch-dashboard"
     },
     {
