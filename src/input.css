@@ -114,7 +114,7 @@
       --nav-bg: hsl(var(--nav-bg-hsl));
       --nav-bg-hover: hsl(215, 59%, 34%);
       --nav-bg-active: rgba(255,255,255,0.12);
-      --nav-text: rgba(255,255,255,0.65);
+      --nav-text: rgba(255,255,255,0.82);
       --nav-text-active: #ffffff;
 
       /* Fonts */
@@ -218,7 +218,9 @@
       color: var(--nav-text); font-size: 13.5px; font-weight: 500;
       cursor: pointer; transition: all 0.12s; margin-block-end: 2px;
     }
-    .nav-item:hover { background: var(--nav-bg-hover); color: rgba(255,255,255,0.85); }
+    .nav-item:hover { background: var(--nav-bg-hover); color: rgba(255,255,255,0.95); }
+    a.nav-item { color: var(--nav-text); }
+    a.nav-item:hover { color: rgba(255,255,255,0.95); }
     .nav-item.active { background: var(--nav-bg-active); color: var(--nav-text-active); font-weight: 600; }
     .nav-item.tab-flash {
       position: relative;
