@@ -644,18 +644,32 @@ async function renderPipeline() {
       // Inline signal card (hidden by default, toggled by dot click)
       if (pendingSig) {
         const isSignal = pendingSig.signal_source !== 'time_based';
+        const isCalendar = pendingSig.signal_source === 'calendar';
         const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
-        const icon = isSignal ? '✉' : '⏰';
-        const headerText = isSignal
-          ? 'Activity detected for ' + title + ' at ' + company
-          : 'Time to check in on ' + title + ' at ' + company;
+        const icon = isCalendar ? '📅' : isSignal ? '✉' : '⏰';
+        const headerText = isCalendar
+          ? 'Interview detected for ' + title + ' at ' + company
+          : isSignal
+            ? 'Activity detected for ' + title + ' at ' + company
+            : 'Time to check in on ' + title + ' at ' + company;
         const evidence = pendingSig.evidence_preview || '';
+        // Interview round badge from calendar metadata
+        const meta = pendingSig.evidence_metadata || {};
+        const roundLabel = meta.interview_round
+          ? { final: 'Final Round', onsite: 'On-site', panel: 'Panel', technical: 'Technical', hm: 'Hiring Manager', phone_screen: 'Phone Screen', intro: 'Intro', '1': 'Round 1', '2': 'Round 2', late: 'Late Stage' }[meta.interview_round] || meta.interview_round
+          : null;
 
         html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
         html += '<td colspan="12" style="padding:0;">';
         html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
         html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
         if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
+        if (roundLabel) html += '<div class="pl-signal-round"><span class="pl-round-badge">' + roundLabel + '</span></div>';
+        if (pendingSig.confidence) {
+          const confPct = Math.round(pendingSig.confidence * 100);
+          const confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+          html += '<div class="pl-signal-confidence" style="color:' + confColor + ';font-size:11px;margin:2px 0;">' + confPct + '% confidence</div>';
+        }
 
         if (isSignal && pendingSig.proposed_stage) {
           // Signal confirmation: Confirm / Different stage / Dismiss
