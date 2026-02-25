@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.70';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Roadmap trim: removed pipeline-dependent items');
+const BJ_VERSION = 'v4.71';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — CE Handoff v3: 17 items across 4 categories');
 
 // Auth
 async function init() {

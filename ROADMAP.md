@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-25
 **Target launch:** March 2026
-**Current version:** v4.70
+**Current version:** v4.71
 
 ---
 
@@ -900,6 +900,72 @@
 
 ---
 
+## Phase 37: Content Engine Remaining — Handoff v3 (v4.71) — 2026-02-25
+
+**Goal:** Roadmap update from Pod 1 Content Engine Handoff v3. Segments remaining CE work into 4 categories: Permanent Pages (A), Topical Coverage (B), Integration Wiring (C), Enrichment Monitoring (D). Adds 17 items totaling 37-52 dev days.
+
+**Source:** `docs/CONTENT_ENGINE_REMAINING_HANDOFF.docx` (v3)
+
+### Section A: Permanent Pages (6 items, 19-25 days)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| A1 | Company SEO Pages + Ghost Rate Reports | 5-7d | 🔲 | /company/:slug. Extend seo_page_cache with company-level rows. Schema.org Organization. Sitemap top 500. |
+| A2 | College Major Outcomes Page | 3d | 🔲 | NEW. /college-major-outcomes. 73 majors, NY Fed data × BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. |
+| A3 | Jobs by Location Data Page | 4-5d | 🚫 DEFERRED | /jobs-by-location. Blocked on country parsing (GH 0.8%, Lever 0%, Ashby 0%). |
+| A4 | Remote vs Non-Remote Tracker | 3-4d | 🔲 | /remote-vs-office. get_remote_differential() RPC. Launchable at 36% loc_type. Salary needs 40%+. |
+| A5 | Content Freshness Rotation | 2-3d | 🔲 | Infrastructure: last_refreshed_at, refresh_interval_days, data_volatility_score on seo_page_cache. Tiered: 7d/14d/30d. |
+| A6 | Filter-Driven Trend Indicators | 2-3d | 🔲 | get_filter_trend() RPC. Trend badges on saved filter cards. Needs 14+ days content_snapshots. |
+
+### Section B: Topical Coverage (6 items, 11-17 days)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| B1 | Metro Comparison Stories | 1d | 🔲 | metro_comparison template + threshold tuning (salary Δ 10%+, volume ratio 20%+). Rule exists. |
+| B2 | Multi-Dimensional Insight Stories | 2-3d | 🔲 | 3 detection rules (salary_x_remote, role_x_industry, level_x_location). Blocked on 60%+ coverage. |
+| B3 | Economic Overlay Stories | 3-4d | 🔲 | compute-correlations weekly cron. 3 rules: econ_divergence, econ_inflection, econ_milestone. Needs 90+ days econ data. |
+| B4 | Community Benchmark Stories | 2d | 🔲 | benchmark_shift rule + quarterly cron. Needs 50+ pipeline entries/segment. |
+| B5 | NY Fed Crossover Stories | 2-3d | 🔲 | NEW. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment × Hiring. |
+| B6 | Annual State-of-the-Market Report | 3-4d | 🔲 | annual_report template. Manual trigger + admin approval. First report Q4 2026. |
+
+### Section C: Integration Wiring (4 items, 5-7 days) — ALL NEW
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| C1 | Dashboard Insight Cards Wiring | 1-2d | 🔲 | Insight cards above jobs feed. /content-api/merch-dashboard with filter context. Dismiss with 24h reset. |
+| C2 | Email Digest Integration | 2-3d | 🔲 | Extend weekly-summary EF with top 3 stories section from content_stories. |
+| C3 | Landing Page Merchandising Wiring | 1d | 🔲 | data-merch-placement div → merch-client.js → /content-api/merch-index → 3 story cards. |
+| C4 | Blog Index + Discovery | 0.5-1d | 🔲 | Nav link, footer link, RSS, blog-to-dashboard CTAs. |
+
+### Section D: Enrichment Monitoring (1 item, 2-3 days) — NEW
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| D1 | Enrichment Coverage Dashboard | 2-3d | 🔲 | Admin tab: 4 coverage cards, trend chart, gate indicators (40%/60%), throughput, platform breakdown. BUILD FIRST. |
+
+### Recommended Build Order
+
+| Wave | Items | Days | Theme |
+|------|-------|------|-------|
+| 1 | D1, A5, A6, C4, C3 | 6-10 | Foundation + quick integration wins |
+| 2 | C1, C2 | 3-5 | Integration wiring — content reaches users |
+| 3 | A1, A2 | 8-10 | Company pages + college outcomes |
+| 4 | B1, B4, B5, B2, B3 | 10-14 | Topical story templates |
+| 5 | A4, A3 | 7-9 | Gated: remote tracker + jobs by location |
+| Deferred | B6 | 3-4 | Annual report template — Q3-Q4 2026 |
+
+### Coverage Gates
+
+| Field | Current | Target | Unblocks |
+|-------|---------|--------|----------|
+| Salary | 10% | 40%+ | A4 Remote tracker, B2 Multi-dim stories |
+| Location Type | 36% | 60%+ | A4 Remote tracker, B2 Multi-dim stories |
+| Department | 44% | 60%+ | B2 Multi-dim stories |
+| Country (GH/Lever/Ashby) | 0-0.8% | 80%+ | A3 Jobs by Location |
+
+**Phase 37 total: 17 items | 37-52 dev days | v4.71 roadmap update.**
+
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -975,6 +1041,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-25 | CE-v3 | — | **Content Engine Handoff v3 roadmap update (v4.71).** Added 17 items across 4 categories from Pod 1 CE Handoff v3: Section A Permanent Pages (6 items: company pages, college outcomes, jobs-by-location, remote tracker, freshness rotation, trend indicators), Section B Topical Coverage (6 items: metro/multi-dim/economic/benchmark/NY Fed stories, annual report), Section C Integration Wiring (4 NEW items: dashboard insight cards, email digest, landing page merch, blog discovery), Section D Enrichment Monitoring (1 NEW item: coverage dashboard). Supersedes v4.70 removal — items re-added with proper categorization. Total: 37-52 dev days. |
 | 2026-02-25 | CE-TRIM | — | **Content Engine roadmap trim (v4.70).** Removed 6 user-pipeline-dependent items from roadmap: Public Company Ghost Rate Reports, Community Benchmark Data, Programmatic Company SEO Pages, Multi-Dimensional Insight Pages, Annual State-of-the-Market Report, Jobs by Location Data Page. These require user activity at scale (50+ pipeline entries per segment, 10K company pages for ghost rates) that won't exist until well after launch. Retained viable items: Content Freshness Rotation, Filter-Driven Trend Indicators, Remote vs Non-Remote Tracker, Public Data Benchmark Overlays, Metro Comparison Pages. |
 | 2026-02-25 | 33 | RA1–RA31 | **Phase 33: Resume Archive + Metrics (v4.55–v4.60).** All 8 phases in single session. 3 new tables (resume_archive, resume_score_history, resume_job_usage). 7 functions + 2 triggers + 1 pg_cron. Archive tab UI with storage bar + version timeline. Expiry cron (daily 3AM) with tier-gated restore. Resume Metrics tab on Stats page: sparkline, level fit, pipeline funnel, usage log. Tier gating module. Pipeline→usage auto-sync trigger. 3 new JS modules (22 total, 604KB minified). 24 cron jobs. |
 | 2026-02-24 | 32 | F23–F26 | **Phase 32: Layout & Query Builder Fixes (v4.52–v4.54).** `.main` div nesting fix, sort-pills HTML, roadmap JS parser fix, admin CSV export. |
