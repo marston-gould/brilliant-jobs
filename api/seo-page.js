@@ -2,10 +2,12 @@
  * /api/seo-page.js — Vercel serverless function for SEO data pages
  *
  * Routes:
- *   /job-market-data       → type=market
- *   /jobs-in/:metro        → type=metro&metro=:metro
- *   /jobs-in/:metro/:role  → type=metro&metro=:metro&role=:role
- *   /trends/:role          → type=trends&role=:role
+ *   /job-market-data               → type=market
+ *   /jobs-in/:metro                → type=metro&metro=:metro
+ *   /jobs-in/:metro/:role          → type=metro&metro=:metro&role=:role
+ *   /trends/:role                  → type=trends&role=:role
+ *   /jobs-:cityA-vs-:cityB         → type=comparison&a=:cityA&b=:cityB
+ *   /jobs-by-location              → type=location
  *
  * Reads pre-computed data from seo_page_cache (populated by pg_cron).
  * Returns server-rendered HTML with embedded JSON for client-side ECharts hydration.
@@ -22,11 +24,13 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // =========================================================================
 // Cache key builder
 // =========================================================================
-function buildCacheKey(type, metro, role) {
+function buildCacheKey(type, metro, role, a, b) {
   if (type === 'market') return 'market:overview';
   if (type === 'trends') return 'trends:' + role;
   if (type === 'metro' && role) return 'metro:' + metro + ':' + role;
   if (type === 'metro') return 'metro:' + metro;
+  if (type === 'comparison' && a && b) return 'compare:' + a + ':' + b;
+  if (type === 'location') return '__rpc__location'; // special: uses RPC, not cache
   return null;
 }
 
@@ -315,6 +319,165 @@ function renderMarketPage(data) {
 }
 
 // =========================================================================
+// Comparison page — /jobs-:cityA-vs-:cityB
+// =========================================================================
+function renderComparisonPage(data, a, b) {
+  const d = data.data || data;
+  const deltas = d.deltas || {};
+  const aData = d.a || {};
+  const bData = d.b || {};
+  const aStats = aData.stats || aData.metro || {};
+  const bStats = bData.stats || bData.metro || {};
+  const aName = aData.metro?.display_name || a.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const bName = bData.metro?.display_name || b.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const salaryWinner = (deltas.salary_diff_pct || 0) > 0 ? aName : bName;
+  const volumeWinner = (deltas.volume_diff_pct || 0) > 0 ? aName : bName;
+
+  return renderShell({
+    title: `${aName} vs ${bName} — Job Market Comparison 2026 | Brilliant Jobs`,
+    metaDesc: `Compare ${aName} and ${bName} job markets: ${fmtNum(deltas.volume_a || 0)} vs ${fmtNum(deltas.volume_b || 0)} open positions, ${fmtSal(deltas.salary_a)} vs ${fmtSal(deltas.salary_b)} median salary. Updated daily from direct ATS data.`,
+    canonical: `/jobs-${a}-vs-${b}`,
+    bodyClass: 'seo-page seo-comparison',
+    breadcrumbs: [
+      { name: 'Market Data', url: '/job-market-data' },
+      { name: 'By Location', url: '/jobs-by-location' },
+      { name: `${aName} vs ${bName}`, url: `/jobs-${a}-vs-${b}` }
+    ],
+    content: `
+    <section class="seo-hero">
+      <h1>${esc(aName)} vs ${esc(bName)}</h1>
+      <p class="seo-hero-sub">Side-by-side job market comparison — salaries, volume, remote rates, and top employers.</p>
+    </section>
+
+    <section class="seo-section">
+      <h2>At a Glance</h2>
+      <div class="seo-stat-grid seo-stat-grid-3">
+        <div class="seo-stat-card">
+          <span class="seo-stat-label">Open Jobs</span>
+          <span class="seo-stat-val">${fmtNum(deltas.volume_a || 0)} vs ${fmtNum(deltas.volume_b || 0)}</span>
+          <span class="seo-stat-detail">${esc(volumeWinner)} has ${Math.abs(Math.round(deltas.volume_diff_pct || 0))}% more</span>
+        </div>
+        <div class="seo-stat-card">
+          <span class="seo-stat-label">Median Salary</span>
+          <span class="seo-stat-val">${fmtSal(deltas.salary_a)} vs ${fmtSal(deltas.salary_b)}</span>
+          <span class="seo-stat-detail">${esc(salaryWinner)} pays ${Math.abs(Math.round(deltas.salary_diff_pct || 0))}% more</span>
+        </div>
+        <div class="seo-stat-card">
+          <span class="seo-stat-label">Remote Rate Gap</span>
+          <span class="seo-stat-val">${Math.abs(Math.round(deltas.remote_diff_pp || 0))}pp</span>
+          <span class="seo-stat-detail">${(deltas.remote_diff_pp || 0) >= 0 ? esc(aName) : esc(bName)} has more remote</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="seo-section">
+      <h2>Hiring Velocity</h2>
+      <p class="seo-subline">Weekly new job postings over the last 12 weeks.</p>
+      <div id="chart-comparison-timeline" class="seo-chart" data-chart="comparison-timeline"></div>
+    </section>
+
+    <section class="seo-section">
+      <h2>Salary Distribution</h2>
+      <p class="seo-subline">How salary ranges compare between the two markets.</p>
+      <div id="chart-comparison-salary" class="seo-chart" data-chart="comparison-salary"></div>
+    </section>
+
+    <section class="seo-section">
+      <h2>Top Employers</h2>
+      <div class="seo-grid-2col">
+        <div>
+          <h3>${esc(aName)}</h3>
+          <div id="chart-companies-a" class="seo-chart" data-chart="companies-a"></div>
+        </div>
+        <div>
+          <h3>${esc(bName)}</h3>
+          <div id="chart-companies-b" class="seo-chart" data-chart="companies-b"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="seo-section seo-compare-links">
+      <h2>Explore Each Market</h2>
+      <p><a href="/jobs-in/${esc(a)}">Jobs in ${esc(aName)} →</a></p>
+      <p><a href="/jobs-in/${esc(b)}">Jobs in ${esc(bName)} →</a></p>
+    </section>
+
+    ${renderCTA()}
+    `,
+    chartData: JSON.stringify({ comparison: d, metro_a: a, metro_b: b, a_name: aName, b_name: bName })
+  });
+}
+
+// =========================================================================
+// Location aggregate page — /jobs-by-location
+// =========================================================================
+function renderLocationPage(stateData, metroData) {
+  const states = stateData || [];
+  const metros = metroData || [];
+  const totalJobs = states.reduce((sum, s) => sum + (s.count || 0), 0);
+
+  // Build state table rows
+  const stateRows = states.slice(0, 25).map(s =>
+    `<tr><td>${esc(s.state)}</td><td>${fmtNum(s.count)}</td><td>${fmtSal(s.salary_median)}</td><td>${Math.round(s.remote_pct || 0)}%</td></tr>`
+  ).join('');
+
+  return renderShell({
+    title: 'Jobs by Location — State & Metro Salary Data 2026 | Brilliant Jobs',
+    metaDesc: `Compare ${fmtNum(totalJobs)} open jobs across ${states.length} US states and ${metros.length} metro areas. Salary data, remote work rates, and top employers by location.`,
+    canonical: '/jobs-by-location',
+    bodyClass: 'seo-page seo-location',
+    breadcrumbs: [
+      { name: 'Market Data', url: '/job-market-data' },
+      { name: 'By Location', url: '/jobs-by-location' }
+    ],
+    content: `
+    <section class="seo-hero">
+      <h1>Jobs by Location</h1>
+      <p class="seo-hero-sub">${fmtNum(totalJobs)} open positions across ${states.length} states — salary and remote data for every major market.</p>
+    </section>
+
+    <section class="seo-section">
+      <h2>Top Metros</h2>
+      <p class="seo-subline">Click any metro to explore its full market profile.</p>
+      <div id="chart-metro-bar" class="seo-chart seo-chart-tall" data-chart="location-metro-bar"></div>
+    </section>
+
+    <section class="seo-section">
+      <h2>State Breakdown</h2>
+      <div id="chart-state-choropleth" class="seo-chart seo-chart-wide" data-chart="state-choropleth"></div>
+      <div class="seo-table-wrap">
+        <table class="seo-table">
+          <thead><tr><th>State</th><th>Open Jobs</th><th>Median Salary</th><th>Remote %</th></tr></thead>
+          <tbody>${stateRows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="seo-section">
+      <h2>Compare Metros</h2>
+      <p class="seo-subline">Popular city-vs-city matchups.</p>
+      <div class="seo-link-grid">
+        <a href="/jobs-san-francisco-vs-austin">SF vs Austin</a>
+        <a href="/jobs-san-francisco-vs-new-york">SF vs New York</a>
+        <a href="/jobs-new-york-vs-los-angeles">NYC vs LA</a>
+        <a href="/jobs-austin-vs-denver">Austin vs Denver</a>
+        <a href="/jobs-seattle-vs-portland">Seattle vs Portland</a>
+        <a href="/jobs-chicago-vs-atlanta">Chicago vs Atlanta</a>
+        <a href="/jobs-boston-vs-washington-dc">Boston vs DC</a>
+        <a href="/jobs-dallas-vs-austin">Dallas vs Austin</a>
+        <a href="/jobs-miami-vs-atlanta">Miami vs Atlanta</a>
+        <a href="/jobs-denver-vs-seattle">Denver vs Seattle</a>
+      </div>
+    </section>
+
+    ${renderCTA()}
+    `,
+    chartData: JSON.stringify({ states: stateData, metros: metroData })
+  });
+}
+
+// =========================================================================
 // CTA block
 // =========================================================================
 function renderCTA() {
@@ -441,15 +604,33 @@ function render404(msg) {
 // Handler
 // =========================================================================
 module.exports = async function handler(req, res) {
-  const { type, metro, role } = req.query;
+  const { type, metro, role, a, b } = req.query;
 
   if (!type) {
     res.status(400).send('Missing type parameter');
     return;
   }
 
+  // Location page uses RPCs, not cache
+  if (type === 'location') {
+    const [stateRes, metroRes] = await Promise.all([
+      sb.rpc('get_jobs_by_state'),
+      sb.rpc('get_jobs_by_metro', { p_limit: 20 })
+    ]);
+    if (stateRes.error || metroRes.error) {
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+      res.status(500).send(render404('Unable to load location data.'));
+      return;
+    }
+    const html = renderLocationPage(stateRes.data, metroRes.data);
+    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(200).send(html);
+    return;
+  }
+
   // Build cache key
-  const cacheKey = buildCacheKey(type, metro, role);
+  const cacheKey = buildCacheKey(type, metro, role, a, b);
   if (!cacheKey) {
     res.status(400).send('Invalid parameters');
     return;
@@ -473,12 +654,14 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // Check job count threshold
-  const threshold = type === 'trends' ? 300 : (role ? 50 : 200);
-  if (data.job_count < threshold) {
-    res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
-    res.status(404).send(render404(`Insufficient data — need at least ${threshold} jobs to show meaningful charts.`));
-    return;
+  // Check job count threshold (skip for comparisons — they combine two metros)
+  if (type !== 'comparison') {
+    const threshold = type === 'trends' ? 300 : (role ? 50 : 200);
+    if (data.job_count < threshold) {
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+      res.status(404).send(render404(`Insufficient data — need at least ${threshold} jobs to show meaningful charts.`));
+      return;
+    }
   }
 
   // Render
@@ -492,6 +675,9 @@ module.exports = async function handler(req, res) {
       break;
     case 'trends':
       html = renderTrendsPage(data, role);
+      break;
+    case 'comparison':
+      html = renderComparisonPage(data, a, b);
       break;
     default:
       res.status(400).send('Unknown page type');
