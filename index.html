@@ -533,6 +533,18 @@
       color: var(--text-faint); margin-top: 6px; cursor: pointer;
     }
     .forgot-link:hover { color: var(--accent); }
+
+    .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
+    .insight-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: border-color .2s, transform .2s; }
+    .insight-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .insight-cat { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .insight-headline { font-size: 15px; font-weight: 600; line-height: 1.35; margin: 10px 0 6px; color: var(--text); }
+    .insight-lede { font-size: 13px; color: var(--text-dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px; }
+    .insight-link { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .insight-link:hover { text-decoration: underline; }
+    .insight-stat { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    @media (max-width: 768px) { .insights-grid { grid-template-columns: 1fr; } }
+
     .forgot-section { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
     .forgot-section.active { display: block; }
     .optin-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
@@ -1154,6 +1166,18 @@
     </p>
   </section>
 
+
+  <!-- ==================== MARKET INSIGHTS ==================== -->
+  <section class="section fade-up segment-new segment-returning segment-lapsed" id="market-insights" style="display:none">
+    <div class="section-label">Market Intelligence</div>
+    <h2>Real-time job market insights,<br>powered by data.</h2>
+    <p class="section-desc">Our content engine analyzes hundreds of thousands of live job listings to surface trends, spikes, and opportunities you won't find anywhere else.</p>
+    <div class="insights-grid" id="insights-grid"></div>
+    <p style="text-align:center;margin-top:20px">
+      <a href="/blog" style="color:var(--accent);font-size:14px;font-weight:600;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Browse all market insights &rarr;</a>
+    </p>
+  </section>
+
   <!-- ==================== PRICING ==================== -->
   <section class="section fade-up" id="pricing">
     <div class="section-label">Pricing</div>
@@ -1284,11 +1308,12 @@
       <a href="/salary-data">Salaries</a>
       <a href="/hiring-trends">Hiring</a>
       <a href="/help">Help</a>
+      <a href="/blog">Market Insights</a>
       <a href="/terms">Terms</a>
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.23</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.75</p>
   </footer>
 
   <!-- AUTH MODAL -->
@@ -1985,5 +2010,43 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
   </script>
+
+<script>
+// C3: Landing Page Merchandising — fetch from content-api/merch-index
+(function(){
+  var grid = document.getElementById('insights-grid');
+  var section = document.getElementById('market-insights');
+  if (!grid || !section) return;
+
+  var catColors = {
+    salary: { bg:'#dcfce7', fg:'#166534' },
+    location: { bg:'#dbeafe', fg:'#1e40af' },
+    remote: { bg:'#f3e8ff', fg:'#6b21a8' },
+    company: { bg:'#ffedd5', fg:'#9a3412' },
+    trend: { bg:'#ccfbf1', fg:'#115e59' },
+    milestone: { bg:'#fef9c3', fg:'#854d0e' }
+  };
+
+  fetch('/content-api/merch-index')
+    .then(function(r) { return r.json(); })
+    .then(function(cards) {
+      if (!cards || !cards.length) return;
+      section.style.display = 'block';
+      grid.innerHTML = cards.slice(0, 3).map(function(c) {
+        var col = catColors[c.category] || { bg:'#f3f4f6', fg:'#374151' };
+        return '<div class="insight-card">'
+          + '<span class="insight-cat" style="background:' + col.bg + ';color:' + col.fg + '">' + (c.category || 'insight') + '</span>'
+          + (c.key_stat ? '<div class="insight-stat">' + c.key_stat + '</div>' : '')
+          + '<div class="insight-headline">' + c.headline + '</div>'
+          + '<p class="insight-lede">' + (c.lede || '') + '</p>'
+          + '<a href="/blog/' + c.slug + '" class="insight-link">Read more &rarr;</a>'
+          + '</div>';
+      }).join('');
+
+      if (window.posthog) posthog.capture('merch_insights_shown', { count: cards.length });
+    })
+    .catch(function(e) { console.log('[Merch] Load error:', e); });
+})();
+</script>
 </body>
 </html>
