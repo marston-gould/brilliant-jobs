@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.63';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase D: Signal analytics + notification templates');
+const BJ_VERSION = 'v4.64';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 1B: SEO comparison + location pages');
 
 // Auth
 async function init() {

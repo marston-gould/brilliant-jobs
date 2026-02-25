@@ -74,6 +74,14 @@
   ],
   "rewrites": [
     {
+      "source": "/jobs-:a-vs-:b",
+      "destination": "/api/seo-page?type=comparison&a=:a&b=:b"
+    },
+    {
+      "source": "/jobs-by-location",
+      "destination": "/api/seo-page?type=location"
+    },
+    {
       "source": "/jobs-in/:metro/:role",
       "destination": "/api/seo-page?type=metro&metro=:metro&role=:role"
     },
