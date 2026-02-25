@@ -95,6 +95,7 @@ function switchAdminTab(tabId) {
       case 'merch': loadMerchTab(); break;
       case 'signals': loadAdminSignals(); break;
       case 'content': loadContentTab(); break;
+      case 'enrichment': loadEnrichmentTab(); break;
     }
   }
 }
@@ -3057,5 +3058,138 @@ async function contentAction(id, newStatus) {
     }
   } catch(e) {
     document.getElementById("ct-action-status").textContent = e.message;
+  }
+}
+
+// ========== Enrichment Coverage Dashboard (D1) ==========
+var _enChart = null;
+
+async function loadEnrichmentTab() {
+  if (_adminTabInit['enrichment']) return;
+  console.log('[Admin] loadEnrichmentTab');
+  try {
+    var res = await sb.rpc('get_enrichment_coverage');
+    if (res.error) { console.error('[Admin] Enrichment RPC error:', res.error); return; }
+    var d = res.data;
+
+    // Coverage cards
+    setAdminText('en-salary-pct', d.salary_pct + '%');
+    setAdminText('en-loctype-pct', d.loc_type_pct + '%');
+    setAdminText('en-dept-pct', d.department_pct + '%');
+    setAdminText('en-country-pct', d.country_pct + '%');
+    setAdminText('en-total-jobs', fmtAdminNum(d.total_jobs));
+
+    // Color code cards by coverage level
+    var salEl = document.getElementById('en-salary-pct');
+    var ltEl = document.getElementById('en-loctype-pct');
+    var dpEl = document.getElementById('en-dept-pct');
+    var ctEl = document.getElementById('en-country-pct');
+    if (salEl) salEl.style.color = d.salary_pct >= 40 ? '#4a9a6b' : d.salary_pct >= 20 ? '#a08858' : '#c06060';
+    if (ltEl) ltEl.style.color = d.loc_type_pct >= 60 ? '#4a9a6b' : d.loc_type_pct >= 30 ? '#a08858' : '#c06060';
+    if (dpEl) dpEl.style.color = d.department_pct >= 60 ? '#4a9a6b' : d.department_pct >= 30 ? '#a08858' : '#c06060';
+    if (ctEl) ctEl.style.color = d.country_pct >= 80 ? '#4a9a6b' : d.country_pct >= 40 ? '#a08858' : '#c06060';
+
+    // Gate indicators
+    var gates = d.gates || {};
+    var gateConfig = [
+      { key: 'salary_40', label: 'Salary 40%', met: gates.salary_40, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'loc_type_60', label: 'Loc Type 60%', met: gates.loc_type_60, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'department_60', label: 'Department 60%', met: gates.department_60, unlocks: 'Multi-dim Stories (B2)' },
+      { key: 'country_80', label: 'Country 80%', met: gates.country_80, unlocks: 'Jobs by Location (A3)' }
+    ];
+    var gateEl = document.getElementById('en-gates');
+    if (gateEl) {
+      gateEl.innerHTML = gateConfig.map(function(g) {
+        var color = g.met ? '#4a9a6b' : '#a08858';
+        var icon = g.met ? '✓' : '○';
+        var label = g.met ? 'Gate met' : 'Not met';
+        return '<div style="padding:8px 14px;border-radius:8px;border:1px solid ' + color + ';background:color-mix(in srgb,' + color + ' 10%,transparent);font-size:12px">' +
+          '<span style="color:' + color + ';font-weight:700">' + icon + ' ' + g.label + '</span>' +
+          '<span style="color:var(--text-dim);margin-left:6px">' + label + '</span>' +
+          (g.met ? '' : '<div style="color:var(--text-faint);font-size:11px;margin-top:2px">Unlocks: ' + g.unlocks + '</div>') +
+          '</div>';
+      }).join('');
+    }
+
+    // Gate badge on coverage cards
+    gateConfig.forEach(function(g, i) {
+      var ids = ['en-salary-gate','en-loctype-gate','en-dept-gate','en-country-gate'];
+      var el = document.getElementById(ids[i]);
+      if (el) {
+        el.innerHTML = g.met ? '<span style="color:#4a9a6b;font-size:11px">✓ Gate met</span>' : '<span style="color:#a08858;font-size:11px">Target: ' + g.label.split(' ')[1] + '</span>';
+      }
+    });
+
+    // Platform breakdown table
+    var platforms = d.platforms || [];
+    var tbody = document.getElementById('en-platform-body');
+    var tfoot = document.getElementById('en-platform-foot');
+    if (tbody) {
+      tbody.innerHTML = platforms.map(function(p) {
+        var pct = function(n) { return p.total > 0 ? (n * 100 / p.total).toFixed(1) + '%' : '0%'; };
+        var colorPct = function(n, target) {
+          var v = p.total > 0 ? n * 100 / p.total : 0;
+          var c = v >= target ? '#4a9a6b' : v >= target * 0.5 ? '#a08858' : '#c06060';
+          return '<span style="color:' + c + '">' + v.toFixed(1) + '%</span>';
+        };
+        return '<tr>' +
+          '<td class="admin-platform-name">' + p.ats_source + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(p.total) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_salary, 40) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_loc_type, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_department, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_country, 80) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+    if (tfoot) {
+      tfoot.innerHTML = '<tr style="font-weight:700;border-top:2px solid var(--border)">' +
+        '<td>Total</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(d.total_jobs) + '</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.salary_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.loc_type_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.department_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.country_pct + '%</td>' +
+        '</tr>';
+    }
+
+    // Platform coverage bar chart
+    var chartEl = document.getElementById('en-chart-platforms');
+    if (chartEl && typeof echarts !== 'undefined') {
+      if (_enChart) _enChart.dispose();
+      _enChart = echarts.init(chartEl);
+      var names = platforms.map(function(p) { return p.ats_source; });
+      var mkSeries = function(field, name, color) {
+        return {
+          name: name, type: 'bar', stack: false,
+          data: platforms.map(function(p) { return p.total > 0 ? +(p[field] * 100 / p.total).toFixed(1) : 0; }),
+          itemStyle: { color: color, borderRadius: [2,2,0,0] },
+          barMaxWidth: 24
+        };
+      };
+      _enChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) {
+          var tip = '<strong>' + params[0].name + '</strong>';
+          params.forEach(function(p) { tip += '<br>' + p.marker + ' ' + p.seriesName + ': ' + p.value + '%'; });
+          return tip;
+        }},
+        legend: { top: 0, textStyle: { color: 'var(--text-dim)', fontSize: 11 } },
+        grid: { left: 50, right: 20, top: 36, bottom: 30 },
+        xAxis: { type: 'category', data: names, axisLabel: { color: 'var(--text-dim)', fontSize: 11 } },
+        yAxis: { type: 'value', max: 100, axisLabel: { color: 'var(--text-dim)', fontSize: 11, formatter: '{value}%' },
+          splitLine: { lineStyle: { color: 'var(--border)' } } },
+        series: [
+          mkSeries('with_salary', 'Salary', '#6366f1'),
+          mkSeries('with_loc_type', 'Loc Type', '#3b82f6'),
+          mkSeries('with_department', 'Department', '#22c55e'),
+          mkSeries('with_country', 'Country', '#f59e0b')
+        ]
+      });
+      window.addEventListener('resize', function() { if (_enChart) _enChart.resize(); });
+    }
+
+    _adminTabInit['enrichment'] = true;
+  } catch(e) {
+    console.error('[Admin] Enrichment error:', e);
   }
 }

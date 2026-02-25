@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.71';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — CE Handoff v3: 17 items across 4 categories');
+const BJ_VERSION = 'v4.72';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — D1: Enrichment Coverage Dashboard deployed');
 
 // Auth
 async function init() {
