@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.62</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.63</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -2541,6 +2541,7 @@
             <button class="admin-tab" data-tab="ghost">Ghost</button>
             <button class="admin-tab" data-tab="feedback">Feedback</button>
             <button class="admin-tab" data-tab="merch">Merchandising</button>
+            <button class="admin-tab" data-tab="signals">Signals</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -2983,6 +2984,47 @@
 
             <!-- Modal Overlay -->
             <div id="merch-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1001;justify-content:center;align-items:center"></div>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-signals">
+            <!-- KPI Row -->
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+              <div class="stat-card"><div class="stat-val" id="sig-total">—</div><div class="stat-label">Total Signals</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-pending">—</div><div class="stat-label">Pending</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-confirmed">—</div><div class="stat-label">Confirmed</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-dismissed">—</div><div class="stat-label">Dismissed</div></div>
+              <div class="stat-card"><div class="stat-val" id="sig-rate">—</div><div class="stat-label">Confirm Rate</div></div>
+            </div>
+
+            <!-- Charts Row -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+              <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px">
+                <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Signals by Source</div>
+                <div id="sig-chart-source" style="width:100%;height:200px"></div>
+              </div>
+              <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px">
+                <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Pattern Confidence Distribution</div>
+                <div id="sig-chart-patterns" style="width:100%;height:200px"></div>
+              </div>
+            </div>
+
+            <!-- Signal Patterns Table -->
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px">
+              <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Learned Patterns (Cross-User)</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>Type</th><th>Pattern</th><th>Signal</th><th>Conf.</th><th>✓</th><th>✗</th><th>Last Seen</th></tr></thead>
+                <tbody id="sig-patterns-body"></tbody>
+              </table>
+            </div>
+
+            <!-- Recent Signals Table -->
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px">
+              <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Recent Signals</div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr><th>User</th><th>Source</th><th>Type</th><th>Stage</th><th>Confidence</th><th>Status</th><th>Created</th></tr></thead>
+                <tbody id="sig-recent-body"></tbody>
+              </table>
+            </div>
           </div>
 
         </div>

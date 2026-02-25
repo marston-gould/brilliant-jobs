@@ -187,7 +187,18 @@ async function savePipelineEntry(jobId, meta) {
       .select('id')
       .single();
     if (error) throw error;
-    if (data) meta._dbId = data.id;
+    if (data) {
+      var isNew = !meta._dbId;
+      meta._dbId = data.id;
+      if (isNew && typeof posthog !== 'undefined') {
+        posthog.capture('pipeline_entry_created', {
+          job_id: jobId,
+          stage: meta.stage || 'saved',
+          company: meta.companyName || meta.company || '',
+          ats_source: meta.atsSource || 'greenhouse'
+        });
+      }
+    }
   } catch (e) {
     console.error('[BJ] Pipeline save error:', e);
   }
@@ -320,6 +331,16 @@ function movePipelineStage(jobId, newStage) {
 
   // Save to Supabase (async, non-blocking for UI)
   savePipelineEntry(jobId, m);
+
+  // PostHog: track stage changes
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('pipeline_stage_changed', {
+      job_id: jobId,
+      new_stage: newStage,
+      company: m.companyName || '',
+      company_domain: m.companyDomain || ''
+    });
+  }
 
   // Keep legacy arrays in sync
   if (newStage !== 'saved' && !appliedJobIds.includes(jobId)) {
