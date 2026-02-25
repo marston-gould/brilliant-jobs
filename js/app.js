@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.64';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 1B: SEO comparison + location pages');
+const BJ_VERSION = 'v4.65';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 2C: Content admin tab + editorial engine');
 
 // Auth
 async function init() {
