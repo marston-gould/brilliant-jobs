@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.59';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Resume Metrics Intelligence UI (Phase 6)');
+const BJ_VERSION = 'v4.60';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase 7+8: Tier gating + pipeline tracking');
 
 // Auth
 async function init() {
