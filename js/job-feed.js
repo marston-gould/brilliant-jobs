@@ -822,7 +822,7 @@ async function updateJobStatsFromFilters(filters) {
 function updateJobStats(total, companies, newSinceLogin, newToday) {
   $('#j-total').textContent = total.toLocaleString();
   $('#j-companies').textContent = companies.toLocaleString();
-  $('#j-new-login').textContent = newSinceLogin.toLocaleString();
+  if ($('#j-new-login')) $('#j-new-login').textContent = newSinceLogin.toLocaleString();
   $('#j-new').textContent = newToday.toLocaleString();
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
 }
