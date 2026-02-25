@@ -21,6 +21,7 @@ const jsFiles = [
   'js/micro-surveys.js',
   'js/rewrite.js',
   'js/resume-archive.js',
+  'js/resume-metrics.js',
   'js/app.js',
 ];
 
