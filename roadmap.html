@@ -1342,6 +1342,46 @@ const features = [
   { s: 'done', n: 'PostHog: pipeline_entry_created (v4.63)', d: 'Fires on first pipeline save. Tracks job_id, stage, company, ats_source.', p: 38 },
   { s: 'done', n: 'Notification types: signal_calendar, signal_email, pipeline_prompt (v4.63)', d: 'Three new notification types registered. signal_calendar is SMS-enabled. pipeline_prompt defaults to daily digest.', p: 38 },
   { s: 'done', n: 'Version sync v4.63', d: 'dashboard.html, js/app.js, dist/dashboard.min.js all v4.63.', p: 38 },
+
+  // Phase 39: Content Distribution & Social Publishing — 2026-02-25
+  // Phase 1: Evergreen SEO Infrastructure (Pre-Launch, 5-7 days)
+  { s: 'todo', n: 'Trend page template engine', d: 'Automated generation of SEO pages from aggregated ATS data. Templated layout: headline, key stat, ECharts visualization, source attribution, signup CTA. Schema.org markup. Freshness timestamps for crawlers.', b: 'pre-launch', p: 39, b: 'pre-launch' },
+  { s: 'todo', n: 'Jobs by Location SEO page', d: 'Dedicated /jobs-by-location page. State choropleth, top 20 metros bar chart, salary by region, remote % by state. Requires get_jobs_by_state() and get_jobs_by_metro() RPCs. High-value keyword cluster.', b: 'pre-launch', p: 39, b: 'pre-launch' },
+  { s: 'todo', n: 'First 10 metro comparison pages', d: 'Programmatic /jobs-{city1}-vs-{city2} pages. Salary differential, top industries, remote %, top employers. FAQ schema targeting city-specific queries. DataForSEO keyword validation.', b: 'pre-launch', p: 39, b: 'pre-launch' },
+  { s: 'todo', n: 'DataForSEO keyword validation for SEO pages', d: 'Validate keyword targets for all trend and comparison pages. Search volume, difficulty, SERP features. Prioritize pages by keyword opportunity.', b: 'pre-launch', p: 39, b: 'pre-launch' },
+
+  // Phase 2: Editorial Engine Core (Month 1, 5-7 days)
+  { s: 'todo', n: 'detect-editorial-insights Edge Function', d: 'Anomaly detection across ATS data. Rules: hiring velocity spikes (>2σ from 30d mean), salary drift (>5% in 14d), new company surge (>10 jobs/day from previously quiet employer), geographic shifts. Scoring system for story priority.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Claude story generation — multi-platform variants', d: 'Claude API generates platform-native content from each detected insight: blog (journalistic, inline charts, schema markup), LinkedIn (authoritative conversational, stat hook, engagement question), X (punchy one-liner + chart), Reddit (data-first zero brand voice), video script (voiceover pacing). Each variant stored independently.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'content_stories table + schema', d: 'Story queue table: id, insight_type, anomaly_score, platform_variants JSONB (blog/linkedin/x/reddit/youtube), social_metrics JSONB, status (draft/approved/published/rejected), publication_timestamps per platform, created_at, updated_at.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Admin Content tab + approval queue', d: 'New admin tab for editorial queue. Preview each platform variant independently. Approve/reject per-platform (approve blog + LinkedIn, reject Reddit). Calendar view for scheduling. Story scoring and priority display.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Create LinkedIn company page', d: 'Create \"Brilliant Jobs\" LinkedIn company page. Marston as admin. Verify domain. Bio and branding aligned with product. Required before social publishing pipeline.', b: 'ceo', p: 39, b: 'ceo' },
+  { s: 'todo', n: 'Create X (Twitter) account', d: '@brilliantjobs or similar handle. Bio links to brilliantjobs.app. Branding consistent with LinkedIn. Required for press/journalist pickup channel.', b: 'ceo', p: 39, b: 'ceo' },
+
+  // Phase 3: Blog + Social Distribution (Month 1-2, 4-5 days)
+  { s: 'todo', n: 'Blog page template (/blog)', d: '/blog index + /blog/{slug} detail pages. Dark theme matching product. Inline ECharts from story data. Schema markup (Article + FAQ). Signup CTA sections. Canonical URL for all external links. SEO authority target.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Late unified social API integration', d: 'Integrate Late (getlate.dev) for multi-platform publishing. Single API call publishes to LinkedIn, X, Reddit, Bluesky. OAuth connection for all platform accounts. Rate limit and retry handling. ~$10-49/mo.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'publish-story Edge Function', d: 'Triggered on admin approval. Publishes to blog (direct), then fires Late API for each approved platform variant. Logs publication timestamps and platform post IDs per story.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Social metrics webhook ingestion', d: 'Late webhooks deliver engagement metrics (impressions, reactions, comments, shares, clicks). Edge Function ingests and updates content_stories.social_metrics JSONB. Enables feedback loop.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Internal merchandising — 5 surfaces', d: 'Surface published stories inside the product: (1) Index page Market Pulse (latest 3), (2) Data Lab Trending cards (latest 5), (3) Dashboard insight cards (filter-aware, 2-3 on login), (4) Weekly email digest (top 3 via Resend), (5) Blog archive. Stories ranked by combined social + internal engagement.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Newsletter weekly digest via Resend', d: 'Weekly email to subscribers: top 3 stories of the week + deeper context. \"What this means for your search\" framing. Filter-specific where possible. Builds owned channel.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Create Reddit account + karma building', d: 'u/brilliantjobs_data or similar. Build karma in r/dataisbeautiful, r/economics, r/jobs before posting branded content. Data-first, zero brand language approach.', b: 'ceo', p: 39, b: 'ceo' },
+  { s: 'todo', n: 'Create Bluesky account', d: '@brilliantjobs.bsky.social or custom domain handle. Early-mover advantage on platform with 3.5M DAU and strong engagement for provocative data takes.', b: 'ceo', p: 39, b: 'ceo' },
+
+  // Phase 4: Video + Survey Research (Month 2-3, 6-8 days)
+  { s: 'todo', n: 'AI voiceover generation (ElevenLabs / Play.ht)', d: 'Select brand voice. API integration for video narration. Punchier, shorter scripts optimized for voiceover pacing. ~$5-22/mo.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Video rendering pipeline (Remotion / Motion Canvas)', d: 'Render animated charts from ECharts configs into video frames. Composite with AI voiceover into 60-90 sec faceless data stories. Text overlays + branded outro. 16:9 for YouTube, 9:16 vertical cuts for Shorts/Reels/TikTok.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'YouTube brand channel + API upload', d: 'Create Brilliant Jobs YouTube channel. Google Cloud Console project with YouTube Data API v3. OAuth for automated upload. Custom URL, banner, profile.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Survey research program — pop-up surveys', d: 'Short contextual surveys to active job seekers while in search experience. Separate consent from product surveys. Bank responses until 200+ threshold. Publish as \"Brilliant Jobs Research.\" Third proprietary data layer.', b: 'needs-users', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Personal journey opt-in system', d: 'Triggered on success signals (got interview, got hired). Users share story voluntarily with explicit publishing consent. Human layer on data stories: \"Here\\'s what that looked like for Sarah in Austin.\"', b: 'needs-users', p: 39, b: 'post-launch' },
+
+  // Phase 5: Economic Data + Feedback Loop (Month 3+, 8-11 days)
+  { s: 'todo', n: 'Economic data ingestion (BLS/FRED/Census/BEA)', d: 'Free API keys. 15+ indicators: BLS employment, FRED rates/GDP, Census demographics, BEA regional data, ADP payrolls, layoffs.fyi, WARN notices. economic_indicators tables (indicators, context, correlations).', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Correlation engine — blended data stories', d: 'Cross-reference ATS data with economic benchmarks. Story archetypes: divergence (\"BJ shows tech hiring up 15% while BLS reports flat\"), leading indicator, layoff impact, geographic shift, salary-inflation, sentiment + data.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Social → internal feedback loop', d: 'High social engagement → promoted to Index Market Pulse. Filter-match + high engagement → Dashboard insight card. Viral story → trigger follow-up in editorial engine. Low engagement → deprioritize category. Press citation → badge on blog post.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Press citation tracking', d: 'Monitor backlinks and mentions of Brilliant Jobs data in press. Badge on blog posts (\"Cited by Bloomberg\"). Builds authority and SEO.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'Auto-approve for high-score stories', d: 'Stories exceeding anomaly score threshold skip admin queue and publish automatically. Reduces editorial bottleneck while maintaining quality floor.', b: 'post-launch', p: 39, b: 'post-launch' },
+  { s: 'todo', n: 'feature_readiness table for content engine', d: 'Threshold tracking for content features. Cron auto-enables when data thresholds met (e.g., 200+ survey responses, 5K+ daily jobs). Prevents publishing half-baked stories.', b: 'post-launch', p: 39, b: 'post-launch' },
 ];
 
 
@@ -1467,7 +1507,8 @@ function render() {
     35: 'Resume Archive + Metrics',
     36: 'Pipeline Intelligence Version Sync',
     37: 'Calendar Intelligence + Cross-User Learning',
-    38: 'Signal Analytics + Notification Templates'
+    38: 'Signal Analytics + Notification Templates',
+    39: 'Content Distribution & Social Publishing'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
