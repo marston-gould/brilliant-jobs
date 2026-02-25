@@ -93,6 +93,7 @@ function switchAdminTab(tabId) {
       case 'ghost': loadGhostTab(); break;
       case 'feedback': loadFeedbackTab(); break;
       case 'merch': loadMerchTab(); break;
+      case 'signals': loadAdminSignals(); break;
     }
   }
 }
@@ -2781,4 +2782,107 @@ function escHtml(s) {
 function escAttr(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Admin: Signals Tab (Phase D) ─────────────────────────────────
+async function loadAdminSignals() {
+  try {
+    // KPIs
+    var total = 0, pending = 0, confirmed = 0, dismissed = 0;
+    var sourceCounts = {};
+    var recentRows = [];
+
+    var { data: signals } = await sb.from('pipeline_signals')
+      .select('id, signal_source, signal_type, proposed_stage, confidence, status, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (signals) {
+      total = signals.length;
+      signals.forEach(function(s) {
+        if (s.status === 'pending_confirmation') pending++;
+        else if (s.status === 'confirmed') confirmed++;
+        else if (s.status === 'dismissed') dismissed++;
+        sourceCounts[s.signal_source] = (sourceCounts[s.signal_source] || 0) + 1;
+      });
+      recentRows = signals.slice(0, 50);
+    }
+
+    var rate = (confirmed + dismissed) > 0 ? Math.round((confirmed / (confirmed + dismissed)) * 100) + '%' : '—';
+    var el;
+    el = document.getElementById('sig-total'); if (el) el.textContent = total;
+    el = document.getElementById('sig-pending'); if (el) el.textContent = pending;
+    el = document.getElementById('sig-confirmed'); if (el) el.textContent = confirmed;
+    el = document.getElementById('sig-dismissed'); if (el) el.textContent = dismissed;
+    el = document.getElementById('sig-rate'); if (el) el.textContent = rate;
+
+    // Signals by Source chart
+    var sourceEl = document.getElementById('sig-chart-source');
+    if (sourceEl && typeof echarts !== 'undefined') {
+      var srcChart = echarts.init(sourceEl);
+      var srcData = Object.entries(sourceCounts).map(function(e) { return { name: e[0], value: e[1] }; });
+      srcChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: srcData,
+          label: { color: 'var(--text-dim)', fontSize: 11 },
+          itemStyle: { borderRadius: 4, borderColor: 'var(--bg-input)', borderWidth: 2 }
+        }]
+      });
+    }
+
+    // Pattern Confidence Distribution
+    var { data: patterns } = await sb.from('signal_patterns')
+      .select('pattern_type, pattern_value, associated_signal_type, confidence_score, confirmations, dismissals, last_seen_at')
+      .order('confidence_score', { ascending: false });
+
+    var patternEl = document.getElementById('sig-chart-patterns');
+    if (patternEl && patterns && typeof echarts !== 'undefined') {
+      var patChart = echarts.init(patternEl);
+      var buckets = { '90-100': 0, '70-89': 0, '50-69': 0, '30-49': 0, '<30': 0 };
+      patterns.forEach(function(p) {
+        var s = Math.round(p.confidence_score * 100);
+        if (s >= 90) buckets['90-100']++;
+        else if (s >= 70) buckets['70-89']++;
+        else if (s >= 50) buckets['50-69']++;
+        else if (s >= 30) buckets['30-49']++;
+        else buckets['<30']++;
+      });
+      patChart.setOption({
+        tooltip: {},
+        xAxis: { type: 'category', data: Object.keys(buckets), axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        series: [{ type: 'bar', data: Object.values(buckets), itemStyle: { color: 'var(--accent)', borderRadius: [4, 4, 0, 0] } }]
+      });
+    }
+
+    // Patterns table
+    var patBody = document.getElementById('sig-patterns-body');
+    if (patBody && patterns) {
+      patBody.innerHTML = patterns.map(function(p) {
+        var confPct = Math.round(p.confidence_score * 100);
+        var confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+        var lastSeen = p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString() : '—';
+        return '<tr><td>' + escHtml(p.pattern_type) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.pattern_value) +
+          '</td><td>' + escHtml(p.associated_signal_type) + '</td><td style="color:' + confColor + ';font-weight:600">' + confPct + '%</td><td>' + p.confirmations +
+          '</td><td>' + p.dismissals + '</td><td>' + lastSeen + '</td></tr>';
+      }).join('');
+    }
+
+    // Recent signals table
+    var sigBody = document.getElementById('sig-recent-body');
+    if (sigBody) {
+      sigBody.innerHTML = recentRows.map(function(s) {
+        var confPct = s.confidence ? Math.round(s.confidence * 100) + '%' : '—';
+        var statusColor = s.status === 'confirmed' ? '#22c55e' : s.status === 'dismissed' ? '#ef4444' : '#f59e0b';
+        var dt = new Date(s.created_at);
+        var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return '<tr><td style="font-size:10px">' + (s.user_id || '').substring(0, 8) + '…</td><td>' + escHtml(s.signal_source) +
+          '</td><td>' + escHtml(s.signal_type) + '</td><td>' + escHtml(s.proposed_stage || '—') +
+          '</td><td>' + confPct + '</td><td style="color:' + statusColor + '">' + escHtml(s.status) +
+          '</td><td style="font-size:11px">' + dateStr + '</td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('[Admin] Signals tab error:', e);
+  }
 }
