@@ -2323,6 +2323,11 @@
     @media (max-width: 720px) {
       .resume-row { flex-direction: column; }
       .resume-row > .resume-card { flex: 1 1 auto; }
+      .nri-actions { display: none; }
+      .nri-filters { max-width: 120px; }
+      .nri-score { font-size: 14px; min-width: 36px; }
+      .ai-rewrite-promo { flex-direction: column; }
+      .ai-interview-preview { flex-direction: column; }
     }
 
     /* mobile nav — v4.78d */
