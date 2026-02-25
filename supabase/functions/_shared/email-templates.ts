@@ -441,7 +441,30 @@ export function weeklySummaryEmail(stats: {
   ghosted: number;
   newJobs: number;
   weekLabel: string;
+  stories?: Array<{ headline: string; lede: string; category: string; slug: string }>;
 }): { subject: string; html: string } {
+  const catColors: Record<string, string> = {
+    salary: "#22c55e", location: "#3b82f6", remote: "#8b5cf6",
+    company: "#f97316", trend: "#14b8a6", milestone: "#eab308",
+  };
+
+  const storiesHtml = stats.stories && stats.stories.length > 0 ? `
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #2a2d35;">
+          <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">This Week's Market Insights</div>
+          ${stats.stories.map(s => {
+            const color = catColors[s.category] || "#6366f1";
+            return `<div style="margin-bottom:16px;padding:12px;background:#1a1d27;border:1px solid #2a2d35;border-radius:8px;">
+              <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:${color};color:#fff;">${s.category}</span>
+              <div style="font-size:14px;font-weight:600;color:#f0f1f3;margin:6px 0 4px;line-height:1.35;">${s.headline}</div>
+              <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:8px;">${s.lede ? s.lede.substring(0, 120) + (s.lede.length > 120 ? '…' : '') : ''}</div>
+              <a href="https://brilliantjobs.app/blog/${s.slug}" style="font-size:12px;color:#818cf8;text-decoration:none;font-weight:600;">Read more →</a>
+            </div>`;
+          }).join("")}
+          <div style="text-align:center;margin-top:8px;">
+            <a href="https://brilliantjobs.app/blog" style="font-size:13px;color:#818cf8;text-decoration:none;">Browse all insights →</a>
+          </div>
+        </div>` : "";
+
   return {
     subject: `Weekly summary: ${stats.applied} applications — ${stats.weekLabel}`,
     html: baseLayout("Weekly Summary", `
@@ -470,6 +493,8 @@ export function weeklySummaryEmail(stats: {
           <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Market</div>
           ${detailRow("New jobs this week", String(stats.newJobs))}
         </div>
+
+        ${storiesHtml}
 
         <div class="btn-row" style="margin-top:24px;">
           <a href="${DASHBOARD_URL}#stats" class="btn btn-primary">View Full Stats</a>
