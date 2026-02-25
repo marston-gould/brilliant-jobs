@@ -1456,3 +1456,21 @@ All 16 spec items verified against live infrastructure:
 
 **Phase 35 total:** 9 items | All complete.
 
+---
+
+## Phase 36: Signal Analytics + Notification Templates (v4.63) — 2026-02-25
+
+**Goal:** Phase D of the Intelligent Pipeline Tracking spec. Admin signal metrics tab, PostHog instrumentation for pipeline events, notification type registration for signal alerts.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| D1 | Admin Signals tab (10th tab) | v4.63 | ✅ | 5 KPIs (total, pending, confirmed, dismissed, confirm rate). Signals-by-source pie chart (ECharts). Pattern confidence distribution bar chart. Learned patterns table (type, pattern, signal, conf%, confirms, dismissals, last seen). Recent signals table (user, source, type, stage, confidence, status, date). |
+| D2 | PostHog: pipeline_stage_changed | v4.63 | ✅ | Fires on every stage transition in `movePipelineStage()`. Includes job_id, new_stage, company, company_domain. |
+| D3 | PostHog: pipeline_entry_created | v4.63 | ✅ | Fires on first-time pipeline save (when _dbId didn't exist). Includes job_id, stage, company, ats_source. |
+| D4 | Notification types: signal_calendar | v4.63 | ✅ | SMS-enabled. "Calendar interview detected" — real-time alerts when calendar scanning finds interview events matching pipeline companies. |
+| D5 | Notification types: signal_email | v4.63 | ✅ | "Email signal detected" — real-time alerts when Gmail scanning detects recruiter responses. |
+| D6 | Notification types: pipeline_prompt | v4.63 | ✅ | "Pipeline check-in prompts" — daily digest of stale pipeline entries that need user attention. |
+| D7 | Version sync v4.63 | v4.63 | ✅ | dashboard.html, js/app.js, dist/dashboard.min.js all v4.63. |
+
+**Phase 36 total:** 7 items | All complete.
+
