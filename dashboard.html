@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v4.72 - 2026-02-25 — Phase 6: Silent data enrichment -->
+<!-- Brilliant Jobs Dashboard v4.73 - 2026-02-25 — Phase 6: Silent data enrichment -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -3147,7 +3147,7 @@
             </div>
 
             <!-- Platform Breakdown Table -->
-            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px">
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px;margin-bottom:20px">
               <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Platform Breakdown</div>
               <table class="admin-table" style="width:100%">
                 <thead><tr>
@@ -3160,6 +3160,25 @@
                 </tr></thead>
                 <tbody id="en-platform-body"></tbody>
                 <tfoot id="en-platform-foot"></tfoot>
+              </table>
+            </div>
+
+            <!-- Refresh Schedule (A5) -->
+            <div style="background:var(--bg-input);border-radius:10px;border:1px solid var(--border);padding:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px">Content Freshness Schedule</div>
+                <div id="en-refresh-summary" style="font-size:12px;color:var(--text-dim)"></div>
+              </div>
+              <table class="admin-table" style="width:100%">
+                <thead><tr>
+                  <th>Page</th>
+                  <th>Type</th>
+                  <th style="text-align:right">Interval</th>
+                  <th style="text-align:right">Last Refresh</th>
+                  <th style="text-align:right">Hours Until Due</th>
+                  <th style="text-align:center">Status</th>
+                </tr></thead>
+                <tbody id="en-refresh-body"></tbody>
               </table>
             </div>
           </div>

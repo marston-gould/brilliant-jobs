@@ -49,6 +49,18 @@ function fmtSal(v) {
 
 function fmtNum(n) { return Number(n || 0).toLocaleString('en-US'); }
 
+function fmtFreshness(isoDate) {
+  if (!isoDate) return 'updated daily';
+  const d = new Date(isoDate);
+  const now = new Date();
+  const hrs = Math.floor((now - d) / 3600000);
+  if (hrs < 1) return 'updated less than an hour ago';
+  if (hrs < 24) return `updated ${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'updated yesterday';
+  return `updated ${days} days ago`;
+}
+
 function fmtRounded(s) {
   // Handles cache values like "250000+" → "250,000+"
   if (!s) return '250,000+';
@@ -149,7 +161,7 @@ function renderMetroPage(data, metro, role) {
     content: `
     <section class="seo-hero">
       <h1>${esc(pageTitle)}</h1>
-      <p class="seo-hero-sub">${fmtNum(stats.total_jobs)} open roles across ${fmtNum(stats.companies_count)} companies — updated daily from direct ATS feeds</p>
+      <p class="seo-hero-sub">${fmtNum(stats.total_jobs)} open roles across ${fmtNum(stats.companies_count)} companies — ${fmtFreshness(data.last_refreshed_at || data.computed_at)}</p>
       <div class="seo-trend-pills">
         ${stats.median_salary ? `<span class="seo-pill">${fmtSal(stats.median_salary)} median salary</span>` : ''}
         ${trends.velocity_mom !== undefined ? `<span class="seo-pill">${trendArrow(trends.velocity_mom)} job postings this month</span>` : ''}
@@ -220,7 +232,7 @@ function renderTrendsPage(data, role) {
     content: `
     <section class="seo-hero">
       <h1>${esc(roleDisplay)} Hiring Trends</h1>
-      <p class="seo-hero-sub">${fmtNum(stats.total_jobs)} open roles across ${fmtNum(stats.companies_count)} companies nationwide</p>
+      <p class="seo-hero-sub">${fmtNum(stats.total_jobs)} open roles across ${fmtNum(stats.companies_count)} companies nationwide — ${fmtFreshness(data.last_refreshed_at || data.computed_at)}</p>
       <div class="seo-trend-pills">
         ${stats.median_salary ? `<span class="seo-pill">${fmtSal(stats.median_salary)} median salary</span>` : ''}
         ${d.trends?.velocity_mom !== undefined ? `<span class="seo-pill">${trendArrow(d.trends.velocity_mom)} this month</span>` : ''}
@@ -283,7 +295,7 @@ function renderMarketPage(data) {
     content: `
     <section class="seo-hero">
       <h1>Job Market Data</h1>
-      <p class="seo-hero-sub">${fmtRounded(d.meta?.total_jobs_rounded)} open roles across ${fmtNum(stats.companies_count)} companies — sourced directly from ATS platforms</p>
+      <p class="seo-hero-sub">${fmtRounded(d.meta?.total_jobs_rounded)} open roles across ${fmtNum(stats.companies_count)} companies — ${fmtFreshness(data.last_refreshed_at || data.computed_at)}</p>
     </section>
 
     <section class="seo-section">
@@ -347,7 +359,7 @@ function renderComparisonPage(data, a, b) {
     content: `
     <section class="seo-hero">
       <h1>${esc(aName)} vs ${esc(bName)}</h1>
-      <p class="seo-hero-sub">Side-by-side job market comparison — salaries, volume, remote rates, and top employers.</p>
+      <p class="seo-hero-sub">Side-by-side job market comparison — ${fmtFreshness(data.last_refreshed_at || data.computed_at)}.</p>
     </section>
 
     <section class="seo-section">
@@ -686,6 +698,10 @@ module.exports = async function handler(req, res) {
 
   // ISR: revalidate every hour
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
+  // Crawl signal: Last-Modified from actual data refresh time
+  if (data.last_refreshed_at || data.computed_at) {
+    res.setHeader('Last-Modified', new Date(data.last_refreshed_at || data.computed_at).toUTCString());
+  }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.status(200).send(html);
 };

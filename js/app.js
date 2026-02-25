@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.72';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — D1: Enrichment Coverage Dashboard deployed');
+const BJ_VERSION = 'v4.73';
+console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — A5: Content Freshness Rotation — tiered refresh + timestamps');
 
 // Auth
 async function init() {
