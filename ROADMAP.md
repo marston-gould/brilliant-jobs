@@ -928,7 +928,8 @@
 | **31b** Merchandising System | 5/5 | v4.51 | ✅ Complete |
 | **32** Layout & Query Builder Fixes | 4/4 | v4.52–v4.54 | ✅ Complete |
 | **33** Resume Archive + Metrics | 31/31 | v4.55–v4.60 | ✅ Complete (all 8 phases) |
-| **Total built** | **340+ items** | **v2.68–v4.60** | **17 items 🚫 BLOCKED** |
+| **34** Pipeline Intelligence Version Sync | 6/6 | v4.61 | ✅ Complete |
+| **Total built** | **350+ items** | **v2.68–v4.61** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -1409,3 +1410,29 @@ Tables created in Phase 1. Edge Function dual-write pending.
 | Trigger | `update_resume_archive_updated_at` | Auto-update timestamp |
 | Trigger | `trg_pipeline_to_usage` | Auto-sync pipeline→usage on INSERT/UPDATE |
 | Cron | `expire-archived-resumes` | Daily 3 AM UTC (24th cron job) |
+
+---
+
+## Phase 34: Pipeline Intelligence — Version Sync (v4.61) — 2026-02-25
+
+**Goal:** Close remaining Phase A/B gaps: add `calendar.events.readonly` OAuth scope to `gmail-auth`, synchronize version numbers across dashboard.html, js/app.js, and dist/dashboard.min.js.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| VS1 | `gmail-auth` calendar scope | v4.61 | ✅ | Added `calendar.events.readonly` to OAuth scope string. Required for `scan-pipeline-signals` to read Google Calendar events. |
+| VS2 | dashboard.html version bump | v4.61 | ✅ | v4.54 → v4.61. Was behind by 6 versions. |
+| VS3 | js/app.js version bump | v4.61 | ✅ | v4.60 → v4.61. Console log sync. |
+| VS4 | dist/dashboard.min.js rebuild | v4.61 | ✅ | 22 files → 589.9KB minified. All 3 version stamps synchronized. |
+| VS5 | Edge Function redeploy | v4.61 | ✅ | `gmail-auth` redeployed with calendar scope. Verified all 4 pipeline EFs responding (gmail-auth, scan-pipeline-signals, prompt-pipeline-updates, confirm-pipeline-signal). |
+| VS6 | Vercel deploy | v4.61 | ✅ | Triggered. Frontend version sync live. |
+
+### Phase A/B Verification (Complete)
+
+All 16 spec items verified against live infrastructure:
+
+**Phase A (Pipeline Migration + Manual Prompts):** `user_pipeline` (34 cols), `pipeline_tracking_settings` (13 cols), localStorage→Supabase migration, `prompt-pipeline-updates` EF + hourly cron, 5-color dot system, inline prompt/signal cards, settings panel, Last Activity column.
+
+**Phase B (OAuth + Signal Infrastructure):** `gmail_connections` (10 cols, 1 active), `gmail-auth` EF (now with calendar scope), Gmail/Calendar connect UI, `pipeline_signals` (13 cols), `signal_patterns` (21 seeds), `confirm-pipeline-signal` EF, blue pulsing dot + card, signal detection toggle.
+
+**pg_cron (4 pipeline jobs):** `scan-pipeline-signals-15m`, `prompt-pipeline-hourly`, `gmail-scan-6h`, `purge-old-signals`.
+
