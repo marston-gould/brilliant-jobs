@@ -1436,3 +1436,23 @@ All 16 spec items verified against live infrastructure:
 
 **pg_cron (4 pipeline jobs):** `scan-pipeline-signals-15m`, `prompt-pipeline-hourly`, `gmail-scan-6h`, `purge-old-signals`.
 
+---
+
+## Phase 35: Calendar Intelligence + Cross-User Learning (v4.62) — 2026-02-25
+
+**Goal:** Phase C of the Intelligent Pipeline Tracking spec. Upgrade calendar scanning to use learned patterns from signal_patterns table (cross-user), add interview round detection, fix confirm-pipeline-signal pattern updates, add pattern decay cron.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| C1 | `scan-pipeline-signals` v2→v3 | v4.62 | ✅ | Reads `signal_patterns` table for learned confidence scores instead of hardcoded values. Cross-user data improves detection for all users as they confirm/dismiss signals. |
+| C2 | Interview round detection | v4.62 | ✅ | Regex-based round extraction from calendar titles: final, onsite, panel, technical, hiring manager, phone screen, intro, round 1/2, late stage. Stored in `evidence_metadata.interview_round`. |
+| C3 | Match method tracking | v4.62 | ✅ | `evidence_metadata.match_method` records whether match was via `attendee_domain` (high conf) or `title_match` (lower conf). Domain matches get +5% confidence boost. |
+| C4 | `confirm-pipeline-signal` v1→v2 | v4.62 | ✅ | Fixed broken `exec_sql` pattern update — now uses direct Supabase queries. Cross-user learning: confirm/dismiss updates `signal_patterns.confirmations`/`dismissals` + recalculates `confidence_score` for ALL users. New patterns auto-inserted on first encounter. |
+| C5 | `decay_signal_patterns()` RPC | v4.62 | ✅ | Weekly 5% decay on patterns not seen in 30+ days. Auto-deletes junk patterns (>90d, 0 confirms, 3+ dismissals). |
+| C6 | pg_cron: `decay-signal-patterns` | v4.62 | ✅ | Weekly Sunday 5am UTC. Prevents stale patterns from polluting detection. |
+| C7 | Frontend: calendar icon + round badge | v4.62 | ✅ | Calendar signals show 📅 icon (vs ✉ for email). Interview round rendered as colored badge (e.g., "Final Round", "Technical"). Confidence % indicator on all signal cards. |
+| C8 | CSS: `.pl-round-badge`, `.pl-signal-confidence` | v4.62 | ✅ | Accent-colored pill badge for round labels. Color-coded confidence (green ≥80%, amber ≥60%, red <60%). |
+| C9 | Version sync v4.62 | v4.62 | ✅ | dashboard.html, js/app.js, dist/dashboard.min.js, styles.css all v4.62. |
+
+**Phase 35 total:** 9 items | All complete.
+
