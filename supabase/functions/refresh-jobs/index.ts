@@ -289,9 +289,7 @@ async function upsertJobs(jobs: ParsedJob[]): Promise<number> {
       // NOTE: status intentionally omitted — defaults to 'open' on INSERT,
       // but not overwritten on UPDATE. This prevents re-opening jobs that
       // users have confirmed as dead/closed via the UI (404/410 detection).
-      // NOTE: updated_at intentionally omitted — defaults to now() on INSERT,
-      // but not overwritten on UPDATE. This preserves meaningful "days ago" data.
-      // last_seen tracks when the refresh cron last confirmed this job exists.
+      updated_at: now,
       last_seen: now,
     }));
 
