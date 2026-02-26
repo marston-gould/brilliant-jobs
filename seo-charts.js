@@ -323,6 +323,123 @@
     document.querySelectorAll('.seo-cta a').forEach(function(a) {
       a.addEventListener('click', function() { trackCTAClick(a.href); });
     });
+
+    // Block 7: Hook pill "+" conversion flow
+    initPillConversion();
+  }
+
+  // ── Block 7: Pill Conversion Flow ──
+  function initPillConversion() {
+    var SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+    var _user = null;
+    var _authChecked = false;
+
+    // Lightweight auth check via Supabase REST (no SDK needed)
+    function checkAuth(cb) {
+      if (_authChecked) return cb(_user);
+      // Check for sb-access-token in cookies or localStorage
+      var token = null;
+      try {
+        var stored = localStorage.getItem('sb-qojhagupdnbtomfoxnsf-auth-token');
+        if (stored) {
+          var parsed = JSON.parse(stored);
+          token = parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token);
+        }
+      } catch(e) {}
+      if (!token) { _authChecked = true; return cb(null); }
+      // Verify token
+      fetch(SB_URL + '/auth/v1/user', {
+        headers: { 'Authorization': 'Bearer ' + token, 'apikey': SB_ANON }
+      }).then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(u) { _user = u; _authChecked = true; cb(u); })
+        .catch(function() { _authChecked = true; cb(null); });
+    }
+
+    // Build signup modal (lazy, only once)
+    var modal = null;
+    function getModal() {
+      if (modal) return modal;
+      modal = document.createElement('div');
+      modal.id = 'seo-signup-modal';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-label', 'Sign up to save this filter');
+      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)';
+      modal.innerHTML = '<div style="background:#fff;border-radius:16px;padding:32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);text-align:center;position:relative">'
+        + '<button id="seo-modal-close" aria-label="Close" style="position:absolute;top:12px;right:12px;background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280;line-height:1">✕</button>'
+        + '<div style="font-size:32px;margin-bottom:12px">🎯</div>'
+        + '<h2 style="font-size:20px;font-weight:700;margin:0 0 8px;font-family:Outfit,system-ui,sans-serif">Save This to Your Search</h2>'
+        + '<p id="seo-modal-pill-preview" style="font-size:14px;color:#6b7280;margin:0 0 20px"></p>'
+        + '<p style="font-size:14px;color:#374151;margin:0 0 24px;line-height:1.5">Create a free account to add <strong id="seo-modal-pill-value"></strong> to your job search filters and get matched with relevant roles.</p>'
+        + '<a id="seo-modal-signup" href="/#signup" style="display:inline-block;padding:12px 32px;background:#4d8eff;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;font-family:Outfit,system-ui,sans-serif;transition:background .15s">Get Started Free</a>'
+        + '<p style="font-size:12px;color:#9ca3af;margin:16px 0 0">No credit card required · Free during beta</p>'
+        + '</div>';
+      document.body.appendChild(modal);
+      // Close handlers
+      document.getElementById('seo-modal-close').addEventListener('click', function() { modal.style.display = 'none'; });
+      modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+      document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && modal.style.display !== 'none') modal.style.display = 'none'; });
+      return modal;
+    }
+
+    function showSignupModal(type, value) {
+      var m = getModal();
+      var typeLabel = type === 'title' ? 'role' : type === 'skill' ? 'skill' : 'industry';
+      document.getElementById('seo-modal-pill-value').textContent = '"' + value + '"';
+      document.getElementById('seo-modal-pill-preview').textContent = 'Add this ' + typeLabel + ' filter to your personalized job feed.';
+      // Deep-link signup with the filter context
+      document.getElementById('seo-modal-signup').href = '/#signup?add=' + encodeURIComponent(type + ':' + value);
+      m.style.display = 'flex';
+      // PostHog
+      if (window.posthog) posthog.capture('pill_signup_modal_shown', { pill_type: type, pill_value: value });
+    }
+
+    function addFilterForUser(type, value, btn) {
+      // Store pending filter in localStorage for dashboard to pick up
+      var pending = [];
+      try { pending = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]'); } catch(e) {}
+      pending.push({ type: type, value: value, added_from: window.location.pathname, added_at: new Date().toISOString() });
+      localStorage.setItem('bj_pending_pills', JSON.stringify(pending));
+
+      // Visual feedback
+      btn.classList.add('added');
+      btn.textContent = '';
+
+      // PostHog
+      if (window.posthog) posthog.capture('pill_filter_added', { pill_type: type, pill_value: value, source: 'city_page' });
+
+      // Show toast
+      var toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:600;font-family:Outfit,system-ui,sans-serif;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity .3s';
+      toast.textContent = '✓ "' + value + '" added — open your dashboard to search';
+      document.body.appendChild(toast);
+      setTimeout(function() { toast.style.opacity = '0'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
+    }
+
+    // Attach click handlers to all pill-add buttons
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('.pill-add');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.classList.contains('added')) return;
+
+      var pill = btn.closest('.seo-hook-pill');
+      if (!pill) return;
+      var type = pill.getAttribute('data-type') || 'title';
+      var labelEl = pill.querySelector('.pill-label');
+      var value = labelEl ? labelEl.textContent.trim() : '';
+      if (!value) return;
+
+      checkAuth(function(user) {
+        if (user) {
+          addFilterForUser(type, value, btn);
+        } else {
+          showSignupModal(type, value);
+        }
+      });
+    });
   }
 
   // Run on DOM ready
