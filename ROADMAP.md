@@ -1041,7 +1041,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
-| 2026-02-25 | 43 | CP1–CP9 | **Phase 43: City Pages + Internal Linking Sprint (v4.91).** Branch: `feat/city-pages-linking-sprint` (7 commits). DB: city_pages table (2,178 rows seeded), city_popular_pills (Phase 2, empty). refresh-city-stats Edge Function deployed (6h cron). SSR enhancements: hook pills on metro pages, server-rendered role links, "Compare Other Cities" cross-links, hub page city/trend grids. Homepage "Browse by City" + "Trending Roles" sections. Data Lab city browse panel. /pricing + /ghost-report added to sitemap. ⚠️ Branch NOT merged to dev/main — frontend changes not live. Remaining: Block 7 (pill conversion JS), Block 6e (Data Lab subpage contextual links). |
+| 2026-02-25 | 43 | CP1–CP9 | **Phase 43: City Pages + Internal Linking Sprint (v4.91–v4.93).** Branch: `feat/city-pages-linking-sprint` cherry-picked to main. DB: city_pages table (2,178 rows seeded), city_popular_pills (Phase 2, empty). refresh-city-stats Edge Function deployed (6h cron). SSR enhancements: hook pills on metro pages, server-rendered role links, "Compare Other Cities" cross-links, hub page city/trend grids. Homepage "Browse by City" + "Trending Roles" sections. Data Lab city browse panel. JSON-LD structured data: Place + ItemList(JobPosting) + FAQPage per metro, Occupation + FAQPage per role. Block 7 pill conversion flow: signup modal for anon, checkmark + filter injection for auth, dashboard deep-link handler with toast. PostHog tracking: seo_pill_click, seo_pill_applied. ✅ COMPLETE — all blocks deployed to production. |
 | 2026-02-25 | 37-BUILD | A1,A2,A5,A6,B1,B5,C1-C4,D1 | **Content Engine Build Sprint (v4.67–v4.77).** Flipped 12/17 Phase 37 items to done. Company SEO pages (/company/:slug), College Major Outcomes, Content Freshness Rotation, Filter-Driven Trend Indicators, Metro Comparison + NY Fed Crossover editorial templates, Dashboard Insight Cards, Email Digest, Landing Page Merch, Blog Discovery, Enrichment Coverage Dashboard. 4 remaining: A4 (Remote Tracker), B2 (Multi-Dim), B3 (Economic), B4 (Benchmark), B6 (Annual Report). |
 | 2026-02-25 | CE-v3 | — | **Content Engine Handoff v3 roadmap update (v4.71).** Added 17 items across 4 categories from Pod 1 CE Handoff v3: Section A Permanent Pages (6 items: company pages, college outcomes, jobs-by-location, remote tracker, freshness rotation, trend indicators), Section B Topical Coverage (6 items: metro/multi-dim/economic/benchmark/NY Fed stories, annual report), Section C Integration Wiring (4 NEW items: dashboard insight cards, email digest, landing page merch, blog discovery), Section D Enrichment Monitoring (1 NEW item: coverage dashboard). Supersedes v4.70 removal — items re-added with proper categorization. Total: 37-52 dev days. |
 | 2026-02-25 | CE-TRIM | — | **Content Engine roadmap trim (v4.70).** Removed 6 user-pipeline-dependent items from roadmap: Public Company Ghost Rate Reports, Community Benchmark Data, Programmatic Company SEO Pages, Multi-Dimensional Insight Pages, Annual State-of-the-Market Report, Jobs by Location Data Page. These require user activity at scale (50+ pipeline entries per segment, 10K company pages for ghost rates) that won't exist until well after launch. Retained viable items: Content Freshness Rotation, Filter-Driven Trend Indicators, Remote vs Non-Remote Tracker, Public Data Benchmark Overlays, Metro Comparison Pages. |
@@ -1722,12 +1722,12 @@ All 16 spec items verified against live infrastructure:
 
 ---
 
-## Phase 43: City Pages + Internal Linking Sprint (v4.91) — 2026-02-25
+## Phase 43: City Pages + Internal Linking Sprint (v4.91–v4.93) — 2026-02-25/26 ✅ COMPLETE
 
-**Goal:** Enhance the existing SSR system (api/seo-page.js + seo_page_cache) with city-level data, hook pills for conversion, comprehensive internal cross-linking, and homepage/data-lab browse sections. Based on H1 handoff spec.
+**Goal:** Enhance the existing SSR system (api/seo-page.js + seo_page_cache) with city-level data, hook pills for conversion, comprehensive internal cross-linking, JSON-LD structured data, and homepage/data-lab browse sections. Based on H1 handoff spec.
 
-**Branch:** `feat/city-pages-linking-sprint` (7 commits, based on dev)
-**⚠️ STATUS: Branch NOT merged. DB + Edge Function live. Frontend/SSR changes on branch only.**
+**Branch:** `feat/city-pages-linking-sprint` → merged to main via cherry-pick at v4.92–v4.93
+**STATUS: ✅ ALL BLOCKS DEPLOYED TO PRODUCTION**
 
 ### Database (Live in Production)
 
@@ -1738,37 +1738,40 @@ All 16 spec items verified against live infrastructure:
 | CP3 | Seed data | v4.91 | ✅ | 97 cities with top_titles, 77 with top_skills, 100 with top_companies. Median salaries, remote %, top industries. Auto-generated meta_title/meta_description. |
 | CP4 | `refresh-city-stats` Edge Function | v4.91 | ✅ | 6-step refresh (stats→companies→titles→skills→industries→meta). Deployed. pg_cron: `0 */6 * * *`. |
 
-### SSR Enhancements (On Branch — Not Deployed)
+### SSR Enhancements (Deployed v4.92)
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| CP5 | Metro page hook pills | v4.91 | ✅ | "What Companies Are Hiring For" with top titles/skills/industries from city_pages. Each pill has label + count + "+" button (CSS ready). Server-rendered role links replace client-side populateRelatedRoles(). "Compare Other Cities" cross-links (top 8 metros). |
-| CP6 | Trends page cross-links | v4.91 | ✅ | "Explore [Role] Jobs by City" links to /jobs-in/:metro/:role for top 10 metros. "Related Roles" links to all 20 trends pages. |
-| CP7 | Market hub page enhancements | v4.91 | ✅ | "Jobs by City" grid (top 50 metros), "Hiring Trends by Role" grid (all trends), "Data Lab Reports" (6 subpages). Cross-linking data fetched in parallel (non-blocking). |
-| CP5b | Homepage sections | v4.91 | ✅ | "Browse Jobs by City" (8-city grid) + "Trending Roles" (4-role grid) added to index.html before bottom CTA. |
-| CP5c | Data Lab browse by city | v4.91 | ✅ | "Browse Jobs by City" panel (15 city links) + "View all cities →" link added to data-lab.html. |
+| CP5 | Metro page hook pills | v4.92 | ✅ | "What Companies Are Hiring For" with top titles/skills/industries from city_pages. Each pill has label + count + "+" button. Server-rendered role links (10 roles). "Compare Other Cities" cross-links (top 8 metros). |
+| CP6 | Trends page cross-links | v4.92 | ✅ | "Explore [Role] Jobs by City" links to /jobs-in/:metro/:role for top 10 metros. "Related Roles" links to all 20 trends pages. |
+| CP7 | Market hub page enhancements | v4.92 | ✅ | "Jobs by City" grid (top 50 metros), "Hiring Trends by Role" grid (all trends), "Data Lab Reports" (6 subpages). Cross-linking data fetched in parallel (non-blocking). |
+| CP5b | Homepage sections | v4.91 | ✅ | "Browse Jobs by City" (8-city grid) + "Trending Roles" (4-role grid) added to index.html. |
+| CP5c | Data Lab browse by city | v4.91 | ✅ | "Browse Jobs by City" panel (15 city links) + "View all cities →" link. |
+| CP6e | Data Lab subpage contextual links | v4.92 | ✅ | salary-data→cities, hiring-trends→roles, career-level-data→roles. Merged into renderMarketPage hub grid. |
 
-### Remaining
+### JSON-LD Structured Data (Deployed v4.92)
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| CP8 | "+" Button conversion flow (Block 7) | — | 🔲 | CSS ready. Needs JS: signup modal for anon, pill→filter for auth users, toast, undo. |
-| CP9 | Data Lab subpage contextual links (Block 6e) | — | 🔲 | salary-data→cities, hiring-trends→cities, etc. Metro→metro cross-links only on non-role pages currently. |
+| LD1 | Metro page JSON-LD | v4.92 | ✅ | Place schema (geo entity), ItemList of JobPosting (top 5 employers), FAQPage (salary, companies, remote %, growth). US state name lookup table. |
+| LD2 | Trends page JSON-LD | v4.92 | ✅ | Occupation schema (role + salary distribution), FAQPage (salary, demand, top metros, remote %). |
+| LD3 | renderShell `extraLd` param | v4.92 | ✅ | Added `extraLd` parameter to renderShell for per-page JSON-LD injection. |
 
-### Deployment Blocker
+### Pill Conversion Flow (Deployed v4.93)
 
-Branch `feat/city-pages-linking-sprint` must be merged: PR → dev → verify → staging → main. Until then, SSR enhancements (CP5–CP7), homepage sections (CP5b), and Data Lab updates (CP5c) are not live.
-
-### Sitemap Update (On Branch)
-
-Added `/pricing` and `/ghost-report` to sitemap.xml (not yet on main). Total will be 139 URLs once merged.
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| B7a | "+" button pill click handler | v4.93 | ✅ | Inline script in renderShell. Auth detection via Supabase localStorage token. PostHog tracking: `seo_pill_click`. |
+| B7b | Anonymous user signup modal | v4.93 | ✅ | Branded modal with logo, pill term, "Get Started Free" CTA → redirects to dashboard with URL params. |
+| B7c | Authenticated user filter injection | v4.93 | ✅ | Checkmark animation → redirect to dashboard → pill added to first saved filter as WHAT pill. Auto-creates filter with metro WHERE pill if no filters exist. |
+| B7d | Dashboard deep-link handler | v4.93 | ✅ | Picks up `?seo_pill=<term>&seo_type=<type>&seo_metro=<slug>` URL params. Injects pill, shows toast, cleans URL. PostHog: `seo_pill_applied`. |
 
 ### Version
 
 | Surface | Version |
 |---------|---------|
-| version.js (branch) | v4.91 |
-| version.js (main/prod) | v4.90 |
+| version.js (prod) | v4.93 |
+| dashboard.html nav | v4.93 |
 | pg_cron #27 | refresh-city-stats (0 */6 * * *) |
 
-**Phase 43 total: 9 items | 7 complete on branch (CP1–CP5c), 2 remaining (CP8, CP9). Version: v4.91. ⚠️ Frontend not deployed — merge required.**
+**Phase 43 total: 17 items | 17 complete ✅. Version: v4.91→v4.93. Fully deployed to production.**
