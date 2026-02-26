@@ -1988,11 +1988,29 @@ function updateReadinessSidePanels(scores) {
   var indices = Object.keys(scores);
   for (var si = 0; si < indices.length; si++) {
     var ri = indices[si];
+    // Legacy: readiness-side-{ri} inside old layout
     var existing = document.getElementById('readiness-side-' + ri);
     if (existing) {
       var tmp = document.createElement('div');
       tmp.innerHTML = buildReadinessSide(ri, scores[ri]);
       existing.replaceWith(tmp.firstChild);
+    }
+
+    // New row layout: ai-panel-content-{ri}
+    var panelContent = document.getElementById('ai-panel-content-' + ri);
+    if (panelContent) {
+      panelContent.innerHTML = buildReadinessSide(ri, scores[ri]);
+    }
+
+    // Update inline score badge on new-resume-item row
+    var nriEl = document.getElementById('nri-' + ri);
+    if (nriEl && scores[ri]) {
+      var scoreBadge = nriEl.querySelector('.nri-score');
+      if (scoreBadge) {
+        var s = scores[ri].overallScore;
+        scoreBadge.className = 'nri-score ' + (s >= 70 ? 'high' : s >= 40 ? 'mid' : 'low');
+        scoreBadge.textContent = s + '%';
+      }
     }
 
     // Initialize gap interview + acceptance UI for premium results
@@ -2215,6 +2233,10 @@ document.addEventListener('click', e => {
   if (link && link.dataset.jobid) {
     e.preventDefault();
     openJobModal(link.dataset.jobid);
+    // Log click signal (fire-and-forget)
+    if (typeof sb !== 'undefined' && sb.auth) {
+      sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' }).catch(() => {});
+    }
   }
   // "→" click in preview snippet opens modal
   const more = e.target.closest('.preview-more');
@@ -3033,6 +3055,10 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
 // Modal actions — sync back to feed
 function modalApply(jobId, url) {
   window.open(url, '_blank');
+  // Log apply signal
+  if (typeof sb !== 'undefined' && sb.auth) {
+    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' }).catch(() => {});
+  }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
 
@@ -3083,7 +3109,7 @@ function markAppliedFromModal(jobId) {
     
     // Refresh pipeline in background
     renderPipelineSaved();
-    updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+    updateJobStats($('#j-total').textContent, $('#j-companies').textContent, ($('#j-new-login')||{textContent:'0'}).textContent, $('#j-new').textContent);
   });
 }
 
@@ -3117,7 +3143,7 @@ function modalSave(jobId, btn) {
       }
     }
   }
-  updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+  updateJobStats($('#j-total').textContent, $('#j-companies').textContent, ($('#j-new-login')||{textContent:'0'}).textContent, $('#j-new').textContent);
 }
 
 function modalHide(jobId) {
@@ -3156,7 +3182,8 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 
   const popup = document.createElement('div');
   popup.className = 'hide-reason-popup';
-  popup.innerHTML = `<h4>Why hide this?</h4>` +
+  popup.innerHTML = `<h4>Why doesn't this belong?</h4>` +
+    `<div style="font-size:10px;color:var(--text-faint);margin:-6px 0 8px;line-height:1.4;">This trains your exclusion filters — hide 3+ and we'll suggest patterns to auto-remove similar jobs.</div>` +
     HIDE_REASONS.map(r =>
       `<button class="hide-reason-btn" data-reason="${r.key}">${r.label}</button>`
     ).join('');
@@ -3198,6 +3225,10 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 function hideJob(jobId, btn) {
   const row = btn.closest('tr');
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
+  // Log hide signal
+  if (typeof sb !== 'undefined' && sb.auth) {
+    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' }).catch(() => {});
+  }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
   if (typeof savedFilters !== 'undefined') {
@@ -3221,6 +3252,10 @@ function toggleSaveJob(jobId, btn) {
     savedJobIds.push(jobId);
     btn.textContent = 'Pipeline ✓';
     btn.classList.add('saved-btn');
+    // Log save signal
+    if (typeof sb !== 'undefined' && sb.auth) {
+      sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' }).catch(() => {});
+    }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
   savePipelineMeta(meta);
@@ -3240,7 +3275,7 @@ function bjUpdateImproveButton() {
   var count = (typeof hiddenJobIds !== 'undefined' ? hiddenJobIds : []).length;
   if (count >= 3) {
     btn.style.display = '';
-    btn.textContent = '\ud83d\udd27 Improve Filters (' + count + ' hidden)';
+    btn.textContent = '\ud83d\udd27 ' + count + ' hidden \u2014 generate exclusions';
   } else {
     btn.style.display = 'none';
   }

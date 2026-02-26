@@ -95,6 +95,9 @@ function switchAdminTab(tabId) {
       case 'merch': loadMerchTab(); break;
       case 'signals': loadAdminSignals(); break;
       case 'referrals': loadReferralsAdminTab(); break;
+      case 'content': loadContentTab(); break;
+      case 'enrichment': loadEnrichmentTab(); break;
+      case 'mock-ats': loadMockAtsTab(); break;
     }
   }
 }
@@ -2888,6 +2891,7 @@ async function loadAdminSignals() {
   }
 }
 
+
 // ─── REFERRALS ADMIN TAB ───
 // Fraud review queue, reward clawback, ban management
 // v5.10: Phase 4
@@ -3105,3 +3109,449 @@ window.adminUnban = async function(userId) {
     console.error('[Admin] Unban error:', e);
   }
 };
+
+
+// --- TAB: CONTENT (Editorial Engine) ---
+async function loadContentTab() {
+  console.log("[Admin] Loading Content tab");
+  try {
+    var statusSel = document.getElementById("ct-filter-status");
+    var catSel = document.getElementById("ct-filter-category");
+    var refreshBtn = document.getElementById("ct-refresh-btn");
+    var detectBtn = document.getElementById("ct-detect-btn");
+    var generateBtn = document.getElementById("ct-generate-btn");
+    var closePreview = document.getElementById("ct-close-preview");
+    var actionStatus = document.getElementById("ct-action-status");
+
+    if (refreshBtn) refreshBtn.onclick = function() { fetchContentStories(); };
+    if (statusSel) statusSel.onchange = function() { fetchContentStories(); };
+    if (catSel) catSel.onchange = function() { fetchContentStories(); };
+    if (closePreview) closePreview.onclick = function() {
+      document.getElementById("ct-preview-panel").style.display = "none";
+    };
+
+    if (detectBtn) detectBtn.onclick = async function() {
+      detectBtn.disabled = true;
+      actionStatus.textContent = "Running detection...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/detect-editorial-insights", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Detected " + (data.detected || 0) + " stories (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Detection failed: " + e.message;
+      }
+      detectBtn.disabled = false;
+    };
+
+    if (generateBtn) generateBtn.onclick = async function() {
+      generateBtn.disabled = true;
+      actionStatus.textContent = "Generating content (this may take ~60s)...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/generate-editorial-content", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Generated " + (data.generated || 0) + " / Failed " + (data.failed || 0) + " (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Generation failed: " + e.message;
+      }
+      generateBtn.disabled = false;
+    };
+
+    fetchContentStories();
+  } catch (e) {
+    console.error("[Admin] Content tab error:", e);
+  }
+}
+
+async function fetchContentStories() {
+  try {
+    var statusFilter = document.getElementById("ct-filter-status").value;
+    var catFilter = document.getElementById("ct-filter-category").value;
+
+    var url = SUPABASE_URL + "/rest/v1/content_stories?select=id,story_type,category,headline,lede,body_html,meta_description,social_snippet,chart_config,evergreen_link,score,status,tags,created_at&order=score.desc,created_at.desc&limit=100";
+    if (statusFilter) url += "&status=eq." + statusFilter;
+    if (catFilter) url += "&category=eq." + catFilter;
+
+    var resp = await fetch(url, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var stories = await resp.json();
+
+    var allUrl = SUPABASE_URL + "/rest/v1/content_stories?select=status";
+    var allResp = await fetch(allUrl, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var allStories = await allResp.json();
+    var counts = { total: allStories.length, pending: 0, approved: 0, published: 0, rejected: 0 };
+    allStories.forEach(function(s) {
+      if (counts[s.status] !== undefined) counts[s.status]++;
+    });
+    document.getElementById("ct-total").textContent = counts.total;
+    document.getElementById("ct-pending").textContent = counts.pending;
+    document.getElementById("ct-approved").textContent = counts.approved;
+    document.getElementById("ct-published").textContent = counts.published;
+    document.getElementById("ct-rejected").textContent = counts.rejected;
+
+    var tbody = document.getElementById("ct-stories-body");
+    if (!tbody) return;
+
+    if (!stories.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No stories found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = stories.map(function(s) {
+      var dt = new Date(s.created_at);
+      var dateStr = dt.toLocaleDateString() + " " + dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      var statusColors = { pending: "#f59e0b", approved: "#22c55e", published: "#3b82f6", scheduled: "#8b5cf6", rejected: "#ef4444" };
+      var statusColor = statusColors[s.status] || "#888";
+      var hasContent = s.body_html ? "Y" : "N";
+      var scoreColor = s.score >= 70 ? "#22c55e" : s.score >= 40 ? "#f59e0b" : "#888";
+
+      var actions = "";
+      if (s.status === "pending") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'approved\')" style="padding:2px 8px;font-size:11px;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:4px" title="Approve">V</button>' +
+                  '<button onclick="contentAction(' + s.id + ',\'rejected\')" style="padding:2px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer" title="Reject">X</button>';
+      } else if (s.status === "approved") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'published\')" style="padding:2px 8px;font-size:11px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer">Publish</button>';
+      }
+
+      return '<tr style="cursor:pointer" onclick="previewStory(' + s.id + ')">' +
+        '<td style="color:' + scoreColor + ';font-weight:600">' + s.score + '</td>' +
+        '<td style="font-size:11px">' + hasContent + ' ' + escHtml(s.story_type) + '</td>' +
+        '<td>' + escHtml(s.category) + '</td>' +
+        '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(s.headline) + '</td>' +
+        '<td><span style="color:' + statusColor + ';font-weight:600;font-size:12px">' + s.status.toUpperCase() + '</span></td>' +
+        '<td style="font-size:11px;white-space:nowrap">' + dateStr + '</td>' +
+        '<td style="text-align:right" onclick="event.stopPropagation()">' + actions + '</td></tr>';
+    }).join("");
+
+    window._contentStories = {};
+    stories.forEach(function(s) { window._contentStories[s.id] = s; });
+  } catch(e) {
+    console.error("[Admin] Fetch content stories error:", e);
+  }
+}
+
+function previewStory(id) {
+  var s = window._contentStories && window._contentStories[id];
+  if (!s) return;
+  var panel = document.getElementById("ct-preview-panel");
+  panel.style.display = "block";
+  document.getElementById("ct-preview-headline").textContent = s.headline || "--";
+  document.getElementById("ct-preview-lede").textContent = s.lede || "--";
+  document.getElementById("ct-preview-body").innerHTML = s.body_html || "<em>No content generated yet</em>";
+  document.getElementById("ct-preview-meta").textContent = s.meta_description || "--";
+  document.getElementById("ct-preview-social").textContent = s.social_snippet || "--";
+  document.getElementById("ct-preview-link").textContent = s.evergreen_link || "--";
+  document.getElementById("ct-preview-chart").textContent = s.chart_config ? JSON.stringify(s.chart_config) : "--";
+  panel.scrollIntoView({ behavior: "smooth" });
+}
+
+async function contentAction(id, newStatus) {
+  try {
+    var updates = { status: newStatus };
+    if (newStatus === "published") {
+      updates.published_at = new Date().toISOString();
+    }
+    var resp = await fetch(SUPABASE_URL + "/rest/v1/content_stories?id=eq." + id, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(updates)
+    });
+    if (resp.ok) {
+      document.getElementById("ct-action-status").textContent = "Story #" + id + " -> " + newStatus;
+      fetchContentStories();
+    } else {
+      document.getElementById("ct-action-status").textContent = "Update failed";
+    }
+  } catch(e) {
+    document.getElementById("ct-action-status").textContent = e.message;
+  }
+}
+
+// ========== Enrichment Coverage Dashboard (D1) ==========
+var _enChart = null;
+
+async function loadEnrichmentTab() {
+  if (_adminTabInit['enrichment']) return;
+  console.log('[Admin] loadEnrichmentTab');
+  try {
+    var res = await sb.rpc('get_enrichment_coverage');
+    if (res.error) { console.error('[Admin] Enrichment RPC error:', res.error); return; }
+    var d = res.data;
+
+    // Coverage cards
+    setAdminText('en-salary-pct', d.salary_pct + '%');
+    setAdminText('en-loctype-pct', d.loc_type_pct + '%');
+    setAdminText('en-dept-pct', d.department_pct + '%');
+    setAdminText('en-country-pct', d.country_pct + '%');
+    setAdminText('en-total-jobs', fmtAdminNum(d.total_jobs));
+
+    // Color code cards by coverage level
+    var salEl = document.getElementById('en-salary-pct');
+    var ltEl = document.getElementById('en-loctype-pct');
+    var dpEl = document.getElementById('en-dept-pct');
+    var ctEl = document.getElementById('en-country-pct');
+    if (salEl) salEl.style.color = d.salary_pct >= 40 ? '#4a9a6b' : d.salary_pct >= 20 ? '#a08858' : '#c06060';
+    if (ltEl) ltEl.style.color = d.loc_type_pct >= 60 ? '#4a9a6b' : d.loc_type_pct >= 30 ? '#a08858' : '#c06060';
+    if (dpEl) dpEl.style.color = d.department_pct >= 60 ? '#4a9a6b' : d.department_pct >= 30 ? '#a08858' : '#c06060';
+    if (ctEl) ctEl.style.color = d.country_pct >= 80 ? '#4a9a6b' : d.country_pct >= 40 ? '#a08858' : '#c06060';
+
+    // Gate indicators
+    var gates = d.gates || {};
+    var gateConfig = [
+      { key: 'salary_40', label: 'Salary 40%', met: gates.salary_40, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'loc_type_60', label: 'Loc Type 60%', met: gates.loc_type_60, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'department_60', label: 'Department 60%', met: gates.department_60, unlocks: 'Multi-dim Stories (B2)' },
+      { key: 'country_80', label: 'Country 80%', met: gates.country_80, unlocks: 'Jobs by Location (A3)' }
+    ];
+    var gateEl = document.getElementById('en-gates');
+    if (gateEl) {
+      gateEl.innerHTML = gateConfig.map(function(g) {
+        var color = g.met ? '#4a9a6b' : '#a08858';
+        var icon = g.met ? '✓' : '○';
+        var label = g.met ? 'Gate met' : 'Not met';
+        return '<div style="padding:8px 14px;border-radius:8px;border:1px solid ' + color + ';background:color-mix(in srgb,' + color + ' 10%,transparent);font-size:12px">' +
+          '<span style="color:' + color + ';font-weight:700">' + icon + ' ' + g.label + '</span>' +
+          '<span style="color:var(--text-dim);margin-left:6px">' + label + '</span>' +
+          (g.met ? '' : '<div style="color:var(--text-faint);font-size:11px;margin-top:2px">Unlocks: ' + g.unlocks + '</div>') +
+          '</div>';
+      }).join('');
+    }
+
+    // Gate badge on coverage cards
+    gateConfig.forEach(function(g, i) {
+      var ids = ['en-salary-gate','en-loctype-gate','en-dept-gate','en-country-gate'];
+      var el = document.getElementById(ids[i]);
+      if (el) {
+        el.innerHTML = g.met ? '<span style="color:#4a9a6b;font-size:11px">✓ Gate met</span>' : '<span style="color:#a08858;font-size:11px">Target: ' + g.label.split(' ')[1] + '</span>';
+      }
+    });
+
+    // Platform breakdown table
+    var platforms = d.platforms || [];
+    var tbody = document.getElementById('en-platform-body');
+    var tfoot = document.getElementById('en-platform-foot');
+    if (tbody) {
+      tbody.innerHTML = platforms.map(function(p) {
+        var pct = function(n) { return p.total > 0 ? (n * 100 / p.total).toFixed(1) + '%' : '0%'; };
+        var colorPct = function(n, target) {
+          var v = p.total > 0 ? n * 100 / p.total : 0;
+          var c = v >= target ? '#4a9a6b' : v >= target * 0.5 ? '#a08858' : '#c06060';
+          return '<span style="color:' + c + '">' + v.toFixed(1) + '%</span>';
+        };
+        return '<tr>' +
+          '<td class="admin-platform-name">' + p.ats_source + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(p.total) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_salary, 40) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_loc_type, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_department, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_country, 80) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+    if (tfoot) {
+      tfoot.innerHTML = '<tr style="font-weight:700;border-top:2px solid var(--border)">' +
+        '<td>Total</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(d.total_jobs) + '</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.salary_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.loc_type_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.department_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.country_pct + '%</td>' +
+        '</tr>';
+    }
+
+    // Platform coverage bar chart
+    var chartEl = document.getElementById('en-chart-platforms');
+    if (chartEl && typeof echarts !== 'undefined') {
+      if (_enChart) _enChart.dispose();
+      _enChart = echarts.init(chartEl);
+      var names = platforms.map(function(p) { return p.ats_source; });
+      var mkSeries = function(field, name, color) {
+        return {
+          name: name, type: 'bar', stack: false,
+          data: platforms.map(function(p) { return p.total > 0 ? +(p[field] * 100 / p.total).toFixed(1) : 0; }),
+          itemStyle: { color: color, borderRadius: [2,2,0,0] },
+          barMaxWidth: 24
+        };
+      };
+      _enChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) {
+          var tip = '<strong>' + params[0].name + '</strong>';
+          params.forEach(function(p) { tip += '<br>' + p.marker + ' ' + p.seriesName + ': ' + p.value + '%'; });
+          return tip;
+        }},
+        legend: { top: 0, textStyle: { color: 'var(--text-dim)', fontSize: 11 } },
+        grid: { left: 50, right: 20, top: 36, bottom: 30 },
+        xAxis: { type: 'category', data: names, axisLabel: { color: 'var(--text-dim)', fontSize: 11 } },
+        yAxis: { type: 'value', max: 100, axisLabel: { color: 'var(--text-dim)', fontSize: 11, formatter: '{value}%' },
+          splitLine: { lineStyle: { color: 'var(--border)' } } },
+        series: [
+          mkSeries('with_salary', 'Salary', '#6366f1'),
+          mkSeries('with_loc_type', 'Loc Type', '#3b82f6'),
+          mkSeries('with_department', 'Department', '#22c55e'),
+          mkSeries('with_country', 'Country', '#f59e0b')
+        ]
+      });
+      window.addEventListener('resize', function() { if (_enChart) _enChart.resize(); });
+    }
+
+    _adminTabInit['enrichment'] = true;
+
+    // Load refresh schedule (A5)
+    loadRefreshSchedule();
+  } catch(e) {
+    console.error('[Admin] Enrichment error:', e);
+  }
+}
+
+async function loadRefreshSchedule() {
+  try {
+    var res = await sb.rpc('get_refresh_schedule');
+    if (res.error || !res.data) return;
+    var pages = res.data;
+
+    var dueCount = pages.filter(function(p) { return p.needs_refresh; }).length;
+    var summaryEl = document.getElementById('en-refresh-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = dueCount > 0
+        ? '<span style="color:#a08858">' + dueCount + ' pages due for refresh</span>'
+        : '<span style="color:#4a9a6b">All pages fresh ✓</span>';
+    }
+
+    var tbody = document.getElementById('en-refresh-body');
+    if (tbody) {
+      tbody.innerHTML = pages.map(function(p) {
+        var hrsAgo = Math.floor(p.hours_since_refresh);
+        var hrsDue = Math.floor(p.hours_until_due || 0);
+        var freshLabel = hrsAgo < 1 ? '<1h ago' : hrsAgo < 24 ? hrsAgo + 'h ago' : Math.floor(hrsAgo/24) + 'd ago';
+        var dueLabel = p.needs_refresh ? 'Overdue' : (hrsDue < 1 ? '<1h' : hrsDue < 24 ? hrsDue + 'h' : Math.floor(hrsDue/24) + 'd');
+        var statusColor = p.needs_refresh ? '#c06060' : hrsDue < 24 ? '#a08858' : '#4a9a6b';
+        var statusIcon = p.needs_refresh ? '⚠' : '✓';
+        return '<tr>' +
+          '<td style="font-family:var(--mono);font-size:12px">' + p.cache_key + '</td>' +
+          '<td>' + p.page_type + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + p.refresh_interval_days + 'd</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + freshLabel + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + dueLabel + '</td>' +
+          '<td style="text-align:center;color:' + statusColor + '">' + statusIcon + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch(e) {
+    console.error('[Admin] Refresh schedule error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D7: MOCK ATS LOG TAB (v4.85)
+// Shows mock_ats_submissions with payload inspection
+// ═══════════════════════════════════════════════════════════
+
+async function loadMockAtsTab() {
+  var container = document.getElementById('admin-panel-mock-ats');
+  if (!container) return;
+
+  container.innerHTML = '<div class="admin-loading">Loading mock ATS submissions...</div>';
+
+  try {
+    var { data, error } = await sb
+      .from('mock_ats_submissions')
+      .select('id, user_id, job_id, ats_source, response_type, response_body, payload, created_at, idempotency_key')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      container.innerHTML = '<div class="admin-red">Error loading mock ATS data: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;">No mock ATS submissions yet.</div>';
+      return;
+    }
+
+    // Stats summary
+    var total = data.length;
+    var success = data.filter(function(r) { return r.response_type === 'success'; }).length;
+    var rejected = data.filter(function(r) { return r.response_type === 'rejected'; }).length;
+    var timeout = data.filter(function(r) { return r.response_type === 'timeout'; }).length;
+
+    var statsHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
+      '<div class="admin-stat-card"><div class="admin-stat-val">' + total + '</div><div class="admin-stat-label">Total</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#22c55e40"><div class="admin-stat-val" style="color:#22c55e">' + success + '</div><div class="admin-stat-label">Success</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#f59e0b40"><div class="admin-stat-val" style="color:#f59e0b">' + rejected + '</div><div class="admin-stat-label">Rejected</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#ef444440"><div class="admin-stat-val" style="color:#ef4444">' + timeout + '</div><div class="admin-stat-label">Timeout</div></div>' +
+      '</div>';
+
+    // Table
+    var tableHtml = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%;font-size:13px;">' +
+      '<thead><tr>' +
+      '<th>Time</th><th>Job ID</th><th>ATS</th><th>Result</th><th>User</th><th>Details</th>' +
+      '</tr></thead><tbody>';
+
+    tableHtml += data.map(function(row) {
+      var time = new Date(row.created_at).toLocaleString();
+      var badge = '';
+      if (row.response_type === 'success') badge = '<span class="admin-badge admin-badge-green">✓ Success</span>';
+      else if (row.response_type === 'rejected') badge = '<span class="admin-badge admin-badge-amber">✗ Rejected</span>';
+      else badge = '<span class="admin-badge admin-badge-red">⏱ Timeout</span>';
+
+      var detailSnippet = '';
+      if (row.response_body) {
+        if (row.response_type === 'success') detailSnippet = row.response_body.confirmation_id || '';
+        else if (row.response_type === 'rejected') detailSnippet = (row.response_body.error || '') + ': ' + (row.response_body.detail || '');
+        else detailSnippet = 'timeout';
+      }
+
+      var jobIdShort = (row.job_id || '').length > 20 ? row.job_id.substring(0, 20) + '…' : (row.job_id || '');
+      var userIdShort = (row.user_id || '').substring(0, 8) + '…';
+
+      return '<tr data-row-id="' + row.id + '" style="cursor:pointer;" onclick="toggleMockAtsDetail(this)">' +
+        '<td style="white-space:nowrap;font-size:12px;color:var(--text-dim)">' + time + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;" title="' + escapeHtml(row.job_id || '') + '">' + escapeHtml(jobIdShort) + '</td>' +
+        '<td>' + escapeHtml(row.ats_source || '') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-family:var(--mono);font-size:11px;" title="' + escapeHtml(row.user_id || '') + '">' + escapeHtml(userIdShort) + '</td>' +
+        '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(detailSnippet) + '</td>' +
+        '</tr>' +
+        '<tr class="mock-ats-detail" style="display:none;"><td colspan="6">' +
+          '<div style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">' +
+            '<div style="margin-bottom:8px;"><strong>Request Payload:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:300px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.payload, null, 2)) + '</pre>' +
+            '<div style="margin:8px 0;"><strong>Response:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:200px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.response_body, null, 2)) + '</pre>' +
+            '<div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Idempotency: ' + escapeHtml(row.idempotency_key || 'none') + '</div>' +
+          '</div>' +
+        '</td></tr>';
+    }).join('');
+
+    tableHtml += '</tbody></table></div>';
+
+    container.innerHTML = statsHtml + tableHtml;
+
+  } catch (e) {
+    console.error('[Admin] Mock ATS tab error:', e);
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function toggleMockAtsDetail(row) {
+  var detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('mock-ats-detail')) {
+    detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  }
+}

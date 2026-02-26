@@ -5,6 +5,18 @@
 function renderSortPills() {
   const container = $('#sort-pills');
   if (!container) return;
+
+  // Dedup guard — remove duplicate fields, keep first occurrence
+  const seen = new Set();
+  jobSortStack = jobSortStack.filter(s => {
+    if (seen.has(s.field)) return false;
+    seen.add(s.field);
+    return true;
+  });
+
+  // Clear existing pills before re-rendering
+  container.querySelectorAll('.sort-pill').forEach(p => p.remove());
+
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
@@ -18,8 +30,8 @@ function renderSortPills() {
     const label = labelMap[s.field] || s.field;
     const dirLabel = s.asc ? '↑' : '↓';
     const dirTitle = s.asc
-      ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
-      : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
+      ? (s.field === 'first_seen_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+      : (s.field === 'first_seen_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
     const colors = sortColorMap[s.field] || sortColorMap.title;
 
     const pill = document.createElement('span');
@@ -50,7 +62,7 @@ function renderSortPills() {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.idx);
       jobSortStack.splice(idx, 1);
-      if (jobSortStack.length === 0) jobSortStack.push({ field: 'updated_at', asc: false });
+      if (jobSortStack.length === 0) jobSortStack.push({ field: 'first_seen_at', asc: false });
       renderSortPills();
       searchJobs(0);
     });
@@ -198,7 +210,7 @@ $$('.job-table th[data-sort]').forEach(th => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
     const field = th.dataset.sort;
-    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
+    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'first_seen_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
     const dbField = fieldMap[field] || 'updated_at';
 
     // If already primary sort, toggle direction
@@ -266,14 +278,46 @@ $('#query-builder-who')?.addEventListener('click', e => {
 
 // Input handling — When row
 const qbInputWhen = $('#qb-input-when');
+
+function commitWhenPill() {
+  const raw = qbInputWhen.value.trim();
+  if (!raw) return;
+  // Validate & normalize
+  const norm = normalizeWhenValue(raw);
+  if (!norm) {
+    // Show inline error
+    qbInputWhen.style.borderColor = 'var(--red)';
+    qbInputWhen.style.color = 'var(--red)';
+    let errEl = qbInputWhen.parentElement.querySelector('.when-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'when-error';
+      errEl.style.cssText = 'font-size:10px;color:var(--red);margin-top:2px;position:absolute;bottom:-14px;left:0;white-space:nowrap;';
+      qbInputWhen.parentElement.style.position = 'relative';
+      qbInputWhen.parentElement.appendChild(errEl);
+    }
+    errEl.textContent = 'Try: today, yesterday, 7 days, 2 weeks, month, 3 months';
+    setTimeout(() => {
+      qbInputWhen.style.borderColor = '';
+      qbInputWhen.style.color = '';
+      if (errEl) errEl.remove();
+    }, 4000);
+    return;
+  }
+  // Use the normalized canonical label
+  qbInputWhen.value = '';
+  whenPills.push({ values: [norm.label], type: 'when' });
+  renderAllPills();
+}
+
 qbInputWhen.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+    commitWhenPill();
   } else if (e.key === 'Tab') {
     if (qbInputWhen.value.trim()) {
       e.preventDefault();
-      commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+      commitWhenPill();
       focusNextInput('qb-input-when');
     }
   } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
@@ -282,7 +326,7 @@ qbInputWhen.addEventListener('keydown', e => {
   }
 });
 qbInputWhen.addEventListener('blur', () => {
-  commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+  commitWhenPill();
 });
 
 // Input handling — Who row
@@ -337,5 +381,97 @@ qbInputWho.addEventListener('input', () => {
 
 
 
+
+
+
+// ============================================================
+// SKILLS input bindings
+// ============================================================
+const qbInputSkills = $('#qb-input-skills');
+if (qbInputSkills) {
+  qbInputSkills.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+    } else if (e.key === 'Backspace' && qbInputSkills.value === '' && skillsPills.length > 0) {
+      skillsPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputSkills.addEventListener('blur', () => {
+    commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+  });
+  $('#query-builder-skills')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputSkills.focus();
+  });
+}
+
+// ============================================================
+// LEVEL input bindings
+// ============================================================
+const qbInputLevel = $('#qb-input-level');
+if (qbInputLevel) {
+  qbInputLevel.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+    } else if (e.key === 'Backspace' && qbInputLevel.value === '' && levelPills.length > 0) {
+      levelPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputLevel.addEventListener('blur', () => {
+    commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+  });
+  $('#query-builder-level')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputLevel.focus();
+  });
+}
+
+// ============================================================
+// JD CONTAINS input bindings
+// ============================================================
+const qbInputJd = $('#qb-input-jd');
+if (qbInputJd) {
+  qbInputJd.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+    } else if (e.key === 'Backspace' && qbInputJd.value === '' && jdPills.length > 0) {
+      jdPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputJd.addEventListener('blur', () => {
+    commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+  });
+  $('#query-builder-jd')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputJd.focus();
+  });
+}
+
+
+
+// ============================================================
+// DEPARTMENT input bindings
+// ============================================================
+const qbInputDept = $('#qb-input-dept');
+if (qbInputDept) {
+  qbInputDept.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+    } else if (e.key === 'Backspace' && qbInputDept.value === '' && deptPills.length > 0) {
+      deptPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputDept.addEventListener('blur', () => {
+    commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+  });
+  $('#query-builder-dept')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputDept.focus();
+  });
+}
 
 } // end sort-bar guard

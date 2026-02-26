@@ -441,7 +441,30 @@ export function weeklySummaryEmail(stats: {
   ghosted: number;
   newJobs: number;
   weekLabel: string;
+  stories?: Array<{ headline: string; lede: string; category: string; slug: string }>;
 }): { subject: string; html: string } {
+  const catColors: Record<string, string> = {
+    salary: "#22c55e", location: "#3b82f6", remote: "#8b5cf6",
+    company: "#f97316", trend: "#14b8a6", milestone: "#eab308",
+  };
+
+  const storiesHtml = stats.stories && stats.stories.length > 0 ? `
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #2a2d35;">
+          <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">This Week's Market Insights</div>
+          ${stats.stories.map(s => {
+            const color = catColors[s.category] || "#6366f1";
+            return `<div style="margin-bottom:16px;padding:12px;background:#1a1d27;border:1px solid #2a2d35;border-radius:8px;">
+              <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;background:${color};color:#fff;">${s.category}</span>
+              <div style="font-size:14px;font-weight:600;color:#f0f1f3;margin:6px 0 4px;line-height:1.35;">${s.headline}</div>
+              <div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:8px;">${s.lede ? s.lede.substring(0, 120) + (s.lede.length > 120 ? '…' : '') : ''}</div>
+              <a href="https://brilliantjobs.app/blog/${s.slug}" style="font-size:12px;color:#818cf8;text-decoration:none;font-weight:600;">Read more →</a>
+            </div>`;
+          }).join("")}
+          <div style="text-align:center;margin-top:8px;">
+            <a href="https://brilliantjobs.app/blog" style="font-size:13px;color:#818cf8;text-decoration:none;">Browse all insights →</a>
+          </div>
+        </div>` : "";
+
   return {
     subject: `Weekly summary: ${stats.applied} applications — ${stats.weekLabel}`,
     html: baseLayout("Weekly Summary", `
@@ -470,6 +493,8 @@ export function weeklySummaryEmail(stats: {
           <div style="font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Market</div>
           ${detailRow("New jobs this week", String(stats.newJobs))}
         </div>
+
+        ${storiesHtml}
 
         <div class="btn-row" style="margin-top:24px;">
           <a href="${DASHBOARD_URL}#stats" class="btn btn-primary">View Full Stats</a>
@@ -688,5 +713,125 @@ export function seoNurtureEmail(
         <a href="https://brilliantjobs.app/salary-data" class="btn btn-secondary">See More Data</a>
       </div>
     `),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// APPLY WORKFLOW NOTIFICATION TEMPLATES (D6 — v4.85)
+// 7 types from Pod 2 handoff spec (Section 9)
+// autoApplyConfirmEmail already exists above as apply_auto_submitted
+// applyAlertEmail already exists above
+// ═══════════════════════════════════════════════════════════
+
+export function applyAutoSkippedEmail(
+  jobTitle: string, company: string, score: number, threshold: number
+): { subject: string; html: string } {
+  return {
+    subject: `Skipped: ${jobTitle} at ${company} (score ${score})`,
+    html: baseLayout("Auto-Apply Skipped", `
+      <div class="card">
+        <div class="card-title">Auto-Apply Skipped</div>
+        <p class="text">A job was skipped because it scored below your threshold:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Match Score", `<span class="badge badge-amber">${score}/100</span>`)}
+        ${detailRow("Your Threshold", `${threshold}/100`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#jobs" class="btn btn-primary">View Job</a>
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-gray">Adjust Settings</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function applyRewritePendingEmail(
+  jobTitle: string, company: string, beforeScore: number, afterScore: number, changeSummary: string
+): { subject: string; html: string; sms_text: string } {
+  const improvement = afterScore - beforeScore;
+  return {
+    subject: `Rewrite ready: ${jobTitle} at ${company} (+${improvement} pts)`,
+    html: baseLayout("Rewrite Pending Approval", `
+      <div class="card">
+        <div class="card-title">Resume Rewrite Ready</div>
+        <p class="text">Your AI-rewritten resume is ready for review:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Score Before", `${beforeScore}`)}
+        ${detailRow("Score After", `<span class="badge badge-green">${afterScore} (+${improvement})</span>`)}
+        <hr class="divider">
+        <p class="text" style="font-size:12px;"><strong>Changes:</strong> ${changeSummary}</p>
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-green">Review & Submit</a>
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-gray">Submit Original</a>
+        </div>
+      </div>
+    `),
+    sms_text: `Brilliant Jobs: Resume rewritten for ${jobTitle} at ${company} (${beforeScore}→${afterScore}). Review in app.`,
+  };
+}
+
+export function applyRewriteSubmittedEmail(
+  jobTitle: string, company: string, score: number
+): { subject: string; html: string } {
+  return {
+    subject: `Applied (rewritten): ${jobTitle} at ${company}`,
+    html: baseLayout("Rewritten Resume Submitted", `
+      <div class="card">
+        <div class="card-title">Rewritten Resume Submitted</div>
+        <p class="text">Your AI-optimized resume was automatically submitted:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Match Score", `<span class="badge badge-green">${score}/100</span>`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#pipeline" class="btn btn-primary">View in Pipeline</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function applyFailedNoResumeEmail(
+  jobTitle: string, company: string
+): { subject: string; html: string } {
+  return {
+    subject: `Action needed: No resume for ${jobTitle} at ${company}`,
+    html: baseLayout("Apply Failed — No Resume", `
+      <div class="card">
+        <div class="card-title" style="color:#ef4444;">Application Failed</div>
+        <p class="text">We couldn't submit your application because no resume was found:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Reason", `<span class="badge badge-red">No resume uploaded</span>`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#resumes" class="btn btn-primary">Upload Resume</a>
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-gray">View Queue</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function applyBulkCompleteEmail(
+  totalSubmitted: number, totalSkipped: number, totalFailed: number
+): { subject: string; html: string; sms_text: string } {
+  const total = totalSubmitted + totalSkipped + totalFailed;
+  return {
+    subject: `Bulk apply complete: ${totalSubmitted}/${total} submitted`,
+    html: baseLayout("Bulk Apply Complete", `
+      <div class="card">
+        <div class="card-title">Bulk Apply Complete</div>
+        <p class="text">Your auto-apply batch has finished processing:</p>
+        ${detailRow("Submitted", `<span class="badge badge-green">${totalSubmitted}</span>`)}
+        ${totalSkipped > 0 ? detailRow("Skipped (below threshold)", `<span class="badge badge-amber">${totalSkipped}</span>`) : ""}
+        ${totalFailed > 0 ? detailRow("Failed", `<span class="badge badge-red">${totalFailed}</span>`) : ""}
+        ${detailRow("Total Processed", `${total}`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#pipeline" class="btn btn-primary">View Pipeline</a>
+          ${totalFailed > 0 ? `<a href="${DASHBOARD_URL}#applications" class="btn btn-red">Retry Failed</a>` : ""}
+        </div>
+      </div>
+    `),
+    sms_text: `Brilliant Jobs: Bulk apply done — ${totalSubmitted} submitted, ${totalSkipped} skipped, ${totalFailed} failed.`,
   };
 }

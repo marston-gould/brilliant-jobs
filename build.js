@@ -2,7 +2,9 @@ import { buildSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 
 const jsFiles = [
+  'js/version.js',
   'js/globals.js',
+  'js/sync.js',
   'js/query-builder.js',
   'js/job-feed.js',
   'js/sort-bar.js',
@@ -20,6 +22,10 @@ const jsFiles = [
   'js/billing.js',
   'js/micro-surveys.js',
   'js/rewrite.js',
+  'js/resume-archive.js',
+  'js/resume-metrics.js',
+  'js/tier-gating.js',
+  'js/apply-workflow.js',
   'js/app.js',
 ];
 

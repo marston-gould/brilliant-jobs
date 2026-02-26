@@ -8,7 +8,20 @@
 
 module.exports = {
   safelist: [
-    { pattern: /^(page|nav|card|stat|btn|fb|rw|cb|ghost|admin|filter|jobs|micro|resume|app|main)/ },
+    { pattern: /^(page|nav|card|stat|btn|fb|rw|cb|ghost|admin|filter|jobs|micro|resume|app|main|ai-|nri-)/ },
+    { pattern: /^(qb-|sf-|pl-|rc-|gs-|ns-|ec-|jt-|rp-|st\d)/ },
+    { pattern: /^(tuning-|setup-|notif-|credit-|seo-|sort-|pill-|poor-match-|sub-)/ },
+    { pattern: /^(hide-|location-|company-|salary-|escalation-|suggestion-|install-)/ },
+    { pattern: /^(or-|not-|no-|collection-|preview-|download-|empty-state)/ },
+    { pattern: /^(badge|level|match|mode|show|tab|source|pay|top-co|ext-|type-)/ },
+    { pattern: /^(job-|save|saved|query-builder|readiness-|phone-|otp-|notify-|feedback-)/ },
+    { pattern: /^(loading|spinner|toggle-|sparkle|override-|instance-|freq-|tz-)/ },
+    { pattern: /^(when-|who-|auth-|browse-|step-|quiet-|coll-)/ },
+    { pattern: /^(high|mid|low|none|on|off|open|selected|collapsed|connected|stale|pulse|sorted|excluded|included|compact|disabled|active|inactive)$/ },
+    { pattern: /^(amber|bug|danger|dim|doc|down|dragover|email|empty|full|green|mark|pdf|red|skip|sms|tall|up|wait|warning|new-resume-item|is-placeholder|css|woff2|chip-count)$/ },
+    { pattern: /^(s[1-8]|esc-|ec$)/ },
+    { pattern: /^(feed-|hero-|intel-|hs-)/ },
+    { pattern: /^(sg-|pa-|rr-|fas-|pending-apps)/ },
   ],
   content: [
     './dashboard.html',

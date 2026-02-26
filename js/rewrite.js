@@ -261,10 +261,11 @@ async function _rwAcceptAll() {
   if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Generating document…'; }
 
   try {
-    // Build the rewritten text by combining accepted sections
+    // Build the rewritten text by combining accepted sections (respecting cherry-pick)
     var fullText = '';
     (_rwState.sections || []).forEach(function (s) {
-      var text = s.changed ? s.rewritten : s.original;
+      var useRewrite = s.changed && !s._excluded;
+      var text = useRewrite ? s.rewritten : s.original;
       if (text) fullText += text + '\n\n';
     });
 
@@ -596,6 +597,7 @@ function _rwRenderResults() {
     var changed = s.changed;
     html += '<div class="rw-diff-section' + (changed ? ' rw-diff-changed' : ' rw-diff-unchanged') + '">' +
       '<div class="rw-diff-header">' +
+      (changed ? '<div class="rw-cherry-pick"><input type="checkbox" id="rw-pick-' + si + '" checked onchange="_rwToggleSection(' + si + ')"><label for="rw-pick-' + si + '">Include</label></div>' : '') +
       '<span class="rw-diff-name">' + (s.name || 'Section') + '</span>' +
       (changed ? '<span class="rw-diff-badge">Modified</span>' : '<span class="rw-diff-badge rw-diff-badge-same">No changes</span>') +
       '</div>';
@@ -604,11 +606,11 @@ function _rwRenderResults() {
       html += '<div class="rw-diff-cols">' +
         '<div class="rw-diff-col rw-diff-original">' +
         '<div class="rw-diff-col-label">Original</div>' +
-        '<div class="rw-diff-col-text">' + _rwEscapeHtml(s.original || '') + '</div>' +
+        '<div class="rw-diff-col-text">' + _rwHighlightDiff(s.original || '', s.rewritten || '', 'original') + '</div>' +
         '</div>' +
         '<div class="rw-diff-col rw-diff-rewritten">' +
         '<div class="rw-diff-col-label">Rewritten</div>' +
-        '<div class="rw-diff-col-text">' + _rwEscapeHtml(s.rewritten || '') + '</div>' +
+        '<div class="rw-diff-col-text">' + _rwHighlightDiff(s.original || '', s.rewritten || '', 'rewritten') + '</div>' +
         '</div>' +
         '</div>';
       if (s.changes_made && s.changes_made.length > 0) {
@@ -623,8 +625,9 @@ function _rwRenderResults() {
   html += '</div>';
 
   // Actions
+  var changedCount = _rwState.sections.filter(function(s){ return s.changed; }).length;
   html += '<div class="rw-actions">' +
-    '<button class="btn btn-primary" onclick="_rwAcceptAll()">Accept All</button>' +
+    '<button class="btn btn-primary" onclick="_rwAcceptAll()">' + (changedCount > 1 ? 'Accept Selected (' + changedCount + ')' : 'Accept All') + '</button>' +
     '<div class="rw-retry-section">' +
     '<textarea id="rw-feedback-input" class="rw-qa-input" placeholder="What should be different? (e.g. too aggressive, keep my summary)" rows="2" style="margin-bottom:8px;"></textarea>' +
     '<button class="btn btn-sm" onclick="_rwTryAgain()" style="font-size:11px;">' +
@@ -654,6 +657,49 @@ function _rwEscapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>');
 }
+
+// Word-level diff highlighting
+function _rwHighlightDiff(original, rewritten, side) {
+  var origWords = original.split(/(\s+)/);
+  var newWords = rewritten.split(/(\s+)/);
+
+  // Simple LCS-based word diff
+  if (origWords.length > 300 || newWords.length > 300) {
+    // Too long for word diff — fall back to plain escaped
+    return _rwEscapeHtml(side === 'original' ? original : rewritten);
+  }
+
+  var origSet = new Set(origWords.filter(function(w){ return w.trim(); }));
+  var newSet = new Set(newWords.filter(function(w){ return w.trim(); }));
+
+  if (side === 'original') {
+    return origWords.map(function(w) {
+      if (!w.trim()) return w;
+      var esc = _rwEscapeHtml(w);
+      if (!newSet.has(w)) return '<span class="rw-diff-remove">' + esc + '</span>';
+      return esc;
+    }).join('');
+  } else {
+    return newWords.map(function(w) {
+      if (!w.trim()) return w;
+      var esc = _rwEscapeHtml(w);
+      if (!origSet.has(w)) return '<span class="rw-diff-add">' + esc + '</span>';
+      return esc;
+    }).join('');
+  }
+}
+
+// Cherry-pick section toggle
+window._rwToggleSection = function(sectionIdx) {
+  if (!_rwState.sections || !_rwState.sections[sectionIdx]) return;
+  var cb = document.getElementById('rw-pick-' + sectionIdx);
+  _rwState.sections[sectionIdx]._excluded = cb ? !cb.checked : false;
+
+  // Update accept button count
+  var included = _rwState.sections.filter(function(s){ return s.changed && !s._excluded; }).length;
+  var btn = document.querySelector('.rw-actions .btn-primary');
+  if (btn) btn.textContent = included > 0 ? 'Accept Selected (' + included + ')' : 'Accept Selected (0)';
+};
 
 // ════════════════════════════════════════════════════════════
 // ENTRY POINT: "Boost" CTA on Jobs Feed match column

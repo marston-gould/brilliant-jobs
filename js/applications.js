@@ -5,15 +5,29 @@ let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
 let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
 let appMode = localStorage.getItem('bj_app_mode') || 'manual';
 
-// Tab switching
-$$('.app-flow-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    $$('.app-flow-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.app-flow-panel').forEach(p => p.classList.remove('active'));
-    $(`#panel-${tab.dataset.panel}`).classList.add('active');
+// ============================================================
+// SETTINGS PANEL — Rules & Notifications
+// ============================================================
+
+window.toggleAppSettings = function() {
+  var panel = document.getElementById('app-settings-panel');
+  var btn = document.getElementById('app-settings-toggle');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !isOpen);
+  if (!isOpen) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+window.switchSettingsTab = function(tab) {
+  document.querySelectorAll('.app-settings-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.settings === tab);
   });
-});
+  var rulesEl = document.getElementById('settings-content-rules');
+  var notifEl = document.getElementById('settings-content-notifications');
+  if (rulesEl) rulesEl.style.display = tab === 'rules' ? 'block' : 'none';
+  if (notifEl) notifEl.style.display = tab === 'notifications' ? 'block' : 'none';
+};
 
 // Mode selection
 $$('.app-mode-select').forEach(btn => {
@@ -22,10 +36,14 @@ $$('.app-mode-select').forEach(btn => {
       b.classList.remove('active');
       b.className = b.className.replace(/btn-primary/g, 'btn-secondary');
       b.style.border = '';
+      const sub = b.querySelector('div:last-child');
+      if (sub) sub.style.color = 'var(--text-dim)';
     });
     btn.classList.add('active');
     btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
     btn.style.border = '2px solid var(--accent)';
+    const activeSub = btn.querySelector('div:last-child');
+    if (activeSub) activeSub.style.color = 'rgba(255,255,255,0.85)';
     appMode = btn.dataset.mode;
     localStorage.setItem('bj_app_mode', appMode);
   });
@@ -33,14 +51,17 @@ $$('.app-mode-select').forEach(btn => {
 
 // Set active mode on load
 $$('.app-mode-select').forEach(btn => {
+  const sub = btn.querySelector('div:last-child');
   if (btn.dataset.mode === appMode) {
     btn.classList.add('active');
     btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
     btn.style.border = '2px solid var(--accent)';
+    if (sub) sub.style.color = 'rgba(255,255,255,0.85)';
   } else {
     btn.classList.remove('active');
     btn.className = btn.className.replace(/btn-primary/g, 'btn-secondary');
     btn.style.border = '';
+    if (sub) sub.style.color = 'var(--text-dim)';
   }
 });
 
@@ -65,10 +86,42 @@ function renderAppQueue() {
   const pending = appQueue.filter(a => a.status === 'pending' || a.status === 'sent').length;
   const submitted = [...appQueue, ...appHistory].filter(a => a.status === 'submitted').length;
   const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
-  $('#a-queued').textContent = queued;
-  $('#a-pending').textContent = pending;
-  $('#a-submitted').textContent = submitted;
-  $('#a-failed').textContent = failed;
+  const _el = id => document.getElementById(id);
+  if (_el('a-queued')) _el('a-queued').textContent = queued;
+  if (_el('a-submitted')) _el('a-submitted').textContent = submitted;
+
+  // Hero lifecycle stats
+  const allApps = (typeof appHistory !== 'undefined' && Array.isArray(appHistory)) ? [...appQueue, ...appHistory] : [...appQueue];
+  const totalSent = allApps.filter(a => a.status === 'submitted').length;
+  const responded = allApps.filter(a =>
+    a.ghostStatus === 'responded' || a.pipelineStage === 'responded' ||
+    a.pipelineStage === 'interview' || a.pipelineStage === 'offer'
+  ).length;
+  if (_el('a-response-rate')) {
+    _el('a-response-rate').textContent = totalSent > 0
+      ? Math.round((responded / totalSent) * 100) + '%'
+      : '—';
+  }
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const thisWeek = allApps.filter(a =>
+    a.status === 'submitted' && new Date(a.submittedAt || a.addedAt).getTime() > weekAgo
+  ).length;
+  if (_el('a-this-week')) _el('a-this-week').textContent = thisWeek;
+
+  // Cross-tab ghost intel
+  const ghostStale = allApps.filter(a => {
+    if (a.status !== 'submitted') return false;
+    const days = (Date.now() - new Date(a.submittedAt || a.addedAt).getTime()) / 86400000;
+    return days > 7;
+  });
+  const intelSlot = document.getElementById('app-intel-slot');
+  const intelTitle = document.getElementById('app-intel-title');
+  const intelSub = document.getElementById('app-intel-sub');
+  if (intelSlot && intelTitle && ghostStale.length > 0 && thisWeek > 0) {
+    intelTitle.textContent = 'You sent ' + thisWeek + ' application' + (thisWeek !== 1 ? 's' : '') + ' this week — ' + ghostStale.length + ' ' + (ghostStale.length === 1 ? 'is' : 'are') + ' past the 7-day mark with no response.';
+    intelSub.textContent = 'Review stale applications and take action before they go cold.';
+    intelSlot.style.display = '';
+  }
 
   if (navBadge && appQueue.length > 0) {
     navBadge.style.display = '';
