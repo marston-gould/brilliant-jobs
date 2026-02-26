@@ -76,6 +76,12 @@
     .summary{min-height:120px;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(168,85,247,0.06));border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:16px 20px;margin-block-end:32px;font-size:13px;color:var(--text-dim);line-height:1.7}
     .summary strong{color:var(--text);font-weight:500}
     .summary .label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-block-end:6px}
+    
+    .bj-topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 0;margin-block-end:8px}
+    .bj-topbar .bj-home{font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px}
+    .bj-topbar .bj-home:hover{color:var(--accent)}
+    .bj-topbar .bj-login{padding:7px 18px;background:#fff;color:#0b0e18;border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;transition:all 0.15s;font-family:'Outfit',sans-serif;letter-spacing:0.3px}
+    .bj-topbar .bj-login:hover{background:rgba(255,255,255,0.85)}
     .hdr{margin-block-end:28px}
     .hdr .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-block-end:10px}
     .hdr .breadcrumb{font-size:12px;color:var(--text-faint);margin-block-end:12px}
@@ -153,6 +159,10 @@
 <body>
 <main>
 <div class="wrap">
+  <nav class="bj-topbar">
+    <a href="/" class="bj-home">✦ Brilliant Jobs</a>
+    <a href="/dashboard" class="bj-login">Log In</a>
+  </nav>
   <header class="hdr">
     <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
     <h1>Data <span>Lab</span></h1>
@@ -211,7 +221,7 @@
 
 
 
-  <div class="foot">Data from 38,000+ career pages<br><span class="bj-version"></span> · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+  <div class="foot">Data from 38,000+ career pages<br><span class="bj-version"></span> · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a> · &copy; <span class="bj-year"></span> Brilliant Jobs</div>
 </div>
 </main>
 <a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
