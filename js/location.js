@@ -677,6 +677,9 @@ $('#clear-filters-btn').addEventListener('click', () => {
   whatNotPills = [];
   whereNotPills = [];
   whoNotPills = [];
+  skillsPills = [];
+  levelPills = [];
+  jdPills = [];
   renderAllPills();
 });
 
