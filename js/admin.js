@@ -96,6 +96,7 @@ function switchAdminTab(tabId) {
       case 'signals': loadAdminSignals(); break;
       case 'content': loadContentTab(); break;
       case 'enrichment': loadEnrichmentTab(); break;
+      case 'mock-ats': loadMockAtsTab(); break;
     }
   }
 }
@@ -3232,5 +3233,105 @@ async function loadRefreshSchedule() {
     }
   } catch(e) {
     console.error('[Admin] Refresh schedule error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D7: MOCK ATS LOG TAB (v4.85)
+// Shows mock_ats_submissions with payload inspection
+// ═══════════════════════════════════════════════════════════
+
+async function loadMockAtsTab() {
+  var container = document.getElementById('admin-panel-mock-ats');
+  if (!container) return;
+
+  container.innerHTML = '<div class="admin-loading">Loading mock ATS submissions...</div>';
+
+  try {
+    var { data, error } = await sb
+      .from('mock_ats_submissions')
+      .select('id, user_id, job_id, ats_source, response_type, response_body, payload, created_at, idempotency_key')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      container.innerHTML = '<div class="admin-red">Error loading mock ATS data: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;">No mock ATS submissions yet.</div>';
+      return;
+    }
+
+    // Stats summary
+    var total = data.length;
+    var success = data.filter(function(r) { return r.response_type === 'success'; }).length;
+    var rejected = data.filter(function(r) { return r.response_type === 'rejected'; }).length;
+    var timeout = data.filter(function(r) { return r.response_type === 'timeout'; }).length;
+
+    var statsHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
+      '<div class="admin-stat-card"><div class="admin-stat-val">' + total + '</div><div class="admin-stat-label">Total</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#22c55e40"><div class="admin-stat-val" style="color:#22c55e">' + success + '</div><div class="admin-stat-label">Success</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#f59e0b40"><div class="admin-stat-val" style="color:#f59e0b">' + rejected + '</div><div class="admin-stat-label">Rejected</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#ef444440"><div class="admin-stat-val" style="color:#ef4444">' + timeout + '</div><div class="admin-stat-label">Timeout</div></div>' +
+      '</div>';
+
+    // Table
+    var tableHtml = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%;font-size:13px;">' +
+      '<thead><tr>' +
+      '<th>Time</th><th>Job ID</th><th>ATS</th><th>Result</th><th>User</th><th>Details</th>' +
+      '</tr></thead><tbody>';
+
+    tableHtml += data.map(function(row) {
+      var time = new Date(row.created_at).toLocaleString();
+      var badge = '';
+      if (row.response_type === 'success') badge = '<span class="admin-badge admin-badge-green">✓ Success</span>';
+      else if (row.response_type === 'rejected') badge = '<span class="admin-badge admin-badge-amber">✗ Rejected</span>';
+      else badge = '<span class="admin-badge admin-badge-red">⏱ Timeout</span>';
+
+      var detailSnippet = '';
+      if (row.response_body) {
+        if (row.response_type === 'success') detailSnippet = row.response_body.confirmation_id || '';
+        else if (row.response_type === 'rejected') detailSnippet = (row.response_body.error || '') + ': ' + (row.response_body.detail || '');
+        else detailSnippet = 'timeout';
+      }
+
+      var jobIdShort = (row.job_id || '').length > 20 ? row.job_id.substring(0, 20) + '…' : (row.job_id || '');
+      var userIdShort = (row.user_id || '').substring(0, 8) + '…';
+
+      return '<tr data-row-id="' + row.id + '" style="cursor:pointer;" onclick="toggleMockAtsDetail(this)">' +
+        '<td style="white-space:nowrap;font-size:12px;color:var(--text-dim)">' + time + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;" title="' + escapeHtml(row.job_id || '') + '">' + escapeHtml(jobIdShort) + '</td>' +
+        '<td>' + escapeHtml(row.ats_source || '') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-family:var(--mono);font-size:11px;" title="' + escapeHtml(row.user_id || '') + '">' + escapeHtml(userIdShort) + '</td>' +
+        '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(detailSnippet) + '</td>' +
+        '</tr>' +
+        '<tr class="mock-ats-detail" style="display:none;"><td colspan="6">' +
+          '<div style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">' +
+            '<div style="margin-bottom:8px;"><strong>Request Payload:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:300px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.payload, null, 2)) + '</pre>' +
+            '<div style="margin:8px 0;"><strong>Response:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:200px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.response_body, null, 2)) + '</pre>' +
+            '<div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Idempotency: ' + escapeHtml(row.idempotency_key || 'none') + '</div>' +
+          '</div>' +
+        '</td></tr>';
+    }).join('');
+
+    tableHtml += '</tbody></table></div>';
+
+    container.innerHTML = statsHtml + tableHtml;
+
+  } catch (e) {
+    console.error('[Admin] Mock ATS tab error:', e);
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function toggleMockAtsDetail(row) {
+  var detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('mock-ats-detail')) {
+    detail.style.display = detail.style.display === 'none' ? '' : 'none';
   }
 }
