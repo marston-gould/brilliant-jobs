@@ -715,3 +715,123 @@ export function seoNurtureEmail(
     `),
   };
 }
+
+// ═══════════════════════════════════════════════════════════
+// APPLY WORKFLOW NOTIFICATION TEMPLATES (D6 — v4.85)
+// 7 types from Pod 2 handoff spec (Section 9)
+// autoApplyConfirmEmail already exists above as apply_auto_submitted
+// applyAlertEmail already exists above
+// ═══════════════════════════════════════════════════════════
+
+export function applyAutoSkippedEmail(
+  jobTitle: string, company: string, score: number, threshold: number
+): { subject: string; html: string } {
+  return {
+    subject: `Skipped: ${jobTitle} at ${company} (score ${score})`,
+    html: baseLayout("Auto-Apply Skipped", `
+      <div class="card">
+        <div class="card-title">Auto-Apply Skipped</div>
+        <p class="text">A job was skipped because it scored below your threshold:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Match Score", `<span class="badge badge-amber">${score}/100</span>`)}
+        ${detailRow("Your Threshold", `${threshold}/100`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#jobs" class="btn btn-primary">View Job</a>
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-gray">Adjust Settings</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function applyRewritePendingEmail(
+  jobTitle: string, company: string, beforeScore: number, afterScore: number, changeSummary: string
+): { subject: string; html: string; sms_text: string } {
+  const improvement = afterScore - beforeScore;
+  return {
+    subject: `Rewrite ready: ${jobTitle} at ${company} (+${improvement} pts)`,
+    html: baseLayout("Rewrite Pending Approval", `
+      <div class="card">
+        <div class="card-title">Resume Rewrite Ready</div>
+        <p class="text">Your AI-rewritten resume is ready for review:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Score Before", `${beforeScore}`)}
+        ${detailRow("Score After", `<span class="badge badge-green">${afterScore} (+${improvement})</span>`)}
+        <hr class="divider">
+        <p class="text" style="font-size:12px;"><strong>Changes:</strong> ${changeSummary}</p>
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-green">Review & Submit</a>
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-gray">Submit Original</a>
+        </div>
+      </div>
+    `),
+    sms_text: `Brilliant Jobs: Resume rewritten for ${jobTitle} at ${company} (${beforeScore}→${afterScore}). Review in app.`,
+  };
+}
+
+export function applyRewriteSubmittedEmail(
+  jobTitle: string, company: string, score: number
+): { subject: string; html: string } {
+  return {
+    subject: `Applied (rewritten): ${jobTitle} at ${company}`,
+    html: baseLayout("Rewritten Resume Submitted", `
+      <div class="card">
+        <div class="card-title">Rewritten Resume Submitted</div>
+        <p class="text">Your AI-optimized resume was automatically submitted:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Match Score", `<span class="badge badge-green">${score}/100</span>`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#pipeline" class="btn btn-primary">View in Pipeline</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function applyFailedNoResumeEmail(
+  jobTitle: string, company: string
+): { subject: string; html: string } {
+  return {
+    subject: `Action needed: No resume for ${jobTitle} at ${company}`,
+    html: baseLayout("Apply Failed — No Resume", `
+      <div class="card">
+        <div class="card-title" style="color:#ef4444;">Application Failed</div>
+        <p class="text">We couldn't submit your application because no resume was found:</p>
+        ${detailRow("Role", jobTitle)}
+        ${detailRow("Company", company)}
+        ${detailRow("Reason", `<span class="badge badge-red">No resume uploaded</span>`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#resumes" class="btn btn-primary">Upload Resume</a>
+          <a href="${DASHBOARD_URL}#applications" class="btn btn-gray">View Queue</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function applyBulkCompleteEmail(
+  totalSubmitted: number, totalSkipped: number, totalFailed: number
+): { subject: string; html: string; sms_text: string } {
+  const total = totalSubmitted + totalSkipped + totalFailed;
+  return {
+    subject: `Bulk apply complete: ${totalSubmitted}/${total} submitted`,
+    html: baseLayout("Bulk Apply Complete", `
+      <div class="card">
+        <div class="card-title">Bulk Apply Complete</div>
+        <p class="text">Your auto-apply batch has finished processing:</p>
+        ${detailRow("Submitted", `<span class="badge badge-green">${totalSubmitted}</span>`)}
+        ${totalSkipped > 0 ? detailRow("Skipped (below threshold)", `<span class="badge badge-amber">${totalSkipped}</span>`) : ""}
+        ${totalFailed > 0 ? detailRow("Failed", `<span class="badge badge-red">${totalFailed}</span>`) : ""}
+        ${detailRow("Total Processed", `${total}`)}
+        <div class="btn-row" style="margin-top:20px;">
+          <a href="${DASHBOARD_URL}#pipeline" class="btn btn-primary">View Pipeline</a>
+          ${totalFailed > 0 ? `<a href="${DASHBOARD_URL}#applications" class="btn btn-red">Retry Failed</a>` : ""}
+        </div>
+      </div>
+    `),
+    sms_text: `Brilliant Jobs: Bulk apply done — ${totalSubmitted} submitted, ${totalSkipped} skipped, ${totalFailed} failed.`,
+  };
+}
