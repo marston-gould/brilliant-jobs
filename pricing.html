@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Pricing Page v4.22 - 2026-02-23 -->
+<!-- Brilliant Jobs Pricing Page -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
+    <link rel="canonical" href="https://brilliantjobs.app/pricing">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pricing — Brilliant Jobs</title>
   <meta name="description" content="Simple, transparent pricing. Start free, upgrade when you're ready. AI-powered job search with resume scoring, smart filters, and automated applications.">
@@ -92,28 +93,62 @@
       line-height: 1.6;
     }
 
-    /* TOGGLE */
-    .billing-toggle {
+    /* DURATION SLIDER */
+    .duration-picker {
+      max-width: 560px; margin: 28px auto 0; text-align: center;
+    }
+    .duration-context {
+      font-size: 13px; color: var(--text-faint); margin-bottom: 16px; line-height: 1.5;
+    }
+    .duration-context strong { color: var(--text-dim); }
+    .duration-slider-wrap {
+      position: relative; padding: 0 2px;
+    }
+    .duration-slider {
+      -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+      border-radius: 3px; background: var(--border); outline: none; cursor: pointer;
+    }
+    .duration-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); border: 3px solid #fff; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .duration-slider::-moz-range-thumb {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); border: 3px solid #fff; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .duration-labels {
+      display: flex; justify-content: space-between; margin-top: 8px;
+      font-size: 11px; color: var(--text-faint); font-family: var(--mono, monospace);
+      position: relative; height: 16px; user-select: none;
+    }
+    .duration-labels span {
+      position: absolute; transform: translateX(-50%);
+    }
+    .duration-labels span:first-child { left: 0; transform: none; }
+    .duration-labels span:last-child { right: 0; left: auto; transform: none; }
+    .duration-value {
       display: flex; align-items: center; justify-content: center; gap: 12px;
-      margin: 28px auto 0; font-size: 14px; font-weight: 600; color: var(--text-dim);
+      margin-top: 16px; flex-wrap: wrap;
     }
-    .billing-toggle .active { color: var(--text); }
-    .toggle-track {
-      width: 44px; height: 24px; border-radius: 12px;
-      background: var(--border); cursor: pointer; position: relative;
-      transition: background 0.2s;
+    .duration-months {
+      font-size: 28px; font-weight: 800; color: var(--text);
+      font-family: var(--mono, monospace); min-width: 60px;
     }
-    .toggle-track.on { background: var(--accent); }
-    .toggle-knob {
-      width: 18px; height: 18px; border-radius: 50%;
-      background: #fff; position: absolute; top: 3px; left: 3px;
-      transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    .duration-discount {
+      padding: 4px 12px; border-radius: 6px; font-size: 13px; font-weight: 700;
+      background: var(--green-dim, rgba(34,197,94,0.12)); color: var(--green, #22c55e);
     }
-    .toggle-track.on .toggle-knob { transform: translateX(20px); }
-    .save-badge {
-      background: var(--green-dim); color: var(--green);
-      padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 700;
+    .duration-insight {
+      font-size: 12px; color: var(--text-faint); margin-top: 8px; line-height: 1.5;
+      min-height: 18px;
     }
+    .duration-insight em { color: var(--text-dim); font-style: normal; font-weight: 600; }
+    .duration-total {
+      margin-top: 12px; font-size: 12px; color: var(--text-faint);
+    }
+    .duration-total strong { color: var(--text-dim); }
 
     /* CARDS */
     .pricing-grid {
@@ -143,6 +178,10 @@
     }
     .plan-price .amount { font-size: 48px; font-weight: 800; letter-spacing: -1px; }
     .plan-price .period { font-size: 16px; color: var(--text-dim); font-weight: 500; }
+    .plan-price-original {
+      font-size: 20px; color: var(--text-faint); text-decoration: line-through;
+      font-weight: 600; margin-right: 4px; opacity: 0.6;
+    }
     .plan-credits {
       font-size: 13px; color: var(--text-faint); margin-bottom: 24px;
       padding-bottom: 24px; border-bottom: 1px solid var(--border);
@@ -261,15 +300,22 @@
   </nav>
 
   <section class="pricing-hero">
-    <h1>Simple, transparent pricing</h1>
-    <p>Start free. Upgrade when you're ready for AI-powered resume scoring, smart filters, and automated job matching.</p>
-    <div class="billing-toggle">
-      <span id="toggle-monthly" class="active">Monthly</span>
-      <div class="toggle-track" id="billing-toggle" onclick="toggleBilling()">
-        <div class="toggle-knob"></div>
+    <h1>Pay less the longer you commit</h1>
+    <p>Job searches take time. We price accordingly — the longer you need us, the less each month costs.</p>
+    <div class="duration-picker">
+      <div class="duration-context">The average job search takes <strong>5 months</strong>. Commit longer, save more.</div>
+      <div class="duration-slider-wrap">
+        <input type="range" class="duration-slider" id="duration-slider" min="1" max="12" value="1" step="1">
+        <div class="duration-labels">
+          <span style="left:0%">1 mo</span><span style="left:18.2%">3</span><span style="left:45.5%">6</span><span style="left:72.7%">9</span><span style="right:0">12 mo</span>
+        </div>
       </div>
-      <span id="toggle-annual">Annual</span>
-      <span class="save-badge">Save 17%</span>
+      <div class="duration-value">
+        <span class="duration-months" id="duration-display">1 month</span>
+        <span class="duration-discount" id="duration-discount" style="display:none">Save 0%</span>
+      </div>
+      <div class="duration-insight" id="duration-insight"></div>
+      <div class="duration-total" id="duration-total"></div>
     </div>
   </section>
 
@@ -288,8 +334,12 @@
       <div class="faq-a">Credits power AI features like resume scoring (3 credits), AI filter generation (2 credits), smart job alerts (1 credit), and AI resume rewrites (5 credits). Free users can explore the platform but need a paid plan to access AI features.</div>
     </div>
     <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">How does the duration discount work?</div>
+      <div class="faq-a">Choose how many months you want to commit to. Longer commitments get deeper discounts — up to 40% off at 12 months. You pay upfront for the full period and get the discounted rate for every month. If you find a job early, your remaining time stays active so you can use the platform for salary negotiation, offer comparison, and keeping your pipeline warm.</div>
+    </div>
+    <div class="faq-item">
       <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Can I change plans anytime?</div>
-      <div class="faq-a">Yes. Upgrade or downgrade anytime from your dashboard. When upgrading, you get immediate access to the new tier's features. When downgrading, your current plan stays active until the end of the billing period.</div>
+      <div class="faq-a">You can upgrade your tier (Free → Starter → Pro) anytime and get immediate access to the new features. Downgrades take effect at the end of your current commitment period. Duration extensions can be added at the current or better rate.</div>
     </div>
     <div class="faq-item">
       <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Do unused credits roll over?</div>
@@ -306,17 +356,38 @@
   </section>
 
   <footer class="pricing-footer">
-    <p>&copy; <span id="year"></span> Brilliant Jobs &middot; <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>
+    <p>&copy; <span class="bj-year"></span> Brilliant Jobs &middot; <a href="/terms">Terms</a> &middot; <a href="/privacy">Privacy</a></p>
   </footer>
 
+  <script src="/js/version.js"></script>
   <script>
-  document.getElementById('year').textContent = new Date().getFullYear();
-  console.log('[BJ] Pricing page v4.22 loaded');
+  // Year + version handled by js/version.js
+  // Version logging handled by js/version.js
 
   const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 
-  let isAnnual = false;
+  let selectedMonths = 1;
+
+  // Progressive discount curve (aligned with job search duration data)
+  const DURATION_DISCOUNTS = {
+    1: 0, 2: 5, 3: 10, 4: 15, 5: 20, 6: 25, 7: 28, 8: 31, 9: 34, 10: 36, 11: 38, 12: 40
+  };
+
+  const DURATION_INSIGHTS = {
+    1: '',
+    2: '<em>35%</em> of job seekers are still searching at 2 months',
+    3: '<em>45%</em> still searching — the "fast-track" window for mid-level roles',
+    4: '<em>52%</em> still searching — search fatigue typically sets in here',
+    5: '<em>60%</em> still searching — this is the national median',
+    6: '<em>68%</em> still searching — senior roles often take at least 6 months',
+    7: '<em>73%</em> still searching — you\'re past the 27-week mark',
+    8: '<em>77%</em> still searching — many begin considering pivots here',
+    9: '<em>81%</em> still searching',
+    10: '<em>84%</em> still searching',
+    11: '<em>87%</em> still searching',
+    12: '<em>90%</em> still searching — maximum commitment, maximum savings',
+  };
 
   // ─── Feature display config ───
   const PLAN_TIERS = ['free', 'starter', 'pro'];
@@ -374,6 +445,7 @@
       });
 
       renderPricingCards(priceMap, entMap);
+      _lastPriceMap = priceMap;
       renderCreditPacks();
     } catch (err) {
       console.error('[BJ] Pricing load error:', err);
@@ -390,9 +462,9 @@
     container.innerHTML = PLAN_TIERS.map(tier => {
       const meta = PLAN_META[tier];
       const plan = priceMap[tier];
-      const price = plan
-        ? (isAnnual ? Math.round((plan.price_yearly_cents || plan.price_monthly_cents * 10) / 12) : plan.price_monthly_cents)
-        : 0;
+      const basePrice = plan ? plan.price_monthly_cents : 0;
+      const discount = DURATION_DISCOUNTS[selectedMonths] || 0;
+      const price = Math.round(basePrice * (1 - discount / 100));
       const priceStr = price === 0 ? '$0' : '$' + (price / 100).toFixed(0);
 
       const features = FEATURE_DISPLAY.map(f => {
@@ -405,12 +477,16 @@
         ? `<strong>${meta.credits} credits</strong>/month included · PAYG $${(meta.payg / 100).toFixed(2)}/cr`
         : 'No credits included · PAYG $0.25/credit';
 
+      const basePriceStr = basePrice === 0 ? '' : '$' + (basePrice / 100).toFixed(0);
+      const showStrike = discount > 0 && basePrice > 0;
+
       return `
         <div class="plan-card${meta.featured ? ' featured' : ''}">
           ${meta.featured ? '<div class="plan-badge">Most Popular</div>' : ''}
           <div class="plan-name">${meta.name}</div>
           <div class="plan-desc">${meta.desc}</div>
           <div class="plan-price">
+            ${showStrike ? '<span class="plan-price-original">' + basePriceStr + '</span>' : ''}
             <span class="amount">${priceStr}</span>
             <span class="period">/month</span>
           </div>
@@ -440,15 +516,49 @@
     }).join('');
   }
 
-  // ─── Toggle ───
-  function toggleBilling() {
-    isAnnual = !isAnnual;
-    const track = document.getElementById('billing-toggle');
-    track.classList.toggle('on', isAnnual);
-    document.getElementById('toggle-monthly').classList.toggle('active', !isAnnual);
-    document.getElementById('toggle-annual').classList.toggle('active', isAnnual);
+  // ─── Duration Slider ───
+  function updateDuration() {
+    selectedMonths = parseInt(document.getElementById('duration-slider').value);
+    const discount = DURATION_DISCOUNTS[selectedMonths] || 0;
+
+    // Update display
+    document.getElementById('duration-display').textContent =
+      selectedMonths === 1 ? '1 month' : selectedMonths + ' months';
+
+    const discountEl = document.getElementById('duration-discount');
+    if (discount > 0) {
+      discountEl.textContent = 'Save ' + discount + '%';
+      discountEl.style.display = '';
+    } else {
+      discountEl.style.display = 'none';
+    }
+
+    // Insight
+    document.getElementById('duration-insight').innerHTML = DURATION_INSIGHTS[selectedMonths] || '';
+
+    // Total cost line (for paid plans, show Starter as reference)
+    const totalEl = document.getElementById('duration-total');
+    if (selectedMonths > 1 && _lastPriceMap) {
+      const starterBase = _lastPriceMap.starter ? _lastPriceMap.starter.price_monthly_cents : 2000;
+      const proBase = _lastPriceMap.pro ? _lastPriceMap.pro.price_monthly_cents : 4000;
+      const starterTotal = Math.round(starterBase * (1 - discount / 100) * selectedMonths / 100);
+      const proTotal = Math.round(proBase * (1 - discount / 100) * selectedMonths / 100);
+      const starterSaved = Math.round((starterBase * selectedMonths - starterBase * (1 - discount / 100) * selectedMonths) / 100);
+      totalEl.innerHTML = 'Starter: <strong>$' + starterTotal + ' total</strong> (save $' + starterSaved + ')  ·  Pro: <strong>$' + proTotal + ' total</strong>';
+    } else {
+      totalEl.innerHTML = '';
+    }
+
+    // Slider track fill
+    const slider = document.getElementById('duration-slider');
+    const pct = ((selectedMonths - 1) / 11) * 100;
+    slider.style.background = 'linear-gradient(to right, var(--accent) ' + pct + '%, var(--border) ' + pct + '%)';
+
     loadPricing();
   }
+
+  // Store price map for total calculation
+  let _lastPriceMap = null;
 
   // ─── CTA handlers ───
   function handleCTA(tier) {
@@ -462,7 +572,7 @@
       window.location.href = '/?signup=1';
     }
     // PostHog tracking
-    if (window.posthog) posthog.capture('pricing_cta_clicked', { tier: tier, billing: isAnnual ? 'annual' : 'monthly' });
+    if (window.posthog) posthog.capture('pricing_cta_clicked', { tier: tier, months: selectedMonths, discount: DURATION_DISCOUNTS[selectedMonths] });
   }
 
   // Nav CTA
@@ -472,6 +582,8 @@
   });
 
   // ─── Init ───
+  document.getElementById('duration-slider').addEventListener('input', updateDuration);
+  updateDuration(); // set initial slider fill
   loadPricing();
   </script>
 </body>
