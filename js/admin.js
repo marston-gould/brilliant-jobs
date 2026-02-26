@@ -93,6 +93,8 @@ function switchAdminTab(tabId) {
       case 'ghost': loadGhostTab(); break;
       case 'feedback': loadFeedbackTab(); break;
       case 'merch': loadMerchTab(); break;
+      case 'signals': loadAdminSignals(); break;
+      case 'referrals': loadReferralsAdminTab(); break;
     }
   }
 }
@@ -139,6 +141,8 @@ async function loadBoardHealth() {
     setAdminText('ah-total', fmtAdminNum(d.total_feeds));
     setAdminText('ah-with-jobs', fmtAdminNum(d.feeds_with_jobs));
     setAdminText('ah-4xx', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-dead', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-unscraped', fmtAdminNum(d.feeds_never_scraped || 0));
     setAdminText('ah-jobs', fmtAdminNum(d.total_jobs));
 
     var net = (d.jobs_added || 0) - (d.jobs_lost || 0);
@@ -147,6 +151,8 @@ async function loadBoardHealth() {
     setDelta('ah-total-delta', d.boards_added, '+');
     setDelta('ah-with-jobs-delta', null);
     setDelta('ah-4xx-delta', d.boards_lost, '+', true);
+    setDelta('ah-dead-delta', null);
+    setDelta('ah-unscraped-delta', null);
     setDelta('ah-jobs-delta', d.jobs_added, '+');
     setDelta('ah-net-delta', d.jobs_lost, '-', true);
 
@@ -162,17 +168,20 @@ async function loadBoardHealth() {
       var tbody = document.getElementById('admin-platform-body');
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
-        var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
+        var totBoards = 0, totWithJobs = 0, totDead = 0, totUnscraped = 0, totJobs = 0;
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
           var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
-          totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
+          var dead = p.dead || 0;
+          var unscraped = p.never_scraped || 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; totDead += dead; totUnscraped += unscraped; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
             '<td class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
+            '<td class="' + (dead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(dead) + '</td>' +
+            '<td class="' + (unscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(unscraped) + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
@@ -184,7 +193,8 @@ async function loadBoardHealth() {
             '<td>Total</td>' +
             '<td>' + fmtAdminNum(totBoards) + '</td>' +
             '<td>' + totPct + '%</td>' +
-            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td class="' + (totDead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(totDead) + '</td>' +
+            '<td class="' + (totUnscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(totUnscraped) + '</td>' +
             '<td>' + fmtAdminNum(totJobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
@@ -196,6 +206,80 @@ async function loadBoardHealth() {
     loadFeedHealthCharts();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
+  }
+}
+
+// ─── Export Boards CSV ───
+async function exportBoardsCsv(type) {
+  var btn = document.getElementById('export-' + type + '-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exporting…'; }
+  try {
+    var sb = window._bjSupa;
+    if (!sb) throw new Error('Supabase not ready');
+
+    var query = sb.from('ats_companies').select('slug,source,company_name,job_count,last_http_status,last_checked,last_refresh_at,created_at');
+
+    if (type === 'dead') {
+      query = query.eq('last_http_status', 404);
+    } else if (type === 'unscraped') {
+      query = query.is('last_refresh_at', null);
+    } else if (type === 'active') {
+      query = query.gt('job_count', 0);
+    }
+    // 'all' = no extra filter
+
+    query = query.eq('is_active', true).order('source').order('slug');
+
+    var allRows = [];
+    var pageSize = 1000;
+    var page = 0;
+    while (true) {
+      var { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) break;
+      page++;
+      if (page > 100) break; // safety
+    }
+
+    if (allRows.length === 0) {
+      if (typeof showToast === 'function') showToast('No boards found for "' + type + '"', { type: 'warn' });
+      return;
+    }
+
+    // Build CSV
+    var headers = ['slug','source','company_name','job_count','last_http_status','last_checked','last_refresh_at','created_at'];
+    var csvLines = [headers.join(',')];
+    allRows.forEach(function(r) {
+      csvLines.push(headers.map(function(h) {
+        var v = r[h];
+        if (v == null) return '';
+        v = String(v);
+        if (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) {
+          return '"' + v.replace(/"/g, '""') + '"';
+        }
+        return v;
+      }).join(','));
+    });
+
+    var blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'boards-' + type + '-' + dateStr + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
+  } catch (err) {
+    console.error('[Admin] Export error:', err);
+    if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Export ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Boards'; }
   }
 }
 
@@ -2700,3 +2784,324 @@ function escAttr(s) {
   if (!s) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// ── Admin: Signals Tab (Phase D) ─────────────────────────────────
+async function loadAdminSignals() {
+  try {
+    // KPIs
+    var total = 0, pending = 0, confirmed = 0, dismissed = 0;
+    var sourceCounts = {};
+    var recentRows = [];
+
+    var { data: signals } = await sb.from('pipeline_signals')
+      .select('id, signal_source, signal_type, proposed_stage, confidence, status, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (signals) {
+      total = signals.length;
+      signals.forEach(function(s) {
+        if (s.status === 'pending_confirmation') pending++;
+        else if (s.status === 'confirmed') confirmed++;
+        else if (s.status === 'dismissed') dismissed++;
+        sourceCounts[s.signal_source] = (sourceCounts[s.signal_source] || 0) + 1;
+      });
+      recentRows = signals.slice(0, 50);
+    }
+
+    var rate = (confirmed + dismissed) > 0 ? Math.round((confirmed / (confirmed + dismissed)) * 100) + '%' : '—';
+    var el;
+    el = document.getElementById('sig-total'); if (el) el.textContent = total;
+    el = document.getElementById('sig-pending'); if (el) el.textContent = pending;
+    el = document.getElementById('sig-confirmed'); if (el) el.textContent = confirmed;
+    el = document.getElementById('sig-dismissed'); if (el) el.textContent = dismissed;
+    el = document.getElementById('sig-rate'); if (el) el.textContent = rate;
+
+    // Signals by Source chart
+    var sourceEl = document.getElementById('sig-chart-source');
+    if (sourceEl && typeof echarts !== 'undefined') {
+      var srcChart = echarts.init(sourceEl);
+      var srcData = Object.entries(sourceCounts).map(function(e) { return { name: e[0], value: e[1] }; });
+      srcChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: srcData,
+          label: { color: 'var(--text-dim)', fontSize: 11 },
+          itemStyle: { borderRadius: 4, borderColor: 'var(--bg-input)', borderWidth: 2 }
+        }]
+      });
+    }
+
+    // Pattern Confidence Distribution
+    var { data: patterns } = await sb.from('signal_patterns')
+      .select('pattern_type, pattern_value, associated_signal_type, confidence_score, confirmations, dismissals, last_seen_at')
+      .order('confidence_score', { ascending: false });
+
+    var patternEl = document.getElementById('sig-chart-patterns');
+    if (patternEl && patterns && typeof echarts !== 'undefined') {
+      var patChart = echarts.init(patternEl);
+      var buckets = { '90-100': 0, '70-89': 0, '50-69': 0, '30-49': 0, '<30': 0 };
+      patterns.forEach(function(p) {
+        var s = Math.round(p.confidence_score * 100);
+        if (s >= 90) buckets['90-100']++;
+        else if (s >= 70) buckets['70-89']++;
+        else if (s >= 50) buckets['50-69']++;
+        else if (s >= 30) buckets['30-49']++;
+        else buckets['<30']++;
+      });
+      patChart.setOption({
+        tooltip: {},
+        xAxis: { type: 'category', data: Object.keys(buckets), axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        series: [{ type: 'bar', data: Object.values(buckets), itemStyle: { color: 'var(--accent)', borderRadius: [4, 4, 0, 0] } }]
+      });
+    }
+
+    // Patterns table
+    var patBody = document.getElementById('sig-patterns-body');
+    if (patBody && patterns) {
+      patBody.innerHTML = patterns.map(function(p) {
+        var confPct = Math.round(p.confidence_score * 100);
+        var confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+        var lastSeen = p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString() : '—';
+        return '<tr><td>' + escHtml(p.pattern_type) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.pattern_value) +
+          '</td><td>' + escHtml(p.associated_signal_type) + '</td><td style="color:' + confColor + ';font-weight:600">' + confPct + '%</td><td>' + p.confirmations +
+          '</td><td>' + p.dismissals + '</td><td>' + lastSeen + '</td></tr>';
+      }).join('');
+    }
+
+    // Recent signals table
+    var sigBody = document.getElementById('sig-recent-body');
+    if (sigBody) {
+      sigBody.innerHTML = recentRows.map(function(s) {
+        var confPct = s.confidence ? Math.round(s.confidence * 100) + '%' : '—';
+        var statusColor = s.status === 'confirmed' ? '#22c55e' : s.status === 'dismissed' ? '#ef4444' : '#f59e0b';
+        var dt = new Date(s.created_at);
+        var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return '<tr><td style="font-size:10px">' + (s.user_id || '').substring(0, 8) + '…</td><td>' + escHtml(s.signal_source) +
+          '</td><td>' + escHtml(s.signal_type) + '</td><td>' + escHtml(s.proposed_stage || '—') +
+          '</td><td>' + confPct + '</td><td style="color:' + statusColor + '">' + escHtml(s.status) +
+          '</td><td style="font-size:11px">' + dateStr + '</td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('[Admin] Signals tab error:', e);
+  }
+}
+
+// ─── REFERRALS ADMIN TAB ───
+// Fraud review queue, reward clawback, ban management
+// v5.10: Phase 4
+
+async function loadReferralsAdminTab() {
+  try {
+    var sb = window.bjSupabase;
+    if (!sb) return;
+
+    // Stats
+    var { data: allRefs } = await sb.from('referrals').select('status', { count: 'exact' });
+    var total = (allRefs || []).length;
+    var pending = (allRefs || []).filter(function(r) { return r.status === 'pending'; }).length;
+    var rewarded = (allRefs || []).filter(function(r) { return r.status === 'rewarded'; }).length;
+    var rejected = (allRefs || []).filter(function(r) { return r.status === 'rejected' || r.status === 'clawed_back'; }).length;
+
+    setAdminText('ar-total-referrals', fmtAdminNum(total));
+    setAdminText('ar-pending-review', fmtAdminNum(pending));
+    setAdminText('ar-total-rewarded', fmtAdminNum(rewarded));
+    setAdminText('ar-total-rejected', fmtAdminNum(rejected));
+
+    // Fraud queue — referrals with fraud_score > 0.2 or fraud_signals not empty
+    var { data: flagged } = await sb
+      .from('referrals')
+      .select('id, referrer_id, referred_id, referred_email, attribution_method, status, fraud_score, fraud_signals, signup_at, ip_address, browser_fingerprint')
+      .or('fraud_score.gt.0.2,status.eq.pending')
+      .order('fraud_score', { ascending: false })
+      .limit(50);
+
+    var queueBody = document.getElementById('ar-fraud-queue-body');
+    var queueEmpty = document.getElementById('ar-fraud-empty');
+    if (queueBody) {
+      if (!flagged || flagged.length === 0) {
+        queueBody.innerHTML = '';
+        if (queueEmpty) queueEmpty.style.display = '';
+      } else {
+        if (queueEmpty) queueEmpty.style.display = 'none';
+        // Get referrer profiles for display
+        var referrerIds = [...new Set(flagged.map(function(r) { return r.referrer_id; }))];
+        var { data: profiles } = await sb.from('profiles').select('id, email, full_name').in('id', referrerIds);
+        var profileMap = {};
+        (profiles || []).forEach(function(p) { profileMap[p.id] = p; });
+
+        queueBody.innerHTML = flagged.map(function(r) {
+          var referrer = profileMap[r.referrer_id] || {};
+          var signals = r.fraud_signals || {};
+          var signalTags = Object.keys(signals).map(function(k) {
+            return '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(239,68,68,.12);color:#dc2626;margin-right:4px;">' + k + '</span>';
+          }).join('');
+          var scoreColor = r.fraud_score >= 0.8 ? '#dc2626' : r.fraud_score >= 0.4 ? '#ca8a04' : '#16a34a';
+          var statusPill = '<span class="ref-status-pill ref-status-' + r.status + '">' + r.status + '</span>';
+
+          return '<tr>' +
+            '<td>' + (referrer.email || r.referrer_id.substring(0,8)) + '</td>' +
+            '<td>' + (r.referred_email || '—') + '</td>' +
+            '<td>' + r.attribution_method + '</td>' +
+            '<td><span style="color:' + scoreColor + ';font-weight:700;">' + (r.fraud_score || 0).toFixed(2) + '</span></td>' +
+            '<td>' + (signalTags || '—') + '</td>' +
+            '<td>' + statusPill + '</td>' +
+            '<td style="font-size:11px;">' + new Date(r.signup_at).toLocaleDateString() + '</td>' +
+            '<td style="white-space:nowrap;">' +
+              (r.status === 'pending' || r.status === 'activated' ? 
+                '<button class="merch-btn-sm" onclick="adminRefAction(\'' + r.id + '\',\'' + r.referrer_id + '\',\'approve\')" style="font-size:10px;margin-right:4px;">Approve</button>' +
+                '<button class="merch-btn-sm" onclick="adminRefAction(\'' + r.id + '\',\'' + r.referrer_id + '\',\'reject\')" style="font-size:10px;margin-right:4px;color:#dc2626;">Reject</button>' +
+                '<button class="merch-btn-sm" onclick="adminRefAction(\'' + r.id + '\',\'' + r.referrer_id + '\',\'ban\')" style="font-size:10px;color:#dc2626;font-weight:700;">Ban</button>'
+              : '—') +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+    }
+
+    // Recent rewards
+    var { data: rewards } = await sb
+      .from('referral_rewards')
+      .select('id, user_id, reward_type, reward_value, tier_at_grant, granted_at, clawed_back_at')
+      .order('granted_at', { ascending: false })
+      .limit(30);
+
+    var rewardsBody = document.getElementById('ar-rewards-body');
+    if (rewardsBody && rewards) {
+      var rewardUserIds = [...new Set(rewards.map(function(r) { return r.user_id; }))];
+      var { data: rwProfiles } = await sb.from('profiles').select('id, email').in('id', rewardUserIds);
+      var rwMap = {};
+      (rwProfiles || []).forEach(function(p) { rwMap[p.id] = p; });
+
+      rewardsBody.innerHTML = rewards.map(function(r) {
+        var user = rwMap[r.user_id] || {};
+        var val = r.reward_value || {};
+        var valStr = val.days ? val.days + 'd Pro' : val.credits ? val.credits + ' credits' : val.filters ? '+' + val.filters + ' filter' : JSON.stringify(val);
+        var clawed = r.clawed_back_at ? '<span style="color:#dc2626;font-size:10px;">CLAWED BACK</span>' : '';
+
+        return '<tr>' +
+          '<td>' + (user.email || r.user_id.substring(0,8)) + '</td>' +
+          '<td>' + r.reward_type + '</td>' +
+          '<td>' + valStr + ' ' + clawed + '</td>' +
+          '<td>T' + r.tier_at_grant + '</td>' +
+          '<td style="font-size:11px;">' + new Date(r.granted_at).toLocaleDateString() + '</td>' +
+          '<td>' + (!r.clawed_back_at ? '<button class="merch-btn-sm" onclick="adminClawback(\'' + r.id + '\',\'' + r.user_id + '\')" style="font-size:10px;color:#dc2626;">Clawback</button>' : '—') + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // Banned users
+    var { data: banned } = await sb
+      .from('profiles')
+      .select('id, email, full_name, referral_count')
+      .eq('referral_banned', true);
+
+    var bannedBody = document.getElementById('ar-banned-body');
+    var bannedEmpty = document.getElementById('ar-banned-empty');
+    if (bannedBody) {
+      if (!banned || banned.length === 0) {
+        bannedBody.innerHTML = '';
+        if (bannedEmpty) bannedEmpty.style.display = '';
+      } else {
+        if (bannedEmpty) bannedEmpty.style.display = 'none';
+        bannedBody.innerHTML = banned.map(function(u) {
+          return '<tr>' +
+            '<td>' + (u.full_name || '—') + '</td>' +
+            '<td>' + u.email + '</td>' +
+            '<td>' + u.referral_count + '</td>' +
+            '<td><button class="merch-btn-sm" onclick="adminUnban(\'' + u.id + '\')" style="font-size:10px;">Unban</button></td>' +
+          '</tr>';
+        }).join('');
+      }
+    }
+
+  } catch (e) {
+    console.error('[Admin] Referrals tab error:', e);
+  }
+}
+
+// Admin referral actions: approve, reject, ban
+window.adminRefAction = async function(referralId, referrerId, action) {
+  if (!confirm('Are you sure you want to ' + action + ' this referral?')) return;
+  try {
+    var sb = window.bjSupabase;
+    if (action === 'approve') {
+      await sb.from('referrals').update({ status: 'activated', activated_at: new Date().toISOString(), fraud_score: 0 }).eq('id', referralId);
+    } else if (action === 'reject') {
+      await sb.from('referrals').update({ status: 'rejected', rejected_at: new Date().toISOString() }).eq('id', referralId);
+    } else if (action === 'ban') {
+      await sb.from('referrals').update({ status: 'rejected', rejected_at: new Date().toISOString() }).eq('id', referralId);
+      await sb.from('profiles').update({ referral_banned: true }).eq('id', referrerId);
+      // Reject all pending referrals from this referrer
+      await sb.from('referrals').update({ status: 'rejected', rejected_at: new Date().toISOString() }).eq('referrer_id', referrerId).in('status', ['pending', 'activated']);
+    }
+    _adminTabInit['referrals'] = false;
+    loadReferralsAdminTab();
+  } catch (e) {
+    console.error('[Admin] Referral action error:', e);
+    alert('Error: ' + e.message);
+  }
+};
+
+// Clawback a reward
+window.adminClawback = async function(rewardId, userId) {
+  if (!confirm('Clawback this reward? This will reverse the reward for the user.')) return;
+  try {
+    var sb = window.bjSupabase;
+    // Mark reward as clawed back
+    await sb.from('referral_rewards').update({ clawed_back_at: new Date().toISOString(), clawback_reason: 'Admin manual clawback' }).eq('id', rewardId);
+
+    // Get the reward details to reverse
+    var { data: reward } = await sb.from('referral_rewards').select('*').eq('id', rewardId).single();
+    if (reward) {
+      var val = reward.reward_value || {};
+      // Reverse credits
+      if (reward.reward_type === 'credits' && val.credits) {
+        var { data: latest } = await sb.from('credit_ledger').select('balance_after').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
+        var curBal = (latest && latest.balance_after) || 0;
+        await sb.from('credit_ledger').insert({
+          user_id: userId,
+          type: 'referral_clawback',
+          amount: -val.credits,
+          balance_after: Math.max(0, curBal - val.credits),
+          description: 'Referral reward clawback — ' + val.credits + ' credits',
+          cost_category: 'referral'
+        });
+      }
+      // Reverse Pro time
+      if (reward.reward_type === 'pro_time' && val.days) {
+        var { data: prof } = await sb.from('profiles').select('pro_bonus_until').eq('id', userId).single();
+        if (prof && prof.pro_bonus_until) {
+          var newEnd = new Date(prof.pro_bonus_until);
+          newEnd.setDate(newEnd.getDate() - val.days);
+          if (newEnd < new Date()) newEnd = null;
+          await sb.from('profiles').update({ pro_bonus_until: newEnd ? newEnd.toISOString() : null }).eq('id', userId);
+        }
+      }
+      // Reverse extra filters
+      if (reward.reward_type === 'extra_filter' && val.filters) {
+        await sb.rpc('exec_sql', { query: "UPDATE profiles SET extra_filters = GREATEST(0, extra_filters - " + val.filters + ") WHERE id = '" + userId + "'" });
+      }
+    }
+
+    _adminTabInit['referrals'] = false;
+    loadReferralsAdminTab();
+  } catch (e) {
+    console.error('[Admin] Clawback error:', e);
+    alert('Error: ' + e.message);
+  }
+};
+
+// Unban a referrer
+window.adminUnban = async function(userId) {
+  if (!confirm('Unban this referrer?')) return;
+  try {
+    var sb = window.bjSupabase;
+    await sb.from('profiles').update({ referral_banned: false }).eq('id', userId);
+    _adminTabInit['referrals'] = false;
+    loadReferralsAdminTab();
+  } catch (e) {
+    console.error('[Admin] Unban error:', e);
+  }
+};

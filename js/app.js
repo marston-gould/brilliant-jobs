@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.51';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
+// BJ_VERSION is defined in js/version.js (single source of truth)
+// version.js auto-populates #nav-version and .bj-version elements
 
 // Auth
 async function init() {
@@ -8,8 +8,6 @@ async function init() {
   currentUser = session.user;
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
-  const vEl = document.getElementById('nav-version');
-  if (vEl) vEl.textContent = BJ_VERSION;
 
 // Pre-warm static ref table caches (v3.84)
 if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
@@ -31,6 +29,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
+  // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
+  try { await processReferralAttribution(currentUser); } catch(e) { console.warn('[Referral] Attribution check skipped:', e.message); }
   // Show admin nav immediately — profile already fetched, no extra round trip
   if (profile && profile.role === 'admin') {
     var navAdmin = document.getElementById('nav-admin');
@@ -108,6 +108,31 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
     }
   }
+
+  // Block 7: Check for pending pills from city page conversion
+  try {
+    var pendingPills = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]');
+    if (pendingPills.length > 0) {
+      localStorage.removeItem('bj_pending_pills');
+      // Apply to active filter (or first filter, or create new)
+      var target = currentFilter || (savedFilters && savedFilters.length > 0 ? savedFilters[0] : null);
+      if (target) {
+        var pillsKey = target.pills ? 'pills' : 'keywords';
+        if (!target[pillsKey]) target[pillsKey] = [];
+        pendingPills.forEach(function(pp) {
+          var pillType = pp.type === 'title' ? 'TITLE' : pp.type === 'skill' ? 'SKILLS' : pp.type === 'industry' ? 'INDUSTRY' : 'KEYWORD';
+          var exists = target[pillsKey].some(function(p) { return p.type === pillType && p.value === pp.value; });
+          if (!exists) {
+            target[pillsKey].push({ type: pillType, value: pp.value, _from: 'city_page' });
+          }
+        });
+        localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+        var names = pendingPills.map(function(p) { return '"' + p.value + '"'; }).join(', ');
+        showToast('Added ' + names + ' to your search filters', { type: 'success', duration: 5000 });
+        if (window.posthog) posthog.capture('pending_pills_applied', { count: pendingPills.length, pills: pendingPills });
+      }
+    }
+  } catch(e) { console.warn('[pills] Pending pill apply failed:', e.message); }
   
   // Load tuning from Supabase
   let tuningFromCloud = false;
@@ -284,6 +309,7 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+    if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
@@ -428,6 +454,9 @@ async function checkExtensionStatus() {
           detail.textContent = profile.scanner_running
             ? `Active now · last synced at ${timeStr}`
             : `Last active ${todayStr} at ${timeStr}`;
+          // Hide download button when connected
+          var dlBox = $('#download-box');
+          if (dlBox) dlBox.style.display = 'none';
         } else {
           dot.className = 'ext-dot off';
           text.textContent = 'Extension inactive';
@@ -785,3 +814,63 @@ function applyProgressiveNav(step) {
 
 
 
+
+// ─── Referral Attribution (Phase 4 v5.10) ───
+// Runs once per signup. Checks if user arrived via referral link.
+async function processReferralAttribution(user) {
+  // Only run if we haven't already attributed this user
+  var attributed = localStorage.getItem('bj_referral_attributed');
+  if (attributed === user.id) return;
+
+  // Check for referral code from landing page capture
+  var refCode = '';
+  var refSource = 'direct';
+  try {
+    refCode = sessionStorage.getItem('bj_referral_code') || '';
+    refSource = sessionStorage.getItem('bj_referral_source') || 'direct';
+  } catch(e) {}
+
+  // Also check cookie
+  if (!refCode) {
+    var match = document.cookie.match(/(^| )bj_ref=([^;]+)/);
+    refCode = match ? decodeURIComponent(match[2]) : '';
+    if (refCode) refSource = 'cookie_return';
+  }
+
+  if (!refCode) return; // No referral — skip
+
+  // Get fingerprint if available
+  var fingerprint = '';
+  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) {}
+  if (!fingerprint && window.bjFingerprint) {
+    try { fingerprint = window.bjFingerprint.generate(); } catch(e) {}
+  }
+
+  // Call attribution RPC
+  try {
+    var { data, error } = await sb.rpc('process_referral_attribution', {
+      p_referred_id: user.id,
+      p_referral_code: refCode,
+      p_ip_address: null, // IP captured server-side
+      p_browser_fingerprint: fingerprint || null,
+      p_source: refSource
+    });
+
+    if (error) {
+      console.warn('[Referral] Attribution error:', error.message);
+    } else {
+      console.log('[Referral] Attribution result:', data);
+    }
+  } catch(e) {
+    console.warn('[Referral] Attribution call failed:', e.message);
+  }
+
+  // Mark as attributed so we don't re-run
+  localStorage.setItem('bj_referral_attributed', user.id);
+
+  // Clean up
+  try {
+    sessionStorage.removeItem('bj_referral_code');
+    sessionStorage.removeItem('bj_referral_source');
+  } catch(e) {}
+}
