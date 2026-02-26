@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.92</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.93</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -3684,6 +3684,90 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     })
     .catch(function(e){ console.log('[Insights] Load error:', e); });
+})();
+</script>
+<script>
+/* SEO pill deep-link handler — picks up ?seo_pill=<term>&seo_type=<type>&seo_metro=<slug> from city page clicks */
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var term = params.get('seo_pill');
+  if (!term) return;
+
+  var type = params.get('seo_type') || 'title';
+  var metro = params.get('seo_metro') || '';
+
+  // Clean URL
+  var url = new URL(window.location);
+  url.searchParams.delete('seo_pill');
+  url.searchParams.delete('seo_type');
+  url.searchParams.delete('seo_metro');
+  url.searchParams.delete('signup');
+  history.replaceState(null, '', url.pathname + (url.search || ''));
+
+  // Stash for pickup after auth/init completes
+  sessionStorage.setItem('bj_seo_pill', JSON.stringify({ term: term, type: type, metro: metro }));
+
+  // Wait for the app to initialize, then inject the pill
+  function tryInject() {
+    // Check if savedFilters is available (means the app is loaded)
+    if (typeof window.savedFilters === 'undefined' && typeof window.addWhatPill === 'undefined') {
+      // App not ready yet — try again
+      if (tryInject._attempts < 30) {
+        tryInject._attempts = (tryInject._attempts || 0) + 1;
+        setTimeout(tryInject, 500);
+        return;
+      }
+      return; // Give up after 15 seconds
+    }
+
+    var pill = JSON.parse(sessionStorage.getItem('bj_seo_pill') || 'null');
+    if (!pill) return;
+    sessionStorage.removeItem('bj_seo_pill');
+
+    // Find the active saved filter or create one
+    var filters = [];
+    try { filters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]'); } catch(e) {}
+
+    if (filters.length === 0) {
+      // Create a new filter with this pill
+      var filterName = metro ? metro.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }) + ' Search' : 'My Search';
+      var newFilter = { name: filterName, whatPills: [{ values: [pill.term], type: 'keyword' }], wherePills: [], whoNotPills: [], whatNotPills: [], whereNotPills: [] };
+      if (metro) {
+        // Add metro as a WHERE pill
+        newFilter.wherePills = [{ values: [metro.replace(/-/g, ', ').replace(/\b\w/g, function(c) { return c.toUpperCase(); })], type: 'location' }];
+      }
+      filters.push(newFilter);
+    } else {
+      // Add to the first filter
+      var target = filters[0];
+      if (!target.whatPills) target.whatPills = [];
+      // Don't duplicate
+      var exists = target.whatPills.some(function(p) { return p.values && p.values[0] === pill.term; });
+      if (!exists) {
+        target.whatPills.push({ values: [pill.term], type: 'keyword' });
+      }
+    }
+
+    localStorage.setItem('bj_saved_filters', JSON.stringify(filters));
+
+    // Show toast notification
+    if (typeof window.showToast === 'function') {
+      window.showToast('Added "' + pill.term + '" to your search filter', { type: 'success' });
+    }
+
+    // Refresh the UI if the function exists
+    if (typeof window.renderSavedFilters === 'function') window.renderSavedFilters();
+    if (typeof window.debouncedSearchJobs === 'function') window.debouncedSearchJobs();
+
+    // Track
+    if (window.posthog) {
+      posthog.capture('seo_pill_applied', { term: pill.term, pill_type: pill.type, metro: pill.metro });
+    }
+  }
+
+  tryInject._attempts = 0;
+  // Start trying after a short delay to let the app init
+  setTimeout(tryInject, 1000);
 })();
 </script>
 </body>
