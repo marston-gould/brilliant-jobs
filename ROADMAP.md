@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-26
 **Target launch:** March 2026
-**Current version:** v4.84
+**Current version:** v4.90
 
 ---
 
@@ -1581,33 +1581,32 @@ All 16 spec items verified against live infrastructure:
 
 ---
 
-## Phase 40: Feed Quality & Search Relevance — PLANNED
+## Phase 40: Feed Quality & Search Relevance (v4.86–v4.90) — 2026-02-25
 
 **Goal:** Enable JD-content-aware filtering so users can search by skills, experience, and description keywords — not just metadata.
 
 **Source:** Pod 2 proposal, session with Claude (FEED_QUALITY_PHASES.md, FEED_QUALITY_PROPOSAL.md)
 
-**Estimated Total:** 8-11 days | ~$4 pilot cost | Execution Order: Phase 1 → 2 → 3 → 5 → 4a
-
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
-| FQ1 | Skills dictionary — corpus frequency analysis | TBD | 📋 PLANNED | Run frequency analysis on 124K+ JDs to build top 500-1000 skills taxonomy. Categories: languages, frameworks, tools, methodologies, certifications, soft skills. |
-| FQ2 | Deterministic JD extraction function | TBD | 📋 PLANNED | `extract_jd_metadata()` PL/pgSQL — regex extraction of skills, years (min/max), education, seniority, requirements from `content` field. New columns: `jd_skills[]`, `jd_years_min/max`, `jd_education`, `jd_seniority`, `jd_requirements[]`. GIN index on jd_skills. |
-| FQ3 | Backfill + pipeline integration | TBD | 📋 PLANNED | Batch extraction on ~124K jobs (cursor-based, 500/batch). Add extraction call to `refresh-jobs` EF for auto-extraction on new jobs. |
-| FQ4 | PostgreSQL full-text search (tsvector) | TBD | 📋 PLANNED | `content_tsv` tsvector column, GIN index, auto-update trigger on insert/update. `search_jd_content()` RPC wrapper for PostgREST. Parallel with FQ1-FQ3. |
-| FQ5 | SKILLS pill type in Query Builder | TBD | 📋 PLANNED | New pill category. Autocomplete from aggregate jd_skills (top 200). Queries `jd_skills @> ARRAY['skill']`. Multiple pills AND together. |
-| FQ6 | EXPERIENCE range filter | TBD | 📋 PLANNED | Min/max input: "I have __ years". Queries `jd_years_min <= user_years`. Option to hide overqualified. |
-| FQ7 | JD CONTAINS pill type (full-text) | TBD | 📋 PLANNED | Free text → `plainto_tsquery` against `content_tsv`. Stemming automatic. |
-| FQ8 | Relevance sort option | TBD | 📋 PLANNED | Feed sort: "Relevance" using `ts_rank()`. Available when content-based filters active. |
-| FQ9 | buildFilterQuery() expansion | TBD | 📋 PLANNED | Wire SKILLS, EXPERIENCE, JD CONTAINS into existing query builder. Saved filter schema updated. |
-| FQ10 | User feed signals table | TBD | 📋 PLANNED | `user_feed_signals`: clicked, saved, applied, hidden, skipped. Filter provenance tracking. |
-| FQ11 | Filter health score | TBD | 📋 PLANNED | Per-filter CTR, hide rate, apply rate. Banner if hide rate > 30%. Stats page metric. |
-| FQ12 | Smart skill suggestions | TBD | 📋 PLANNED | Aggregate jd_skills across filter results. Surface top skills (60%+ prevalence) as dismissible chips. |
+| FQ1 | Skills dictionary — corpus frequency analysis | v4.86 | ✅ | `extract_jd_metadata_v2` PL/pgSQL function. Autonomous pg_cron backfill across 128K+ jobs. Extracts skills into `extracted_skills[]` array column. |
+| FQ2 | Deterministic JD extraction function | v4.86 | ✅ | `extract_jd_metadata_v2()` PL/pgSQL. Regex extraction of skills, seniority, department from `content` field. New columns: `extracted_skills[]`, `extracted_seniority`, `extracted_department`. GIN index on extracted_skills. |
+| FQ3 | Backfill + pipeline integration | v4.86–v4.87 | ✅ | Batch extraction on 128K+ jobs via pg_cron. `jd-extraction-ongoing` cron (every 5 min) catches new jobs. `loc_type` backfill: 12K+ remote jobs properly tagged. `trg_sync_loc_type` trigger for ongoing sync. |
+| FQ4 | PostgreSQL full-text search (tsvector) | v4.86 | ✅ | `content_tsv` tsvector column, GIN index, auto-update trigger. `websearch_to_tsquery` for JD CONTAINS pill. Used by relevance sort and JD search. |
+| FQ5 | SKILLS pill type in Query Builder | v4.86 | ✅ | Green pill. Queries `extracted_skills` using `.cs` (contains) operator. Multiple pills AND together. Full lifecycle: input bindings, serialization, edit flow, clear-all, saved filter persistence. |
+| FQ6 | LEVEL filter (replaces EXPERIENCE range) | v4.86 | ✅ | Purple pill querying `extracted_seniority` (senior/mid/junior/executive/intern). Single or multi-select via `.eq`/`.in`. Full pill lifecycle. QB layout: Skills+Dept row, Level+JD row. |
+| FQ7 | JD CONTAINS pill type (full-text) | v4.86 | ✅ | Amber pill. Free text → `websearch_to_tsquery` against `content_tsv`. Stemming automatic. Multiple pills AND together. |
+| FQ8 | Relevance sort option | v4.88 | ✅ | Feed sort dropdown option. Client-side scoring: title 3x, skills 2x, company 1x, location 1x. `_relevanceScore` per job. `search_jobs_by_relevance` RPC for server-side `ts_rank`. |
+| FQ9 | buildFilterQuery() expansion | v4.86 | ✅ | All new pill types wired into job-feed.js: SKILLS (`.cs`), LEVEL (`.eq`/`.in`), DEPARTMENT (`.eq`/`.in`), JD CONTAINS (`.textSearch`). Saved filter schema updated. `allPills()` and `renderAllPills()` expanded. |
+| FQ9b | DEPARTMENT filter pill | v4.88 | ✅ | Blue pill querying `extracted_department` (engineering, marketing, sales, data, hr, finance, legal, etc.). Full lifecycle wired. |
+| FQ10 | User feed signals table | v4.90 | ✅ | `feed_signals` table: user_id, greenhouse_id, signal_type, filter_name. RLS: users read/write own. `log_feed_signal` RPC (fire-and-forget). `get_feed_signal_stats` RPC. Signals: click, hide, save, apply. |
+| FQ11 | Filter health score | v4.89 | ✅ | `get_filter_health` RPC: total matches, salary %, skills %, remote count, top skills, top departments. Weighted composite (salary 40%, skills 30%, content 30%). 💡 button on each saved filter → popover. |
+| FQ12 | Smart skill suggestions | v4.89 | ✅ | Health popover shows top skills from matching jobs not in filter. Click → adds skill pill instantly with toast. `bjShowImproveSuggestions` / `bjApplyImproveSuggestions`. |
 | FQ13 | Resume mismatch warnings | TBD | 📋 PLANNED | Cross-reference resume skills vs top jd_skills. Alert if 70%+ JDs require missing skill. |
 | FQ14 | AI enrichment pilot (5K jobs) | TBD | 📋 PLANNED | `enrich-jd` EF. Claude Haiku: function, technical_level, mgmt_scope, summary, differentiators. 5K-job pilot (~$4). 4-layer evaluation. Go/no-go gate. |
 | FQ15 | Full AI backfill (if pilot passes) | TBD | 📋 PLANNED | Phase 4b: full 350K backfill (~$280). pg_cron pipeline. Pro-gated FUNCTION and TECHNICAL DEPTH filters. "Why This Job?" feed card expansion. |
 
-**Phase 40 status:** 0/15 complete. All planned. Detailed spec in `/FEED_QUALITY_PHASES.md`.
+**Phase 40 status:** 13/16 complete. 3 remaining (resume mismatch, AI enrichment pilot, full backfill).
 
 
 ## Phase 40b: Pod 1 Sprint — Pricing, Global Version, AEO (v4.84) — 2026-02-25
