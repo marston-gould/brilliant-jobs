@@ -12,7 +12,7 @@ const corsHeaders = {
 }
 
 const BATCH_SIZE = 50
-const CONCURRENCY = 10 // Process 10 jobs in parallel
+const CONCURRENCY = 5 // Process 10 jobs in parallel
 const MAX_CONTENT_CHARS = 6000
 const MODEL = 'claude-haiku-4-5-20251001'
 const WALL_TIME_MS = 120_000 // Stop accepting new work after 120s
