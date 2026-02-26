@@ -177,7 +177,7 @@ async function fetchFilterData(sf) {
     var res = await q;
     if (res.error) { console.error('[Stats] Query error:', res.error); toastWarning('Stats query failed'); return []; }
     return res.data || [];
-  } catch (e) { console.error('[Stats] fetchFilterData:', e); return []; }
+  } catch (e) { console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
 }
 
 // ─── Aggregation ───
