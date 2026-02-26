@@ -246,7 +246,7 @@ async function migratePipelineToSupabase() {
         .select('greenhouse_id, title, company_name, ats_source, status')
         .in('greenhouse_id', batch);
       if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
-    } catch (e) { console.error('[BJ] Migration fetch error:', e); }
+    } catch (e) { console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
   }
 
   // Build rows
@@ -477,7 +477,7 @@ async function renderPipeline() {
         .select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
         .in('greenhouse_id', batch);
       if (data) allJobData = allJobData.concat(data);
-    } catch (e) { console.error('[BJ] Pipeline fetch error:', e); }
+    } catch (e) { console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
   }
 
   const jobMap = {};

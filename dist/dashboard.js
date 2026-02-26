@@ -9666,7 +9666,7 @@ async function migratePipelineToSupabase() {
         .select('greenhouse_id, title, company_name, ats_source, status')
         .in('greenhouse_id', batch);
       if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
-    } catch (e) { console.error('[BJ] Migration fetch error:', e); }
+    } catch (e) { console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
   }
 
   // Build rows
@@ -9897,7 +9897,7 @@ async function renderPipeline() {
         .select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
         .in('greenhouse_id', batch);
       if (data) allJobData = allJobData.concat(data);
-    } catch (e) { console.error('[BJ] Pipeline fetch error:', e); }
+    } catch (e) { console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
   }
 
   const jobMap = {};
@@ -14688,7 +14688,7 @@ async function fetchFilterData(sf) {
     var res = await q;
     if (res.error) { console.error('[Stats] Query error:', res.error); toastWarning('Stats query failed'); return []; }
     return res.data || [];
-  } catch (e) { console.error('[Stats] fetchFilterData:', e); return []; }
+  } catch (e) { console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
 }
 
 // ─── Aggregation ───
@@ -15701,7 +15701,7 @@ async function loadFeedHealthCharts() {
 async function loadRefreshCycle() {
   try {
     var res = await sb.rpc('get_refresh_cycle_status');
-    if (res.error) { console.error('[Admin] Cycle RPC error:', res.error); return; }
+    if (res.error) { console.error('[Admin] Cycle RPC error:', res.error); toastWarning('Refresh cycle data unavailable'); return; }
     var c = res.data;
     if (!c) return;
 
@@ -15787,7 +15787,7 @@ async function loadCohortTab() {
   console.log('[Admin] loadCohortTab');
   try {
     var res = await sb.rpc('get_cohort_overview');
-    if (res.error) { console.error('[Admin] Cohort RPC error:', res.error); return; }
+    if (res.error) { console.error('[Admin] Cohort RPC error:', res.error); toastWarning('Cohort data unavailable'); return; }
     var cohorts = res.data;
     if (!cohorts || !cohorts.length) {
       setAdminText('ac-total-cohorts', '0');
@@ -16020,7 +16020,7 @@ async function renderCohortGrowthChart() {
       series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#6b82a8', width: 2 }, itemStyle: { color: '#6b82a8' }, areaStyle: { color: 'rgba(107,130,168,0.06)' }, symbol: 'circle', symbolSize: 4 }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
-  } catch (e) { console.error('[Admin] Growth chart error:', e); }
+  } catch (e) { console.error('[Admin] Growth chart error:', e); toastWarning('Growth chart failed to render'); }
 }
 
 async function renderCohortSessionsChart() {
@@ -16051,7 +16051,7 @@ async function renderCohortSessionsChart() {
       series: [{ type: 'bar', data: counts, itemStyle: { color: '#5b8a72', borderRadius: [3,3,0,0] } }]
     }), true);
     window.addEventListener('resize', function() { chart.resize(); });
-  } catch (e) { console.error('[Admin] Sessions chart error:', e); }
+  } catch (e) { console.error('[Admin] Sessions chart error:', e); toastWarning('Sessions chart failed to render'); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -16062,7 +16062,7 @@ async function loadUsersTab() {
   console.log('[Admin] loadUsersTab');
   try {
     var res = await sb.rpc('get_user_overview');
-    if (res.error) { console.error('[Admin] Users RPC error:', res.error); return; }
+    if (res.error) { console.error('[Admin] Users RPC error:', res.error); toastWarning('Users data unavailable'); return; }
     var d = res.data;
     if (!d) return;
 
@@ -16140,7 +16140,7 @@ async function loadSeoTab() {
         if (_seoCharts[k]) _seoCharts[k].resize();
       });
     }, 200);
-  } catch(err) { console.error('[Admin] SEO load error:', err); }
+  } catch(err) { console.error('[Admin] SEO load error:', err); toastWarning('SEO data failed to load'); }
 }
 
 // ─── Data Fetching (auth-only) ───
@@ -16728,7 +16728,7 @@ async function loadRevenueTab(daysBack) {
   console.log('[Admin] loadRevenueTab', daysBack, 'days');
   try {
     var res = await sb.rpc('get_admin_revenue', { p_days_back: daysBack });
-    if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); return; }
+    if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); toastWarning('Revenue data unavailable'); return; }
     var d = res.data;
     if (!d) return;
 
@@ -17365,7 +17365,7 @@ async function loadFeedbackTab() {
       .select('*')
       .order('submitted_at', { ascending: false })
       .limit(1000);
-    if (error) { console.error('[Feedback]', error); return; }
+    if (error) { console.error('[Feedback]', error); toastWarning('Failed to load feedback'); return; }
     _afbData = data || [];
 
     // Resolve user emails
@@ -17388,7 +17388,7 @@ async function loadFeedbackTab() {
     applyFeedbackFilters();
     renderFeedbackCards();
   } catch (e) {
-    console.error('[Feedback]', e);
+    console.error('[Feedback]', e); toastWarning('Feedback load error');
   }
 }
 
@@ -17624,7 +17624,7 @@ function fetchMerchCohorts() {
 // ─── Placements ───
 function fetchMerchPlacements() {
   sb.from('merch_placements').select('*').order('page_url').order('element_name').then(function(r) {
-    if (r.error) { console.error('[Merch] Placements error:', r.error); return; }
+    if (r.error) { console.error('[Merch] Placements error:', r.error); toastWarning('Merch placements failed to load'); return; }
     _merchPlacements = r.data || [];
     renderMerchPlacements();
     // auto-select first or previously selected
@@ -17756,7 +17756,7 @@ function deleteMerchPlacement(id) {
 // ─── Rules ───
 function fetchMerchRules(placementId) {
   sb.from('merch_rules').select('*, merch_content(count)').eq('placement_id', placementId).order('priority', { ascending: false }).order('audience').then(function(r) {
-    if (r.error) { console.error('[Merch] Rules error:', r.error); return; }
+    if (r.error) { console.error('[Merch] Rules error:', r.error); toastWarning('Merch rules failed to load'); return; }
     _merchRules = r.data || [];
     renderMerchRules();
     // auto-select first rule
@@ -17853,7 +17853,7 @@ function deleteMerchRule(id) {
 // ─── Content Entries ───
 function fetchMerchContent(ruleId) {
   sb.from('merch_content').select('*').eq('rule_id', ruleId).order('sort_order').then(function(r) {
-    if (r.error) { console.error('[Merch] Content error:', r.error); return; }
+    if (r.error) { console.error('[Merch] Content error:', r.error); toastWarning('Merch content failed to load'); return; }
     _merchContent = r.data || [];
     renderMerchContent();
   });
@@ -18589,7 +18589,7 @@ async function loadEnrichmentTab() {
   console.log('[Admin] loadEnrichmentTab');
   try {
     var res = await sb.rpc('get_enrichment_coverage');
-    if (res.error) { console.error('[Admin] Enrichment RPC error:', res.error); return; }
+    if (res.error) { console.error('[Admin] Enrichment RPC error:', res.error); toastWarning('Enrichment data unavailable'); return; }
     var d = res.data;
 
     // Coverage cards
