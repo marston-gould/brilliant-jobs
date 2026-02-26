@@ -225,19 +225,21 @@ function renderTierComparison(pricing) {
     const isCurrent = t.id === currentTier;
     const priceStr = t.price === 0 ? '$0' : '$' + (t.price / 100);
     return `
-      <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}">
+      <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}" style="display:flex;flex-direction:column;">
         ${isCurrent ? '<div class="sub-tier-badge">Current</div>' : ''}
         <div class="sub-tier-name">${t.name}</div>
         <div class="sub-tier-price">${priceStr}<span class="sub-tier-interval">/mo</span></div>
         <div class="sub-tier-credits">${t.credits > 0 ? t.credits + ' credits/mo' : 'No included credits'}</div>
         <div class="sub-tier-payg">$${(t.payg / 100).toFixed(2)}/credit PAYG</div>
-        <ul class="sub-tier-features">${t.features.map(f => '<li>' + f + '</li>').join('')}</ul>
+        <ul class="sub-tier-features" style="flex:1;">${t.features.map(f => '<li>' + f + '</li>').join('')}</ul>
+        <div style="margin-top:auto;text-align:center;">
         ${isCurrent
           ? '<button class="btn-secondary btn-sm" disabled>Current Plan</button>'
           : t.id === 'free'
             ? ''
             : `<button class="btn-primary btn-sm" onclick="startCheckout('subscription','${t.id}')">${currentTier === 'free' || t.price > (pricing.subscription_price_cents || 0) ? 'Upgrade' : 'Switch'}</button>`
         }
+        </div>
       </div>`;
   }).join('');
 }

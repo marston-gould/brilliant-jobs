@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-26
 **Target launch:** March 2026
-**Current version:** v4.90
+**Current version:** v5.05
 
 ---
 
@@ -910,38 +910,38 @@
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| A1 | Company SEO Pages + Ghost Rate Reports | 5-7d | 🔲 | /company/:slug. Extend seo_page_cache with company-level rows. Schema.org Organization. Sitemap top 500. |
-| A2 | College Major Outcomes Page | 3d | 🔲 | NEW. /college-major-outcomes. 73 majors, NY Fed data × BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. |
+| A1 | Company SEO Pages + Ghost Rate Reports | 5-7d | ✅ | v4.76. /company/:slug live. Vercel rewrite rule added. Schema.org Organization. seo_page_cache extended with company rows. |
+| A2 | College Major Outcomes Page | 3d | ✅ | v4.77. /college-major-outcomes live. 73 majors, NY Fed data × BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. |
 | A3 | Jobs by Location Data Page | 4-5d | 🚫 DEFERRED | /jobs-by-location. Blocked on country parsing (GH 0.8%, Lever 0%, Ashby 0%). |
 | A4 | Remote vs Non-Remote Tracker | 3-4d | 🔲 | /remote-vs-office. get_remote_differential() RPC. Launchable at 36% loc_type. Salary needs 40%+. |
-| A5 | Content Freshness Rotation | 2-3d | 🔲 | Infrastructure: last_refreshed_at, refresh_interval_days, data_volatility_score on seo_page_cache. Tiered: 7d/14d/30d. |
-| A6 | Filter-Driven Trend Indicators | 2-3d | 🔲 | get_filter_trend() RPC. Trend badges on saved filter cards. Needs 14+ days content_snapshots. |
+| A5 | Content Freshness Rotation | 2-3d | ✅ | v4.73. Infrastructure: last_refreshed_at, refresh_interval_days, data_volatility_score on seo_page_cache. Tiered: 7d/14d/30d. |
+| A6 | Filter-Driven Trend Indicators | 2-3d | ✅ | v4.74. get_filter_trend() RPC. Trend badges on saved filter cards. |
 
 ### Section B: Topical Coverage (6 items, 11-17 days)
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| B1 | Metro Comparison Stories | 1d | 🔲 | metro_comparison template + threshold tuning (salary Δ 10%+, volume ratio 20%+). Rule exists. |
+| B1 | Metro Comparison Stories | 1d | ✅ | v4.76 Wave 4. metro_comparison template + threshold tuning (salary Δ 10%+, volume ratio 20%+). |
 | B2 | Multi-Dimensional Insight Stories | 2-3d | 🔲 | 3 detection rules (salary_x_remote, role_x_industry, level_x_location). Blocked on 60%+ coverage. |
 | B3 | Economic Overlay Stories | 3-4d | 🔲 | compute-correlations weekly cron. 3 rules: econ_divergence, econ_inflection, econ_milestone. Needs 90+ days econ data. |
 | B4 | Community Benchmark Stories | 2d | 🔲 | benchmark_shift rule + quarterly cron. Needs 50+ pipeline entries/segment. |
-| B5 | NY Fed Crossover Stories | 2-3d | 🔲 | NEW. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment × Hiring. |
+| B5 | NY Fed Crossover Stories | 2-3d | ✅ | v4.76 Wave 4. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment × Hiring. |
 | B6 | Annual State-of-the-Market Report | 3-4d | 🔲 | annual_report template. Manual trigger + admin approval. First report Q4 2026. |
 
 ### Section C: Integration Wiring (4 items, 5-7 days) — ALL NEW
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| C1 | Dashboard Insight Cards Wiring | 1-2d | 🔲 | Insight cards above jobs feed. /content-api/merch-dashboard with filter context. Dismiss with 24h reset. |
-| C2 | Email Digest Integration | 2-3d | 🔲 | Extend weekly-summary EF with top 3 stories section from content_stories. |
-| C3 | Landing Page Merchandising Wiring | 1d | 🔲 | data-merch-placement div → merch-client.js → /content-api/merch-index → 3 story cards. |
-| C4 | Blog Index + Discovery | 0.5-1d | 🔲 | Nav link, footer link, RSS, blog-to-dashboard CTAs. |
+| C1 | Dashboard Insight Cards Wiring | 1-2d | ✅ | v4.67. Insight cards above jobs feed. /content-api/merch-dashboard with filter context. Dismiss with 24h reset. |
+| C2 | Email Digest Integration | 2-3d | ✅ | v4.75. Extended weekly-summary EF with top 3 stories section from content_stories. |
+| C3 | Landing Page Merchandising Wiring | 1d | ✅ | v4.75. data-merch-placement div → merch-client.js → /content-api/merch-index → 3 story cards. |
+| C4 | Blog Index + Discovery | 0.5-1d | ✅ | v4.75. Nav link, footer link, RSS, blog-to-dashboard CTAs. |
 
 ### Section D: Enrichment Monitoring (1 item, 2-3 days) — NEW
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| D1 | Enrichment Coverage Dashboard | 2-3d | 🔲 | Admin tab: 4 coverage cards, trend chart, gate indicators (40%/60%), throughput, platform breakdown. BUILD FIRST. |
+| D1 | Enrichment Coverage Dashboard | 2-3d | ✅ | v4.72. Admin tab: 4 coverage cards, trend chart, gate indicators (40%/60%), throughput, platform breakdown. |
 
 ### Recommended Build Order
 
@@ -963,7 +963,7 @@
 | Department | 44% | 60%+ | B2 Multi-dim stories |
 | Country (GH/Lever/Ashby) | 0-0.8% | 80%+ | A3 Jobs by Location |
 
-**Phase 37 total: 17 items | 37-52 dev days | v4.71 roadmap update.**
+**Phase 37 total: 17 items | 12 complete (A1,A2,A5,A6,B1,B5,C1,C2,C3,C4,D1), 1 deferred (A3), 4 remaining (A4,B2,B3,B4,B6). Versions: v4.67–v4.77.**
 
 
 ## Master Status Summary
@@ -1041,6 +1041,8 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-25 | 43 | CP1–CP9 | **Phase 43: City Pages + Internal Linking Sprint (v4.91–v4.93).** Branch: `feat/city-pages-linking-sprint` cherry-picked to main. DB: city_pages table (2,178 rows seeded), city_popular_pills (Phase 2, empty). refresh-city-stats Edge Function deployed (6h cron). SSR enhancements: hook pills on metro pages, server-rendered role links, "Compare Other Cities" cross-links, hub page city/trend grids. Homepage "Browse by City" + "Trending Roles" sections. Data Lab city browse panel. JSON-LD structured data: Place + ItemList(JobPosting) + FAQPage per metro, Occupation + FAQPage per role. Block 7 pill conversion flow: signup modal for anon, checkmark + filter injection for auth, dashboard deep-link handler with toast. PostHog tracking: seo_pill_click, seo_pill_applied. ✅ COMPLETE — all blocks deployed to production. |
+| 2026-02-25 | 37-BUILD | A1,A2,A5,A6,B1,B5,C1-C4,D1 | **Content Engine Build Sprint (v4.67–v4.77).** Flipped 12/17 Phase 37 items to done. Company SEO pages (/company/:slug), College Major Outcomes, Content Freshness Rotation, Filter-Driven Trend Indicators, Metro Comparison + NY Fed Crossover editorial templates, Dashboard Insight Cards, Email Digest, Landing Page Merch, Blog Discovery, Enrichment Coverage Dashboard. 4 remaining: A4 (Remote Tracker), B2 (Multi-Dim), B3 (Economic), B4 (Benchmark), B6 (Annual Report). |
 | 2026-02-25 | CE-v3 | — | **Content Engine Handoff v3 roadmap update (v4.71).** Added 17 items across 4 categories from Pod 1 CE Handoff v3: Section A Permanent Pages (6 items: company pages, college outcomes, jobs-by-location, remote tracker, freshness rotation, trend indicators), Section B Topical Coverage (6 items: metro/multi-dim/economic/benchmark/NY Fed stories, annual report), Section C Integration Wiring (4 NEW items: dashboard insight cards, email digest, landing page merch, blog discovery), Section D Enrichment Monitoring (1 NEW item: coverage dashboard). Supersedes v4.70 removal — items re-added with proper categorization. Total: 37-52 dev days. |
 | 2026-02-25 | CE-TRIM | — | **Content Engine roadmap trim (v4.70).** Removed 6 user-pipeline-dependent items from roadmap: Public Company Ghost Rate Reports, Community Benchmark Data, Programmatic Company SEO Pages, Multi-Dimensional Insight Pages, Annual State-of-the-Market Report, Jobs by Location Data Page. These require user activity at scale (50+ pipeline entries per segment, 10K company pages for ghost rates) that won't exist until well after launch. Retained viable items: Content Freshness Rotation, Filter-Driven Trend Indicators, Remote vs Non-Remote Tracker, Public Data Benchmark Overlays, Metro Comparison Pages. |
 | 2026-02-25 | 33 | RA1–RA31 | **Phase 33: Resume Archive + Metrics (v4.55–v4.60).** All 8 phases in single session. 3 new tables (resume_archive, resume_score_history, resume_job_usage). 7 functions + 2 triggers + 1 pg_cron. Archive tab UI with storage bar + version timeline. Expiry cron (daily 3AM) with tier-gated restore. Resume Metrics tab on Stats page: sparkline, level fit, pipeline funnel, usage log. Tier gating module. Pipeline→usage auto-sync trigger. 3 new JS modules (22 total, 604KB minified). 24 cron jobs. |
@@ -1718,34 +1720,170 @@ All 16 spec items verified against live infrastructure:
 **Phase 39b total:** 20 items | All complete | Version range: v4.82 → v4.83
 **Files modified:** tailwind.config.js, src/input.css, styles.css, dashboard.html, js/job-feed.js, js/keywords.js, js/sort-bar.js, js/app.js, index.html, pricing.html, dist/dashboard.min.js
 
-## Phase 42b: City Pages Sprint Complete + SEO Canonicals (v4.91) — 2026-02-26
+---
 
-**Goal:** Complete the City Pages + Internal Linking sprint, add self-referencing canonicals to all static pages.
+## Phase 43: City Pages + Internal Linking Sprint (v4.91–v4.93) — 2026-02-25/26 ✅ COMPLETE
 
-### City Pages Sprint (feat/city-pages-linking-sprint) — 15 commits
+**Goal:** Enhance the existing SSR system (api/seo-page.js + seo_page_cache) with city-level data, hook pills for conversion, comprehensive internal cross-linking, JSON-LD structured data, and homepage/data-lab browse sections. Based on H1 handoff spec.
 
-| # | Item | Block | Status | Notes |
-|---|------|-------|--------|-------|
-| 1 | Quick fixes (blog links, sitemap) | 0 | ✅ | Fixed `/jobs-in-city` → `/jobs-in/city`. Added `/pricing` and `/ghost-report` to sitemap. |
-| 2 | DB schema | 1 | ✅ | `city_pages` + `city_popular_pills` tables with RLS. |
-| 3 | `refresh-city-stats` Edge Function | 2 | ✅ | 6h cron. Aggregates job stats per metro. |
-| 4 | SSR template + hook pills | 3 | ✅ | `jobs-in.html` template. Hook pills (top titles, skills, industries). Vercel rewrite `/jobs-in/:metro` → `seo-page.js`. |
-| 5 | JSON-LD structured data | 4 | ✅ | City pages: Place + ItemList/JobPosting (top 5 employers) + FAQPage (salary, companies, remote %, trend). Trends pages: Occupation + FAQPage. |
-| 6 | Hub + homepage + Data Lab | 5 | ✅ | Browse by City sections on homepage, hub (`/job-market-data`), and Data Lab. |
-| 7 | Bidirectional cross-linking | 6 | ✅ | SSR: trends↔city, metro↔metro, trends↔trends, hub↔Data Lab. Data Lab subpages: client-side fetch from `city_pages` → 15 city links + 15 role links with 24h localStorage cache. |
-| 8 | Pill conversion flow | 7 | ✅ | Anonymous → signup modal with pill context. Authenticated → `bj_pending_pills` localStorage → dashboard applies to active filter on init. PostHog events: `pill_signup_modal_shown`, `pill_filter_added`, `pending_pills_applied`. |
-| 9 | City sitemap | — | ✅ | `sitemap-cities.xml` with 2,178 URLs, tiered priority. Added to `robots.txt` + main `sitemap.xml`. |
+**Branch:** `feat/city-pages-linking-sprint` → merged to main via cherry-pick at v4.92–v4.93
+**STATUS: ✅ ALL BLOCKS DEPLOYED TO PRODUCTION**
 
-### SEO Canonicals
+### Database (Live in Production)
 
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 10 | Self-referencing canonical tags | ✅ | Added `rel=canonical` to 7 static pages missing them: `index.html` (`/`), `pricing.html`, `privacy.html`, `terms.html`, `help.html`, `survey.html`, `uninstall.html`. Prevents query-string duplicate content. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| CP1 | `city_pages` table | v4.91 | ✅ | 2,178 rows seeded from ats_jobs (≥10 jobs/city). Indexes on slug + job_count DESC. RLS: anon SELECT, auth SELECT, service_role write. |
+| CP2 | `city_popular_pills` table | v4.91 | ✅ | Phase 2 schema, empty. FK to city_pages(slug), category CHECK constraint. |
+| CP3 | Seed data | v4.91 | ✅ | 97 cities with top_titles, 77 with top_skills, 100 with top_companies. Median salaries, remote %, top industries. Auto-generated meta_title/meta_description. |
+| CP4 | `refresh-city-stats` Edge Function | v4.91 | ✅ | 6-step refresh (stats→companies→titles→skills→industries→meta). Deployed. pg_cron: `0 */6 * * *`. |
 
-### Investigation (TODO)
+### SSR Enhancements (Deployed v4.92)
 
-| # | Item | Status | Notes |
-|---|------|--------|-------|
-| 11 | Investigate unhandled parametric SSR pages | 🔲 | 4 Vercel routes wired but no handler in `seo-page.js`: `/company/:slug` (no cache data), `/jobs-:a-vs-:b` (10 comparison pages cached with data), `/college-major-outcomes` (15 majors in `major_job_cache`), `/jobs-by-location` (no data — city pages may suffice). Need to evaluate build priority and data readiness for each. |
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| CP5 | Metro page hook pills | v4.92 | ✅ | "What Companies Are Hiring For" with top titles/skills/industries from city_pages. Each pill has label + count + "+" button. Server-rendered role links (10 roles). "Compare Other Cities" cross-links (top 8 metros). |
+| CP6 | Trends page cross-links | v4.92 | ✅ | "Explore [Role] Jobs by City" links to /jobs-in/:metro/:role for top 10 metros. "Related Roles" links to all 20 trends pages. |
+| CP7 | Market hub page enhancements | v4.92 | ✅ | "Jobs by City" grid (top 50 metros), "Hiring Trends by Role" grid (all trends), "Data Lab Reports" (6 subpages). Cross-linking data fetched in parallel (non-blocking). |
+| CP5b | Homepage sections | v4.91 | ✅ | "Browse Jobs by City" (8-city grid) + "Trending Roles" (4-role grid) added to index.html. |
+| CP5c | Data Lab browse by city | v4.91 | ✅ | "Browse Jobs by City" panel (15 city links) + "View all cities →" link. |
+| CP6e | Data Lab subpage contextual links | v4.92 | ✅ | salary-data→cities, hiring-trends→roles, career-level-data→roles. Merged into renderMarketPage hub grid. |
 
-**Phase 42b status:** 10/11 complete. 1 investigation task planned.
+### JSON-LD Structured Data (Deployed v4.92)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| LD1 | Metro page JSON-LD | v4.92 | ✅ | Place schema (geo entity), ItemList of JobPosting (top 5 employers), FAQPage (salary, companies, remote %, growth). US state name lookup table. |
+| LD2 | Trends page JSON-LD | v4.92 | ✅ | Occupation schema (role + salary distribution), FAQPage (salary, demand, top metros, remote %). |
+| LD3 | renderShell `extraLd` param | v4.92 | ✅ | Added `extraLd` parameter to renderShell for per-page JSON-LD injection. |
+
+### Pill Conversion Flow (Deployed v4.93)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| B7a | "+" button pill click handler | v4.93 | ✅ | Inline script in renderShell. Auth detection via Supabase localStorage token. PostHog tracking: `seo_pill_click`. |
+| B7b | Anonymous user signup modal | v4.93 | ✅ | Branded modal with logo, pill term, "Get Started Free" CTA → redirects to dashboard with URL params. |
+| B7c | Authenticated user filter injection | v4.93 | ✅ | Checkmark animation → redirect to dashboard → pill added to first saved filter as WHAT pill. Auto-creates filter with metro WHERE pill if no filters exist. |
+| B7d | Dashboard deep-link handler | v4.93 | ✅ | Picks up `?seo_pill=<term>&seo_type=<type>&seo_metro=<slug>` URL params. Injects pill, shows toast, cleans URL. PostHog: `seo_pill_applied`. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v4.93 |
+| dashboard.html nav | v4.93 |
+| pg_cron #27 | refresh-city-stats (0 */6 * * *) |
+
+**Phase 43 total: 17 items | 17 complete ✅. Version: v4.91→v4.93. Fully deployed to production.**
+
+---
+
+## Phase 44: Data Integrity & Sync Consolidation (v4.94–v5.00) — 2026-02-26 ✅ COMPLETE
+
+**Goal:** Fix cascading data quality issues — WHEN filter failures, dead job resurrection, stat card inconsistencies, localStorage/Supabase desync — and consolidate the sync architecture around a single write path.
+
+**Source:** User-reported bugs (empty active resumes, 2-job search results, NEW TODAY > TOTAL, dead jobs reappearing) traced to systemic root causes in filter logic, refresh cron, and split sync systems.
+
+### Bug Fixes (v4.94–v4.98)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S1 | WHEN filter validation + normalization | v4.94 | ✅ | `normalizeWhenValue()` standardizes time inputs (today, yesterday, last N days/weeks/months). Handles shorthand: "2w" → "last 14 days". Sort bar validates on Enter/blur with inline red error for unrecognized input. |
+| S2 | Active Resumes empty tab recovery | v4.94 | ✅ | Data sync mismatch: localStorage `bj_resumes` empty while Supabase `resume_archive` had 3 resumes. `renderResumes()` now detects empty state and triggers async cloud recovery with preserved metadata. |
+| S3 | Unified sync layer v1 | v4.95 | ✅ | SYNC_REGISTRY maps 5 data domains to localStorage keys, globals, and Supabase sources. `syncEnsure()` checks localStorage first, fetches from cloud if empty. `syncHealthCheck()` runs 500ms after auth. Plan card flex layout fix (bottom-pinned buttons). |
+| S4 | Dead jobs reappearing | v4.96 | ✅ | Root cause: `refresh-jobs` and `refresh-usajobs` upsert rows with `status='open'`, overwriting `status='closed'` set by `handleDeadJob()`. Fix: removed `status` from upsert — defaults to 'open' on INSERT, never overwritten on UPDATE. Edge Functions redeployed. |
+| S5 | Stat card NEW TODAY > TOTAL | v4.96 | ✅ | TOTAL count query used `buildFilterQuery` which applied WHEN time filter. NEW TODAY added its own 24h window. If WHEN narrower than 24h, TOTAL < NEW TODAY (mathematically impossible). Fix: TOTAL stat strips WHEN pills before query (`sfNoWhen`). |
+| S6 | WHEN filter indicator | v4.97 | ✅ | Filter count bar now shows purple `⏱ today` badge when WHEN time pill is active. Makes time restriction visible. |
+| S7 | Pagination 50→20 per page | v4.98 | ✅ | `JOBS_PER_PAGE` reduced from 50 to 20. Typical screen showed only 23 jobs at 50/page — 20 fits one screen with pagination controls. |
+
+### Infrastructure (v4.99–v5.00)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S8 | Remote search truncation fix | v4.99 | ✅ | Fixed location search query truncation for "remote" WHERE pills. |
+| S9 | WHEN filter wrong column | v5.00 | ✅ | WHEN filter was using `first_seen_at` (only 4 jobs today) instead of `updated_at` (276 jobs today). `first_seen_at` only records scraper discovery time; `updated_at` reflects last refresh confirmation. Fixed WHEN to use `updated_at`. |
+| S10 | Restore `updated_at` in refresh-jobs upsert | v5.00 | ✅ | `updated_at` was accidentally removed from refresh-jobs upsert rows, which would freeze all job timestamps at INSERT time. Restored so refresh cron keeps `updated_at` current. Edge Function redeployed. |
+| S11 | Eliminate localStorage sync bypasses | v5.00 | ✅ | Audit found 4 places writing directly to localStorage for synced keys, bypassing `saveUserData()` cloud sync. All 4 fixed. Removed redundant `localStorage.setItem` calls preceding `saveUserData`. |
+| S12 | Sync architecture consolidation | v5.00 | ✅ | Eliminated duplicate sync system (sync.js v1 competed with globals.js `saveUserData/_flushUserData`). sync.js now focuses solely on boot-time health check + cloud recovery. globals.js owns ALL writes (30 call sites). Zero direct LS writes to synced keys remaining. |
+
+### AI Infrastructure (deployed between v4.95–v4.96)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S13 | `enrich-jd-ai` Edge Function | v4.95+ | ✅ | AI-powered JD skills/requirements extraction via Claude Haiku. Batch processing with `jd_ai_enrichment_progress` function + pg_cron schedule. Concurrency reduced to 5 to eliminate rate limit errors (50/50 success rate). |
+
+### Sync Architecture — Final State
+
+| Component | Owner | Responsibility |
+|-----------|-------|---------------|
+| `saveUserData(lsKey, jsonStr)` | globals.js | ALL writes: localStorage + debounced Supabase PATCH |
+| `_flushUserData()` | globals.js | Batch Supabase writes for pending keys |
+| `loadUserData(userId)` | globals.js | Login-time: Supabase → localStorage merge |
+| `syncHealthCheck()` | sync.js | Post-auth safety net: detect empty LS keys, recover from Supabase + dedicated tables |
+| Direct `localStorage.setItem` | ❌ BANNED | 0 remaining for synced keys. Only UI state keys (bj_collapse, bj_sf_checked) use direct LS. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.00 |
+| dashboard.html nav | v5.00 |
+| Edge Functions deployed | refresh-jobs, refresh-usajobs, enrich-jd-ai |
+
+**Phase 44 total: 13 items | 13 complete ✅. Version: v4.94→v5.00. Fully deployed to production.**
+
+---
+
+## Phase 45: Visual Consistency Pass + UX Fixes (v5.01–v5.05) — 2026-02-26 ✅ COMPLETE
+
+**Goal:** Align Applications & Ghost Monitor pages with hero-first architecture used across all other tabs, fix feed filter/display mismatch, and polish resume action flows.
+
+**Source:** Phase 39b visual consistency handoff doc + user-reported feed issues.
+
+### Applications & Ghost Monitor Redesign (v5.01)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V1 | `.app-hero` navy banner | v5.01 | ✅ | Hero banner with lifecycle stats (Queued, Submitted, Response Rate, This Week). Same navy gradient as all other heroes. |
+| V2 | Lifecycle-spanning stats | v5.01 | ✅ | Response Rate (responded/totalSent×100) and This Week (submitted in 7 days) replace old queue-state-only stats. |
+| V3 | 3-way Queue/Pipeline/History toggle | v5.01 | ✅ | Replaces old List/Board toggle + app-flow-tabs bar. `switchAppView()` full implementation with localStorage persistence. |
+| V4 | Settings gear panel | v5.01 | ✅ | Rules + Notifications collapsed into `#app-settings-panel` with sub-tabs. Gear icon toggle. |
+| V5 | Queue table restyle | v5.01 | ✅ | Font-size 10px headers, 700 weight, 8px padding — aligned with `.job-table` conventions. |
+| V6 | Intel slot below hero | v5.01 | ✅ | `#app-intel-slot` for cross-tab ghost alerts (stale apps > 7 days). |
+| V7 | `.ghost-hero` banner | v5.01 | ✅ | Ghost Monitor hero: "Silence is data. We track it." Stats: Active, Avg Days, Likely Ghosted, Confirmed, Gmail. |
+
+### Codebase Cleanup (v5.02)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V8 | Remove dead `.app-flow-tabs` CSS | v5.02 | ✅ | 14 lines of orphaned CSS removed (no longer in HTML after v5.01). |
+| V9 | Remove dead ID writes | v5.02 | ✅ | Null-guarded writes to `a-pending`, `a-failed` removed (IDs deleted in v5.01). |
+| V10 | Gmail hero chip update | v5.02 | ✅ | `g-gmail-stat` hero chip shows On/Off with `hs-green`/`hs-dim` classes in `initGmailStatus()`. |
+
+### Resume Delete Flow (v5.04)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V11 | Full-word delete labels | v5.04 | ✅ | Active resume delete button: "✕ Delete" (was just ✕ icon). Matches Archive/Restore pattern. |
+| V12 | Download-before-delete modal | v5.04 | ✅ | `confirmDeleteResume()` modal with 3 options: Save to Google Drive & Delete (if GDrive connected), Save to Desktop & Delete, Delete Without Saving. Replaces bare `confirm()`. |
+
+### Feed Filter Fixes (v5.05)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V13 | WHEN filter column correction | v5.05 | ✅ | **Reverses S9 from Phase 44.** WHEN filter changed back to `first_seen_at` to match DAYS column display. Root cause: `updated_at` let 15d-old jobs appear in "last 14 days" filter because their refresh timestamp was recent. `first_seen_at` = when job was discovered = what users see in DAYS column. Filter and display now use same column. |
+| V14 | App mode button contrast | v5.05 | ✅ | Active (blue) button subtitle was `color:var(--text-dim)` — gray on blue = unreadable. Now sets `rgba(255,255,255,0.85)` when active, reverts on deselect. Applied on click + on-load init. |
+
+### S9 Correction Note
+
+Phase 44 item S9 changed WHEN from `first_seen_at` to `updated_at`, reasoning that `updated_at` reflects refresh confirmation while `first_seen_at` only records scraper discovery. However, this introduced a user-visible inconsistency: the DAYS column displays `first_seen_at` age, so a job could show "15d" yet pass a "last 14 days" WHEN filter (because its `updated_at` was recent). V13 reverses this — WHEN now uses `first_seen_at` so the filter and display column are consistent. The correct solution for "show recently refreshed jobs" would be a separate FRESHNESS filter on `updated_at`, not overloading the WHEN filter.
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.05 |
+| dashboard.html cache-bust | v5.05 |
+| Console log | Dashboard v5.05 loaded |
+
+**Phase 45 total: 14 items | 14 complete ✅. Version: v5.01→v5.05. Fully deployed to production.**

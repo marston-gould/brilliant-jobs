@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
+  <script src="/js/version.js"></script>
   <script src="/js/vendor/echarts.custom.min.js" defer></script>
   <style>
     :root {
@@ -133,6 +134,12 @@
     .empty-state { text-align: center; padding: 60px 20px; color: var(--text-faint); }
     .empty-state h2 { color: var(--text); margin-bottom: 12px; }
 
+    .bj-topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 0;margin-block-end:8px;max-width:900px;margin-inline:auto}
+    .bj-topbar .bj-home{font-weight:700;font-size:15px;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px}
+    .bj-topbar .bj-home:hover{color:var(--accent)}
+    .bj-topbar .bj-login{padding:7px 18px;background:#fff;color:#0b0e18;border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;transition:all 0.15s;letter-spacing:0.3px}
+    .bj-topbar .bj-login:hover{background:rgba(255,255,255,0.85)}
+
     .footer {
       text-align: center; padding: 32px 0; color: var(--text-faint); font-size: 12px;
       border-top: 1px solid var(--border); margin-top: 48px;
@@ -150,6 +157,10 @@
 <body>
 
 <div class="container">
+  <nav class="bj-topbar">
+    <a href="/" class="bj-home">✦ Brilliant Jobs</a>
+    <a href="/dashboard" class="bj-login">Log In</a>
+  </nav>
   <div class="hero">
     <div class="hero-badge">👻 Ghost Job Reality Check</div>
     <h1>How companies treat job applicants.</h1>
@@ -222,7 +233,7 @@
   </div>
 
   <div class="footer">
-    &copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs &nbsp;·&nbsp;
+    &copy; <span class="bj-year"></span> Brilliant Jobs &nbsp;·&nbsp;
     <a href="/">Home</a> &nbsp;·&nbsp;
     <a href="/terms">Terms</a> &nbsp;·&nbsp;
     <a href="/privacy">Privacy</a>

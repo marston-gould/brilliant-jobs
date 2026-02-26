@@ -1,3 +1,36 @@
+// === js/version.js ===
+/**
+ * Brilliant Jobs — Global Version & Site-Wide Utilities
+ * SINGLE SOURCE OF TRUTH. Every page includes this file.
+ * To bump the version, change ONLY this line.
+ */
+var BJ_VERSION = 'v5.05';
+
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Version display: any .bj-version or #nav-version
+    document.querySelectorAll('.bj-version').forEach(function(el) {
+      el.textContent = BJ_VERSION;
+    });
+    var nav = document.getElementById('nav-version');
+    if (nav) nav.textContent = BJ_VERSION;
+
+    // Copyright year: any .bj-year element
+    var year = new Date().getFullYear();
+    document.querySelectorAll('.bj-year').forEach(function(el) {
+      el.textContent = year;
+    });
+    // Also handle legacy id="year" elements
+    var legacyYear = document.getElementById('year');
+    if (legacyYear) legacyYear.textContent = year;
+  });
+
+  // Console log for every page
+  var page = document.title || location.pathname;
+  console.log('[BJ] ' + page + ' ' + BJ_VERSION + ' loaded');
+})();
+
+
 // === js/globals.js ===
 // ============================================================
 // GLOBALS — Shared state across all dashboard modules
@@ -551,6 +584,10 @@ var payPills = [];
 var whatNotPills = [];
 var whereNotPills = [];
 var whoNotPills = [];
+var skillsPills = [];
+var levelPills = [];
+var jdPills = [];
+var deptPills = [];
 var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
 var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
 var DEFAULT_RADIUS = 30;
@@ -558,13 +595,13 @@ var DEFAULT_RADIUS = 30;
 // Job feed state
 var allJobs = [];
 var currentJobs = [];
-var jobSortStack = [{ field: 'updated_at', asc: false }];
+var jobSortStack = [{ field: 'first_seen_at', asc: false }];
 var hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
 var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
 var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 50;
+var JOBS_PER_PAGE = 20;
 
 // Resume state (populated fully in resumes.js)
 var resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
@@ -659,7 +696,7 @@ function _handleStorageFull(failedKey) {
     var hist = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
     if (hist.length > 200) {
       hist = hist.slice(-200);
-      localStorage.setItem('bj_app_history', JSON.stringify(hist));
+      saveUserData('bj_app_history', JSON.stringify(hist));
       console.log('[BJ] Trimmed bj_app_history to 200 items');
     }
   } catch (e) {}
@@ -871,6 +908,159 @@ async function safeQuery(queryFn, opts) {
 }
 
 
+// === js/sync.js ===
+// ============================================================
+// SYNC HEALTH CHECK — Safety net for localStorage ↔ Supabase consistency
+// v5.00 — Works alongside globals.js saveUserData/loadUserData
+// ============================================================
+//
+// globals.js has the primary sync system:
+//   saveUserData(lsKey, jsonStr) → localStorage + debounced Supabase PATCH
+//   loadUserData(userId) → Supabase → localStorage on login
+//
+// This file provides:
+//   syncHealthCheck() — runs after auth, detects empty localStorage keys
+//     and recovers them from Supabase (covers browser clear, incognito, new device)
+//   syncHydrate() — deep recovery from dedicated tables (user_filters, user_tuning)
+//
+// ALL writes MUST go through saveUserData() in globals.js.
+// Modules should NEVER call localStorage.setItem for synced keys directly.
+
+/**
+ * Health check: verify all synced domains have data in localStorage.
+ * If any are missing, trigger cloud recovery and re-render affected UI.
+ * Call this on page load after auth is ready.
+ */
+async function syncHealthCheck() {
+  if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+  console.log('[sync] Running health check...');
+
+  const UD_KEYS = {
+    saved_filters: 'bj_saved_filters',
+    resumes: 'bj_resumes',
+    pipeline_meta: 'bj_pipeline_meta',
+    tuning: 'bj_tuning',
+    saved_jobs: 'bj_saved_jobs',
+    applied_jobs: 'bj_applied_jobs',
+    applied_dates: 'bj_applied_dates',
+    hidden_jobs: 'bj_hidden_jobs',
+    app_queue: 'bj_app_queue',
+    app_history: 'bj_app_history',
+    readiness: 'bj_readiness'
+  };
+
+  const GLOBALS_MAP = {
+    saved_filters: 'savedFilters',
+    resumes: 'resumes',
+    tuning: 'tuningSettings',
+    hidden_jobs: 'hiddenJobIds',
+    saved_jobs: 'savedJobIds',
+    applied_jobs: 'appliedJobIds',
+    applied_dates: 'appliedDates',
+    readiness: 'readinessCache',
+    app_queue: 'appQueue',
+    app_history: 'appHistory',
+  };
+
+  const missing = [];
+  for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
+    try {
+      const raw = localStorage.getItem(lsKey);
+      const parsed = raw ? JSON.parse(raw) : null;
+      const empty = parsed == null ||
+        (Array.isArray(parsed) && parsed.length === 0) ||
+        (typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length === 0);
+      if (empty) missing.push(shortKey);
+    } catch { missing.push(shortKey); }
+  }
+
+  if (missing.length === 0) {
+    console.log('[sync] Health check passed — all data present');
+    return;
+  }
+
+  console.log('[sync] Missing:', missing.join(', '), '— recovering from cloud');
+
+  // Fetch profiles.user_data
+  try {
+    const { data, error } = await sb.from('profiles')
+      .select('user_data')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (!error && data?.user_data) {
+      const cloud = data.user_data;
+      localStorage.setItem('_bj_ud_cache', JSON.stringify(cloud));
+
+      for (const shortKey of missing) {
+        const lsKey = UD_KEYS[shortKey];
+        const cloudVal = cloud[shortKey];
+        if (cloudVal != null) {
+          const isNotEmpty = Array.isArray(cloudVal) ? cloudVal.length > 0 :
+            typeof cloudVal === 'object' ? Object.keys(cloudVal).length > 0 : true;
+          if (isNotEmpty) {
+            localStorage.setItem(lsKey, JSON.stringify(cloudVal));
+            // Also update the global variable
+            const globalName = GLOBALS_MAP[shortKey];
+            if (globalName && typeof window[globalName] !== 'undefined') {
+              window[globalName] = cloudVal;
+            }
+            console.log('[sync] Recovered', shortKey, 'from cloud');
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[sync] Health check cloud fetch error:', e.message);
+  }
+
+  // Try dedicated tables for filters and tuning
+  if (missing.includes('saved_filters')) {
+    try {
+      const { data: filters } = await sb.from('user_filters')
+        .select('*').eq('user_id', currentUser.id).order('sort_order');
+      if (filters && filters.length > 0) {
+        const recovered = filters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
+        savedFilters = recovered;
+        localStorage.setItem('bj_saved_filters', JSON.stringify(recovered));
+        console.log('[sync] Recovered', filters.length, 'filters from user_filters table');
+      }
+    } catch (e) { /* table may not exist */ }
+  }
+
+  if (missing.includes('tuning')) {
+    try {
+      const { data: tuning } = await sb.from('user_tuning')
+        .select('tuning_data').eq('user_id', currentUser.id).single();
+      if (tuning?.tuning_data && Object.keys(tuning.tuning_data).length > 0) {
+        tuningSettings = tuning.tuning_data;
+        localStorage.setItem('bj_tuning', JSON.stringify(tuning.tuning_data));
+        // Re-hydrate tuning sub-globals
+        tuningLocExclPills = tuningSettings.locationExcludes || [];
+        tuningTitleExclPills = tuningSettings.titleExcludes || [];
+        tuningCoExclPills = tuningSettings.companyExcludes || [];
+        tuningIndExclPills = tuningSettings.industryExcludes || [];
+        levelHierarchy = tuningSettings.levelHierarchy || [];
+        console.log('[sync] Recovered tuning from user_tuning table');
+      }
+    } catch (e) { /* table may not exist */ }
+  }
+
+  // Trigger re-renders for recovered UI data
+  if (missing.includes('saved_filters') && typeof renderSavedFilters === 'function') {
+    try { renderSavedFilters(); } catch(e) {}
+  }
+  if (missing.includes('resumes') && typeof renderResumes === 'function') {
+    try { renderResumes(); } catch(e) {}
+  }
+
+  console.log('[sync] Health check recovery complete');
+}
+
+// Expose globally
+window.syncHealthCheck = syncHealthCheck;
+
+
 // === js/query-builder.js ===
 // ============================================================
 // JOBS — TAG QUERY BUILDER
@@ -886,7 +1076,7 @@ function classifyTerm(term) {
   return 'keyword';
 }
 
-function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length; }
+function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length + skillsPills.length + levelPills.length + jdPills.length + deptPills.length; }
 
 function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, onRemove) {
   const builder = $(builderId);
@@ -1066,6 +1256,10 @@ function renderAllPills() {
   renderPillsFor(whoPills, '#query-builder-who', '#qb-input-who', false, 'who-pill');
   renderPillsFor(whoNotPills, '#query-builder-who-not', '#qb-input-who-not', false, 'not-pill');
   renderPayPills();
+  renderPillsFor(skillsPills, '#query-builder-skills', '#qb-input-skills', false, 'skills-pill');
+  renderPillsFor(levelPills, '#query-builder-level', '#qb-input-level', false, 'level-pill');
+  renderPillsFor(jdPills, '#query-builder-jd', '#qb-input-jd', false, 'jd-pill');
+  renderPillsFor(deptPills, '#query-builder-dept', '#qb-input-dept', false, 'dept-pill');
 
   // Show/hide toolbar
   const hasAny = allPills() > 0;
@@ -1099,12 +1293,12 @@ if (hiddenJobIds.length > 0 && typeof hiddenJobIds[0] === 'string') {
 function isJobHidden(ghId) { return hiddenJobIds.some(h => h.id === ghId); }
 
 const HIDE_REASONS = [
-  { key: 'wrong_title', label: 'Wrong title' },
-  { key: 'wrong_location', label: 'Wrong location' },
-  { key: 'wrong_company', label: 'Wrong company' },
-  { key: 'too_old', label: 'Too old' },
-  { key: 'wrong_pay', label: 'Wrong pay' },
-  { key: 'other', label: 'Other / not relevant' },
+  { key: 'wrong_title', label: 'Wrong title — exclude similar roles' },
+  { key: 'wrong_location', label: 'Wrong location — exclude this area' },
+  { key: 'wrong_company', label: 'Wrong company — block this employer' },
+  { key: 'too_old', label: 'Too old / stale listing' },
+  { key: 'wrong_pay', label: 'Pay too low for this role' },
+  { key: 'other', label: 'Other — not relevant to me' },
 ];
 
 function debouncedSearchJobs() {
@@ -1208,7 +1402,17 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
   }
 
   // Remote search — either from explicit Remote pill OR includeRemote toggle
-  const shouldSearchRemote = remotePills.length > 0 || (includeRemote && radiusPills.length + statePills.length > 0);
+  // If Remote is the ONLY location pill type (no radius/state), skip pre-fetching IDs.
+  // The ID set would be too large (30K+) and gets truncated to 200 in buildFilterQuery.
+  // Instead, return null so buildFilterQuery uses inline ilike filtering.
+  const hasNonRemotePills = radiusPills.length > 0 || statePills.length > 0;
+  const shouldSearchRemote = remotePills.length > 0 || (includeRemote && hasNonRemotePills);
+  
+  if (remotePills.length > 0 && !hasNonRemotePills && textPills.length === 0) {
+    // Pure remote search — let buildFilterQuery handle it with ilike
+    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true };
+  }
+  
   if (shouldSearchRemote) {
     try {
       const { data, error } = await sb
@@ -1336,7 +1540,10 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   }
 
   // WHERE — use pre-fetched location IDs or bounding box
-  if (locationIds && locationIds.includeIds !== null) {
+  if (locationIds && locationIds.isRemoteOnly) {
+    // Pure remote search — filter inline instead of using pre-fetched IDs
+    query = query.or('location.ilike.Remote%,location.ilike.%remote%,is_remote.eq.true');
+  } else if (locationIds && locationIds.includeIds !== null) {
     if (locationIds.includeIds.length === 0) {
       // No matches — force empty result
       query = query.in('greenhouse_id', ['__NO_MATCH__']);
@@ -1431,7 +1638,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Determine if Remote is explicitly in WHERE or NOT WHERE
   const hasExplicitRemote = wh.some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
   const hasExplicitNotRemote = whnot.some(p => p.values && p.values[0]?.toLowerCase() === 'remote');
-  const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null);
+  const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null) || (locationIds && locationIds.isRemoteOnly);
   const includeRemote = sf.includeRemote === true;
 
   if (hasExplicitNotRemote) {
@@ -1483,11 +1690,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
-  // WHEN — updated_at gte
+  // WHEN — first_seen_at gte (job age based on when we first discovered it, matches DAYS column)
   for (const pill of wn) {
     for (const v of pill.values) {
       const since = parseWhenValue(v);
-      if (since) query = query.gte('updated_at', since.toISOString());
+      if (since) query = query.gte('first_seen_at', since.toISOString());
     }
   }
 
@@ -1521,27 +1728,91 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
+  // SKILLS — filter on extracted_skills array (contains any)
+  const sk = sf.skillsPills || [];
+  for (const pill of sk) {
+    const terms = pill.values.map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (terms.length > 0) {
+      // Use cs (contains) operator — job must have at least one of these skills
+      query = query.or(terms.map(t => `extracted_skills.cs.{${t}}`).join(','));
+    }
+  }
+
+  // LEVEL — filter on extracted_seniority
+  const lv = sf.levelPills || [];
+  if (lv.length > 0) {
+    const levels = lv.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (levels.length === 1) {
+      query = query.eq('extracted_seniority', levels[0]);
+    } else if (levels.length > 1) {
+      query = query.in('extracted_seniority', levels);
+    }
+  }
+
+  // JD CONTAINS — full-text search on content_tsv
+  const jd = sf.jdPills || [];
+  for (const pill of jd) {
+    for (const v of pill.values) {
+      const safe = v.replace(/[,()]/g, '').trim();
+      if (safe) {
+        query = query.textSearch('content_tsv', safe, { type: 'websearch', config: 'english' });
+      }
+    }
+  }
+
+  // DEPARTMENT — filter on extracted_department
+  const dp = sf.deptPills || [];
+  if (dp.length > 0) {
+    const depts = dp.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (depts.length === 1) {
+      query = query.eq('extracted_department', depts[0]);
+    } else if (depts.length > 1) {
+      query = query.in('extracted_department', depts);
+    }
+  }
+
   return query;
 }
 
-function parseWhenValue(v) {
-  const lower = v.toLowerCase().trim();
-  const now = new Date();
-  if (lower.includes('today') || lower === '1d') {
-    const d = new Date(now); d.setDate(d.getDate() - 1); return d;
-  } else if (lower === 'week' || lower === '7d' || lower === '7 days' || lower === 'this week' || lower === '1 week') {
-    const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-  } else if (lower.includes('month') && !lower.includes('3')) {
-    const d = new Date(now); d.setDate(d.getDate() - 30); return d;
-  } else if (lower.includes('3 month') || lower === '90d') {
-    const d = new Date(now); d.setDate(d.getDate() - 90); return d;
-  }
-  // Generic "N days" / "Nd" / "last N days" / "N weeks"
-  var m = lower.match(/(\d+)\s*d(?:ays?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1])); return d; }
-  m = lower.match(/(\d+)\s*w(?:eeks?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1]) * 7); return d; }
+/**
+ * Normalize free-text WHEN input to a canonical label.
+ * Returns { label: string, days: number } or null if unrecognizable.
+ * Canonical labels: "today", "yesterday", "last N days", "last N weeks", "last N months"
+ */
+function normalizeWhenValue(raw) {
+  const lower = raw.toLowerCase().trim();
+  if (!lower) return null;
+
+  // Exact matches & common aliases
+  if (lower === 'today' || lower === '1d' || lower === 'now') return { label: 'today', days: 1 };
+  if (lower === 'yesterday' || lower === '2d') return { label: 'yesterday', days: 2 };
+  if (/^(this\s+)?week$/.test(lower) || lower === '7d' || lower === '7 days' || lower === '1 week' || lower === '1w') return { label: 'last 7 days', days: 7 };
+  if (/^(this\s+)?month$/.test(lower) || lower === '30d' || lower === '30 days' || lower === '1 month' || lower === '1m') return { label: 'last 30 days', days: 30 };
+  if (/^3\s*months?$/.test(lower) || lower === '90d' || lower === '90 days' || lower === '3m') return { label: 'last 3 months', days: 90 };
+  if (/^6\s*months?$/.test(lower) || lower === '180d' || lower === '6m') return { label: 'last 6 months', days: 180 };
+
+  // Generic "N days" / "Nd" / "last N days"
+  var m = lower.match(/(?:last\s+)?(\d+)\s*d(?:ays?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n} days`, days: n }; }
+
+  // Generic "N weeks" / "Nw" / "last N weeks"
+  m = lower.match(/(?:last\s+)?(\d+)\s*w(?:eeks?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 7} days`, days: n * 7 }; }
+
+  // Generic "N months" / "Nm" / "last N months"
+  m = lower.match(/(?:last\s+)?(\d+)\s*m(?:onths?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 30} days`, days: n * 30 }; }
+
   return null;
+}
+
+function parseWhenValue(v) {
+  const result = normalizeWhenValue(v);
+  if (!result) return null;
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(d.getDate() - result.days);
+  return d;
 }
 
 function getCheckedSavedFilters() {
@@ -1565,7 +1836,7 @@ async function searchJobs(page = 0) {
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && !hasBuilderPills) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
@@ -1609,6 +1880,15 @@ async function searchJobs(page = 0) {
     }
 
     // Check that at least one filter has real criteria
+    console.log('[searchJobs] filtersToRun:', filtersToRun.length, 'filters');
+    filtersToRun.forEach((sf, i) => {
+      console.log(`[searchJobs] filter[${i}]:`,
+        'what=', (sf.whatPills || sf.pills || []).flatMap(p => p.values),
+        'where=', (sf.wherePills || []).flatMap(p => p.values),
+        'when=', (sf.whenPills || []).flatMap(p => p.values),
+        'who=', (sf.whoPills || []).flatMap(p => p.values),
+      );
+    });
     const hasRealCriteria = filtersToRun.some(sf => {
       const w = sf.whatPills || sf.pills || [];
       const wh = sf.wherePills || [];
@@ -1621,7 +1901,7 @@ async function searchJobs(page = 0) {
     });
 
     if (!hasRealCriteria) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
         <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
       </td></tr>`;
@@ -1654,6 +1934,12 @@ async function searchJobs(page = 0) {
     // Hidden job IDs to exclude from queries
     const hiddenIds = hiddenJobIds.map(h => h.id);
 
+    // Check if relevance sort is active and JD/text search terms exist
+    const relevanceSort = jobSortStack.length > 0 && jobSortStack[0].field === 'relevance';
+    const jdTerms = (filtersToRun[0]?.jdPills || []).flatMap(p => p.values).filter(Boolean);
+    const whatTerms = (filtersToRun[0]?.whatPills || filtersToRun[0]?.pills || []).flatMap(p => p.values).filter(Boolean);
+    const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
+
     if (filtersToRun.length === 1) {
       // Single filter — straightforward query with count + pagination
       let query = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -1664,7 +1950,7 @@ async function searchJobs(page = 0) {
 
       // Multi-sort (skip 'level' — client-side only)
       for (const s of jobSortStack) {
-        if (s.field === 'level' || s.field === 'match') continue;
+        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
         query = query.order(s.field, { ascending: s.asc });
       }
 
@@ -1685,7 +1971,7 @@ async function searchJobs(page = 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
         }
         for (const s of jobSortStack) {
-          if (s.field === 'level' || s.field === 'match') continue;
+          if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
           q = q.order(s.field, { ascending: s.asc });
         }
         q = q.range(0, perFilter - 1);
@@ -1734,14 +2020,19 @@ async function searchJobs(page = 0) {
     // Hidden jobs already excluded at query level — no client-side filter needed
     currentJobs = allJobs;
 
-    // Update filter count display
-    $('#filter-count').innerHTML = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    // Update filter count display — include WHEN notice if time-filtered
+    const activeWhenPills = filtersToRun.flatMap(f => (f.whenPills || []).flatMap(p => p.values)).filter(Boolean);
+    let filterCountHtml = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    if (activeWhenPills.length > 0) {
+      filterCountHtml += ` <span style="color:var(--purple);font-size:11px;font-weight:600;margin-left:6px;">⏱ ${activeWhenPills[0]}</span>`;
+    }
+    $('#filter-count').innerHTML = filterCountHtml;
 
     // Update top stat cards
     await updateJobStatsFromFilters(filtersToRun);
 
     if (currentJobs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match — try broadening your search or adjusting your filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
@@ -1770,6 +2061,33 @@ async function searchJobs(page = 0) {
 
     // Client-side match sort
     const matchSort = jobSortStack.find(s => s.field === 'match');
+
+    // Relevance sort — score jobs by how many search terms appear in title
+    const relevanceSortActive = jobSortStack.find(s => s.field === 'relevance');
+    if (relevanceSortActive && searchTerms) {
+      const terms = searchTerms.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      if (terms.length > 0) {
+        allJobs.forEach(j => {
+          const titleLower = (j.title || '').toLowerCase();
+          const locLower = (j.location || '').toLowerCase();
+          const compLower = (j.company_name || '').toLowerCase();
+          let score = 0;
+          for (const t of terms) {
+            if (titleLower.includes(t)) score += 3;
+            if (compLower.includes(t)) score += 1;
+            if (locLower.includes(t)) score += 1;
+          }
+          // Boost if skills match
+          if (j.extracted_skills && j.extracted_skills.length > 0) {
+            for (const t of terms) {
+              if (j.extracted_skills.some(s => s.includes(t))) score += 2;
+            }
+          }
+          j._relevanceScore = score;
+        });
+        allJobs.sort((a, b) => (b._relevanceScore || 0) - (a._relevanceScore || 0));
+      }
+    }
     if (matchSort) {
       currentJobs.sort((a, b) => {
         const ra = jobMatchScores[a.greenhouse_id];
@@ -1791,7 +2109,7 @@ async function searchJobs(page = 0) {
   } catch (e) {
     console.error('Search error:', e);
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px 12px;">
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
     </td></tr>`;
   }
@@ -1850,14 +2168,18 @@ async function updateJobStatsFromFilters(filters) {
     const statsPromises = effectiveFilters.flatMap(sf => {
       const locIds = sf._statsLocationIds || null;
 
+      // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
+      // This prevents TOTAL < NEW TODAY which is mathematically impossible
+      const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
       let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q = buildFilterQuery(sf, q, locIds);
+      q = buildFilterQuery(sfNoWhen, q, locIds);
       q = excludeHidden(q);
 
+      // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q2 = buildFilterQuery(sf, q2, locIds);
+      q2 = buildFilterQuery(sfNoWhen, q2, locIds);
       q2 = excludeHidden(q2);
-      q2 = q2.gte('updated_at', last24h.toISOString());
+      q2 = q2.gte('first_seen_at', last24h.toISOString());
 
       const promises = [
         q.then(r => ({ type: 'total', count: r.count || 0 })),
@@ -1911,9 +2233,45 @@ async function updateJobStatsFromFilters(filters) {
 function updateJobStats(total, companies, newSinceLogin, newToday) {
   $('#j-total').textContent = total.toLocaleString();
   $('#j-companies').textContent = companies.toLocaleString();
-  $('#j-new-login').textContent = newSinceLogin.toLocaleString();
+  if ($('#j-new-login')) $('#j-new-login').textContent = newSinceLogin.toLocaleString();
   $('#j-new').textContent = newToday.toLocaleString();
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+  // Update intel insight card with contextual data
+  updateIntelInsight(total, companies, newToday);
+}
+
+function updateIntelInsight(total, companies, newToday) {
+  var titleEl = $('#intel-insight-title');
+  var subEl = $('#intel-insight-sub');
+  if (!titleEl) return;
+
+  // Build contextual insight from actual filter/job data
+  var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+  var withSalary = jobs.filter(function(j) { return j.salary_min > 0; });
+  var filterName = '';
+  try {
+    var sf = typeof savedFilters !== 'undefined' ? savedFilters : [];
+    var active = sf.find(function(f) { return f.active; });
+    if (active) filterName = active.name || '';
+  } catch(e) {}
+
+  if (withSalary.length >= 3) {
+    // Salary insight
+    var salaries = withSalary.map(function(j) { return j.salary_max || j.salary_min; }).sort(function(a,b) { return a - b; });
+    var p25 = salaries[Math.floor(salaries.length * 0.25)];
+    var p75 = salaries[Math.floor(salaries.length * 0.75)];
+    var fmtK = function(n) { return '$' + Math.round(n / 1000) + 'k'; };
+    titleEl.textContent = 'Roles in your feed pay ' + fmtK(p25) + ' – ' + fmtK(p75);
+    subEl.textContent = 'Based on ' + withSalary.length + ' of ' + total + ' jobs with salary data' + (filterName ? ' in "' + filterName + '"' : '');
+  } else if (newToday > 0) {
+    // New jobs insight
+    titleEl.textContent = newToday + ' new ' + (newToday === 1 ? 'job' : 'jobs') + ' posted today across ' + companies + ' companies';
+    subEl.textContent = 'Fresh listings sourced direct from company career pages' + (filterName ? ' matching "' + filterName + '"' : '');
+  } else {
+    // Fallback
+    titleEl.textContent = total + ' jobs across ' + companies + ' companies in your feed';
+    subEl.textContent = 'All sourced direct from company career pages — no recycled posts';
+  }
 }
 
 // Format salary for display — shows currency prefix for non-USD, rate suffix for non-annual
@@ -2120,7 +2478,8 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   let html = '';
   let newCount = 0;
   for (const job of jobs) {
-    const daysAgo = job.updated_at ? Math.floor((now - new Date(job.updated_at)) / 86400000) : '—';
+    const jobDate = job.first_seen_at || job.updated_at;
+    const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : '—';
     const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
     const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
 
@@ -2163,11 +2522,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
+      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
       <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
-      <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
@@ -2176,13 +2534,13 @@ function renderJobRows(jobs, total, page, filtersToRun) {
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="8"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td></td><td colspan="7"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
   // Pagination row
   const totalPages = Math.ceil(total / JOBS_PER_PAGE);
   if (totalPages > 1) {
-    html += `<tr><td colspan="10" style="text-align:center;padding:16px;">
+    html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
       <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
         ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
         <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>
@@ -2310,6 +2668,18 @@ async function backgroundEnrichSalary() {
 function renderSortPills() {
   const container = $('#sort-pills');
   if (!container) return;
+
+  // Dedup guard — remove duplicate fields, keep first occurrence
+  const seen = new Set();
+  jobSortStack = jobSortStack.filter(s => {
+    if (seen.has(s.field)) return false;
+    seen.add(s.field);
+    return true;
+  });
+
+  // Clear existing pills before re-rendering
+  container.querySelectorAll('.sort-pill').forEach(p => p.remove());
+
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
@@ -2323,8 +2693,8 @@ function renderSortPills() {
     const label = labelMap[s.field] || s.field;
     const dirLabel = s.asc ? '↑' : '↓';
     const dirTitle = s.asc
-      ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
-      : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
+      ? (s.field === 'first_seen_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+      : (s.field === 'first_seen_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
     const colors = sortColorMap[s.field] || sortColorMap.title;
 
     const pill = document.createElement('span');
@@ -2355,7 +2725,7 @@ function renderSortPills() {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.idx);
       jobSortStack.splice(idx, 1);
-      if (jobSortStack.length === 0) jobSortStack.push({ field: 'updated_at', asc: false });
+      if (jobSortStack.length === 0) jobSortStack.push({ field: 'first_seen_at', asc: false });
       renderSortPills();
       searchJobs(0);
     });
@@ -2503,7 +2873,7 @@ $$('.job-table th[data-sort]').forEach(th => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
     const field = th.dataset.sort;
-    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
+    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'first_seen_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
     const dbField = fieldMap[field] || 'updated_at';
 
     // If already primary sort, toggle direction
@@ -2571,14 +2941,46 @@ $('#query-builder-who')?.addEventListener('click', e => {
 
 // Input handling — When row
 const qbInputWhen = $('#qb-input-when');
+
+function commitWhenPill() {
+  const raw = qbInputWhen.value.trim();
+  if (!raw) return;
+  // Validate & normalize
+  const norm = normalizeWhenValue(raw);
+  if (!norm) {
+    // Show inline error
+    qbInputWhen.style.borderColor = 'var(--red)';
+    qbInputWhen.style.color = 'var(--red)';
+    let errEl = qbInputWhen.parentElement.querySelector('.when-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'when-error';
+      errEl.style.cssText = 'font-size:10px;color:var(--red);margin-top:2px;position:absolute;bottom:-14px;left:0;white-space:nowrap;';
+      qbInputWhen.parentElement.style.position = 'relative';
+      qbInputWhen.parentElement.appendChild(errEl);
+    }
+    errEl.textContent = 'Try: today, yesterday, 7 days, 2 weeks, month, 3 months';
+    setTimeout(() => {
+      qbInputWhen.style.borderColor = '';
+      qbInputWhen.style.color = '';
+      if (errEl) errEl.remove();
+    }, 4000);
+    return;
+  }
+  // Use the normalized canonical label
+  qbInputWhen.value = '';
+  whenPills.push({ values: [norm.label], type: 'when' });
+  renderAllPills();
+}
+
 qbInputWhen.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+    commitWhenPill();
   } else if (e.key === 'Tab') {
     if (qbInputWhen.value.trim()) {
       e.preventDefault();
-      commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+      commitWhenPill();
       focusNextInput('qb-input-when');
     }
   } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
@@ -2587,7 +2989,7 @@ qbInputWhen.addEventListener('keydown', e => {
   }
 });
 qbInputWhen.addEventListener('blur', () => {
-  commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+  commitWhenPill();
 });
 
 // Input handling — Who row
@@ -2643,8 +3045,99 @@ qbInputWho.addEventListener('input', () => {
 
 
 
-} // end sort-bar guard
 
+
+// ============================================================
+// SKILLS input bindings
+// ============================================================
+const qbInputSkills = $('#qb-input-skills');
+if (qbInputSkills) {
+  qbInputSkills.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+    } else if (e.key === 'Backspace' && qbInputSkills.value === '' && skillsPills.length > 0) {
+      skillsPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputSkills.addEventListener('blur', () => {
+    commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+  });
+  $('#query-builder-skills')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputSkills.focus();
+  });
+}
+
+// ============================================================
+// LEVEL input bindings
+// ============================================================
+const qbInputLevel = $('#qb-input-level');
+if (qbInputLevel) {
+  qbInputLevel.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+    } else if (e.key === 'Backspace' && qbInputLevel.value === '' && levelPills.length > 0) {
+      levelPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputLevel.addEventListener('blur', () => {
+    commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+  });
+  $('#query-builder-level')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputLevel.focus();
+  });
+}
+
+// ============================================================
+// JD CONTAINS input bindings
+// ============================================================
+const qbInputJd = $('#qb-input-jd');
+if (qbInputJd) {
+  qbInputJd.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+    } else if (e.key === 'Backspace' && qbInputJd.value === '' && jdPills.length > 0) {
+      jdPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputJd.addEventListener('blur', () => {
+    commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+  });
+  $('#query-builder-jd')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputJd.focus();
+  });
+}
+
+
+
+// ============================================================
+// DEPARTMENT input bindings
+// ============================================================
+const qbInputDept = $('#qb-input-dept');
+if (qbInputDept) {
+  qbInputDept.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+    } else if (e.key === 'Backspace' && qbInputDept.value === '' && deptPills.length > 0) {
+      deptPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputDept.addEventListener('blur', () => {
+    commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+  });
+  $('#query-builder-dept')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputDept.focus();
+  });
+}
+
+} // end sort-bar guard
 
 // === js/keywords.js ===
 // ============================================================
@@ -4637,11 +5130,29 @@ function updateReadinessSidePanels(scores) {
   var indices = Object.keys(scores);
   for (var si = 0; si < indices.length; si++) {
     var ri = indices[si];
+    // Legacy: readiness-side-{ri} inside old layout
     var existing = document.getElementById('readiness-side-' + ri);
     if (existing) {
       var tmp = document.createElement('div');
       tmp.innerHTML = buildReadinessSide(ri, scores[ri]);
       existing.replaceWith(tmp.firstChild);
+    }
+
+    // New row layout: ai-panel-content-{ri}
+    var panelContent = document.getElementById('ai-panel-content-' + ri);
+    if (panelContent) {
+      panelContent.innerHTML = buildReadinessSide(ri, scores[ri]);
+    }
+
+    // Update inline score badge on new-resume-item row
+    var nriEl = document.getElementById('nri-' + ri);
+    if (nriEl && scores[ri]) {
+      var scoreBadge = nriEl.querySelector('.nri-score');
+      if (scoreBadge) {
+        var s = scores[ri].overallScore;
+        scoreBadge.className = 'nri-score ' + (s >= 70 ? 'high' : s >= 40 ? 'mid' : 'low');
+        scoreBadge.textContent = s + '%';
+      }
     }
 
     // Initialize gap interview + acceptance UI for premium results
@@ -4864,6 +5375,10 @@ document.addEventListener('click', e => {
   if (link && link.dataset.jobid) {
     e.preventDefault();
     openJobModal(link.dataset.jobid);
+    // Log click signal (fire-and-forget)
+    if (typeof sb !== 'undefined' && sb.auth) {
+      sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' }).catch(() => {});
+    }
   }
   // "→" click in preview snippet opens modal
   const more = e.target.closest('.preview-more');
@@ -5682,6 +6197,10 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
 // Modal actions — sync back to feed
 function modalApply(jobId, url) {
   window.open(url, '_blank');
+  // Log apply signal
+  if (typeof sb !== 'undefined' && sb.auth) {
+    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' }).catch(() => {});
+  }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
 
@@ -5732,7 +6251,7 @@ function markAppliedFromModal(jobId) {
     
     // Refresh pipeline in background
     renderPipelineSaved();
-    updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+    updateJobStats($('#j-total').textContent, $('#j-companies').textContent, ($('#j-new-login')||{textContent:'0'}).textContent, $('#j-new').textContent);
   });
 }
 
@@ -5766,7 +6285,7 @@ function modalSave(jobId, btn) {
       }
     }
   }
-  updateJobStats($('#j-total').textContent, $('#j-companies').textContent, $('#j-new-login').textContent, $('#j-new').textContent);
+  updateJobStats($('#j-total').textContent, $('#j-companies').textContent, ($('#j-new-login')||{textContent:'0'}).textContent, $('#j-new').textContent);
 }
 
 function modalHide(jobId) {
@@ -5805,7 +6324,8 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 
   const popup = document.createElement('div');
   popup.className = 'hide-reason-popup';
-  popup.innerHTML = `<h4>Why hide this?</h4>` +
+  popup.innerHTML = `<h4>Why doesn't this belong?</h4>` +
+    `<div style="font-size:10px;color:var(--text-faint);margin:-6px 0 8px;line-height:1.4;">This trains your exclusion filters — hide 3+ and we'll suggest patterns to auto-remove similar jobs.</div>` +
     HIDE_REASONS.map(r =>
       `<button class="hide-reason-btn" data-reason="${r.key}">${r.label}</button>`
     ).join('');
@@ -5847,6 +6367,10 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 function hideJob(jobId, btn) {
   const row = btn.closest('tr');
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
+  // Log hide signal
+  if (typeof sb !== 'undefined' && sb.auth) {
+    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' }).catch(() => {});
+  }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
   if (typeof savedFilters !== 'undefined') {
@@ -5870,6 +6394,10 @@ function toggleSaveJob(jobId, btn) {
     savedJobIds.push(jobId);
     btn.textContent = 'Pipeline ✓';
     btn.classList.add('saved-btn');
+    // Log save signal
+    if (typeof sb !== 'undefined' && sb.auth) {
+      sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' }).catch(() => {});
+    }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
   savePipelineMeta(meta);
@@ -5889,7 +6417,7 @@ function bjUpdateImproveButton() {
   var count = (typeof hiddenJobIds !== 'undefined' ? hiddenJobIds : []).length;
   if (count >= 3) {
     btn.style.display = '';
-    btn.textContent = '\ud83d\udd27 Improve Filters (' + count + ' hidden)';
+    btn.textContent = '\ud83d\udd27 ' + count + ' hidden \u2014 generate exclusions';
   } else {
     btn.style.display = 'none';
   }
@@ -7798,6 +8326,10 @@ $('#clear-filters-btn').addEventListener('click', () => {
   whatNotPills = [];
   whereNotPills = [];
   whoNotPills = [];
+  skillsPills = [];
+  levelPills = [];
+  jdPills = [];
+  deptPills = [];
   renderAllPills();
 });
 
@@ -7842,6 +8374,10 @@ async function commitSaveFilter() {
     whatNotPills: JSON.parse(JSON.stringify(whatNotPills)),
     whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
     whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
+    skillsPills: JSON.parse(JSON.stringify(skillsPills)),
+    levelPills: JSON.parse(JSON.stringify(levelPills)),
+    jdPills: JSON.parse(JSON.stringify(jdPills)),
+    deptPills: JSON.parse(JSON.stringify(deptPills)),
     includeNoSalary: $('#save-filter-include-no-salary').checked,
     includeRemote: $('#save-filter-include-remote').checked,
     createdAt: Date.now(),
@@ -8048,6 +8584,13 @@ function renderSavedFilters() {
     const jToday = sf.jobsToday || '—';
     const jWeek = sf.jobsWeek || '—';
     const jMonth = sf.jobsMonth || '—';
+    const trendBadge = (sf.trendPct !== undefined && Math.abs(sf.trendPct) >= 5 && sf.jobsPrevWeek > 0)
+      ? (() => {
+          var c = sf.trendPct > 0 ? '#4a9a6b' : '#c06060';
+          var a = sf.trendPct > 0 ? '↑' : '↓';
+          return '<span class="sf-trend-badge" style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;background:' + c + '15;color:' + c + ';border:1px solid ' + c + '30;" title="vs previous 7 days">' + a + Math.abs(sf.trendPct) + '%</span>';
+        })()
+      : '';
 
     // Build mini pill HTML from saved filter criteria
     let miniPills = '';
@@ -8137,7 +8680,9 @@ function renderSavedFilters() {
           <span class="sf-count sf-count-week">${jWeek}</span>
           <span class="sf-count sf-count-month">${jMonth}</span>
         </div>
+        ${trendBadge}
         <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
+        <span class="sf-health-btn" data-idx="${sf._idx}" title="Filter health & suggestions" style="font-size:10px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">💡</span>
         <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.assignedLevels?.length ? sf.assignedLevels.length + ' levels assigned — click to edit' : sf.levelHierarchy ? 'Custom levels — click to edit' : 'Assign levels to this filter'}" style="font-size:10px;color:${sf.assignedLevels?.length ? 'var(--green)' : sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.assignedLevels?.length || sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
       </div>
     </div>`;
@@ -8168,6 +8713,10 @@ function renderSavedFilters() {
       whatNotPills = JSON.parse(JSON.stringify(sf.whatNotPills || []));
       whereNotPills = JSON.parse(JSON.stringify(sf.whereNotPills || []));
       whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
+      skillsPills = JSON.parse(JSON.stringify(sf.skillsPills || []));
+      levelPills = JSON.parse(JSON.stringify(sf.levelPills || []));
+      jdPills = JSON.parse(JSON.stringify(sf.jdPills || []));
+      deptPills = JSON.parse(JSON.stringify(sf.deptPills || []));
       // Restore includeNoSalary checkbox
       const noSalaryCb = $('#save-filter-include-no-salary');
       if (noSalaryCb) noSalaryCb.checked = sf.includeNoSalary !== false;
@@ -8299,6 +8848,7 @@ async function updateSavedFilterCounts() {
   const last24h = new Date(now.getTime() - 86400000);
   const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
   const monthAgo = new Date(now); monthAgo.setDate(monthAgo.getDate() - 30);
+  const twoWeeksAgo = new Date(now); twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
   for (let i = 0; i < savedFilters.length; i++) {
     const sf = savedFilters[i];
@@ -8336,12 +8886,21 @@ async function updateSavedFilterCounts() {
       q3 = buildFilterQuery(sf, q3, locIds);
       q3 = q3.gte('updated_at', monthAgo.toISOString());
 
-      const [r1, r2, r3] = await Promise.all([q1, q2, q3]);
+      // Previous week (8-14d ago) for trend badge
+      let q4 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+      q4 = buildFilterQuery(sf, q4, locIds);
+      q4 = q4.gte('updated_at', twoWeeksAgo.toISOString()).lt('updated_at', weekAgo.toISOString());
+
+      const [r1, r2, r3, r4] = await Promise.all([q1, q2, q3, q4]);
       const c1 = r1.error ? 0 : (r1.count || 0);
       const c2 = r2.error ? 0 : (r2.count || 0);
       const c3 = r3.error ? 0 : (r3.count || 0);
+      const c4 = r4.error ? 0 : (r4.count || 0);
 
-      console.log(`Filter "${sf.name}": today=${c1}, 7d=${c2}, 30d=${c3}`);
+      // Compute trend: percentage change from prev week to this week
+      var trendPct = c4 > 0 ? Math.round(((c2 - c4) / c4) * 100) : (c2 > 0 ? 100 : 0);
+
+      console.log(`Filter "${sf.name}": today=${c1}, 7d=${c2}, prev7d=${c4}, trend=${trendPct}%, 30d=${c3}`);
 
       // Update the DOM — find by data-idx which matches original array index
       const rows = $$('.sf-item');
@@ -8351,6 +8910,22 @@ async function updateSavedFilterCounts() {
           if (counts[0]) counts[0].textContent = c1.toLocaleString();
           if (counts[1]) counts[1].textContent = c2.toLocaleString();
           if (counts[2]) counts[2].textContent = c3.toLocaleString();
+
+          // Trend badge: show if abs(change) > 5%
+          var existingBadge = row.querySelector('.sf-trend-badge');
+          if (existingBadge) existingBadge.remove();
+          if (Math.abs(trendPct) >= 5 && c4 > 0) {
+            var badge = document.createElement('span');
+            badge.className = 'sf-trend-badge';
+            var color = trendPct > 0 ? '#4a9a6b' : '#c06060';
+            var arrow = trendPct > 0 ? '↑' : '↓';
+            badge.style.cssText = 'font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;background:' + color + '15;color:' + color + ';border:1px solid ' + color + '30;';
+            badge.textContent = arrow + Math.abs(trendPct) + '%';
+            badge.title = 'vs previous 7 days: ' + c4.toLocaleString() + ' → ' + c2.toLocaleString();
+            // Insert after the counts div
+            var countsDiv = row.querySelector('.sf-item-counts');
+            if (countsDiv) countsDiv.parentNode.insertBefore(badge, countsDiv.nextSibling);
+          }
         }
       });
 
@@ -8358,6 +8933,8 @@ async function updateSavedFilterCounts() {
       savedFilters[i].jobsToday = c1;
       savedFilters[i].jobsWeek = c2;
       savedFilters[i].jobsMonth = c3;
+      savedFilters[i].jobsPrevWeek = c4;
+      savedFilters[i].trendPct = trendPct;
     } catch (e) {
       console.error(`Count error for filter ${i} "${sf.name}":`, e);
     }
@@ -8962,7 +9539,18 @@ async function savePipelineEntry(jobId, meta) {
       .select('id')
       .single();
     if (error) throw error;
-    if (data) meta._dbId = data.id;
+    if (data) {
+      var isNew = !meta._dbId;
+      meta._dbId = data.id;
+      if (isNew && typeof posthog !== 'undefined') {
+        posthog.capture('pipeline_entry_created', {
+          job_id: jobId,
+          stage: meta.stage || 'saved',
+          company: meta.companyName || meta.company || '',
+          ats_source: meta.atsSource || 'greenhouse'
+        });
+      }
+    }
   } catch (e) {
     console.error('[BJ] Pipeline save error:', e);
   }
@@ -9095,6 +9683,16 @@ function movePipelineStage(jobId, newStage) {
 
   // Save to Supabase (async, non-blocking for UI)
   savePipelineEntry(jobId, m);
+
+  // PostHog: track stage changes
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('pipeline_stage_changed', {
+      job_id: jobId,
+      new_stage: newStage,
+      company: m.companyName || '',
+      company_domain: m.companyDomain || ''
+    });
+  }
 
   // Keep legacy arrays in sync
   if (newStage !== 'saved' && !appliedJobIds.includes(jobId)) {
@@ -9419,18 +10017,32 @@ async function renderPipeline() {
       // Inline signal card (hidden by default, toggled by dot click)
       if (pendingSig) {
         const isSignal = pendingSig.signal_source !== 'time_based';
+        const isCalendar = pendingSig.signal_source === 'calendar';
         const borderColor = isSignal ? 'var(--accent)' : '#f59e0b';
-        const icon = isSignal ? '✉' : '⏰';
-        const headerText = isSignal
-          ? 'Activity detected for ' + title + ' at ' + company
-          : 'Time to check in on ' + title + ' at ' + company;
+        const icon = isCalendar ? '📅' : isSignal ? '✉' : '⏰';
+        const headerText = isCalendar
+          ? 'Interview detected for ' + title + ' at ' + company
+          : isSignal
+            ? 'Activity detected for ' + title + ' at ' + company
+            : 'Time to check in on ' + title + ' at ' + company;
         const evidence = pendingSig.evidence_preview || '';
+        // Interview round badge from calendar metadata
+        const meta = pendingSig.evidence_metadata || {};
+        const roundLabel = meta.interview_round
+          ? { final: 'Final Round', onsite: 'On-site', panel: 'Panel', technical: 'Technical', hm: 'Hiring Manager', phone_screen: 'Phone Screen', intro: 'Intro', '1': 'Round 1', '2': 'Round 2', late: 'Late Stage' }[meta.interview_round] || meta.interview_round
+          : null;
 
         html += '<tr class="pl-signal-row" id="signal-card-' + pendingSig.id + '" style="display:none;">';
         html += '<td colspan="12" style="padding:0;">';
         html += '<div class="pl-signal-card" style="border-left:3px solid ' + borderColor + ';">';
         html += '<div class="pl-signal-header"><span class="pl-signal-icon">' + icon + '</span> ' + headerText + '</div>';
         if (evidence) html += '<div class="pl-signal-evidence">' + evidence + '</div>';
+        if (roundLabel) html += '<div class="pl-signal-round"><span class="pl-round-badge">' + roundLabel + '</span></div>';
+        if (pendingSig.confidence) {
+          const confPct = Math.round(pendingSig.confidence * 100);
+          const confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+          html += '<div class="pl-signal-confidence" style="color:' + confColor + ';font-size:11px;margin:2px 0;">' + confPct + '% confidence</div>';
+        }
 
         if (isSignal && pendingSig.proposed_stage) {
           // Signal confirmation: Confirm / Different stage / Dismiss
@@ -10891,7 +11503,7 @@ async function updatePoorMatchSuggestions() {
   const sugContainer = $('#tuning-suggestions');
 
   if (hiddenJobIds.length === 0) {
-    container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">No hidden jobs yet. Hide irrelevant jobs from the feed and reasons will be tracked here.</span>';
+    container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Nothing dismissed yet. When you hide jobs from the feed, they appear here — and we start learning what to filter out automatically.</span>';
     if (sugContainer) sugContainer.innerHTML = '';
     return;
   }
@@ -10921,7 +11533,23 @@ async function updatePoorMatchSuggestions() {
 
   // Show recent hidden jobs (newest first, max 20)
   const recent = [...hiddenJobIds].reverse().slice(0, 20);
-  let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} hidden job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
+  let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} dismissed job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
+
+  // Pre-compute title word frequencies for per-card annotations
+  const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
+  const titleWordCounts = {};
+  const companyCountsAll = {};
+  hiddenJobIds.forEach(h => {
+    if (h.title) {
+      const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+      const seen = new Set();
+      words.forEach(w => { if (!seen.has(w)) { titleWordCounts[w] = (titleWordCounts[w] || 0) + 1; seen.add(w); } });
+    }
+    if (h.company) {
+      const co = h.company.trim();
+      if (co) companyCountsAll[co] = (companyCountsAll[co] || 0) + 1;
+    }
+  });
 
   recent.forEach((h, i) => {
     const reasonLabel = HIDE_REASONS.find(r => r.key === h.reason)?.label || h.reason || 'Hidden';
@@ -10931,13 +11559,29 @@ async function updatePoorMatchSuggestions() {
     const titleHtml = jobUrl
       ? `<a href="${jobUrl}" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text)'">${titleText}</a>`
       : titleText;
+
+    // Per-card pattern notes: show recurring keywords from this job's title
+    let patternNote = '';
+    if (h.title) {
+      const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
+      const recurring = words.filter(w => titleWordCounts[w] >= 2);
+      if (recurring.length > 0) {
+        const unique = [...new Set(recurring)].slice(0, 3);
+        patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">You've dismissed ${Math.max(...unique.map(w => titleWordCounts[w]))} jobs with "${unique.join('", "')}" — block this pattern?</div>`;
+      }
+    }
+    if (!patternNote && h.company && companyCountsAll[h.company.trim()] >= 2) {
+      patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">You've dismissed ${companyCountsAll[h.company.trim()]} jobs from ${h.company} — block this company?</div>`;
+    }
+
     html += `<div class="poor-match-card">
       <div class="poor-match-info">
         <div class="poor-match-title" title="${(h.title||'').replace(/"/g,'&quot;')}">${titleHtml}</div>
         <div class="poor-match-meta">${h.company || ''}${dateStr ? ' · ' + dateStr : ''}</div>
+        ${patternNote}
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
-      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="Analyze this job and create a rule so similar ones stop appearing">✦ Block Similar</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
@@ -10951,38 +11595,17 @@ async function updatePoorMatchSuggestions() {
   // Pattern analysis — suggest exclusions based on common words in hidden job titles/companies
   if (!sugContainer) return;
 
-  // Analyze title words (2+ occurrences)
-  const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
-  const titleWords = {};
-  const compCounts = {};
-
-  hiddenJobIds.forEach(h => {
-    // Count title keywords
-    if (h.title) {
-      const words = h.title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w));
-      const seen = new Set();
-      words.forEach(w => {
-        if (!seen.has(w)) { titleWords[w] = (titleWords[w] || 0) + 1; seen.add(w); }
-      });
-    }
-    // Count companies
-    if (h.company) {
-      const co = h.company.trim();
-      if (co) compCounts[co] = (compCounts[co] || 0) + 1;
-    }
-  });
-
   // Get tuning exclusions to avoid suggesting already-excluded terms
   const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
   const existingTitleExcl = new Set((tuning.titleExcludes || []).map(t => t.toLowerCase()));
   const existingCoExcl = new Set((tuning.companyExcludes || []).map(c => c.toLowerCase()));
 
-  const titleSuggestions = Object.entries(titleWords)
+  const titleSuggestions = Object.entries(titleWordCounts)
     .filter(([w, c]) => c >= 2 && !existingTitleExcl.has(w))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
-  const companySuggestions = Object.entries(compCounts)
+  const companySuggestions = Object.entries(companyCountsAll)
     .filter(([co, c]) => c >= 2 && !existingCoExcl.has(co.toLowerCase()))
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
@@ -10992,10 +11615,12 @@ async function updatePoorMatchSuggestions() {
     return;
   }
 
-  let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Suggested exclusions</div>';
+  let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Patterns We Found</div>';
 
   if (titleSuggestions.length > 0) {
-    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Title keywords appearing in multiple hidden jobs:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+    const topWord = titleSuggestions[0];
+    sugHtml += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;padding:8px 12px;background:var(--bg-input);border-radius:8px;border-left:3px solid var(--warm);">The word <strong>"${topWord[0]}"</strong> shows up in ${topWord[1]} of the ${hiddenJobIds.length} jobs you've dismissed. Add it as a rule and these stop appearing in your feed.</div>`;
+    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Click any keyword to block jobs containing it:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     titleSuggestions.forEach(([word, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('title', '${word}', this)">${word} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
     });
@@ -11003,7 +11628,7 @@ async function updatePoorMatchSuggestions() {
   }
 
   if (companySuggestions.length > 0) {
-    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you frequently hide:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you keep dismissing — click to block all future jobs from them:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     companySuggestions.forEach(([co, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('company', '${co.replace(/'/g, "\\'")}', this)">${co} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
     });
@@ -11286,6 +11911,58 @@ function renderResumes() {
 
   const activeResumes = resumes.filter(r => !r.archived);
   const archivedResumes = resumes.filter(r => r.archived);
+
+  // If no active resumes in localStorage but user is authenticated, attempt cloud recovery
+  if (activeResumes.length === 0 && !renderResumes._syncAttempted && typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser) {
+    renderResumes._syncAttempted = true;
+    console.log('[resume-render] No active resumes — triggering cloud recovery');
+    (async function() {
+      try {
+        var userId = currentUser.id;
+        var { data: archiveRows, error } = await sb.from('resume_archive')
+          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot')
+          .eq('user_id', userId)
+          .eq('is_active', true);
+        if (error || !archiveRows || archiveRows.length === 0) {
+          console.log('[resume-render] No active resumes in archive either:', error?.message || 'none found');
+          return;
+        }
+        console.log('[resume-render] Found', archiveRows.length, 'active resumes in archive — syncing');
+        var dirty = false;
+        archiveRows.forEach(function(row) {
+          // Check if already exists in resumes array
+          var exists = resumes.some(function(r) { return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path); });
+          if (exists) return;
+          var stub = {
+            id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+            name: row.display_name || 'Synced Resume',
+            fileName: row.display_name || 'synced-resume',
+            size: row.file_size_bytes ? (row.file_size_bytes < 1048576 ? Math.round(row.file_size_bytes / 1024) + ' KB' : (row.file_size_bytes / 1048576).toFixed(1) + ' MB') : '—',
+            filterIds: (row.metadata_snapshot && row.metadata_snapshot.filter_ids) || [],
+            uploadedAt: row.created_at ? new Date(row.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+            levelLabel: (row.metadata_snapshot && row.metadata_snapshot.level_label) || '',
+            levelColor: (row.metadata_snapshot && row.metadata_snapshot.level_color) || '',
+            archived: false,
+            extractedText: '',
+            keywords: [],
+            textStatus: 'needs-reextract',
+            storagePath: row.storage_path,
+            archiveId: row.resume_id
+          };
+          resumes.push(stub);
+          dirty = true;
+          console.log('[resume-render] Recovered resume from archive:', row.display_name);
+        });
+        if (dirty) {
+          saveResumes();
+          renderResumes();
+        }
+      } catch (e) {
+        console.warn('[resume-render] Cloud recovery failed:', e);
+      }
+    })();
+  }
+
   countEl.textContent = activeResumes.length;
   archivedEl.textContent = archivedResumes.length;
 
@@ -11424,37 +12101,69 @@ function renderResumes() {
       ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">${jobsApplied} applied \u00b7 ${responded} responded \u00b7 ${responseRate}% rate</div>`
       : '';
 
+    // Score badge from cache
+    const cachedScore = readinessCache && readinessCache.scores && readinessCache.scores[i];
+    const scoreVal = cachedScore ? cachedScore.overallScore : null;
+    const scoreClass = scoreVal >= 75 ? 'high' : scoreVal >= 50 ? 'mid' : scoreVal !== null ? 'low' : 'none';
+    const scoreLabel = scoreVal >= 75 ? 'Strong' : scoreVal >= 50 ? 'Partial' : scoreVal !== null ? 'Weak' : '';
+    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
+
+    // Filter dots (compact representation for row)
+    const filterDots = sf.map((f, fi) => {
+      const color = filterColors[fi % filterColors.length];
+      const isActive = assignedIds.includes(f.name);
+      return isActive ? `<span class="nri-filter-dot active" style="background:${color};" title="${f.name}"></span>` : '';
+    }).filter(Boolean).join('');
+
     return `
-    <div class="resume-row ${isPlaceholder ? 'is-placeholder' : ''}">
-      <div class="resume-card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div class="rc-icon-sm ${icon.cls}" style="font-size:9px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-          <div style="min-width:0;flex:1;">
-            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}</div>
-            ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
-          </div>
-          ${gdriveIcon}${tierBadge}
+    <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
+      <div class="nri-row">
+        <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
+        <div class="nri-info">
+          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}</div>
+          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${r.levelLabel ? ' \u00b7 ' + r.levelLabel : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
         </div>
-        ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-        <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
-        ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
-        <div style="margin:8px 0;">${levelSelect}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">${filterPills}</div>
-        ${statsLine}
-        <div class="rc-actions">
-          <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
-          <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
-          <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
-          <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+        <div class="nri-filters">${filterDots}</div>
+        <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
+        <div class="nri-actions" onclick="event.stopPropagation()">
+          <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
+          <button onclick="renameResume(${i})" title="Rename">\u270e</button>
+          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
+          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715 Delete</button>
         </div>
       </div>
-      <div class="readiness-side-slot" id="readiness-side-slot-${i}">${
-        !isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]
-          ? buildReadinessSide(i, readinessCache.scores[i])
-          : (assignedIds.length > 0 && !isPlaceholder
-              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;gap:8px;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep</button></div>'
-              : '<div class="readiness-side" id="readiness-side-' + i + '"></div>')
-      }</div>
+      <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
+      <!-- AI Analysis Panel (expanded on click) -->
+      <div class="ai-panel" id="ai-panel-${i}">
+        <div id="ai-panel-content-${i}">
+          ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
+            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep Analyze</button></div>'
+            : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
+              ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
+              : '<div style="font-size:12px;color:var(--text-faint);">Assign a filter to see readiness analysis</div>') + '</div>')}
+        </div>
+        ${!isPlaceholder ? `
+        <div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Filters:</span>
+          ${filterPills}
+        </div>
+        <div style="margin-top:8px;">${levelSelect}</div>` : ''}
+        <!-- Rewrite Interview Promo -->
+        ${cachedScore && cachedScore.overallScore < 85 && !isPlaceholder ? `
+        <div class="ai-rewrite-promo">
+          <div class="ai-rewrite-promo-text">
+            <h4>\u2728 Guided Rewrite Interview</h4>
+            <p>Fill gaps, quantify impact, and strategically position your experience. Get a tailored rewrite with a side-by-side diff.</p>
+            <div class="ai-interview-preview">
+              <div class="ai-interview-step"><strong>1</strong>Fill Gaps</div>
+              <div class="ai-interview-step"><strong>2</strong>Quantify</div>
+              <div class="ai-interview-step"><strong>3</strong>Position</div>
+              <div class="ai-interview-step"><strong>4</strong>Rewrite</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="event.stopPropagation();launchRewriteInterview(${i})" style="white-space:nowrap;flex-shrink:0;">Start Rewrite</button>
+        </div>` : ''}
+      </div>
     </div>`;
   }
 
@@ -11549,8 +12258,8 @@ function renderResumeArchive(archivedResumes) {
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
-      <button class="rc-btn rc-rename" onclick="unarchiveResume(${i})" style="background:var(--accent);">Restore</button>
-      <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+      <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
+      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})">Delete</button>
     </div>`;
   }).join('');
 
@@ -11642,20 +12351,160 @@ window.setResumeLevel = function(idx, selectEl) {
   renderResumes();
 };
 
-window.archiveResume = function(idx) {
+window.archiveResume = async function(idx) {
   if (!confirm(`Archive "${resumes[idx].name}"? It will be moved to the archive section.`)) return;
+  // Write to Supabase first (source of truth) — only update local state on success
+  if (resumes[idx].archiveId && typeof sb !== 'undefined') {
+    try {
+      const { error } = await sb.from('resume_archive')
+        .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
+        .eq('resume_id', resumes[idx].archiveId);
+      if (error) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write failed:', error); return; }
+    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write exception:', e); return; }
+  }
   resumes[idx].archived = true;
   resumes[idx].archivedAt = new Date().toLocaleDateString();
+  resumes[idx]._archivedLocallyAt = Date.now();
   saveResumes();
   renderResumes();
 };
 
-window.unarchiveResume = function(idx) {
+window.unarchiveResume = async function(idx) {
+  // Write to Supabase first (source of truth) — only update local state on success
+  if (resumes[idx].archiveId && typeof sb !== 'undefined') {
+    try {
+      const { error } = await sb.from('resume_archive')
+        .update({ is_active: true, is_archived: false, archived_at: null })
+        .eq('resume_id', resumes[idx].archiveId);
+      if (error) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write failed:', error); return; }
+    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write exception:', e); return; }
+  }
   resumes[idx].archived = false;
   delete resumes[idx].archivedAt;
+  resumes[idx]._archivedLocallyAt = Date.now();
   saveResumes();
   renderResumes();
 };
+
+// ─── Resume Archive Reconciliation ───
+// Syncs localStorage bj_resumes ↔ Supabase resume_archive on page load.
+// resume_archive is the source of truth for metadata; localStorage is cache.
+async function reconcileResumeArchive() {
+  if (typeof sb === 'undefined' || !currentUser) return;
+  try {
+    var userId = currentUser.id;
+    var { data: archiveRows, error } = await sb
+      .from('resume_archive')
+      .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at')
+      .eq('user_id', userId);
+    if (error || !archiveRows) { console.warn('[resume-sync] Failed to fetch archive:', error); return; }
+
+    // Build lookup: storage_path → archive row
+    var byPath = {};
+    var byName = {};
+    archiveRows.forEach(function(row) {
+      if (row.storage_path) byPath[row.storage_path] = row;
+      if (row.display_name) {
+        var key = row.display_name.toLowerCase();
+        if (!byName[key]) byName[key] = row;
+      }
+    });
+
+    // Track which archive rows got matched
+    var matchedArchiveIds = {};
+    var dirty = false;
+
+    // Step 1: Link localStorage resumes to archive rows
+    resumes.forEach(function(r) {
+      var match = null;
+      if (r.storagePath && byPath[r.storagePath]) {
+        match = byPath[r.storagePath];
+      } else if (r.name && byName[r.name.toLowerCase()]) {
+        match = byName[r.name.toLowerCase()];
+      }
+      if (match) {
+        if (r.archiveId !== match.resume_id) {
+          r.archiveId = match.resume_id;
+          dirty = true;
+        }
+        matchedArchiveIds[match.resume_id] = true;
+        // Sync archive state → localStorage (skip if recently changed locally)
+        const recentlyChanged = r._archivedLocallyAt && (Date.now() - r._archivedLocallyAt) < 60000;
+        if (!recentlyChanged) {
+          if (match.is_archived && !r.archived) {
+            r.archived = true;
+            r.archivedAt = match.created_at ? new Date(match.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+            dirty = true;
+          } else if (!match.is_archived && match.is_active && r.archived) {
+            r.archived = false;
+            delete r.archivedAt;
+            dirty = true;
+          }
+        }
+      }
+    });
+
+    // Step 2: Insert unmatched localStorage resumes into resume_archive
+    var unmatched = resumes.filter(function(r) { return !r.archiveId && r.storagePath; });
+    for (var i = 0; i < unmatched.length; i++) {
+      var r = unmatched[i];
+      var sizeBytes = 0;
+      var sizeMatch = (r.size || '').match(/([\d.]+)\s*(KB|MB)/i);
+      if (sizeMatch) {
+        sizeBytes = parseFloat(sizeMatch[1]) * (sizeMatch[2].toUpperCase() === 'MB' ? 1048576 : 1024);
+      }
+      var { data: inserted, error: insErr } = await sb.from('resume_archive').insert({
+        user_id: userId,
+        display_name: r.name || r.fileName || 'Untitled',
+        file_hash: r.id || '',
+        file_size_bytes: Math.round(sizeBytes) || 0,
+        file_type: /\.pdf$/i.test(r.fileName || '') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        storage_path: r.storagePath,
+        is_active: !r.archived,
+        is_archived: !!r.archived
+      }).select('resume_id').single();
+      if (!insErr && inserted) {
+        r.archiveId = inserted.resume_id;
+        dirty = true;
+        console.log('[resume-sync] Inserted into archive:', r.name);
+      }
+    }
+
+    // Step 3: Pull active archive rows not in localStorage
+    archiveRows.forEach(function(row) {
+      if (matchedArchiveIds[row.resume_id]) return;
+      if (!row.is_active || row.is_archived) return;
+      // Active resume in DB but missing from localStorage — create stub
+      var stub = {
+        id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        name: row.display_name || 'Synced Resume',
+        fileName: row.display_name || 'synced-resume',
+        size: row.file_size_bytes ? (row.file_size_bytes < 1048576 ? Math.round(row.file_size_bytes / 1024) + ' KB' : (row.file_size_bytes / 1048576).toFixed(1) + ' MB') : '—',
+        filterIds: [],
+        uploadedAt: row.created_at ? new Date(row.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+        levelLabel: '',
+        levelColor: '',
+        archived: false,
+        extractedText: '',
+        keywords: [],
+        textStatus: 'needs-reextract',
+        storagePath: row.storage_path,
+        archiveId: row.resume_id
+      };
+      resumes.push(stub);
+      dirty = true;
+      console.log('[resume-sync] Pulled from archive:', row.display_name);
+    });
+
+    if (dirty) {
+      saveResumes();
+      renderResumes();
+      console.log('[resume-sync] Reconciliation complete — synced ' + resumes.length + ' resumes');
+    }
+  } catch (e) {
+    console.warn('[resume-sync] Reconciliation error:', e);
+  }
+}
 
 // ============================================================
 // RESUME TEXT EXTRACTION (P4)
@@ -11844,6 +12693,41 @@ window.toggleResumeKeywords = function(idx) {
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
 };
 
+// Row click → expand/collapse AI analysis panel (only one at a time)
+var _activeResumePanel = -1;
+window.toggleResumePanel = function(idx, event) {
+  // Don't toggle if clicking action buttons or inputs
+  if (event && event.target.closest('.nri-actions, select, button, input, .rc-filter-pill')) return;
+
+  const panel = document.getElementById('ai-panel-' + idx);
+  const row = document.getElementById('nri-' + idx);
+  if (!panel || !row) return;
+
+  if (_activeResumePanel === idx) {
+    // Collapse current
+    panel.classList.remove('open');
+    row.classList.remove('selected');
+    _activeResumePanel = -1;
+  } else {
+    // Collapse previous
+    if (_activeResumePanel >= 0) {
+      var prevPanel = document.getElementById('ai-panel-' + _activeResumePanel);
+      var prevRow = document.getElementById('nri-' + _activeResumePanel);
+      if (prevPanel) prevPanel.classList.remove('open');
+      if (prevRow) prevRow.classList.remove('selected');
+    }
+    // Expand new
+    panel.classList.add('open');
+    row.classList.add('selected');
+    _activeResumePanel = idx;
+
+    // Track PostHog event
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('resume_panel_expanded', { resume_index: idx, resume_name: resumes[idx]?.name });
+    }
+  }
+};
+
 window.renameResume = function(idx) {
   const current = resumes[idx].name;
   const input = prompt('Resume name:', current);
@@ -11853,8 +12737,87 @@ window.renameResume = function(idx) {
   renderResumes();
 };
 
+// Delete confirmation flow — offers download before permanent deletion
+window.confirmDeleteResume = function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Check if Google Drive is connected
+  var gdrive;
+  try { gdrive = JSON.parse(localStorage.getItem('bj_gdrive') || '{}'); } catch(e) { gdrive = {}; }
+  var gdriveConnected = gdrive && gdrive.connected;
+
+  // Build modal
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.3);';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;';
+  title.textContent = 'Delete "' + (r.name || 'Resume') + '"?';
+
+  var desc = document.createElement('div');
+  desc.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:20px;';
+  desc.textContent = 'This will permanently remove this resume and all associated data. Would you like to save a copy first?';
+
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+  // Save to Google Drive button (if connected)
+  if (gdriveConnected) {
+    var gdriveBtn = document.createElement('button');
+    gdriveBtn.className = 'btn btn-sm';
+    gdriveBtn.style.cssText = 'background:var(--green);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
+    gdriveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg> Save to Google Drive & Delete';
+    gdriveBtn.onclick = function() {
+      downloadResume(idx);
+      overlay.remove();
+      setTimeout(function() { removeResume(idx); }, 500);
+    };
+    btnRow.appendChild(gdriveBtn);
+  }
+
+  // Download to desktop button
+  var downloadBtn = document.createElement('button');
+  downloadBtn.className = 'btn btn-sm';
+  downloadBtn.style.cssText = 'background:var(--accent);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
+  downloadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
+  downloadBtn.onclick = function() {
+    downloadResume(idx);
+    overlay.remove();
+    setTimeout(function() { removeResume(idx); }, 500);
+  };
+  btnRow.appendChild(downloadBtn);
+
+  // Delete without saving
+  var deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn btn-sm';
+  deleteBtn.style.cssText = 'background:var(--red);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;';
+  deleteBtn.textContent = 'Delete Without Saving';
+  deleteBtn.onclick = function() {
+    overlay.remove();
+    removeResume(idx);
+  };
+  btnRow.appendChild(deleteBtn);
+
+  // Cancel
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-sm btn-secondary';
+  cancelBtn.style.cssText = 'padding:8px 16px;font-size:12px;border-radius:8px;cursor:pointer;margin-inline-start:auto;';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = function() { overlay.remove(); };
+  btnRow.appendChild(cancelBtn);
+
+  modal.appendChild(title);
+  modal.appendChild(desc);
+  modal.appendChild(btnRow);
+  overlay.appendChild(modal);
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+};
+
 window.removeResume = function(idx) {
-  if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
   // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
   if (resumes[idx].storagePath && currentUser) {
@@ -12088,6 +13051,22 @@ $('#resume-from-level-btn')?.addEventListener('click', async () => {
 // Init nav dots
 setTimeout(() => { updatePipelineNavDot(); }, 1200);
 
+// Reconcile localStorage ↔ Supabase resume_archive on load
+setTimeout(() => {
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    reconcileResumeArchive();
+  } else {
+    // Wait for auth
+    var waitAuth = setInterval(() => {
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        clearInterval(waitAuth);
+        reconcileResumeArchive();
+      }
+    }, 500);
+    setTimeout(() => clearInterval(waitAuth), 8000);
+  }
+}, 800);
+
 // Auto re-extract DOCX resumes stuck at "no-text" once mammoth.js is loaded
 setTimeout(() => {
   if (typeof mammoth !== 'undefined') {
@@ -12103,6 +13082,102 @@ setTimeout(() => {
     setTimeout(() => clearInterval(waitForMammoth), 10000); // Give up after 10s
   }
 }, 1500);
+// ════════════════════════════════════════════════════════════
+// LAUNCH REWRITE INTERVIEW FROM RESUME ROW
+// ════════════════════════════════════════════════════════════
+
+window.launchRewriteInterview = function(idx) {
+  var r = resumes[idx];
+  if (!r || r.archived) { showToast('Resume not found.', { type: 'error' }); return; }
+
+  // Check extracted text
+  if (!r.extractedText || r.extractedText.length < 50) {
+    showToast('Resume text not ready. Please wait for extraction to complete.', { type: 'error', duration: 4000 });
+    return;
+  }
+
+  // Find assigned filters
+  var assignedFilters = [];
+  if (r.filterAssignments) {
+    for (var key in r.filterAssignments) {
+      if (r.filterAssignments[key]) assignedFilters.push(key);
+    }
+  }
+
+  if (assignedFilters.length === 0) {
+    showToast('Assign this resume to a filter first so we know which roles to target.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Find the weakest filter (lowest readiness score) for max rewrite impact
+  var targetFilterName = assignedFilters[0];
+  var lowestScore = 999;
+  if (readinessCache && readinessCache.scores && readinessCache.scores[idx]) {
+    var filterScores = readinessCache.scores[idx].filters || {};
+    for (var fn in filterScores) {
+      if (assignedFilters.indexOf(fn) >= 0 && filterScores[fn].score < lowestScore) {
+        lowestScore = filterScores[fn].score;
+        targetFilterName = fn;
+      }
+    }
+  }
+
+  // Find a representative job from this filter's loaded feed
+  var targetJobId = null;
+  var targetJobTitle = null;
+  var targetCompany = null;
+
+  // Try feedCache first (loaded jobs from the jobs tab)
+  if (window.feedCache && Array.isArray(window.feedCache)) {
+    var filterObj = savedFilters.find(function(f){ return f.name === targetFilterName; });
+    if (filterObj) {
+      // Find a job from this filter
+      for (var j = 0; j < window.feedCache.length; j++) {
+        var job = window.feedCache[j];
+        if (job && job.id) {
+          targetJobId = job.id;
+          targetJobTitle = job.title || 'Target Role';
+          targetCompany = job.company || '';
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback: use first job from jdCache (locally cached JDs from readiness analysis)
+  if (!targetJobId && window.jdCache) {
+    var jdKeys = Object.keys(window.jdCache);
+    if (jdKeys.length > 0) {
+      targetJobId = jdKeys[0];
+      var jd = window.jdCache[jdKeys[0]];
+      targetJobTitle = (jd && jd.title) || 'Target Role';
+      targetCompany = (jd && jd.company) || '';
+    }
+  }
+
+  if (!targetJobId) {
+    showToast('No job data loaded for this filter yet. Run a readiness analysis first, then try again.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  var matchScore = lowestScore < 999 ? lowestScore : null;
+
+  // Open the existing rewrite panel
+  if (typeof openRewritePanel === 'function') {
+    openRewritePanel(targetJobId, targetJobTitle, targetCompany, r.id, matchScore);
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('rewrite_interview_launched', {
+        resume_index: idx,
+        resume_name: r.name,
+        target_filter: targetFilterName,
+        match_score: matchScore
+      });
+    }
+  } else {
+    showToast('Rewrite module not loaded. Please refresh the page.', { type: 'error' });
+  }
+};
+
 
 // === js/integrations.js ===
 // ============================================================
@@ -12224,15 +13299,28 @@ let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
 let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
 let appMode = localStorage.getItem('bj_app_mode') || 'manual';
 
-// Tab switching
-$$('.app-flow-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    $$('.app-flow-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.app-flow-panel').forEach(p => p.classList.remove('active'));
-    $(`#panel-${tab.dataset.panel}`).classList.add('active');
+// ============================================================
+// SETTINGS PANEL — Rules & Notifications
+// ============================================================
+
+window.toggleAppSettings = function() {
+  var panel = document.getElementById('app-settings-panel');
+  var btn = document.getElementById('app-settings-toggle');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !isOpen);
+};
+
+window.switchSettingsTab = function(tab) {
+  document.querySelectorAll('.app-settings-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.settings === tab);
   });
-});
+  var rulesEl = document.getElementById('settings-content-rules');
+  var notifEl = document.getElementById('settings-content-notifications');
+  if (rulesEl) rulesEl.style.display = tab === 'rules' ? 'block' : 'none';
+  if (notifEl) notifEl.style.display = tab === 'notifications' ? 'block' : 'none';
+};
 
 // Mode selection
 $$('.app-mode-select').forEach(btn => {
@@ -12241,10 +13329,14 @@ $$('.app-mode-select').forEach(btn => {
       b.classList.remove('active');
       b.className = b.className.replace(/btn-primary/g, 'btn-secondary');
       b.style.border = '';
+      const sub = b.querySelector('div:last-child');
+      if (sub) sub.style.color = 'var(--text-dim)';
     });
     btn.classList.add('active');
     btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
     btn.style.border = '2px solid var(--accent)';
+    const activeSub = btn.querySelector('div:last-child');
+    if (activeSub) activeSub.style.color = 'rgba(255,255,255,0.85)';
     appMode = btn.dataset.mode;
     localStorage.setItem('bj_app_mode', appMode);
   });
@@ -12252,14 +13344,17 @@ $$('.app-mode-select').forEach(btn => {
 
 // Set active mode on load
 $$('.app-mode-select').forEach(btn => {
+  const sub = btn.querySelector('div:last-child');
   if (btn.dataset.mode === appMode) {
     btn.classList.add('active');
     btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
     btn.style.border = '2px solid var(--accent)';
+    if (sub) sub.style.color = 'rgba(255,255,255,0.85)';
   } else {
     btn.classList.remove('active');
     btn.className = btn.className.replace(/btn-primary/g, 'btn-secondary');
     btn.style.border = '';
+    if (sub) sub.style.color = 'var(--text-dim)';
   }
 });
 
@@ -12284,10 +13379,42 @@ function renderAppQueue() {
   const pending = appQueue.filter(a => a.status === 'pending' || a.status === 'sent').length;
   const submitted = [...appQueue, ...appHistory].filter(a => a.status === 'submitted').length;
   const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
-  $('#a-queued').textContent = queued;
-  $('#a-pending').textContent = pending;
-  $('#a-submitted').textContent = submitted;
-  $('#a-failed').textContent = failed;
+  const _el = id => document.getElementById(id);
+  if (_el('a-queued')) _el('a-queued').textContent = queued;
+  if (_el('a-submitted')) _el('a-submitted').textContent = submitted;
+
+  // Hero lifecycle stats
+  const allApps = (typeof appHistory !== 'undefined' && Array.isArray(appHistory)) ? [...appQueue, ...appHistory] : [...appQueue];
+  const totalSent = allApps.filter(a => a.status === 'submitted').length;
+  const responded = allApps.filter(a =>
+    a.ghostStatus === 'responded' || a.pipelineStage === 'responded' ||
+    a.pipelineStage === 'interview' || a.pipelineStage === 'offer'
+  ).length;
+  if (_el('a-response-rate')) {
+    _el('a-response-rate').textContent = totalSent > 0
+      ? Math.round((responded / totalSent) * 100) + '%'
+      : '—';
+  }
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const thisWeek = allApps.filter(a =>
+    a.status === 'submitted' && new Date(a.submittedAt || a.addedAt).getTime() > weekAgo
+  ).length;
+  if (_el('a-this-week')) _el('a-this-week').textContent = thisWeek;
+
+  // Cross-tab ghost intel
+  const ghostStale = allApps.filter(a => {
+    if (a.status !== 'submitted') return false;
+    const days = (Date.now() - new Date(a.submittedAt || a.addedAt).getTime()) / 86400000;
+    return days > 7;
+  });
+  const intelSlot = document.getElementById('app-intel-slot');
+  const intelTitle = document.getElementById('app-intel-title');
+  const intelSub = document.getElementById('app-intel-sub');
+  if (intelSlot && intelTitle && ghostStale.length > 0 && thisWeek > 0) {
+    intelTitle.textContent = 'You sent ' + thisWeek + ' application' + (thisWeek !== 1 ? 's' : '') + ' this week — ' + ghostStale.length + ' ' + (ghostStale.length === 1 ? 'is' : 'are') + ' past the 7-day mark with no response.';
+    intelSub.textContent = 'Review stale applications and take action before they go cold.';
+    intelSlot.style.display = '';
+  }
 
   if (navBadge && appQueue.length > 0) {
     navBadge.style.display = '';
@@ -12468,6 +13595,10 @@ const NOTIF_TYPES = [
   { id: 'autorefill_success', label: 'Auto-refill confirmations', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
   { id: 'autorefill_failed', label: 'Auto-refill failed', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
   { id: 'credit_exhausted', label: 'Credits exhausted mid-month', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  // v2: Pipeline signals
+  { id: 'signal_calendar', label: 'Calendar interview detected', tier: 'realtime', defaultFreq: 'realtime', smsDefault: true },
+  { id: 'signal_email', label: 'Email signal detected', tier: 'realtime', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'pipeline_prompt', label: 'Pipeline check-in prompts', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
 ];
 
 let notifPrefs = null;   // notification_preferences row
@@ -14192,6 +15323,10 @@ function switchAdminTab(tabId) {
       case 'ghost': loadGhostTab(); break;
       case 'feedback': loadFeedbackTab(); break;
       case 'merch': loadMerchTab(); break;
+      case 'signals': loadAdminSignals(); break;
+      case 'content': loadContentTab(); break;
+      case 'enrichment': loadEnrichmentTab(); break;
+      case 'mock-ats': loadMockAtsTab(); break;
     }
   }
 }
@@ -14238,6 +15373,8 @@ async function loadBoardHealth() {
     setAdminText('ah-total', fmtAdminNum(d.total_feeds));
     setAdminText('ah-with-jobs', fmtAdminNum(d.feeds_with_jobs));
     setAdminText('ah-4xx', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-dead', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-unscraped', fmtAdminNum(d.feeds_never_scraped || 0));
     setAdminText('ah-jobs', fmtAdminNum(d.total_jobs));
 
     var net = (d.jobs_added || 0) - (d.jobs_lost || 0);
@@ -14246,6 +15383,8 @@ async function loadBoardHealth() {
     setDelta('ah-total-delta', d.boards_added, '+');
     setDelta('ah-with-jobs-delta', null);
     setDelta('ah-4xx-delta', d.boards_lost, '+', true);
+    setDelta('ah-dead-delta', null);
+    setDelta('ah-unscraped-delta', null);
     setDelta('ah-jobs-delta', d.jobs_added, '+');
     setDelta('ah-net-delta', d.jobs_lost, '-', true);
 
@@ -14261,17 +15400,20 @@ async function loadBoardHealth() {
       var tbody = document.getElementById('admin-platform-body');
       var tfoot = document.getElementById('admin-platform-foot');
       if (tbody) {
-        var totBoards = 0, totWithJobs = 0, tot4xx = 0, totJobs = 0;
+        var totBoards = 0, totWithJobs = 0, totDead = 0, totUnscraped = 0, totJobs = 0;
         tbody.innerHTML = platform.data.map(function(p) {
           var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
           var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
           var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
-          totBoards += p.total; totWithJobs += p.with_jobs; tot4xx += p.errors_4xx; totJobs += p.jobs;
+          var dead = p.dead || 0;
+          var unscraped = p.never_scraped || 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; totDead += dead; totUnscraped += unscraped; totJobs += p.jobs;
           return '<tr>' +
             '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
             '<td>' + fmtAdminNum(p.total) + '</td>' +
             '<td class="' + pctColor + '">' + activePct + '%</td>' +
-            '<td class="' + (p.errors_4xx > 0 ? 'admin-red' : '') + '">' + p.errors_4xx + '</td>' +
+            '<td class="' + (dead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(dead) + '</td>' +
+            '<td class="' + (unscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(unscraped) + '</td>' +
             '<td>' + fmtAdminNum(p.jobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
             '</tr>';
@@ -14283,7 +15425,8 @@ async function loadBoardHealth() {
             '<td>Total</td>' +
             '<td>' + fmtAdminNum(totBoards) + '</td>' +
             '<td>' + totPct + '%</td>' +
-            '<td class="' + (tot4xx > 0 ? 'admin-red' : '') + '">' + tot4xx + '</td>' +
+            '<td class="' + (totDead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(totDead) + '</td>' +
+            '<td class="' + (totUnscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(totUnscraped) + '</td>' +
             '<td>' + fmtAdminNum(totJobs) + '</td>' +
             '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
             '</tr>';
@@ -14295,6 +15438,80 @@ async function loadBoardHealth() {
     loadFeedHealthCharts();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err);
+  }
+}
+
+// ─── Export Boards CSV ───
+async function exportBoardsCsv(type) {
+  var btn = document.getElementById('export-' + type + '-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exporting…'; }
+  try {
+    var sb = window._bjSupa;
+    if (!sb) throw new Error('Supabase not ready');
+
+    var query = sb.from('ats_companies').select('slug,source,company_name,job_count,last_http_status,last_checked,last_refresh_at,created_at');
+
+    if (type === 'dead') {
+      query = query.eq('last_http_status', 404);
+    } else if (type === 'unscraped') {
+      query = query.is('last_refresh_at', null);
+    } else if (type === 'active') {
+      query = query.gt('job_count', 0);
+    }
+    // 'all' = no extra filter
+
+    query = query.eq('is_active', true).order('source').order('slug');
+
+    var allRows = [];
+    var pageSize = 1000;
+    var page = 0;
+    while (true) {
+      var { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) break;
+      page++;
+      if (page > 100) break; // safety
+    }
+
+    if (allRows.length === 0) {
+      if (typeof showToast === 'function') showToast('No boards found for "' + type + '"', { type: 'warn' });
+      return;
+    }
+
+    // Build CSV
+    var headers = ['slug','source','company_name','job_count','last_http_status','last_checked','last_refresh_at','created_at'];
+    var csvLines = [headers.join(',')];
+    allRows.forEach(function(r) {
+      csvLines.push(headers.map(function(h) {
+        var v = r[h];
+        if (v == null) return '';
+        v = String(v);
+        if (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) {
+          return '"' + v.replace(/"/g, '""') + '"';
+        }
+        return v;
+      }).join(','));
+    });
+
+    var blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'boards-' + type + '-' + dateStr + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
+  } catch (err) {
+    console.error('[Admin] Export error:', err);
+    if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Export ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Boards'; }
   }
 }
 
@@ -16800,6 +18017,555 @@ function escAttr(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// ── Admin: Signals Tab (Phase D) ─────────────────────────────────
+async function loadAdminSignals() {
+  try {
+    // KPIs
+    var total = 0, pending = 0, confirmed = 0, dismissed = 0;
+    var sourceCounts = {};
+    var recentRows = [];
+
+    var { data: signals } = await sb.from('pipeline_signals')
+      .select('id, signal_source, signal_type, proposed_stage, confidence, status, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (signals) {
+      total = signals.length;
+      signals.forEach(function(s) {
+        if (s.status === 'pending_confirmation') pending++;
+        else if (s.status === 'confirmed') confirmed++;
+        else if (s.status === 'dismissed') dismissed++;
+        sourceCounts[s.signal_source] = (sourceCounts[s.signal_source] || 0) + 1;
+      });
+      recentRows = signals.slice(0, 50);
+    }
+
+    var rate = (confirmed + dismissed) > 0 ? Math.round((confirmed / (confirmed + dismissed)) * 100) + '%' : '—';
+    var el;
+    el = document.getElementById('sig-total'); if (el) el.textContent = total;
+    el = document.getElementById('sig-pending'); if (el) el.textContent = pending;
+    el = document.getElementById('sig-confirmed'); if (el) el.textContent = confirmed;
+    el = document.getElementById('sig-dismissed'); if (el) el.textContent = dismissed;
+    el = document.getElementById('sig-rate'); if (el) el.textContent = rate;
+
+    // Signals by Source chart
+    var sourceEl = document.getElementById('sig-chart-source');
+    if (sourceEl && typeof echarts !== 'undefined') {
+      var srcChart = echarts.init(sourceEl);
+      var srcData = Object.entries(sourceCounts).map(function(e) { return { name: e[0], value: e[1] }; });
+      srcChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: srcData,
+          label: { color: 'var(--text-dim)', fontSize: 11 },
+          itemStyle: { borderRadius: 4, borderColor: 'var(--bg-input)', borderWidth: 2 }
+        }]
+      });
+    }
+
+    // Pattern Confidence Distribution
+    var { data: patterns } = await sb.from('signal_patterns')
+      .select('pattern_type, pattern_value, associated_signal_type, confidence_score, confirmations, dismissals, last_seen_at')
+      .order('confidence_score', { ascending: false });
+
+    var patternEl = document.getElementById('sig-chart-patterns');
+    if (patternEl && patterns && typeof echarts !== 'undefined') {
+      var patChart = echarts.init(patternEl);
+      var buckets = { '90-100': 0, '70-89': 0, '50-69': 0, '30-49': 0, '<30': 0 };
+      patterns.forEach(function(p) {
+        var s = Math.round(p.confidence_score * 100);
+        if (s >= 90) buckets['90-100']++;
+        else if (s >= 70) buckets['70-89']++;
+        else if (s >= 50) buckets['50-69']++;
+        else if (s >= 30) buckets['30-49']++;
+        else buckets['<30']++;
+      });
+      patChart.setOption({
+        tooltip: {},
+        xAxis: { type: 'category', data: Object.keys(buckets), axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        series: [{ type: 'bar', data: Object.values(buckets), itemStyle: { color: 'var(--accent)', borderRadius: [4, 4, 0, 0] } }]
+      });
+    }
+
+    // Patterns table
+    var patBody = document.getElementById('sig-patterns-body');
+    if (patBody && patterns) {
+      patBody.innerHTML = patterns.map(function(p) {
+        var confPct = Math.round(p.confidence_score * 100);
+        var confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+        var lastSeen = p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString() : '—';
+        return '<tr><td>' + escHtml(p.pattern_type) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.pattern_value) +
+          '</td><td>' + escHtml(p.associated_signal_type) + '</td><td style="color:' + confColor + ';font-weight:600">' + confPct + '%</td><td>' + p.confirmations +
+          '</td><td>' + p.dismissals + '</td><td>' + lastSeen + '</td></tr>';
+      }).join('');
+    }
+
+    // Recent signals table
+    var sigBody = document.getElementById('sig-recent-body');
+    if (sigBody) {
+      sigBody.innerHTML = recentRows.map(function(s) {
+        var confPct = s.confidence ? Math.round(s.confidence * 100) + '%' : '—';
+        var statusColor = s.status === 'confirmed' ? '#22c55e' : s.status === 'dismissed' ? '#ef4444' : '#f59e0b';
+        var dt = new Date(s.created_at);
+        var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return '<tr><td style="font-size:10px">' + (s.user_id || '').substring(0, 8) + '…</td><td>' + escHtml(s.signal_source) +
+          '</td><td>' + escHtml(s.signal_type) + '</td><td>' + escHtml(s.proposed_stage || '—') +
+          '</td><td>' + confPct + '</td><td style="color:' + statusColor + '">' + escHtml(s.status) +
+          '</td><td style="font-size:11px">' + dateStr + '</td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('[Admin] Signals tab error:', e);
+  }
+}
+
+
+// --- TAB: CONTENT (Editorial Engine) ---
+async function loadContentTab() {
+  console.log("[Admin] Loading Content tab");
+  try {
+    var statusSel = document.getElementById("ct-filter-status");
+    var catSel = document.getElementById("ct-filter-category");
+    var refreshBtn = document.getElementById("ct-refresh-btn");
+    var detectBtn = document.getElementById("ct-detect-btn");
+    var generateBtn = document.getElementById("ct-generate-btn");
+    var closePreview = document.getElementById("ct-close-preview");
+    var actionStatus = document.getElementById("ct-action-status");
+
+    if (refreshBtn) refreshBtn.onclick = function() { fetchContentStories(); };
+    if (statusSel) statusSel.onchange = function() { fetchContentStories(); };
+    if (catSel) catSel.onchange = function() { fetchContentStories(); };
+    if (closePreview) closePreview.onclick = function() {
+      document.getElementById("ct-preview-panel").style.display = "none";
+    };
+
+    if (detectBtn) detectBtn.onclick = async function() {
+      detectBtn.disabled = true;
+      actionStatus.textContent = "Running detection...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/detect-editorial-insights", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Detected " + (data.detected || 0) + " stories (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Detection failed: " + e.message;
+      }
+      detectBtn.disabled = false;
+    };
+
+    if (generateBtn) generateBtn.onclick = async function() {
+      generateBtn.disabled = true;
+      actionStatus.textContent = "Generating content (this may take ~60s)...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/generate-editorial-content", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Generated " + (data.generated || 0) + " / Failed " + (data.failed || 0) + " (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Generation failed: " + e.message;
+      }
+      generateBtn.disabled = false;
+    };
+
+    fetchContentStories();
+  } catch (e) {
+    console.error("[Admin] Content tab error:", e);
+  }
+}
+
+async function fetchContentStories() {
+  try {
+    var statusFilter = document.getElementById("ct-filter-status").value;
+    var catFilter = document.getElementById("ct-filter-category").value;
+
+    var url = SUPABASE_URL + "/rest/v1/content_stories?select=id,story_type,category,headline,lede,body_html,meta_description,social_snippet,chart_config,evergreen_link,score,status,tags,created_at&order=score.desc,created_at.desc&limit=100";
+    if (statusFilter) url += "&status=eq." + statusFilter;
+    if (catFilter) url += "&category=eq." + catFilter;
+
+    var resp = await fetch(url, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var stories = await resp.json();
+
+    var allUrl = SUPABASE_URL + "/rest/v1/content_stories?select=status";
+    var allResp = await fetch(allUrl, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var allStories = await allResp.json();
+    var counts = { total: allStories.length, pending: 0, approved: 0, published: 0, rejected: 0 };
+    allStories.forEach(function(s) {
+      if (counts[s.status] !== undefined) counts[s.status]++;
+    });
+    document.getElementById("ct-total").textContent = counts.total;
+    document.getElementById("ct-pending").textContent = counts.pending;
+    document.getElementById("ct-approved").textContent = counts.approved;
+    document.getElementById("ct-published").textContent = counts.published;
+    document.getElementById("ct-rejected").textContent = counts.rejected;
+
+    var tbody = document.getElementById("ct-stories-body");
+    if (!tbody) return;
+
+    if (!stories.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No stories found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = stories.map(function(s) {
+      var dt = new Date(s.created_at);
+      var dateStr = dt.toLocaleDateString() + " " + dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      var statusColors = { pending: "#f59e0b", approved: "#22c55e", published: "#3b82f6", scheduled: "#8b5cf6", rejected: "#ef4444" };
+      var statusColor = statusColors[s.status] || "#888";
+      var hasContent = s.body_html ? "Y" : "N";
+      var scoreColor = s.score >= 70 ? "#22c55e" : s.score >= 40 ? "#f59e0b" : "#888";
+
+      var actions = "";
+      if (s.status === "pending") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'approved\')" style="padding:2px 8px;font-size:11px;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:4px" title="Approve">V</button>' +
+                  '<button onclick="contentAction(' + s.id + ',\'rejected\')" style="padding:2px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer" title="Reject">X</button>';
+      } else if (s.status === "approved") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'published\')" style="padding:2px 8px;font-size:11px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer">Publish</button>';
+      }
+
+      return '<tr style="cursor:pointer" onclick="previewStory(' + s.id + ')">' +
+        '<td style="color:' + scoreColor + ';font-weight:600">' + s.score + '</td>' +
+        '<td style="font-size:11px">' + hasContent + ' ' + escHtml(s.story_type) + '</td>' +
+        '<td>' + escHtml(s.category) + '</td>' +
+        '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(s.headline) + '</td>' +
+        '<td><span style="color:' + statusColor + ';font-weight:600;font-size:12px">' + s.status.toUpperCase() + '</span></td>' +
+        '<td style="font-size:11px;white-space:nowrap">' + dateStr + '</td>' +
+        '<td style="text-align:right" onclick="event.stopPropagation()">' + actions + '</td></tr>';
+    }).join("");
+
+    window._contentStories = {};
+    stories.forEach(function(s) { window._contentStories[s.id] = s; });
+  } catch(e) {
+    console.error("[Admin] Fetch content stories error:", e);
+  }
+}
+
+function previewStory(id) {
+  var s = window._contentStories && window._contentStories[id];
+  if (!s) return;
+  var panel = document.getElementById("ct-preview-panel");
+  panel.style.display = "block";
+  document.getElementById("ct-preview-headline").textContent = s.headline || "--";
+  document.getElementById("ct-preview-lede").textContent = s.lede || "--";
+  document.getElementById("ct-preview-body").innerHTML = s.body_html || "<em>No content generated yet</em>";
+  document.getElementById("ct-preview-meta").textContent = s.meta_description || "--";
+  document.getElementById("ct-preview-social").textContent = s.social_snippet || "--";
+  document.getElementById("ct-preview-link").textContent = s.evergreen_link || "--";
+  document.getElementById("ct-preview-chart").textContent = s.chart_config ? JSON.stringify(s.chart_config) : "--";
+  panel.scrollIntoView({ behavior: "smooth" });
+}
+
+async function contentAction(id, newStatus) {
+  try {
+    var updates = { status: newStatus };
+    if (newStatus === "published") {
+      updates.published_at = new Date().toISOString();
+    }
+    var resp = await fetch(SUPABASE_URL + "/rest/v1/content_stories?id=eq." + id, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(updates)
+    });
+    if (resp.ok) {
+      document.getElementById("ct-action-status").textContent = "Story #" + id + " -> " + newStatus;
+      fetchContentStories();
+    } else {
+      document.getElementById("ct-action-status").textContent = "Update failed";
+    }
+  } catch(e) {
+    document.getElementById("ct-action-status").textContent = e.message;
+  }
+}
+
+// ========== Enrichment Coverage Dashboard (D1) ==========
+var _enChart = null;
+
+async function loadEnrichmentTab() {
+  if (_adminTabInit['enrichment']) return;
+  console.log('[Admin] loadEnrichmentTab');
+  try {
+    var res = await sb.rpc('get_enrichment_coverage');
+    if (res.error) { console.error('[Admin] Enrichment RPC error:', res.error); return; }
+    var d = res.data;
+
+    // Coverage cards
+    setAdminText('en-salary-pct', d.salary_pct + '%');
+    setAdminText('en-loctype-pct', d.loc_type_pct + '%');
+    setAdminText('en-dept-pct', d.department_pct + '%');
+    setAdminText('en-country-pct', d.country_pct + '%');
+    setAdminText('en-total-jobs', fmtAdminNum(d.total_jobs));
+
+    // Color code cards by coverage level
+    var salEl = document.getElementById('en-salary-pct');
+    var ltEl = document.getElementById('en-loctype-pct');
+    var dpEl = document.getElementById('en-dept-pct');
+    var ctEl = document.getElementById('en-country-pct');
+    if (salEl) salEl.style.color = d.salary_pct >= 40 ? '#4a9a6b' : d.salary_pct >= 20 ? '#a08858' : '#c06060';
+    if (ltEl) ltEl.style.color = d.loc_type_pct >= 60 ? '#4a9a6b' : d.loc_type_pct >= 30 ? '#a08858' : '#c06060';
+    if (dpEl) dpEl.style.color = d.department_pct >= 60 ? '#4a9a6b' : d.department_pct >= 30 ? '#a08858' : '#c06060';
+    if (ctEl) ctEl.style.color = d.country_pct >= 80 ? '#4a9a6b' : d.country_pct >= 40 ? '#a08858' : '#c06060';
+
+    // Gate indicators
+    var gates = d.gates || {};
+    var gateConfig = [
+      { key: 'salary_40', label: 'Salary 40%', met: gates.salary_40, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'loc_type_60', label: 'Loc Type 60%', met: gates.loc_type_60, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'department_60', label: 'Department 60%', met: gates.department_60, unlocks: 'Multi-dim Stories (B2)' },
+      { key: 'country_80', label: 'Country 80%', met: gates.country_80, unlocks: 'Jobs by Location (A3)' }
+    ];
+    var gateEl = document.getElementById('en-gates');
+    if (gateEl) {
+      gateEl.innerHTML = gateConfig.map(function(g) {
+        var color = g.met ? '#4a9a6b' : '#a08858';
+        var icon = g.met ? '✓' : '○';
+        var label = g.met ? 'Gate met' : 'Not met';
+        return '<div style="padding:8px 14px;border-radius:8px;border:1px solid ' + color + ';background:color-mix(in srgb,' + color + ' 10%,transparent);font-size:12px">' +
+          '<span style="color:' + color + ';font-weight:700">' + icon + ' ' + g.label + '</span>' +
+          '<span style="color:var(--text-dim);margin-left:6px">' + label + '</span>' +
+          (g.met ? '' : '<div style="color:var(--text-faint);font-size:11px;margin-top:2px">Unlocks: ' + g.unlocks + '</div>') +
+          '</div>';
+      }).join('');
+    }
+
+    // Gate badge on coverage cards
+    gateConfig.forEach(function(g, i) {
+      var ids = ['en-salary-gate','en-loctype-gate','en-dept-gate','en-country-gate'];
+      var el = document.getElementById(ids[i]);
+      if (el) {
+        el.innerHTML = g.met ? '<span style="color:#4a9a6b;font-size:11px">✓ Gate met</span>' : '<span style="color:#a08858;font-size:11px">Target: ' + g.label.split(' ')[1] + '</span>';
+      }
+    });
+
+    // Platform breakdown table
+    var platforms = d.platforms || [];
+    var tbody = document.getElementById('en-platform-body');
+    var tfoot = document.getElementById('en-platform-foot');
+    if (tbody) {
+      tbody.innerHTML = platforms.map(function(p) {
+        var pct = function(n) { return p.total > 0 ? (n * 100 / p.total).toFixed(1) + '%' : '0%'; };
+        var colorPct = function(n, target) {
+          var v = p.total > 0 ? n * 100 / p.total : 0;
+          var c = v >= target ? '#4a9a6b' : v >= target * 0.5 ? '#a08858' : '#c06060';
+          return '<span style="color:' + c + '">' + v.toFixed(1) + '%</span>';
+        };
+        return '<tr>' +
+          '<td class="admin-platform-name">' + p.ats_source + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(p.total) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_salary, 40) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_loc_type, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_department, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_country, 80) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+    if (tfoot) {
+      tfoot.innerHTML = '<tr style="font-weight:700;border-top:2px solid var(--border)">' +
+        '<td>Total</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(d.total_jobs) + '</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.salary_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.loc_type_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.department_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.country_pct + '%</td>' +
+        '</tr>';
+    }
+
+    // Platform coverage bar chart
+    var chartEl = document.getElementById('en-chart-platforms');
+    if (chartEl && typeof echarts !== 'undefined') {
+      if (_enChart) _enChart.dispose();
+      _enChart = echarts.init(chartEl);
+      var names = platforms.map(function(p) { return p.ats_source; });
+      var mkSeries = function(field, name, color) {
+        return {
+          name: name, type: 'bar', stack: false,
+          data: platforms.map(function(p) { return p.total > 0 ? +(p[field] * 100 / p.total).toFixed(1) : 0; }),
+          itemStyle: { color: color, borderRadius: [2,2,0,0] },
+          barMaxWidth: 24
+        };
+      };
+      _enChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) {
+          var tip = '<strong>' + params[0].name + '</strong>';
+          params.forEach(function(p) { tip += '<br>' + p.marker + ' ' + p.seriesName + ': ' + p.value + '%'; });
+          return tip;
+        }},
+        legend: { top: 0, textStyle: { color: 'var(--text-dim)', fontSize: 11 } },
+        grid: { left: 50, right: 20, top: 36, bottom: 30 },
+        xAxis: { type: 'category', data: names, axisLabel: { color: 'var(--text-dim)', fontSize: 11 } },
+        yAxis: { type: 'value', max: 100, axisLabel: { color: 'var(--text-dim)', fontSize: 11, formatter: '{value}%' },
+          splitLine: { lineStyle: { color: 'var(--border)' } } },
+        series: [
+          mkSeries('with_salary', 'Salary', '#6366f1'),
+          mkSeries('with_loc_type', 'Loc Type', '#3b82f6'),
+          mkSeries('with_department', 'Department', '#22c55e'),
+          mkSeries('with_country', 'Country', '#f59e0b')
+        ]
+      });
+      window.addEventListener('resize', function() { if (_enChart) _enChart.resize(); });
+    }
+
+    _adminTabInit['enrichment'] = true;
+
+    // Load refresh schedule (A5)
+    loadRefreshSchedule();
+  } catch(e) {
+    console.error('[Admin] Enrichment error:', e);
+  }
+}
+
+async function loadRefreshSchedule() {
+  try {
+    var res = await sb.rpc('get_refresh_schedule');
+    if (res.error || !res.data) return;
+    var pages = res.data;
+
+    var dueCount = pages.filter(function(p) { return p.needs_refresh; }).length;
+    var summaryEl = document.getElementById('en-refresh-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = dueCount > 0
+        ? '<span style="color:#a08858">' + dueCount + ' pages due for refresh</span>'
+        : '<span style="color:#4a9a6b">All pages fresh ✓</span>';
+    }
+
+    var tbody = document.getElementById('en-refresh-body');
+    if (tbody) {
+      tbody.innerHTML = pages.map(function(p) {
+        var hrsAgo = Math.floor(p.hours_since_refresh);
+        var hrsDue = Math.floor(p.hours_until_due || 0);
+        var freshLabel = hrsAgo < 1 ? '<1h ago' : hrsAgo < 24 ? hrsAgo + 'h ago' : Math.floor(hrsAgo/24) + 'd ago';
+        var dueLabel = p.needs_refresh ? 'Overdue' : (hrsDue < 1 ? '<1h' : hrsDue < 24 ? hrsDue + 'h' : Math.floor(hrsDue/24) + 'd');
+        var statusColor = p.needs_refresh ? '#c06060' : hrsDue < 24 ? '#a08858' : '#4a9a6b';
+        var statusIcon = p.needs_refresh ? '⚠' : '✓';
+        return '<tr>' +
+          '<td style="font-family:var(--mono);font-size:12px">' + p.cache_key + '</td>' +
+          '<td>' + p.page_type + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + p.refresh_interval_days + 'd</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + freshLabel + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + dueLabel + '</td>' +
+          '<td style="text-align:center;color:' + statusColor + '">' + statusIcon + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch(e) {
+    console.error('[Admin] Refresh schedule error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D7: MOCK ATS LOG TAB (v4.85)
+// Shows mock_ats_submissions with payload inspection
+// ═══════════════════════════════════════════════════════════
+
+async function loadMockAtsTab() {
+  var container = document.getElementById('admin-panel-mock-ats');
+  if (!container) return;
+
+  container.innerHTML = '<div class="admin-loading">Loading mock ATS submissions...</div>';
+
+  try {
+    var { data, error } = await sb
+      .from('mock_ats_submissions')
+      .select('id, user_id, job_id, ats_source, response_type, response_body, payload, created_at, idempotency_key')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      container.innerHTML = '<div class="admin-red">Error loading mock ATS data: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;">No mock ATS submissions yet.</div>';
+      return;
+    }
+
+    // Stats summary
+    var total = data.length;
+    var success = data.filter(function(r) { return r.response_type === 'success'; }).length;
+    var rejected = data.filter(function(r) { return r.response_type === 'rejected'; }).length;
+    var timeout = data.filter(function(r) { return r.response_type === 'timeout'; }).length;
+
+    var statsHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
+      '<div class="admin-stat-card"><div class="admin-stat-val">' + total + '</div><div class="admin-stat-label">Total</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#22c55e40"><div class="admin-stat-val" style="color:#22c55e">' + success + '</div><div class="admin-stat-label">Success</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#f59e0b40"><div class="admin-stat-val" style="color:#f59e0b">' + rejected + '</div><div class="admin-stat-label">Rejected</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#ef444440"><div class="admin-stat-val" style="color:#ef4444">' + timeout + '</div><div class="admin-stat-label">Timeout</div></div>' +
+      '</div>';
+
+    // Table
+    var tableHtml = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%;font-size:13px;">' +
+      '<thead><tr>' +
+      '<th>Time</th><th>Job ID</th><th>ATS</th><th>Result</th><th>User</th><th>Details</th>' +
+      '</tr></thead><tbody>';
+
+    tableHtml += data.map(function(row) {
+      var time = new Date(row.created_at).toLocaleString();
+      var badge = '';
+      if (row.response_type === 'success') badge = '<span class="admin-badge admin-badge-green">✓ Success</span>';
+      else if (row.response_type === 'rejected') badge = '<span class="admin-badge admin-badge-amber">✗ Rejected</span>';
+      else badge = '<span class="admin-badge admin-badge-red">⏱ Timeout</span>';
+
+      var detailSnippet = '';
+      if (row.response_body) {
+        if (row.response_type === 'success') detailSnippet = row.response_body.confirmation_id || '';
+        else if (row.response_type === 'rejected') detailSnippet = (row.response_body.error || '') + ': ' + (row.response_body.detail || '');
+        else detailSnippet = 'timeout';
+      }
+
+      var jobIdShort = (row.job_id || '').length > 20 ? row.job_id.substring(0, 20) + '…' : (row.job_id || '');
+      var userIdShort = (row.user_id || '').substring(0, 8) + '…';
+
+      return '<tr data-row-id="' + row.id + '" style="cursor:pointer;" onclick="toggleMockAtsDetail(this)">' +
+        '<td style="white-space:nowrap;font-size:12px;color:var(--text-dim)">' + time + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;" title="' + escapeHtml(row.job_id || '') + '">' + escapeHtml(jobIdShort) + '</td>' +
+        '<td>' + escapeHtml(row.ats_source || '') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-family:var(--mono);font-size:11px;" title="' + escapeHtml(row.user_id || '') + '">' + escapeHtml(userIdShort) + '</td>' +
+        '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(detailSnippet) + '</td>' +
+        '</tr>' +
+        '<tr class="mock-ats-detail" style="display:none;"><td colspan="6">' +
+          '<div style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">' +
+            '<div style="margin-bottom:8px;"><strong>Request Payload:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:300px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.payload, null, 2)) + '</pre>' +
+            '<div style="margin:8px 0;"><strong>Response:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:200px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.response_body, null, 2)) + '</pre>' +
+            '<div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Idempotency: ' + escapeHtml(row.idempotency_key || 'none') + '</div>' +
+          '</div>' +
+        '</td></tr>';
+    }).join('');
+
+    tableHtml += '</tbody></table></div>';
+
+    container.innerHTML = statsHtml + tableHtml;
+
+  } catch (e) {
+    console.error('[Admin] Mock ATS tab error:', e);
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function toggleMockAtsDetail(row) {
+  var detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('mock-ats-detail')) {
+    detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  }
+}
+
 
 // === js/billing.js ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
@@ -17029,19 +18795,21 @@ function renderTierComparison(pricing) {
     const isCurrent = t.id === currentTier;
     const priceStr = t.price === 0 ? '$0' : '$' + (t.price / 100);
     return `
-      <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}">
+      <div class="sub-tier-card ${isCurrent ? 'sub-tier-current' : ''}" style="display:flex;flex-direction:column;">
         ${isCurrent ? '<div class="sub-tier-badge">Current</div>' : ''}
         <div class="sub-tier-name">${t.name}</div>
         <div class="sub-tier-price">${priceStr}<span class="sub-tier-interval">/mo</span></div>
         <div class="sub-tier-credits">${t.credits > 0 ? t.credits + ' credits/mo' : 'No included credits'}</div>
         <div class="sub-tier-payg">$${(t.payg / 100).toFixed(2)}/credit PAYG</div>
-        <ul class="sub-tier-features">${t.features.map(f => '<li>' + f + '</li>').join('')}</ul>
+        <ul class="sub-tier-features" style="flex:1;">${t.features.map(f => '<li>' + f + '</li>').join('')}</ul>
+        <div style="margin-top:auto;text-align:center;">
         ${isCurrent
           ? '<button class="btn-secondary btn-sm" disabled>Current Plan</button>'
           : t.id === 'free'
             ? ''
             : `<button class="btn-primary btn-sm" onclick="startCheckout('subscription','${t.id}')">${currentTier === 'free' || t.price > (pricing.subscription_price_cents || 0) ? 'Upgrade' : 'Switch'}</button>`
         }
+        </div>
       </div>`;
   }).join('');
 }
@@ -18041,10 +19809,11 @@ async function _rwAcceptAll() {
   if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Generating document…'; }
 
   try {
-    // Build the rewritten text by combining accepted sections
+    // Build the rewritten text by combining accepted sections (respecting cherry-pick)
     var fullText = '';
     (_rwState.sections || []).forEach(function (s) {
-      var text = s.changed ? s.rewritten : s.original;
+      var useRewrite = s.changed && !s._excluded;
+      var text = useRewrite ? s.rewritten : s.original;
       if (text) fullText += text + '\n\n';
     });
 
@@ -18376,6 +20145,7 @@ function _rwRenderResults() {
     var changed = s.changed;
     html += '<div class="rw-diff-section' + (changed ? ' rw-diff-changed' : ' rw-diff-unchanged') + '">' +
       '<div class="rw-diff-header">' +
+      (changed ? '<div class="rw-cherry-pick"><input type="checkbox" id="rw-pick-' + si + '" checked onchange="_rwToggleSection(' + si + ')"><label for="rw-pick-' + si + '">Include</label></div>' : '') +
       '<span class="rw-diff-name">' + (s.name || 'Section') + '</span>' +
       (changed ? '<span class="rw-diff-badge">Modified</span>' : '<span class="rw-diff-badge rw-diff-badge-same">No changes</span>') +
       '</div>';
@@ -18384,11 +20154,11 @@ function _rwRenderResults() {
       html += '<div class="rw-diff-cols">' +
         '<div class="rw-diff-col rw-diff-original">' +
         '<div class="rw-diff-col-label">Original</div>' +
-        '<div class="rw-diff-col-text">' + _rwEscapeHtml(s.original || '') + '</div>' +
+        '<div class="rw-diff-col-text">' + _rwHighlightDiff(s.original || '', s.rewritten || '', 'original') + '</div>' +
         '</div>' +
         '<div class="rw-diff-col rw-diff-rewritten">' +
         '<div class="rw-diff-col-label">Rewritten</div>' +
-        '<div class="rw-diff-col-text">' + _rwEscapeHtml(s.rewritten || '') + '</div>' +
+        '<div class="rw-diff-col-text">' + _rwHighlightDiff(s.original || '', s.rewritten || '', 'rewritten') + '</div>' +
         '</div>' +
         '</div>';
       if (s.changes_made && s.changes_made.length > 0) {
@@ -18403,8 +20173,9 @@ function _rwRenderResults() {
   html += '</div>';
 
   // Actions
+  var changedCount = _rwState.sections.filter(function(s){ return s.changed; }).length;
   html += '<div class="rw-actions">' +
-    '<button class="btn btn-primary" onclick="_rwAcceptAll()">Accept All</button>' +
+    '<button class="btn btn-primary" onclick="_rwAcceptAll()">' + (changedCount > 1 ? 'Accept Selected (' + changedCount + ')' : 'Accept All') + '</button>' +
     '<div class="rw-retry-section">' +
     '<textarea id="rw-feedback-input" class="rw-qa-input" placeholder="What should be different? (e.g. too aggressive, keep my summary)" rows="2" style="margin-bottom:8px;"></textarea>' +
     '<button class="btn btn-sm" onclick="_rwTryAgain()" style="font-size:11px;">' +
@@ -18434,6 +20205,49 @@ function _rwEscapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\n/g, '<br>');
 }
+
+// Word-level diff highlighting
+function _rwHighlightDiff(original, rewritten, side) {
+  var origWords = original.split(/(\s+)/);
+  var newWords = rewritten.split(/(\s+)/);
+
+  // Simple LCS-based word diff
+  if (origWords.length > 300 || newWords.length > 300) {
+    // Too long for word diff — fall back to plain escaped
+    return _rwEscapeHtml(side === 'original' ? original : rewritten);
+  }
+
+  var origSet = new Set(origWords.filter(function(w){ return w.trim(); }));
+  var newSet = new Set(newWords.filter(function(w){ return w.trim(); }));
+
+  if (side === 'original') {
+    return origWords.map(function(w) {
+      if (!w.trim()) return w;
+      var esc = _rwEscapeHtml(w);
+      if (!newSet.has(w)) return '<span class="rw-diff-remove">' + esc + '</span>';
+      return esc;
+    }).join('');
+  } else {
+    return newWords.map(function(w) {
+      if (!w.trim()) return w;
+      var esc = _rwEscapeHtml(w);
+      if (!origSet.has(w)) return '<span class="rw-diff-add">' + esc + '</span>';
+      return esc;
+    }).join('');
+  }
+}
+
+// Cherry-pick section toggle
+window._rwToggleSection = function(sectionIdx) {
+  if (!_rwState.sections || !_rwState.sections[sectionIdx]) return;
+  var cb = document.getElementById('rw-pick-' + sectionIdx);
+  _rwState.sections[sectionIdx]._excluded = cb ? !cb.checked : false;
+
+  // Update accept button count
+  var included = _rwState.sections.filter(function(s){ return s.changed && !s._excluded; }).length;
+  var btn = document.querySelector('.rw-actions .btn-primary');
+  if (btn) btn.textContent = included > 0 ? 'Accept Selected (' + included + ')' : 'Accept Selected (0)';
+};
 
 // ════════════════════════════════════════════════════════════
 // ENTRY POINT: "Boost" CTA on Jobs Feed match column
@@ -18513,9 +20327,1913 @@ function matchBadgeWithBoost(result, jobId, jobTitle, company) {
 }
 
 
+// === js/resume-archive.js ===
+// === Resume Archive Module ===
+// Phase 3: Archive tab UI with database-backed storage, version tracking, and tier info
+
+// Tab switching
+window.switchResumeTab = function(tab) {
+  const activeContent = $('#resume-tab-content-active');
+  const archiveContent = $('#resume-tab-content-archive');
+  const activeBtn = $('#resume-tab-active');
+  const archiveBtn = $('#resume-tab-archive');
+  if (!activeContent || !archiveContent) return;
+
+  if (tab === 'archive') {
+    activeContent.style.display = 'none';
+    archiveContent.style.display = '';
+    activeBtn.classList.remove('active');
+    archiveBtn.classList.add('active');
+    loadResumeArchive();
+  } else {
+    activeContent.style.display = '';
+    archiveContent.style.display = 'none';
+    activeBtn.classList.add('active');
+    archiveBtn.classList.remove('active');
+  }
+
+  // Support URL hash linking: #resumes?tab=archive
+  if (tab === 'archive') {
+    history.replaceState(null, '', '#resumes?tab=archive');
+  } else {
+    history.replaceState(null, '', '#resumes');
+  }
+};
+
+// Check URL hash on page load for deep-link
+function checkArchiveDeepLink() {
+  const hash = location.hash;
+  if (hash.includes('tab=archive')) {
+    setTimeout(function() { switchResumeTab('archive'); }, 200);
+  }
+  // Also check for specific resume ID
+  const match = hash.match(/id=([a-f0-9-]+)/);
+  if (match) {
+    _archiveHighlightId = match[1];
+  }
+}
+var _archiveHighlightId = null;
+
+// Load archive data from Supabase
+window.loadResumeArchive = async function() {
+  const body = $('#archive-table-body');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">Loading…</td></tr>';
+
+  try {
+    // Fetch archive data
+    const { data: archives, error } = await sb
+      .from('resume_archive')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Fetch tier limits
+    const { data: limits, error: limErr } = await sb.rpc('check_resume_limits', {
+      p_user_id: (await sb.auth.getUser()).data.user.id
+    });
+
+    if (!limErr && limits) {
+      updateStorageBar(limits);
+      updateArchiveStats(archives, limits);
+    }
+
+    renderArchiveTable(archives || []);
+  } catch (e) {
+    console.log('[BJ] Archive load error:', e.message);
+    body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--red);">Failed to load archive: ' + e.message + '</td></tr>';
+  }
+};
+
+function updateStorageBar(limits) {
+  const bar = $('#archive-storage-bar');
+  const label = $('#archive-storage-label');
+  const cta = $('#archive-tier-cta');
+  if (!bar || !label) return;
+
+  const used = limits.current_storage || 0;
+  const max = limits.limits?.storage_bytes || 52428800;
+  const pct = Math.min((used / max) * 100, 100);
+
+  bar.style.width = pct.toFixed(1) + '%';
+  bar.style.background = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--warm)' : 'var(--accent)';
+  label.textContent = formatBytes(used) + ' / ' + formatBytes(max);
+
+  if (cta) {
+    cta.style.display = pct > 80 && limits.tier !== 'pro' ? '' : 'none';
+  }
+}
+
+function updateArchiveStats(archives, limits) {
+  const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  el('arch-total', archives.length);
+  el('arch-active', archives.filter(a => a.is_active).length);
+  el('arch-versions', archives.reduce((sum, a) => sum + a.version_number, 0));
+  el('arch-tier', (limits.tier || 'free').charAt(0).toUpperCase() + (limits.tier || 'free').slice(1));
+}
+
+function renderArchiveTable(archives) {
+  const body = $('#archive-table-body');
+  const search = $('#archive-search');
+  if (!body) return;
+
+  // Filter by search
+  let filtered = archives;
+  if (search && search.value.trim()) {
+    const q = search.value.trim().toLowerCase();
+    filtered = archives.filter(a =>
+      a.display_name.toLowerCase().includes(q) ||
+      (a.file_type || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (filtered.length === 0) {
+    body.innerHTML = '<tr><td colspan="7" style="padding:32px;text-align:center;color:var(--text-faint);">No archived resumes found</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtered.map(a => {
+    const isExpired = a.metadata_snapshot?.soft_deleted === true;
+    const statusBadge = isExpired
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--red)15;color:var(--red);font-size:10px;font-weight:600;">Expired</span>'
+      : a.is_active
+        ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--green)15;color:var(--green);font-size:10px;font-weight:600;">Active</span>'
+        : a.is_archived
+          ? '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--warm)15;color:var(--warm);font-size:10px;font-weight:600;">Archived</span>'
+          : '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:var(--text-faint)15;color:var(--text-faint);font-size:10px;font-weight:600;">Inactive</span>';
+
+    // Show expiry countdown for archived resumes
+    const expiryInfo = a.is_archived && a.archive_expires_at && !isExpired
+      ? (() => {
+          const days = Math.ceil((new Date(a.archive_expires_at) - new Date()) / 86400000);
+          if (days <= 7) return `<div style="font-size:9px;color:var(--red);margin-top:2px;">Expires in ${days}d</div>`;
+          if (days <= 30) return `<div style="font-size:9px;color:var(--warm);margin-top:2px;">Expires in ${days}d</div>`;
+          return '';
+        })()
+      : '';
+
+    const levelBadge = a.metadata_snapshot?.level_label
+      ? `<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:${a.metadata_snapshot.level_color || '#94a3b8'}15;color:${a.metadata_snapshot.level_color || '#94a3b8'};">${a.metadata_snapshot.level_label}</span>`
+      : '';
+
+    const highlight = _archiveHighlightId === a.resume_id ? 'background:var(--accent)08;' : '';
+
+    return `<tr style="border-bottom:1px solid var(--border);${highlight}" data-resume-id="${a.resume_id}">
+      <td style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--text-faint)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div>
+            <div style="font-weight:600;color:var(--text);">${a.display_name}</div>
+            <div style="font-size:10px;color:var(--text-faint);">${a.file_type.toUpperCase()} ${levelBadge}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">v${a.version_number}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);">${formatDate(a.created_at)}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);">${a.last_used_at ? formatDate(a.last_used_at) : '—'}</td>
+      <td style="padding:10px 12px;font-size:11px;color:var(--text-dim);font-family:var(--mono);">${formatBytes(a.compressed_size_bytes || a.file_size_bytes)}</td>
+      <td style="padding:10px 12px;">${statusBadge}${expiryInfo}</td>
+      <td style="padding:10px 12px;">
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-sm" onclick="showVersionTimeline('${a.resume_id}')" style="font-size:10px;padding:3px 8px;" title="Version history">History</button>
+          ${a.is_archived || isExpired ? `<button class="btn btn-sm" onclick="restoreArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--accent);color:#fff;" title="Restore">${isExpired ? 'Restore ↑' : 'Restore'}</button>` : ''}
+          ${a.is_active ? `<button class="btn btn-sm" onclick="archiveDbResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--warm);color:#000;" title="Archive">Archive</button>` : ''}
+          <button class="btn btn-sm" onclick="deleteArchiveResume('${a.resume_id}')" style="font-size:10px;padding:3px 8px;background:var(--red);color:#fff;" title="Delete">Del</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  _archiveHighlightId = null;
+}
+
+// Version timeline
+window.showVersionTimeline = async function(resumeId) {
+  const timeline = $('#archive-version-timeline');
+  const list = $('#archive-version-list');
+  if (!timeline || !list) return;
+
+  timeline.style.display = '';
+  list.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;">Loading versions…</div>';
+
+  try {
+    // Get the resume and all versions in its lineage
+    const { data: resume } = await sb.from('resume_archive').select('*').eq('resume_id', resumeId).single();
+    if (!resume) return;
+
+    // Find all versions: same display_name or linked by parent
+    const { data: versions } = await sb.from('resume_archive')
+      .select('*')
+      .eq('user_id', resume.user_id)
+      .eq('display_name', resume.display_name)
+      .order('version_number', { ascending: false });
+
+    if (!versions || versions.length === 0) {
+      list.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;">No version history found</div>';
+      return;
+    }
+
+    list.innerHTML = versions.map((v, idx) => {
+      const isCurrent = v.resume_id === resumeId;
+      const dot = v.is_active
+        ? '<div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>'
+        : '<div style="width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0;"></div>';
+      const connector = idx < versions.length - 1
+        ? '<div style="position:absolute;left:4px;top:14px;bottom:-14px;width:2px;background:var(--border);"></div>'
+        : '';
+
+      return `<div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0;position:relative;${isCurrent ? 'background:var(--bg-input);border-radius:8px;padding:8px 12px;margin:-4px -12px;' : ''}">
+        <div style="position:relative;">${dot}${connector}</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:600;font-size:12px;color:var(--text);">v${v.version_number}</span>
+            ${v.is_active ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--green)15;color:var(--green);font-weight:600;">Current</span>' : ''}
+            ${v.is_archived ? '<span style="font-size:9px;padding:1px 6px;border-radius:4px;background:var(--warm)15;color:var(--warm);font-weight:600;">Archived</span>' : ''}
+          </div>
+          <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">
+            ${formatDate(v.created_at)} · ${formatBytes(v.compressed_size_bytes || v.file_size_bytes)} · ${v.file_type.toUpperCase()}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div style="padding:16px;color:var(--red);font-size:12px;">Error: ' + e.message + '</div>';
+  }
+};
+
+// Archive a resume (move from active to archived)
+window.archiveDbResume = async function(resumeId) {
+  if (!confirm('Archive this resume? It will be compressed and moved to cold storage.')) return;
+  try {
+    // Get tier to set expiry
+    const userId = (await sb.auth.getUser()).data.user.id;
+    const { data: limits } = await sb.rpc('check_resume_limits', { p_user_id: userId });
+    const tier = limits?.tier || 'free';
+
+    // Calculate expiry: Free=30d, Starter=90d, Pro=null
+    let expiresAt = null;
+    if (tier === 'free') {
+      expiresAt = new Date(Date.now() + 30 * 86400000).toISOString();
+    } else if (tier === 'starter') {
+      expiresAt = new Date(Date.now() + 90 * 86400000).toISOString();
+    }
+
+    const { error } = await sb.from('resume_archive')
+      .update({
+        is_active: false,
+        is_archived: true,
+        archived_at: new Date().toISOString(),
+        archive_expires_at: expiresAt
+      })
+      .eq('resume_id', resumeId);
+    if (error) throw error;
+    loadResumeArchive();
+  } catch (e) {
+    alert('Archive failed: ' + e.message);
+  }
+};
+
+// Restore an archived resume
+window.restoreArchiveResume = async function(resumeId) {
+  try {
+    const { error } = await sb.from('resume_archive')
+      .update({ is_active: true, is_archived: false, archived_at: null })
+      .eq('resume_id', resumeId);
+    if (error) throw error;
+    loadResumeArchive();
+  } catch (e) {
+    alert('Restore failed: ' + e.message);
+  }
+};
+
+// Delete a resume from archive
+window.deleteArchiveResume = async function(resumeId) {
+  if (!confirm('Permanently delete this resume from the archive? This cannot be undone.')) return;
+  try {
+    const { error } = await sb.from('resume_archive')
+      .delete()
+      .eq('resume_id', resumeId);
+    if (error) throw error;
+    loadResumeArchive();
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+};
+
+// Helpers
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function formatDate(isoStr) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Search filter
+(function() {
+  const searchEl = document.getElementById('archive-search');
+  if (searchEl) {
+    let _debounce;
+    searchEl.addEventListener('input', function() {
+      clearTimeout(_debounce);
+      _debounce = setTimeout(function() { loadResumeArchive(); }, 300);
+    });
+  }
+})();
+
+// Check deep link on load
+if (typeof checkArchiveDeepLink === 'function') checkArchiveDeepLink();
+
+// Phase 4: Enhanced restore using server-side function
+window.restoreArchiveResume = async function(resumeId) {
+  try {
+    const { data, error } = await sb.rpc('restore_archived_resume', {
+      p_resume_id: resumeId
+    });
+    if (error) throw error;
+    if (data && !data.success) {
+      if (data.error === 'EXPIRED_UPGRADE_REQUIRED') {
+        if (confirm(data.message + '\n\nGo to subscription page?')) {
+          showPage('subscription');
+        }
+        return;
+      }
+      alert('Restore failed: ' + (data.error || 'Unknown error'));
+      return;
+    }
+    loadResumeArchive();
+  } catch (e) {
+    alert('Restore failed: ' + e.message);
+  }
+};
+
+
+// === js/resume-metrics.js ===
+// === Resume Metrics Module ===
+// Phase 6: Resume Metrics Intelligence UI — score history, level fit, pipeline funnel, usage log
+
+var _metricsCharts = {};
+
+// Tab switching for Stats page
+window.switchStatsTab = function(tab) {
+  const marketContent = $('#stats-tab-content-market');
+  const resumeContent = $('#stats-tab-content-resume');
+  const marketBtn = $('#stats-tab-market');
+  const resumeBtn = $('#stats-tab-resume');
+  if (!marketContent || !resumeContent) return;
+
+  if (tab === 'resume') {
+    marketContent.style.display = 'none';
+    resumeContent.style.display = '';
+    marketBtn.classList.remove('active');
+    resumeBtn.classList.add('active');
+    populateResumeSelector();
+    // Check URL for pre-selected resume
+    const match = location.hash.match(/resume=([a-f0-9-]+)/);
+    if (match) {
+      const sel = $('#metrics-resume-select');
+      if (sel) { sel.value = match[1]; loadResumeMetrics(); }
+    }
+  } else {
+    marketContent.style.display = '';
+    resumeContent.style.display = 'none';
+    marketBtn.classList.add('active');
+    resumeBtn.classList.remove('active');
+    // Dispose metrics charts to free memory
+    Object.values(_metricsCharts).forEach(c => { try { c.dispose(); } catch(e) {} });
+    _metricsCharts = {};
+  }
+};
+
+// Populate resume dropdown from resume_archive
+async function populateResumeSelector() {
+  const sel = $('#metrics-resume-select');
+  if (!sel) return;
+
+  try {
+    const { data, error } = await sb.from('resume_archive')
+      .select('resume_id, display_name, version_number, is_active, metadata_snapshot')
+      .eq('is_active', true)
+      .order('display_name');
+
+    if (error) throw error;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">Select a resume…</option>';
+    (data || []).forEach(r => {
+      const level = r.metadata_snapshot?.level_label || '';
+      const opt = document.createElement('option');
+      opt.value = r.resume_id;
+      opt.textContent = r.display_name + (level ? ' (' + level + ')' : '') + ' v' + r.version_number;
+      sel.appendChild(opt);
+    });
+    if (currentVal) sel.value = currentVal;
+  } catch (e) {
+    console.log('[BJ] Resume selector error:', e.message);
+  }
+}
+
+// Load metrics for selected resume
+window.loadResumeMetrics = async function() {
+  const sel = $('#metrics-resume-select');
+  const resumeId = sel ? sel.value : '';
+  const empty = $('#metrics-empty');
+  const summary = $('#metrics-score-summary');
+  const grid = $('#metrics-charts-grid');
+  const log = $('#metrics-usage-log');
+
+  if (!resumeId) {
+    if (empty) empty.style.display = '';
+    if (summary) summary.style.display = 'none';
+    if (grid) grid.style.display = 'none';
+    if (log) log.style.display = 'none';
+    return;
+  }
+
+  if (empty) empty.style.display = 'none';
+
+  try {
+    // Fetch score history
+    const { data: scores, error: scoreErr } = await sb
+      .from('resume_score_history')
+      .select('*')
+      .eq('resume_id', resumeId)
+      .order('scored_at', { ascending: false })
+      .limit(50);
+
+    // Fetch job usage
+    const { data: usage, error: usageErr } = await sb
+      .from('resume_job_usage')
+      .select('*')
+      .eq('resume_id', resumeId)
+      .order('applied_at', { ascending: false })
+      .limit(100);
+
+    renderScoreSummary(scores || []);
+    renderLevelFitChart(scores || []);
+    renderPipelineFunnel(usage || []);
+    renderUsageLog(usage || []);
+
+    if (summary) summary.style.display = '';
+    if (grid) grid.style.display = '';
+    if (log) log.style.display = (usage && usage.length > 0) ? '' : 'none';
+
+    // Update archive cross-link
+    const archiveLink = $('#metrics-view-archive');
+    if (archiveLink) {
+      archiveLink.href = '#resumes?tab=archive&id=' + resumeId;
+    }
+  } catch (e) {
+    console.log('[BJ] Metrics load error:', e.message);
+  }
+};
+
+// Score summary + sparkline
+function renderScoreSummary(scores) {
+  const lastScoreEl = $('#metrics-last-score');
+  const typeEl = $('#metrics-last-score-type');
+  const detailEl = $('#metrics-last-score-detail');
+
+  if (scores.length === 0) {
+    if (lastScoreEl) lastScoreEl.textContent = '—';
+    if (typeEl) typeEl.textContent = 'No scores yet';
+    if (detailEl) detailEl.textContent = 'Score a resume against job descriptions to see metrics here.';
+    renderSparkline([]);
+    return;
+  }
+
+  const latest = scores[0];
+  if (lastScoreEl) lastScoreEl.textContent = latest.match_score != null ? Math.round(latest.match_score) : '—';
+  if (typeEl) typeEl.textContent = (latest.score_type === 'ai' ? 'AI Score' : latest.score_type === 'ngram' ? 'Keyword Match' : 'Manual') +
+    (latest.job_title ? ' · ' + latest.job_title : '');
+  if (detailEl) detailEl.textContent = (latest.fit_status || '') +
+    (latest.company_name ? ' · ' + latest.company_name : '') +
+    ' · ' + formatMetricsDate(latest.scored_at);
+
+  // Sparkline data (last 10, chronological)
+  const sparkData = scores.slice(0, 10).reverse().map(s => ({
+    date: formatMetricsDate(s.scored_at),
+    score: s.match_score ? Math.round(s.match_score) : 0
+  }));
+  renderSparkline(sparkData);
+}
+
+function renderSparkline(data) {
+  const el = document.getElementById('metrics-sparkline');
+  if (!el || typeof echarts === 'undefined') return;
+
+  if (_metricsCharts.sparkline) { try { _metricsCharts.sparkline.dispose(); } catch(e) {} }
+  if (data.length < 2) { el.innerHTML = ''; return; }
+
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  _metricsCharts.sparkline = chart;
+
+  chart.setOption({
+    grid: { top: 4, right: 4, bottom: 4, left: 4 },
+    xAxis: { type: 'category', show: false, data: data.map(d => d.date) },
+    yAxis: { type: 'value', show: false, min: 0, max: 100 },
+    series: [{
+      type: 'line',
+      data: data.map(d => d.score),
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 4,
+      lineStyle: { color: '#3b82f6', width: 2 },
+      itemStyle: { color: '#3b82f6' },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [
+        { offset: 0, color: 'rgba(59,130,246,0.3)' },
+        { offset: 1, color: 'rgba(59,130,246,0.02)' }
+      ]}}
+    }]
+  });
+}
+
+// Level fit bar chart
+function renderLevelFitChart(scores) {
+  const el = document.getElementById('metrics-level-chart');
+  const insightEl = $('#metrics-level-fit-insight');
+  if (!el || typeof echarts === 'undefined') return;
+
+  if (_metricsCharts.levelFit) { try { _metricsCharts.levelFit.dispose(); } catch(e) {} }
+
+  // Group scores by level_fit
+  const levels = ['Entry', 'Mid', 'Senior', 'Lead', 'Executive'];
+  const levelScores = {};
+  levels.forEach(l => { levelScores[l] = []; });
+
+  scores.forEach(s => {
+    if (s.level_fit) {
+      const key = s.level_fit.charAt(0).toUpperCase() + s.level_fit.slice(1);
+      if (levelScores[key]) levelScores[key].push(s.match_score || 0);
+    }
+  });
+
+  const chartData = levels.map(l => ({
+    name: l,
+    avg: levelScores[l].length > 0 ? Math.round(levelScores[l].reduce((a,b) => a+b, 0) / levelScores[l].length) : 0,
+    count: levelScores[l].length
+  })).filter(d => d.count > 0);
+
+  if (chartData.length === 0) {
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:12px;">No level data yet</div>';
+    if (insightEl) insightEl.textContent = '';
+    return;
+  }
+
+  // Generate insight
+  if (insightEl && chartData.length >= 2) {
+    const sorted = [...chartData].sort((a, b) => b.avg - a.avg);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    const diff = best.avg - worst.avg;
+    insightEl.textContent = `This resume scores ${diff}% higher on ${best.name}-level roles than ${worst.name}-level roles`;
+  }
+
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  _metricsCharts.levelFit = chart;
+
+  chart.setOption({
+    grid: { top: 8, right: 16, bottom: 24, left: 80 },
+    xAxis: { type: 'value', min: 0, max: 100, axisLabel: { color: '#94a3b8', fontSize: 10 }, splitLine: { lineStyle: { color: '#2a2d35' } } },
+    yAxis: { type: 'category', data: chartData.map(d => d.name), axisLabel: { color: '#f0f1f3', fontSize: 11 } },
+    series: [{
+      type: 'bar',
+      data: chartData.map(d => ({
+        value: d.avg,
+        itemStyle: { color: d.avg >= 70 ? '#22c55e' : d.avg >= 50 ? '#f59e0b' : '#ef4444', borderRadius: [0, 4, 4, 0] }
+      })),
+      barWidth: 20,
+      label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: '{c}%' }
+    }]
+  });
+}
+
+// Pipeline funnel
+function renderPipelineFunnel(usage) {
+  const el = document.getElementById('metrics-funnel-chart');
+  if (!el || typeof echarts === 'undefined') return;
+
+  if (_metricsCharts.funnel) { try { _metricsCharts.funnel.dispose(); } catch(e) {} }
+
+  const stages = ['applied', 'screened', 'interview', 'offer'];
+  const stageLabels = { applied: 'Applied', screened: 'Screened', interview: 'Interview', offer: 'Offer' };
+  const rejected = usage.filter(u => u.pipeline_stage === 'rejected').length;
+
+  const funnelData = stages.map(s => ({
+    name: stageLabels[s],
+    value: usage.filter(u => {
+      const idx = stages.indexOf(u.pipeline_stage);
+      return idx >= stages.indexOf(s);
+    }).length
+  }));
+
+  if (funnelData[0].value === 0) {
+    el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:12px;">No pipeline data yet</div>';
+    return;
+  }
+
+  const chart = echarts.init(el, null, { renderer: 'svg' });
+  _metricsCharts.funnel = chart;
+
+  chart.setOption({
+    tooltip: { trigger: 'item', formatter: function(p) {
+      const pct = funnelData[0].value > 0 ? Math.round((p.value / funnelData[0].value) * 100) : 0;
+      return p.name + ': ' + p.value + ' (' + pct + '%)';
+    }},
+    series: [{
+      type: 'funnel',
+      left: '10%', right: '10%', top: 16, bottom: 16,
+      width: '80%',
+      sort: 'descending',
+      gap: 4,
+      label: { show: true, position: 'inside', color: '#fff', fontSize: 11, formatter: function(p) {
+        const pct = funnelData[0].value > 0 ? Math.round((p.value / funnelData[0].value) * 100) : 0;
+        return p.name + '\n' + p.value + ' (' + pct + '%)';
+      }},
+      itemStyle: { borderWidth: 0 },
+      data: [
+        { value: funnelData[0].value, name: 'Applied', itemStyle: { color: '#3b82f6' } },
+        { value: funnelData[1].value, name: 'Screened', itemStyle: { color: '#06b6d4' } },
+        { value: funnelData[2].value, name: 'Interview', itemStyle: { color: '#22c55e' } },
+        { value: funnelData[3].value, name: 'Offer', itemStyle: { color: '#f59e0b' } }
+      ]
+    }]
+  });
+}
+
+// Usage log table
+function renderUsageLog(usage) {
+  const body = $('#metrics-log-body');
+  if (!body) return;
+
+  if (!usage || usage.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" style="padding:24px;text-align:center;color:var(--text-faint);">No applications tracked for this resume</td></tr>';
+    return;
+  }
+
+  const search = $('#metrics-log-search');
+  let filtered = usage;
+  if (search && search.value.trim()) {
+    const q = search.value.trim().toLowerCase();
+    filtered = usage.filter(u =>
+      (u.company_name || '').toLowerCase().includes(q) ||
+      (u.job_title || '').toLowerCase().includes(q)
+    );
+  }
+
+  const stageBadge = (stage) => {
+    const colors = { applied: '--accent', screened: '--green', interview: '--green', offer: '--warm', rejected: '--red' };
+    const color = colors[stage] || '--text-faint';
+    return `<span style="padding:2px 8px;border-radius:4px;background:var(${color})15;color:var(${color});font-size:10px;font-weight:600;">${(stage||'—').charAt(0).toUpperCase()+(stage||'').slice(1)}</span>`;
+  };
+
+  body.innerHTML = filtered.map(u => `<tr style="border-bottom:1px solid var(--border);">
+    <td style="padding:8px 12px;color:var(--text);">${u.company_name || '—'}</td>
+    <td style="padding:8px 12px;color:var(--text-dim);">${u.job_title || '—'}</td>
+    <td style="padding:8px 12px;color:var(--text-dim);font-size:11px;">${formatMetricsDate(u.applied_at)}</td>
+    <td style="padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">${u.match_score != null ? Math.round(u.match_score) + '%' : '—'}</td>
+    <td style="padding:8px 12px;">${stageBadge(u.pipeline_stage)}</td>
+  </tr>`).join('');
+}
+
+function formatMetricsDate(isoStr) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Resize handler
+window.addEventListener('resize', function() {
+  Object.values(_metricsCharts).forEach(c => { try { c.resize(); } catch(e) {} });
+});
+
+// Search filter for usage log
+(function() {
+  const el = document.getElementById('metrics-log-search');
+  if (el) {
+    let _t;
+    el.addEventListener('input', function() {
+      clearTimeout(_t);
+      _t = setTimeout(function() { loadResumeMetrics(); }, 300);
+    });
+  }
+})();
+
+// Deep-link check
+(function() {
+  if (location.hash.includes('tab=resume') && location.hash.includes('intelligence')) {
+    setTimeout(function() { switchStatsTab('resume'); }, 300);
+  }
+})();
+
+
+// === js/tier-gating.js ===
+// === Tier Gating Module ===
+// Phase 7: Reusable tier gate component for Archive + Metrics feature gating
+
+// Tier gate configuration
+const TIER_GATES = {
+  archive_storage:    { free: 2097152, starter: 10485760, pro: 52428800 },
+  archive_retention:  { free: 30, starter: 90, pro: Infinity },
+  max_resumes:        { free: 3, starter: 10, pro: Infinity },
+  max_versions:       { free: 1, starter: 5, pro: Infinity },
+  score_sparkline:    { free: false, starter: 10, pro: Infinity },
+  level_fit:          { free: false, starter: true, pro: true },
+  pipeline_stats:     { free: false, starter: 'basic', pro: 'full' },
+  job_log:            { free: false, starter: 10, pro: Infinity },
+  ai_scoring:         { free: false, starter: false, pro: true }
+};
+
+// Get current user tier
+function getUserTier() {
+  // Use billing system's _userPricing if available
+  if (typeof _userPricing !== 'undefined' && _userPricing && _userPricing.tier) {
+    return _userPricing.tier;
+  }
+  // Fallback: check profiles
+  if (typeof currentUser !== 'undefined' && currentUser?.user_metadata?.plan) {
+    return currentUser.user_metadata.plan;
+  }
+  return 'free';
+}
+
+// Check if a feature is available at current tier
+function canAccess(feature) {
+  const tier = getUserTier();
+  const gate = TIER_GATES[feature];
+  if (!gate) return true;
+  const val = gate[tier];
+  if (val === false) return false;
+  if (val === true || val === Infinity) return true;
+  return val;
+}
+
+// Get the minimum tier required for a feature
+function requiredTier(feature) {
+  const gate = TIER_GATES[feature];
+  if (!gate) return 'free';
+  if (gate.free !== false) return 'free';
+  if (gate.starter !== false) return 'starter';
+  return 'pro';
+}
+
+// Show tier gate overlay on an element
+// Usage: showTierGate(element, 'starter', 'Score history requires Starter plan')
+window.showTierGate = function(el, minTier, message) {
+  if (!el) return;
+  el.style.position = 'relative';
+
+  // Remove existing gate if any
+  var existing = el.querySelector('.tier-gate-overlay');
+  if (existing) existing.remove();
+
+  const tierNames = { starter: 'Starter', pro: 'Pro' };
+  const overlay = document.createElement('div');
+  overlay.className = 'tier-gate-overlay';
+  overlay.style.cssText = 'position:absolute;inset:0;background:rgba(15,17,23,0.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;border-radius:inherit;';
+  overlay.innerHTML = `
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="var(--warm)" stroke-width="2" style="margin-bottom:8px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">${message || (tierNames[minTier] || 'Upgrade') + ' plan required'}</div>
+    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();showPage('subscription');" style="font-size:10px;padding:4px 14px;margin-top:6px;">Upgrade to ${tierNames[minTier] || 'Pro'}</button>
+  `;
+  el.appendChild(overlay);
+};
+
+// Remove tier gate
+window.removeTierGate = function(el) {
+  if (!el) return;
+  var overlay = el.querySelector('.tier-gate-overlay');
+  if (overlay) overlay.remove();
+};
+
+// Apply tier gating across Resume Metrics
+function applyMetricsTierGating() {
+  const tier = getUserTier();
+
+  // Sparkline: Free gets nothing
+  if (tier === 'free') {
+    var sparkEl = document.getElementById('metrics-sparkline');
+    if (sparkEl && sparkEl.parentElement) {
+      showTierGate(sparkEl.parentElement, 'starter', 'Score history requires Starter plan');
+    }
+  }
+
+  // Level fit: Free gets nothing
+  if (tier === 'free') {
+    var levelEl = document.getElementById('metrics-level-chart');
+    if (levelEl && levelEl.closest('.stats-chart-card')) {
+      showTierGate(levelEl.closest('.stats-chart-card'), 'starter', 'Level fit analysis requires Starter plan');
+    }
+  }
+
+  // Pipeline: Free gets nothing
+  if (tier === 'free') {
+    var funnelEl = document.getElementById('metrics-funnel-chart');
+    if (funnelEl && funnelEl.closest('.stats-chart-card')) {
+      showTierGate(funnelEl.closest('.stats-chart-card'), 'starter', 'Pipeline analytics requires Starter plan');
+    }
+  }
+
+  // Job log: Free gets nothing, Starter gets last 10
+  if (tier === 'free') {
+    var logEl = document.getElementById('metrics-usage-log');
+    if (logEl) showTierGate(logEl, 'starter', 'Application log requires Starter plan');
+  }
+}
+
+// Apply tier gating across Resume Archive
+function applyArchiveTierGating() {
+  // Archive gating is mostly server-side (check_resume_limits)
+  // Client-side we just show the storage bar and CTA from Phase 3
+}
+
+// Hook into metrics load to apply gating after render
+var _origLoadResumeMetrics = window.loadResumeMetrics;
+if (_origLoadResumeMetrics) {
+  window.loadResumeMetrics = async function() {
+    await _origLoadResumeMetrics();
+    applyMetricsTierGating();
+  };
+}
+
+// Expose for use by other modules
+window.canAccessFeature = canAccess;
+window.getUserTier = getUserTier;
+window.requiredTierFor = requiredTier;
+
+
+// === js/apply-workflow.js ===
+/**
+ * Brilliant Jobs — Apply Workflow v4.85
+ * Score Gate Modal, Pending Applications, and Apply State Machine
+ * 
+ * Phase 2: Backend Wired (Pod 2 — D4 + D5)
+ * - Score Gate Modal: intercepts Apply when score is low/unscored
+ * - Pending Applications: Supabase-backed with real ATS submission
+ * - Apply Settings: per-filter configuration
+ * - Rewrite Review Modal: shows AI rewrite diff
+ * - scoreAndRecheck: calls score-resume EF (1 credit)
+ * - triggerRewrite: opens existing rewrite panel (3 credits)
+ * - proceedToApply: creates pending_applications row + calls mock-ats-submit
+ * - approvePendingApp: calls mock-ats-submit on approval
+ */
+
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+
+var APPLY_MODES = {
+  MANUAL:           'manual',
+  SCORE_GATED:      'score_gated',
+  AUTO:             'auto',
+  SCORE_GATED_AUTO: 'score_gated_auto',
+  AUTO_REWRITE:     'auto_rewrite',
+  AUTOPILOT:        'autopilot'
+};
+
+var APPLY_STATUS = {
+  PENDING:    'pending',
+  APPROVED:   'approved',
+  SUBMITTED:  'submitted',
+  SKIPPED:    'skipped',
+  EXPIRED:    'expired',
+  FAILED:     'failed'
+};
+
+var DEFAULT_APPLY_SETTINGS = {
+  default_apply_mode: APPLY_MODES.MANUAL,
+  default_score_threshold: 70,
+  default_approval_required: true,
+  default_notification_channels: ['in_app', 'email'],
+  sms_enabled: false,
+  quiet_hours_start: '22:00',
+  quiet_hours_end: '07:00',
+  auto_expire_hours: 48
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+
+var pendingApplications = [];
+var userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS);
+var _applySubmitting = false; // Prevent double-submit
+
+function loadApplySettings() {
+  try {
+    var raw = localStorage.getItem('bj_apply_settings');
+    if (raw) userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS, JSON.parse(raw));
+  } catch (e) {}
+}
+
+function saveApplySettings() {
+  try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch (e) {}
+}
+
+// ─── Supabase-backed pending applications ───────────────────
+
+async function loadPendingApplications() {
+  if (!currentUser) {
+    pendingApplications = [];
+    return;
+  }
+  try {
+    var { data, error } = await sb
+      .from('pending_applications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .in('status', ['pending', 'approved', 'failed'])
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[apply-workflow] Load pending apps error:', error.message);
+      pendingApplications = [];
+    } else {
+      pendingApplications = data || [];
+    }
+  } catch (e) {
+    console.error('[apply-workflow] Load pending apps exception:', e);
+    pendingApplications = [];
+  }
+}
+
+async function savePendingApplication(app) {
+  if (!currentUser) return null;
+  try {
+    var { data, error } = await sb
+      .from('pending_applications')
+      .insert(app)
+      .select()
+      .single();
+    if (error) {
+      console.error('[apply-workflow] Insert pending app error:', error.message);
+      if (typeof showToast === 'function') showToast('Failed to save application: ' + error.message, { type: 'error' });
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('[apply-workflow] Insert pending app exception:', e);
+    return null;
+  }
+}
+
+async function updatePendingApplication(id, updates) {
+  if (!currentUser) return false;
+  try {
+    var { error } = await sb
+      .from('pending_applications')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+    if (error) {
+      console.error('[apply-workflow] Update pending app error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[apply-workflow] Update pending app exception:', e);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Get auth token for EF calls
+// ═══════════════════════════════════════════════════════════
+
+async function _getAuthToken() {
+  var session = await sb.auth.getSession();
+  return session?.data?.session?.access_token || null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Call mock-ats-submit Edge Function
+// ═══════════════════════════════════════════════════════════
+
+async function callMockAtsSubmit(pendingApp, resumeFileId, resumeFilename) {
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return { ok: false, error: 'no_auth' };
+  }
+
+  var idempotencyKey = crypto.randomUUID();
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/mock-ats-submit', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      signal: AbortSignal.timeout(30000), // 30s client timeout
+      body: JSON.stringify({
+        job_id: pendingApp.job_id,
+        ats_source: _guessAtsSource(pendingApp.job_url),
+        ats_job_url: pendingApp.job_url || '',
+        resume_file_id: resumeFileId || crypto.randomUUID(),
+        resume_filename: resumeFilename || 'resume.pdf',
+        resume_version: pendingApp.rewritten_resume_id ? 'rewritten' : 'original',
+        rewrite_id: pendingApp.rewritten_resume_id || null,
+        applicant: {
+          name: currentUser.user_metadata?.full_name || currentUser.email || '',
+          email: currentUser.email || '',
+        },
+        apply_mode: pendingApp.approval_mode || 'manual',
+        score: pendingApp.original_score || null,
+        was_rewritten: !!pendingApp.rewritten_resume_id,
+        filter_id: pendingApp.filter_id || null,
+        pending_application_id: pendingApp.id,
+        idempotency_key: idempotencyKey,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (res.ok) {
+      return { ok: true, data: data };
+    } else if (res.status === 422) {
+      return { ok: false, error: 'rejected', detail: data.detail || data.error || 'Application rejected by ATS' };
+    } else {
+      return { ok: false, error: data.error || 'submission_failed' };
+    }
+  } catch (e) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+      return { ok: false, error: 'timeout' };
+    }
+    console.error('[apply-workflow] mock-ats-submit error:', e);
+    return { ok: false, error: 'network_error' };
+  }
+}
+
+function _guessAtsSource(url) {
+  if (!url) return 'greenhouse';
+  if (url.indexOf('greenhouse') >= 0) return 'greenhouse';
+  if (url.indexOf('lever.co') >= 0) return 'lever';
+  if (url.indexOf('ashby') >= 0) return 'ashby';
+  if (url.indexOf('workable') >= 0) return 'workable';
+  if (url.indexOf('recruitee') >= 0) return 'recruitee';
+  if (url.indexOf('usajobs') >= 0) return 'usajobs';
+  return 'greenhouse';
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Get active resume for current user
+// ═══════════════════════════════════════════════════════════
+
+function _getActiveResume() {
+  // Check resumes module for selected resume
+  if (typeof window._activeResumeId !== 'undefined' && window._activeResumeId) {
+    return { id: window._activeResumeId, filename: window._activeResumeFilename || 'resume.pdf' };
+  }
+  // Fallback: check localStorage
+  try {
+    var raw = localStorage.getItem('bj_resumes');
+    if (raw) {
+      var resumes = JSON.parse(raw);
+      if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
+    }
+  } catch (e) {}
+  return { id: crypto.randomUUID(), filename: 'resume.pdf' };
+}
+
+// ═══════════════════════════════════════════════════════════
+// D6: NOTIFICATION HELPER — fires apply workflow notifications
+// ═══════════════════════════════════════════════════════════
+
+async function _fireApplyNotification(type, opts) {
+  if (!currentUser) return;
+  var token = await _getAuthToken();
+  if (!token) return;
+
+  try {
+    await fetch(SUPABASE_URL + '/functions/v1/send-notification', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify(Object.assign({
+        user_id: currentUser.id,
+        notification_type: type,
+      }, opts)),
+    });
+  } catch (e) {
+    console.error('[apply-workflow] Notification send error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCORE GATE MODAL
+// ═══════════════════════════════════════════════════════════
+
+function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
+  // Remove any existing modal
+  var existing = document.getElementById('score-gate-modal');
+  if (existing) existing.remove();
+
+  var hasScore = scoreResult && typeof scoreResult.match_score === 'number';
+  var score = hasScore ? scoreResult.match_score : null;
+  var threshold = userApplySettings.default_score_threshold;
+  var isAbove = hasScore && score >= threshold;
+
+  // If score is above threshold, just proceed
+  if (isAbove) {
+    proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    return;
+  }
+
+  var scoreDisplay = hasScore ? score : '?';
+  var scoreClass = hasScore ? (score >= 75 ? 'high' : score >= 50 ? 'mid' : 'low') : 'none';
+  var scoreLabel = hasScore ? (score >= 75 ? 'Strong' : score >= 50 ? 'Partial' : 'Weak') : 'Unscored';
+
+  var breakdownHtml = '';
+  if (scoreResult && scoreResult.recommendations) {
+    var missing = scoreResult.recommendations.missing_skills || [];
+    breakdownHtml = '<div class="sg-breakdown">';
+    if (scoreResult.analysis_summary) {
+      breakdownHtml += '<div class="sg-summary">' + escapeHtml(scoreResult.analysis_summary) + '</div>';
+    }
+    if (missing.length > 0) {
+      breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
+        missing.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
+        '</div>';
+    }
+    breakdownHtml += '</div>';
+  }
+
+  var modal = document.createElement('div');
+  modal.id = 'score-gate-modal';
+  modal.className = 'sg-overlay';
+  modal.innerHTML = 
+    '<div class="sg-modal">' +
+      '<div class="sg-header">' +
+        '<div class="sg-title">Resume Match Check</div>' +
+        '<button class="sg-close" onclick="closeScoreGateModal()">&times;</button>' +
+      '</div>' +
+      '<div class="sg-body">' +
+        '<div class="sg-job-info">' +
+          '<div class="sg-job-title">' + escapeHtml(jobTitle) + '</div>' +
+          '<div class="sg-job-company">' + escapeHtml(companyName) + '</div>' +
+        '</div>' +
+        '<div class="sg-score-row">' +
+          '<div class="sg-score-badge sg-score-' + scoreClass + '">' +
+            '<div class="sg-score-val">' + scoreDisplay + '</div>' +
+            '<div class="sg-score-label">' + scoreLabel + '</div>' +
+          '</div>' +
+          '<div class="sg-threshold-info">' +
+            (hasScore 
+              ? 'Your resume scores <strong>' + score + '</strong> against this job. Your threshold is <strong>' + threshold + '</strong>.'
+              : 'This job hasn\'t been scored against your resume yet.') +
+          '</div>' +
+        '</div>' +
+        breakdownHtml +
+      '</div>' +
+      '<div class="sg-footer">' +
+        '<button class="sg-btn sg-btn-secondary" onclick="closeScoreGateModal()">Cancel</button>' +
+        (hasScore ? '' : '<button class="sg-btn sg-btn-accent" onclick="scoreAndRecheck(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobUrl) + '\')">Score Now (1 credit)</button>') +
+        '<button class="sg-btn sg-btn-rewrite" onclick="triggerRewrite(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\')">AI Rewrite (3 credits)</button>' +
+        '<button class="sg-btn sg-btn-primary" onclick="proceedToApply(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobUrl) + '\')">Apply Anyway</button>' +
+      '</div>' +
+      '<div class="sg-remember">' +
+        '<label><input type="checkbox" id="sg-remember-check"> Don\'t show this for scores above <input type="number" id="sg-remember-val" value="' + threshold + '" min="0" max="100" style="width:48px;text-align:center;"></label>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+
+  // Close on backdrop click
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeScoreGateModal();
+  });
+}
+
+function closeScoreGateModal() {
+  var modal = document.getElementById('score-gate-modal');
+  if (modal) {
+    // Check if user updated their threshold
+    var check = document.getElementById('sg-remember-check');
+    var val = document.getElementById('sg-remember-val');
+    if (check && check.checked && val) {
+      var newThreshold = parseInt(val.value);
+      if (!isNaN(newThreshold) && newThreshold >= 0 && newThreshold <= 100) {
+        userApplySettings.default_score_threshold = newThreshold;
+        saveApplySettings();
+      }
+    }
+    modal.remove();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D5: scoreAndRecheck — Call score-resume EF (1 credit)
+// ═══════════════════════════════════════════════════════════
+
+async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  // Credit check: score = 1 credit
+  var ent = await checkEntitlement('resume_grading', 0);
+  if (!ent.allowed) {
+    if (typeof showUpgradePrompt === 'function') showUpgradePrompt('Resume Scoring', ent);
+    else if (typeof showToast === 'function') showToast('Upgrade required for resume scoring.', { type: 'error' });
+    return;
+  }
+
+  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balance < 1) {
+    if (typeof showToast === 'function') showToast('Scoring costs 1 credit. You have ' + (balance || 0) + '. Purchase more in Settings.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Get active resume text
+  var resume = _getActiveResume();
+  var resumeText = '';
+  try {
+    var { data: archiveData } = await sb
+      .from('resume_archive')
+      .select('parsed_text')
+      .eq('id', resume.id)
+      .single();
+    resumeText = archiveData?.parsed_text || '';
+  } catch (e) {}
+
+  if (!resumeText) {
+    // Fallback: check localStorage
+    try {
+      var raw = localStorage.getItem('bj_resumes');
+      if (raw) {
+        var resumes = JSON.parse(raw);
+        if (resumes.length > 0) resumeText = resumes[0].text || '';
+      }
+    } catch (e) {}
+  }
+
+  if (!resumeText) {
+    if (typeof showToast === 'function') showToast('No resume text found. Upload a resume first on the Resumes page.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Close current modal, show loading
+  closeScoreGateModal();
+  if (typeof showToast === 'function') showToast('Scoring your resume against this job... (1 credit)', { duration: 8000 });
+
+  // Call score-resume EF in single mode
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        mode: 'single',
+        tier: 'basic',
+        job_ids: [jobId],
+        resume_id: resume.id,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || data.error) {
+      if (typeof showToast === 'function') showToast('Scoring failed: ' + (data.error || 'Unknown error'), { type: 'error' });
+      return;
+    }
+
+    // Cache the score for this job
+    if (typeof jobMatchScores === 'undefined') window.jobMatchScores = {};
+    jobMatchScores[jobId] = data;
+
+    if (typeof showToast === 'function') showToast('Score: ' + (data.match_score || '?') + '/100', { duration: 3000 });
+
+    // Re-show the Score Gate Modal with the new score
+    showScoreGateModal(jobId, jobTitle || '', companyName || '', jobUrl || '', data);
+
+  } catch (e) {
+    console.error('[apply-workflow] scoreAndRecheck error:', e);
+    if (typeof showToast === 'function') showToast('Scoring failed. Please try again.', { type: 'error' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D5: triggerRewrite — Opens existing rewrite panel (3 credits)
+// ═══════════════════════════════════════════════════════════
+
+async function triggerRewrite(jobId, jobTitle, companyName) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  // Credit check: rewrite = 3 credits (Pro only)
+  if (typeof _rwCanRewrite === 'function') {
+    var canRewrite = await _rwCanRewrite();
+    if (!canRewrite) return; // _rwCanRewrite already shows error toasts
+  } else {
+    // Fallback credit check if rewrite.js not loaded
+    var ent = await checkEntitlement('ai_rewrite', 0);
+    if (!ent.allowed) {
+      if (typeof showUpgradePrompt === 'function') showUpgradePrompt('AI Resume Rewrite', ent);
+      else if (typeof showToast === 'function') showToast('AI Rewrite requires Pro plan.', { type: 'error' });
+      return;
+    }
+    var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+    if (balance < 3) {
+      if (typeof showToast === 'function') showToast('Rewrite costs 3 credits. You have ' + (balance || 0) + '.', { type: 'error', duration: 5000 });
+      return;
+    }
+  }
+
+  closeScoreGateModal();
+
+  // Get active resume
+  var resume = _getActiveResume();
+  var matchScore = null;
+  if (typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId]) {
+    matchScore = jobMatchScores[jobId].match_score || null;
+  }
+
+  // Open the existing rewrite panel (from rewrite.js)
+  if (typeof openRewritePanel === 'function') {
+    openRewritePanel(jobId, jobTitle || '', companyName || '', resume.id, matchScore);
+  } else {
+    if (typeof showToast === 'function') showToast('Rewrite panel not available. Please reload the page.', { type: 'error' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D4: proceedToApply — Create pending_applications row + submit
+// ═══════════════════════════════════════════════════════════
+
+async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
+  closeScoreGateModal();
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  var mode = getApplyModeForJob(jobId);
+
+  // ── Mode 1: Manual — just open URL, update pipeline ──
+  if (mode === APPLY_MODES.MANUAL) {
+    if (jobUrl) window.open(jobUrl, '_blank');
+    _updatePipelineApplied(jobId);
+    if (typeof showToast === 'function') showToast('Opened application page for ' + (companyName || 'this job'));
+    _applySubmitting = false;
+    return;
+  }
+
+  // ── Modes 2-6: Create pending_application + submit via mock ATS ──
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in to apply.', { type: 'error' });
+    _applySubmitting = false;
+    return;
+  }
+
+  if (typeof showToast === 'function') showToast('Submitting application...', { duration: 10000 });
+
+  // Compute approval mode
+  var approvalMode = 'manual';
+  if (mode === APPLY_MODES.AUTO) approvalMode = 'auto_no_approval';
+  else if (mode === APPLY_MODES.SCORE_GATED_AUTO) approvalMode = userApplySettings.default_approval_required ? 'auto_with_approval' : 'auto_no_approval';
+  else if (mode === APPLY_MODES.AUTO_REWRITE) approvalMode = 'rewrite_review';
+  else if (mode === APPLY_MODES.AUTOPILOT) approvalMode = 'auto_no_approval';
+
+  // Get score if available
+  var scoreResult = getScoreForJob(jobId);
+  var originalScore = scoreResult ? (scoreResult.match_score || null) : null;
+
+  // Compute expiry
+  var expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + (userApplySettings.auto_expire_hours || 48));
+
+  // Get resume
+  var resume = _getActiveResume();
+
+  // Create pending_applications row
+  var pendingRow = {
+    user_id: currentUser.id,
+    job_id: jobId,
+    resume_id: resume.id,
+    original_score: originalScore,
+    score_result: scoreResult || null,
+    status: 'approved', // Skip pending for manual apply-anyway clicks
+    approval_mode: approvalMode,
+    job_title: jobTitle || '',
+    company_name: companyName || '',
+    job_url: jobUrl || '',
+    expires_at: expiresAt.toISOString(),
+    idempotency_key: crypto.randomUUID(),
+  };
+
+  var savedApp = await savePendingApplication(pendingRow);
+  if (!savedApp) {
+    if (typeof showToast === 'function') showToast('Failed to create application record.', { type: 'error' });
+    _applySubmitting = false;
+    return;
+  }
+
+  // Submit to mock ATS
+  var result = await callMockAtsSubmit(savedApp, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(jobId);
+    if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+    // D6: Fire notification
+    _fireApplyNotification('apply_auto_submitted', {
+      subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
+      html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
+      job_id: jobId,
+      job_title: jobTitle,
+      company_name: companyName,
+    });
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
+    if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
+  }
+
+  // Refresh pending applications list
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+function _updatePipelineApplied(jobId) {
+  // Ensure it's in pipeline
+  if (typeof toggleSaveJob === 'function') {
+    if (typeof savedJobIds !== 'undefined' && savedJobIds.indexOf(jobId) < 0) {
+      toggleSaveJob(jobId, null);
+    }
+  }
+  // Update pipeline stage to applied
+  var meta = typeof getPipelineMeta === 'function' ? getPipelineMeta() : {};
+  if (!meta[jobId]) meta[jobId] = { stage: 'applied', savedAt: new Date().toISOString() };
+  meta[jobId].stage = 'applied';
+  meta[jobId].appliedAt = new Date().toISOString();
+  if (typeof savePipelineMeta === 'function') savePipelineMeta(meta);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENHANCED APPLY BUTTON
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Called when user clicks Apply on a job row.
+ * Checks apply mode and score to decide whether to show gate.
+ */
+function handleApplyClick(jobId, jobTitle, companyName, jobUrl, btn) {
+  var mode = getApplyModeForJob(jobId);
+  
+  if (mode === APPLY_MODES.MANUAL) {
+    // Mode 1: Direct apply, no gate
+    proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    return;
+  }
+
+  // Modes 2+: Check score
+  var scoreResult = getScoreForJob(jobId);
+  var hasScore = scoreResult && typeof scoreResult.match_score === 'number';
+  var score = hasScore ? scoreResult.match_score : null;
+  var threshold = userApplySettings.default_score_threshold;
+
+  if (mode === APPLY_MODES.SCORE_GATED) {
+    // Mode 2: Show gate if low/unscored
+    if (!hasScore || score < threshold) {
+      showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult);
+    } else {
+      proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    }
+    return;
+  }
+
+  // Modes 3-6: Auto modes (handled by auto-apply engine, not manual click)
+  // For manual clicks in auto mode, just apply directly
+  proceedToApply(jobId, jobTitle, companyName, jobUrl);
+}
+
+function getApplyModeForJob(jobId) {
+  // Check if job belongs to a filter with specific apply settings
+  // For now, return the global default
+  return userApplySettings.default_apply_mode || APPLY_MODES.MANUAL;
+}
+
+function getScoreForJob(jobId) {
+  // Check if we have a cached score for this job
+  if (typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId]) {
+    var s = jobMatchScores[jobId];
+    if (typeof s === 'object') return s;
+    if (typeof s === 'number') return { match_score: s };
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PENDING APPLICATIONS PANEL
+// ═══════════════════════════════════════════════════════════
+
+function renderPendingApplications() {
+  var container = document.getElementById('pending-apps-panel');
+  if (!container) return;
+
+  var pending = pendingApplications.filter(function(a) {
+    return a.status === APPLY_STATUS.PENDING || a.status === APPLY_STATUS.FAILED;
+  });
+  
+  if (pending.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+  var countEl = document.getElementById('pending-apps-count');
+  if (countEl) countEl.textContent = pending.length;
+
+  var body = document.getElementById('pending-apps-body');
+  if (!body) return;
+
+  body.innerHTML = pending.map(function(app, i) {
+    var scoreHtml = '';
+    if (app.rewritten_score) {
+      scoreHtml = '<span class="pa-score pa-score-improved">' + app.original_score + ' → ' + app.rewritten_score + ' (+' + (app.rewritten_score - app.original_score) + ')</span>';
+    } else if (app.original_score) {
+      var cls = app.original_score >= 75 ? 'high' : app.original_score >= 50 ? 'mid' : 'low';
+      scoreHtml = '<span class="pa-score pa-score-' + cls + '">' + app.original_score + '</span>';
+    } else {
+      scoreHtml = '<span class="pa-score pa-score-none">Unscored</span>';
+    }
+
+    var statusBadge = '';
+    if (app.status === APPLY_STATUS.FAILED) {
+      statusBadge = '<span class="pa-badge pa-badge-failed">Failed — Retry?</span>';
+    }
+
+    var actionsHtml = '';
+    if (app.status === APPLY_STATUS.FAILED) {
+      // Failed: show retry
+      actionsHtml =
+        '<button class="pa-btn pa-btn-primary" onclick="retryPendingApp(\'' + app.id + '\')">Retry Submit</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else if (app.approval_mode === 'rewrite_review') {
+      actionsHtml = 
+        '<button class="pa-btn pa-btn-primary" onclick="approveRewrittenApp(\'' + app.id + '\')">Submit Rewritten</button>' +
+        '<button class="pa-btn pa-btn-secondary" onclick="approveOriginalApp(\'' + app.id + '\')">Submit Original</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else if (app.approval_mode === 'auto_with_approval') {
+      actionsHtml = 
+        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(\'' + app.id + '\')">Approve & Submit</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else {
+      actionsHtml = 
+        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(\'' + app.id + '\')">Apply</button>' +
+        '<button class="pa-btn pa-btn-accent" onclick="scorePendingApp(\'' + app.id + '\')">Score First</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    }
+
+    var rewriteBadge = app.rewritten_score ? '<span class="pa-badge pa-badge-rewrite">Rewritten</span>' : '';
+
+    return '<div class="pa-card" data-app-id="' + (app.id || i) + '">' +
+      '<div class="pa-card-left">' +
+        '<div class="pa-job-title">' + escapeHtml(app.job_title || 'Unknown Job') + '</div>' +
+        '<div class="pa-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
+      '</div>' +
+      '<div class="pa-card-center">' +
+        scoreHtml + rewriteBadge + statusBadge +
+        (app.rewrite_summary ? '<div class="pa-rewrite-summary">' + escapeHtml(app.rewrite_summary) + '</div>' : '') +
+      '</div>' +
+      '<div class="pa-card-actions">' + actionsHtml + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// D4: Pending Application Actions — Supabase-backed
+// ═══════════════════════════════════════════════════════════
+
+async function approvePendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Update status to approved
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting to ' + (app.company_name || 'ATS') + '...', { duration: 10000 });
+
+  // Submit to mock ATS
+  var resume = _getActiveResume();
+  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    // D6: Fire notification
+    _fireApplyNotification('apply_auto_submitted', {
+      subject: 'Applied: ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+      html: '<p>Your resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+    });
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Rejected: ' + (result.detail || 'Unknown') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
+    if (typeof showToast === 'function') showToast('ATS timed out. You can retry.', { type: 'error', duration: 6000 });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+async function approveRewrittenApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Use the rewritten resume
+  var resumeId = app.rewritten_resume_id || app.resume_id;
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting rewritten resume...', { duration: 10000 });
+
+  var result = await callMockAtsSubmit(app, resumeId, 'resume-rewritten.pdf');
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    // D6: Rewrite submitted notification
+    _fireApplyNotification('apply_rewrite_submitted', {
+      subject: 'Applied (rewritten): ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+      html: '<p>Your AI-rewritten resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+    });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+async function approveOriginalApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting original resume...', { duration: 10000 });
+
+  var resume = _getActiveResume();
+  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Submitted original resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+async function skipPendingApp(appId) {
+  var success = await updatePendingApplication(appId, {
+    status: APPLY_STATUS.SKIPPED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (success) {
+    // Remove from local array
+    pendingApplications = pendingApplications.filter(function(a) { return a.id !== appId; });
+    renderPendingApplications();
+    if (typeof showToast === 'function') showToast('Skipped');
+  } else {
+    if (typeof showToast === 'function') showToast('Failed to update. Try again.', { type: 'error' });
+  }
+}
+
+async function retryPendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  // Reset to approved with new idempotency key, then re-submit
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    idempotency_key: crypto.randomUUID(),
+  });
+
+  // Re-fetch to get the updated row
+  await loadPendingApplications();
+  var updatedApp = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!updatedApp) return;
+
+  await approvePendingApp(appId);
+}
+
+async function scorePendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+  // Delegate to scoreAndRecheck which handles credit check + EF call
+  await scoreAndRecheck(app.job_id, app.job_title, app.company_name, app.job_url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// REWRITE REVIEW MODAL
+// ═══════════════════════════════════════════════════════════
+
+function showRewriteReviewModal(app) {
+  var existing = document.getElementById('rewrite-review-modal');
+  if (existing) existing.remove();
+
+  var changes = app.rewrite_summary || 'No changes summary available.';
+  var beforeScore = app.original_score || '?';
+  var afterScore = app.rewritten_score || '?';
+  var improvement = (app.rewritten_score && app.original_score) ? (app.rewritten_score - app.original_score) : 0;
+
+  var modal = document.createElement('div');
+  modal.id = 'rewrite-review-modal';
+  modal.className = 'sg-overlay';
+  modal.innerHTML =
+    '<div class="sg-modal" style="max-width:560px;">' +
+      '<div class="sg-header">' +
+        '<div class="sg-title">Resume Rewrite Review</div>' +
+        '<button class="sg-close" onclick="closeRewriteReviewModal()">&times;</button>' +
+      '</div>' +
+      '<div class="sg-body">' +
+        '<div class="sg-job-info">' +
+          '<div class="sg-job-title">' + escapeHtml(app.job_title || '') + '</div>' +
+          '<div class="sg-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
+        '</div>' +
+        '<div class="rr-score-comparison">' +
+          '<div class="rr-score-before">' +
+            '<div class="rr-score-val">' + beforeScore + '</div>' +
+            '<div class="rr-score-label">Before</div>' +
+          '</div>' +
+          '<div class="rr-arrow">→</div>' +
+          '<div class="rr-score-after">' +
+            '<div class="rr-score-val">' + afterScore + '</div>' +
+            '<div class="rr-score-label">After</div>' +
+          '</div>' +
+          (improvement > 0 ? '<div class="rr-improvement">+' + improvement + '</div>' : '') +
+        '</div>' +
+        '<div class="rr-changes">' +
+          '<div class="rr-changes-label">Changes made:</div>' +
+          '<div class="rr-changes-body">' + escapeHtml(changes) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sg-footer">' +
+        '<button class="sg-btn sg-btn-secondary" onclick="closeRewriteReviewModal()">Cancel</button>' +
+        '<button class="sg-btn sg-btn-primary" onclick="submitRewrittenFromModal()">Submit Rewritten</button>' +
+        '<button class="sg-btn sg-btn-ghost" onclick="submitOriginalFromModal()">Submit Original</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeRewriteReviewModal();
+  });
+}
+
+function closeRewriteReviewModal() {
+  var modal = document.getElementById('rewrite-review-modal');
+  if (modal) modal.remove();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════
+
+loadApplySettings();
+
+// Load pending applications from Supabase after auth is ready
+(async function() {
+  // Wait for auth to be ready (currentUser set by app.js)
+  var attempts = 0;
+  while (!window.currentUser && attempts < 20) {
+    await new Promise(function(r) { setTimeout(r, 250); });
+    attempts++;
+  }
+  if (window.currentUser) {
+    await loadPendingApplications();
+    renderPendingApplications();
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════
+// MODE SELECTOR UI — wire to Rules panel buttons
+// ═══════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', function() {
+  var modeButtons = document.querySelectorAll('.app-mode-select');
+  modeButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      modeButtons.forEach(function(b) {
+        b.classList.remove('active');
+        b.style.border = '';
+      });
+      btn.classList.add('active');
+      btn.style.border = '2px solid var(--accent)';
+      
+      var mode = btn.getAttribute('data-mode');
+      userApplySettings.default_apply_mode = mode;
+      saveApplySettings();
+      updateApplySettingsVisibility(mode);
+    });
+  });
+
+  // Initialize visibility based on saved mode
+  var savedMode = userApplySettings.default_apply_mode || 'manual';
+  var activeBtn = document.querySelector('.app-mode-select[data-mode="' + savedMode + '"]');
+  if (activeBtn) {
+    modeButtons.forEach(function(b) { b.classList.remove('active'); b.style.border = ''; });
+    activeBtn.classList.add('active');
+    activeBtn.style.border = '2px solid var(--accent)';
+  }
+  updateApplySettingsVisibility(savedMode);
+
+  // Threshold slider
+  var thresholdSlider = document.getElementById('fas-threshold');
+  if (thresholdSlider) {
+    thresholdSlider.value = userApplySettings.default_score_threshold || 70;
+    document.getElementById('fas-threshold-val').textContent = thresholdSlider.value;
+    thresholdSlider.addEventListener('change', function() {
+      userApplySettings.default_score_threshold = parseInt(this.value);
+      saveApplySettings();
+    });
+  }
+
+  // Auto-rewrite toggle shows rewrite approval options
+  var rewriteToggle = document.getElementById('fas-auto-rewrite');
+  if (rewriteToggle) {
+    rewriteToggle.addEventListener('change', function() {
+      var row = document.getElementById('fas-rewrite-approval-row');
+      if (row) row.style.display = this.checked ? '' : 'none';
+    });
+  }
+});
+
+function updateApplySettingsVisibility(mode) {
+  var scoreGate = document.getElementById('score-gate-settings');
+  var approval = document.getElementById('approval-settings');
+  var rewriteRow = document.getElementById('fas-rewrite-row');
+  var rewriteApprovalRow = document.getElementById('fas-rewrite-approval-row');
+
+  var usesScore = ['score_gated', 'score_gated_auto', 'auto_rewrite', 'autopilot'].indexOf(mode) >= 0;
+  var usesAuto = ['auto', 'score_gated_auto', 'auto_rewrite', 'autopilot'].indexOf(mode) >= 0;
+  var usesRewrite = ['auto_rewrite', 'autopilot'].indexOf(mode) >= 0;
+
+  if (scoreGate) scoreGate.style.display = usesScore ? '' : 'none';
+  if (approval) approval.style.display = usesAuto ? '' : 'none';
+  if (rewriteRow) rewriteRow.style.display = usesRewrite ? '' : 'none';
+  if (rewriteApprovalRow) rewriteApprovalRow.style.display = usesRewrite && document.getElementById('fas-auto-rewrite') && document.getElementById('fas-auto-rewrite').checked ? '' : 'none';
+}
+
+
 // === js/app.js ===
-const BJ_VERSION = 'v4.51';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Merchandising admin tab');
+// BJ_VERSION is defined in js/version.js (single source of truth)
+// version.js auto-populates #nav-version and .bj-version elements
 
 // Auth
 async function init() {
@@ -18524,8 +22242,6 @@ async function init() {
   currentUser = session.user;
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
-  const vEl = document.getElementById('nav-version');
-  if (vEl) vEl.textContent = BJ_VERSION;
 
 // Pre-warm static ref table caches (v3.84)
 if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
@@ -18626,6 +22342,34 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   
   // Load tuning from Supabase
+  // First: normalize any legacy WHEN pills in saved filters
+  let whenNormDirty = false;
+  savedFilters.forEach(sf => {
+    if (sf.whenPills && sf.whenPills.length > 0) {
+      sf.whenPills.forEach(pill => {
+        if (pill.values && pill.values.length > 0) {
+          const norm = typeof normalizeWhenValue === 'function' ? normalizeWhenValue(pill.values[0]) : null;
+          if (norm && norm.label !== pill.values[0]) {
+            pill.values[0] = norm.label;
+            whenNormDirty = true;
+          }
+        }
+      });
+    }
+  });
+  if (whenNormDirty) {
+    if (filtersFromCloud && userId) {
+      // Persist normalized values back to cloud
+      for (let i = 0; i < savedFilters.length; i++) {
+        const sf = savedFilters[i];
+        if (sf._id) {
+          sb.from('user_filters').update({ filter_data: sf }).eq('id', sf._id).then(() => {});
+        }
+      }
+    }
+    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  }
+
   let tuningFromCloud = false;
   if (userId) {
     const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
@@ -18664,7 +22408,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       const cloudResumes = prof?.user_data?.resumes;
       if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
         resumes = cloudResumes;
-        localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+        saveUserData('bj_resumes', JSON.stringify(resumes));
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
     } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
@@ -18711,6 +22455,10 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
   if (typeof initBilling === 'function') initBilling();
+  // Run unified sync health check — recovers any missing localStorage domains from cloud
+  if (typeof syncHealthCheck === 'function') {
+    setTimeout(function() { syncHealthCheck(); }, 500);
+  }
   loadStats();
   checkExtensionStatus();
   loadCollections();
@@ -18800,6 +22548,15 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+    // Refresh resumes when switching to resumes tab
+    if (item.dataset.page === 'resumes') {
+      if (typeof renderResumes === 'function') renderResumes();
+      // If active resumes are empty but user may have cloud data, re-reconcile
+      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+        reconcileResumeArchive();
+      }
+    }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
@@ -18944,6 +22701,9 @@ async function checkExtensionStatus() {
           detail.textContent = profile.scanner_running
             ? `Active now · last synced at ${timeStr}`
             : `Last active ${todayStr} at ${timeStr}`;
+          // Hide download button when connected
+          var dlBox = $('#download-box');
+          if (dlBox) dlBox.style.display = 'none';
         } else {
           dot.className = 'ext-dot off';
           text.textContent = 'Extension inactive';
@@ -19035,12 +22795,19 @@ function updateGmailUI(connected, email) {
   const ghostBtn = $('#gmail-connect-btn');
   const ghostAddr = $('#ghost-gmail-address');
   const gmailCard = $('#g-gmail-card');
+  const gmailChip = document.getElementById('g-gmail-stat');
   if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
   if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
   if (ghostAddr) ghostAddr.textContent = email;
   if (gmailCard) {
     const valEl = gmailCard.querySelector('.stat-val');
     if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
+  }
+  // Update hero chip
+  if (gmailChip) {
+    gmailChip.textContent = connected ? 'On' : 'Off';
+    gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
+    if (!connected) gmailChip.style.fontSize = '12px';
   }
 }
 
@@ -19103,8 +22870,39 @@ window.disconnectGmail = async function() {
 // Init Gmail status on load
 initGmailStatus();
 
-// Q22: Switch between List and Board views in My Applications
+// Q22: Switch between Queue, Pipeline, and History views in My Applications
 window.switchAppView = function(view) {
+  // Toggle active on view toggle buttons
+  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  // Toggle view panels
+  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
+    panel.classList.remove('active');
+  });
+  var target = document.getElementById('app-view-' + view + '-panel');
+  if (target) target.classList.add('active');
+
+  // Close settings panel when switching views
+  var settingsPanel = document.getElementById('app-settings-panel');
+  if (settingsPanel) settingsPanel.style.display = 'none';
+  var settingsBtn = document.getElementById('app-settings-toggle');
+  if (settingsBtn) settingsBtn.classList.remove('active');
+
+  // Trigger pipeline render if switching to pipeline view
+  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+    renderPipeline();
+  }
+
+  localStorage.setItem('bj_app_view', view);
+};
+
+// Restore last app view on init
+(function() {
+  var saved = localStorage.getItem('bj_app_view') || 'queue';
+  if (typeof switchAppView === 'function') switchAppView(saved);
+})();
 
 // Q16-Q19: Resume-First Onboarding
 let _onboardProfile = null;
@@ -19189,7 +22987,7 @@ window.createFilterFromProfile = function() {
 
   // Add to saved filters
   savedFilters.push(newFilter);
-  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   
   // Update onboarding step
   updateOnboardingStep(2);
@@ -19228,11 +23026,11 @@ function applyProgressiveNav(step) {
   const navItems = {
     'tuning': 2,
     'resumes': 1,
-    'applications': 3,
-    'ghost': 4,
-    'stats': 3,
-    'notifications': 3,
-    'feedback': 2,
+    'applications': 1,
+    'ghost': 1,
+    'stats': 1,
+    'notifications': 2,
+    'feedback': 1,
   };
 
   for (const [page, minStep] of Object.entries(navItems)) {
@@ -19268,33 +23066,6 @@ function applyProgressiveNav(step) {
     if (prompt) prompt.style.display = 'none';
   }
 })();
-
-
-  const listPanel = document.getElementById('app-view-list-panel');
-  const boardPanel = document.getElementById('app-view-board-panel');
-  const listBtn = document.getElementById('app-view-list');
-  const boardBtn = document.getElementById('app-view-board');
-  if (!listPanel || !boardPanel) return;
-
-  if (view === 'board') {
-    listPanel.style.display = 'none';
-    boardPanel.style.display = '';
-    listBtn.classList.remove('active');
-    boardBtn.classList.add('active');
-    // Move pipeline stages into board panel
-    const stages = document.getElementById('pl-stages-container');
-    const target = document.getElementById('app-view-board-panel');
-    if (stages && target && !target.contains(stages)) {
-      target.appendChild(stages);
-    }
-    if (typeof renderPipeline === 'function') renderPipeline();
-  } else {
-    listPanel.style.display = '';
-    boardPanel.style.display = 'none';
-    listBtn.classList.add('active');
-    boardBtn.classList.remove('active');
-  }
-};
 
 
 

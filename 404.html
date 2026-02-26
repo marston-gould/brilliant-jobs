@@ -164,6 +164,7 @@
     100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
   }
 </style>
+  <script src="/js/version.js"></script>
 </head>
 <body>
   <div class="container">
@@ -173,7 +174,7 @@
     <div class="sub">This page doesn't exist. Much like that dream job<br>that turned out to be a scam on Craigslist.</div>
     <a href="/" class="btn">Back to the Dashboard →</a>
     <div class="footer-note">Even the best job seekers take wrong turns sometimes.</div>
-    <div class="footer-note" style="margin-top:12px;">&copy; <script>document.write(new Date().getFullYear())</script> Brilliant Jobs</div>
+    <div class="footer-note" style="margin-top:12px;">&copy; <span class="bj-year"></span> Brilliant Jobs</div>
   </div>
   <script>
     for (let i = 0; i < 20; i++) {
