@@ -792,11 +792,11 @@ function applyProgressiveNav(step) {
   const navItems = {
     'tuning': 2,
     'resumes': 1,
-    'applications': 3,
-    'ghost': 4,
-    'stats': 3,
-    'notifications': 3,
-    'feedback': 2,
+    'applications': 1,
+    'ghost': 1,
+    'stats': 1,
+    'notifications': 2,
+    'feedback': 1,
   };
 
   for (const [page, minStep] of Object.entries(navItems)) {
