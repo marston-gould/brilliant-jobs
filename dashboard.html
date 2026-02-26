@@ -794,6 +794,16 @@
             Global rules applying to ALL searches: <strong id="gr-summary">loading…</strong> <span style="color:var(--accent);margin-left:4px;">Edit Global Rules →</span>
           </div>
 
+          <!-- AI Filter Generation — prominent CTA above filter builder -->
+          <div id="ai-filter-cta" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin-bottom:8px;background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(77,142,255,0.06));border:1px solid rgba(77,142,255,0.2);border-radius:10px;">
+            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">✦</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:var(--accent);">Generate filters from your resume</div>
+              <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">AI reads your resume and creates keyword, location, and level filters automatically</div>
+            </div>
+            <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:6px 16px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-weight:600;">Generate</button>
+          </div>
+
           <!-- Collapsible query builder -->
           <div class="qb-collapse-header" id="qb-toggle">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" class="qb-chevron" id="qb-chevron"><polyline points="6 9 12 15 18 9"/></svg>
@@ -895,15 +905,7 @@
               <button class="btn btn-primary btn-sm" id="save-filter-go">Save</button>
             </div>
 
-            <!-- AI Filter Generation — prominent CTA -->
-            <div id="ai-filter-cta" style="display:flex;align-items:center;gap:12px;padding:10px 16px;margin-top:8px;background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(77,142,255,0.06));border:1px solid rgba(77,142,255,0.2);border-radius:10px;">
-              <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">✦</div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:12px;font-weight:700;color:var(--accent);">Generate filters from your resume</div>
-                <div style="font-size:11px;color:var(--text-dim);line-height:1.4;">AI reads your resume and creates keyword, location, and level filters automatically</div>
-              </div>
-              <button class="btn btn-sm" id="ai-suggest-filter-btn" style="padding:6px 16px;font-size:11px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;font-weight:600;">Generate</button>
-            </div>
+            <!-- AI Filter Generation moved above collapse -->
             <div class="filter-count" id="filter-count"></div>
           </div>
           </div>
