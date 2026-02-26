@@ -2806,6 +2806,7 @@
             <button class="admin-tab" data-tab="signals">Signals</button>
               <button class="admin-tab" data-tab="content">Content</button>
               <button class="admin-tab" data-tab="enrichment">Enrichment</button>
+            <button class="admin-tab" data-tab="referrals">Referrals</button>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
@@ -3437,6 +3438,57 @@
           </div>
 
         </div>
+
+          <!-- ─── REFERRALS TAB ─── -->
+          <div class="admin-panel" id="admin-panel-referrals">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-total-referrals">—</div><div class="stat-label">Total Referrals</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-pending-review">—</div><div class="stat-label">Pending Review</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-total-rewarded">—</div><div class="stat-label">Rewarded</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="ar-total-rejected">—</div><div class="stat-label">Rejected</div></div>
+            </div>
+
+            <!-- Fraud Review Queue -->
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+                <strong>Fraud Review Queue</strong>
+                <button class="btn-secondary btn-sm" onclick="loadReferralsAdminTab()" style="font-size:11px;">Refresh</button>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table" style="width:100%;">
+                  <thead><tr>
+                    <th>Referrer</th><th>Referred</th><th>Method</th><th>Score</th><th>Signals</th><th>Status</th><th>Date</th><th>Actions</th>
+                  </tr></thead>
+                  <tbody id="ar-fraud-queue-body"></tbody>
+                </table>
+              </div>
+              <div id="ar-fraud-empty" style="display:none;padding:20px;text-align:center;color:var(--text-faint);font-size:13px;">No flagged referrals. All clear.</div>
+            </div>
+
+            <!-- Recent Rewards -->
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);"><strong>Recent Rewards</strong></div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table" style="width:100%;">
+                  <thead><tr><th>User</th><th>Type</th><th>Value</th><th>Tier</th><th>Date</th><th>Actions</th></tr></thead>
+                  <tbody id="ar-rewards-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Banned Users -->
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);"><strong>Banned Referrers</strong></div>
+              <div style="overflow-x:auto;">
+                <table class="admin-table" style="width:100%;">
+                  <thead><tr><th>User</th><th>Email</th><th>Referral Count</th><th>Actions</th></tr></thead>
+                  <tbody id="ar-banned-body"></tbody>
+                </table>
+              </div>
+              <div id="ar-banned-empty" style="display:none;padding:16px;text-align:center;color:var(--text-faint);font-size:13px;">No banned referrers.</div>
+            </div>
+          </div>
+
       </div> <!-- end page-admin -->
 
       <!-- ============ LOCATION BROWSER ============ -->
