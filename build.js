@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 const jsFiles = [
   'js/version.js',
   'js/globals.js',
+  'js/sync.js',
   'js/query-builder.js',
   'js/job-feed.js',
   'js/sort-bar.js',

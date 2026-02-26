@@ -221,6 +221,10 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
   if (typeof initBilling === 'function') initBilling();
+  // Run unified sync health check — recovers any missing localStorage domains from cloud
+  if (typeof syncHealthCheck === 'function') {
+    setTimeout(function() { syncHealthCheck(); }, 500);
+  }
   loadStats();
   checkExtensionStatus();
   loadCollections();
