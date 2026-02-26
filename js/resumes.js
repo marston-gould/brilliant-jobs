@@ -239,7 +239,7 @@ function renderResumes() {
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
           <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
-          <button class="danger" onclick="removeResume(${i})" title="Delete">\u2715</button>
+          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715 Delete</button>
         </div>
       </div>
       <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
@@ -369,7 +369,7 @@ function renderResumeArchive(archivedResumes) {
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
       <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
-      <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})">Delete</button>
     </div>`;
   }).join('');
 
@@ -847,8 +847,87 @@ window.renameResume = function(idx) {
   renderResumes();
 };
 
+// Delete confirmation flow — offers download before permanent deletion
+window.confirmDeleteResume = function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Check if Google Drive is connected
+  var gdrive;
+  try { gdrive = JSON.parse(localStorage.getItem('bj_gdrive') || '{}'); } catch(e) { gdrive = {}; }
+  var gdriveConnected = gdrive && gdrive.connected;
+
+  // Build modal
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.3);';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;';
+  title.textContent = 'Delete "' + (r.name || 'Resume') + '"?';
+
+  var desc = document.createElement('div');
+  desc.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:20px;';
+  desc.textContent = 'This will permanently remove this resume and all associated data. Would you like to save a copy first?';
+
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+  // Save to Google Drive button (if connected)
+  if (gdriveConnected) {
+    var gdriveBtn = document.createElement('button');
+    gdriveBtn.className = 'btn btn-sm';
+    gdriveBtn.style.cssText = 'background:var(--green);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
+    gdriveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg> Save to Google Drive & Delete';
+    gdriveBtn.onclick = function() {
+      downloadResume(idx);
+      overlay.remove();
+      setTimeout(function() { removeResume(idx); }, 500);
+    };
+    btnRow.appendChild(gdriveBtn);
+  }
+
+  // Download to desktop button
+  var downloadBtn = document.createElement('button');
+  downloadBtn.className = 'btn btn-sm';
+  downloadBtn.style.cssText = 'background:var(--accent);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
+  downloadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
+  downloadBtn.onclick = function() {
+    downloadResume(idx);
+    overlay.remove();
+    setTimeout(function() { removeResume(idx); }, 500);
+  };
+  btnRow.appendChild(downloadBtn);
+
+  // Delete without saving
+  var deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn btn-sm';
+  deleteBtn.style.cssText = 'background:var(--red);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;';
+  deleteBtn.textContent = 'Delete Without Saving';
+  deleteBtn.onclick = function() {
+    overlay.remove();
+    removeResume(idx);
+  };
+  btnRow.appendChild(deleteBtn);
+
+  // Cancel
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-sm btn-secondary';
+  cancelBtn.style.cssText = 'padding:8px 16px;font-size:12px;border-radius:8px;cursor:pointer;margin-inline-start:auto;';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = function() { overlay.remove(); };
+  btnRow.appendChild(cancelBtn);
+
+  modal.appendChild(title);
+  modal.appendChild(desc);
+  modal.appendChild(btnRow);
+  overlay.appendChild(modal);
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+};
+
 window.removeResume = function(idx) {
-  if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
   // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
   if (resumes[idx].storagePath && currentUser) {
