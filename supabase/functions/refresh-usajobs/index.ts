@@ -105,7 +105,8 @@ function mapToAtsJob(item: any) {
     apply_url: d.ApplyURI?.[0] || d.PositionURI || null,
     first_seen_at: d.PublicationStartDate || new Date().toISOString(),
     closes_at: d.ApplicationCloseDate || null,
-    status: "open",
+    // NOTE: status omitted — defaults to 'open' on INSERT, not overwritten on UPDATE
+    // Prevents re-opening jobs confirmed as dead/closed by users
     employment_type: mapEmploymentType(scheduleCode),
     security_clearance: details?.SecurityClearance || null,
     pay_grade: mapPayGrade(details?.LowGrade, details?.HighGrade),

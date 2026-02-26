@@ -21,6 +21,58 @@ function renderResumes() {
 
   const activeResumes = resumes.filter(r => !r.archived);
   const archivedResumes = resumes.filter(r => r.archived);
+
+  // If no active resumes in localStorage but user is authenticated, attempt cloud recovery
+  if (activeResumes.length === 0 && !renderResumes._syncAttempted && typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser) {
+    renderResumes._syncAttempted = true;
+    console.log('[resume-render] No active resumes — triggering cloud recovery');
+    (async function() {
+      try {
+        var userId = currentUser.id;
+        var { data: archiveRows, error } = await sb.from('resume_archive')
+          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot')
+          .eq('user_id', userId)
+          .eq('is_active', true);
+        if (error || !archiveRows || archiveRows.length === 0) {
+          console.log('[resume-render] No active resumes in archive either:', error?.message || 'none found');
+          return;
+        }
+        console.log('[resume-render] Found', archiveRows.length, 'active resumes in archive — syncing');
+        var dirty = false;
+        archiveRows.forEach(function(row) {
+          // Check if already exists in resumes array
+          var exists = resumes.some(function(r) { return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path); });
+          if (exists) return;
+          var stub = {
+            id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+            name: row.display_name || 'Synced Resume',
+            fileName: row.display_name || 'synced-resume',
+            size: row.file_size_bytes ? (row.file_size_bytes < 1048576 ? Math.round(row.file_size_bytes / 1024) + ' KB' : (row.file_size_bytes / 1048576).toFixed(1) + ' MB') : '—',
+            filterIds: (row.metadata_snapshot && row.metadata_snapshot.filter_ids) || [],
+            uploadedAt: row.created_at ? new Date(row.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+            levelLabel: (row.metadata_snapshot && row.metadata_snapshot.level_label) || '',
+            levelColor: (row.metadata_snapshot && row.metadata_snapshot.level_color) || '',
+            archived: false,
+            extractedText: '',
+            keywords: [],
+            textStatus: 'needs-reextract',
+            storagePath: row.storage_path,
+            archiveId: row.resume_id
+          };
+          resumes.push(stub);
+          dirty = true;
+          console.log('[resume-render] Recovered resume from archive:', row.display_name);
+        });
+        if (dirty) {
+          saveResumes();
+          renderResumes();
+        }
+      } catch (e) {
+        console.warn('[resume-render] Cloud recovery failed:', e);
+      }
+    })();
+  }
+
   countEl.textContent = activeResumes.length;
   archivedEl.textContent = archivedResumes.length;
 
@@ -159,37 +211,69 @@ function renderResumes() {
       ? `<div style="font-size:10px;color:var(--text-faint);margin-top:6px;font-family:var(--mono);">${jobsApplied} applied \u00b7 ${responded} responded \u00b7 ${responseRate}% rate</div>`
       : '';
 
+    // Score badge from cache
+    const cachedScore = readinessCache && readinessCache.scores && readinessCache.scores[i];
+    const scoreVal = cachedScore ? cachedScore.overallScore : null;
+    const scoreClass = scoreVal >= 75 ? 'high' : scoreVal >= 50 ? 'mid' : scoreVal !== null ? 'low' : 'none';
+    const scoreLabel = scoreVal >= 75 ? 'Strong' : scoreVal >= 50 ? 'Partial' : scoreVal !== null ? 'Weak' : '';
+    const scoreDisplay = scoreVal !== null ? `${scoreVal}<div class="nri-score-label">${scoreLabel}</div>` : (isPlaceholder ? '—' : (assignedIds.length > 0 ? '…' : '—'));
+
+    // Filter dots (compact representation for row)
+    const filterDots = sf.map((f, fi) => {
+      const color = filterColors[fi % filterColors.length];
+      const isActive = assignedIds.includes(f.name);
+      return isActive ? `<span class="nri-filter-dot active" style="background:${color};" title="${f.name}"></span>` : '';
+    }).filter(Boolean).join('');
+
     return `
-    <div class="resume-row ${isPlaceholder ? 'is-placeholder' : ''}">
-      <div class="resume-card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <div class="rc-icon-sm ${icon.cls}" style="font-size:9px;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;${isPlaceholder ? 'opacity:0.4;border:2px dashed var(--border);' : ''}">${isPlaceholder ? '?' : icon.text}</div>
-          <div style="min-width:0;flex:1;">
-            <div class="rc-name" style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}</div>
-            ${!isPlaceholder ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${r.size} \u00b7 ${r.uploadedAt}</div>` : ''}
-          </div>
-          ${gdriveIcon}${tierBadge}
+    <div class="new-resume-item ${isPlaceholder ? 'is-placeholder' : ''}" id="nri-${i}" onclick="toggleResumePanel(${i}, event)">
+      <div class="nri-row">
+        <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
+        <div class="nri-info">
+          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}</div>
+          <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${r.levelLabel ? ' \u00b7 ' + r.levelLabel : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
         </div>
-        ${!isPlaceholder && r.textStatus === 'extracting' ? '<div style="font-size:10px;color:var(--warm);margin-bottom:6px;">Extracting keywords\u2026</div>' : ''}
-        <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
-        ${isPlaceholder ? `<div style="margin:8px 0;padding:8px;background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.2);border-radius:8px;text-align:center;cursor:pointer;" onclick="replaceResumePlaceholder(${i})"><div style="font-size:11px;color:var(--warm);font-weight:600;">Upload File</div><div style="font-size:10px;color:var(--text-faint);">Replace placeholder with actual resume</div></div>` : ''}
-        <div style="margin:8px 0;">${levelSelect}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;">${filterPills}</div>
-        ${statsLine}
-        <div class="rc-actions">
-          <button class="rc-btn rc-download" onclick="downloadResume(${i})" title="Download resume file">Download</button>
-          <button class="rc-btn rc-rename" onclick="renameResume(${i})">Rename</button>
-          <button class="rc-btn rc-archive" onclick="archiveResume(${i})">Archive</button>
-          <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+        <div class="nri-filters">${filterDots}</div>
+        <div class="nri-score ${scoreClass}">${scoreDisplay}</div>
+        <div class="nri-actions" onclick="event.stopPropagation()">
+          <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
+          <button onclick="renameResume(${i})" title="Rename">\u270e</button>
+          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
+          <button class="danger" onclick="confirmDeleteResume(${i})" title="Delete">\u2715 Delete</button>
         </div>
       </div>
-      <div class="readiness-side-slot" id="readiness-side-slot-${i}">${
-        !isPlaceholder && readinessCache && readinessCache.scores && readinessCache.scores[i]
-          ? buildReadinessSide(i, readinessCache.scores[i])
-          : (assignedIds.length > 0 && !isPlaceholder
-              ? '<div class="readiness-side" id="readiness-side-' + i + '" style="display:flex;align-items:center;justify-content:center;gap:8px;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep</button></div>'
-              : '<div class="readiness-side" id="readiness-side-' + i + '"></div>')
-      }</div>
+      <div class="rc-grade-slot" id="rc-grade-${i}" style="display:none;"></div>
+      <!-- AI Analysis Panel (expanded on click) -->
+      <div class="ai-panel" id="ai-panel-${i}">
+        <div id="ai-panel-content-${i}">
+          ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
+            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep Analyze</button></div>'
+            : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
+              ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
+              : '<div style="font-size:12px;color:var(--text-faint);">Assign a filter to see readiness analysis</div>') + '</div>')}
+        </div>
+        ${!isPlaceholder ? `
+        <div style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:4px;flex-wrap:wrap;">
+          <span style="font-size:10px;font-weight:600;color:var(--text-faint);margin-right:4px;line-height:22px;">Filters:</span>
+          ${filterPills}
+        </div>
+        <div style="margin-top:8px;">${levelSelect}</div>` : ''}
+        <!-- Rewrite Interview Promo -->
+        ${cachedScore && cachedScore.overallScore < 85 && !isPlaceholder ? `
+        <div class="ai-rewrite-promo">
+          <div class="ai-rewrite-promo-text">
+            <h4>\u2728 Guided Rewrite Interview</h4>
+            <p>Fill gaps, quantify impact, and strategically position your experience. Get a tailored rewrite with a side-by-side diff.</p>
+            <div class="ai-interview-preview">
+              <div class="ai-interview-step"><strong>1</strong>Fill Gaps</div>
+              <div class="ai-interview-step"><strong>2</strong>Quantify</div>
+              <div class="ai-interview-step"><strong>3</strong>Position</div>
+              <div class="ai-interview-step"><strong>4</strong>Rewrite</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="event.stopPropagation();launchRewriteInterview(${i})" style="white-space:nowrap;flex-shrink:0;">Start Rewrite</button>
+        </div>` : ''}
+      </div>
     </div>`;
   }
 
@@ -284,8 +368,8 @@ function renderResumeArchive(archivedResumes) {
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
-      <button class="rc-btn rc-rename" onclick="unarchiveResume(${i})" style="background:var(--accent);">Restore</button>
-      <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
+      <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
+      <button class="rc-btn rc-delete" onclick="confirmDeleteResume(${i})">Delete</button>
     </div>`;
   }).join('');
 
@@ -377,20 +461,160 @@ window.setResumeLevel = function(idx, selectEl) {
   renderResumes();
 };
 
-window.archiveResume = function(idx) {
+window.archiveResume = async function(idx) {
   if (!confirm(`Archive "${resumes[idx].name}"? It will be moved to the archive section.`)) return;
+  // Write to Supabase first (source of truth) — only update local state on success
+  if (resumes[idx].archiveId && typeof sb !== 'undefined') {
+    try {
+      const { error } = await sb.from('resume_archive')
+        .update({ is_active: false, is_archived: true, archived_at: new Date().toISOString() })
+        .eq('resume_id', resumes[idx].archiveId);
+      if (error) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write failed:', error); return; }
+    } catch (e) { showToast('Failed to archive — please try again.', { type: 'error' }); console.error('[resume-sync] Archive DB write exception:', e); return; }
+  }
   resumes[idx].archived = true;
   resumes[idx].archivedAt = new Date().toLocaleDateString();
+  resumes[idx]._archivedLocallyAt = Date.now();
   saveResumes();
   renderResumes();
 };
 
-window.unarchiveResume = function(idx) {
+window.unarchiveResume = async function(idx) {
+  // Write to Supabase first (source of truth) — only update local state on success
+  if (resumes[idx].archiveId && typeof sb !== 'undefined') {
+    try {
+      const { error } = await sb.from('resume_archive')
+        .update({ is_active: true, is_archived: false, archived_at: null })
+        .eq('resume_id', resumes[idx].archiveId);
+      if (error) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write failed:', error); return; }
+    } catch (e) { showToast('Failed to restore — please try again.', { type: 'error' }); console.error('[resume-sync] Restore DB write exception:', e); return; }
+  }
   resumes[idx].archived = false;
   delete resumes[idx].archivedAt;
+  resumes[idx]._archivedLocallyAt = Date.now();
   saveResumes();
   renderResumes();
 };
+
+// ─── Resume Archive Reconciliation ───
+// Syncs localStorage bj_resumes ↔ Supabase resume_archive on page load.
+// resume_archive is the source of truth for metadata; localStorage is cache.
+async function reconcileResumeArchive() {
+  if (typeof sb === 'undefined' || !currentUser) return;
+  try {
+    var userId = currentUser.id;
+    var { data: archiveRows, error } = await sb
+      .from('resume_archive')
+      .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at')
+      .eq('user_id', userId);
+    if (error || !archiveRows) { console.warn('[resume-sync] Failed to fetch archive:', error); return; }
+
+    // Build lookup: storage_path → archive row
+    var byPath = {};
+    var byName = {};
+    archiveRows.forEach(function(row) {
+      if (row.storage_path) byPath[row.storage_path] = row;
+      if (row.display_name) {
+        var key = row.display_name.toLowerCase();
+        if (!byName[key]) byName[key] = row;
+      }
+    });
+
+    // Track which archive rows got matched
+    var matchedArchiveIds = {};
+    var dirty = false;
+
+    // Step 1: Link localStorage resumes to archive rows
+    resumes.forEach(function(r) {
+      var match = null;
+      if (r.storagePath && byPath[r.storagePath]) {
+        match = byPath[r.storagePath];
+      } else if (r.name && byName[r.name.toLowerCase()]) {
+        match = byName[r.name.toLowerCase()];
+      }
+      if (match) {
+        if (r.archiveId !== match.resume_id) {
+          r.archiveId = match.resume_id;
+          dirty = true;
+        }
+        matchedArchiveIds[match.resume_id] = true;
+        // Sync archive state → localStorage (skip if recently changed locally)
+        const recentlyChanged = r._archivedLocallyAt && (Date.now() - r._archivedLocallyAt) < 60000;
+        if (!recentlyChanged) {
+          if (match.is_archived && !r.archived) {
+            r.archived = true;
+            r.archivedAt = match.created_at ? new Date(match.created_at).toLocaleDateString() : new Date().toLocaleDateString();
+            dirty = true;
+          } else if (!match.is_archived && match.is_active && r.archived) {
+            r.archived = false;
+            delete r.archivedAt;
+            dirty = true;
+          }
+        }
+      }
+    });
+
+    // Step 2: Insert unmatched localStorage resumes into resume_archive
+    var unmatched = resumes.filter(function(r) { return !r.archiveId && r.storagePath; });
+    for (var i = 0; i < unmatched.length; i++) {
+      var r = unmatched[i];
+      var sizeBytes = 0;
+      var sizeMatch = (r.size || '').match(/([\d.]+)\s*(KB|MB)/i);
+      if (sizeMatch) {
+        sizeBytes = parseFloat(sizeMatch[1]) * (sizeMatch[2].toUpperCase() === 'MB' ? 1048576 : 1024);
+      }
+      var { data: inserted, error: insErr } = await sb.from('resume_archive').insert({
+        user_id: userId,
+        display_name: r.name || r.fileName || 'Untitled',
+        file_hash: r.id || '',
+        file_size_bytes: Math.round(sizeBytes) || 0,
+        file_type: /\.pdf$/i.test(r.fileName || '') ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        storage_path: r.storagePath,
+        is_active: !r.archived,
+        is_archived: !!r.archived
+      }).select('resume_id').single();
+      if (!insErr && inserted) {
+        r.archiveId = inserted.resume_id;
+        dirty = true;
+        console.log('[resume-sync] Inserted into archive:', r.name);
+      }
+    }
+
+    // Step 3: Pull active archive rows not in localStorage
+    archiveRows.forEach(function(row) {
+      if (matchedArchiveIds[row.resume_id]) return;
+      if (!row.is_active || row.is_archived) return;
+      // Active resume in DB but missing from localStorage — create stub
+      var stub = {
+        id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        name: row.display_name || 'Synced Resume',
+        fileName: row.display_name || 'synced-resume',
+        size: row.file_size_bytes ? (row.file_size_bytes < 1048576 ? Math.round(row.file_size_bytes / 1024) + ' KB' : (row.file_size_bytes / 1048576).toFixed(1) + ' MB') : '—',
+        filterIds: [],
+        uploadedAt: row.created_at ? new Date(row.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+        levelLabel: '',
+        levelColor: '',
+        archived: false,
+        extractedText: '',
+        keywords: [],
+        textStatus: 'needs-reextract',
+        storagePath: row.storage_path,
+        archiveId: row.resume_id
+      };
+      resumes.push(stub);
+      dirty = true;
+      console.log('[resume-sync] Pulled from archive:', row.display_name);
+    });
+
+    if (dirty) {
+      saveResumes();
+      renderResumes();
+      console.log('[resume-sync] Reconciliation complete — synced ' + resumes.length + ' resumes');
+    }
+  } catch (e) {
+    console.warn('[resume-sync] Reconciliation error:', e);
+  }
+}
 
 // ============================================================
 // RESUME TEXT EXTRACTION (P4)
@@ -579,6 +803,41 @@ window.toggleResumeKeywords = function(idx) {
   if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
 };
 
+// Row click → expand/collapse AI analysis panel (only one at a time)
+var _activeResumePanel = -1;
+window.toggleResumePanel = function(idx, event) {
+  // Don't toggle if clicking action buttons or inputs
+  if (event && event.target.closest('.nri-actions, select, button, input, .rc-filter-pill')) return;
+
+  const panel = document.getElementById('ai-panel-' + idx);
+  const row = document.getElementById('nri-' + idx);
+  if (!panel || !row) return;
+
+  if (_activeResumePanel === idx) {
+    // Collapse current
+    panel.classList.remove('open');
+    row.classList.remove('selected');
+    _activeResumePanel = -1;
+  } else {
+    // Collapse previous
+    if (_activeResumePanel >= 0) {
+      var prevPanel = document.getElementById('ai-panel-' + _activeResumePanel);
+      var prevRow = document.getElementById('nri-' + _activeResumePanel);
+      if (prevPanel) prevPanel.classList.remove('open');
+      if (prevRow) prevRow.classList.remove('selected');
+    }
+    // Expand new
+    panel.classList.add('open');
+    row.classList.add('selected');
+    _activeResumePanel = idx;
+
+    // Track PostHog event
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('resume_panel_expanded', { resume_index: idx, resume_name: resumes[idx]?.name });
+    }
+  }
+};
+
 window.renameResume = function(idx) {
   const current = resumes[idx].name;
   const input = prompt('Resume name:', current);
@@ -588,8 +847,87 @@ window.renameResume = function(idx) {
   renderResumes();
 };
 
+// Delete confirmation flow — offers download before permanent deletion
+window.confirmDeleteResume = function(idx) {
+  var r = resumes[idx];
+  if (!r) return;
+
+  // Check if Google Drive is connected
+  var gdrive;
+  try { gdrive = JSON.parse(localStorage.getItem('bj_gdrive') || '{}'); } catch(e) { gdrive = {}; }
+  var gdriveConnected = gdrive && gdrive.connected;
+
+  // Build modal
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  var modal = document.createElement('div');
+  modal.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.3);';
+
+  var title = document.createElement('div');
+  title.style.cssText = 'font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;';
+  title.textContent = 'Delete "' + (r.name || 'Resume') + '"?';
+
+  var desc = document.createElement('div');
+  desc.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:20px;';
+  desc.textContent = 'This will permanently remove this resume and all associated data. Would you like to save a copy first?';
+
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+
+  // Save to Google Drive button (if connected)
+  if (gdriveConnected) {
+    var gdriveBtn = document.createElement('button');
+    gdriveBtn.className = 'btn btn-sm';
+    gdriveBtn.style.cssText = 'background:var(--green);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
+    gdriveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/></svg> Save to Google Drive & Delete';
+    gdriveBtn.onclick = function() {
+      downloadResume(idx);
+      overlay.remove();
+      setTimeout(function() { removeResume(idx); }, 500);
+    };
+    btnRow.appendChild(gdriveBtn);
+  }
+
+  // Download to desktop button
+  var downloadBtn = document.createElement('button');
+  downloadBtn.className = 'btn btn-sm';
+  downloadBtn.style.cssText = 'background:var(--accent);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;';
+  downloadBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' + (gdriveConnected ? ' Download & Delete' : ' Save to Desktop & Delete');
+  downloadBtn.onclick = function() {
+    downloadResume(idx);
+    overlay.remove();
+    setTimeout(function() { removeResume(idx); }, 500);
+  };
+  btnRow.appendChild(downloadBtn);
+
+  // Delete without saving
+  var deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn btn-sm';
+  deleteBtn.style.cssText = 'background:var(--red);color:#fff;border:none;padding:8px 16px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;';
+  deleteBtn.textContent = 'Delete Without Saving';
+  deleteBtn.onclick = function() {
+    overlay.remove();
+    removeResume(idx);
+  };
+  btnRow.appendChild(deleteBtn);
+
+  // Cancel
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-sm btn-secondary';
+  cancelBtn.style.cssText = 'padding:8px 16px;font-size:12px;border-radius:8px;cursor:pointer;margin-inline-start:auto;';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = function() { overlay.remove(); };
+  btnRow.appendChild(cancelBtn);
+
+  modal.appendChild(title);
+  modal.appendChild(desc);
+  modal.appendChild(btnRow);
+  overlay.appendChild(modal);
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+};
+
 window.removeResume = function(idx) {
-  if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
   // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
   if (resumes[idx].storagePath && currentUser) {
@@ -823,6 +1161,22 @@ $('#resume-from-level-btn')?.addEventListener('click', async () => {
 // Init nav dots
 setTimeout(() => { updatePipelineNavDot(); }, 1200);
 
+// Reconcile localStorage ↔ Supabase resume_archive on load
+setTimeout(() => {
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    reconcileResumeArchive();
+  } else {
+    // Wait for auth
+    var waitAuth = setInterval(() => {
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        clearInterval(waitAuth);
+        reconcileResumeArchive();
+      }
+    }, 500);
+    setTimeout(() => clearInterval(waitAuth), 8000);
+  }
+}, 800);
+
 // Auto re-extract DOCX resumes stuck at "no-text" once mammoth.js is loaded
 setTimeout(() => {
   if (typeof mammoth !== 'undefined') {
@@ -838,3 +1192,98 @@ setTimeout(() => {
     setTimeout(() => clearInterval(waitForMammoth), 10000); // Give up after 10s
   }
 }, 1500);
+// ════════════════════════════════════════════════════════════
+// LAUNCH REWRITE INTERVIEW FROM RESUME ROW
+// ════════════════════════════════════════════════════════════
+
+window.launchRewriteInterview = function(idx) {
+  var r = resumes[idx];
+  if (!r || r.archived) { showToast('Resume not found.', { type: 'error' }); return; }
+
+  // Check extracted text
+  if (!r.extractedText || r.extractedText.length < 50) {
+    showToast('Resume text not ready. Please wait for extraction to complete.', { type: 'error', duration: 4000 });
+    return;
+  }
+
+  // Find assigned filters
+  var assignedFilters = [];
+  if (r.filterAssignments) {
+    for (var key in r.filterAssignments) {
+      if (r.filterAssignments[key]) assignedFilters.push(key);
+    }
+  }
+
+  if (assignedFilters.length === 0) {
+    showToast('Assign this resume to a filter first so we know which roles to target.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Find the weakest filter (lowest readiness score) for max rewrite impact
+  var targetFilterName = assignedFilters[0];
+  var lowestScore = 999;
+  if (readinessCache && readinessCache.scores && readinessCache.scores[idx]) {
+    var filterScores = readinessCache.scores[idx].filters || {};
+    for (var fn in filterScores) {
+      if (assignedFilters.indexOf(fn) >= 0 && filterScores[fn].score < lowestScore) {
+        lowestScore = filterScores[fn].score;
+        targetFilterName = fn;
+      }
+    }
+  }
+
+  // Find a representative job from this filter's loaded feed
+  var targetJobId = null;
+  var targetJobTitle = null;
+  var targetCompany = null;
+
+  // Try feedCache first (loaded jobs from the jobs tab)
+  if (window.feedCache && Array.isArray(window.feedCache)) {
+    var filterObj = savedFilters.find(function(f){ return f.name === targetFilterName; });
+    if (filterObj) {
+      // Find a job from this filter
+      for (var j = 0; j < window.feedCache.length; j++) {
+        var job = window.feedCache[j];
+        if (job && job.id) {
+          targetJobId = job.id;
+          targetJobTitle = job.title || 'Target Role';
+          targetCompany = job.company || '';
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback: use first job from jdCache (locally cached JDs from readiness analysis)
+  if (!targetJobId && window.jdCache) {
+    var jdKeys = Object.keys(window.jdCache);
+    if (jdKeys.length > 0) {
+      targetJobId = jdKeys[0];
+      var jd = window.jdCache[jdKeys[0]];
+      targetJobTitle = (jd && jd.title) || 'Target Role';
+      targetCompany = (jd && jd.company) || '';
+    }
+  }
+
+  if (!targetJobId) {
+    showToast('No job data loaded for this filter yet. Run a readiness analysis first, then try again.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  var matchScore = lowestScore < 999 ? lowestScore : null;
+
+  // Open the existing rewrite panel
+  if (typeof openRewritePanel === 'function') {
+    openRewritePanel(targetJobId, targetJobTitle, targetCompany, r.id, matchScore);
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('rewrite_interview_launched', {
+        resume_index: idx,
+        resume_name: r.name,
+        target_filter: targetFilterName,
+        match_score: matchScore
+      });
+    }
+  } else {
+    showToast('Rewrite module not loaded. Please refresh the page.', { type: 'error' });
+  }
+};

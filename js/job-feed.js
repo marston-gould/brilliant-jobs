@@ -10,12 +10,12 @@ if (hiddenJobIds.length > 0 && typeof hiddenJobIds[0] === 'string') {
 function isJobHidden(ghId) { return hiddenJobIds.some(h => h.id === ghId); }
 
 const HIDE_REASONS = [
-  { key: 'wrong_title', label: 'Wrong title' },
-  { key: 'wrong_location', label: 'Wrong location' },
-  { key: 'wrong_company', label: 'Wrong company' },
-  { key: 'too_old', label: 'Too old' },
-  { key: 'wrong_pay', label: 'Wrong pay' },
-  { key: 'other', label: 'Other / not relevant' },
+  { key: 'wrong_title', label: 'Wrong title — exclude similar roles' },
+  { key: 'wrong_location', label: 'Wrong location — exclude this area' },
+  { key: 'wrong_company', label: 'Wrong company — block this employer' },
+  { key: 'too_old', label: 'Too old / stale listing' },
+  { key: 'wrong_pay', label: 'Pay too low for this role' },
+  { key: 'other', label: 'Other — not relevant to me' },
 ];
 
 function debouncedSearchJobs() {
@@ -119,7 +119,17 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
   }
 
   // Remote search — either from explicit Remote pill OR includeRemote toggle
-  const shouldSearchRemote = remotePills.length > 0 || (includeRemote && radiusPills.length + statePills.length > 0);
+  // If Remote is the ONLY location pill type (no radius/state), skip pre-fetching IDs.
+  // The ID set would be too large (30K+) and gets truncated to 200 in buildFilterQuery.
+  // Instead, return null so buildFilterQuery uses inline ilike filtering.
+  const hasNonRemotePills = radiusPills.length > 0 || statePills.length > 0;
+  const shouldSearchRemote = remotePills.length > 0 || (includeRemote && hasNonRemotePills);
+  
+  if (remotePills.length > 0 && !hasNonRemotePills && textPills.length === 0) {
+    // Pure remote search — let buildFilterQuery handle it with ilike
+    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true };
+  }
+  
   if (shouldSearchRemote) {
     try {
       const { data, error } = await sb
@@ -247,7 +257,10 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   }
 
   // WHERE — use pre-fetched location IDs or bounding box
-  if (locationIds && locationIds.includeIds !== null) {
+  if (locationIds && locationIds.isRemoteOnly) {
+    // Pure remote search — filter inline instead of using pre-fetched IDs
+    query = query.or('location.ilike.Remote%,location.ilike.%remote%,is_remote.eq.true');
+  } else if (locationIds && locationIds.includeIds !== null) {
     if (locationIds.includeIds.length === 0) {
       // No matches — force empty result
       query = query.in('greenhouse_id', ['__NO_MATCH__']);
@@ -342,7 +355,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Determine if Remote is explicitly in WHERE or NOT WHERE
   const hasExplicitRemote = wh.some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
   const hasExplicitNotRemote = whnot.some(p => p.values && p.values[0]?.toLowerCase() === 'remote');
-  const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null);
+  const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null) || (locationIds && locationIds.isRemoteOnly);
   const includeRemote = sf.includeRemote === true;
 
   if (hasExplicitNotRemote) {
@@ -394,11 +407,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
-  // WHEN — updated_at gte
+  // WHEN — first_seen_at gte (job age based on when we first discovered it, matches DAYS column)
   for (const pill of wn) {
     for (const v of pill.values) {
       const since = parseWhenValue(v);
-      if (since) query = query.gte('updated_at', since.toISOString());
+      if (since) query = query.gte('first_seen_at', since.toISOString());
     }
   }
 
@@ -432,27 +445,91 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
+  // SKILLS — filter on extracted_skills array (contains any)
+  const sk = sf.skillsPills || [];
+  for (const pill of sk) {
+    const terms = pill.values.map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (terms.length > 0) {
+      // Use cs (contains) operator — job must have at least one of these skills
+      query = query.or(terms.map(t => `extracted_skills.cs.{${t}}`).join(','));
+    }
+  }
+
+  // LEVEL — filter on extracted_seniority
+  const lv = sf.levelPills || [];
+  if (lv.length > 0) {
+    const levels = lv.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (levels.length === 1) {
+      query = query.eq('extracted_seniority', levels[0]);
+    } else if (levels.length > 1) {
+      query = query.in('extracted_seniority', levels);
+    }
+  }
+
+  // JD CONTAINS — full-text search on content_tsv
+  const jd = sf.jdPills || [];
+  for (const pill of jd) {
+    for (const v of pill.values) {
+      const safe = v.replace(/[,()]/g, '').trim();
+      if (safe) {
+        query = query.textSearch('content_tsv', safe, { type: 'websearch', config: 'english' });
+      }
+    }
+  }
+
+  // DEPARTMENT — filter on extracted_department
+  const dp = sf.deptPills || [];
+  if (dp.length > 0) {
+    const depts = dp.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (depts.length === 1) {
+      query = query.eq('extracted_department', depts[0]);
+    } else if (depts.length > 1) {
+      query = query.in('extracted_department', depts);
+    }
+  }
+
   return query;
 }
 
-function parseWhenValue(v) {
-  const lower = v.toLowerCase().trim();
-  const now = new Date();
-  if (lower.includes('today') || lower === '1d') {
-    const d = new Date(now); d.setDate(d.getDate() - 1); return d;
-  } else if (lower === 'week' || lower === '7d' || lower === '7 days' || lower === 'this week' || lower === '1 week') {
-    const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-  } else if (lower.includes('month') && !lower.includes('3')) {
-    const d = new Date(now); d.setDate(d.getDate() - 30); return d;
-  } else if (lower.includes('3 month') || lower === '90d') {
-    const d = new Date(now); d.setDate(d.getDate() - 90); return d;
-  }
-  // Generic "N days" / "Nd" / "last N days" / "N weeks"
-  var m = lower.match(/(\d+)\s*d(?:ays?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1])); return d; }
-  m = lower.match(/(\d+)\s*w(?:eeks?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1]) * 7); return d; }
+/**
+ * Normalize free-text WHEN input to a canonical label.
+ * Returns { label: string, days: number } or null if unrecognizable.
+ * Canonical labels: "today", "yesterday", "last N days", "last N weeks", "last N months"
+ */
+function normalizeWhenValue(raw) {
+  const lower = raw.toLowerCase().trim();
+  if (!lower) return null;
+
+  // Exact matches & common aliases
+  if (lower === 'today' || lower === '1d' || lower === 'now') return { label: 'today', days: 1 };
+  if (lower === 'yesterday' || lower === '2d') return { label: 'yesterday', days: 2 };
+  if (/^(this\s+)?week$/.test(lower) || lower === '7d' || lower === '7 days' || lower === '1 week' || lower === '1w') return { label: 'last 7 days', days: 7 };
+  if (/^(this\s+)?month$/.test(lower) || lower === '30d' || lower === '30 days' || lower === '1 month' || lower === '1m') return { label: 'last 30 days', days: 30 };
+  if (/^3\s*months?$/.test(lower) || lower === '90d' || lower === '90 days' || lower === '3m') return { label: 'last 3 months', days: 90 };
+  if (/^6\s*months?$/.test(lower) || lower === '180d' || lower === '6m') return { label: 'last 6 months', days: 180 };
+
+  // Generic "N days" / "Nd" / "last N days"
+  var m = lower.match(/(?:last\s+)?(\d+)\s*d(?:ays?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n} days`, days: n }; }
+
+  // Generic "N weeks" / "Nw" / "last N weeks"
+  m = lower.match(/(?:last\s+)?(\d+)\s*w(?:eeks?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 7} days`, days: n * 7 }; }
+
+  // Generic "N months" / "Nm" / "last N months"
+  m = lower.match(/(?:last\s+)?(\d+)\s*m(?:onths?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 30} days`, days: n * 30 }; }
+
   return null;
+}
+
+function parseWhenValue(v) {
+  const result = normalizeWhenValue(v);
+  if (!result) return null;
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(d.getDate() - result.days);
+  return d;
 }
 
 function getCheckedSavedFilters() {
@@ -476,7 +553,7 @@ async function searchJobs(page = 0) {
 
   // If nothing is driving the search, show prompt but with global stats
   if (checked.length === 0 && !hasBuilderPills) {
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
       <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">Check one or more saved searches above, or use the filter builder.</div>
@@ -520,6 +597,15 @@ async function searchJobs(page = 0) {
     }
 
     // Check that at least one filter has real criteria
+    console.log('[searchJobs] filtersToRun:', filtersToRun.length, 'filters');
+    filtersToRun.forEach((sf, i) => {
+      console.log(`[searchJobs] filter[${i}]:`,
+        'what=', (sf.whatPills || sf.pills || []).flatMap(p => p.values),
+        'where=', (sf.wherePills || []).flatMap(p => p.values),
+        'when=', (sf.whenPills || []).flatMap(p => p.values),
+        'who=', (sf.whoPills || []).flatMap(p => p.values),
+      );
+    });
     const hasRealCriteria = filtersToRun.some(sf => {
       const w = sf.whatPills || sf.pills || [];
       const wh = sf.wherePills || [];
@@ -532,7 +618,7 @@ async function searchJobs(page = 0) {
     });
 
     if (!hasRealCriteria) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No filter criteria set</div>
         <div style="font-size:12px;">Add at least one What, Where, When, or Who filter.</div>
       </td></tr>`;
@@ -565,6 +651,12 @@ async function searchJobs(page = 0) {
     // Hidden job IDs to exclude from queries
     const hiddenIds = hiddenJobIds.map(h => h.id);
 
+    // Check if relevance sort is active and JD/text search terms exist
+    const relevanceSort = jobSortStack.length > 0 && jobSortStack[0].field === 'relevance';
+    const jdTerms = (filtersToRun[0]?.jdPills || []).flatMap(p => p.values).filter(Boolean);
+    const whatTerms = (filtersToRun[0]?.whatPills || filtersToRun[0]?.pills || []).flatMap(p => p.values).filter(Boolean);
+    const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
+
     if (filtersToRun.length === 1) {
       // Single filter — straightforward query with count + pagination
       let query = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -575,7 +667,7 @@ async function searchJobs(page = 0) {
 
       // Multi-sort (skip 'level' — client-side only)
       for (const s of jobSortStack) {
-        if (s.field === 'level' || s.field === 'match') continue;
+        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
         query = query.order(s.field, { ascending: s.asc });
       }
 
@@ -596,7 +688,7 @@ async function searchJobs(page = 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
         }
         for (const s of jobSortStack) {
-          if (s.field === 'level' || s.field === 'match') continue;
+          if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
           q = q.order(s.field, { ascending: s.asc });
         }
         q = q.range(0, perFilter - 1);
@@ -645,14 +737,19 @@ async function searchJobs(page = 0) {
     // Hidden jobs already excluded at query level — no client-side filter needed
     currentJobs = allJobs;
 
-    // Update filter count display
-    $('#filter-count').innerHTML = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    // Update filter count display — include WHEN notice if time-filtered
+    const activeWhenPills = filtersToRun.flatMap(f => (f.whenPills || []).flatMap(p => p.values)).filter(Boolean);
+    let filterCountHtml = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    if (activeWhenPills.length > 0) {
+      filterCountHtml += ` <span style="color:var(--purple);font-size:11px;font-weight:600;margin-left:6px;">⏱ ${activeWhenPills[0]}</span>`;
+    }
+    $('#filter-count').innerHTML = filterCountHtml;
 
     // Update top stat cards
     await updateJobStatsFromFilters(filtersToRun);
 
     if (currentJobs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
         <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No jobs match — try broadening your search or adjusting your filters</div>
         <div style="font-size:12px;">Try broader terms or fewer filters.</div>
       </td></tr>`;
@@ -681,6 +778,33 @@ async function searchJobs(page = 0) {
 
     // Client-side match sort
     const matchSort = jobSortStack.find(s => s.field === 'match');
+
+    // Relevance sort — score jobs by how many search terms appear in title
+    const relevanceSortActive = jobSortStack.find(s => s.field === 'relevance');
+    if (relevanceSortActive && searchTerms) {
+      const terms = searchTerms.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      if (terms.length > 0) {
+        allJobs.forEach(j => {
+          const titleLower = (j.title || '').toLowerCase();
+          const locLower = (j.location || '').toLowerCase();
+          const compLower = (j.company_name || '').toLowerCase();
+          let score = 0;
+          for (const t of terms) {
+            if (titleLower.includes(t)) score += 3;
+            if (compLower.includes(t)) score += 1;
+            if (locLower.includes(t)) score += 1;
+          }
+          // Boost if skills match
+          if (j.extracted_skills && j.extracted_skills.length > 0) {
+            for (const t of terms) {
+              if (j.extracted_skills.some(s => s.includes(t))) score += 2;
+            }
+          }
+          j._relevanceScore = score;
+        });
+        allJobs.sort((a, b) => (b._relevanceScore || 0) - (a._relevanceScore || 0));
+      }
+    }
     if (matchSort) {
       currentJobs.sort((a, b) => {
         const ra = jobMatchScores[a.greenhouse_id];
@@ -702,7 +826,7 @@ async function searchJobs(page = 0) {
   } catch (e) {
     console.error('Search error:', e);
     if (typeof toastError === 'function') toastError('Job search failed. Please try again.');
-    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:32px 12px;">
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--red);padding:32px 12px;">
       <div style="font-size:13px;">Search failed: ${escapeHtml(e.message)}</div>
     </td></tr>`;
   }
@@ -761,14 +885,18 @@ async function updateJobStatsFromFilters(filters) {
     const statsPromises = effectiveFilters.flatMap(sf => {
       const locIds = sf._statsLocationIds || null;
 
+      // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
+      // This prevents TOTAL < NEW TODAY which is mathematically impossible
+      const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
       let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q = buildFilterQuery(sf, q, locIds);
+      q = buildFilterQuery(sfNoWhen, q, locIds);
       q = excludeHidden(q);
 
+      // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q2 = buildFilterQuery(sf, q2, locIds);
+      q2 = buildFilterQuery(sfNoWhen, q2, locIds);
       q2 = excludeHidden(q2);
-      q2 = q2.gte('updated_at', last24h.toISOString());
+      q2 = q2.gte('first_seen_at', last24h.toISOString());
 
       const promises = [
         q.then(r => ({ type: 'total', count: r.count || 0 })),
@@ -822,9 +950,45 @@ async function updateJobStatsFromFilters(filters) {
 function updateJobStats(total, companies, newSinceLogin, newToday) {
   $('#j-total').textContent = total.toLocaleString();
   $('#j-companies').textContent = companies.toLocaleString();
-  $('#j-new-login').textContent = newSinceLogin.toLocaleString();
+  if ($('#j-new-login')) $('#j-new-login').textContent = newSinceLogin.toLocaleString();
   $('#j-new').textContent = newToday.toLocaleString();
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+  // Update intel insight card with contextual data
+  updateIntelInsight(total, companies, newToday);
+}
+
+function updateIntelInsight(total, companies, newToday) {
+  var titleEl = $('#intel-insight-title');
+  var subEl = $('#intel-insight-sub');
+  if (!titleEl) return;
+
+  // Build contextual insight from actual filter/job data
+  var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+  var withSalary = jobs.filter(function(j) { return j.salary_min > 0; });
+  var filterName = '';
+  try {
+    var sf = typeof savedFilters !== 'undefined' ? savedFilters : [];
+    var active = sf.find(function(f) { return f.active; });
+    if (active) filterName = active.name || '';
+  } catch(e) {}
+
+  if (withSalary.length >= 3) {
+    // Salary insight
+    var salaries = withSalary.map(function(j) { return j.salary_max || j.salary_min; }).sort(function(a,b) { return a - b; });
+    var p25 = salaries[Math.floor(salaries.length * 0.25)];
+    var p75 = salaries[Math.floor(salaries.length * 0.75)];
+    var fmtK = function(n) { return '$' + Math.round(n / 1000) + 'k'; };
+    titleEl.textContent = 'Roles in your feed pay ' + fmtK(p25) + ' – ' + fmtK(p75);
+    subEl.textContent = 'Based on ' + withSalary.length + ' of ' + total + ' jobs with salary data' + (filterName ? ' in "' + filterName + '"' : '');
+  } else if (newToday > 0) {
+    // New jobs insight
+    titleEl.textContent = newToday + ' new ' + (newToday === 1 ? 'job' : 'jobs') + ' posted today across ' + companies + ' companies';
+    subEl.textContent = 'Fresh listings sourced direct from company career pages' + (filterName ? ' matching "' + filterName + '"' : '');
+  } else {
+    // Fallback
+    titleEl.textContent = total + ' jobs across ' + companies + ' companies in your feed';
+    subEl.textContent = 'All sourced direct from company career pages — no recycled posts';
+  }
 }
 
 // Format salary for display — shows currency prefix for non-USD, rate suffix for non-annual
@@ -1031,7 +1195,8 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   let html = '';
   let newCount = 0;
   for (const job of jobs) {
-    const daysAgo = job.updated_at ? Math.floor((now - new Date(job.updated_at)) / 86400000) : '—';
+    const jobDate = job.first_seen_at || job.updated_at;
+    const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : '—';
     const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
     const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
 
@@ -1074,11 +1239,10 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
+      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
       <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
-      <td class="jt-ghost" title="Ghost Rate — coming soon" style="cursor:help;color:var(--text-faint);font-style:italic;font-size:10px;">soon</td>
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
@@ -1087,13 +1251,13 @@ function renderJobRows(jobs, total, page, filtersToRun) {
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="8"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td></td><td colspan="7"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
   // Pagination row
   const totalPages = Math.ceil(total / JOBS_PER_PAGE);
   if (totalPages > 1) {
-    html += `<tr><td colspan="10" style="text-align:center;padding:16px;">
+    html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
       <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
         ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
         <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>

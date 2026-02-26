@@ -135,6 +135,34 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   } catch(e) { console.warn('[pills] Pending pill apply failed:', e.message); }
   
   // Load tuning from Supabase
+  // First: normalize any legacy WHEN pills in saved filters
+  let whenNormDirty = false;
+  savedFilters.forEach(sf => {
+    if (sf.whenPills && sf.whenPills.length > 0) {
+      sf.whenPills.forEach(pill => {
+        if (pill.values && pill.values.length > 0) {
+          const norm = typeof normalizeWhenValue === 'function' ? normalizeWhenValue(pill.values[0]) : null;
+          if (norm && norm.label !== pill.values[0]) {
+            pill.values[0] = norm.label;
+            whenNormDirty = true;
+          }
+        }
+      });
+    }
+  });
+  if (whenNormDirty) {
+    if (filtersFromCloud && userId) {
+      // Persist normalized values back to cloud
+      for (let i = 0; i < savedFilters.length; i++) {
+        const sf = savedFilters[i];
+        if (sf._id) {
+          sb.from('user_filters').update({ filter_data: sf }).eq('id', sf._id).then(() => {});
+        }
+      }
+    }
+    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  }
+
   let tuningFromCloud = false;
   if (userId) {
     const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
@@ -173,7 +201,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       const cloudResumes = prof?.user_data?.resumes;
       if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
         resumes = cloudResumes;
-        localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+        saveUserData('bj_resumes', JSON.stringify(resumes));
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
     } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
@@ -220,6 +248,10 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
   if (typeof initBilling === 'function') initBilling();
+  // Run unified sync health check — recovers any missing localStorage domains from cloud
+  if (typeof syncHealthCheck === 'function') {
+    setTimeout(function() { syncHealthCheck(); }, 500);
+  }
   loadStats();
   checkExtensionStatus();
   loadCollections();
@@ -310,6 +342,15 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
     if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+    // Refresh resumes when switching to resumes tab
+    if (item.dataset.page === 'resumes') {
+      if (typeof renderResumes === 'function') renderResumes();
+      // If active resumes are empty but user may have cloud data, re-reconcile
+      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+        reconcileResumeArchive();
+      }
+    }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
@@ -548,12 +589,19 @@ function updateGmailUI(connected, email) {
   const ghostBtn = $('#gmail-connect-btn');
   const ghostAddr = $('#ghost-gmail-address');
   const gmailCard = $('#g-gmail-card');
+  const gmailChip = document.getElementById('g-gmail-stat');
   if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
   if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
   if (ghostAddr) ghostAddr.textContent = email;
   if (gmailCard) {
     const valEl = gmailCard.querySelector('.stat-val');
     if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
+  }
+  // Update hero chip
+  if (gmailChip) {
+    gmailChip.textContent = connected ? 'On' : 'Off';
+    gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
+    if (!connected) gmailChip.style.fontSize = '12px';
   }
 }
 
@@ -616,8 +664,39 @@ window.disconnectGmail = async function() {
 // Init Gmail status on load
 initGmailStatus();
 
-// Q22: Switch between List and Board views in My Applications
+// Q22: Switch between Queue, Pipeline, and History views in My Applications
 window.switchAppView = function(view) {
+  // Toggle active on view toggle buttons
+  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  // Toggle view panels
+  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
+    panel.classList.remove('active');
+  });
+  var target = document.getElementById('app-view-' + view + '-panel');
+  if (target) target.classList.add('active');
+
+  // Close settings panel when switching views
+  var settingsPanel = document.getElementById('app-settings-panel');
+  if (settingsPanel) settingsPanel.style.display = 'none';
+  var settingsBtn = document.getElementById('app-settings-toggle');
+  if (settingsBtn) settingsBtn.classList.remove('active');
+
+  // Trigger pipeline render if switching to pipeline view
+  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+    renderPipeline();
+  }
+
+  localStorage.setItem('bj_app_view', view);
+};
+
+// Restore last app view on init
+(function() {
+  var saved = localStorage.getItem('bj_app_view') || 'queue';
+  if (typeof switchAppView === 'function') switchAppView(saved);
+})();
 
 // Q16-Q19: Resume-First Onboarding
 let _onboardProfile = null;
@@ -702,7 +781,7 @@ window.createFilterFromProfile = function() {
 
   // Add to saved filters
   savedFilters.push(newFilter);
-  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   
   // Update onboarding step
   updateOnboardingStep(2);
@@ -741,11 +820,11 @@ function applyProgressiveNav(step) {
   const navItems = {
     'tuning': 2,
     'resumes': 1,
-    'applications': 3,
-    'ghost': 4,
-    'stats': 3,
-    'notifications': 3,
-    'feedback': 2,
+    'applications': 1,
+    'ghost': 1,
+    'stats': 1,
+    'notifications': 2,
+    'feedback': 1,
   };
 
   for (const [page, minStep] of Object.entries(navItems)) {
@@ -781,33 +860,6 @@ function applyProgressiveNav(step) {
     if (prompt) prompt.style.display = 'none';
   }
 })();
-
-
-  const listPanel = document.getElementById('app-view-list-panel');
-  const boardPanel = document.getElementById('app-view-board-panel');
-  const listBtn = document.getElementById('app-view-list');
-  const boardBtn = document.getElementById('app-view-board');
-  if (!listPanel || !boardPanel) return;
-
-  if (view === 'board') {
-    listPanel.style.display = 'none';
-    boardPanel.style.display = '';
-    listBtn.classList.remove('active');
-    boardBtn.classList.add('active');
-    // Move pipeline stages into board panel
-    const stages = document.getElementById('pl-stages-container');
-    const target = document.getElementById('app-view-board-panel');
-    if (stages && target && !target.contains(stages)) {
-      target.appendChild(stages);
-    }
-    if (typeof renderPipeline === 'function') renderPipeline();
-  } else {
-    listPanel.style.display = '';
-    boardPanel.style.display = 'none';
-    listBtn.classList.add('active');
-    boardBtn.classList.remove('active');
-  }
-};
 
 
 
