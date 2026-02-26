@@ -4,7 +4,7 @@
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
  * To bump the version, change ONLY this line.
  */
-var BJ_VERSION = 'v4.96';
+var BJ_VERSION = 'v4.97';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -2190,8 +2190,13 @@ async function searchJobs(page = 0) {
     // Hidden jobs already excluded at query level — no client-side filter needed
     currentJobs = allJobs;
 
-    // Update filter count display
-    $('#filter-count').innerHTML = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    // Update filter count display — include WHEN notice if time-filtered
+    const activeWhenPills = filtersToRun.flatMap(f => (f.whenPills || []).flatMap(p => p.values)).filter(Boolean);
+    let filterCountHtml = `<strong>${totalCount.toLocaleString()}</strong> job${totalCount !== 1 ? 's' : ''} found`;
+    if (activeWhenPills.length > 0) {
+      filterCountHtml += ` <span style="color:var(--purple);font-size:11px;font-weight:600;margin-left:6px;">⏱ ${activeWhenPills[0]}</span>`;
+    }
+    $('#filter-count').innerHTML = filterCountHtml;
 
     // Update top stat cards
     await updateJobStatsFromFilters(filtersToRun);
