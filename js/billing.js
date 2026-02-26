@@ -600,6 +600,10 @@ async function confirmHireFee(jobId, jobTitle, salaryEstimate) {
   }
 }
 
+// v5.17: Expose credit balance for resume score UX tier-routing
+function getUserCredits() { return _creditBalance; }
+window.getUserCredits = getUserCredits;
+
 // ─── Init ───
 function initBilling() {
   // Check admin status from profile (already fetched in app.js init)
