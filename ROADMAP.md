@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-25
+**Last updated:** 2026-02-26
 **Target launch:** March 2026
-**Current version:** v4.83
+**Current version:** v4.84
 
 ---
 
@@ -1609,6 +1609,61 @@ All 16 spec items verified against live infrastructure:
 
 **Phase 40 status:** 0/15 complete. All planned. Detailed spec in `/FEED_QUALITY_PHASES.md`.
 
+
+## Phase 40b: Pod 1 Sprint — Pricing, Global Version, AEO (v4.84) — 2026-02-25
+
+**Goal:** Fix version drift across all pages, add login/copyright to external pages, replace pricing toggle with duration slider, fix sort pill duplication, produce /jobs-in/ city pages handoff.
+
+**Source:** Pod 1 session with Claude
+
+### Global Version System (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V1 | Create js/version.js — single source of truth | v4.84 | ✅ | `var BJ_VERSION = 'v4.84'`. Auto-populates `.bj-version`, `#nav-version`, `.bj-year` elements. Console log on every page. |
+| V2 | Remove hardcoded versions from all pages | v4.84 | ✅ | Killed: index (v4.77 footer, v4.81 console, v4.83 comment), pricing (v4.22 console), data-lab (v4.78), 5 SEO pages (v4.78), app.js (v4.83 const). |
+| V3 | Wire version.js into all 13 HTML pages | v4.84 | ✅ | index, pricing, dashboard, data-lab, salary-data, hiring-trends, jobs-by-industry, career-level-data, market-dynamics, ghost-report, help, terms, privacy, uninstall, survey, 404, 503. |
+| V4 | Dynamic copyright year (bj-year class) | v4.84 | ✅ | `new Date().getFullYear()` populates all `.bj-year` spans. Replaced `document.write()` and inline scripts. Auto-rolls Jan 1. |
+
+### External Page Polish (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| E1 | Login button on all SEO data pages | v4.84 | ✅ | `.bj-topbar` nav with "✦ Brilliant Jobs" + "Log In" → /dashboard. 6 pages: data-lab, salary-data, hiring-trends, jobs-by-industry, career-level-data, market-dynamics. |
+| E2 | Login button on ghost-report | v4.84 | ✅ | Same `.bj-topbar` inside existing `.container`. |
+| E3 | Login button on terms, privacy, uninstall | v4.84 | ✅ | Added to existing `.top-bar` via `margin-left:auto`. |
+| E4 | Login button on help.html | v4.84 | ✅ | Light-theme variant (blue button on white bg). |
+| E5 | Copyright footer on all pages missing it | v4.84 | ✅ | SEO pages (6), ghost-report, terms, privacy, uninstall, help — all now have `© {year} Brilliant Jobs`. |
+
+### Pricing Page Overhaul (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| PR1 | Duration slider (1-12 months) | v4.84 | ✅ | Replaced Monthly/Annual toggle. Progressive discounts: 0%→40% over 1→12 months. Slider with filled track. |
+| PR2 | Discount curve from job search data | v4.84 | ✅ | 12-step curve aligned to BLS job search duration statistics (23%→90% cumulative). |
+| PR3 | Contextual insights per month | v4.84 | ✅ | "60% still searching — this is the national median" (5mo), "68% — senior roles take this long" (6mo), etc. |
+| PR4 | Strikethrough original prices | v4.84 | ✅ | ~~$20~~ $18/month when discount active. `.plan-price-original` class. |
+| PR5 | Total cost line | v4.84 | ✅ | "Starter: $54 total (save $6) · Pro: $108 total" below slider. |
+| PR6 | FAQ: duration discount explanation | v4.84 | ✅ | "Choose how many months to commit. Longer = deeper discount. Up to 40% at 12 months." |
+| PR7 | Fix: stray CSS brace broke pricing grid | v4.84 | ✅ | Extra `}` from slider CSS replacement closed style block early. All card styles ignored. |
+| PR8 | Fix: slider label alignment | v4.84 | ✅ | Labels positioned at mathematically correct % (18.2%, 45.5%, 72.7%) instead of evenly spaced. |
+
+### Bug Fixes (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| BF1 | Sort pills duplicating on add/toggle/remove | v4.84 | ✅ | `renderSortPills()` never cleared container before re-rendering. Added `.sort-pill` removal at function start. |
+
+### Handoff Documents (v4.84)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| H1 | /jobs-in/{city} city pages handoff | ✅ | 16-section, 664-paragraph docx. Phase 1: page shell + hook pills (~13.5h). Phase 2: user-search pills (~7h). Includes AEO strategy, 4 JSON-LD schemas, Jobs Feed interaction spec. |
+
+**Phase 40b total:** 19 items | All complete | Version: v4.84
+**Files modified:** js/version.js (NEW), js/app.js, js/sort-bar.js, build.js, dist/dashboard.min.js, dashboard.html, index.html, pricing.html, data-lab.html, salary-data.html, hiring-trends.html, jobs-by-industry.html, career-level-data.html, market-dynamics.html, ghost-report.html, help.html, terms.html, privacy.html, uninstall.html, survey.html, 404.html, 503.html
+
+---
 
 ## Phase 39b: Pod 1 UX & Design Sprint (v4.82–v4.83) — 2026-02-25
 
