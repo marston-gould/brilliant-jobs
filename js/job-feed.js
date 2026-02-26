@@ -119,7 +119,17 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
   }
 
   // Remote search — either from explicit Remote pill OR includeRemote toggle
-  const shouldSearchRemote = remotePills.length > 0 || (includeRemote && radiusPills.length + statePills.length > 0);
+  // If Remote is the ONLY location pill type (no radius/state), skip pre-fetching IDs.
+  // The ID set would be too large (30K+) and gets truncated to 200 in buildFilterQuery.
+  // Instead, return null so buildFilterQuery uses inline ilike filtering.
+  const hasNonRemotePills = radiusPills.length > 0 || statePills.length > 0;
+  const shouldSearchRemote = remotePills.length > 0 || (includeRemote && hasNonRemotePills);
+  
+  if (remotePills.length > 0 && !hasNonRemotePills && textPills.length === 0) {
+    // Pure remote search — let buildFilterQuery handle it with ilike
+    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true };
+  }
+  
   if (shouldSearchRemote) {
     try {
       const { data, error } = await sb
@@ -247,7 +257,10 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   }
 
   // WHERE — use pre-fetched location IDs or bounding box
-  if (locationIds && locationIds.includeIds !== null) {
+  if (locationIds && locationIds.isRemoteOnly) {
+    // Pure remote search — filter inline instead of using pre-fetched IDs
+    query = query.or('location.ilike.Remote%,location.ilike.%remote%,is_remote.eq.true');
+  } else if (locationIds && locationIds.includeIds !== null) {
     if (locationIds.includeIds.length === 0) {
       // No matches — force empty result
       query = query.in('greenhouse_id', ['__NO_MATCH__']);
@@ -342,7 +355,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Determine if Remote is explicitly in WHERE or NOT WHERE
   const hasExplicitRemote = wh.some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
   const hasExplicitNotRemote = whnot.some(p => p.values && p.values[0]?.toLowerCase() === 'remote');
-  const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null);
+  const hasLocationFilter = wh.length > 0 || (locationIds && locationIds.includeIds !== null) || (locationIds && locationIds.isRemoteOnly);
   const includeRemote = sf.includeRemote === true;
 
   if (hasExplicitNotRemote) {
@@ -394,11 +407,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
-  // WHEN — updated_at gte
+  // WHEN — first_seen_at gte (NOT updated_at — refresh cron resets updated_at every cycle)
   for (const pill of wn) {
     for (const v of pill.values) {
       const since = parseWhenValue(v);
-      if (since) query = query.gte('updated_at', since.toISOString());
+      if (since) query = query.gte('first_seen_at', since.toISOString());
     }
   }
 
@@ -874,7 +887,7 @@ async function updateJobStatsFromFilters(filters) {
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
       q2 = buildFilterQuery(sfNoWhen, q2, locIds);
       q2 = excludeHidden(q2);
-      q2 = q2.gte('updated_at', last24h.toISOString());
+      q2 = q2.gte('first_seen_at', last24h.toISOString());
 
       const promises = [
         q.then(r => ({ type: 'total', count: r.count || 0 })),
@@ -1173,7 +1186,8 @@ function renderJobRows(jobs, total, page, filtersToRun) {
   let html = '';
   let newCount = 0;
   for (const job of jobs) {
-    const daysAgo = job.updated_at ? Math.floor((now - new Date(job.updated_at)) / 86400000) : '—';
+    const jobDate = job.first_seen_at || job.updated_at;
+    const daysAgo = jobDate ? Math.floor((now - new Date(jobDate)) / 86400000) : '—';
     const daysStr = typeof daysAgo === 'number' ? (daysAgo === 0 ? 'today' : daysAgo + 'd') : '—';
     const daysClass = typeof daysAgo === 'number' && daysAgo <= 3 ? 'color:var(--green);' : '';
 
