@@ -567,7 +567,7 @@ var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
 var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 50;
+var JOBS_PER_PAGE = 20;
 
 // Resume state (populated fully in resumes.js)
 var resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
