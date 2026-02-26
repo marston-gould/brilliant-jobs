@@ -662,7 +662,7 @@ function _handleStorageFull(failedKey) {
     var hist = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
     if (hist.length > 200) {
       hist = hist.slice(-200);
-      localStorage.setItem('bj_app_history', JSON.stringify(hist));
+      saveUserData('bj_app_history', JSON.stringify(hist));
       console.log('[BJ] Trimmed bj_app_history to 200 items');
     }
   } catch (e) {}
