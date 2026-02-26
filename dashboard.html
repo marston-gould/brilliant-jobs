@@ -884,7 +884,7 @@
               </div>
             </div>
           </div>
-          <!-- SKILLS filter -->
+          <!-- SKILLS + DEPT filter -->
           <div class="qb-row-pair">
             <div class="qb-row">
               <label class="qb-row-label">Skills</label>
@@ -893,18 +893,24 @@
               </div>
             </div>
             <div class="qb-row">
+              <label class="qb-row-label">Dept</label>
+              <div class="query-builder" id="query-builder-dept">
+                <input type="text" class="qb-input" id="qb-input-dept" placeholder="engineering, marketing, sales…">
+              </div>
+            </div>
+          </div>
+          <!-- LEVEL + JD CONTAINS -->
+          <div class="qb-row-pair">
+            <div class="qb-row">
               <label class="qb-row-label">Level</label>
               <div class="query-builder" id="query-builder-level">
                 <input type="text" class="qb-input" id="qb-input-level" placeholder="senior, junior, executive…">
               </div>
             </div>
-          </div>
-          <!-- JD CONTAINS full-text search -->
-          <div class="qb-row-pair">
-            <div class="qb-row" style="grid-column:1/-1;">
+            <div class="qb-row">
               <label class="qb-row-label">JD Contains</label>
               <div class="query-builder" id="query-builder-jd">
-                <input type="text" class="qb-input" id="qb-input-jd" placeholder="search job descriptions… e.g. 'series B startup'">
+                <input type="text" class="qb-input" id="qb-input-jd" placeholder="search descriptions… e.g. 'series B'">
               </div>
             </div>
           </div>
@@ -967,6 +973,7 @@
                 <div class="sort-opt" data-field="updated_at" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Days</div>
                 <div class="sort-opt" data-field="level" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Level</div>
                 <div class="sort-opt" data-field="salary_max" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;">Salary</div>
+                <div class="sort-opt" data-field="relevance" style="padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px;" title="Sort by JD content match (requires JD Contains filter)">Relevance</div>
               </div>
             </div>
           </div>

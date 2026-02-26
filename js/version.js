@@ -3,7 +3,7 @@
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
  * To bump the version, change ONLY this line.
  */
-var BJ_VERSION = 'v4.87';
+var BJ_VERSION = 'v4.88';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {

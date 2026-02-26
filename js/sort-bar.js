@@ -415,4 +415,28 @@ if (qbInputJd) {
   });
 }
 
+
+
+// ============================================================
+// DEPARTMENT input bindings
+// ============================================================
+const qbInputDept = $('#qb-input-dept');
+if (qbInputDept) {
+  qbInputDept.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+    } else if (e.key === 'Backspace' && qbInputDept.value === '' && deptPills.length > 0) {
+      deptPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputDept.addEventListener('blur', () => {
+    commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+  });
+  $('#query-builder-dept')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputDept.focus();
+  });
+}
+
 } // end sort-bar guard

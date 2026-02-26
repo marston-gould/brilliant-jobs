@@ -553,6 +553,7 @@ var whoNotPills = [];
 var skillsPills = [];
 var levelPills = [];
 var jdPills = [];
+var deptPills = [];
 var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
 var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
 var DEFAULT_RADIUS = 30;
