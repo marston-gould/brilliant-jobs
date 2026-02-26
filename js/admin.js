@@ -135,7 +135,7 @@ async function loadBoardHealth() {
     if (snapshot.error) {
       console.error('[Admin] RPC error:', snapshot.error);
       var healthEl = document.getElementById('admin-health');
-      if (healthEl) healthEl.innerHTML = '<span class="admin-red">⚠ Feed health data unavailable — ' + (snapshot.error.message || 'unknown error') + '</span> <button onclick="_adminTabInit[\'feed-health\']=false;loadBoardHealth()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button>';
+      if (healthEl) healthEl.innerHTML = '<span class="admin-red">⚠ Feed health data unavailable — ' + escapeHtml(snapshot.error.message || 'unknown error') + '</span> <button onclick="_adminTabInit[\'feed-health\']=false;loadBoardHealth()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button>';
       return;
     }
     var d = snapshot.data;
@@ -1777,7 +1777,7 @@ async function loadGhostTab() {
   } catch (err) {
     console.error('[BJ] Ghost admin error:', err); toastError('Ghost admin failed to load');
     var tbody = document.getElementById('ag-company-body');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + (err.message || 'unknown') + '</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + escapeHtml(err.message || 'unknown') + '</td></tr>';
   }
 }
 
@@ -2082,7 +2082,7 @@ async function loadFeedbackTab() {
     if (sel) {
       sel.innerHTML = '<option value="all">All Cohorts</option>';
       cohorts.sort().forEach(function(c) {
-        sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+        sel.innerHTML += '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
       });
     }
 
@@ -2213,7 +2213,7 @@ window.openFeedbackDetail = function(id) {
   var src = _SOURCE_LABELS[item.source] || { label: item.source };
   var user = item.user_id && _afbUserMap[item.user_id] ? _afbUserMap[item.user_id].email : 'Unknown';
   document.getElementById('afb-detail-title').textContent = item.title || 'Feedback';
-  document.getElementById('afb-detail-meta').innerHTML = '<span style="color:' + (src.color || '#999') + ';font-weight:600;">' + src.label + '</span> · ' + user + ' · ' + new Date(item.submitted_at).toLocaleDateString() + (item.votes ? ' · ' + item.votes + ' votes' : '');
+  document.getElementById('afb-detail-meta').innerHTML = '<span style="color:' + (src.color || '#999') + ';font-weight:600;">' + escapeHtml(src.label) + '</span> · ' + escapeHtml(user) + ' · ' + new Date(item.submitted_at).toLocaleDateString() + (item.votes ? ' · ' + item.votes + ' votes' : '');
   document.getElementById('afb-detail-content').textContent = item.content || '(no content)';
   panel.style.display = '';
 };
