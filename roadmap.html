@@ -1461,6 +1461,20 @@ const features = [
   { s: 'done', n: 'JSON-LD structured data (Place + Occupation + FAQPage)', d: 'Metro pages: Place + ItemList(JobPosting) + FAQPage. Trends pages: Occupation + FAQPage. renderShell extraLd param. US state lookup. Deployed v4.92.', p: 43 },
   { s: 'done', n: 'Data Lab subpage contextual links (Block 6e)', d: 'salary-data→cities, hiring-trends→roles, career-level-data→roles. Merged into hub grid. Deployed v4.92.', p: 43 },
   { s: 'done', n: 'Block 7: + button conversion flow', d: 'Pill click handler with auth detection. Anonymous: branded signup modal with pill term. Authenticated: checkmark animation → dashboard redirect → filter injection. Dashboard deep-link handler: ?seo_pill URL params → WHAT pill + toast. PostHog: seo_pill_click, seo_pill_applied. Deployed v4.93.', p: 43 },
+
+  // Phase 44: Data Integrity & Sync Consolidation (v4.94–v5.00) — Feb 26, 2026 ✅ COMPLETE
+  { s: 'done', n: 'WHEN filter validation + normalization', d: 'normalizeWhenValue() standardizes time inputs (today, yesterday, last N days/weeks/months). Handles shorthand: "2w" → "last 14 days". Sort bar validates on Enter/blur with inline red error. v4.94.', p: 44 },
+  { s: 'done', n: 'Active Resumes empty tab recovery', d: 'Data sync mismatch: localStorage empty while Supabase had 3 resumes. renderResumes() now detects empty state and triggers async cloud recovery. v4.94.', p: 44 },
+  { s: 'done', n: 'Dead jobs reappearing fix', d: 'refresh-jobs/refresh-usajobs upserted with status=open, overwriting status=closed from dead job detection. Removed status from upsert — defaults on INSERT only. Edge Functions redeployed. v4.96.', p: 44 },
+  { s: 'done', n: 'Stat card NEW TODAY > TOTAL impossible state', d: 'TOTAL query applied WHEN time filter. NEW TODAY had its own 24h window. When WHEN narrower than 24h, TOTAL < NEW TODAY. Fix: TOTAL strips WHEN pills. v4.96.', p: 44 },
+  { s: 'done', n: 'WHEN filter time indicator badge', d: 'Purple ⏱ badge in filter count bar when WHEN pill active. Makes time restriction visible to user. v4.97.', p: 44 },
+  { s: 'done', n: 'Pagination 50→20 per page', d: 'JOBS_PER_PAGE reduced. Typical screen showed only 23 jobs at 50/page — 20 fits one screen. v4.98.', p: 44 },
+  { s: 'done', n: 'WHEN filter wrong column (first_seen_at→updated_at)', d: 'WHEN filter used first_seen_at (only 4 new jobs today) instead of updated_at (276 active jobs). first_seen_at is scraper discovery time, not posting time. Fixed. v5.00.', p: 44 },
+  { s: 'done', n: 'Restore updated_at in refresh-jobs upsert', d: 'updated_at accidentally removed from upsert, freezing timestamps at INSERT time. Restored so refresh cron keeps updated_at current. Edge Function redeployed. v5.00.', p: 44 },
+  { s: 'done', n: 'Eliminate localStorage sync bypasses', d: '4 places wrote to localStorage bypassing saveUserData() cloud sync. All fixed. 30 saveUserData() calls across codebase, 0 direct LS writes remaining for synced keys. v5.00.', p: 44 },
+  { s: 'done', n: 'Sync architecture consolidation', d: 'Eliminated duplicate sync system (sync.js competing with globals.js). sync.js now only does boot-time health check + cloud recovery. globals.js owns ALL writes. Single source of truth architecture. v5.00.', p: 44 },
+  { s: 'done', n: 'enrich-jd-ai Edge Function', d: 'AI-powered JD skills/requirements extraction via Claude Haiku. Batch processing with pg_cron schedule. Concurrency tuned to 5 (50/50 success). v4.95+.', p: 44 },
+  { s: 'done', n: 'Diagnostic logging in searchJobs', d: 'Console output shows exact filter pills used for each query (what, where, when, who). Enables rapid debugging of filter issues. v5.00.', p: 44 },
 ];
 
 
@@ -1591,7 +1605,8 @@ function render() {
     40: 'Bug Tracker Resolution',
     41: 'Feed Quality & Search Relevance (v4.86-v4.90)',
     42: 'Global Version, Pricing & City Pages',
-    43: 'City Pages + Internal Linking Sprint ✅'
+    43: 'City Pages + Internal Linking Sprint ✅',
+    44: 'Data Integrity & Sync Consolidation ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
@@ -1675,8 +1690,8 @@ function render() {
 
 render();
 
-// Inject version from app.js (single source of truth)
-fetch('/js/app.js').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(t => {
+// Inject version from version.js (single source of truth)
+fetch('/js/version.js').then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(t => {
   var m = t.match(/BJ_VERSION\s*=\s*'([^']+)'/);
   if (m) document.getElementById('rm-version').textContent = m[1];
 }).catch(function(){
