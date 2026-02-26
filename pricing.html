@@ -120,7 +120,13 @@
     .duration-labels {
       display: flex; justify-content: space-between; margin-top: 8px;
       font-size: 11px; color: var(--text-faint); font-family: var(--mono, monospace);
+      position: relative; height: 16px; user-select: none;
     }
+    .duration-labels span {
+      position: absolute; transform: translateX(-50%);
+    }
+    .duration-labels span:first-child { left: 0; transform: none; }
+    .duration-labels span:last-child { right: 0; left: auto; transform: none; }
     .duration-value {
       display: flex; align-items: center; justify-content: center; gap: 12px;
       margin-top: 16px; flex-wrap: wrap;
@@ -142,7 +148,6 @@
       margin-top: 12px; font-size: 12px; color: var(--text-faint);
     }
     .duration-total strong { color: var(--text-dim); }
-    }
 
     /* CARDS */
     .pricing-grid {
@@ -301,7 +306,7 @@
       <div class="duration-slider-wrap">
         <input type="range" class="duration-slider" id="duration-slider" min="1" max="12" value="1" step="1">
         <div class="duration-labels">
-          <span>1 mo</span><span>3</span><span>6</span><span>9</span><span>12 mo</span>
+          <span style="left:0%">1 mo</span><span style="left:18.2%">3</span><span style="left:45.5%">6</span><span style="left:72.7%">9</span><span style="right:0">12 mo</span>
         </div>
       </div>
       <div class="duration-value">
