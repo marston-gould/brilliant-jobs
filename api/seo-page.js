@@ -204,157 +204,6 @@ function renderServerRoles(metroSlug, metroDisplay) {
 }
 
 // =========================================================================
-// JSON-LD builders for metro pages (Block 4: D8b)
-// =========================================================================
-
-function buildMetroJsonLd(metro, role, data, cityData) {
-  var d = data.data;
-  var stats = d.stats;
-  var metroDisplay = d.metro?.display_name || metro;
-  var roleDisplay = d.role?.display_name || '';
-  var schemas = [];
-
-  // 1. WebPage schema
-  var pageTitle = role
-    ? roleDisplay + ' Jobs in ' + metroDisplay
-    : 'Jobs in ' + metroDisplay;
-  schemas.push({
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    'name': pageTitle,
-    'url': 'https://brilliantjobs.app/jobs-in/' + metro + (role ? '/' + role : ''),
-    'description': stats.total_jobs + ' open ' + (role ? roleDisplay + ' ' : '') + 'jobs in ' + metroDisplay + '. Median salary: ' + fmtSal(stats.median_salary) + '.',
-    'dateModified': d.meta?.updated_at || new Date().toISOString().slice(0, 10),
-    'publisher': {
-      '@type': 'Organization',
-      'name': 'Brilliant Jobs',
-      'url': 'https://brilliantjobs.app'
-    },
-    'isPartOf': {
-      '@type': 'WebSite',
-      'name': 'Brilliant Jobs',
-      'url': 'https://brilliantjobs.app'
-    }
-  });
-
-  // 2. ItemList of Occupations (from top_titles — metro pages only, not role subpages)
-  if (!role && cityData && cityData.top_titles && cityData.top_titles.length > 0) {
-    schemas.push({
-      '@context': 'https://schema.org',
-      '@type': 'ItemList',
-      'name': 'Top Occupations in ' + metroDisplay,
-      'numberOfItems': cityData.top_titles.length,
-      'itemListElement': cityData.top_titles.slice(0, 10).map(function(t, i) {
-        return {
-          '@type': 'ListItem',
-          'position': i + 1,
-          'item': {
-            '@type': 'Occupation',
-            'name': t.title,
-            'occupationLocation': {
-              '@type': 'City',
-              'name': metroDisplay
-            },
-            'estimatedSalary': stats.median_salary ? [{
-              '@type': 'MonetaryAmountDistribution',
-              'name': 'base',
-              'currency': 'USD',
-              'median': stats.median_salary
-            }] : undefined
-          }
-        };
-      })
-    });
-  }
-
-  // 3. Place + GeoCoordinates (metro pages only)
-  if (!role) {
-    var place = {
-      '@context': 'https://schema.org',
-      '@type': 'Place',
-      'name': metroDisplay,
-      'description': metroDisplay + ' job market: ' + fmtNum(stats.total_jobs) + ' open positions across ' + fmtNum(stats.companies_count) + ' companies.'
-    };
-    // Add state context if available from cityData
-    if (cityData && cityData.job_count) {
-      place.additionalProperty = [
-        { '@type': 'PropertyValue', 'name': 'activeJobListings', 'value': stats.total_jobs },
-        { '@type': 'PropertyValue', 'name': 'companiesHiring', 'value': stats.companies_count },
-        { '@type': 'PropertyValue', 'name': 'medianSalary', 'value': stats.median_salary || 0 },
-        { '@type': 'PropertyValue', 'name': 'remotePct', 'value': cityData.remote_pct || 0 }
-      ];
-    }
-    schemas.push(place);
-  }
-
-  // 4. FAQPage — auto-generated FAQs
-  var faqs = [];
-  faqs.push({
-    '@type': 'Question',
-    'name': 'How many ' + (role ? roleDisplay + ' ' : '') + 'jobs are open in ' + metroDisplay + '?',
-    'acceptedAnswer': {
-      '@type': 'Answer',
-      'text': 'There are currently ' + fmtNum(stats.total_jobs) + ' open ' + (role ? roleDisplay + ' ' : '') + 'positions in ' + metroDisplay + ' across ' + fmtNum(stats.companies_count) + ' companies, sourced directly from company career pages.'
-    }
-  });
-  if (stats.median_salary) {
-    faqs.push({
-      '@type': 'Question',
-      'name': 'What is the median salary for ' + (role ? roleDisplay + ' jobs' : 'jobs') + ' in ' + metroDisplay + '?',
-      'acceptedAnswer': {
-        '@type': 'Answer',
-        'text': 'The median listed salary for ' + (role ? roleDisplay + ' roles' : 'open positions') + ' in ' + metroDisplay + ' is ' + fmtSal(stats.median_salary) + ', based on ' + fmtNum(stats.with_salary_count) + ' listings with salary data.'
-      }
-    });
-  }
-  if (stats.remote_pct) {
-    faqs.push({
-      '@type': 'Question',
-      'name': 'What percentage of ' + (role ? roleDisplay + ' ' : '') + 'jobs in ' + metroDisplay + ' are remote?',
-      'acceptedAnswer': {
-        '@type': 'Answer',
-        'text': stats.remote_pct + '% of open ' + (role ? roleDisplay + ' ' : '') + 'positions in ' + metroDisplay + ' are listed as remote or remote-friendly.'
-      }
-    });
-  }
-  if (!role && cityData && cityData.top_titles && cityData.top_titles.length >= 3) {
-    var topRoles = cityData.top_titles.slice(0, 3).map(function(t) { return t.title; }).join(', ');
-    faqs.push({
-      '@type': 'Question',
-      'name': 'What are the most in-demand roles in ' + metroDisplay + '?',
-      'acceptedAnswer': {
-        '@type': 'Answer',
-        'text': 'The most in-demand roles in ' + metroDisplay + ' right now are ' + topRoles + ', based on active job listing volume from direct ATS feeds.'
-      }
-    });
-  }
-  faqs.push({
-    '@type': 'Question',
-    'name': 'How often is the ' + metroDisplay + ' job data updated?',
-    'acceptedAnswer': {
-      '@type': 'Answer',
-      'text': 'Job market data for ' + metroDisplay + ' is refreshed every 6 hours from direct ATS feeds including Greenhouse, Lever, Ashby, Workable, and Recruitee, plus USAJobs for federal positions.'
-    }
-  });
-
-  if (faqs.length > 0) {
-    schemas.push({
-      '@context': 'https://schema.org',
-      '@type': 'FAQPage',
-      'mainEntity': faqs
-    });
-  }
-
-  return schemas;
-}
-
-function renderJsonLdBlocks(schemas) {
-  return schemas.map(function(s) {
-    return '<script type="application/ld+json">\n  ' + JSON.stringify(s) + '\n  </script>';
-  }).join('\n  ');
-}
-
-// =========================================================================
 // Cache key builder
 // =========================================================================
 function buildCacheKey(type, metro, role) {
@@ -450,29 +299,12 @@ function renderMetroPage(data, metro, role, cityData, metroPages) {
     hookPillsHtml = renderHookPills(cityData, metroDisplay);
     crossMetroHtml = renderCrossMetros(metro, metroPages);
   } else {
-    // City+role subpage: link to same role in other cities + parent pages
-    var otherCitiesHtml = '';
-    if (metroPages && metroPages.length > 0) {
-      var otherMetros = metroPages.filter(function(m) {
-        var slug = m.cache_key.replace('metro:', '');
-        return slug !== metro && !slug.includes(':');
-      }).slice(0, 8);
-      if (otherMetros.length > 0) {
-        otherCitiesHtml = '\n      <div class="seo-link-grid">' +
-        otherMetros.map(function(m) {
-          var slug = m.cache_key.replace('metro:', '');
-          var display = (m.data && m.data.metro && m.data.metro.display_name) || slug.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
-          return '<a href="/jobs-in/' + esc(slug) + '/' + esc(d.role?.slug || role) + '">' + esc(roleDisplay) + ' in ' + esc(display) + '</a>';
-        }).join('') + '</div>';
-      }
-    }
     relatedHtml = `
     <section class="seo-section seo-related">
       <h2>Explore More</h2>
       <p><a href="/jobs-in/${esc(metro)}">← All jobs in ${esc(metroDisplay)}</a></p>
       <p><a href="/trends/${esc(d.role?.slug || role)}">${esc(roleDisplay)} Trends Nationwide →</a></p>
       <p><a href="/job-market-data">← National Job Market Overview</a></p>
-      ${otherCitiesHtml ? '<h3>Compare ' + esc(roleDisplay) + ' in Other Cities</h3>' + otherCitiesHtml : ''}
     </section>`;
   }
 
@@ -485,9 +317,12 @@ function renderMetroPage(data, metro, role, cityData, metroPages) {
     breadcrumbs.push({ name: metroDisplay, url: `/jobs-in/${metro}` });
   }
 
-  // Build metro JSON-LD schemas
-  const metroSchemas = buildMetroJsonLd(metro, role, data, cityData);
-  const extraJsonLdHtml = renderJsonLdBlocks(metroSchemas);
+  // Build JSON-LD for city/metro pages (Place + ItemList + FAQPage)
+  const metroState = d.metro?.state || metroDisplay.split(', ').pop() || '';
+  const cityJsonLd = !role ? buildCityJsonLd({
+    metroDisplay, state: metroState, stats, charts, trends,
+    canonical: `/jobs-in/${metro}`, cityData
+  }) : '';
 
   return renderShell({
     title: `${pageTitle} — Salary Data, Hiring Trends & Top Companies | Brilliant Jobs`,
@@ -495,7 +330,7 @@ function renderMetroPage(data, metro, role, cityData, metroPages) {
     canonical: role ? `/jobs-in/${metro}/${role}` : `/jobs-in/${metro}`,
     bodyClass: 'seo-page seo-metro',
     breadcrumbs,
-    extraJsonLd: extraJsonLdHtml,
+    extraLd: cityJsonLd,
     content: `
     <section class="seo-hero">
       <h1>${esc(pageTitle)}</h1>
@@ -550,8 +385,6 @@ function renderMetroPage(data, metro, role, cityData, metroPages) {
     ${relatedHtml}
 
     ${crossMetroHtml}
-
-    ${!role && cityData ? renderVisibleFaqs(metroDisplay, roleDisplay, stats, cityData) : ''}
     `,
     chartData: JSON.stringify(d)
   });
@@ -563,11 +396,18 @@ function renderTrendsPage(data, role, metroPages) {
   const roleDisplay = d.role?.display_name || role;
   const metaDesc = `${fmtNum(stats.total_jobs)} open ${roleDisplay} roles nationwide. Median salary: ${fmtSal(stats.median_salary)}. See hiring trends, top metros, and companies hiring.`;
 
+  // Build JSON-LD for role trends pages (Occupation + FAQPage)
+  const trendsJsonLd = buildTrendsJsonLd({
+    roleDisplay, stats, charts: d.charts || {},
+    trends: d.trends || {}, canonical: `/trends/${role}`
+  });
+
   return renderShell({
     title: `${roleDisplay} Hiring Trends — Salary, Demand & Top Employers | Brilliant Jobs`,
     metaDesc,
     canonical: `/trends/${role}`,
     bodyClass: 'seo-page seo-trends',
+    extraLd: trendsJsonLd,
     breadcrumbs: [
       { name: 'Brilliant Jobs', url: '/' },
       { name: 'Job Market Data', url: '/job-market-data' },
@@ -687,31 +527,6 @@ function renderMarketPage(data, metroPages, trendPages) {
 }
 
 // =========================================================================
-// Visible FAQ section (matches FAQPage schema in JSON-LD)
-// =========================================================================
-function renderVisibleFaqs(metroDisplay, roleDisplay, stats, cityData) {
-  var faqs = [];
-  faqs.push({ q: 'How many jobs are open in ' + esc(metroDisplay) + '?', a: 'There are currently ' + fmtNum(stats.total_jobs) + ' open positions in ' + esc(metroDisplay) + ' across ' + fmtNum(stats.companies_count) + ' companies, sourced directly from company career pages.' });
-  if (stats.median_salary) {
-    faqs.push({ q: 'What is the median salary for jobs in ' + esc(metroDisplay) + '?', a: 'The median listed salary for open positions in ' + esc(metroDisplay) + ' is ' + fmtSal(stats.median_salary) + ', based on ' + fmtNum(stats.with_salary_count) + ' listings with salary data.' });
-  }
-  if (stats.remote_pct) {
-    faqs.push({ q: 'What percentage of jobs in ' + esc(metroDisplay) + ' are remote?', a: stats.remote_pct + '% of open positions in ' + esc(metroDisplay) + ' are listed as remote or remote-friendly.' });
-  }
-  if (cityData && cityData.top_titles && cityData.top_titles.length >= 3) {
-    var topRoles = cityData.top_titles.slice(0, 3).map(function(t) { return esc(t.title); }).join(', ');
-    faqs.push({ q: 'What are the most in-demand roles in ' + esc(metroDisplay) + '?', a: 'The most in-demand roles in ' + esc(metroDisplay) + ' right now are ' + topRoles + ', based on active job listing volume from direct ATS feeds.' });
-  }
-  faqs.push({ q: 'How often is the ' + esc(metroDisplay) + ' job data updated?', a: 'Job market data for ' + esc(metroDisplay) + ' is refreshed every 6 hours from direct ATS feeds including Greenhouse, Lever, Ashby, Workable, and Recruitee, plus USAJobs for federal positions.' });
-
-  return '\n  <section class="seo-section seo-faq">\n    <h2>Frequently Asked Questions</h2>\n    <div class="seo-faq-list">' +
-    faqs.map(function(f) {
-      return '\n      <details class="seo-faq-item"><summary>' + f.q + '</summary><p>' + f.a + '</p></details>';
-    }).join('') +
-    '\n    </div>\n  </section>';
-}
-
-// =========================================================================
 // CTA block
 // =========================================================================
 function renderCTA() {
@@ -727,9 +542,231 @@ function renderCTA() {
 }
 
 // =========================================================================
+// JSON-LD structured data builders
+// =========================================================================
+
+/** US state abbreviation → full name for Place schema */
+const STATE_NAMES = {AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',DC:'District of Columbia'};
+
+/**
+ * Build JSON-LD for city/metro pages:
+ *  1. Place — geo entity for the metro area
+ *  2. ItemList of JobPosting — aggregate representation of open jobs
+ *  3. FAQPage — programmatic FAQ with salary, top companies, remote %
+ */
+function buildCityJsonLd({ metroDisplay, state, stats, charts, trends, canonical, cityData }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const blocks = [];
+
+  // 1. Place schema
+  const stateFullName = STATE_NAMES[state] || state || '';
+  blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Place",
+  "name": "${jsonEsc(metroDisplay)}",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "${jsonEsc(metroDisplay.split(',')[0])}",
+    "addressRegion": "${jsonEsc(stateFullName)}",
+    "addressCountry": "US"
+  },
+  "description": "${jsonEsc(metroDisplay)} job market — ${stats.total_jobs || 0} open positions across ${stats.companies_count || 0} companies."
+}
+</script>`);
+
+  // 2. ItemList (aggregate JobPosting representation)
+  // Use top companies from charts to create representative entries
+  const topCompanies = charts.companies ? Object.entries(charts.companies).slice(0, 5) : [];
+  if (topCompanies.length > 0 && stats.total_jobs > 0) {
+    const items = topCompanies.map(([company, count], i) => `{
+      "@type": "ListItem",
+      "position": ${i + 1},
+      "item": {
+        "@type": "JobPosting",
+        "title": "Open Roles at ${jsonEsc(company)}",
+        "hiringOrganization": {
+          "@type": "Organization",
+          "name": "${jsonEsc(company)}"
+        },
+        "jobLocation": {
+          "@type": "Place",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "${jsonEsc(metroDisplay.split(',')[0])}",
+            "addressRegion": "${jsonEsc(stateFullName)}",
+            "addressCountry": "US"
+          }
+        },
+        "datePosted": "${today}",
+        "description": "${count} open roles at ${jsonEsc(company)} in ${jsonEsc(metroDisplay)}"${stats.median_salary ? `,
+        "baseSalary": {
+          "@type": "MonetaryAmount",
+          "currency": "USD",
+          "value": {
+            "@type": "QuantitativeValue",
+            "value": ${stats.median_salary},
+            "unitText": "YEAR"
+          }
+        }` : ''}
+      }
+    }`);
+
+    blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Top Employers in ${jsonEsc(metroDisplay)}",
+  "numberOfItems": ${stats.total_jobs},
+  "itemListOrder": "https://schema.org/ItemListOrderDescending",
+  "itemListElement": [${items.join(',')}]
+}
+</script>`);
+  }
+
+  // 3. FAQPage — programmatic FAQ
+  const faqs = [];
+
+  if (stats.median_salary) {
+    faqs.push({
+      q: `What is the average salary in ${metroDisplay}?`,
+      a: `The median salary across ${stats.total_jobs || 0} open positions in ${metroDisplay} is ${fmtSal(stats.median_salary)} per year, based on ${stats.with_salary_count || 0} roles with published salary data.`
+    });
+  }
+
+  if (topCompanies.length > 0) {
+    const names = topCompanies.slice(0, 5).map(([c]) => c).join(', ');
+    faqs.push({
+      q: `Which companies are hiring the most in ${metroDisplay}?`,
+      a: `The top employers by open roles in ${metroDisplay} include ${names}. Data is sourced directly from company ATS feeds and updated daily.`
+    });
+  }
+
+  if (stats.remote_pct && stats.remote_pct > 0) {
+    faqs.push({
+      q: `How many remote jobs are available in ${metroDisplay}?`,
+      a: `Approximately ${stats.remote_pct}% of open positions in ${metroDisplay} are listed as remote or hybrid, out of ${stats.total_jobs || 0} total openings.`
+    });
+  }
+
+  if (trends && trends.velocity_mom !== undefined) {
+    const dir = trends.velocity_mom > 3 ? 'growing' : trends.velocity_mom < -3 ? 'declining' : 'stable';
+    faqs.push({
+      q: `Is the job market in ${metroDisplay} growing?`,
+      a: `Job postings in ${metroDisplay} are currently ${dir} month-over-month. The market has ${stats.total_jobs || 0} active openings across ${stats.companies_count || 0} companies.`
+    });
+  }
+
+  if (faqs.length > 0) {
+    const faqItems = faqs.map(f => `{
+      "@type": "Question",
+      "name": "${jsonEsc(f.q)}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "${jsonEsc(f.a)}"
+      }
+    }`);
+    blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [${faqItems.join(',')}]
+}
+</script>`);
+  }
+
+  return blocks.join('\n  ');
+}
+
+/**
+ * Build JSON-LD for /trends/:role pages:
+ *  1. Occupation — describes the role
+ *  2. FAQPage — salary, demand, top metros
+ */
+function buildTrendsJsonLd({ roleDisplay, stats, charts, trends, canonical }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const blocks = [];
+
+  // 1. Occupation schema
+  blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Occupation",
+  "name": "${jsonEsc(roleDisplay)}",
+  "description": "${jsonEsc(roleDisplay)} — ${stats.total_jobs || 0} open positions nationwide across ${stats.companies_count || 0} companies.",
+  "occupationLocation": {
+    "@type": "Country",
+    "name": "United States"
+  }${stats.median_salary ? `,
+  "estimatedSalary": {
+    "@type": "MonetaryAmountDistribution",
+    "name": "base",
+    "currency": "USD",
+    "median": ${stats.median_salary},
+    "unitText": "YEAR"
+  }` : ''}
+}
+</script>`);
+
+  // 2. FAQPage
+  const faqs = [];
+
+  if (stats.median_salary) {
+    faqs.push({
+      q: `What is the average ${roleDisplay} salary?`,
+      a: `The median ${roleDisplay} salary is ${fmtSal(stats.median_salary)} per year, based on ${stats.with_salary_count || 0} roles with published salary data out of ${stats.total_jobs || 0} total listings.`
+    });
+  }
+
+  if (stats.total_jobs) {
+    faqs.push({
+      q: `How many ${roleDisplay} jobs are open right now?`,
+      a: `There are currently ${stats.total_jobs} open ${roleDisplay} positions across ${stats.companies_count || 0} companies nationwide, sourced directly from ATS feeds.`
+    });
+  }
+
+  // Top metros from charts
+  const topMetros = charts.metros ? Object.entries(charts.metros).slice(0, 5) : [];
+  if (topMetros.length > 0) {
+    const metroNames = topMetros.map(([m]) => m).join(', ');
+    faqs.push({
+      q: `Where are the most ${roleDisplay} jobs?`,
+      a: `The top metros for ${roleDisplay} hiring are ${metroNames}. These rankings are based on active job listings aggregated from direct ATS feeds.`
+    });
+  }
+
+  if (stats.remote_pct && stats.remote_pct > 0) {
+    faqs.push({
+      q: `Can I find remote ${roleDisplay} jobs?`,
+      a: `Yes — approximately ${stats.remote_pct}% of ${roleDisplay} positions are listed as remote or hybrid.`
+    });
+  }
+
+  if (faqs.length > 0) {
+    const faqItems = faqs.map(f => `{
+      "@type": "Question",
+      "name": "${jsonEsc(f.q)}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "${jsonEsc(f.a)}"
+      }
+    }`);
+    blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [${faqItems.join(',')}]
+}
+</script>`);
+  }
+
+  return blocks.join('\n  ');
+}
+
+// =========================================================================
 // HTML shell — full page template
 // =========================================================================
-function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData, breadcrumbs, extraJsonLd }) {
+function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData, breadcrumbs, extraLd }) {
   // Build breadcrumb HTML and JSON-LD
   let breadcrumbHtml = '';
   let breadcrumbLd = '';
@@ -787,7 +824,7 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   }
   </script>
   ${breadcrumbLd}
-  ${extraJsonLd || ''}
+  ${extraLd || ''}
 </head>
 <body class="${bodyClass}">
   <a href="#main" class="seo-skip-link">Skip to content</a>
@@ -806,7 +843,7 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
 
   <footer class="seo-footer">
     <p>Data sourced directly from Greenhouse, Lever, Ashby, Workable, Recruitee & USAJobs.</p>
-    <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a> · <span class="seo-version">v4.87</span></p>
+    <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a> · <span class="seo-version">v4.91</span></p>
   </footer>
 
   <script id="seo-chart-data" type="application/json">${chartData}</script>
@@ -893,9 +930,6 @@ module.exports = async function handler(req, res) {
       ]);
       cityData = cityResult;
       metroPages = metrosResult;
-    } else if (type === 'metro' && role) {
-      // Fetch metro pages for same-role-in-other-cities cross-links
-      metroPages = await fetchMetroPages(15);
     } else if (type === 'trends') {
       metroPages = await fetchMetroPages(15);
     } else if (type === 'market') {
