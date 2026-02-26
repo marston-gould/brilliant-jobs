@@ -4,7 +4,7 @@
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
  * To bump the version, change ONLY this line.
  */
-var BJ_VERSION = 'v4.97';
+var BJ_VERSION = 'v4.98';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -601,7 +601,7 @@ var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
 var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 50;
+var JOBS_PER_PAGE = 20;
 
 // Resume state (populated fully in resumes.js)
 var resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
