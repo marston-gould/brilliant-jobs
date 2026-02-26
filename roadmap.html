@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 26, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 24 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules)
+    Brilliant Jobs · Internal Roadmap · Updated February 26, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 34 Edge Functions · 27 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules) · Feed Quality: Skills/Level/Dept/JD filters + relevance sort + feed signals + filter health
   </div>
 
 </div>
@@ -1421,19 +1421,20 @@ const features = [
   { s: 'done', n: 'Tuning pill font fix', d: 'Fixed by Pod 1: Tailwind safelist expansion, 152 classes restored.', p: 40 },
   { s: 'done', n: 'Poor match suggestions empty (P2)', d: 'Per-card pattern notes: "Pattern: intern appears in 4 hidden jobs". Fallback to company pattern. Actionable exclusion banner: "You\'ve hidden X jobs — keyword appears in Y". De-duplicated stopWords/counting. Commit: d05d6770.', p: 40 },
 
-  // Phase 41: Feed Quality & Search Relevance — PLANNED
-  { s: 'todo', n: 'Skills dictionary — corpus frequency analysis', d: 'Frequency analysis on 124K+ JDs. Top 500-1000 skills taxonomy. Categories: languages, frameworks, tools, methodologies, certifications, soft skills. Store as ref_skills table.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'Deterministic JD extraction function', d: 'extract_jd_metadata() PL/pgSQL. Regex extraction of skills, years (min/max), education, seniority, requirements from content field. New columns: jd_skills[], jd_years_min/max, jd_education, jd_seniority, jd_requirements[]. GIN index on jd_skills.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'JD extraction backfill + pipeline', d: 'Batch extraction on ~124K jobs (cursor-based, 500/batch). Add extraction to refresh-jobs EF for auto-extraction on new jobs.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'PostgreSQL full-text search (tsvector)', d: 'content_tsv tsvector column, GIN index, auto-update trigger. search_jd_content() RPC wrapper for PostgREST. Parallel with skills extraction.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'SKILLS pill type in Query Builder', d: 'New pill category with autocomplete from aggregate jd_skills (top 200). Queries jd_skills @> ARRAY[skill]. Multiple pills AND together. Distinct color.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'EXPERIENCE range filter', d: 'Min/max input: "I have __ years". Queries jd_years_min <= user_years. Option to hide overqualified.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'JD CONTAINS pill type (full-text)', d: 'Free text → plainto_tsquery against content_tsv. Stemming automatic. Multiple pills AND together.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'Relevance sort option', d: 'Feed sort: "Relevance" using ts_rank(). Available when content-based filters active. Default remains Date.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'buildFilterQuery() expansion', d: 'Wire SKILLS (.contains), EXPERIENCE (.lte), JD CONTAINS (RPC/@@) into query builder. Saved filter schema updated.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'User feed signals table', d: 'user_feed_signals: clicked, saved, applied, hidden, skipped. Filter provenance tracking for each surfaced job.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'Filter health score', d: 'Per-filter CTR, hide rate, apply rate. Banner if hide rate > 30%. Stats page "Filter Quality" metric.', b: 'pre-launch', p: 41 },
-  { s: 'todo', n: 'Smart skill suggestions', d: 'Aggregate jd_skills across filter results. Surface top skills (60%+ prevalence) as dismissible chips above feed.', b: 'pre-launch', p: 41 },
+  // Phase 41: Feed Quality & Search Relevance (v4.86-v4.90) — Feb 25-26, 2026
+  { s: 'done', n: 'Skills dictionary — corpus frequency analysis', d: 'extract_jd_metadata_v2 PL/pgSQL function. Autonomous pg_cron backfill across 128K+ jobs. Extracts skills into extracted_skills array column. Categories: languages, frameworks, tools, methodologies. v4.86.', p: 41 },
+  { s: 'done', n: 'Deterministic JD extraction function', d: 'extract_jd_metadata_v2() PL/pgSQL. Regex extraction of skills, seniority, department from content field. New columns: extracted_skills[], extracted_seniority, extracted_department. GIN index on extracted_skills. v4.86.', p: 41 },
+  { s: 'done', n: 'JD extraction backfill + pipeline', d: 'Batch extraction on 128K+ jobs via pg_cron. jd-extraction-ongoing cron (every 5 min) catches new jobs for automatic extraction. loc_type backfill: 12K+ remote jobs properly tagged. trg_sync_loc_type trigger for ongoing sync. v4.86-v4.87.', p: 41 },
+  { s: 'done', n: 'PostgreSQL full-text search (tsvector)', d: 'content_tsv tsvector column with GIN index. websearch_to_tsquery for JD CONTAINS pill. Auto-update trigger on insert/update. Used by relevance sort and JD search. v4.86.', p: 41 },
+  { s: 'done', n: 'SKILLS pill type in Query Builder', d: 'Green pill type. Queries extracted_skills array using .cs (contains) operator. Multiple pills AND together. Full lifecycle: input bindings, serialization, edit flow, clear-all, saved filter persistence. v4.86.', p: 41 },
+  { s: 'done', n: 'LEVEL filter (replaces EXPERIENCE range)', d: 'Purple pill type querying extracted_seniority (senior/mid/junior/executive/intern). Single or multi-select via .eq/.in operators. Full pill lifecycle wired. QB layout: Skills+Dept row, Level+JD row. v4.86.', p: 41 },
+  { s: 'done', n: 'JD CONTAINS pill type (full-text)', d: 'Amber pill type. Free text → websearch_to_tsquery against content_tsv. Stemming automatic. Multiple pills AND together. Full lifecycle wired. v4.86.', p: 41 },
+  { s: 'done', n: 'Relevance sort option', d: 'Feed sort dropdown option. Client-side scoring: title 3x, skills 2x, company 1x, location 1x. _relevanceScore computed per job. search_jobs_by_relevance RPC for server-side ts_rank. v4.88.', p: 41 },
+  { s: 'done', n: 'buildFilterQuery() expansion', d: 'All new pill types wired into job-feed.js query builder: SKILLS (.cs on extracted_skills), LEVEL (.eq/.in on extracted_seniority), DEPARTMENT (.eq/.in on extracted_department), JD CONTAINS (.textSearch on content_tsv). Saved filter schema updated. allPills() and renderAllPills() expanded. v4.86.', p: 41 },
+  { s: 'done', n: 'User feed signals table', d: 'feed_signals table: user_id, greenhouse_id, signal_type (click/hide/save/apply), filter_name. RLS: users read/write own. log_feed_signal RPC (fire-and-forget). get_feed_signal_stats RPC. Signals logged from openJobModal, hideJob, toggleSaveJob, modalApply. v4.90.', p: 41 },
+  { s: 'done', n: 'Filter health score', d: 'get_filter_health RPC: total matches, salary %, skills %, remote count, top skills, top departments. Weighted composite score (salary 40%, skills 30%, content 30%). 💡 button (sf-health-btn) on each saved filter → popover with health data. v4.89.', p: 41 },
+  { s: 'done', n: 'Smart skill suggestions', d: 'Health popover shows top skills from matching jobs not already in filter. Click suggestion → adds skill pill to saved filter instantly with toast confirmation. bjShowImproveSuggestions / bjApplyImproveSuggestions functions. v4.89.', p: 41 },
+  { s: 'done', n: 'DEPARTMENT filter pill', d: 'Blue pill type querying extracted_department (engineering, marketing, sales, data, hr, finance, legal, etc.). Full lifecycle: input bindings, serialization, edit flow, clear-all. QB layout: Skills+Dept row. v4.88.', p: 41 },
   { s: 'todo', n: 'Resume mismatch warnings', d: 'Cross-reference resume skills vs top jd_skills in filter results. Alert if 70%+ JDs require a missing skill.', b: 'pre-launch', p: 41 },
   { s: 'todo', n: 'AI enrichment pilot (5K jobs)', d: 'enrich-jd Edge Function. Claude Haiku classification: function, technical_level, mgmt_scope, summary, differentiators. 5K-job pilot across 5 ambiguous title clusters (~$4). 4-layer evaluation with go/no-go gate.', b: 'pre-launch', p: 41 },
   { s: 'todo', n: 'Full AI backfill + Pro-gated filters', d: 'Phase 4b (if pilot passes): full 350K backfill (~$280). pg_cron pipeline. FUNCTION and TECHNICAL DEPTH filters (Pro-gated). "Why This Job?" feed card expansion.', b: 'pre-launch', p: 41 },
@@ -1575,7 +1576,7 @@ function render() {
     38: 'Signal Analytics + Notification Templates',
     39: 'Content Distribution & Social Publishing',
     40: 'Bug Tracker Resolution',
-    41: 'Feed Quality & Search Relevance',
+    41: 'Feed Quality & Search Relevance (v4.86-v4.90)',
     42: 'Global Version, Pricing & City Pages'
   };
 
