@@ -4,7 +4,7 @@
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
  * To bump the version, change ONLY this line.
  */
-var BJ_VERSION = 'v4.99';
+var BJ_VERSION = 'v5.00';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -1882,11 +1882,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
-  // WHEN — first_seen_at gte (NOT updated_at — refresh cron resets updated_at every cycle)
+  // WHEN — updated_at gte (job freshness based on last ATS refresh, not first discovery)
   for (const pill of wn) {
     for (const v of pill.values) {
       const since = parseWhenValue(v);
-      if (since) query = query.gte('first_seen_at', since.toISOString());
+      if (since) query = query.gte('updated_at', since.toISOString());
     }
   }
 
@@ -2072,6 +2072,15 @@ async function searchJobs(page = 0) {
     }
 
     // Check that at least one filter has real criteria
+    console.log('[searchJobs] filtersToRun:', filtersToRun.length, 'filters');
+    filtersToRun.forEach((sf, i) => {
+      console.log(`[searchJobs] filter[${i}]:`,
+        'what=', (sf.whatPills || sf.pills || []).flatMap(p => p.values),
+        'where=', (sf.wherePills || []).flatMap(p => p.values),
+        'when=', (sf.whenPills || []).flatMap(p => p.values),
+        'who=', (sf.whoPills || []).flatMap(p => p.values),
+      );
+    });
     const hasRealCriteria = filtersToRun.some(sf => {
       const w = sf.whatPills || sf.pills || [];
       const wh = sf.wherePills || [];
