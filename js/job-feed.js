@@ -432,6 +432,38 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
+  // SKILLS — filter on extracted_skills array (contains any)
+  const sk = sf.skillsPills || [];
+  for (const pill of sk) {
+    const terms = pill.values.map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (terms.length > 0) {
+      // Use cs (contains) operator — job must have at least one of these skills
+      query = query.or(terms.map(t => `extracted_skills.cs.{${t}}`).join(','));
+    }
+  }
+
+  // LEVEL — filter on extracted_seniority
+  const lv = sf.levelPills || [];
+  if (lv.length > 0) {
+    const levels = lv.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (levels.length === 1) {
+      query = query.eq('extracted_seniority', levels[0]);
+    } else if (levels.length > 1) {
+      query = query.in('extracted_seniority', levels);
+    }
+  }
+
+  // JD CONTAINS — full-text search on content_tsv
+  const jd = sf.jdPills || [];
+  for (const pill of jd) {
+    for (const v of pill.values) {
+      const safe = v.replace(/[,()]/g, '').trim();
+      if (safe) {
+        query = query.textSearch('content_tsv', safe, { type: 'websearch', config: 'english' });
+      }
+    }
+  }
+
   return query;
 }
 
