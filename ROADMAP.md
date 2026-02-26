@@ -910,38 +910,38 @@
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| A1 | Company SEO Pages + Ghost Rate Reports | 5-7d | 🔲 | /company/:slug. Extend seo_page_cache with company-level rows. Schema.org Organization. Sitemap top 500. |
-| A2 | College Major Outcomes Page | 3d | 🔲 | NEW. /college-major-outcomes. 73 majors, NY Fed data × BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. |
+| A1 | Company SEO Pages + Ghost Rate Reports | 5-7d | ✅ | v4.76. /company/:slug live. Vercel rewrite rule added. Schema.org Organization. seo_page_cache extended with company rows. |
+| A2 | College Major Outcomes Page | 3d | ✅ | v4.77. /college-major-outcomes live. 73 majors, NY Fed data × BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. |
 | A3 | Jobs by Location Data Page | 4-5d | 🚫 DEFERRED | /jobs-by-location. Blocked on country parsing (GH 0.8%, Lever 0%, Ashby 0%). |
 | A4 | Remote vs Non-Remote Tracker | 3-4d | 🔲 | /remote-vs-office. get_remote_differential() RPC. Launchable at 36% loc_type. Salary needs 40%+. |
-| A5 | Content Freshness Rotation | 2-3d | 🔲 | Infrastructure: last_refreshed_at, refresh_interval_days, data_volatility_score on seo_page_cache. Tiered: 7d/14d/30d. |
-| A6 | Filter-Driven Trend Indicators | 2-3d | 🔲 | get_filter_trend() RPC. Trend badges on saved filter cards. Needs 14+ days content_snapshots. |
+| A5 | Content Freshness Rotation | 2-3d | ✅ | v4.73. Infrastructure: last_refreshed_at, refresh_interval_days, data_volatility_score on seo_page_cache. Tiered: 7d/14d/30d. |
+| A6 | Filter-Driven Trend Indicators | 2-3d | ✅ | v4.74. get_filter_trend() RPC. Trend badges on saved filter cards. |
 
 ### Section B: Topical Coverage (6 items, 11-17 days)
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| B1 | Metro Comparison Stories | 1d | 🔲 | metro_comparison template + threshold tuning (salary Δ 10%+, volume ratio 20%+). Rule exists. |
+| B1 | Metro Comparison Stories | 1d | ✅ | v4.76 Wave 4. metro_comparison template + threshold tuning (salary Δ 10%+, volume ratio 20%+). |
 | B2 | Multi-Dimensional Insight Stories | 2-3d | 🔲 | 3 detection rules (salary_x_remote, role_x_industry, level_x_location). Blocked on 60%+ coverage. |
 | B3 | Economic Overlay Stories | 3-4d | 🔲 | compute-correlations weekly cron. 3 rules: econ_divergence, econ_inflection, econ_milestone. Needs 90+ days econ data. |
 | B4 | Community Benchmark Stories | 2d | 🔲 | benchmark_shift rule + quarterly cron. Needs 50+ pipeline entries/segment. |
-| B5 | NY Fed Crossover Stories | 2-3d | 🔲 | NEW. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment × Hiring. |
+| B5 | NY Fed Crossover Stories | 2-3d | ✅ | v4.76 Wave 4. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment × Hiring. |
 | B6 | Annual State-of-the-Market Report | 3-4d | 🔲 | annual_report template. Manual trigger + admin approval. First report Q4 2026. |
 
 ### Section C: Integration Wiring (4 items, 5-7 days) — ALL NEW
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| C1 | Dashboard Insight Cards Wiring | 1-2d | 🔲 | Insight cards above jobs feed. /content-api/merch-dashboard with filter context. Dismiss with 24h reset. |
-| C2 | Email Digest Integration | 2-3d | 🔲 | Extend weekly-summary EF with top 3 stories section from content_stories. |
-| C3 | Landing Page Merchandising Wiring | 1d | 🔲 | data-merch-placement div → merch-client.js → /content-api/merch-index → 3 story cards. |
-| C4 | Blog Index + Discovery | 0.5-1d | 🔲 | Nav link, footer link, RSS, blog-to-dashboard CTAs. |
+| C1 | Dashboard Insight Cards Wiring | 1-2d | ✅ | v4.67. Insight cards above jobs feed. /content-api/merch-dashboard with filter context. Dismiss with 24h reset. |
+| C2 | Email Digest Integration | 2-3d | ✅ | v4.75. Extended weekly-summary EF with top 3 stories section from content_stories. |
+| C3 | Landing Page Merchandising Wiring | 1d | ✅ | v4.75. data-merch-placement div → merch-client.js → /content-api/merch-index → 3 story cards. |
+| C4 | Blog Index + Discovery | 0.5-1d | ✅ | v4.75. Nav link, footer link, RSS, blog-to-dashboard CTAs. |
 
 ### Section D: Enrichment Monitoring (1 item, 2-3 days) — NEW
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| D1 | Enrichment Coverage Dashboard | 2-3d | 🔲 | Admin tab: 4 coverage cards, trend chart, gate indicators (40%/60%), throughput, platform breakdown. BUILD FIRST. |
+| D1 | Enrichment Coverage Dashboard | 2-3d | ✅ | v4.72. Admin tab: 4 coverage cards, trend chart, gate indicators (40%/60%), throughput, platform breakdown. |
 
 ### Recommended Build Order
 
@@ -963,7 +963,7 @@
 | Department | 44% | 60%+ | B2 Multi-dim stories |
 | Country (GH/Lever/Ashby) | 0-0.8% | 80%+ | A3 Jobs by Location |
 
-**Phase 37 total: 17 items | 37-52 dev days | v4.71 roadmap update.**
+**Phase 37 total: 17 items | 12 complete (A1,A2,A5,A6,B1,B5,C1,C2,C3,C4,D1), 1 deferred (A3), 4 remaining (A4,B2,B3,B4,B6). Versions: v4.67–v4.77.**
 
 
 ## Master Status Summary
@@ -1041,6 +1041,8 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-25 | 43 | CP1–CP9 | **Phase 43: City Pages + Internal Linking Sprint (v4.91).** Branch: `feat/city-pages-linking-sprint` (7 commits). DB: city_pages table (2,178 rows seeded), city_popular_pills (Phase 2, empty). refresh-city-stats Edge Function deployed (6h cron). SSR enhancements: hook pills on metro pages, server-rendered role links, "Compare Other Cities" cross-links, hub page city/trend grids. Homepage "Browse by City" + "Trending Roles" sections. Data Lab city browse panel. /pricing + /ghost-report added to sitemap. ⚠️ Branch NOT merged to dev/main — frontend changes not live. Remaining: Block 7 (pill conversion JS), Block 6e (Data Lab subpage contextual links). |
+| 2026-02-25 | 37-BUILD | A1,A2,A5,A6,B1,B5,C1-C4,D1 | **Content Engine Build Sprint (v4.67–v4.77).** Flipped 12/17 Phase 37 items to done. Company SEO pages (/company/:slug), College Major Outcomes, Content Freshness Rotation, Filter-Driven Trend Indicators, Metro Comparison + NY Fed Crossover editorial templates, Dashboard Insight Cards, Email Digest, Landing Page Merch, Blog Discovery, Enrichment Coverage Dashboard. 4 remaining: A4 (Remote Tracker), B2 (Multi-Dim), B3 (Economic), B4 (Benchmark), B6 (Annual Report). |
 | 2026-02-25 | CE-v3 | — | **Content Engine Handoff v3 roadmap update (v4.71).** Added 17 items across 4 categories from Pod 1 CE Handoff v3: Section A Permanent Pages (6 items: company pages, college outcomes, jobs-by-location, remote tracker, freshness rotation, trend indicators), Section B Topical Coverage (6 items: metro/multi-dim/economic/benchmark/NY Fed stories, annual report), Section C Integration Wiring (4 NEW items: dashboard insight cards, email digest, landing page merch, blog discovery), Section D Enrichment Monitoring (1 NEW item: coverage dashboard). Supersedes v4.70 removal — items re-added with proper categorization. Total: 37-52 dev days. |
 | 2026-02-25 | CE-TRIM | — | **Content Engine roadmap trim (v4.70).** Removed 6 user-pipeline-dependent items from roadmap: Public Company Ghost Rate Reports, Community Benchmark Data, Programmatic Company SEO Pages, Multi-Dimensional Insight Pages, Annual State-of-the-Market Report, Jobs by Location Data Page. These require user activity at scale (50+ pipeline entries per segment, 10K company pages for ghost rates) that won't exist until well after launch. Retained viable items: Content Freshness Rotation, Filter-Driven Trend Indicators, Remote vs Non-Remote Tracker, Public Data Benchmark Overlays, Metro Comparison Pages. |
 | 2026-02-25 | 33 | RA1–RA31 | **Phase 33: Resume Archive + Metrics (v4.55–v4.60).** All 8 phases in single session. 3 new tables (resume_archive, resume_score_history, resume_job_usage). 7 functions + 2 triggers + 1 pg_cron. Archive tab UI with storage bar + version timeline. Expiry cron (daily 3AM) with tier-gated restore. Resume Metrics tab on Stats page: sparkline, level fit, pipeline funnel, usage log. Tier gating module. Pipeline→usage auto-sync trigger. 3 new JS modules (22 total, 604KB minified). 24 cron jobs. |
@@ -1717,3 +1719,56 @@ All 16 spec items verified against live infrastructure:
 
 **Phase 39b total:** 20 items | All complete | Version range: v4.82 → v4.83
 **Files modified:** tailwind.config.js, src/input.css, styles.css, dashboard.html, js/job-feed.js, js/keywords.js, js/sort-bar.js, js/app.js, index.html, pricing.html, dist/dashboard.min.js
+
+---
+
+## Phase 43: City Pages + Internal Linking Sprint (v4.91) — 2026-02-25
+
+**Goal:** Enhance the existing SSR system (api/seo-page.js + seo_page_cache) with city-level data, hook pills for conversion, comprehensive internal cross-linking, and homepage/data-lab browse sections. Based on H1 handoff spec.
+
+**Branch:** `feat/city-pages-linking-sprint` (7 commits, based on dev)
+**⚠️ STATUS: Branch NOT merged. DB + Edge Function live. Frontend/SSR changes on branch only.**
+
+### Database (Live in Production)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| CP1 | `city_pages` table | v4.91 | ✅ | 2,178 rows seeded from ats_jobs (≥10 jobs/city). Indexes on slug + job_count DESC. RLS: anon SELECT, auth SELECT, service_role write. |
+| CP2 | `city_popular_pills` table | v4.91 | ✅ | Phase 2 schema, empty. FK to city_pages(slug), category CHECK constraint. |
+| CP3 | Seed data | v4.91 | ✅ | 97 cities with top_titles, 77 with top_skills, 100 with top_companies. Median salaries, remote %, top industries. Auto-generated meta_title/meta_description. |
+| CP4 | `refresh-city-stats` Edge Function | v4.91 | ✅ | 6-step refresh (stats→companies→titles→skills→industries→meta). Deployed. pg_cron: `0 */6 * * *`. |
+
+### SSR Enhancements (On Branch — Not Deployed)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| CP5 | Metro page hook pills | v4.91 | ✅ | "What Companies Are Hiring For" with top titles/skills/industries from city_pages. Each pill has label + count + "+" button (CSS ready). Server-rendered role links replace client-side populateRelatedRoles(). "Compare Other Cities" cross-links (top 8 metros). |
+| CP6 | Trends page cross-links | v4.91 | ✅ | "Explore [Role] Jobs by City" links to /jobs-in/:metro/:role for top 10 metros. "Related Roles" links to all 20 trends pages. |
+| CP7 | Market hub page enhancements | v4.91 | ✅ | "Jobs by City" grid (top 50 metros), "Hiring Trends by Role" grid (all trends), "Data Lab Reports" (6 subpages). Cross-linking data fetched in parallel (non-blocking). |
+| CP5b | Homepage sections | v4.91 | ✅ | "Browse Jobs by City" (8-city grid) + "Trending Roles" (4-role grid) added to index.html before bottom CTA. |
+| CP5c | Data Lab browse by city | v4.91 | ✅ | "Browse Jobs by City" panel (15 city links) + "View all cities →" link added to data-lab.html. |
+
+### Remaining
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| CP8 | "+" Button conversion flow (Block 7) | — | 🔲 | CSS ready. Needs JS: signup modal for anon, pill→filter for auth users, toast, undo. |
+| CP9 | Data Lab subpage contextual links (Block 6e) | — | 🔲 | salary-data→cities, hiring-trends→cities, etc. Metro→metro cross-links only on non-role pages currently. |
+
+### Deployment Blocker
+
+Branch `feat/city-pages-linking-sprint` must be merged: PR → dev → verify → staging → main. Until then, SSR enhancements (CP5–CP7), homepage sections (CP5b), and Data Lab updates (CP5c) are not live.
+
+### Sitemap Update (On Branch)
+
+Added `/pricing` and `/ghost-report` to sitemap.xml (not yet on main). Total will be 139 URLs once merged.
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (branch) | v4.91 |
+| version.js (main/prod) | v4.90 |
+| pg_cron #27 | refresh-city-stats (0 */6 * * *) |
+
+**Phase 43 total: 9 items | 7 complete on branch (CP1–CP5c), 2 remaining (CP8, CP9). Version: v4.91. ⚠️ Frontend not deployed — merge required.**
