@@ -21,6 +21,7 @@ module.exports = {
     { pattern: /^(amber|bug|danger|dim|doc|down|dragover|email|empty|full|green|mark|pdf|red|skip|sms|tall|up|wait|warning|new-resume-item|is-placeholder|css|woff2|chip-count)$/ },
     { pattern: /^(s[1-8]|esc-|ec$)/ },
     { pattern: /^(feed-|hero-|intel-|hs-)/ },
+    { pattern: /^(sg-|pa-|rr-|fas-|pending-apps)/ },
   ],
   content: [
     './dashboard.html',
