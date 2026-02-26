@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-26
 **Target launch:** March 2026
-**Current version:** v5.00
+**Current version:** v5.05
 
 ---
 
@@ -1831,3 +1831,59 @@ All 16 spec items verified against live infrastructure:
 | Edge Functions deployed | refresh-jobs, refresh-usajobs, enrich-jd-ai |
 
 **Phase 44 total: 13 items | 13 complete ✅. Version: v4.94→v5.00. Fully deployed to production.**
+
+---
+
+## Phase 45: Visual Consistency Pass + UX Fixes (v5.01–v5.05) — 2026-02-26 ✅ COMPLETE
+
+**Goal:** Align Applications & Ghost Monitor pages with hero-first architecture used across all other tabs, fix feed filter/display mismatch, and polish resume action flows.
+
+**Source:** Phase 39b visual consistency handoff doc + user-reported feed issues.
+
+### Applications & Ghost Monitor Redesign (v5.01)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V1 | `.app-hero` navy banner | v5.01 | ✅ | Hero banner with lifecycle stats (Queued, Submitted, Response Rate, This Week). Same navy gradient as all other heroes. |
+| V2 | Lifecycle-spanning stats | v5.01 | ✅ | Response Rate (responded/totalSent×100) and This Week (submitted in 7 days) replace old queue-state-only stats. |
+| V3 | 3-way Queue/Pipeline/History toggle | v5.01 | ✅ | Replaces old List/Board toggle + app-flow-tabs bar. `switchAppView()` full implementation with localStorage persistence. |
+| V4 | Settings gear panel | v5.01 | ✅ | Rules + Notifications collapsed into `#app-settings-panel` with sub-tabs. Gear icon toggle. |
+| V5 | Queue table restyle | v5.01 | ✅ | Font-size 10px headers, 700 weight, 8px padding — aligned with `.job-table` conventions. |
+| V6 | Intel slot below hero | v5.01 | ✅ | `#app-intel-slot` for cross-tab ghost alerts (stale apps > 7 days). |
+| V7 | `.ghost-hero` banner | v5.01 | ✅ | Ghost Monitor hero: "Silence is data. We track it." Stats: Active, Avg Days, Likely Ghosted, Confirmed, Gmail. |
+
+### Codebase Cleanup (v5.02)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V8 | Remove dead `.app-flow-tabs` CSS | v5.02 | ✅ | 14 lines of orphaned CSS removed (no longer in HTML after v5.01). |
+| V9 | Remove dead ID writes | v5.02 | ✅ | Null-guarded writes to `a-pending`, `a-failed` removed (IDs deleted in v5.01). |
+| V10 | Gmail hero chip update | v5.02 | ✅ | `g-gmail-stat` hero chip shows On/Off with `hs-green`/`hs-dim` classes in `initGmailStatus()`. |
+
+### Resume Delete Flow (v5.04)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V11 | Full-word delete labels | v5.04 | ✅ | Active resume delete button: "✕ Delete" (was just ✕ icon). Matches Archive/Restore pattern. |
+| V12 | Download-before-delete modal | v5.04 | ✅ | `confirmDeleteResume()` modal with 3 options: Save to Google Drive & Delete (if GDrive connected), Save to Desktop & Delete, Delete Without Saving. Replaces bare `confirm()`. |
+
+### Feed Filter Fixes (v5.05)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V13 | WHEN filter column correction | v5.05 | ✅ | **Reverses S9 from Phase 44.** WHEN filter changed back to `first_seen_at` to match DAYS column display. Root cause: `updated_at` let 15d-old jobs appear in "last 14 days" filter because their refresh timestamp was recent. `first_seen_at` = when job was discovered = what users see in DAYS column. Filter and display now use same column. |
+| V14 | App mode button contrast | v5.05 | ✅ | Active (blue) button subtitle was `color:var(--text-dim)` — gray on blue = unreadable. Now sets `rgba(255,255,255,0.85)` when active, reverts on deselect. Applied on click + on-load init. |
+
+### S9 Correction Note
+
+Phase 44 item S9 changed WHEN from `first_seen_at` to `updated_at`, reasoning that `updated_at` reflects refresh confirmation while `first_seen_at` only records scraper discovery. However, this introduced a user-visible inconsistency: the DAYS column displays `first_seen_at` age, so a job could show "15d" yet pass a "last 14 days" WHEN filter (because its `updated_at` was recent). V13 reverses this — WHEN now uses `first_seen_at` so the filter and display column are consistent. The correct solution for "show recently refreshed jobs" would be a separate FRESHNESS filter on `updated_at`, not overloading the WHEN filter.
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.05 |
+| dashboard.html cache-bust | v5.05 |
+| Console log | Dashboard v5.05 loaded |
+
+**Phase 45 total: 14 items | 14 complete ✅. Version: v5.01→v5.05. Fully deployed to production.**
