@@ -228,3 +228,59 @@
   border-radius: var(--seo-radius);
 }
 @keyframes seoShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* =========================================================================
+   Hook Pills (city pages) — Sprint: City Pages + Internal Linking
+   ========================================================================= */
+.seo-hook-pills { margin-top: 32px; }
+.seo-pill-group { margin-bottom: 24px; }
+.seo-pill-group h3 { font-size: 15px; font-weight: 600; color: var(--seo-text-dim); margin: 0 0 12px; letter-spacing: 0.5px; text-transform: uppercase; }
+.seo-pill-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.seo-hook-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--seo-card-bg, #f7f8fa); border: 1px solid var(--seo-border, #e2e5ea);
+  border-radius: 20px; padding: 6px 12px; font-size: 13px; color: var(--seo-text);
+  transition: border-color 0.15s, background 0.15s;
+}
+.seo-hook-pill:hover { border-color: var(--seo-accent); background: rgba(77, 142, 255, 0.06); }
+.pill-label { font-weight: 500; }
+.pill-count { font-size: 11px; color: var(--seo-text-dim); font-family: var(--seo-mono); }
+.pill-add {
+  width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--seo-border, #d0d5dd);
+  background: transparent; color: var(--seo-accent); font-size: 14px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  padding: 0; line-height: 1;
+}
+.pill-add:hover { background: var(--seo-accent); color: #fff; }
+.pill-add.added { background: #22c55e; color: #fff; border-color: #22c55e; pointer-events: none; }
+.pill-add.added::after { content: '✓'; font-size: 11px; }
+.pill-add.added::before { content: none; }
+
+/* =========================================================================
+   Cross-linking grids
+   ========================================================================= */
+.seo-cross-links { margin-top: 32px; }
+.seo-link-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+.seo-link-grid-3col { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+
+.seo-link-grid a {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; border-radius: var(--seo-radius, 8px);
+  border: 1px solid var(--seo-border, #e2e5ea); background: var(--seo-card-bg, #f7f8fa);
+  color: var(--seo-text); font-size: 13px; font-weight: 500;
+  text-decoration: none; transition: border-color 0.15s, background 0.15s;
+}
+.seo-link-grid a:hover { border-color: var(--seo-accent); background: rgba(77, 142, 255, 0.06); }
+.seo-link-stat { font-size: 11px; color: var(--seo-text-dim); font-family: var(--seo-mono); white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .seo-link-grid { grid-template-columns: 1fr; }
+  .seo-pill-grid { gap: 6px; }
+  .seo-hook-pill { font-size: 12px; padding: 5px 10px; }
+  .pill-add { width: 18px; height: 18px; font-size: 12px; }
+}
