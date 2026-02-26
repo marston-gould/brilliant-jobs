@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-25
 **Target launch:** March 2026
-**Current version:** v4.79a
+**Current version:** v4.83
 
 ---
 
@@ -1608,3 +1608,58 @@ All 16 spec items verified against live infrastructure:
 | FQ15 | Full AI backfill (if pilot passes) | TBD | 📋 PLANNED | Phase 4b: full 350K backfill (~$280). pg_cron pipeline. Pro-gated FUNCTION and TECHNICAL DEPTH filters. "Why This Job?" feed card expansion. |
 
 **Phase 40 status:** 0/15 complete. All planned. Detailed spec in `/FEED_QUALITY_PHASES.md`.
+
+
+## Phase 39b: Pod 1 UX & Design Sprint (v4.82–v4.83) — 2026-02-25
+
+**Goal:** Resolve CSS/HTML/UX bugs from bug tracker, redesign Jobs Feed and Resumes pages for design coherence, improve feed merchandising capabilities.
+
+**Source:** Pod 1 session with Claude, 6 reported bugs + feed UX review
+
+### Tailwind & CSS Fixes (v4.82)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P1 | Tailwind safelist expansion | v4.82 | ✅ | 152 purged classes restored. Expanded from 1 pattern to 13 patterns covering 654 custom classes. |
+| P2 | Score badge CSS colors | v4.82 | ✅ | `.nri-score.mid` blue→amber, `.nri-score.low` amber→red. Added `.nri-score-label` class. |
+| P3 | Archive button CSS standalone | v4.83 | ✅ | `.rc-btn` no longer requires `.rc-actions` parent. Added font-family + transition. |
+| P4 | Tuning pill font fix | v4.82 | ✅ | Added explicit `font-family: var(--sans)` to `.qb-pill` base class. |
+| P5 | Ghost Rate column removed | v4.83 | ✅ | Removed from header + row rendering. Colspans updated 10→9. Will resurface as per-company visual cue when data available. |
+
+### Feed UX Redesign (v4.83)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P6 | Jobs Feed hero banner | v4.83 | ✅ | Navy hero matching Setup/Tuning/Resumes pattern. Stat cards absorbed into hero as compact chips (Total Jobs, Companies, New Today, Pipeline). |
+| P7 | Resumes hero stats | v4.83 | ✅ | Same pattern: stat-grid replaced with hero-embedded chips (Active, Levels, Assigned, Coverage, Archived). |
+| P8 | Intel/merch 2-card slot | v4.83 | ✅ | Replaced Market Intelligence box. Left card = contextual insight (salary ranges, new jobs). Right card = merch-client rotatable (upsell, feature announcement). Both dismissible. |
+| P9 | Contextual intel card JS | v4.83 | ✅ | `updateIntelInsight()` populates card from actual filter/job data: salary p25–p75, new jobs count, filter name. |
+| P10 | Stat chip stacked layout | v4.83 | ✅ | Hero stat chips changed from horizontal side-by-side to stacked (number on top, label below). |
+
+### Feed Controls & Copy (v4.83)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P11 | Generate from Resume CTA | v4.83 | ✅ | Moved from inside collapsed filter builder to standalone card ABOVE Job Filter Builder. |
+| P12 | Extension card fix | v4.83 | ✅ | "Download Extension" button now hidden when green dot shows connected. |
+| P13 | Sort pill dedup | v4.82 | ✅ | Set-based dedup guard in `renderSortPills()`. Filters jobSortStack on every render. |
+| P14 | Get Started copy update | v4.82 | ✅ | "Save" → "Pipeline", description updated to match actual Save→Pipeline→Bulk Apply flow. |
+| P15 | Table header alignment | v4.82 | ✅ | Added missing Ghost Rate `<th>` (then removed entire column in P5). Rebalanced column widths. |
+
+### Exclusion Language Overhaul (v4.83)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P16 | Hide popup rewrite | v4.83 | ✅ | "Why hide this?" → "Why doesn't this belong?" + explainer: "This trains your exclusion filters — hide 3+ and we'll suggest patterns to auto-remove similar jobs." |
+| P17 | Hide reason labels | v4.83 | ✅ | Action-oriented: "Wrong title → exclude similar roles", "Wrong company → block this employer". |
+| P18 | Hide button tooltip | v4.83 | ✅ | "Hide this job — trains your exclusion filters to remove similar listings" |
+| P19 | Improve Filters button | v4.83 | ✅ | "🔧 Improve Filters (3 hidden)" → "🔧 3 hidden — generate exclusions" |
+
+### Version Sync
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P20 | Version sync v4.83 | v4.83 | ✅ | BJ_VERSION in js/app.js (single source of truth), CSS bust, nav display, comment headers across index.html + pricing.html. |
+
+**Phase 39b total:** 20 items | All complete | Version range: v4.82 → v4.83
+**Files modified:** tailwind.config.js, src/input.css, styles.css, dashboard.html, js/job-feed.js, js/keywords.js, js/sort-bar.js, js/app.js, index.html, pricing.html, dist/dashboard.min.js
