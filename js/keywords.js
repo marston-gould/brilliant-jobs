@@ -558,14 +558,14 @@ async function runReadinessAnalysis(opts) {
   opts = opts || {};
   var silent = opts.silent || false;
   var singleResumeIdx = typeof opts.resumeIndex === 'number' ? opts.resumeIndex : null;
-  var btn = singleResumeIdx !== null ? document.getElementById('rc-analyze-' + singleResumeIdx) : document.getElementById('readiness-run-btn');
+  var btn = singleResumeIdx !== null ? document.getElementById('rc-score-' + singleResumeIdx) : document.getElementById('readiness-run-btn');
   var statusEl = document.getElementById('readiness-status');
   var resultsEl = document.getElementById('readiness-results');
 
   if (readinessRunning) return;
   readinessRunning = true;
 
-  if (!silent && btn) { btn.disabled = true; btn.textContent = singleResumeIdx !== null ? 'Analyzing\u2026' : 'Analyzing All\u2026'; }
+  if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring2026'; }
 
   var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
@@ -688,8 +688,157 @@ async function runReadinessAnalysis(opts) {
   jobMatchScores = {};
 
   if (statusEl) statusEl.textContent = 'Analyzed ' + totalFiltersAnalyzed + ' filter' + (totalFiltersAnalyzed !== 1 ? 's' : '') + ', fetched ' + totalJDsFetched + ' new JDs';
-  if (btn) { btn.disabled = false; btn.textContent = singleResumeIdx !== null ? 'Re-analyze' : 'Analyze All'; }
+  if (btn) { btn.disabled = false; btn.textContent = singleResumeIdx !== null ? 'Re-score' : 'Score All'; }
   readinessRunning = false;
+
+  // v5.17: PostHog completion events
+  if (window.posthog && singleResumeIdx !== null && scores[singleResumeIdx]) {
+    var _sc = scores[singleResumeIdx];
+    if (_lastScoreMode === 'coaching' || (opts.tier === 'premium')) {
+      posthog.capture('resume_coaching_complete', { resume_id: singleResumeIdx, score: _sc.overallScore, credits_used: 5 });
+    } else {
+      posthog.capture('resume_quick_score_complete', { resume_id: singleResumeIdx, score: _sc.overallScore });
+    }
+  }
+
+  // v5.17: Show upsell card after Quick Score for non-Pro users
+  if (singleResumeIdx !== null && _lastScoreMode === 'quick') {
+    var tier = typeof getUserTier === 'function' ? getUserTier() : 'free';
+    var credits = typeof getUserCredits === 'function' ? getUserCredits() : 0;
+    if (tier !== 'pro' || credits < 5) {
+      _showUpsellCard(singleResumeIdx, tier, credits);
+    }
+  }
+}
+
+// ============================================================
+// v5.17: Resume Score Button UX — Single Entry Point
+// ============================================================
+
+var _lastScoreMode = 'quick';
+
+/**
+ * Handle Score Resume button click — routes by tier.
+ * Free/Starter/Pro-no-credits → Quick Score + upsell
+ * Pro with credits → Selection modal
+ */
+window.handleScoreClick = function(resumeIndex) {
+  var tier = typeof getUserTier === 'function' ? getUserTier() : 'free';
+  var credits = typeof getUserCredits === 'function' ? getUserCredits() : 0;
+
+  // PostHog: resume_score_clicked
+  if (window.posthog) posthog.capture('resume_score_clicked', { tier: tier, has_credits: credits >= 5, resume_id: resumeIndex });
+
+  if (tier === 'pro' && credits >= 5) {
+    _showScoreModal(resumeIndex);
+  } else {
+    _lastScoreMode = 'quick';
+    var btn = document.getElementById('rc-score-' + resumeIndex);
+    if (btn) { btn.disabled = true; btn.textContent = 'Scoring\u2026'; }
+    runReadinessAnalysis({ resumeIndex: resumeIndex });
+  }
+};
+
+/** Pro user selection modal */
+function _showScoreModal(resumeIndex) {
+  var existing = document.getElementById('bj-score-modal-overlay');
+  if (existing) existing.remove();
+
+  var lastMode = localStorage.getItem('bj_score_mode') || 'quick';
+
+  var overlay = document.createElement('div');
+  overlay.id = 'bj-score-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99990;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = '<div style="background:var(--card);border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
+    '<div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;">Choose scoring mode</div>' +
+    '<div style="display:flex;gap:12px;">' +
+      '<div id="score-opt-quick" onclick="_selectScoreMode(\'quick\',' + resumeIndex + ')" style="flex:1;padding:16px;border-radius:8px;border:2px solid ' + (lastMode === 'quick' ? 'var(--accent)' : 'var(--border)') + ';cursor:pointer;transition:border-color 0.2s;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Quick Score</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Keyword match against this job\u2019s requirements</div>' +
+        '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(74,154,107,0.15);color:#4a9a6b;font-weight:600;">Free</span>' +
+      '</div>' +
+      '<div id="score-opt-coaching" onclick="_selectScoreMode(\'coaching\',' + resumeIndex + ')" style="flex:1;padding:16px;border-radius:8px;border:2px solid ' + (lastMode === 'coaching' ? 'var(--indigo)' : 'var(--border)') + ';cursor:pointer;transition:border-color 0.2s;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">AI Coaching</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px;">Section-by-section analysis with rewrite suggestions</div>' +
+        '<span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.15);color:var(--indigo);font-weight:600;">5 credits</span>' +
+      '</div>' +
+    '</div>' +
+    '<div style="margin-top:16px;text-align:right;">' +
+      '<button onclick="document.getElementById(\'bj-score-modal-overlay\').remove()" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text-dim);cursor:pointer;font-size:12px;margin-right:8px;">Cancel</button>' +
+    '</div>' +
+  '</div>';
+
+  document.body.appendChild(overlay);
+}
+
+/** Handle mode selection from the Pro modal */
+window._selectScoreMode = function(mode, resumeIndex) {
+  localStorage.setItem('bj_score_mode', mode);
+  _lastScoreMode = mode;
+
+  var credits = typeof getUserCredits === 'function' ? getUserCredits() : 0;
+  if (window.posthog) posthog.capture('resume_score_mode_selected', { mode: mode, credits_remaining: credits });
+
+  var overlay = document.getElementById('bj-score-modal-overlay');
+  if (overlay) overlay.remove();
+
+  var btn = document.getElementById('rc-score-' + resumeIndex);
+  if (btn) { btn.disabled = true; btn.textContent = 'Scoring\u2026'; }
+
+  if (mode === 'coaching') {
+    runReadinessAnalysis({ resumeIndex: resumeIndex, tier: 'premium' });
+  } else {
+    runReadinessAnalysis({ resumeIndex: resumeIndex });
+  }
+};
+
+/** Contextual upsell card for Free/Starter users after Quick Score */
+function _showUpsellCard(resumeIndex, tier, credits) {
+  // Check dismissal
+  var dismissed = localStorage.getItem('bj_score_upsell_dismissed');
+  if (dismissed) {
+    var dismissedAt = new Date(dismissed).getTime();
+    if (Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return; // 7-day cool-off
+  }
+
+  var container = document.getElementById('ai-panel-content-' + resumeIndex);
+  if (!container) return;
+
+  // Don't double-add
+  if (container.querySelector('.bj-upsell-card')) return;
+
+  var ctaLabel = (tier === 'pro' && credits < 5) ? 'Buy credits to unlock' : 'Unlock AI Coaching \u2014 5 credits';
+  var ctaDest = (tier === 'pro' && credits < 5) ? 'credits' : 'pricing';
+  var _upsellShownAt = Date.now();
+
+  if (window.posthog) posthog.capture('resume_coaching_upsell_shown', { tier: tier, quick_score_value: true });
+
+  var card = document.createElement('div');
+  card.className = 'bj-upsell-card';
+  card.style.cssText = 'margin-top:12px;padding:14px;border:1px solid rgba(99,102,241,0.25);border-radius:8px;background:rgba(99,102,241,0.05);position:relative;';
+  card.innerHTML =
+    '<button onclick="this.parentElement.remove();localStorage.setItem(\'bj_score_upsell_dismissed\',new Date().toISOString());' +
+      'if(window.posthog)posthog.capture(\'resume_coaching_upsell_dismissed\',{tier:\'' + escapeHtml(tier) + '\',seconds_visible:Math.round((Date.now()-' + _upsellShownAt + ')/1000)});" ' +
+      'style="position:absolute;top:6px;right:8px;background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;padding:2px 6px;" title="Dismiss">\u00d7</button>' +
+    '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Want deeper insights?</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-bottom:10px;">AI Coaching analyzes your resume section-by-section and suggests specific rewrites to match this role.</div>' +
+    '<button onclick="if(window.posthog)posthog.capture(\'resume_coaching_upsell_accepted\',{tier:\'' + escapeHtml(tier) + '\',destination:\'' + ctaDest + '\'});' +
+      'document.querySelector(\'[data-page=billing]\')?.click();" ' +
+      'style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;font-weight:600;cursor:pointer;">' +
+      escapeHtml(ctaLabel) + '</button>';
+
+  container.appendChild(card);
+}
+
+// Reset upsell dismissal on resume upload (per spec)
+var _origAddResume = window.addResume;
+if (typeof _origAddResume === 'function') {
+  window.addResume = function() {
+    localStorage.removeItem('bj_score_upsell_dismissed');
+    return _origAddResume.apply(this, arguments);
+  };
 }
 
 // Update grade display on each resume card in-place
@@ -839,13 +988,13 @@ function buildReadinessSide(ri, data) {
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
     html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
     html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
-    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-score-' + ri + '" onclick="handleScoreClick(' + ri + ')" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-score</button>';
     html += '</div>';
   } else {
     html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">';
     html += '<div style="font-family:var(--mono);font-size:26px;font-weight:700;color:' + g.color + ';line-height:1;">' + data.overallScore + '%</div>';
     html += '<div style="font-size:10px;color:' + g.color + ';font-weight:600;">' + overallLabel + '</div>';
-    html += '<button class="btn btn-sm btn-secondary" id="rc-analyze-' + ri + '" onclick="runReadinessAnalysis({resumeIndex:' + ri + '})" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-analyze</button>';
+    html += '<button class="btn btn-sm btn-secondary" id="rc-score-' + ri + '" onclick="handleScoreClick(' + ri + ')" style="margin-left:auto;font-size:10px;padding:3px 10px;">Re-score</button>';
     html += '</div>';
   }
 
@@ -2187,7 +2336,7 @@ function initReadinessPanel() {
         statusEl.textContent = ago < 60 ? ago + 'm ago' : ago < 1440 ? Math.round(ago / 60) + 'h ago' : Math.round(ago / 1440) + 'd ago';
       }
       var btn = document.getElementById('readiness-run-btn');
-      if (btn) { btn.disabled = false; btn.textContent = 'Analyze All'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Score All'; }
 
       // Auto-refresh if cache is older than 24 hours
       var cacheAge = readinessCache.lastRun ? Date.now() - new Date(readinessCache.lastRun).getTime() : Infinity;

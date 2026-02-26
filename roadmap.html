@@ -1505,6 +1505,7 @@ const features = [
   { s: 'done', n: 'WHEN filter + pagination + result capping fix', d: 'v5.11: Fixed job feed WHEN filter, pagination, and result capping issues.', p: 47 },
   { s: 'done', n: 'Version system hardening', d: 'v5.12: Eliminated all hardcoded version strings. version.js now sole source of truth with universal [id$="-version"] selector. Removed v4.91 from dashboard.html, v4.12 fallback from roadmap.html. Added version.js to 3 missing pages.', p: 47 },
   { s: 'done', n: 'Fix referral Supabase init error + bundle rebuild', d: 'v5.13: Fixed supabaseUrl is required error on Referrals tab. Root cause: referrals.js IIFE tried window.bjSupabase (undefined) then fell back to createClient(window.SUPABASE_URL) which was also undefined. Fix: expose sb as window.bjSupabase in globals.js. Fixes 4 call sites. Bundle rebuilt to v5.13.', p: 47 },
+  { s: 'done', n: 'Resume Score Button UX redesign', d: 'v5.17: Single Score Resume button replaces dual Analyze/Deep buttons. Tier-routing: Free/Starter runs Quick Score + contextual upsell card; Pro with credits shows selection modal (remembers last choice via bj_score_mode); Pro without credits = Free flow. 7 PostHog events for full upsell funnel. getUserCredits() helper added to billing.js. Upsell dismissible for 7 days, resets on resume upload.', p: 47 },
 ];
 
 

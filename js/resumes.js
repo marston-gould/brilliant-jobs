@@ -247,7 +247,7 @@ function renderResumes() {
       <div class="ai-panel" id="ai-panel-${i}">
         <div id="ai-panel-content-${i}">
           ${cachedScore ? buildReadinessSide(i, cachedScore) : (assignedIds.length > 0 && !isPlaceholder
-            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-analyze-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + '})" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Analyze</button><button class="btn btn-sm" id="rc-deep-' + i + '" onclick="event.stopPropagation();runReadinessAnalysis({resumeIndex:' + i + ',tier:\'premium\'})" style="background:linear-gradient(135deg,#4d8eff,#7c3aed);color:#fff;font-weight:600;padding:6px 14px;font-size:11px;" title="Multi-agent deep analysis with coaching">\u2728 Deep Analyze</button></div>'
+            ? '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;"><button class="btn btn-sm" id="rc-score-' + i + '" onclick="event.stopPropagation();handleScoreClick(' + i + ')" style="background:var(--accent);color:#fff;font-weight:600;padding:6px 18px;">Score Resume</button></div>'
             : '<div style="padding:16px 0;text-align:center;">' + (isPlaceholder
               ? '<div style="font-size:12px;color:var(--warm);cursor:pointer;" onclick="event.stopPropagation();replaceResumePlaceholder(' + i + ')">Upload a file to enable scoring</div>'
               : '<div style="font-size:12px;color:var(--text-faint);">Assign a filter to see readiness analysis</div>') + '</div>')}
