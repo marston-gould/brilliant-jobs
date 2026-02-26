@@ -21,4 +21,5 @@ import './integrations.js';
 import './applications.js';
 import './settings.js';
 import './billing.js';
+import './referrals.js';
 import './app.js';
