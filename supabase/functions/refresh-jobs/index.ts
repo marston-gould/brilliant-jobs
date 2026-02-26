@@ -286,7 +286,9 @@ async function upsertJobs(jobs: ParsedJob[]): Promise<number> {
       loc_state: j.loc_state,
       loc_country: j.loc_country,
       is_remote: j.is_remote,
-      status: "open",
+      // NOTE: status intentionally omitted — defaults to 'open' on INSERT,
+      // but not overwritten on UPDATE. This prevents re-opening jobs that
+      // users have confirmed as dead/closed via the UI (404/410 detection).
       last_seen: now,
       updated_at: now,
     }));
