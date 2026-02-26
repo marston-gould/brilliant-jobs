@@ -4,7 +4,7 @@
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
  * To bump the version, change ONLY this line.
  */
-var BJ_VERSION = 'v5.01';
+var BJ_VERSION = 'v5.02';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -13295,9 +13295,7 @@ function renderAppQueue() {
   const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
   const _el = id => document.getElementById(id);
   if (_el('a-queued')) _el('a-queued').textContent = queued;
-  if (_el('a-pending')) _el('a-pending').textContent = pending;
   if (_el('a-submitted')) _el('a-submitted').textContent = submitted;
-  if (_el('a-failed')) _el('a-failed').textContent = failed;
 
   // Hero lifecycle stats
   const allApps = (typeof appHistory !== 'undefined' && Array.isArray(appHistory)) ? [...appQueue, ...appHistory] : [...appQueue];
@@ -22711,12 +22709,19 @@ function updateGmailUI(connected, email) {
   const ghostBtn = $('#gmail-connect-btn');
   const ghostAddr = $('#ghost-gmail-address');
   const gmailCard = $('#g-gmail-card');
+  const gmailChip = document.getElementById('g-gmail-stat');
   if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
   if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
   if (ghostAddr) ghostAddr.textContent = email;
   if (gmailCard) {
     const valEl = gmailCard.querySelector('.stat-val');
     if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
+  }
+  // Update hero chip
+  if (gmailChip) {
+    gmailChip.textContent = connected ? 'On' : 'Off';
+    gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
+    if (!connected) gmailChip.style.fontSize = '12px';
   }
 }
 

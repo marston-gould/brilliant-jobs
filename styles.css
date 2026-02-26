@@ -1068,6 +1068,10 @@ a.nav-item:hover {
   background: var(--green);
 }
 
+.ext-status-dot.\!connected {
+  background: var(--green) !important;
+}
+
 .ext-status-dot.warning {
   background: var(--warm);
 }
@@ -2132,6 +2136,11 @@ a.nav-item:hover {
   box-shadow: 0 0 8px hsla(var(--green-hsl), 0.5);
 }
 
+.setup-dot.\!connected {
+  background: var(--green) !important;
+  box-shadow: 0 0 8px hsla(var(--green-hsl), 0.5) !important;
+}
+
 .instance-info {
   font-family: var(--mono);
   font-size: 12px;
@@ -2382,6 +2391,11 @@ a.nav-item:hover {
 .setup-status-dot.connected {
   background: var(--green);
   box-shadow: 0 0 6px hsla(var(--green-hsl), 0.4);
+}
+
+.setup-status-dot.\!connected {
+  background: var(--green) !important;
+  box-shadow: 0 0 6px hsla(var(--green-hsl), 0.4) !important;
 }
 
 .setup-grid {
@@ -6692,52 +6706,6 @@ a.nav-item:hover {
 }
 
 .app-view-panel.\!active {
-  display: block !important;
-}
-
-/* Legacy tab bar (kept for backward compat) */
-
-.app-flow-tabs {
-  display: flex;
-  gap: 0;
-  border-block-end: 2px solid var(--border);
-  margin-block-end: 20px;
-}
-
-.app-flow-tab {
-  padding: 10px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-faint);
-  cursor: pointer;
-  border-block-end: 2px solid transparent;
-  margin-block-end: -2px;
-  transition: all 0.15s;
-}
-
-.app-flow-tab:hover {
-  color: var(--text-dim);
-}
-
-.app-flow-tab.active {
-  color: var(--accent);
-  border-block-end-color: var(--accent);
-}
-
-.app-flow-tab.\!active {
-  color: var(--accent) !important;
-  border-block-end-color: var(--accent) !important;
-}
-
-.app-flow-panel {
-  display: none;
-}
-
-.app-flow-panel.active {
-  display: block;
-}
-
-.app-flow-panel.\!active {
   display: block !important;
 }
 
