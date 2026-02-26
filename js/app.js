@@ -133,7 +133,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
         }
       }
     }
-    localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+    saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   }
 
   let tuningFromCloud = false;
@@ -174,7 +174,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       const cloudResumes = prof?.user_data?.resumes;
       if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
         resumes = cloudResumes;
-        localStorage.setItem('bj_resumes', JSON.stringify(resumes));
+        saveUserData('bj_resumes', JSON.stringify(resumes));
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
     } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
@@ -715,7 +715,7 @@ window.createFilterFromProfile = function() {
 
   // Add to saved filters
   savedFilters.push(newFilter);
-  localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
   
   // Update onboarding step
   updateOnboardingStep(2);
