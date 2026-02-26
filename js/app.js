@@ -29,6 +29,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   } catch (e) { if (typeof toastError === 'function') toastError('Failed to load your profile. Please refresh the page.'); }
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
+  // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
+  try { await processReferralAttribution(currentUser); } catch(e) { console.warn('[Referral] Attribution check skipped:', e.message); }
   // Show admin nav immediately — profile already fetched, no extra round trip
   if (profile && profile.role === 'admin') {
     var navAdmin = document.getElementById('nav-admin');
@@ -307,6 +309,7 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+    if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
@@ -811,3 +814,63 @@ function applyProgressiveNav(step) {
 
 
 
+
+// ─── Referral Attribution (Phase 4 v5.10) ───
+// Runs once per signup. Checks if user arrived via referral link.
+async function processReferralAttribution(user) {
+  // Only run if we haven't already attributed this user
+  var attributed = localStorage.getItem('bj_referral_attributed');
+  if (attributed === user.id) return;
+
+  // Check for referral code from landing page capture
+  var refCode = '';
+  var refSource = 'direct';
+  try {
+    refCode = sessionStorage.getItem('bj_referral_code') || '';
+    refSource = sessionStorage.getItem('bj_referral_source') || 'direct';
+  } catch(e) {}
+
+  // Also check cookie
+  if (!refCode) {
+    var match = document.cookie.match(/(^| )bj_ref=([^;]+)/);
+    refCode = match ? decodeURIComponent(match[2]) : '';
+    if (refCode) refSource = 'cookie_return';
+  }
+
+  if (!refCode) return; // No referral — skip
+
+  // Get fingerprint if available
+  var fingerprint = '';
+  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) {}
+  if (!fingerprint && window.bjFingerprint) {
+    try { fingerprint = window.bjFingerprint.generate(); } catch(e) {}
+  }
+
+  // Call attribution RPC
+  try {
+    var { data, error } = await sb.rpc('process_referral_attribution', {
+      p_referred_id: user.id,
+      p_referral_code: refCode,
+      p_ip_address: null, // IP captured server-side
+      p_browser_fingerprint: fingerprint || null,
+      p_source: refSource
+    });
+
+    if (error) {
+      console.warn('[Referral] Attribution error:', error.message);
+    } else {
+      console.log('[Referral] Attribution result:', data);
+    }
+  } catch(e) {
+    console.warn('[Referral] Attribution call failed:', e.message);
+  }
+
+  // Mark as attributed so we don't re-run
+  localStorage.setItem('bj_referral_attributed', user.id);
+
+  // Clean up
+  try {
+    sessionStorage.removeItem('bj_referral_code');
+    sessionStorage.removeItem('bj_referral_source');
+  } catch(e) {}
+}
