@@ -1500,7 +1500,7 @@ const features = [
   { s: 'done', n: 'Referral attribution on login', d: 'v5.10: Login hook checks for referral cookie/URL param and links new user to referrer. Attribution persists across sessions.', p: 46 },
   { s: 'done', n: 'Bundle rebuild for referral modules', d: 'v5.10: fingerprint.js + referral-capture.js + referrals.js added to build pipeline. dist/dashboard.min.js rebuilt (includes all referral modules).', p: 46 },
 
-  // Phase 47: Hotfixes & Corrections (v5.06, v5.11–v5.12) — Feb 26, 2026
+  // Phase 47: Hotfixes & UX Polish (v5.06, v5.11–v5.17) — Feb 26, 2026
   { s: 'done', n: 'Settings gear panel positioning fix', d: 'v5.06: Moved settings panel above view panels + scrollIntoView for visibility.', p: 47 },
   { s: 'done', n: 'WHEN filter + pagination + result capping fix', d: 'v5.11: Fixed job feed WHEN filter, pagination, and result capping issues.', p: 47 },
   { s: 'done', n: 'Version system hardening', d: 'v5.12: Eliminated all hardcoded version strings. version.js now sole source of truth with universal [id$="-version"] selector. Removed v4.91 from dashboard.html, v4.12 fallback from roadmap.html. Added version.js to 3 missing pages.', p: 47 },
@@ -1640,7 +1640,7 @@ function render() {
     44: 'Data Integrity & Sync Consolidation ✅',
     45: 'Visual Consistency Pass + UX Fixes ✅',
     46: 'Referral Program (v5.07-v5.10) ✅',
-    47: 'Hotfixes & Corrections (v5.06, v5.11-v5.12) ✅'
+    47: 'Hotfixes & UX Polish (v5.06, v5.11-v5.17) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
