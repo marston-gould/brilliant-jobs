@@ -12,7 +12,7 @@ function classifyTerm(term) {
   return 'keyword';
 }
 
-function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length + skillsPills.length + levelPills.length + jdPills.length; }
+function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length + skillsPills.length + levelPills.length + jdPills.length + deptPills.length; }
 
 function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, onRemove) {
   const builder = $(builderId);
@@ -195,6 +195,7 @@ function renderAllPills() {
   renderPillsFor(skillsPills, '#query-builder-skills', '#qb-input-skills', false, 'skills-pill');
   renderPillsFor(levelPills, '#query-builder-level', '#qb-input-level', false, 'level-pill');
   renderPillsFor(jdPills, '#query-builder-jd', '#qb-input-jd', false, 'jd-pill');
+  renderPillsFor(deptPills, '#query-builder-dept', '#qb-input-dept', false, 'dept-pill');
 
   // Show/hide toolbar
   const hasAny = allPills() > 0;

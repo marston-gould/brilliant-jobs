@@ -680,6 +680,7 @@ $('#clear-filters-btn').addEventListener('click', () => {
   skillsPills = [];
   levelPills = [];
   jdPills = [];
+  deptPills = [];
   renderAllPills();
 });
 
@@ -727,6 +728,7 @@ async function commitSaveFilter() {
     skillsPills: JSON.parse(JSON.stringify(skillsPills)),
     levelPills: JSON.parse(JSON.stringify(levelPills)),
     jdPills: JSON.parse(JSON.stringify(jdPills)),
+    deptPills: JSON.parse(JSON.stringify(deptPills)),
     includeNoSalary: $('#save-filter-include-no-salary').checked,
     includeRemote: $('#save-filter-include-remote').checked,
     createdAt: Date.now(),
@@ -1064,6 +1066,7 @@ function renderSavedFilters() {
       skillsPills = JSON.parse(JSON.stringify(sf.skillsPills || []));
       levelPills = JSON.parse(JSON.stringify(sf.levelPills || []));
       jdPills = JSON.parse(JSON.stringify(sf.jdPills || []));
+      deptPills = JSON.parse(JSON.stringify(sf.deptPills || []));
       // Restore includeNoSalary checkbox
       const noSalaryCb = $('#save-filter-include-no-salary');
       if (noSalaryCb) noSalaryCb.checked = sf.includeNoSalary !== false;

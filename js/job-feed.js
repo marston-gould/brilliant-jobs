@@ -464,6 +464,17 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
+  // DEPARTMENT — filter on extracted_department
+  const dp = sf.deptPills || [];
+  if (dp.length > 0) {
+    const depts = dp.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (depts.length === 1) {
+      query = query.eq('extracted_department', depts[0]);
+    } else if (depts.length > 1) {
+      query = query.in('extracted_department', depts);
+    }
+  }
+
   return query;
 }
 
@@ -597,6 +608,12 @@ async function searchJobs(page = 0) {
     // Hidden job IDs to exclude from queries
     const hiddenIds = hiddenJobIds.map(h => h.id);
 
+    // Check if relevance sort is active and JD/text search terms exist
+    const relevanceSort = jobSortStack.length > 0 && jobSortStack[0].field === 'relevance';
+    const jdTerms = (filtersToRun[0]?.jdPills || []).flatMap(p => p.values).filter(Boolean);
+    const whatTerms = (filtersToRun[0]?.whatPills || filtersToRun[0]?.pills || []).flatMap(p => p.values).filter(Boolean);
+    const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
+
     if (filtersToRun.length === 1) {
       // Single filter — straightforward query with count + pagination
       let query = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -607,7 +624,7 @@ async function searchJobs(page = 0) {
 
       // Multi-sort (skip 'level' — client-side only)
       for (const s of jobSortStack) {
-        if (s.field === 'level' || s.field === 'match') continue;
+        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
         query = query.order(s.field, { ascending: s.asc });
       }
 
@@ -628,7 +645,7 @@ async function searchJobs(page = 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
         }
         for (const s of jobSortStack) {
-          if (s.field === 'level' || s.field === 'match') continue;
+          if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
           q = q.order(s.field, { ascending: s.asc });
         }
         q = q.range(0, perFilter - 1);
@@ -713,6 +730,33 @@ async function searchJobs(page = 0) {
 
     // Client-side match sort
     const matchSort = jobSortStack.find(s => s.field === 'match');
+
+    // Relevance sort — score jobs by how many search terms appear in title
+    const relevanceSortActive = jobSortStack.find(s => s.field === 'relevance');
+    if (relevanceSortActive && searchTerms) {
+      const terms = searchTerms.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      if (terms.length > 0) {
+        allJobs.forEach(j => {
+          const titleLower = (j.title || '').toLowerCase();
+          const locLower = (j.location || '').toLowerCase();
+          const compLower = (j.company_name || '').toLowerCase();
+          let score = 0;
+          for (const t of terms) {
+            if (titleLower.includes(t)) score += 3;
+            if (compLower.includes(t)) score += 1;
+            if (locLower.includes(t)) score += 1;
+          }
+          // Boost if skills match
+          if (j.extracted_skills && j.extracted_skills.length > 0) {
+            for (const t of terms) {
+              if (j.extracted_skills.some(s => s.includes(t))) score += 2;
+            }
+          }
+          j._relevanceScore = score;
+        });
+        allJobs.sort((a, b) => (b._relevanceScore || 0) - (a._relevanceScore || 0));
+      }
+    }
     if (matchSort) {
       currentJobs.sort((a, b) => {
         const ra = jobMatchScores[a.greenhouse_id];
