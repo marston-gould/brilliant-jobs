@@ -21,6 +21,189 @@ const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// City pages + cross-linking helpers
+// =========================================================================
+async function fetchCityPills(metroSlug) {
+  const { data, error } = await sb
+    .from('city_pages')
+    .select('top_titles,top_skills,top_industries,top_companies,job_count,median_salary,remote_pct')
+    .eq('slug', metroSlug)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+async function fetchTopCities(limit) {
+  limit = limit || 50;
+  const { data, error } = await sb
+    .from('city_pages')
+    .select('slug,city_name,state,job_count,median_salary')
+    .order('job_count', { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return data || [];
+}
+
+async function fetchMetroPages(limit) {
+  limit = limit || 50;
+  const { data, error } = await sb
+    .from('seo_page_cache')
+    .select('cache_key,job_count,data')
+    .eq('page_type', 'metro')
+    .order('job_count', { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data || []).filter(function(m) { return !m.cache_key.includes(':') || m.cache_key.split(':').length === 2; });
+}
+
+async function fetchTrendPages() {
+  var result = await sb
+    .from('seo_page_cache')
+    .select('cache_key,job_count,data')
+    .eq('page_type', 'trends')
+    .order('job_count', { ascending: false });
+  if (result.error) return [];
+  return result.data || [];
+}
+
+function renderHookPills(cityData, metroDisplay) {
+  if (!cityData) return '';
+  var sections = [];
+
+  if (cityData.top_titles && cityData.top_titles.length > 0) {
+    var pills = cityData.top_titles.slice(0, 12).map(function(t) {
+      return '<span class="seo-hook-pill" data-type="title"><span class="pill-label">' + esc(t.title) + '</span><span class="pill-count">' + fmtNum(t.count) + '</span><button class="pill-add" aria-label="Add ' + esc(t.title) + ' to search">+</button></span>';
+    }).join('');
+    sections.push('<div class="seo-pill-group"><h3>Top roles hiring now</h3><div class="seo-pill-grid">' + pills + '</div></div>');
+  }
+
+  if (cityData.top_skills && cityData.top_skills.length > 0) {
+    var pills = cityData.top_skills.slice(0, 12).map(function(s) {
+      return '<span class="seo-hook-pill" data-type="skill"><span class="pill-label">' + esc(s.skill) + '</span><span class="pill-count">' + s.pct + '%</span><button class="pill-add" aria-label="Add ' + esc(s.skill) + ' to search">+</button></span>';
+    }).join('');
+    sections.push('<div class="seo-pill-group"><h3>Skills in demand</h3><div class="seo-pill-grid">' + pills + '</div></div>');
+  }
+
+  if (cityData.top_industries && cityData.top_industries.length > 0) {
+    var pills = cityData.top_industries.slice(0, 8).map(function(i) {
+      return '<span class="seo-hook-pill" data-type="industry"><span class="pill-label">' + esc(i.industry) + '</span><span class="pill-count">' + fmtNum(i.count) + '</span><button class="pill-add" aria-label="Add ' + esc(i.industry) + ' to search">+</button></span>';
+    }).join('');
+    sections.push('<div class="seo-pill-group"><h3>Industries</h3><div class="seo-pill-grid">' + pills + '</div></div>');
+  }
+
+  if (sections.length === 0) return '';
+
+  return '\n  <section class="seo-section seo-hook-pills">\n    <h2>What Companies Are Hiring For</h2>\n    <p class="seo-subline">Trending roles, skills, and industries in ' + esc(metroDisplay) + ' — click + to add to your search.</p>\n    ' + sections.join('') + '\n  </section>';
+}
+
+function renderCrossMetros(currentSlug, metroPages) {
+  var others = (metroPages || []).filter(function(m) {
+    var slug = m.cache_key.replace('metro:', '');
+    return slug !== currentSlug && !slug.includes(':');
+  }).slice(0, 8);
+  if (others.length === 0) return '';
+  return '\n  <section class="seo-section seo-cross-links">\n    <h2>Compare Other Cities</h2>\n    <div class="seo-link-grid">' +
+    others.map(function(m) {
+      var slug = m.cache_key.replace('metro:', '');
+      var display = (m.data && m.data.metro && m.data.metro.display_name) || slug.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      return '<a href="/jobs-in/' + esc(slug) + '">' + esc(display) + ' <span class="seo-link-stat">' + fmtNum(m.job_count) + ' jobs</span></a>';
+    }).join('') +
+    '</div>\n  </section>';
+}
+
+function renderTrendsCityLinks(roleSlug, roleDisplay, metroPages) {
+  var metros = (metroPages || []).filter(function(m) { return !m.cache_key.includes(':') || m.cache_key.split(':').length === 2; }).slice(0, 10);
+  if (metros.length === 0) return '';
+  return '\n  <section class="seo-section seo-cross-links">\n    <h2>Explore ' + esc(roleDisplay) + ' Jobs by City</h2>\n    <div class="seo-link-grid">' +
+    metros.map(function(m) {
+      var slug = m.cache_key.replace('metro:', '');
+      var display = (m.data && m.data.metro && m.data.metro.display_name) || slug.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      return '<a href="/jobs-in/' + esc(slug) + '/' + esc(roleSlug) + '">' + esc(roleDisplay) + ' in ' + esc(display) + '</a>';
+    }).join('') +
+    '</div>\n  </section>';
+}
+
+function renderTrendsRelated(currentRole) {
+  var roles = [
+    {slug:'software-engineer',name:'Software Engineer'},
+    {slug:'product-manager',name:'Product Manager'},
+    {slug:'data-scientist',name:'Data Scientist'},
+    {slug:'data-analyst',name:'Data Analyst'},
+    {slug:'data-engineer',name:'Data Engineer'},
+    {slug:'ux-designer',name:'UX Designer'},
+    {slug:'devops-engineer',name:'DevOps Engineer'},
+    {slug:'sales-representative',name:'Sales'},
+    {slug:'project-manager',name:'Project Manager'},
+    {slug:'marketing-manager',name:'Marketing Manager'},
+    {slug:'account-manager',name:'Account Manager'},
+    {slug:'customer-success',name:'Customer Success'},
+    {slug:'financial-analyst',name:'Financial Analyst'},
+    {slug:'recruiter',name:'Recruiter'},
+    {slug:'qa-engineer',name:'QA Engineer'},
+    {slug:'security-engineer',name:'Security Engineer'},
+    {slug:'operations-manager',name:'Operations Manager'},
+    {slug:'product-marketing',name:'Product Marketing'},
+    {slug:'human-resources',name:'Human Resources'},
+    {slug:'content-strategist',name:'Content Strategist'}
+  ].filter(function(r) { return r.slug !== currentRole; });
+
+  return '\n  <section class="seo-section seo-cross-links">\n    <h2>Related Roles</h2>\n    <div class="seo-link-grid">' +
+    roles.map(function(r) { return '<a href="/trends/' + esc(r.slug) + '">' + esc(r.name) + ' Trends</a>'; }).join('') +
+    '</div>\n  </section>';
+}
+
+function renderHubCityGrid(metroPages) {
+  var metros = (metroPages || []).filter(function(m) { return !m.cache_key.includes(':') || m.cache_key.split(':').length === 2; }).slice(0, 50);
+  if (metros.length === 0) return '';
+  return '\n  <section class="seo-section">\n    <h2>Jobs by City</h2>\n    <p class="seo-subline">Explore job markets across ' + metros.length + ' metro areas.</p>\n    <div class="seo-link-grid seo-link-grid-3col">' +
+    metros.map(function(m) {
+      var slug = m.cache_key.replace('metro:', '');
+      var display = (m.data && m.data.metro && m.data.metro.display_name) || slug.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      return '<a href="/jobs-in/' + esc(slug) + '">' + esc(display) + ' <span class="seo-link-stat">' + fmtNum(m.job_count) + ' jobs</span></a>';
+    }).join('') +
+    '</div>\n  </section>';
+}
+
+function renderHubTrendsGrid(trendPages) {
+  if (!trendPages || trendPages.length === 0) return '';
+  return '\n  <section class="seo-section">\n    <h2>Hiring Trends by Role</h2>\n    <p class="seo-subline">Deep-dive into salary data, demand curves, and top employers for each role.</p>\n    <div class="seo-link-grid seo-link-grid-3col">' +
+    trendPages.map(function(t) {
+      var slug = t.cache_key.replace('trends:', '');
+      var display = (t.data && t.data.role && t.data.role.display_name) || slug.replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      return '<a href="/trends/' + esc(slug) + '">' + esc(display) + ' <span class="seo-link-stat">' + fmtNum(t.job_count) + ' roles</span></a>';
+    }).join('') +
+    '</div>\n  </section>';
+}
+
+function renderHubDataLabLinks() {
+  return '\n  <section class="seo-section">\n    <h2>Data Lab Reports</h2>\n    <p class="seo-subline">In-depth analysis of the job market from multiple angles.</p>\n    <div class="seo-link-grid">' +
+    '<a href="/salary-data">Salary Data <span class="seo-link-stat">Distribution &amp; benchmarks</span></a>' +
+    '<a href="/hiring-trends">Hiring Trends <span class="seo-link-stat">Velocity &amp; momentum</span></a>' +
+    '<a href="/jobs-by-industry">Jobs by Industry <span class="seo-link-stat">Sector breakdown</span></a>' +
+    '<a href="/career-level-data">Career Level Data <span class="seo-link-stat">Seniority distribution</span></a>' +
+    '<a href="/market-dynamics">Market Dynamics <span class="seo-link-stat">Supply &amp; demand</span></a>' +
+    '<a href="/data-lab">Data Lab <span class="seo-link-stat">Full dashboard</span></a>' +
+    '</div>\n  </section>';
+}
+
+function renderServerRoles(metroSlug, metroDisplay) {
+  var roles = [
+    {slug:'software-engineer',name:'Software Engineer'},
+    {slug:'product-manager',name:'Product Manager'},
+    {slug:'data-scientist',name:'Data Scientist'},
+    {slug:'ux-designer',name:'UX Designer'},
+    {slug:'sales-representative',name:'Sales'},
+    {slug:'devops-engineer',name:'DevOps Engineer'},
+    {slug:'data-analyst',name:'Data Analyst'},
+    {slug:'project-manager',name:'Project Manager'},
+    {slug:'marketing-manager',name:'Marketing Manager'},
+    {slug:'customer-success',name:'Customer Success'}
+  ];
+  return '\n  <section class="seo-section seo-related">\n    <h2>Explore ' + esc(metroDisplay) + ' by Role</h2>\n    <p class="seo-subline">Dive deeper into specific roles in ' + esc(metroDisplay) + '.</p>\n    <div class="seo-link-grid" id="related-roles">' +
+    roles.map(function(r) { return '<a href="/jobs-in/' + esc(metroSlug) + '/' + esc(r.slug) + '">' + esc(r.name) + '</a>'; }).join('') +
+    '</div>\n    <p style="margin-top:24px"><a href="/job-market-data" class="seo-back-link">&larr; Back to National Job Market Overview</a></p>\n  </section>';
+}
+
 // =========================================================================
 // Cache key builder
 // =========================================================================
@@ -84,7 +267,7 @@ function trendArrow(val) {
 // =========================================================================
 // Page renderers
 // =========================================================================
-function renderMetroPage(data, metro, role) {
+function renderMetroPage(data, metro, role, cityData, metroPages) {
   const d = data.data;
   const stats = d.stats;
   const charts = d.charts;
@@ -124,15 +307,12 @@ function renderMetroPage(data, metro, role) {
 
   // Explore related links
   let relatedHtml = '';
+  let hookPillsHtml = '';
+  let crossMetroHtml = '';
   if (!role) {
-    // Link to role sub-pages (we'll populate from role map data if available)
-    relatedHtml = `
-    <section class="seo-section seo-related">
-      <h2>Explore ${esc(metroDisplay)} by Role</h2>
-      <p class="seo-subline">Dive deeper into specific roles in ${esc(metroDisplay)}.</p>
-      <div class="seo-link-grid" id="related-roles"></div>
-      <p style="margin-top:24px"><a href="/job-market-data" class="seo-back-link">← Back to National Job Market Overview</a></p>
-    </section>`;
+    relatedHtml = renderServerRoles(metro, metroDisplay);
+    hookPillsHtml = renderHookPills(cityData, metroDisplay);
+    crossMetroHtml = renderCrossMetros(metro, metroPages);
   } else {
     relatedHtml = `
     <section class="seo-section seo-related">
@@ -152,12 +332,20 @@ function renderMetroPage(data, metro, role) {
     breadcrumbs.push({ name: metroDisplay, url: `/jobs-in/${metro}` });
   }
 
+  // Build JSON-LD for city/metro pages (Place + ItemList + FAQPage)
+  const metroState = d.metro?.state || metroDisplay.split(', ').pop() || '';
+  const cityJsonLd = !role ? buildCityJsonLd({
+    metroDisplay, state: metroState, stats, charts, trends,
+    canonical: `/jobs-in/${metro}`, cityData
+  }) : '';
+
   return renderShell({
     title: `${pageTitle} — Salary Data, Hiring Trends & Top Companies | Brilliant Jobs`,
     metaDesc,
     canonical: role ? `/jobs-in/${metro}/${role}` : `/jobs-in/${metro}`,
     bodyClass: 'seo-page seo-metro',
     breadcrumbs,
+    extraLd: cityJsonLd,
     content: `
     <section class="seo-hero">
       <h1>${esc(pageTitle)}</h1>
@@ -168,6 +356,8 @@ function renderMetroPage(data, metro, role) {
         ${stats.remote_pct ? `<span class="seo-pill">${stats.remote_pct}% remote</span>` : ''}
       </div>
     </section>
+
+    ${hookPillsHtml}
 
     <section class="seo-section">
       <h2>Hiring Velocity</h2>
@@ -208,22 +398,31 @@ function renderMetroPage(data, metro, role) {
     ${renderCTA()}
 
     ${relatedHtml}
+
+    ${crossMetroHtml}
     `,
     chartData: JSON.stringify(d)
   });
 }
 
-function renderTrendsPage(data, role) {
+function renderTrendsPage(data, role, metroPages) {
   const d = data.data;
   const stats = d.stats;
   const roleDisplay = d.role?.display_name || role;
   const metaDesc = `${fmtNum(stats.total_jobs)} open ${roleDisplay} roles nationwide. Median salary: ${fmtSal(stats.median_salary)}. See hiring trends, top metros, and companies hiring.`;
+
+  // Build JSON-LD for role trends pages (Occupation + FAQPage)
+  const trendsJsonLd = buildTrendsJsonLd({
+    roleDisplay, stats, charts: d.charts || {},
+    trends: d.trends || {}, canonical: `/trends/${role}`
+  });
 
   return renderShell({
     title: `${roleDisplay} Hiring Trends — Salary, Demand & Top Employers | Brilliant Jobs`,
     metaDesc,
     canonical: `/trends/${role}`,
     bodyClass: 'seo-page seo-trends',
+    extraLd: trendsJsonLd,
     breadcrumbs: [
       { name: 'Brilliant Jobs', url: '/' },
       { name: 'Job Market Data', url: '/job-market-data' },
@@ -232,7 +431,7 @@ function renderTrendsPage(data, role) {
     content: `
     <section class="seo-hero">
       <h1>${esc(roleDisplay)} Hiring Trends</h1>
-      <p class="seo-hero-sub">${fmtNum(stats.total_jobs)} open roles across ${fmtNum(stats.companies_count)} companies nationwide — ${fmtFreshness(data.last_refreshed_at || data.computed_at)}</p>
+      <p class="seo-hero-sub">${fmtNum(stats.total_jobs)} open roles across ${fmtNum(stats.companies_count)} companies nationwide</p>
       <div class="seo-trend-pills">
         ${stats.median_salary ? `<span class="seo-pill">${fmtSal(stats.median_salary)} median salary</span>` : ''}
         ${d.trends?.velocity_mom !== undefined ? `<span class="seo-pill">${trendArrow(d.trends.velocity_mom)} this month</span>` : ''}
@@ -273,12 +472,16 @@ function renderTrendsPage(data, role) {
     </section>
 
     ${renderCTA()}
+
+    ${renderTrendsCityLinks(role, roleDisplay, metroPages)}
+
+    ${renderTrendsRelated(role)}
     `,
     chartData: JSON.stringify(d)
   });
 }
 
-function renderMarketPage(data) {
+function renderMarketPage(data, metroPages, trendPages) {
   const d = data.data;
   const stats = d.stats;
   const metaDesc = `${fmtRounded(d.meta?.total_jobs_rounded)} open jobs from direct ATS feeds. See salary distributions, hiring velocity, top companies, and metro-level market data.`;
@@ -323,6 +526,14 @@ function renderMarketPage(data) {
       <p class="seo-subline">The companies with the most open roles right now.</p>
       <div id="chart-companies" class="seo-chart seo-chart-tall" data-chart="companies"></div>
     </section>
+
+    ${renderCTA()}
+
+    ${renderHubCityGrid(metroPages)}
+
+    ${renderHubTrendsGrid(trendPages)}
+
+    ${renderHubDataLabLinks()}
 
     ${renderCTA()}
     `,
@@ -507,7 +718,7 @@ function renderCTA() {
 // =========================================================================
 // HTML shell — full page template
 // =========================================================================
-function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData, breadcrumbs }) {
+function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData, breadcrumbs, extraLd }) {
   // Build breadcrumb HTML and JSON-LD
   let breadcrumbHtml = '';
   let breadcrumbLd = '';
@@ -565,6 +776,7 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   }
   </script>
   ${breadcrumbLd}
+  ${extraLd || ''}
 </head>
 <body class="${bodyClass}">
   <a href="#main" class="seo-skip-link">Skip to content</a>
@@ -959,6 +1171,227 @@ function renderCollegePage(bjMajors) {
 }
 
 
+
+// =========================================================================
+// JSON-LD structured data builders
+// =========================================================================
+const STATE_NAMES = {AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',DC:'District of Columbia'};
+
+/**
+ * Build JSON-LD for city/metro pages:
+ *  1. Place — geo entity for the metro area
+ *  2. ItemList of JobPosting — aggregate representation of open jobs
+ *  3. FAQPage — programmatic FAQ with salary, top companies, remote %
+ */
+function buildCityJsonLd({ metroDisplay, state, stats, charts, trends, canonical, cityData }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const blocks = [];
+
+  // 1. Place schema
+  const stateFullName = STATE_NAMES[state] || state || '';
+  blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Place",
+  "name": "${jsonEsc(metroDisplay)}",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "${jsonEsc(metroDisplay.split(',')[0])}",
+    "addressRegion": "${jsonEsc(stateFullName)}",
+    "addressCountry": "US"
+  },
+  "description": "${jsonEsc(metroDisplay)} job market — ${stats.total_jobs || 0} open positions across ${stats.companies_count || 0} companies."
+}
+</script>`);
+
+  // 2. ItemList (aggregate JobPosting representation)
+  // Use top companies from charts to create representative entries
+  const topCompanies = charts.companies ? Object.entries(charts.companies).slice(0, 5) : [];
+  if (topCompanies.length > 0 && stats.total_jobs > 0) {
+    const items = topCompanies.map(([company, count], i) => `{
+      "@type": "ListItem",
+      "position": ${i + 1},
+      "item": {
+        "@type": "JobPosting",
+        "title": "Open Roles at ${jsonEsc(company)}",
+        "hiringOrganization": {
+          "@type": "Organization",
+          "name": "${jsonEsc(company)}"
+        },
+        "jobLocation": {
+          "@type": "Place",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "${jsonEsc(metroDisplay.split(',')[0])}",
+            "addressRegion": "${jsonEsc(stateFullName)}",
+            "addressCountry": "US"
+          }
+        },
+        "datePosted": "${today}",
+        "description": "${count} open roles at ${jsonEsc(company)} in ${jsonEsc(metroDisplay)}"${stats.median_salary ? `,
+        "baseSalary": {
+          "@type": "MonetaryAmount",
+          "currency": "USD",
+          "value": {
+            "@type": "QuantitativeValue",
+            "value": ${stats.median_salary},
+            "unitText": "YEAR"
+          }
+        }` : ''}
+      }
+    }`);
+
+    blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Top Employers in ${jsonEsc(metroDisplay)}",
+  "numberOfItems": ${stats.total_jobs},
+  "itemListOrder": "https://schema.org/ItemListOrderDescending",
+  "itemListElement": [${items.join(',')}]
+}
+</script>`);
+  }
+
+  // 3. FAQPage — programmatic FAQ
+  const faqs = [];
+
+  if (stats.median_salary) {
+    faqs.push({
+      q: `What is the average salary in ${metroDisplay}?`,
+      a: `The median salary across ${stats.total_jobs || 0} open positions in ${metroDisplay} is ${fmtSal(stats.median_salary)} per year, based on ${stats.with_salary_count || 0} roles with published salary data.`
+    });
+  }
+
+  if (topCompanies.length > 0) {
+    const names = topCompanies.slice(0, 5).map(([c]) => c).join(', ');
+    faqs.push({
+      q: `Which companies are hiring the most in ${metroDisplay}?`,
+      a: `The top employers by open roles in ${metroDisplay} include ${names}. Data is sourced directly from company ATS feeds and updated daily.`
+    });
+  }
+
+  if (stats.remote_pct && stats.remote_pct > 0) {
+    faqs.push({
+      q: `How many remote jobs are available in ${metroDisplay}?`,
+      a: `Approximately ${stats.remote_pct}% of open positions in ${metroDisplay} are listed as remote or hybrid, out of ${stats.total_jobs || 0} total openings.`
+    });
+  }
+
+  if (trends && trends.velocity_mom !== undefined) {
+    const dir = trends.velocity_mom > 3 ? 'growing' : trends.velocity_mom < -3 ? 'declining' : 'stable';
+    faqs.push({
+      q: `Is the job market in ${metroDisplay} growing?`,
+      a: `Job postings in ${metroDisplay} are currently ${dir} month-over-month. The market has ${stats.total_jobs || 0} active openings across ${stats.companies_count || 0} companies.`
+    });
+  }
+
+  if (faqs.length > 0) {
+    const faqItems = faqs.map(f => `{
+      "@type": "Question",
+      "name": "${jsonEsc(f.q)}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "${jsonEsc(f.a)}"
+      }
+    }`);
+    blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [${faqItems.join(',')}]
+}
+</script>`);
+  }
+
+  return blocks.join('\n  ');
+}
+
+/**
+ * Build JSON-LD for /trends/:role pages:
+ *  1. Occupation — describes the role
+ *  2. FAQPage — salary, demand, top metros
+ */
+function buildTrendsJsonLd({ roleDisplay, stats, charts, trends, canonical }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const blocks = [];
+
+  // 1. Occupation schema
+  blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Occupation",
+  "name": "${jsonEsc(roleDisplay)}",
+  "description": "${jsonEsc(roleDisplay)} — ${stats.total_jobs || 0} open positions nationwide across ${stats.companies_count || 0} companies.",
+  "occupationLocation": {
+    "@type": "Country",
+    "name": "United States"
+  }${stats.median_salary ? `,
+  "estimatedSalary": {
+    "@type": "MonetaryAmountDistribution",
+    "name": "base",
+    "currency": "USD",
+    "median": ${stats.median_salary},
+    "unitText": "YEAR"
+  }` : ''}
+}
+</script>`);
+
+  // 2. FAQPage
+  const faqs = [];
+
+  if (stats.median_salary) {
+    faqs.push({
+      q: `What is the average ${roleDisplay} salary?`,
+      a: `The median ${roleDisplay} salary is ${fmtSal(stats.median_salary)} per year, based on ${stats.with_salary_count || 0} roles with published salary data out of ${stats.total_jobs || 0} total listings.`
+    });
+  }
+
+  if (stats.total_jobs) {
+    faqs.push({
+      q: `How many ${roleDisplay} jobs are open right now?`,
+      a: `There are currently ${stats.total_jobs} open ${roleDisplay} positions across ${stats.companies_count || 0} companies nationwide, sourced directly from ATS feeds.`
+    });
+  }
+
+  // Top metros from charts
+  const topMetros = charts.metros ? Object.entries(charts.metros).slice(0, 5) : [];
+  if (topMetros.length > 0) {
+    const metroNames = topMetros.map(([m]) => m).join(', ');
+    faqs.push({
+      q: `Where are the most ${roleDisplay} jobs?`,
+      a: `The top metros for ${roleDisplay} hiring are ${metroNames}. These rankings are based on active job listings aggregated from direct ATS feeds.`
+    });
+  }
+
+  if (stats.remote_pct && stats.remote_pct > 0) {
+    faqs.push({
+      q: `Can I find remote ${roleDisplay} jobs?`,
+      a: `Yes — approximately ${stats.remote_pct}% of ${roleDisplay} positions are listed as remote or hybrid.`
+    });
+  }
+
+  if (faqs.length > 0) {
+    const faqItems = faqs.map(f => `{
+      "@type": "Question",
+      "name": "${jsonEsc(f.q)}",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "${jsonEsc(f.a)}"
+      }
+    }`);
+    blocks.push(`<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [${faqItems.join(',')}]
+}
+</script>`);
+  }
+
+  return blocks.join('\n  ');
+}
+
 module.exports = async function handler(req, res) {
   const { type, metro, role, a, b, slug } = req.query;
 
@@ -1057,17 +1490,44 @@ module.exports = async function handler(req, res) {
     }
   }
 
+  // Fetch cross-linking data (non-blocking, best-effort)
+  let cityData = null;
+  let metroPages = [];
+  let trendPages = [];
+
+  try {
+    if (type === 'metro' && !role) {
+      const [cityResult, metrosResult] = await Promise.all([
+        fetchCityPills(metro),
+        fetchMetroPages(15)
+      ]);
+      cityData = cityResult;
+      metroPages = metrosResult;
+    } else if (type === 'trends') {
+      metroPages = await fetchMetroPages(15);
+    } else if (type === 'market') {
+      const [m, t] = await Promise.all([
+        fetchMetroPages(50),
+        fetchTrendPages()
+      ]);
+      metroPages = m;
+      trendPages = t;
+    }
+  } catch (e) {
+    console.warn('[seo-page] Cross-link fetch failed:', e.message);
+  }
+
   // Render
   let html;
   switch (type) {
     case 'market':
-      html = renderMarketPage(data);
+      html = renderMarketPage(data, metroPages, trendPages);
       break;
     case 'metro':
-      html = renderMetroPage(data, metro, role);
+      html = renderMetroPage(data, metro, role, cityData, metroPages);
       break;
     case 'trends':
-      html = renderTrendsPage(data, role);
+      html = renderTrendsPage(data, role, metroPages);
       break;
     case 'comparison':
       html = renderComparisonPage(data, a, b);
