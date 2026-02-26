@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.15';
+var BJ_VERSION = 'v5.16';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -261,6 +261,22 @@ function isPiiKey(lsKey) {
   return _PII_KEYS.indexOf(lsKey) !== -1;
 }
 
+/**
+ * Read a PII key from localStorage, decrypting if needed. (v5.16)
+ * Falls back to plaintext for unencrypted legacy data (migration-safe).
+ * @param {string} lsKey - localStorage key
+ * @returns {Promise<any>} Parsed JSON value
+ */
+async function readPiiData(lsKey) {
+  var raw = localStorage.getItem(lsKey);
+  if (!raw) return null;
+  if (raw.startsWith('enc:') && currentUser) {
+    var decrypted = await decryptFromStorage(raw, currentUser.id);
+    return decrypted ? JSON.parse(decrypted) : JSON.parse(raw);
+  }
+  return JSON.parse(raw);
+}
+
 // ============================================================
 // SESSION MANAGEMENT HARDENING (v3.90)
 // ============================================================
@@ -398,13 +414,20 @@ function saveUserData(lsKey, jsonStr) {
   if (bytes > 500 * 1024) {
     console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
   }
-  try {
-    localStorage.setItem(lsKey, jsonStr);
-  } catch (e) {
-    // QuotaExceededError — storage is full
-    console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
-    _handleStorageFull(lsKey);
-    return false;
+  // v5.16: Encrypt PII keys at rest in localStorage
+  if (isPiiKey(lsKey) && currentUser) {
+    encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
+      try { localStorage.setItem(lsKey, encrypted); }
+      catch (e) { console.error('[BJ] Storage full (encrypted):', e.message); _handleStorageFull(lsKey); }
+    });
+  } else {
+    try {
+      localStorage.setItem(lsKey, jsonStr);
+    } catch (e) {
+      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
+      _handleStorageFull(lsKey);
+      return false;
+    }
   }
   const shortKey = UD_LS_TO_SHORT[lsKey];
   if (shortKey && currentUser) {
@@ -421,7 +444,14 @@ async function _flushUserData() {
   const patch = {};
   for (const key of _udPendingKeys) {
     const lsKey = UD_KEYS[key];
-    try { patch[key] = JSON.parse(localStorage.getItem(lsKey) || 'null'); }
+    try {
+      var raw = localStorage.getItem(lsKey) || 'null';
+      // v5.16: Decrypt PII before sending to cloud (cloud stays plaintext, protected by RLS)
+      if (isPiiKey(lsKey) && raw && raw.startsWith('enc:')) {
+        raw = await decryptFromStorage(raw, currentUser.id) || 'null';
+      }
+      patch[key] = JSON.parse(raw);
+    }
     catch { patch[key] = null; }
   }
   _udPendingKeys.clear();
@@ -476,14 +506,26 @@ async function loadUserData(userId) {
     let needsSync = false;
     for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
       const cloudVal = cloud[shortKey];
-      const localVal = localStorage.getItem(lsKey);
+      let localVal = localStorage.getItem(lsKey);
+      // v5.16: Decrypt PII keys before comparing with cloud
+      if (isPiiKey(lsKey) && localVal && localVal.startsWith('enc:') && userId) {
+        localVal = await decryptFromStorage(localVal, userId) || localVal;
+      }
       const localParsed = localVal ? JSON.parse(localVal) : null;
       const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
       const localEmpty = localParsed == null || (Array.isArray(localParsed) && localParsed.length === 0) || (typeof localParsed === 'object' && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0);
 
       if (!cloudEmpty && localEmpty) {
         // Cloud has data, local doesn't → pull from cloud
-        localStorage.setItem(lsKey, JSON.stringify(cloudVal));
+        var cloudJson = JSON.stringify(cloudVal);
+        // v5.16: Encrypt PII when writing cloud data to localStorage
+        if (isPiiKey(lsKey) && userId) {
+          encryptForStorage(cloudJson, userId).then(function(enc) {
+            localStorage.setItem(lsKey, enc);
+          });
+        } else {
+          localStorage.setItem(lsKey, cloudJson);
+        }
         console.log('[sync] Pulled', shortKey, 'from cloud');
       } else if (cloudEmpty && !localEmpty) {
         // Local has data, cloud doesn't → queue sync up
