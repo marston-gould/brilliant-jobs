@@ -2,7 +2,7 @@
  * refresh-city-stats — Edge Function
  * Refreshes city_pages table with aggregated job market stats every 6 hours.
  * 
- * Cron: 0 */6 * * *
+ * Cron: every 6 hours
  * Triggered via pg_cron → net.http_post
  * 
  * What it does:
