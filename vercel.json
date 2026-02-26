@@ -74,6 +74,62 @@
   ],
   "rewrites": [
     {
+      "source": "/blog/feed.xml",
+      "destination": "/api/content?mode=rss"
+    },
+    {
+      "source": "/blog/feed",
+      "destination": "/api/content?mode=rss"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/api/content?mode=story&slug=:slug"
+    },
+    {
+      "source": "/blog",
+      "destination": "/api/content?mode=blog"
+    },
+    {
+      "source": "/content-api/feed",
+      "destination": "/api/content?mode=feed"
+    },
+    {
+      "source": "/content-api/pulse",
+      "destination": "/api/content?mode=pulse"
+    },
+    {
+      "source": "/content-api/embed/:id",
+      "destination": "/api/content?mode=embed&id=:id"
+    },
+    {
+      "source": "/content-api/merch-index",
+      "destination": "/api/content?mode=merch-index"
+    },
+    {
+      "source": "/content-api/merch-datalab",
+      "destination": "/api/content?mode=merch-datalab"
+    },
+    {
+      "source": "/content-api/merch-dashboard",
+      "destination": "/api/content?mode=merch-dashboard"
+    },
+    {
+      "source": "/college-major-outcomes",
+      "destination": "/api/seo-page?type=college"
+    },
+    {
+      "source": "/company/:slug",
+      "destination": "/api/seo-page?type=company&slug=:slug"
+    },
+    {
+      "source": "/jobs-:a-vs-:b",
+      "destination": "/api/seo-page?type=comparison&a=:a&b=:b"
+    },
+    {
+      "source": "/jobs-by-location",
+      "destination": "/api/seo-page?type=location"
+    },
+    {
       "source": "/jobs-in/:metro/:role",
       "destination": "/api/seo-page?type=metro&metro=:metro&role=:role"
     },

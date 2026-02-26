@@ -2,6 +2,7 @@
 // Triggered by pg_cron Monday at 8am (per user timezone).
 // Compiles: applications sent, auto-applies, notification applies, passes,
 // misses, responses, interviews, offers, ghosted, new jobs, market stats.
+// C2: Now includes top 3 market insight stories from content_stories.
 // Sends via send-notification.
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -32,6 +33,22 @@ serve(async (req: Request) => {
   let usersSkipped = 0;
 
   try {
+    // ---- C2: Fetch top 3 published stories from this week ----
+    const { data: topStories } = await sb
+      .from("content_stories")
+      .select("id, headline, lede, category, published_slug, score, published_at")
+      .eq("status", "published")
+      .gte("published_at", weekAgo.toISOString())
+      .order("score", { ascending: false })
+      .limit(3);
+
+    const stories = (topStories || []).map((s: any) => ({
+      headline: s.headline,
+      lede: s.lede,
+      category: s.category,
+      slug: s.published_slug || `story-${s.id}`,
+    }));
+
     // Get all users who have weekly_summary enabled (or default)
     const { data: allPrefs } = await sb
       .from("notification_preferences")
@@ -143,7 +160,7 @@ serve(async (req: Request) => {
 
       const totalApplied = (autoApplied || 0) + (notificationApplied || 0);
 
-      // Skip if zero activity across the board
+      // Skip if zero activity across the board AND no new jobs AND no stories
       if (
         totalApplied === 0 &&
         (passed || 0) === 0 &&
@@ -152,8 +169,7 @@ serve(async (req: Request) => {
         (interviews || 0) === 0 &&
         (offers || 0) === 0
       ) {
-        // Still send if there are new jobs to report
-        if ((newJobs || 0) === 0) {
+        if ((newJobs || 0) === 0 && stories.length === 0) {
           usersSkipped++;
           continue;
         }
@@ -172,6 +188,7 @@ serve(async (req: Request) => {
         ghosted: ghosted || 0,
         newJobs: newJobs || 0,
         weekLabel,
+        stories,
       });
 
       await fetch(`${SUPABASE_URL}/functions/v1/send-notification`, {
@@ -191,11 +208,11 @@ serve(async (req: Request) => {
 
       usersSent++;
       console.log(
-        `[weekly-summary] Sent to ${userId}: applied=${totalApplied} responses=${responses || 0} interviews=${interviews || 0} offers=${offers || 0} newJobs=${newJobs || 0}`
+        `[weekly-summary] Sent to ${userId}: applied=${totalApplied} responses=${responses || 0} interviews=${interviews || 0} offers=${offers || 0} newJobs=${newJobs || 0} stories=${stories.length}`
       );
     }
 
-    const summary = { usersSent, usersSkipped, weekLabel };
+    const summary = { usersSent, usersSkipped, weekLabel, storiesIncluded: stories.length };
     console.log("[weekly-summary] Complete:", summary);
 
     return new Response(JSON.stringify(summary), {

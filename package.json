@@ -10,7 +10,7 @@
     "dev": "npx vite"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.25.12",
     "tailwindcss": "^3.4.19",
     "vite": "^6.0.0"
   },

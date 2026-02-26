@@ -748,6 +748,80 @@ Assess. Return ONLY JSON.`;
 
     console.log(`[score-resume] user=${user.id} tier=${result.tier} mode=${mode} jds=${jds.length} score=${result.match_score || result.overall_score} pro=${isPro}`);
 
+    // ─── Phase 5: Dual-write to resume_score_history ───
+    try {
+      // Determine score type and model
+      const scoreType = (result.tier === 'premium' || result.tier === 'multi-agent') ? 'ai' : 'ai';
+      const scoringModel = result.model || HAIKU_MODEL;
+      const matchScore = result.match_score ?? result.overall_score ?? null;
+      const fitStatus = result.fit_status ?? null;
+
+      // Resolve resume_id from resume_archive if we can match by name
+      let resumeId = body.resume_id || null;
+      if (!resumeId && body.resume_name) {
+        const { data: archiveMatch } = await sb
+          .from('resume_archive')
+          .select('resume_id')
+          .eq('user_id', user.id)
+          .eq('display_name', body.resume_name)
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+        if (archiveMatch) resumeId = archiveMatch.resume_id;
+      }
+
+      // Determine level_fit from result
+      const levelFit = result.level_fit?.best_level
+        ? result.level_fit.best_level.toLowerCase().includes('entry') ? 'entry'
+        : result.level_fit.best_level.toLowerCase().includes('mid') ? 'mid'
+        : result.level_fit.best_level.toLowerCase().includes('senior') ? 'senior'
+        : result.level_fit.best_level.toLowerCase().includes('lead') || result.level_fit.best_level.toLowerCase().includes('head') ? 'lead'
+        : result.level_fit.best_level.toLowerCase().includes('executive') || result.level_fit.best_level.toLowerCase().includes('vp') || result.level_fit.best_level.toLowerCase().includes('director') ? 'executive'
+        : null
+        : null;
+
+      if (matchScore !== null) {
+        // Get first JD info for denormalization
+        const firstJd = jds[0] || {};
+
+        const { error: historyError } = await sb
+          .from('resume_score_history')
+          .insert({
+            user_id: user.id,
+            resume_id: resumeId,
+            job_id: firstJd.greenhouse_id || null,
+            job_title: firstJd.title || filter_name || null,
+            company_name: firstJd.company_name || null,
+            score_type: scoreType,
+            match_score: matchScore,
+            fit_status: fitStatus || 'Unknown',
+            level_fit: levelFit,
+            scoring_model: scoringModel,
+            analysis_json: {
+              tier: result.tier,
+              mode: mode,
+              jds_analyzed: jds.length,
+              filter_name: filter_name || null,
+              executive_summary: result.executive_summary || result.analysis_summary || null,
+              dimension_scores: result.dimension_scores || null,
+              gap_analysis: result.gap_analysis?.slice(0, 10) || null,
+              recommendations: result.recommendations || result.coaching?.priority_actions || null,
+              cost_cents: result.cost_cents || null,
+              timing_ms: result.timing_ms || null
+            }
+          });
+
+        if (historyError) {
+          console.error('[score-resume] History write failed:', historyError.message);
+        } else {
+          console.log(`[score-resume] History written: score=${matchScore} resume=${resumeId || 'unlinked'}`);
+        }
+      }
+    } catch (histErr) {
+      // Non-blocking — don't fail the scoring response
+      console.error('[score-resume] History dual-write error:', histErr);
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
     });
