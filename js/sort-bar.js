@@ -278,14 +278,46 @@ $('#query-builder-who')?.addEventListener('click', e => {
 
 // Input handling — When row
 const qbInputWhen = $('#qb-input-when');
+
+function commitWhenPill() {
+  const raw = qbInputWhen.value.trim();
+  if (!raw) return;
+  // Validate & normalize
+  const norm = normalizeWhenValue(raw);
+  if (!norm) {
+    // Show inline error
+    qbInputWhen.style.borderColor = 'var(--red)';
+    qbInputWhen.style.color = 'var(--red)';
+    let errEl = qbInputWhen.parentElement.querySelector('.when-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'when-error';
+      errEl.style.cssText = 'font-size:10px;color:var(--red);margin-top:2px;position:absolute;bottom:-14px;left:0;white-space:nowrap;';
+      qbInputWhen.parentElement.style.position = 'relative';
+      qbInputWhen.parentElement.appendChild(errEl);
+    }
+    errEl.textContent = 'Try: today, yesterday, 7 days, 2 weeks, month, 3 months';
+    setTimeout(() => {
+      qbInputWhen.style.borderColor = '';
+      qbInputWhen.style.color = '';
+      if (errEl) errEl.remove();
+    }, 4000);
+    return;
+  }
+  // Use the normalized canonical label
+  qbInputWhen.value = '';
+  whenPills.push({ values: [norm.label], type: 'when' });
+  renderAllPills();
+}
+
 qbInputWhen.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+    commitWhenPill();
   } else if (e.key === 'Tab') {
     if (qbInputWhen.value.trim()) {
       e.preventDefault();
-      commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+      commitWhenPill();
       focusNextInput('qb-input-when');
     }
   } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
@@ -294,7 +326,7 @@ qbInputWhen.addEventListener('keydown', e => {
   }
 });
 qbInputWhen.addEventListener('blur', () => {
-  commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+  commitWhenPill();
 });
 
 // Input handling — Who row
