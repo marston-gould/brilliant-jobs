@@ -292,6 +292,24 @@ document.addEventListener('DOMContentLoaded',async function(){
   window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
 });
 </script>
+
+<!-- Block 6e: Contextual links to city pages by salary -->
+<div class="dl-ctx-links">
+  <h3>Explore Salary Data by City</h3>
+  <p style="font-size:13px;color:var(--seo-text-dim);margin:0 0 12px;">See how salaries compare across the highest-paying job markets.</p>
+  <div class="dl-ctx-grid">
+    <a href="/jobs-in/san-francisco">San Francisco <span class="ctx-stat">7K+ jobs</span></a>
+    <a href="/jobs-in/new-york">New York <span class="ctx-stat">6K+ jobs</span></a>
+    <a href="/jobs-in/seattle">Seattle <span class="ctx-stat">2K+ jobs</span></a>
+    <a href="/jobs-in/boston">Boston <span class="ctx-stat">2K+ jobs</span></a>
+    <a href="/jobs-in/los-angeles">Los Angeles <span class="ctx-stat">3K+ jobs</span></a>
+    <a href="/jobs-in/chicago">Chicago <span class="ctx-stat">2K+ jobs</span></a>
+    <a href="/jobs-in/austin">Austin <span class="ctx-stat">1K+ jobs</span></a>
+    <a href="/jobs-in/denver">Denver <span class="ctx-stat">1K+ jobs</span></a>
+  </div>
+  <p style="font-size:12px;margin:12px 0 0;"><a href="/job-market-data" style="color:var(--seo-accent);text-decoration:underline;">View all cities →</a></p>
+</div>
+
 </main>
 <a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
