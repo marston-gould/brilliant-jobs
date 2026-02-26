@@ -480,3 +480,123 @@ Shown when a rewrite is pending approval:
 5. **Score Gate is opt-out, not opt-in.** Users see it by default, can disable per-filter or globally. This drives awareness of the scoring feature and creates natural upsell moments.
 
 6. **Credits are consumed on AI actions, not on apply.** Clicking Apply is always free. Scoring and rewriting cost credits. This keeps the core experience free while monetizing intelligence.
+
+---
+
+## Testing Strategy — Mock ATS Endpoints
+
+### Purpose
+
+The entire apply pipeline (score → rewrite → approve → submit) should be testable end-to-end before real ATS APIs are wired. Pod 2 builds mock endpoints that accept submission payloads and validate correctness, so the UI and state machine can be verified against a real HTTP boundary.
+
+### Mock Endpoint: `mock-ats-submit`
+
+A Supabase Edge Function that simulates ATS submission and records every attempt.
+
+**Route:** `POST /functions/v1/mock-ats-submit`
+
+**Request payload (what our system sends):**
+
+```json
+{
+  "job_id": "gh_12345",
+  "ats_source": "greenhouse",
+  "ats_job_url": "https://boards.greenhouse.io/company/jobs/12345",
+  "resume_file_id": "uuid-of-resume-in-storage",
+  "resume_filename": "Marston_SEO_2025.pdf",
+  "resume_version": "original|rewritten",
+  "rewrite_id": "uuid-if-rewritten|null",
+  "applicant": {
+    "name": "Marston Gould",
+    "email": "marston@brilliantjobs.app",
+    "phone": "+15550123",
+    "linkedin": "https://linkedin.com/in/marston"
+  },
+  "apply_mode": "manual|score_gated|auto|score_gated_auto|auto_rewrite|autopilot",
+  "score": 82,
+  "was_rewritten": false,
+  "filter_id": 3,
+  "pending_application_id": "uuid",
+  "idempotency_key": "uuid-unique-per-attempt"
+}
+```
+
+**Response (mock simulates three scenarios):**
+
+```json
+// Success (80% of calls)
+{ "status": "submitted", "confirmation_id": "mock-conf-abc123", "ats_source": "greenhouse" }
+
+// Rejection (10% — simulates form validation failure)
+{ "status": "rejected", "error": "missing_field", "detail": "Phone number required for this position" }
+
+// Timeout (10% — simulates ATS being down)
+// Edge Function sleeps 35s, caller should timeout at 30s
+```
+
+**The mock records every attempt in `mock_ats_submissions` table:**
+
+```sql
+CREATE TABLE mock_ats_submissions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id),
+  job_id TEXT NOT NULL,
+  ats_source TEXT NOT NULL,
+  payload JSONB NOT NULL,          -- full request body
+  response_type TEXT NOT NULL,     -- 'success' | 'rejected' | 'timeout'
+  response_body JSONB,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  idempotency_key TEXT UNIQUE
+);
+
+-- RLS: users see own submissions, admin sees all
+ALTER TABLE mock_ats_submissions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users see own" ON mock_ats_submissions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users insert own" ON mock_ats_submissions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Admin sees all" ON mock_ats_submissions FOR SELECT USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+```
+
+### Test Scenarios
+
+| # | Scenario | What to verify |
+|---|----------|---------------|
+| T1 | Manual apply (Mode 1) | No mock call — just opens URL + updates pipeline |
+| T2 | Score gate fires (Mode 2, low score) | Modal appears, user sees score + missing skills |
+| T3 | Score gate → Apply Anyway | Mock receives payload with `apply_mode: 'score_gated'` |
+| T4 | Score gate → Rewrite → Submit | Mock receives payload with `was_rewritten: true`, `resume_version: 'rewritten'` |
+| T5 | Auto-apply (Mode 3) | Mock receives payload automatically when job enters pipeline, `apply_mode: 'auto'` |
+| T6 | Score-gated auto skip | No mock call for jobs below threshold. `pending_applications.status = 'skipped'` |
+| T7 | Score-gated auto pass | Mock receives payload only for jobs ≥ threshold |
+| T8 | Auto-rewrite flow | Score → rewrite → mock receives rewritten resume. Check `before_score` and `after_score` |
+| T9 | Approval queue | Pending app created, no mock call until user approves. After approve → mock called |
+| T10 | Idempotency | Same `idempotency_key` sent twice → second call returns cached result, no duplicate in table |
+| T11 | Timeout handling | Mock sleeps 35s. Client times out at 30s. `pending_applications.status = 'failed'`. Retry available |
+| T12 | Rejection handling | Mock returns rejection. Status set to `failed` with error detail. User sees error + retry option |
+| T13 | Notification fire | After mock success, verify notification_log entry + email/in-app delivery |
+| T14 | Credit deduction | Score costs 1 credit, rewrite costs 3. Verify credits deducted before mock call |
+| T15 | Expiry | Pending app older than `auto_expire_hours` → status set to `expired` by cron |
+
+### Admin Verification Dashboard
+
+Add a temporary "Mock ATS Log" tab in the admin panel that queries `mock_ats_submissions`:
+
+- Total attempts, success rate, rejection rate, timeout rate
+- Per-mode breakdown (which apply modes are being used)
+- Per-user breakdown (for multi-user testing)
+- Payload inspection (click to expand full JSON)
+- Idempotency check (flag any duplicate keys)
+
+### Switching from Mock to Real
+
+When real ATS endpoints are ready:
+
+1. Create `ats-submit` Edge Function with the same request contract
+2. Route by `ats_source`: Greenhouse → Greenhouse API, Lever → Lever API, etc.
+3. Feature flag `use_real_ats_submit` (default false)
+4. When flag is true, `submit()` calls `ats-submit` instead of `mock-ats-submit`
+5. `mock_ats_submissions` table stays for regression testing
+6. Real submissions go to the existing `pending_applications` table (status → submitted)
+
+The request contract is identical — the only difference is where the payload goes.
