@@ -750,24 +750,24 @@ const features = [
   { s: 'done', n: 'Data pages audit', d: 'Audit of 6 public data pages + hub identifying critical conversion gaps, security vulnerabilities, and missing live data infrastructure. 10 findings across P0-P3 priority. P0: zero conversion path on 5 pages + market-dynamics anon key exposure. P1: all data except market-dynamics hardcoded mock + missing methodology on 3 pages. P2: no geographic page + mobile chart readability. P3: programmatic company pages, comparison tools, ghost rate reports. Ref: docs/data-pages-audit.md', p: 11 },
 
   // CE Handoff v3 — Section A: Permanent Pages (added v4.71)
-  { s: 'progress', n: 'Company SEO pages + ghost rate reports (A1)', d: 'CE Handoff v3 Section A. /company/:slug route. Extend seo_page_cache with company-level rows (total jobs, open jobs, avg days open, ghost rate, salary range, top 5 roles, velocity). Schema.org Organization JSON-LD. Sitemap top 500. seo-cache-refresh daily company aggregation. 5-7 days.', b: 'needs-data', p: 11, b: 'needs-data' },
-  { s: 'todo', n: 'College major outcomes page (A2)', d: 'CE Handoff v3 Section A. NEW. /college-major-outcomes evergreen page. 73 majors ranked by employment, salary, trajectory. NY Fed data (3 series in economic_indicators) cross-referenced with live BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. 4 charts. FAQ JSON-LD. Refreshes annually. 3 days.', b: 'needs-data', p: 11, b: 'needs-data' },
+  { s: 'done', n: 'Company SEO pages + ghost rate reports (A1)', d: 'CE Handoff v3 Section A. v4.76. /company/:slug live. Vercel rewrite rule. Schema.org Organization JSON-LD. seo_page_cache extended with company rows.', b: 'needs-data', p: 11, b: 'needs-data' },
+  { s: 'done', n: 'College major outcomes page (A2)', d: 'CE Handoff v3 Section A. v4.77. /college-major-outcomes live. 73 majors ranked by employment, salary, trajectory. NY Fed data cross-referenced with live BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC.', b: 'needs-data', p: 11, b: 'needs-data' },
   { s: 'progress', n: 'Jobs by Location data page (A3)', d: 'CE Handoff v3 Section A. DEFERRED. /jobs-by-location with state choropleth, top 20 metros, salary by region, remote % by state. get_jobs_by_state() + get_jobs_by_metro() RPCs. 4-5 days. Blocked on country parsing: GH 0.8%%, Lever 0%%, Ashby 0%%.', b: 'needs-data', p: 11, b: 'deferred' },
 
   // CE Handoff v3 — Section B: Topical Coverage (added v4.71)
   { s: 'todo', n: 'Multi-dimensional insight stories (B2)', d: 'CE Topical: 3 new detection rules (salary_x_remote, role_x_industry, level_x_location) + cross_dimension story template. Gate: all dimensions need 100+ data points in intersection. 2-3 days. Blocked on 60%%+ enrichment coverage.', b: 'needs-data', p: 11, b: 'needs-data' },
   { s: 'todo', n: 'Community benchmark stories (B4)', d: 'CE Topical: benchmark_shift detection rule (quarterly comparison of response rates, time-to-hire, salary medians). quarterly_benchmark story template. Quarterly cron (1st Jan/Apr/Jul/Oct). 2 days. Needs 50+ pipeline entries/segment.', b: 'needs-users', p: 11, b: 'needs-data' },
-  { s: 'todo', n: 'NY Fed crossover stories (B5)', d: 'CE Topical: NEW. 5 templates for detect-editorial-insights + generate-editorial-content. T11: NY Fed Quarterly Update (trigger: new data detected). T12: Major Spotlight (monthly rotation). T13: Salary Divergence (BJ vs NY Fed >15%%). T14: College Premium (annual). T15: Underemployment x Hiring Reality (quarterly). Scoring: +20 novelty, +15 shareability. 2-3 days.', b: 'needs-data', p: 11, b: 'needs-data' },
+  { s: 'done', n: 'NY Fed crossover stories (B5)', d: 'CE Topical: v4.76 Wave 4. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment x Hiring. Scoring: +20 novelty, +15 shareability.', b: 'needs-data', p: 11, b: 'needs-data' },
   { s: 'todo', n: 'Annual state-of-the-market report (B6)', d: 'CE Topical: annual_report story template (10-15 section long-form). compile_annual_stats() RPC. Manual trigger, admin preview + approval. 3-4 days for template. First report Q4 2026.', b: 'needs-data', p: 11, b: 'needs-data' },
 
   // CE Handoff v3 — Section C: Integration Wiring (added v4.71)
-  { s: 'todo', n: 'Dashboard insight cards wiring (C1)', d: 'CE Integration: NEW. Insight card container above jobs feed. Fetch /content-api/merch-dashboard with active filter context. Filter-aware matching. X dismiss with 24h localStorage reset. Category pill color-coded. Silent empty state. 1-2 days.', p: 11 },
-  { s: 'todo', n: 'Email digest integration (C2)', d: 'CE Integration: NEW. Extend weekly-summary EF with "This Week Market Insights" section. Top 3 stories by score from content_stories (last 7 days). Story card: headline + lede + chart thumbnail + Read more link to /blog/:slug. Graceful fallback if <3 stories. 2-3 days.', p: 11 },
-  { s: 'todo', n: 'Landing page merchandising wiring (C3)', d: 'CE Integration: NEW. Add data-merch-placement="content-stories" div in index.html. merch-client.js calls /content-api/merch-index, renders 3 story cards. Category pill + headline + truncated lede + Read link. 1 day.', p: 11 },
-  { s: 'todo', n: 'Blog index + discovery (C4)', d: 'CE Integration: NEW. Add "Market Intel" link in dashboard left nav → /blog. Footer link on landing page. RSS icon/link in blog header + dashboard footer. CTA on each blog story linking back to dashboard. 0.5-1 day.', p: 11 },
+  { s: 'done', n: 'Dashboard insight cards wiring (C1)', d: 'CE Integration: NEW. Insight card container above jobs feed. Fetch /content-api/merch-dashboard with active filter context. Filter-aware matching. X dismiss with 24h localStorage reset. Category pill color-coded. Silent empty state. 1-2 days.', p: 11 },
+  { s: 'done', n: 'Email digest integration (C2)', d: 'CE Integration: NEW. Extend weekly-summary EF with "This Week Market Insights" section. Top 3 stories by score from content_stories (last 7 days). Story card: headline + lede + chart thumbnail + Read more link to /blog/:slug. Graceful fallback if <3 stories. 2-3 days.', p: 11 },
+  { s: 'done', n: 'Landing page merchandising wiring (C3)', d: 'CE Integration: NEW. Add data-merch-placement="content-stories" div in index.html. merch-client.js calls /content-api/merch-index, renders 3 story cards. Category pill + headline + truncated lede + Read link. 1 day.', p: 11 },
+  { s: 'done', n: 'Blog index + discovery (C4)', d: 'CE Integration: NEW. Add "Market Intel" link in dashboard left nav → /blog. Footer link on landing page. RSS icon/link in blog header + dashboard footer. CTA on each blog story linking back to dashboard. 0.5-1 day.', p: 11 },
 
   // CE Handoff v3 — Section D: Enrichment Monitoring (added v4.71)
-  { s: 'todo', n: 'Enrichment coverage dashboard (D1)', d: 'CE Monitoring: NEW. Admin tab (Feed Health or standalone 11th tab). 4 coverage cards (salary/loc_type/department/country %%). Coverage trend ECharts (4 lines over time). Gate indicators (40%% salary, 60%% loc_type/dept). Enrichment throughput (jobs/hr, ETA to target). Platform breakdown table. Extend capture_daily_snapshots() with coverage %%. 2-3 days. BUILD FIRST for visibility.', p: 11 },
+  { s: 'done', n: 'Enrichment coverage dashboard (D1)', d: 'CE Monitoring: NEW. Admin tab (Feed Health or standalone 11th tab). 4 coverage cards (salary/loc_type/department/country %%). Coverage trend ECharts (4 lines over time). Gate indicators (40%% salary, 60%% loc_type/dept). Enrichment throughput (jobs/hr, ETA to target). Platform breakdown table. Extend capture_daily_snapshots() with coverage %%. 2-3 days. BUILD FIRST for visibility.', p: 11 },
 
   // Phase 12 — Beta
   { s: 'todo', n: 'AI-powered filter onboarding', d: 'New user provides LinkedIn profile (prepopulated from registration), LinkedIn data export, and/or resume → sent to Haiku API → analyzes experience/skills/interests → recommends and prepopulates saved filters (What/Where/Who pills, salary range, level). Three-tier input depth: (1) LinkedIn URL from registration = basic filters, (2) extension installed = richer profile + connection data = better filters, (3) resume uploaded = highest precision. Extension install pitched as upgrade during onboarding: "Install the extension to unlock deeper profile analysis." Reduces cold-start friction and creates compelling reason to install extension early.', b: 'post-launch', p: 12, b: 'pre-launch' },
@@ -1447,7 +1447,19 @@ const features = [
   { s: 'done', n: 'Pricing grid CSS fix', d: 'Stray closing brace broke .pricing-grid. Cards stacked full-width. Removed extra brace, repositioned slider labels to correct percentages.', p: 42 },
   { s: 'done', n: 'Sort pills duplication fix', d: 'renderSortPills() appended pills without clearing container. Every add/toggle/remove doubled pills. Added .sort-pill removal at function start.', p: 42 },
   { s: 'done', n: '/jobs-in/{city} pages handoff document', d: 'Pod 2 handoff: 16-section docx. Phase 1 (~13.5h): city_pages table, refresh-city-stats EF, hook pills, 4 JSON-LD schemas, FAQs, Vercel ISR. Phase 2 (~7h): user-search pills, dashboard card. AEO strategy.', p: 42 },
-  { s: 'progress', n: '/jobs-in/{city} dynamic city pages (Pod 2)', d: 'Pod 2 implementation of city pages spec. Phase 1: page template + hook pills + SEO. Phase 2: user-search pills + dashboard card. Handoff delivered.', b: 'dependency', p: 42 },
+  { s: 'progress', n: '/jobs-in/{city} dynamic city pages (Pod 2)', d: 'Phase 43 in progress. Branch feat/city-pages-linking-sprint. DB live (city_pages 2,178 rows, city_popular_pills empty). refresh-city-stats EF deployed (6h cron). SSR enhancements on branch: hook pills, cross-links, hub grids, homepage/data-lab browse sections. ⚠️ Branch NOT merged to main. Remaining: Block 7 (pill conversion JS), Block 6e (subpage contextual links).', b: 'dependency', p: 42 },
+
+  // Phase 43: City Pages + Internal Linking Sprint (v4.91) — Feb 25, 2026
+  { s: 'done', n: 'P0: /pricing + /ghost-report in sitemap', d: 'Added missing pages to sitemap.xml. Total will be 139 URLs once merged.', p: 43 },
+  { s: 'done', n: 'DB: city_pages + city_popular_pills tables', d: 'city_pages: 2,178 rows seeded (≥10 jobs/city). Indexes on slug + job_count DESC. RLS enabled. city_popular_pills: Phase 2 schema, empty, FK to slug.', p: 43 },
+  { s: 'done', n: 'refresh-city-stats Edge Function', d: '6-step refresh: stats→companies→titles→skills→industries→meta. Deployed. pg_cron: 0 */6 * * *. 97 cities with top_titles, 77 with top_skills, 100 with top_companies.', p: 43 },
+  { s: 'done', n: 'Metro page hook pills + cross-links', d: 'SSR enhancements to api/seo-page.js. Hook pills section (top titles/skills/industries from city_pages). Server-rendered role links. Compare Other Cities (top 8 metros). On branch only.', p: 43 },
+  { s: 'done', n: 'Trends page cross-links', d: 'Explore [Role] by City (top 10 metros). Related Roles (all 20 trends). On branch only.', p: 43 },
+  { s: 'done', n: 'Market hub page enhancements', d: 'Jobs by City grid (50 metros), Hiring Trends by Role grid, Data Lab Reports links. Cross-linking data fetched in parallel. On branch only.', p: 43 },
+  { s: 'done', n: 'Homepage Browse by City + Trending Roles', d: '8-city grid + 4-role grid added to index.html before bottom CTA. On branch only.', p: 43 },
+  { s: 'done', n: 'Data Lab browse by city panel', d: '15 city links + View all cities → link added to data-lab.html. On branch only.', p: 43 },
+  { s: 'todo', n: 'Block 7: + button conversion flow', d: 'CSS ready, JS not wired. Needs: signup modal for anon, pill→filter for auth, toast, undo.', p: 43 },
+  { s: 'todo', n: 'Block 6e: Data Lab subpage contextual links', d: 'salary-data→cities, hiring-trends→cities, etc. Metro→metro cross-links only on non-role pages currently.', p: 43 },
 ];
 
 
@@ -1577,7 +1589,8 @@ function render() {
     39: 'Content Distribution & Social Publishing',
     40: 'Bug Tracker Resolution',
     41: 'Feed Quality & Search Relevance (v4.86-v4.90)',
-    42: 'Global Version, Pricing & City Pages'
+    42: 'Global Version, Pricing & City Pages',
+    43: 'City Pages + Internal Linking Sprint'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
