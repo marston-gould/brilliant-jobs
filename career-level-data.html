@@ -82,6 +82,12 @@
     .summary{background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(168,85,247,0.06));border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:16px 20px;margin-block-end:32px;font-size:13px;color:var(--text-dim);line-height:1.7}
     .summary strong{color:var(--text);font-weight:500}
     .summary .label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);margin-block-end:6px}
+    
+    .bj-topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 0;margin-block-end:8px}
+    .bj-topbar .bj-home{font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;color:#fff;text-decoration:none;display:flex;align-items:center;gap:8px}
+    .bj-topbar .bj-home:hover{color:var(--accent)}
+    .bj-topbar .bj-login{padding:7px 18px;background:#fff;color:#0b0e18;border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;transition:all 0.15s;font-family:'Outfit',sans-serif;letter-spacing:0.3px}
+    .bj-topbar .bj-login:hover{background:rgba(255,255,255,0.85)}
     .hdr{margin-block-end:28px}
     .hdr .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-block-end:10px}
     .hdr .breadcrumb{font-size:12px;color:var(--text-faint);margin-block-end:12px}
@@ -165,6 +171,10 @@
 <body>
 <main>
 <div class="wrap">
+  <nav class="bj-topbar">
+    <a href="/" class="bj-home">✦ Brilliant Jobs</a>
+    <a href="/dashboard" class="bj-login">Log In</a>
+  </nav>
   <header class="hdr">
     <div class="breadcrumb"><a href="/">Brilliant Jobs</a> &rsaquo; <a href="/data-lab">Data Lab</a> &rsaquo; Career Levels</div>
     <div class="eyebrow"><a href="/" style="color:inherit;text-decoration:none">Brilliant Jobs</a> &middot; Data Lab</div>
@@ -218,7 +228,20 @@
     <h3>Methodology</h3>
     <p>Career level data is derived from <strong>285,000+</strong> open job listings across <strong>10,000+</strong> company career pages. Seniority levels (C-Suite through Entry Level) are classified from job titles using pattern matching on keywords like "VP," "Director," "Senior," "Lead," and "Manager." Salary medians represent the midpoint of posted salary ranges for jobs with disclosed compensation (<strong>21,000+</strong> listings). Work arrangement classification (Remote, Hybrid, On-site) is extracted from job descriptions and location fields. Department classification uses title and description keyword mapping across 15 functional categories. All metrics refresh daily.</p>
   </div>
-  <div class="foot">Data from 10,000+ career pages<br>v3.39 · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a></div>
+
+  <!-- Block 6e: City + Role cross-linking -->
+  <div class="related" style="padding:24px">
+    <h3 style="font-size:16px;margin-block-end:16px">Explore Jobs by City</h3>
+    <p style="font-size:13px;color:var(--text-faint);margin-block-end:12px">See salary data, hiring trends, and top employers in each metro area.</p>
+    <div id="city-cross-links" class="related-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+  </div>
+  <div class="related" style="padding:24px">
+    <h3 style="font-size:16px;margin-block-end:16px">Hiring Trends by Role</h3>
+    <p style="font-size:13px;color:var(--text-faint);margin-block-end:12px">Deep-dive into demand, salary, and top companies for each role.</p>
+    <div id="role-cross-links" class="related-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+  </div>
+
+  <div class="foot">Data from 10,000+ career pages<br><span class="bj-version"></span> · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a> · &copy; <span class="bj-year"></span> Brilliant Jobs</div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',async function(){
@@ -256,28 +279,9 @@ document.addEventListener('DOMContentLoaded',async function(){
   window.addEventListener('resize',function(){chs.forEach(function(c){c.resize()})});
 });
 </script>
-
-<!-- Block 6e: Contextual links to trends pages with seniority data -->
-<div class="dl-ctx-links">
-  <h3>Explore Seniority & Salary by Role</h3>
-  <p style="font-size:13px;color:var(--seo-text-dim);margin:0 0 12px;">See how career level distribution varies across roles — from entry to executive.</p>
-  <div class="dl-ctx-grid">
-    <a href="/trends/software-engineer">Software Engineer</a>
-    <a href="/trends/product-manager">Product Manager</a>
-    <a href="/trends/data-scientist">Data Scientist</a>
-    <a href="/trends/data-engineer">Data Engineer</a>
-    <a href="/trends/operations-manager">Operations Manager</a>
-    <a href="/trends/marketing-manager">Marketing Manager</a>
-    <a href="/trends/project-manager">Project Manager</a>
-    <a href="/trends/financial-analyst">Financial Analyst</a>
-    <a href="/trends/human-resources">Human Resources</a>
-    <a href="/trends/account-manager">Account Manager</a>
-  </div>
-  <p style="font-size:12px;margin:12px 0 0;"><a href="/salary-data" style="color:var(--seo-accent);text-decoration:underline;">See full salary distribution →</a> · <a href="/job-market-data" style="color:var(--seo-accent);text-decoration:underline;">All market data →</a></p>
-</div>
-
 </main>
 <a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
+<script src="/js/version.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
@@ -289,6 +293,56 @@ window.addEventListener('DOMContentLoaded',function(){
     });
   }catch(e){}
 });
+</script>
+<script>
+  // Block 6e: Populate city + role cross-links
+  (function(){
+    var SB='https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
+    var AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+    var hd={'apikey':AK,'Authorization':'Bearer '+AK};
+    var CK='bj_city_xlinks',TTL=86400000;
+    function n(v){return Number(v||0).toLocaleString('en-US')}
+    function sal(v){if(!v)return'';return'$'+Math.round(v/1000)+'K'}
+    function renderLinks(el,items){
+      if(!el||!items||!items.length)return;
+      el.innerHTML=items.map(function(i){
+        return '<a href="'+i.href+'" style="display:block;padding:10px 14px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);font-size:13px;transition:border-color .15s"'
+          +' onmouseover="this.style.borderColor='rgba(59,130,246,0.5)'" onmouseout="this.style.borderColor='var(--border)'">'
+          +'<strong>'+i.name+'</strong>'
+          +(i.stat?' <span style="color:var(--text-faint);font-size:11px">'+i.stat+'</span>':'')
+          +'</a>';
+      }).join('');
+    }
+    // Try cache first
+    try{
+      var c=JSON.parse(localStorage.getItem(CK)||'null');
+      if(c&&Date.now()-c.ts<TTL){renderLinks(document.getElementById('city-cross-links'),c.cities);renderLinks(document.getElementById('role-cross-links'),c.roles);return;}
+    }catch(e){}
+    // Fetch top cities
+    fetch(SB+'/city_pages?select=slug,city_name,state,job_count,median_salary&order=job_count.desc&limit=15',{headers:hd})
+      .then(function(r){return r.json()})
+      .then(function(cities){
+        var cityItems=cities.map(function(c){
+          return{href:'/jobs-in/'+c.slug,name:c.city_name+(c.state?', '+c.state:''),stat:n(c.job_count)+' jobs'+(c.median_salary?' · '+sal(c.median_salary):'')};
+        });
+        renderLinks(document.getElementById('city-cross-links'),cityItems);
+        // Hardcoded top roles (same as SSR renderTrendsRelated)
+        var roles=[
+          {s:'software-engineer',n:'Software Engineer'},{s:'product-manager',n:'Product Manager'},
+          {s:'data-scientist',n:'Data Scientist'},{s:'data-analyst',n:'Data Analyst'},
+          {s:'data-engineer',n:'Data Engineer'},{s:'ux-designer',n:'UX Designer'},
+          {s:'devops-engineer',n:'DevOps Engineer'},{s:'sales-representative',n:'Sales'},
+          {s:'project-manager',n:'Project Manager'},{s:'marketing-manager',n:'Marketing Manager'},
+          {s:'account-manager',n:'Account Manager'},{s:'customer-success',n:'Customer Success'},
+          {s:'financial-analyst',n:'Financial Analyst'},{s:'recruiter',n:'Recruiter'},
+          {s:'qa-engineer',n:'QA Engineer'}
+        ];
+        var roleItems=roles.map(function(r){return{href:'/trends/'+r.s,name:r.n+' Trends'};});
+        renderLinks(document.getElementById('role-cross-links'),roleItems);
+        // Cache
+        try{localStorage.setItem(CK,JSON.stringify({ts:Date.now(),cities:cityItems,roles:roleItems}));}catch(e){}
+      }).catch(function(){});
+  })();
 </script>
 </body>
 </html>
