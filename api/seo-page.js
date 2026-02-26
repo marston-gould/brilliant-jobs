@@ -1027,6 +1027,77 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
   <script id="seo-chart-data" type="application/json">${chartData}</script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script src="/seo-charts.js"></script>
+  <script>
+  /* Block 7 — Pill conversion flow */
+  (function() {
+    var SB_KEY = 'sb-qojhagupdnbtomfoxnsf-auth-token';
+    var metro = document.querySelector('link[rel="canonical"]');
+    var metroSlug = metro ? metro.href.replace(/.*\/jobs-in\//, '').split('/')[0] : '';
+
+    function isLoggedIn() {
+      try { return !!localStorage.getItem(SB_KEY); } catch(e) { return false; }
+    }
+
+    function trackPill(term, type, action) {
+      if (window.posthog) posthog.capture('seo_pill_click', { term: term, pill_type: type, action: action, metro: metroSlug, page: location.pathname });
+    }
+
+    function goToDashboard(term, type) {
+      var url = '/dashboard?seo_pill=' + encodeURIComponent(term) + '&seo_type=' + encodeURIComponent(type);
+      if (metroSlug) url += '&seo_metro=' + encodeURIComponent(metroSlug);
+      window.location.href = url;
+    }
+
+    /* Lightweight signup modal */
+    function showSignupModal(term, type) {
+      if (document.getElementById('seo-signup-modal')) return;
+      var overlay = document.createElement('div');
+      overlay.id = 'seo-signup-modal';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+      overlay.innerHTML =
+        '<div style="background:#fff;border-radius:16px;padding:40px 32px;max-width:420px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative;">' +
+          '<button id="seo-modal-close" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;line-height:1;" aria-label="Close">&times;</button>' +
+          '<div style="width:56px;height:56px;background:linear-gradient(135deg,#4d8eff,#7c3aed);border-radius:14px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;">' +
+            '<span style="color:#fff;font-weight:800;font-size:24px;font-family:Outfit,sans-serif;">B</span>' +
+          '</div>' +
+          '<h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#1e293b;font-family:Outfit,sans-serif;">Add &ldquo;' + term.replace(/</g,'&lt;') + '&rdquo; to Your Search</h2>' +
+          '<p style="margin:0 0 24px;color:#64748b;font-size:14px;line-height:1.5;">Create a free account to save this as a search filter and get notified about matching jobs.</p>' +
+          '<a href="/dashboard?seo_pill=' + encodeURIComponent(term) + '&seo_type=' + encodeURIComponent(type) + (metroSlug ? '&seo_metro=' + encodeURIComponent(metroSlug) : '') + '&signup=1" ' +
+            'style="display:block;background:linear-gradient(135deg,#4d8eff,#5b6cf0);color:#fff;border:none;border-radius:10px;padding:14px 24px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;font-family:Outfit,sans-serif;margin-bottom:12px;">Get Started Free</a>' +
+          '<a href="/dashboard?seo_pill=' + encodeURIComponent(term) + '&seo_type=' + encodeURIComponent(type) + (metroSlug ? '&seo_metro=' + encodeURIComponent(metroSlug) : '') + '" ' +
+            'style="color:#4d8eff;font-size:13px;text-decoration:none;font-family:Outfit,sans-serif;">Already have an account? Log in</a>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+      document.getElementById('seo-modal-close').addEventListener('click', function() { overlay.remove(); });
+      document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', esc); } });
+    }
+
+    /* Delegate pill-add clicks */
+    document.addEventListener('click', function(e) {
+      var btn = e.target.closest('.pill-add');
+      if (!btn) return;
+      e.preventDefault();
+      var pill = btn.closest('.seo-hook-pill');
+      if (!pill) return;
+      var label = pill.querySelector('.pill-label');
+      var term = label ? label.textContent.trim() : '';
+      var type = pill.dataset.type || 'title';
+      if (!term) return;
+
+      trackPill(term, type, isLoggedIn() ? 'filter' : 'signup');
+
+      if (isLoggedIn()) {
+        // Show checkmark, then redirect
+        btn.classList.add('added');
+        btn.textContent = '';
+        setTimeout(function() { goToDashboard(term, type); }, 600);
+      } else {
+        showSignupModal(term, type);
+      }
+    });
+  })();
+  </script>
 </body>
 </html>`;
 }
