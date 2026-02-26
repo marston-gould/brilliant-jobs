@@ -14,6 +14,9 @@ function renderSortPills() {
     return true;
   });
 
+  // Clear existing pills before re-rendering
+  container.querySelectorAll('.sort-pill').forEach(p => p.remove());
+
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
