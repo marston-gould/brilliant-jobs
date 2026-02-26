@@ -205,6 +205,84 @@ serve(async (req: Request) => {
       }
     }
 
+    // ─── Scan 5: Browser fingerprint cluster detection ───
+    // Flag referrals where multiple referred users share the same fingerprint
+    const { data: fpClusters } = await sb.rpc('exec_sql', {
+      query: `
+        SELECT browser_fingerprint, referrer_id, COUNT(*) as fp_count
+        FROM referrals
+        WHERE browser_fingerprint IS NOT NULL
+          AND browser_fingerprint != ''
+          AND created_at > now() - interval '30 days'
+          AND status NOT IN ('rejected', 'clawed_back')
+        GROUP BY browser_fingerprint, referrer_id
+        HAVING COUNT(*) >= 2
+      `
+    });
+
+    if (fpClusters && Array.isArray(fpClusters)) {
+      for (const cluster of fpClusters) {
+        if (cluster.fp_count >= 3) {
+          // Auto-reject: 3+ referrals with same fingerprint = definite fraud
+          await sb
+            .from('referrals')
+            .update({
+              fraud_score: 0.9,
+              fraud_signals: { fingerprint_cluster: true, fp_count: cluster.fp_count },
+              status: 'rejected',
+              rejected_at: new Date().toISOString(),
+            })
+            .eq('referrer_id', cluster.referrer_id)
+            .eq('browser_fingerprint', cluster.browser_fingerprint)
+            .in('status', ['pending', 'activated']);
+          results.rejected++;
+        } else if (cluster.fp_count >= 2) {
+          // Flag for review: 2 referrals with same fingerprint
+          await sb
+            .from('referrals')
+            .update({
+              fraud_score: sb.raw('LEAST(1.0, fraud_score + 0.3)'),
+              fraud_signals: sb.raw("fraud_signals || '{\"fingerprint_match\": true}'::jsonb"),
+            })
+            .eq('referrer_id', cluster.referrer_id)
+            .eq('browser_fingerprint', cluster.browser_fingerprint)
+            .in('status', ['pending', 'activated']);
+          results.flagged++;
+        }
+      }
+    }
+
+    // ─── Scan 6: Cross-referrer fingerprint check ───
+    // Same person referring themselves from different accounts
+    const { data: crossFp } = await sb.rpc('exec_sql', {
+      query: `
+        SELECT r.browser_fingerprint, p.browser_fingerprint as referrer_fp, r.id as referral_id
+        FROM referrals r
+        JOIN profiles p ON p.id = r.referrer_id
+        WHERE r.browser_fingerprint IS NOT NULL
+          AND p.browser_fingerprint IS NOT NULL
+          AND r.browser_fingerprint = p.browser_fingerprint
+          AND r.created_at > now() - interval '30 days'
+          AND r.status NOT IN ('rejected', 'clawed_back')
+      `
+    });
+
+    if (crossFp && Array.isArray(crossFp)) {
+      for (const match of crossFp) {
+        await sb
+          .from('referrals')
+          .update({
+            fraud_score: 0.95,
+            fraud_signals: { self_referral_fingerprint: true },
+            status: 'rejected',
+            rejected_at: new Date().toISOString(),
+          })
+          .eq('id', match.referral_id)
+          .in('status', ['pending', 'activated']);
+        results.rejected++;
+      }
+    }
+
     return new Response(JSON.stringify({
       status: 'ok',
       timestamp: new Date().toISOString(),
