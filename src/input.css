@@ -2063,20 +2063,6 @@
     .app-view-panel { display: none; }
     .app-view-panel.active { display: block; }
 
-    /* Legacy tab bar (kept for backward compat) */
-    .app-flow-tabs {
-      display: flex; gap: 0; border-block-end: 2px solid var(--border); margin-block-end: 20px;
-    }
-    .app-flow-tab {
-      padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--text-faint);
-      cursor: pointer; border-block-end: 2px solid transparent; margin-block-end: -2px;
-      transition: all 0.15s;
-    }
-    .app-flow-tab:hover { color: var(--text-dim); }
-    .app-flow-tab.active { color: var(--accent); border-block-end-color: var(--accent); }
-    .app-flow-panel { display: none; }
-    .app-flow-panel.active { display: block; }
-
     /* Queue table — aligned with job-table conventions */
     .app-queue-table { width: 100%; border-collapse: collapse; }
     .app-queue-table th {

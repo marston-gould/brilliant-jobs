@@ -561,12 +561,19 @@ function updateGmailUI(connected, email) {
   const ghostBtn = $('#gmail-connect-btn');
   const ghostAddr = $('#ghost-gmail-address');
   const gmailCard = $('#g-gmail-card');
+  const gmailChip = document.getElementById('g-gmail-stat');
   if (ghostConn) ghostConn.style.display = connected ? '' : 'none';
   if (ghostBtn) ghostBtn.style.display = connected ? 'none' : '';
   if (ghostAddr) ghostAddr.textContent = email;
   if (gmailCard) {
     const valEl = gmailCard.querySelector('.stat-val');
     if (valEl) { valEl.textContent = connected ? 'Connected' : 'Not Connected'; valEl.style.color = connected ? 'var(--green)' : 'var(--text-faint)'; }
+  }
+  // Update hero chip
+  if (gmailChip) {
+    gmailChip.textContent = connected ? 'On' : 'Off';
+    gmailChip.className = 'hero-stat-val ' + (connected ? 'hs-green' : 'hs-dim');
+    if (!connected) gmailChip.style.fontSize = '12px';
   }
 }
 
