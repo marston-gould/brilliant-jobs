@@ -629,8 +629,39 @@ window.disconnectGmail = async function() {
 // Init Gmail status on load
 initGmailStatus();
 
-// Q22: Switch between List and Board views in My Applications
+// Q22: Switch between Queue, Pipeline, and History views in My Applications
 window.switchAppView = function(view) {
+  // Toggle active on view toggle buttons
+  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  // Toggle view panels
+  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
+    panel.classList.remove('active');
+  });
+  var target = document.getElementById('app-view-' + view + '-panel');
+  if (target) target.classList.add('active');
+
+  // Close settings panel when switching views
+  var settingsPanel = document.getElementById('app-settings-panel');
+  if (settingsPanel) settingsPanel.style.display = 'none';
+  var settingsBtn = document.getElementById('app-settings-toggle');
+  if (settingsBtn) settingsBtn.classList.remove('active');
+
+  // Trigger pipeline render if switching to pipeline view
+  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+    renderPipeline();
+  }
+
+  localStorage.setItem('bj_app_view', view);
+};
+
+// Restore last app view on init
+(function() {
+  var saved = localStorage.getItem('bj_app_view') || 'queue';
+  if (typeof switchAppView === 'function') switchAppView(saved);
+})();
 
 // Q16-Q19: Resume-First Onboarding
 let _onboardProfile = null;
@@ -794,33 +825,6 @@ function applyProgressiveNav(step) {
     if (prompt) prompt.style.display = 'none';
   }
 })();
-
-
-  const listPanel = document.getElementById('app-view-list-panel');
-  const boardPanel = document.getElementById('app-view-board-panel');
-  const listBtn = document.getElementById('app-view-list');
-  const boardBtn = document.getElementById('app-view-board');
-  if (!listPanel || !boardPanel) return;
-
-  if (view === 'board') {
-    listPanel.style.display = 'none';
-    boardPanel.style.display = '';
-    listBtn.classList.remove('active');
-    boardBtn.classList.add('active');
-    // Move pipeline stages into board panel
-    const stages = document.getElementById('pl-stages-container');
-    const target = document.getElementById('app-view-board-panel');
-    if (stages && target && !target.contains(stages)) {
-      target.appendChild(stages);
-    }
-    if (typeof renderPipeline === 'function') renderPipeline();
-  } else {
-    listPanel.style.display = '';
-    boardPanel.style.display = 'none';
-    listBtn.classList.add('active');
-    boardBtn.classList.remove('active');
-  }
-};
 
 
 
