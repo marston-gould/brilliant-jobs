@@ -2069,5 +2069,32 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(function(e) { console.log('[Merch] Load error:', e); });
 })();
 </script>
+
+<!-- Referral Attribution: capture ref code from URL params and store as cookie -->
+<script>
+(function() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var ref = params.get('ref') || params.get('referral') || params.get('r');
+    if (ref) {
+      // Store referral code in cookie (30-day expiry)
+      var d = new Date(); d.setTime(d.getTime() + 30*24*60*60*1000);
+      document.cookie = 'bj_ref=' + encodeURIComponent(ref) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+      // Also store in localStorage for backup
+      try { localStorage.setItem('bj_ref', ref); } catch(e) {}
+      // Track the referral click
+      if (window.posthog) posthog.capture('referral_link_clicked', { ref_code: ref, source: params.get('utm_source') || 'direct' });
+      console.log('[BJ] Referral code captured:', ref);
+    }
+
+    // Capture referral channel from UTM
+    var channel = params.get('utm_source') || params.get('channel');
+    if (channel) {
+      try { localStorage.setItem('bj_ref_channel', channel); } catch(e) {}
+    }
+  } catch(e) { /* silent */ }
+})();
+</script>
+
 </body>
 </html>
