@@ -1330,6 +1330,526 @@ async function syncSubmissionToPipeline(jobId, status) {
 
 ---
 
+## 6F. Feature F: Extension-Discovered Data → Central Database
+
+### Problem
+
+The extension currently discovers two categories of high-value data that never reach the central database:
+
+1. **LinkedIn job listings** — The Jobs tab scrapes search results (job ID, title, company, location, salary, apply URL) but only stores them in local memory and exports to TSV. These jobs often link to Greenhouse/Lever/Ashby apply pages — the same ATS platforms already in `ats_jobs`. This data is thrown away.
+
+2. **Company discovery from profile scanning** — The scanner extracts LinkedIn company IDs and names from connection profiles and upserts to the `companies` table. But there's no bridge from `companies` (LinkedIn company ID + name) to `ats_boards` / `ats_companies` (ATS board slugs). A connection working at "Stripe" with LinkedIn company ID 2135371 should trigger a check: does Stripe have a Greenhouse/Lever board we're not tracking yet?
+
+Both represent the extension feeding intelligence *back* into the platform's data flywheel.
+
+### 6F.1 — LinkedIn Jobs → `ats_jobs` Pipeline
+
+#### What Changes in the Jobs Tab
+
+Currently `scrapeCurrentPage()` collects: `jobId`, `title`, `company`, `location`, `workplaceType`, `easyApply`, `salary`, `jobUrl`.
+
+After scraping, the data goes to `allJobs[]` in memory → TSV download. We add a parallel push to Supabase.
+
+#### ATS Apply URL Extraction
+
+The key enrichment: when a user clicks into a LinkedIn job detail, the apply button often links to an external ATS page. The extension can extract this.
+
+New injected function for the Jobs tab workflow:
+
+```javascript
+// Injected into LinkedIn tab after job list scrape
+// Visits each job detail page briefly to extract the external apply URL
+async function extractApplyUrls(jobIds) {
+  const results = {};
+
+  for (const jobId of jobIds) {
+    try {
+      // Click the job card to load detail panel (LinkedIn SPA)
+      const card = document.querySelector(
+        `[data-occludable-job-id="${jobId}"], [data-job-id="${jobId}"]`
+      );
+      if (!card) continue;
+      card.click();
+
+      // Wait for detail panel to render
+      await new Promise(r => setTimeout(r, 1500));
+
+      // Look for external apply button
+      const applyBtn = document.querySelector(
+        'a.jobs-apply-button[href*="greenhouse"], ' +
+        'a.jobs-apply-button[href*="lever.co"], ' +
+        'a.jobs-apply-button[href*="ashbyhq"], ' +
+        'a.jobs-apply-button[href*="workable"], ' +
+        'a.jobs-apply-button[href*="recruitee"], ' +
+        'a[data-tracking-control-name="public_jobs_apply-link-offsite"],' +
+        'a.jobs-apply-button--top-card'
+      );
+
+      if (applyBtn) {
+        const href = applyBtn.getAttribute('href') || '';
+        if (href) {
+          results[jobId] = {
+            apply_url: href,
+            ats_source: detectATSFromUrl(href)
+          };
+        }
+      }
+
+      // Also check for "Easy Apply" (LinkedIn native — no ATS URL)
+      const easyApplyBtn = document.querySelector(
+        'button.jobs-apply-button[aria-label*="Easy Apply"]'
+      );
+      if (easyApplyBtn && !results[jobId]) {
+        results[jobId] = {
+          apply_url: `https://www.linkedin.com/jobs/view/${jobId}/`,
+          ats_source: 'linkedin_easy_apply'
+        };
+      }
+
+    } catch (e) {
+      // Silent continue
+    }
+  }
+
+  return results;
+}
+
+function detectATSFromUrl(url) {
+  if (/boards\.greenhouse\.io|job-boards\.greenhouse\.io/.test(url)) return 'greenhouse';
+  if (/jobs\.lever\.co/.test(url)) return 'lever';
+  if (/jobs\.ashbyhq\.com/.test(url)) return 'ashby';
+  if (/workable\.com/.test(url)) return 'workable';
+  if (/recruitee\.com/.test(url)) return 'recruitee';
+  return 'external';
+}
+```
+
+#### Upsert to `ats_jobs`
+
+After scraping + apply URL extraction, push to central DB:
+
+```javascript
+// In popup.js, after scrape loop completes (line ~924)
+// Replace the current "Done!" log with:
+
+addLog('j-log', `Done! ${allJobs.length} total jobs. Syncing to database...`, 'success');
+
+// Extract apply URLs for jobs that have external apply links
+const applyUrls = await chrome.scripting.executeScript({
+  target: { tabId: tab.id },
+  func: extractApplyUrls,
+  args: [allJobs.slice(0, 50).map(j => j.jobId)]  // First 50 to avoid timeout
+});
+const urlMap = applyUrls?.[0]?.result || {};
+
+// Build rows for ats_jobs upsert
+const jobRows = allJobs.map(j => {
+  const applyData = urlMap[j.jobId] || {};
+  return {
+    greenhouse_id: `li_${j.jobId}`,           // Prefix to avoid collision with ATS-native IDs
+    ats_source: applyData.ats_source || 'linkedin',
+    title: j.title,
+    company_name: j.company,
+    location: j.location,
+    loc_type: j.workplaceType
+      ? j.workplaceType.toLowerCase()
+      : null,
+    salary_raw: j.salary || null,
+    url: j.jobUrl,
+    apply_url: applyData.apply_url || j.jobUrl,
+    is_open: true,
+    first_seen_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    discovered_by: 'extension',                // Tag source for analytics
+  };
+}).filter(j => j.title);  // Skip empty
+
+// Batch upsert (500 at a time)
+const BATCH = 500;
+let synced = 0;
+for (let i = 0; i < jobRows.length; i += BATCH) {
+  const batch = jobRows.slice(i, i + BATCH);
+  try {
+    await supabase.upsert('ats_jobs', batch, 'greenhouse_id,ats_source');
+    synced += batch.length;
+  } catch (e) {
+    addLog('j-log', `Sync error at batch ${i}: ${e.message}`, 'error');
+  }
+}
+
+addLog('j-log', `✓ ${synced} jobs synced to central database`, 'success');
+
+// Also extract board slugs from apply URLs for ats_companies discovery
+const newBoards = [];
+for (const [jobId, data] of Object.entries(urlMap)) {
+  if (!data.apply_url || data.ats_source === 'linkedin_easy_apply') continue;
+
+  const slug = extractBoardSlug(data.apply_url, data.ats_source);
+  if (slug) {
+    const job = allJobs.find(j => j.jobId === jobId);
+    newBoards.push({
+      slug,
+      source: data.ats_source,
+      company_name: job?.company || '',
+      discovered_via: 'extension_job_scrape',
+      discovered_at: new Date().toISOString()
+    });
+  }
+}
+
+if (newBoards.length > 0) {
+  try {
+    // Use ignore-duplicates so we don't overwrite existing boards
+    const headers = supabase.headers();
+    headers['Prefer'] = 'return=representation,resolution=ignore-duplicates';
+    await fetch(`${SUPABASE_URL}/rest/v1/ats_companies?on_conflict=slug,source`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(newBoards)
+    });
+    addLog('j-log', `✓ ${newBoards.length} new ATS boards discovered`, 'success');
+  } catch (e) {
+    addLog('j-log', `Board sync error: ${e.message}`, 'error');
+  }
+}
+
+// Log extension event
+logExtensionEvent('job_scrape_complete', {
+  jobs_found: allJobs.length,
+  jobs_synced: synced,
+  boards_discovered: newBoards.length,
+  apply_urls_extracted: Object.keys(urlMap).length
+});
+```
+
+#### Board Slug Extraction Helper
+
+```javascript
+function extractBoardSlug(url, atsSource) {
+  try {
+    const u = new URL(url);
+    switch (atsSource) {
+      case 'greenhouse':
+        // https://boards.greenhouse.io/{slug}/jobs/123
+        const ghMatch = u.pathname.match(/^\/([^/]+)\/jobs/);
+        return ghMatch ? ghMatch[1] : null;
+
+      case 'lever':
+        // https://jobs.lever.co/{slug}/abc-def-123
+        const leverMatch = u.pathname.match(/^\/([^/]+)\//);
+        return leverMatch ? leverMatch[1] : null;
+
+      case 'ashby':
+        // https://jobs.ashbyhq.com/{slug}
+        const ashbyMatch = u.pathname.match(/^\/([^/]+)/);
+        return ashbyMatch ? ashbyMatch[1] : null;
+
+      case 'workable':
+        // https://apply.workable.com/{slug}/j/ABCDEF
+        // or https://{slug}.workable.com/j/ABCDEF
+        if (u.hostname === 'apply.workable.com') {
+          const wMatch = u.pathname.match(/^\/([^/]+)\//);
+          return wMatch ? wMatch[1] : null;
+        }
+        return u.hostname.replace('.workable.com', '');
+
+      case 'recruitee':
+        // https://{slug}.recruitee.com/o/job-title
+        return u.hostname.replace('.recruitee.com', '');
+
+      default:
+        return null;
+    }
+  } catch (e) {
+    return null;
+  }
+}
+```
+
+### 6F.2 — Company Scanner → Board Discovery Pipeline
+
+#### The Gap
+
+The scanner already upserts to the `companies` table:
+```javascript
+// background.js line 819
+await supabase.upsert('companies', companyRows, 'company_id,source_profile_slug,title');
+```
+
+Each row has `company_id` (LinkedIn numeric ID) and `company_name`. But there's no process to check: "Does this company have an ATS board we should be tracking?"
+
+#### Cross-Reference Logic
+
+After the scanner saves companies, trigger a board discovery check. This runs as a server-side Edge Function to avoid rate-limiting from the extension:
+
+New Edge Function: `discover-boards-from-companies`
+
+```typescript
+// supabase/functions/discover-boards-from-companies/index.ts
+//
+// Called periodically (daily pg_cron) or on-demand
+// Finds companies discovered by extension that don't have known ATS boards
+// Attempts to find their Greenhouse/Lever/Ashby boards
+
+serve(async (req) => {
+  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // 1. Find companies discovered by extension that aren't in ats_companies
+  // Use company_name matching since LinkedIn company IDs ≠ ATS board slugs
+  const { data: unmatched } = await sb.rpc('get_unmatched_companies', { limit_count: 100 });
+
+  // RPC function:
+  // SELECT DISTINCT c.company_name, c.company_id, c.company_url
+  // FROM companies c
+  // WHERE NOT EXISTS (
+  //   SELECT 1 FROM ats_companies ac
+  //   WHERE LOWER(ac.company_name) = LOWER(c.company_name)
+  // )
+  // AND c.company_name IS NOT NULL
+  // AND LENGTH(c.company_name) > 2
+  // ORDER BY c.company_name
+  // LIMIT limit_count;
+
+  if (!unmatched || unmatched.length === 0) {
+    return json({ checked: 0, discovered: 0 });
+  }
+
+  let discovered = 0;
+
+  for (const company of unmatched) {
+    // 2. Try to find ATS board by company name slug
+    const slug = company.company_name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    // Try each ATS platform's board URL pattern
+    const checks = [
+      { source: 'greenhouse', url: `https://boards.greenhouse.io/${slug}` },
+      { source: 'lever',      url: `https://jobs.lever.co/${slug}` },
+      { source: 'ashby',      url: `https://jobs.ashbyhq.com/${slug}` },
+    ];
+
+    for (const check of checks) {
+      try {
+        const res = await fetch(check.url, { method: 'HEAD', redirect: 'follow' });
+        if (res.ok) {
+          // Board exists! Upsert to ats_companies
+          await sb.from('ats_companies').upsert({
+            slug,
+            source: check.source,
+            company_name: company.company_name,
+            linkedin_company_id: company.company_id,
+            status: 'new',
+            discovered_via: 'extension_company_scan',
+            discovered_at: new Date().toISOString()
+          }, { onConflict: 'slug,source' });
+
+          discovered++;
+          break;  // Found a board, skip other platforms for this company
+        }
+      } catch (e) {
+        // Connection error, skip
+      }
+
+      // Rate limit: 500ms between requests
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
+  // 3. Log results
+  await sb.from('extension_events').insert({
+    user_id: null,  // System event
+    event_type: 'board_discovery_run',
+    payload: { checked: unmatched.length, discovered }
+  });
+
+  return json({ checked: unmatched.length, discovered });
+});
+```
+
+#### Linking LinkedIn Company IDs to ATS Boards
+
+Add `linkedin_company_id` column to `ats_companies` for future cross-referencing:
+
+```sql
+ALTER TABLE ats_companies
+  ADD COLUMN IF NOT EXISTS linkedin_company_id text,
+  ADD COLUMN IF NOT EXISTS discovered_via text DEFAULT 'dataforseo';
+
+CREATE INDEX IF NOT EXISTS idx_ats_companies_linkedin_id
+  ON ats_companies(linkedin_company_id)
+  WHERE linkedin_company_id IS NOT NULL;
+```
+
+Once populated, the extension can do instant lookups: "User's connection works at LinkedIn company 12345 → we already track their Greenhouse board `stripe`."
+
+#### Extension-Side: Flag New Companies for Discovery
+
+In `background.js`, after the company upsert in `visitNextProfile()`, add a lightweight check:
+
+```javascript
+// After line 819: await supabase.upsert('companies', companyRows, ...)
+
+// Flag new companies for board discovery
+// Only check current employers (most likely to be actively hiring)
+const currentCompanies = experienceData.companies.filter(c => c.is_current);
+if (currentCompanies.length > 0) {
+  const companyNames = currentCompanies.map(c => c.company_name).filter(Boolean);
+
+  // Quick check: do we already have boards for these companies?
+  try {
+    const known = await supabase.select('ats_companies',
+      `select=company_name&company_name=in.(${companyNames.map(n =>
+        encodeURIComponent('"' + n.replace(/"/g, '') + '"')
+      ).join(',')})&limit=100`
+    );
+    const knownNames = new Set((known || []).map(r => r.company_name?.toLowerCase()));
+    const unknownCompanies = currentCompanies.filter(c =>
+      c.company_name && !knownNames.has(c.company_name.toLowerCase())
+    );
+
+    if (unknownCompanies.length > 0) {
+      // Queue for board discovery (insert into a discovery queue table)
+      await supabase.upsert('board_discovery_queue', unknownCompanies.map(c => ({
+        company_name: c.company_name,
+        linkedin_company_id: c.company_id,
+        linkedin_url: c.company_url,
+        source_profile_slug: connection.profile_slug,
+        status: 'pending',
+        queued_at: new Date().toISOString()
+      })), 'linkedin_company_id');
+
+      logMsg(`  📋 ${unknownCompanies.length} companies queued for board discovery`, 'info');
+    }
+  } catch (e) {
+    // Non-fatal — board discovery is opportunistic
+  }
+}
+```
+
+### 6F.3 — Board Discovery Queue Table
+
+```sql
+CREATE TABLE board_discovery_queue (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  company_name text NOT NULL,
+  linkedin_company_id text UNIQUE,
+  linkedin_url text,
+  source_profile_slug text,       -- Which connection led to discovery
+  status text DEFAULT 'pending',  -- 'pending', 'checked', 'found', 'not_found'
+  discovered_board_slug text,     -- Set if a board was found
+  discovered_board_source text,   -- 'greenhouse', 'lever', etc.
+  queued_at timestamptz DEFAULT now(),
+  checked_at timestamptz
+);
+
+CREATE INDEX idx_bdq_status ON board_discovery_queue(status);
+CREATE INDEX idx_bdq_company ON board_discovery_queue(linkedin_company_id);
+```
+
+### 6F.4 — pg_cron Schedule
+
+```sql
+-- Run board discovery daily at 3 AM UTC
+SELECT cron.schedule(
+  'discover-boards-from-companies',
+  '0 3 * * *',
+  $$SELECT net.http_post(
+    url := 'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/discover-boards-from-companies',
+    headers := '{"Authorization": "Bearer SERVICE_ROLE_KEY"}'::jsonb
+  )$$
+);
+```
+
+### 6F.5 — Data Flow Summary
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  EXTENSION → CENTRAL DB DATA FLOWS                              │
+│                                                                 │
+│  Jobs Tab Scrape:                                               │
+│  ┌──────────────┐    ┌──────────────┐    ┌───────────────────┐ │
+│  │ LinkedIn Job  │───▶│ Extract ATS  │───▶│ ats_jobs          │ │
+│  │ Search Results│    │ Apply URLs   │    │ (li_{id} prefix)  │ │
+│  └──────────────┘    └──────┬───────┘    └───────────────────┘ │
+│                             │                                   │
+│                             ▼                                   │
+│                      ┌──────────────┐    ┌───────────────────┐ │
+│                      │ Parse Board  │───▶│ ats_companies     │ │
+│                      │ Slug from URL│    │ (new boards)      │ │
+│                      └──────────────┘    └───────────────────┘ │
+│                                                                 │
+│  Profile Scanner:                                               │
+│  ┌──────────────┐    ┌──────────────┐    ┌───────────────────┐ │
+│  │ Connection   │───▶│ companies    │───▶│ board_discovery   │ │
+│  │ Profile Visit│    │ table        │    │ _queue            │ │
+│  └──────────────┘    └──────────────┘    └───────┬───────────┘ │
+│                                                   │             │
+│                                          pg_cron daily          │
+│                                                   │             │
+│                                                   ▼             │
+│                                          ┌───────────────────┐ │
+│                                          │ discover-boards-  │ │
+│                                          │ from-companies EF │ │
+│                                          └───────┬───────────┘ │
+│                                                   │             │
+│                                                   ▼             │
+│                                          ┌───────────────────┐ │
+│                                          │ ats_companies     │ │
+│                                          │ (validated boards)│ │
+│                                          └───────────────────┘ │
+│                                                                 │
+│  Form Fill Submissions (from Feature B):                        │
+│  ┌──────────────┐    ┌──────────────┐    ┌───────────────────┐ │
+│  │ User clicks  │───▶│ Extension    │───▶│ application_      │ │
+│  │ "Apply"      │    │ fills form   │    │ submissions       │ │
+│  └──────────────┘    └──────────────┘    └───────┬───────────┘ │
+│                                                   │             │
+│                                                   ▼             │
+│                                          ┌───────────────────┐ │
+│                                          │ pipeline_jobs     │ │
+│                                          │ (stage='applied') │ │
+│                                          └───────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 6F.6 — Impact on Existing Infrastructure
+
+| Component | Change |
+|-----------|--------|
+| `popup.js` (Jobs tab) | After scrape loop, upsert to `ats_jobs` + extract apply URLs + discover boards |
+| `background.js` (scanner) | After company upsert, check `ats_companies` for unknowns → queue for discovery |
+| `ats_jobs` table | Add `discovered_by` column (`'refresh'` for existing, `'extension'` for new) |
+| `ats_companies` table | Add `linkedin_company_id`, `discovered_via` columns |
+| New table | `board_discovery_queue` |
+| New Edge Function | `discover-boards-from-companies` |
+| New pg_cron | Daily board discovery at 3 AM UTC |
+
+### 6F.7 — Deduplication Strategy
+
+The `ats_jobs` table uses composite unique `(greenhouse_id, ats_source)`. Extension-discovered jobs use the prefix `li_` on the LinkedIn job ID to avoid collisions:
+
+- Server-side refresh: `greenhouse_id = '4123456789'`, `ats_source = 'greenhouse'`
+- Extension discovery: `greenhouse_id = 'li_4123456789'`, `ats_source = 'greenhouse'`
+
+This means the same job can exist twice — once from server-side refresh (authoritative, with full description HTML) and once from extension discovery (lightweight, with LinkedIn metadata). The server-side version is canonical. A nightly cleanup job can merge these:
+
+```sql
+-- Mark extension-discovered jobs as duplicates if server already has them
+UPDATE ats_jobs SET is_duplicate = true
+WHERE greenhouse_id LIKE 'li_%'
+AND EXISTS (
+  SELECT 1 FROM ats_jobs aj2
+  WHERE aj2.ats_source = ats_jobs.ats_source
+  AND aj2.greenhouse_id = REPLACE(ats_jobs.greenhouse_id, 'li_', '')
+);
+```
+
+However, many LinkedIn jobs won't have server-side equivalents (companies not yet in the board refresh cycle). These extension-discovered jobs fill the gap until the board is picked up by the discovery pipeline.
+
+---
+
 ## 7. Database Schema Changes Summary
 
 ### New Tables
@@ -1341,12 +1861,15 @@ async function syncSubmissionToPipeline(jobId, status) {
 | `extension_events` | Centralized event log for all extension actions |
 | `recruiter_contacts` | Cached recruiter email lookup results |
 | `extension_builds` | Registry of unique builds generated per user |
+| `board_discovery_queue` | Companies found by extension pending ATS board lookup |
 
 ### Modified Tables
 
 | Table | Change |
 |-------|--------|
 | `profiles` | Add `role text DEFAULT 'user'` column |
+| `ats_jobs` | Add `discovered_by text DEFAULT 'refresh'` column |
+| `ats_companies` | Add `linkedin_company_id text`, `discovered_via text DEFAULT 'dataforseo'` columns |
 
 ---
 
@@ -1358,6 +1881,7 @@ async function syncSubmissionToPipeline(jobId, status) {
 |----------|---------|---------|
 | `build-extension` | HTTP POST from download page | Generates unique per-user extension build |
 | `lookup-recruiter` | HTTP POST from dashboard | Finds recruiter contacts via Hunter.io/Apollo |
+| `discover-boards-from-companies` | Daily pg_cron (3 AM UTC) | Checks extension-discovered companies for ATS boards |
 
 ### Modified Edge Functions
 
@@ -1391,6 +1915,15 @@ None — all new functionality is additive.
 - Instrument all existing code paths with event logging
 - Add pipeline sync on submission complete
 - Build admin analytics view for extension events
+- **Add `discovered_by` column to `ats_jobs`**
+- **Add `linkedin_company_id`, `discovered_via` columns to `ats_companies`**
+- **Modify Jobs tab scrape loop to upsert discovered jobs to `ats_jobs`**
+- **Add apply URL extraction from LinkedIn job detail panels**
+- **Add board slug parsing from extracted apply URLs → `ats_companies`**
+- **Create `board_discovery_queue` table**
+- **Modify scanner `visitNextProfile()` to queue unknown companies for discovery**
+- **Build `discover-boards-from-companies` Edge Function**
+- **Add pg_cron schedule for daily board discovery**
 
 ### Phase 4: Recruiter Email Discovery (v2.10.0)
 - Create `recruiter_contacts` table
