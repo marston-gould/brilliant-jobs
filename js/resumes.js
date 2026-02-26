@@ -186,7 +186,7 @@ function renderResumes() {
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
-          <button onclick="archiveResume(${i})" title="Archive — preserves match history and scores. Restore anytime.">\ud83d\udce6</button>
+          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
           <button class="danger" onclick="removeResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
@@ -291,7 +291,6 @@ function renderResumeArchive(archivedResumes) {
 
   section.style.display = '';
   labelEl.textContent = archivedResumes.length + ' archived';
-  labelEl.title = 'Archived resumes keep their match scores and pipeline history. Restore them anytime without losing context.';
 
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
@@ -317,7 +316,7 @@ function renderResumeArchive(archivedResumes) {
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
-      <button class="rc-btn rc-rename" onclick="unarchiveResume(${i})" style="background:var(--accent);">Restore</button>
+      <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
       <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
     </div>`;
   }).join('');
@@ -797,7 +796,7 @@ window.renameResume = function(idx) {
 };
 
 window.removeResume = function(idx) {
-  if (!confirm(`Delete "${resumes[idx].name}"? This permanently removes the file and all match history. Consider archiving instead to preserve your scores.`)) return;
+  if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
   // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
   if (resumes[idx].storagePath && currentUser) {
