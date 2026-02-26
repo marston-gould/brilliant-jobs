@@ -3174,7 +3174,8 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 
   const popup = document.createElement('div');
   popup.className = 'hide-reason-popup';
-  popup.innerHTML = `<h4>Why hide this?</h4>` +
+  popup.innerHTML = `<h4>Why doesn't this belong?</h4>` +
+    `<div style="font-size:10px;color:var(--text-faint);margin:-6px 0 8px;line-height:1.4;">This trains your exclusion filters — hide 3+ and we'll suggest patterns to auto-remove similar jobs.</div>` +
     HIDE_REASONS.map(r =>
       `<button class="hide-reason-btn" data-reason="${r.key}">${r.label}</button>`
     ).join('');
@@ -3258,7 +3259,7 @@ function bjUpdateImproveButton() {
   var count = (typeof hiddenJobIds !== 'undefined' ? hiddenJobIds : []).length;
   if (count >= 3) {
     btn.style.display = '';
-    btn.textContent = '\ud83d\udd27 Improve Filters (' + count + ' hidden)';
+    btn.textContent = '\ud83d\udd27 ' + count + ' hidden \u2014 generate exclusions';
   } else {
     btn.style.display = 'none';
   }
