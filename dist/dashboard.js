@@ -4,7 +4,7 @@
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
  * To bump the version, change ONLY this line.
  */
-var BJ_VERSION = 'v5.00';
+var BJ_VERSION = 'v5.01';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -13220,15 +13220,28 @@ let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
 let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
 let appMode = localStorage.getItem('bj_app_mode') || 'manual';
 
-// Tab switching
-$$('.app-flow-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    $$('.app-flow-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.app-flow-panel').forEach(p => p.classList.remove('active'));
-    $(`#panel-${tab.dataset.panel}`).classList.add('active');
+// ============================================================
+// SETTINGS PANEL — Rules & Notifications
+// ============================================================
+
+window.toggleAppSettings = function() {
+  var panel = document.getElementById('app-settings-panel');
+  var btn = document.getElementById('app-settings-toggle');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !isOpen);
+};
+
+window.switchSettingsTab = function(tab) {
+  document.querySelectorAll('.app-settings-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.settings === tab);
   });
-});
+  var rulesEl = document.getElementById('settings-content-rules');
+  var notifEl = document.getElementById('settings-content-notifications');
+  if (rulesEl) rulesEl.style.display = tab === 'rules' ? 'block' : 'none';
+  if (notifEl) notifEl.style.display = tab === 'notifications' ? 'block' : 'none';
+};
 
 // Mode selection
 $$('.app-mode-select').forEach(btn => {
@@ -13280,10 +13293,44 @@ function renderAppQueue() {
   const pending = appQueue.filter(a => a.status === 'pending' || a.status === 'sent').length;
   const submitted = [...appQueue, ...appHistory].filter(a => a.status === 'submitted').length;
   const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
-  $('#a-queued').textContent = queued;
-  $('#a-pending').textContent = pending;
-  $('#a-submitted').textContent = submitted;
-  $('#a-failed').textContent = failed;
+  const _el = id => document.getElementById(id);
+  if (_el('a-queued')) _el('a-queued').textContent = queued;
+  if (_el('a-pending')) _el('a-pending').textContent = pending;
+  if (_el('a-submitted')) _el('a-submitted').textContent = submitted;
+  if (_el('a-failed')) _el('a-failed').textContent = failed;
+
+  // Hero lifecycle stats
+  const allApps = (typeof appHistory !== 'undefined' && Array.isArray(appHistory)) ? [...appQueue, ...appHistory] : [...appQueue];
+  const totalSent = allApps.filter(a => a.status === 'submitted').length;
+  const responded = allApps.filter(a =>
+    a.ghostStatus === 'responded' || a.pipelineStage === 'responded' ||
+    a.pipelineStage === 'interview' || a.pipelineStage === 'offer'
+  ).length;
+  if (_el('a-response-rate')) {
+    _el('a-response-rate').textContent = totalSent > 0
+      ? Math.round((responded / totalSent) * 100) + '%'
+      : '—';
+  }
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const thisWeek = allApps.filter(a =>
+    a.status === 'submitted' && new Date(a.submittedAt || a.addedAt).getTime() > weekAgo
+  ).length;
+  if (_el('a-this-week')) _el('a-this-week').textContent = thisWeek;
+
+  // Cross-tab ghost intel
+  const ghostStale = allApps.filter(a => {
+    if (a.status !== 'submitted') return false;
+    const days = (Date.now() - new Date(a.submittedAt || a.addedAt).getTime()) / 86400000;
+    return days > 7;
+  });
+  const intelSlot = document.getElementById('app-intel-slot');
+  const intelTitle = document.getElementById('app-intel-title');
+  const intelSub = document.getElementById('app-intel-sub');
+  if (intelSlot && intelTitle && ghostStale.length > 0 && thisWeek > 0) {
+    intelTitle.textContent = 'You sent ' + thisWeek + ' application' + (thisWeek !== 1 ? 's' : '') + ' this week — ' + ghostStale.length + ' ' + (ghostStale.length === 1 ? 'is' : 'are') + ' past the 7-day mark with no response.';
+    intelSub.textContent = 'Review stale applications and take action before they go cold.';
+    intelSlot.style.display = '';
+  }
 
   if (navBadge && appQueue.length > 0) {
     navBadge.style.display = '';
@@ -22732,8 +22779,39 @@ window.disconnectGmail = async function() {
 // Init Gmail status on load
 initGmailStatus();
 
-// Q22: Switch between List and Board views in My Applications
+// Q22: Switch between Queue, Pipeline, and History views in My Applications
 window.switchAppView = function(view) {
+  // Toggle active on view toggle buttons
+  document.querySelectorAll('.app-view-toggle-bar .app-view-toggle').forEach(function(btn) {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+
+  // Toggle view panels
+  document.querySelectorAll('.app-view-panel').forEach(function(panel) {
+    panel.classList.remove('active');
+  });
+  var target = document.getElementById('app-view-' + view + '-panel');
+  if (target) target.classList.add('active');
+
+  // Close settings panel when switching views
+  var settingsPanel = document.getElementById('app-settings-panel');
+  if (settingsPanel) settingsPanel.style.display = 'none';
+  var settingsBtn = document.getElementById('app-settings-toggle');
+  if (settingsBtn) settingsBtn.classList.remove('active');
+
+  // Trigger pipeline render if switching to pipeline view
+  if (view === 'pipeline' && typeof renderPipeline === 'function') {
+    renderPipeline();
+  }
+
+  localStorage.setItem('bj_app_view', view);
+};
+
+// Restore last app view on init
+(function() {
+  var saved = localStorage.getItem('bj_app_view') || 'queue';
+  if (typeof switchAppView === 'function') switchAppView(saved);
+})();
 
 // Q16-Q19: Resume-First Onboarding
 let _onboardProfile = null;
@@ -22897,33 +22975,6 @@ function applyProgressiveNav(step) {
     if (prompt) prompt.style.display = 'none';
   }
 })();
-
-
-  const listPanel = document.getElementById('app-view-list-panel');
-  const boardPanel = document.getElementById('app-view-board-panel');
-  const listBtn = document.getElementById('app-view-list');
-  const boardBtn = document.getElementById('app-view-board');
-  if (!listPanel || !boardPanel) return;
-
-  if (view === 'board') {
-    listPanel.style.display = 'none';
-    boardPanel.style.display = '';
-    listBtn.classList.remove('active');
-    boardBtn.classList.add('active');
-    // Move pipeline stages into board panel
-    const stages = document.getElementById('pl-stages-container');
-    const target = document.getElementById('app-view-board-panel');
-    if (stages && target && !target.contains(stages)) {
-      target.appendChild(stages);
-    }
-    if (typeof renderPipeline === 'function') renderPipeline();
-  } else {
-    listPanel.style.display = '';
-    boardPanel.style.display = 'none';
-    listBtn.classList.add('active');
-    boardBtn.classList.remove('active');
-  }
-};
 
 
 
