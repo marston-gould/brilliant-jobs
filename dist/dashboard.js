@@ -1,26 +1,35 @@
 // === js/version.js ===
 /**
  * Brilliant Jobs — Global Version & Site-Wide Utilities
+ * =====================================================
  * SINGLE SOURCE OF TRUTH. Every page includes this file.
- * To bump the version, change ONLY this line.
+ * To bump the version, change ONLY the line below.
+ *
+ * DO NOT hardcode version strings anywhere else.
+ * DO NOT add fallback version values in catch blocks.
+ * If this file doesn't load, the version simply doesn't display.
+ * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.10';
+var BJ_VERSION = 'v5.13';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
-    // Version display: any .bj-version or #nav-version
+    // Universal version display: any element with class .bj-version
     document.querySelectorAll('.bj-version').forEach(function(el) {
       el.textContent = BJ_VERSION;
     });
-    var nav = document.getElementById('nav-version');
-    if (nav) nav.textContent = BJ_VERSION;
 
-    // Copyright year: any .bj-year element
+    // Catch any id that ends with "-version" or is exactly "version"
+    // This covers: #nav-version, #rm-version, #version, and any future additions
+    document.querySelectorAll('[id$="-version"], [id="version"]').forEach(function(el) {
+      el.textContent = BJ_VERSION;
+    });
+
+    // Copyright year: any .bj-year element or legacy #year
     var year = new Date().getFullYear();
     document.querySelectorAll('.bj-year').forEach(function(el) {
       el.textContent = year;
     });
-    // Also handle legacy id="year" elements
     var legacyYear = document.getElementById('year');
     if (legacyYear) legacyYear.textContent = year;
   });
@@ -40,6 +49,7 @@ var BJ_VERSION = 'v5.10';
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+window.bjSupabase = sb; // Expose for IIFE modules (referrals.js, etc.)
 
 // PostHog analytics (A13)
 window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
@@ -1410,7 +1420,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
   
   if (remotePills.length > 0 && !hasNonRemotePills && textPills.length === 0) {
     // Pure remote search — let buildFilterQuery handle it with ilike
-    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true };
+    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true, _stateCodes: [], _radiusPills: [], _hasRemote: true };
   }
   
   if (shouldSearchRemote) {
@@ -1489,6 +1499,11 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
     excludeIds: new Set(),
     boundingBox,
     isUSSearch,
+    isRemoteOnly: false,
+    // Preserve original search params for SQL-native fallback when ID set is too large
+    _stateCodes: simpleCodes.concat(ambiguousPills.map(p => p.stateCode)),
+    _radiusPills: radiusPills,
+    _hasRemote: remotePills.length > 0 || includeRemote,
   };
 }
 
@@ -1542,8 +1557,10 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // WHERE — use pre-fetched location IDs or bounding box
   if (locationIds && locationIds.isRemoteOnly) {
     // Pure remote search — filter inline instead of using pre-fetched IDs
+    console.log('[BJ] Location filter: remote-only mode');
     query = query.or('location.ilike.Remote%,location.ilike.%remote%,is_remote.eq.true');
   } else if (locationIds && locationIds.includeIds !== null) {
+    console.log(`[BJ] Location filter: ${locationIds.includeIds.length} IDs, boundingBox=${!!locationIds.boundingBox}`);
     if (locationIds.includeIds.length === 0) {
       // No matches — force empty result
       query = query.in('greenhouse_id', ['__NO_MATCH__']);
@@ -1559,8 +1576,38 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         .gte('job_lng', bb.minLng)
         .lte('job_lng', bb.maxLng);
     } else {
-      // Fallback: chunk IDs into batches (use first 200 as approximation)
-      query = query.in('greenhouse_id', locationIds.includeIds.slice(0, 200));
+      // Too many IDs for .in() and no bounding box — use SQL-native location filters
+      // This applies state + radius + remote constraints directly as WHERE clauses
+      console.log(`[BJ] Location filter: SQL-native fallback (${locationIds.includeIds.length} IDs too many for .in())`);
+      const locClauses = [];
+
+      // State-based filtering
+      if (locationIds._stateCodes && locationIds._stateCodes.length > 0) {
+        locClauses.push(...locationIds._stateCodes.map(sc => `loc_state.eq.${sc}`));
+      }
+
+      // Radius-based: generate bounding box per radius pill
+      if (locationIds._radiusPills && locationIds._radiusPills.length > 0) {
+        for (const rp of locationIds._radiusPills) {
+          const latD = rp.radius_mi / 69;
+          const lngD = rp.radius_mi / (69 * Math.cos(rp.lat * Math.PI / 180));
+          locClauses.push(
+            `and(job_lat.gte.${(rp.lat - latD).toFixed(4)},job_lat.lte.${(rp.lat + latD).toFixed(4)},job_lng.gte.${(rp.lng - lngD).toFixed(4)},job_lng.lte.${(rp.lng + lngD).toFixed(4)})`
+          );
+        }
+      }
+
+      // Remote jobs
+      if (locationIds._hasRemote) {
+        locClauses.push('loc_type.eq.remote', 'location.ilike.%remote%');
+      }
+
+      if (locClauses.length > 0) {
+        query = query.or(locClauses.join(','));
+      } else {
+        // Absolute fallback — shouldn't reach here but prevent empty results
+        query = query.in('greenhouse_id', locationIds.includeIds.slice(0, 200));
+      }
     }
 
     // Country disambiguation: if searching US locations, exclude clearly non-US jobs
@@ -1588,18 +1635,39 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       }
     }
   } else if (!locationIds || locationIds.includeIds === null) {
+    // Country name → ISO code mapping for common text pill values
+    const COUNTRY_MAP = {
+      'united states': 'US', 'usa': 'US', 'us': 'US', 'u.s.': 'US', 'u.s.a.': 'US', 'america': 'US',
+      'canada': 'CA', 'united kingdom': 'GB', 'uk': 'GB', 'england': 'GB', 'germany': 'DE',
+      'france': 'FR', 'australia': 'AU', 'india': 'IN', 'ireland': 'IE', 'netherlands': 'NL',
+      'singapore': 'SG', 'japan': 'JP', 'brazil': 'BR', 'spain': 'ES', 'italy': 'IT',
+      'israel': 'IL', 'sweden': 'SE', 'denmark': 'DK', 'norway': 'NO', 'finland': 'FI',
+      'new zealand': 'NZ', 'austria': 'AT', 'switzerland': 'CH', 'belgium': 'BE',
+      'poland': 'PL', 'mexico': 'MX', 'south korea': 'KR', 'korea': 'KR',
+    };
+
     // Location filtering — search both raw, normalized, and FTS
+    // For country names, use loc_country for precise matching
     for (const pill of wh) {
-      if (pill.values.length === 1) {
-        const v = pill.values[0];
-        query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_country.ilike.%${v}%,search_vector.wfts(english).${v}`);
-      } else {
-        const clauses = pill.values.flatMap(v => [
-          `location.ilike.%${v}%`,
-          `loc_display.ilike.%${v}%`,
-          `search_vector.wfts(english).${v}`,
-        ]);
-        query = query.or(clauses.join(','));
+      const allClauses = [];
+      for (const v of pill.values) {
+        const lower = v.toLowerCase().trim();
+        const countryCode = COUNTRY_MAP[lower];
+        if (countryCode) {
+          // Country name detected — use loc_country match + location ilike for coverage
+          allClauses.push(`loc_country.eq.${countryCode}`, `location.ilike.%${v}%`);
+        } else {
+          // Regular location text — search across all location fields
+          allClauses.push(
+            `location.ilike.%${v}%`,
+            `loc_display.ilike.%${v}%`,
+            `loc_country.ilike.%${v}%`,
+            `search_vector.wfts(english).${v}`
+          );
+        }
+      }
+      if (allClauses.length > 0) {
+        query = query.or(allClauses.join(','));
       }
     }
     if (tuning.usOnly) {
