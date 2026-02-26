@@ -825,6 +825,42 @@ function updateJobStats(total, companies, newSinceLogin, newToday) {
   if ($('#j-new-login')) $('#j-new-login').textContent = newSinceLogin.toLocaleString();
   $('#j-new').textContent = newToday.toLocaleString();
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
+  // Update intel insight card with contextual data
+  updateIntelInsight(total, companies, newToday);
+}
+
+function updateIntelInsight(total, companies, newToday) {
+  var titleEl = $('#intel-insight-title');
+  var subEl = $('#intel-insight-sub');
+  if (!titleEl) return;
+
+  // Build contextual insight from actual filter/job data
+  var jobs = typeof currentJobs !== 'undefined' ? currentJobs : [];
+  var withSalary = jobs.filter(function(j) { return j.salary_min > 0; });
+  var filterName = '';
+  try {
+    var sf = typeof savedFilters !== 'undefined' ? savedFilters : [];
+    var active = sf.find(function(f) { return f.active; });
+    if (active) filterName = active.name || '';
+  } catch(e) {}
+
+  if (withSalary.length >= 3) {
+    // Salary insight
+    var salaries = withSalary.map(function(j) { return j.salary_max || j.salary_min; }).sort(function(a,b) { return a - b; });
+    var p25 = salaries[Math.floor(salaries.length * 0.25)];
+    var p75 = salaries[Math.floor(salaries.length * 0.75)];
+    var fmtK = function(n) { return '$' + Math.round(n / 1000) + 'k'; };
+    titleEl.textContent = 'Roles in your feed pay ' + fmtK(p25) + ' – ' + fmtK(p75);
+    subEl.textContent = 'Based on ' + withSalary.length + ' of ' + total + ' jobs with salary data' + (filterName ? ' in "' + filterName + '"' : '');
+  } else if (newToday > 0) {
+    // New jobs insight
+    titleEl.textContent = newToday + ' new ' + (newToday === 1 ? 'job' : 'jobs') + ' posted today across ' + companies + ' companies';
+    subEl.textContent = 'Fresh listings sourced direct from company career pages' + (filterName ? ' matching "' + filterName + '"' : '');
+  } else {
+    // Fallback
+    titleEl.textContent = total + ' jobs across ' + companies + ' companies in your feed';
+    subEl.textContent = 'All sourced direct from company career pages — no recycled posts';
+  }
 }
 
 // Format salary for display — shows currency prefix for non-USD, rate suffix for non-annual
