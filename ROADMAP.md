@@ -1041,6 +1041,9 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-26 | 47 | H1–H5 | **Phase 47: Hotfixes & UX Polish (v5.06, v5.11–v5.17).** Settings gear panel fix (v5.06). WHEN filter + pagination + result capping fix (v5.11). `united states` WHERE pill → `loc_country=US` (v5.11.1). Version system hardening — zero hardcoded strings, version.js sole source (v5.12). Referral Supabase init fix (v5.13). Toast notifications for 44 remaining error paths across 5 modules (v5.14). innerHTML XSS audit — 26 escapeHtml + 2 DOMPurify across admin.js + keywords.js (v5.15). AES-GCM encryption for PII in localStorage (v5.16). Resume Score Button UX redesign — single "Score Resume" button replaces dual Analyze/✨ Deep, tier-routed modal for Pro (v5.17). |
+| 2026-02-26 | 46 | R1–R7 | **Phase 46: Referral Program (v5.07–v5.10).** Full referral system: DB schema (referrals, referral_rewards, referral_fraud_flags) + RPCs + triggers (v5.07). Referral Hub page with stats, sharing, badges, leaderboard (v5.08). 3 Edge Functions: process-referral-reward, check-referral-activation, referral-fraud-scan + pg_cron (v5.09). Fraud detection: fingerprint.js, referral-capture.js, clawback EF, admin Referrals panel with ban mgmt (v5.10). Attribution on login hook. Bundle rebuilt with all referral modules. |
+| 2026-02-26 | 45 | V1–V14 | **Phase 45: Visual Consistency Pass (v5.01–v5.05).** 14 items. Applications/Pipeline page visual overhaul, resume delete flow with download-before-delete modal, WHEN filter column correction back to first_seen_at, app mode button contrast fix. |
 | 2026-02-25 | 43 | CP1–CP9 | **Phase 43: City Pages + Internal Linking Sprint (v4.91–v4.93).** Branch: `feat/city-pages-linking-sprint` cherry-picked to main. DB: city_pages table (2,178 rows seeded), city_popular_pills (Phase 2, empty). refresh-city-stats Edge Function deployed (6h cron). SSR enhancements: hook pills on metro pages, server-rendered role links, "Compare Other Cities" cross-links, hub page city/trend grids. Homepage "Browse by City" + "Trending Roles" sections. Data Lab city browse panel. JSON-LD structured data: Place + ItemList(JobPosting) + FAQPage per metro, Occupation + FAQPage per role. Block 7 pill conversion flow: signup modal for anon, checkmark + filter injection for auth, dashboard deep-link handler with toast. PostHog tracking: seo_pill_click, seo_pill_applied. ✅ COMPLETE — all blocks deployed to production. |
 | 2026-02-25 | 37-BUILD | A1,A2,A5,A6,B1,B5,C1-C4,D1 | **Content Engine Build Sprint (v4.67–v4.77).** Flipped 12/17 Phase 37 items to done. Company SEO pages (/company/:slug), College Major Outcomes, Content Freshness Rotation, Filter-Driven Trend Indicators, Metro Comparison + NY Fed Crossover editorial templates, Dashboard Insight Cards, Email Digest, Landing Page Merch, Blog Discovery, Enrichment Coverage Dashboard. 4 remaining: A4 (Remote Tracker), B2 (Multi-Dim), B3 (Economic), B4 (Benchmark), B6 (Annual Report). |
 | 2026-02-25 | CE-v3 | — | **Content Engine Handoff v3 roadmap update (v4.71).** Added 17 items across 4 categories from Pod 1 CE Handoff v3: Section A Permanent Pages (6 items: company pages, college outcomes, jobs-by-location, remote tracker, freshness rotation, trend indicators), Section B Topical Coverage (6 items: metro/multi-dim/economic/benchmark/NY Fed stories, annual report), Section C Integration Wiring (4 NEW items: dashboard insight cards, email digest, landing page merch, blog discovery), Section D Enrichment Monitoring (1 NEW item: coverage dashboard). Supersedes v4.70 removal — items re-added with proper categorization. Total: 37-52 dev days. |
@@ -1887,3 +1890,65 @@ Phase 44 item S9 changed WHEN from `first_seen_at` to `updated_at`, reasoning th
 | Console log | Dashboard v5.05 loaded |
 
 **Phase 45 total: 14 items | 14 complete ✅. Version: v5.01→v5.05. Fully deployed to production.**
+
+---
+
+## Phase 46: Referral Program (v5.07–v5.10) — 2026-02-26 ✅ COMPLETE
+
+### Referral System (v5.07–v5.10)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| R1 | Referral DB schema + RPCs + triggers | v5.07 | ✅ | `referrals`, `referral_rewards`, `referral_fraud_flags` tables. `create_referral_code`, `record_referral_click`, `process_referral_reward` RPCs. RLS policies. Seed data for reward tiers. |
+| R2 | Referral Hub page + sharing UX | v5.08 | ✅ | Dashboard Referral Hub section with stats cards, one-click sharing (LinkedIn, email, text), pre-written messages, copy-to-clipboard. Badge system with milestone levels. Opt-in leaderboard. |
+| R3 | Referral reward + activation Edge Functions | v5.09 | ✅ | `process-referral-reward` (grant rewards on activation), `check-referral-activation` (verify onboarding), `referral-fraud-scan` (detect duplicate IPs, same-device, self-referrals). pg_cron scheduled. |
+| R4 | Referral fraud detection + clawback | v5.10 | ✅ | `fingerprint.js` for browser fingerprinting. `referral-capture.js` for landing page URL param + cookie attribution. `referral-reward-clawback` EF for reversing fraudulent rewards. Phase 4 migration with clawback status, fingerprint columns, click tracking RPC. |
+| R5 | Referrals admin panel | v5.10 | ✅ | Admin tab with fraud queue, clawback controls, ban management. Referral metrics visibility for CPO. |
+| R6 | Referral attribution on login | v5.10 | ✅ | Login hook checks for referral cookie/URL param and links new user to referrer. Attribution persists across sessions. |
+| R7 | Bundle rebuild for referral modules | v5.10 | ✅ | `fingerprint.js` + `referral-capture.js` + `referrals.js` added to build pipeline. `dist/dashboard.min.js` rebuilt with all referral modules. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.10 |
+| Console log | Dashboard v5.10 loaded |
+
+**Phase 46 total: 7 items | 7 complete ✅. Version: v5.07→v5.10. Fully deployed to production.**
+
+---
+
+## Phase 47: Hotfixes & UX Polish (v5.06, v5.11–v5.17) — 2026-02-26 ✅ COMPLETE
+
+### Settings & Feed Fixes (v5.06, v5.11)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H1 | Settings gear panel positioning fix | v5.06 | ✅ | `#app-settings-panel` was nested inside `#app-view-queue-panel`. Moved to sibling of view panels + `scrollIntoView`. Now appears directly below gear button regardless of active view. |
+| H2 | WHEN filter + pagination + result capping fix | v5.11 | ✅ | Root cause: >200 location IDs caused `.in()` cap at 200 random jobs. Fix: SQL-native WHERE clauses for state pills (`loc_state.eq.XX`), radius pills (bounding box), country pills (`loc_country=US`). WHEN filter, pagination, and "today's jobs" now work correctly at scale. |
+| H2a | `united states` WHERE pill fix | v5.11.1 | ✅ | `COUNTRY_MAP` maps common country names to ISO codes. `'united states'` → `loc_country.eq.US` instead of `location.ilike.%united states%` (was missing 117K of 163K US jobs). |
+
+### Infrastructure Hardening (v5.12–v5.16)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H3 | Version system hardening | v5.12 | ✅ | Zero hardcoded version strings remain. `version.js` sole source of truth with universal `[id$="-version"]` selector. Removed hardcoded versions from `dashboard.html` (v4.91), `roadmap.html` (v4.12 fallback), `debug-resume.html` (v2.61b). Added `version.js` to 3 missing pages. |
+| H3a | Referral Supabase init fix | v5.13 | ✅ | `referrals.js` IIFE tried `window.bjSupabase` (undefined). Fix: expose `sb` as `window.bjSupabase` in `globals.js`. Fixes 4 call sites. Bundle rebuilt. |
+| H4 | Toast notifications for remaining error paths | v5.14 | ✅ | 44 `toastWarning`/`toastError` calls added across 5 modules: `pipeline.js` (11), `settings.js` (2), `admin.js` (22), `stats.js` (2), `billing.js` (7). Skipped batch background ops to avoid toast spam. |
+| H4a | innerHTML XSS audit | v5.15 | ✅ | Audited 126 `innerHTML` sites. `admin.js`: 10 new `escapeHtml()` + 1 DOMPurify (user emails, feedback text, referral names, company slugs, content stories). `keywords.js`: 12 new `escapeHtml()` (AI score results, cover letter content, filter names, missing skill terms). |
+| H4b | PII encryption in localStorage | v5.16 | ✅ | `saveUserData()` encrypts PII keys (`bj_resumes`, `bj_readiness`) via AES-GCM. `_flushUserData()` decrypts before Supabase cloud sync. Migration-safe: `decryptFromStorage()` passes through non-encrypted values. |
+
+### Resume Score Button UX Redesign (v5.17)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| H5 | Single "Score Resume" button | v5.17 | ✅ | Replaces dual "Analyze" / "✨ Deep Analyze" buttons. `handleScoreClick()` tier router: Free/Starter → runs Quick Score + contextual upsell card. Pro w/ credits → modal choosing "Quick Score" (free, keyword match) vs "AI Coaching" (5 credits, multi-agent). Pro w/o credits → Free flow + "Buy credits" CTA. Remembers last choice via `bj_score_mode`. 7 PostHog events for upsell funnel. `getUserCredits()` helper. Upsell dismissible 7 days, resets on resume upload. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.17 |
+| Console log | [BJ] Brilliant Jobs Dashboard v5.17 loaded |
+
+**Phase 47 total: 9 items | 9 complete ✅. Version: v5.06→v5.17. Fully deployed to production.**
