@@ -342,18 +342,39 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       }
     }
   } else if (!locationIds || locationIds.includeIds === null) {
+    // Country name → ISO code mapping for common text pill values
+    const COUNTRY_MAP = {
+      'united states': 'US', 'usa': 'US', 'us': 'US', 'u.s.': 'US', 'u.s.a.': 'US', 'america': 'US',
+      'canada': 'CA', 'united kingdom': 'GB', 'uk': 'GB', 'england': 'GB', 'germany': 'DE',
+      'france': 'FR', 'australia': 'AU', 'india': 'IN', 'ireland': 'IE', 'netherlands': 'NL',
+      'singapore': 'SG', 'japan': 'JP', 'brazil': 'BR', 'spain': 'ES', 'italy': 'IT',
+      'israel': 'IL', 'sweden': 'SE', 'denmark': 'DK', 'norway': 'NO', 'finland': 'FI',
+      'new zealand': 'NZ', 'austria': 'AT', 'switzerland': 'CH', 'belgium': 'BE',
+      'poland': 'PL', 'mexico': 'MX', 'south korea': 'KR', 'korea': 'KR',
+    };
+
     // Location filtering — search both raw, normalized, and FTS
+    // For country names, use loc_country for precise matching
     for (const pill of wh) {
-      if (pill.values.length === 1) {
-        const v = pill.values[0];
-        query = query.or(`location.ilike.%${v}%,loc_display.ilike.%${v}%,loc_country.ilike.%${v}%,search_vector.wfts(english).${v}`);
-      } else {
-        const clauses = pill.values.flatMap(v => [
-          `location.ilike.%${v}%`,
-          `loc_display.ilike.%${v}%`,
-          `search_vector.wfts(english).${v}`,
-        ]);
-        query = query.or(clauses.join(','));
+      const allClauses = [];
+      for (const v of pill.values) {
+        const lower = v.toLowerCase().trim();
+        const countryCode = COUNTRY_MAP[lower];
+        if (countryCode) {
+          // Country name detected — use loc_country match + location ilike for coverage
+          allClauses.push(`loc_country.eq.${countryCode}`, `location.ilike.%${v}%`);
+        } else {
+          // Regular location text — search across all location fields
+          allClauses.push(
+            `location.ilike.%${v}%`,
+            `loc_display.ilike.%${v}%`,
+            `loc_country.ilike.%${v}%`,
+            `search_vector.wfts(english).${v}`
+          );
+        }
+      }
+      if (allClauses.length > 0) {
+        query = query.or(allClauses.join(','));
       }
     }
     if (tuning.usOnly) {
