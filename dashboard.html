@@ -1447,38 +1447,53 @@
 
       <!-- ============ APPLICATIONS ============ -->
       <div class="page" id="page-applications">
-        <div class="page-header">
-          <h2>My Applications</h2>
-          <p>Track and manage your job applications <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('applications')">How this works →</a></p>
-        </div>
         <div class="page-body">
-          <!-- List / Board toggle -->
-          <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
-            <button class="btn btn-sm app-view-toggle active" id="app-view-list" onclick="switchAppView('list')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              List
-            </button>
-            <button class="btn btn-sm app-view-toggle" id="app-view-board" onclick="switchAppView('board')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              Board
-            </button>
+
+          <!-- App Hero Banner -->
+          <div class="app-hero">
+            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">Apply with confidence. <span style="color:#f59e0b;">Track everything.</span></div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">Queue jobs for submission, set rules for automation, and monitor every application from send to response. <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('applications')" style="color:rgba(255,255,255,0.7);">How this works →</a></div>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="hero-stat-val" id="a-queued">0</div><div class="hero-stat-label">Queued</div></div>
+              <div class="hero-stat"><div class="hero-stat-val" id="a-submitted">0</div><div class="hero-stat-label">Submitted</div></div>
+              <div class="hero-stat"><div class="hero-stat-val hs-green" id="a-response-rate">&mdash;</div><div class="hero-stat-label">Response Rate</div></div>
+              <div class="hero-stat"><div class="hero-stat-val hs-accent" id="a-this-week">0</div><div class="hero-stat-label">This Week</div></div>
+            </div>
           </div>
 
-          <!-- LIST VIEW (existing application queue) -->
-          <div id="app-view-list-panel">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
-            <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
-            <div class="stat-card"><div class="stat-val" id="a-submitted">0</div><div class="stat-label">Submitted</div></div>
-            <div class="stat-card"><div class="stat-val" id="a-failed">0</div><div class="stat-label">Failed</div></div>
+          <!-- Intel / cross-tab linkage slot -->
+          <div class="app-intel" id="app-intel-slot" style="display:none;">
+            <div class="intel-card" id="app-intel-card">
+              <div class="intel-icon" style="background:rgba(245,158,11,0.08);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <div class="intel-card-body">
+                <span class="intel-card-type" style="background:rgba(245,158,11,0.1);color:var(--warm);">Ghost Alert</span>
+                <div class="intel-card-title" id="app-intel-title"></div>
+                <div class="intel-card-sub" id="app-intel-sub"></div>
+                <a class="intel-card-cta" href="#" onclick="event.preventDefault();showPage('ghost')">Check Ghost Monitor →</a>
+              </div>
+              <button class="intel-dismiss" onclick="this.closest('.app-intel').style.display='none'">&times;</button>
+            </div>
           </div>
 
-          <!-- Application mode tabs -->
-          <div class="app-flow-tabs">
-            <div class="app-flow-tab active" data-panel="queue">Queue</div>
-            <div class="app-flow-tab" data-panel="rules">Rules &amp; Settings</div>
-            <div class="app-flow-tab" data-panel="notifications">Notifications</div>
-            <div class="app-flow-tab" data-panel="history">History</div>
+          <!-- 3-way view toggle: Queue | Pipeline | History + Settings gear -->
+          <div class="app-view-toggle-bar">
+            <button class="btn btn-sm app-view-toggle active" data-view="queue" onclick="switchAppView('queue')">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              Queue
+            </button>
+            <button class="btn btn-sm app-view-toggle" data-view="pipeline" onclick="switchAppView('pipeline')">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Pipeline
+            </button>
+            <button class="btn btn-sm app-view-toggle" data-view="history" onclick="switchAppView('history')">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              History
+            </button>
+            <button class="btn btn-sm app-settings-btn" id="app-settings-toggle" onclick="toggleAppSettings()" title="Rules &amp; Notifications">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            </button>
           </div>
 
           <!-- PENDING APPLICATIONS (auto-apply approvals + rewrite reviews) -->
@@ -1495,8 +1510,11 @@
             </div>
           </div>
 
+          <!-- QUEUE VIEW -->
+          <div id="app-view-queue-panel" class="app-view-panel active">
+
           <!-- QUEUE PANEL -->
-          <div class="app-flow-panel active" id="panel-queue">
+          <div id="panel-queue">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
               <div class="card-title" style="margin:0;">Application Queue</div>
               <div style="display:flex;gap:8px;">
@@ -1533,8 +1551,22 @@
             </div>
           </div>
 
+          </div><!-- end app-view-queue-panel -->
+
+          <!-- SETTINGS PANEL (collapsible — Rules + Notifications) -->
+          <div class="app-settings-panel" id="app-settings-panel" style="display:none;">
+            <div class="app-settings-header">
+              <div style="font-size:14px;font-weight:700;color:var(--text);">Application Settings</div>
+              <button class="btn btn-sm btn-secondary" onclick="toggleAppSettings()" style="font-size:10px;padding:3px 10px;">Close</button>
+            </div>
+            <div class="app-settings-tabs">
+              <div class="app-settings-tab active" data-settings="rules" onclick="switchSettingsTab('rules')">Rules</div>
+              <div class="app-settings-tab" data-settings="notifications" onclick="switchSettingsTab('notifications')">Notifications</div>
+            </div>
+
+            <div class="app-settings-content" id="settings-content-rules">
           <!-- RULES PANEL -->
-          <div class="app-flow-panel" id="panel-rules">
+          <div id="panel-rules">
             <div class="card">
               <div class="card-title">Default Application Mode</div>
               <div class="card-sub">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
@@ -1812,9 +1844,11 @@
             </div>
 
           </div>
+            </div><!-- end settings-content-rules -->
 
+            <div class="app-settings-content" id="settings-content-notifications" style="display:none;">
           <!-- NOTIFICATIONS PANEL -->
-          <div class="app-flow-panel" id="panel-notifications">
+          <div id="panel-notifications">
 
             <!-- Section 2: Notification Preferences Matrix -->
             <div class="card">
@@ -2147,9 +2181,11 @@
               </div>
             </div>
           </div>
+            </div><!-- end settings-content-notifications -->
+          </div><!-- end app-settings-panel -->
 
-          <!-- HISTORY PANEL -->
-          <div class="app-flow-panel" id="panel-history">
+          <!-- HISTORY VIEW -->
+          <div id="app-view-history-panel" class="app-view-panel">
             <div style="overflow-x:auto;">
               <table class="app-queue-table">
                 <thead>
@@ -2240,16 +2276,10 @@
               <div id="notif-log-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
             </div>
           </div>
-          </div><!-- end app-view-list-panel -->
+          </div><!-- end app-view-history-panel -->
 
-          <!-- BOARD VIEW (pipeline stages) -->
-          <div id="app-view-board-panel" style="display:none;">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
-            </div>
+          <!-- PIPELINE VIEW (pipeline stages) -->
+          <div id="app-view-pipeline-panel" class="app-view-panel">
             <div class="pl-filter-bar">
               <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</label>
               <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
@@ -2264,19 +2294,18 @@
 
       <!-- ============ GHOST MONITOR ============ -->
       <div class="page" id="page-ghost">
-        <div class="page-header">
-          <h2>Ghost Monitor</h2>
-          <p>Track response rates and expose companies that ghost applicants <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('ghost')">How this works →</a></p>
-        </div>
         <div class="page-body">
-          <div class="stat-grid">
-            <div class="stat-card"><div class="stat-val" id="g-active">0</div><div class="stat-label">Active Applications</div></div>
-            <div class="stat-card"><div class="stat-val" id="g-avg-wait">—</div><div class="stat-label">Avg Days Waiting</div></div>
-            <div class="stat-card"><div class="stat-val" id="g-likely">0</div><div class="stat-label">Likely Ghosted</div></div>
-            <div class="stat-card"><div class="stat-val" id="g-ghosted">0</div><div class="stat-label">Confirmed Ghosted</div></div>
-            <div class="stat-card" id="g-gmail-card">
-              <div class="stat-val" style="font-size:14px;color:var(--text-dim);">Not Connected</div>
-              <div class="stat-label">Gmail Status</div>
+
+          <!-- Ghost Hero Banner -->
+          <div class="ghost-hero">
+            <div style="font-size:18px;font-weight:800;margin-bottom:4px;">Silence is data. <span style="color:#f59e0b;">We track it.</span></div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">Every application scored by response likelihood &mdash; powered by time elapsed, listing status, and company history. <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('ghost')" style="color:rgba(255,255,255,0.7);">How this works →</a></div>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="hero-stat-val" id="g-active">0</div><div class="hero-stat-label">Active</div></div>
+              <div class="hero-stat"><div class="hero-stat-val" id="g-avg-wait">&mdash;</div><div class="hero-stat-label">Avg Days</div></div>
+              <div class="hero-stat"><div class="hero-stat-val hs-accent" id="g-likely">0</div><div class="hero-stat-label">Likely Ghosted</div></div>
+              <div class="hero-stat"><div class="hero-stat-val" style="color:#ef4444;" id="g-ghosted">0</div><div class="hero-stat-label">Confirmed</div></div>
+              <div class="hero-stat" id="g-gmail-chip"><div class="hero-stat-val hs-dim" id="g-gmail-stat" style="font-size:12px;">Off</div><div class="hero-stat-label">Gmail</div></div>
             </div>
           </div>
           <div class="card">
