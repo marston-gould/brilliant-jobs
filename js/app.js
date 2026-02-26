@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.83';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
+// BJ_VERSION is defined in js/version.js (single source of truth)
+// version.js auto-populates #nav-version and .bj-version elements
 
 // Auth
 async function init() {
@@ -8,8 +8,6 @@ async function init() {
   currentUser = session.user;
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
-  const vEl = document.getElementById('nav-version');
-  if (vEl) vEl.textContent = BJ_VERSION;
 
 // Pre-warm static ref table caches (v3.84)
 if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
