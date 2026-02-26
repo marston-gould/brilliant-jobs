@@ -134,7 +134,7 @@
         <div class="mark">B</div>
         <div class="nav-brand-text">
           <h1>Brilliant Jobs</h1>
-          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.83</span></span>
+          <span>Dashboard <span id="nav-version" style="font-size:9px;">v4.84</span></span>
         </div>
         <div class="sparkle s1"></div>
         <div class="sparkle s2"></div>
@@ -1454,6 +1454,20 @@
             <div class="app-flow-tab" data-panel="history">History</div>
           </div>
 
+          <!-- PENDING APPLICATIONS (auto-apply approvals + rewrite reviews) -->
+          <div id="pending-apps-panel" class="card" style="display:none;margin-bottom:16px;border-left:3px solid var(--warm);">
+            <div class="pending-apps-header">
+              <div style="display:flex;align-items:center;">
+                <span class="pending-apps-title">Pending Applications</span>
+                <span class="pending-apps-count" id="pending-apps-count">0</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pending-apps-body').classList.toggle('collapsed')" style="font-size:10px;padding:3px 8px;">Toggle</button>
+            </div>
+            <div id="pending-apps-body">
+              <!-- Dynamically rendered by apply-workflow.js -->
+            </div>
+          </div>
+
           <!-- QUEUE PANEL -->
           <div class="app-flow-panel active" id="panel-queue">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -1496,17 +1510,95 @@
           <div class="app-flow-panel" id="panel-rules">
             <div class="card">
               <div class="card-title">Default Application Mode</div>
-              <div class="card-sub">Controls how saved/matched jobs get processed</div>
-              <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                <button class="btn btn-sm app-mode-select active" data-mode="manual" style="border:2px solid var(--accent);">
-                  Manual — I review &amp; click Apply
+              <div class="card-sub">Controls how saved/matched jobs get processed. Can be overridden per filter.</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-top:12px;">
+                <button class="btn btn-sm app-mode-select active" data-mode="manual" style="border:2px solid var(--accent);text-align:left;padding:10px 12px;">
+                  <div style="font-weight:700;font-size:12px;">Manual</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">I review each job and click Apply</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="notify">
-                  Notify — Send me email/SMS, I approve to submit
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="score_gated" style="text-align:left;padding:10px 12px;">
+                  <div style="font-weight:700;font-size:12px;">Score-Gated</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">I click Apply, but low scores get a check first</div>
                 </button>
-                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto">
-                  Auto — Apply automatically when matched
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto" style="text-align:left;padding:10px 12px;">
+                  <div style="font-weight:700;font-size:12px;">Auto-Apply</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Submit my resume automatically</div>
                 </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="score_gated_auto" style="text-align:left;padding:10px 12px;">
+                  <div style="font-weight:700;font-size:12px;">Auto + Score Gate</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Auto-apply only if score meets threshold</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="auto_rewrite" style="text-align:left;padding:10px 12px;">
+                  <div style="font-weight:700;font-size:12px;">Auto + Rewrite</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Auto-rewrite weak resumes, then submit</div>
+                </button>
+                <button class="btn btn-secondary btn-sm app-mode-select" data-mode="autopilot" style="text-align:left;padding:10px 12px;">
+                  <div style="font-weight:700;font-size:12px;">Full Autopilot</div>
+                  <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Score, rewrite, submit — no approval needed</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Score Gate Settings (visible when mode uses scoring) -->
+            <div class="card" id="score-gate-settings">
+              <div class="card-title">Score Gate Settings</div>
+              <div class="card-sub">Controls when the score check fires and what happens below threshold</div>
+              <div class="fas-panel">
+                <div class="fas-row">
+                  <span class="fas-label">Score threshold</span>
+                  <div class="fas-range">
+                    <input type="range" id="fas-threshold" min="0" max="100" value="70" oninput="document.getElementById('fas-threshold-val').textContent=this.value">
+                    <span class="fas-range-val" id="fas-threshold-val">70</span>
+                  </div>
+                </div>
+                <div class="fas-row">
+                  <span class="fas-label">When unscored</span>
+                  <div class="fas-radio-group">
+                    <label class="fas-radio"><input type="radio" name="fas-unscored" value="score_first" checked> Score first</label>
+                    <label class="fas-radio"><input type="radio" name="fas-unscored" value="skip"> Skip</label>
+                    <label class="fas-radio"><input type="radio" name="fas-unscored" value="apply_anyway"> Apply anyway</label>
+                  </div>
+                </div>
+                <div class="fas-row" id="fas-rewrite-row" style="display:none;">
+                  <span class="fas-label">Auto-rewrite below threshold</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="fas-auto-rewrite">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="fas-row" id="fas-rewrite-approval-row" style="display:none;">
+                  <span class="fas-label">Rewrite approval</span>
+                  <div class="fas-radio-group">
+                    <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="approve_before" checked> Review before submit</label>
+                    <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="notify_after"> Notify after submit</label>
+                    <label class="fas-radio"><input type="radio" name="fas-rewrite-approval" value="none"> Silent</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Approval Settings (visible for auto modes) -->
+            <div class="card" id="approval-settings" style="display:none;">
+              <div class="card-title">Approval Settings</div>
+              <div class="card-sub">When auto-applying, do you want a chance to review before submission?</div>
+              <div class="fas-panel">
+                <div class="fas-row">
+                  <span class="fas-label">Require my approval</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="fas-require-approval" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div class="fas-row">
+                  <span class="fas-label">Auto-expire after</span>
+                  <select id="fas-expire-hours" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input);color:var(--text);font-family:var(--sans);font-size:11px;">
+                    <option value="12">12 hours</option>
+                    <option value="24">24 hours</option>
+                    <option value="48" selected>48 hours</option>
+                    <option value="72">72 hours</option>
+                    <option value="168">1 week</option>
+                  </select>
+                </div>
               </div>
             </div>
 
