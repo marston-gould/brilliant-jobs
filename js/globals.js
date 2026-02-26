@@ -561,7 +561,7 @@ var DEFAULT_RADIUS = 30;
 // Job feed state
 var allJobs = [];
 var currentJobs = [];
-var jobSortStack = [{ field: 'updated_at', asc: false }];
+var jobSortStack = [{ field: 'first_seen_at', asc: false }];
 var hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
 var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
 var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');

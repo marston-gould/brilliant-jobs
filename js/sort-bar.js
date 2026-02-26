@@ -30,8 +30,8 @@ function renderSortPills() {
     const label = labelMap[s.field] || s.field;
     const dirLabel = s.asc ? '↑' : '↓';
     const dirTitle = s.asc
-      ? (s.field === 'updated_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
-      : (s.field === 'updated_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
+      ? (s.field === 'first_seen_at' ? 'Oldest first — click to flip' : s.field === 'level' ? 'Lowest first — click to flip' : 'A→Z — click to flip')
+      : (s.field === 'first_seen_at' ? 'Newest first — click to flip' : s.field === 'level' ? 'Highest first — click to flip' : 'Z→A — click to flip');
     const colors = sortColorMap[s.field] || sortColorMap.title;
 
     const pill = document.createElement('span');
@@ -62,7 +62,7 @@ function renderSortPills() {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.idx);
       jobSortStack.splice(idx, 1);
-      if (jobSortStack.length === 0) jobSortStack.push({ field: 'updated_at', asc: false });
+      if (jobSortStack.length === 0) jobSortStack.push({ field: 'first_seen_at', asc: false });
       renderSortPills();
       searchJobs(0);
     });
@@ -210,7 +210,7 @@ $$('.job-table th[data-sort]').forEach(th => {
   th.style.cursor = 'pointer';
   th.addEventListener('click', () => {
     const field = th.dataset.sort;
-    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'updated_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
+    const fieldMap = { title: 'title', company: 'company_name', location: 'location', days: 'first_seen_at', level: 'level', match: 'match', salary: 'salary_max', ghost: 'ghost_rate' };
     const dbField = fieldMap[field] || 'updated_at';
 
     // If already primary sort, toggle direction
