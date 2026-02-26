@@ -858,12 +858,16 @@ async function updateJobStatsFromFilters(filters) {
     const statsPromises = effectiveFilters.flatMap(sf => {
       const locIds = sf._statsLocationIds || null;
 
+      // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
+      // This prevents TOTAL < NEW TODAY which is mathematically impossible
+      const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
       let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q = buildFilterQuery(sf, q, locIds);
+      q = buildFilterQuery(sfNoWhen, q, locIds);
       q = excludeHidden(q);
 
+      // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
       let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q2 = buildFilterQuery(sf, q2, locIds);
+      q2 = buildFilterQuery(sfNoWhen, q2, locIds);
       q2 = excludeHidden(q2);
       q2 = q2.gte('updated_at', last24h.toISOString());
 
