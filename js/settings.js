@@ -153,7 +153,7 @@ async function submitFeedback() {
         const { data: urlData } = sb.storage.from('feedback-uploads').getPublicUrl(path);
         if (urlData?.publicUrl) imageUrls.push(urlData.publicUrl);
       }
-    } catch (e) { console.warn('[BJ] File upload failed:', e); }
+    } catch (e) { console.warn('[BJ] File upload failed:', e); toastError('File upload failed'); }
   }
 
   const payload = {
@@ -187,7 +187,7 @@ async function submitFeedback() {
     $('#fb-form-view').style.display = 'none';
     $('#fb-success-view').style.display = 'flex';
   } catch (e) {
-    console.error('[BJ] Feedback submit error:', e);
+    console.error('[BJ] Feedback submit error:', e); toastError('Failed to submit feedback');
     showToast('Failed to submit feedback. Please try again.', { type: 'error' });
     btn.disabled = false;
     btn.textContent = 'Submit';

@@ -44,7 +44,7 @@ async function loadPendingSignals() {
       posthog.capture('signal_detected', { count: sigCount, sources: sources });
     }
   } catch (e) {
-    console.error('[BJ] Signal load error:', e);
+    console.error('[BJ] Signal load error:', e); toastError('Failed to load pipeline signals');
   }
 }
 
@@ -79,7 +79,7 @@ async function confirmPipelineSignal(signalId, action, correctedStage) {
     await loadPipelineFromSupabase();
     renderPipeline();
   } catch (e) {
-    console.error('[BJ] Signal confirm error:', e);
+    console.error('[BJ] Signal confirm error:', e); toastError('Failed to update signal');
   }
 }
 
@@ -144,7 +144,7 @@ async function loadPipelineFromSupabase() {
     _pipelineLoaded = true;
     console.log('[BJ] Pipeline loaded from Supabase:', data?.length || 0, 'entries');
   } catch (e) {
-    console.error('[BJ] Pipeline load error:', e);
+    console.error('[BJ] Pipeline load error:', e); toastError('Failed to load your pipeline');
     // Fallback: try localStorage if Supabase fails
     _pipelineCache = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
   }
@@ -200,7 +200,7 @@ async function savePipelineEntry(jobId, meta) {
       }
     }
   } catch (e) {
-    console.error('[BJ] Pipeline save error:', e);
+    console.error('[BJ] Pipeline save error:', e); toastError('Failed to save pipeline changes');
   }
 }
 
@@ -282,7 +282,7 @@ async function migratePipelineToSupabase() {
     .upsert(rows, { onConflict: 'user_id, job_id, ats_source' });
 
   if (error) {
-    console.error('[BJ] Pipeline migration error:', error);
+    console.error('[BJ] Pipeline migration error:', error); toastWarning('Pipeline migration encountered an issue');
     return false;
   }
 
@@ -409,7 +409,7 @@ async function unsaveFromPipeline(jobId) {
         .delete()
         .eq('user_id', currentUser.id)
         .eq('job_id', jobId);
-    } catch (e) { console.error('[BJ] Pipeline delete error:', e); }
+    } catch (e) { console.error('[BJ] Pipeline delete error:', e); toastError('Failed to remove pipeline entry'); }
   }
 
   // Update legacy arrays
@@ -848,7 +848,7 @@ async function renderGhostMonitor() {
     tbody.innerHTML = html;
 
   } catch (err) {
-    console.error('[BJ] Ghost monitor error:', err);
+    console.error('[BJ] Ghost monitor error:', err); toastWarning('Ghost monitor failed to load');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
   }
 }
@@ -917,7 +917,7 @@ async function setTrackingMode(jobId, mode) {
   try {
     await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
     renderPipeline();
-  } catch (e) { console.error('[BJ] Tracking mode error:', e); }
+  } catch (e) { console.error('[BJ] Tracking mode error:', e); toastError('Failed to change tracking mode'); }
 }
 
 function showCustomReminder(jobId) {
@@ -930,7 +930,7 @@ function showCustomReminder(jobId) {
   meta.custom_reminder_at = date.toISOString();
   sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => console.error('[BJ] Custom reminder error:', e));
+    .catch(e => { console.error('[BJ] Custom reminder error:', e); toastError('Failed to set reminder'); });
 }
 
 function showStatusNote(jobId) {
@@ -941,7 +941,7 @@ function showStatusNote(jobId) {
   meta.status_note = note || null;
   sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => console.error('[BJ] Status note error:', e));
+    .catch(e => { console.error('[BJ] Status note error:', e); toastError('Failed to save note'); });
 }
 
 // ── Manual Pipeline Entry ────────────────────────────────────
@@ -1033,7 +1033,7 @@ async function saveManualPipelineEntry() {
     renderPipeline();
     console.log('[BJ] Manual pipeline entry added:', manualId);
   } catch (e) {
-    console.error('[BJ] Manual add error:', e);
+    console.error('[BJ] Manual add error:', e); toastError('Failed to add pipeline entry');
     alert('Failed to add: ' + (e.message || 'Unknown error'));
   }
 }

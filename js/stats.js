@@ -155,7 +155,7 @@ async function fetchAndRenderStats() {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
       else { notice.style.display = 'none'; }
     }
-  } catch (err) { console.error('[Stats] Fetch error:', err); showEmptyState('error'); }
+  } catch (err) { console.error('[Stats] Fetch error:', err); toastError('Failed to load stats data'); showEmptyState('error'); }
 }
 
 function getSelectedFilterConfigs() {
@@ -175,7 +175,7 @@ async function fetchFilterData(sf) {
     if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
     q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
     var res = await q;
-    if (res.error) { console.error('[Stats] Query error:', res.error); return []; }
+    if (res.error) { console.error('[Stats] Query error:', res.error); toastWarning('Stats query failed'); return []; }
     return res.data || [];
   } catch (e) { console.error('[Stats] fetchFilterData:', e); return []; }
 }
