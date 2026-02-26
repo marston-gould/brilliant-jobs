@@ -21,6 +21,58 @@ function renderResumes() {
 
   const activeResumes = resumes.filter(r => !r.archived);
   const archivedResumes = resumes.filter(r => r.archived);
+
+  // If no active resumes in localStorage but user is authenticated, attempt cloud recovery
+  if (activeResumes.length === 0 && !renderResumes._syncAttempted && typeof sb !== 'undefined' && typeof currentUser !== 'undefined' && currentUser) {
+    renderResumes._syncAttempted = true;
+    console.log('[resume-render] No active resumes — triggering cloud recovery');
+    (async function() {
+      try {
+        var userId = currentUser.id;
+        var { data: archiveRows, error } = await sb.from('resume_archive')
+          .select('resume_id, display_name, storage_path, is_active, is_archived, file_size_bytes, file_type, created_at, metadata_snapshot')
+          .eq('user_id', userId)
+          .eq('is_active', true);
+        if (error || !archiveRows || archiveRows.length === 0) {
+          console.log('[resume-render] No active resumes in archive either:', error?.message || 'none found');
+          return;
+        }
+        console.log('[resume-render] Found', archiveRows.length, 'active resumes in archive — syncing');
+        var dirty = false;
+        archiveRows.forEach(function(row) {
+          // Check if already exists in resumes array
+          var exists = resumes.some(function(r) { return r.archiveId === row.resume_id || (r.storagePath && r.storagePath === row.storage_path); });
+          if (exists) return;
+          var stub = {
+            id: 'res_sync_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+            name: row.display_name || 'Synced Resume',
+            fileName: row.display_name || 'synced-resume',
+            size: row.file_size_bytes ? (row.file_size_bytes < 1048576 ? Math.round(row.file_size_bytes / 1024) + ' KB' : (row.file_size_bytes / 1048576).toFixed(1) + ' MB') : '—',
+            filterIds: (row.metadata_snapshot && row.metadata_snapshot.filter_ids) || [],
+            uploadedAt: row.created_at ? new Date(row.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+            levelLabel: (row.metadata_snapshot && row.metadata_snapshot.level_label) || '',
+            levelColor: (row.metadata_snapshot && row.metadata_snapshot.level_color) || '',
+            archived: false,
+            extractedText: '',
+            keywords: [],
+            textStatus: 'needs-reextract',
+            storagePath: row.storage_path,
+            archiveId: row.resume_id
+          };
+          resumes.push(stub);
+          dirty = true;
+          console.log('[resume-render] Recovered resume from archive:', row.display_name);
+        });
+        if (dirty) {
+          saveResumes();
+          renderResumes();
+        }
+      } catch (e) {
+        console.warn('[resume-render] Cloud recovery failed:', e);
+      }
+    })();
+  }
+
   countEl.textContent = activeResumes.length;
   archivedEl.textContent = archivedResumes.length;
 

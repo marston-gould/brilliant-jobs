@@ -310,6 +310,15 @@ $$('.nav-item').forEach(item => {
     if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+    // Refresh resumes when switching to resumes tab
+    if (item.dataset.page === 'resumes') {
+      if (typeof renderResumes === 'function') renderResumes();
+      // If active resumes are empty but user may have cloud data, re-reconcile
+      var activeCount = (resumes || []).filter(function(r) { return !r.archived; }).length;
+      if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
+        reconcileResumeArchive();
+      }
+    }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
   });
