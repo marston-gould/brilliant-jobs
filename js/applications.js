@@ -5,15 +5,12 @@ let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
 let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
 let appMode = localStorage.getItem('bj_app_mode') || 'manual';
 
-// Tab switching
-$$('.app-flow-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    $$('.app-flow-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.app-flow-panel').forEach(p => p.classList.remove('active'));
-    $(`#panel-${tab.dataset.panel}`).classList.add('active');
-  });
-});
+// Tab switching — now handled by switchAppView() in app.js
+// Restore last view on load
+(function() {
+  var savedView = localStorage.getItem('bj_app_view') || 'queue';
+  if (typeof switchAppView === 'function') switchAppView(savedView);
+})();
 
 // Mode selection
 $$('.app-mode-select').forEach(btn => {
@@ -60,15 +57,50 @@ function renderAppQueue() {
   const tbody = $('#app-queue-body');
   const navBadge = $('#nav-app-count');
 
-  // Update stat cards
+  // Update hero lifecycle stats
   const queued = appQueue.filter(a => a.status === 'queued').length;
   const pending = appQueue.filter(a => a.status === 'pending' || a.status === 'sent').length;
-  const submitted = [...appQueue, ...appHistory].filter(a => a.status === 'submitted').length;
-  const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
-  $('#a-queued').textContent = queued;
-  $('#a-pending').textContent = pending;
-  $('#a-submitted').textContent = submitted;
-  $('#a-failed').textContent = failed;
+  const allApps = [...appQueue, ...appHistory];
+  const submitted = allApps.filter(a => a.status === 'submitted').length;
+  const failed = allApps.filter(a => a.status === 'failed').length;
+
+  const el = id => document.getElementById(id);
+  if (el('a-queued')) el('a-queued').textContent = queued;
+  if (el('a-submitted')) el('a-submitted').textContent = submitted;
+
+  // Response rate from application lifecycle data
+  const totalSent = allApps.filter(a => a.status === 'submitted').length;
+  const responded = allApps.filter(a =>
+    a.ghostStatus === 'responded' || a.pipelineStage === 'responded' ||
+    a.pipelineStage === 'interview' || a.pipelineStage === 'offer'
+  ).length;
+  if (el('a-response-rate')) {
+    el('a-response-rate').textContent = totalSent > 0
+      ? Math.round((responded / totalSent) * 100) + '%'
+      : '\u2014';
+  }
+
+  // This week count
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const thisWeek = allApps.filter(a =>
+    a.status === 'submitted' && new Date(a.submittedAt || a.addedAt).getTime() > weekAgo
+  ).length;
+  if (el('a-this-week')) el('a-this-week').textContent = thisWeek;
+
+  // Cross-tab ghost intel slot
+  const ghostStale = allApps.filter(a => {
+    if (a.status !== 'submitted') return false;
+    const days = (Date.now() - new Date(a.submittedAt || a.addedAt).getTime()) / 86400000;
+    return days > 7;
+  });
+  const intelSlot = document.getElementById('app-intel-slot');
+  const intelTitle = document.getElementById('app-intel-title');
+  const intelSub = document.getElementById('app-intel-sub');
+  if (intelSlot && intelTitle && ghostStale.length > 0 && thisWeek > 0) {
+    intelTitle.textContent = 'You sent ' + thisWeek + ' application' + (thisWeek !== 1 ? 's' : '') + ' this week \u2014 ' + ghostStale.length + (ghostStale.length === 1 ? ' is' : ' are') + ' past the 7-day mark with no response.';
+    intelSub.textContent = 'Review stale applications and take action before they go cold.';
+    intelSlot.style.display = '';
+  }
 
   if (navBadge && appQueue.length > 0) {
     navBadge.style.display = '';
