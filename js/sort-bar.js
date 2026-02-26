@@ -347,4 +347,72 @@ qbInputWho.addEventListener('input', () => {
 
 
 
+
+
+// ============================================================
+// SKILLS input bindings
+// ============================================================
+const qbInputSkills = $('#qb-input-skills');
+if (qbInputSkills) {
+  qbInputSkills.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+    } else if (e.key === 'Backspace' && qbInputSkills.value === '' && skillsPills.length > 0) {
+      skillsPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputSkills.addEventListener('blur', () => {
+    commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+  });
+  $('#query-builder-skills')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputSkills.focus();
+  });
+}
+
+// ============================================================
+// LEVEL input bindings
+// ============================================================
+const qbInputLevel = $('#qb-input-level');
+if (qbInputLevel) {
+  qbInputLevel.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+    } else if (e.key === 'Backspace' && qbInputLevel.value === '' && levelPills.length > 0) {
+      levelPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputLevel.addEventListener('blur', () => {
+    commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+  });
+  $('#query-builder-level')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputLevel.focus();
+  });
+}
+
+// ============================================================
+// JD CONTAINS input bindings
+// ============================================================
+const qbInputJd = $('#qb-input-jd');
+if (qbInputJd) {
+  qbInputJd.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+    } else if (e.key === 'Backspace' && qbInputJd.value === '' && jdPills.length > 0) {
+      jdPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputJd.addEventListener('blur', () => {
+    commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+  });
+  $('#query-builder-jd')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputJd.focus();
+  });
+}
+
 } // end sort-bar guard
