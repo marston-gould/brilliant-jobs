@@ -1505,6 +1505,7 @@ const features = [
   { s: 'done', n: 'WHEN filter + pagination + result capping fix', d: 'v5.11: Fixed job feed WHEN filter, pagination, and result capping issues.', p: 47 },
   { s: 'done', n: 'Version system hardening', d: 'v5.12: Eliminated all hardcoded version strings. version.js now sole source of truth with universal [id$="-version"] selector. Removed v4.91 from dashboard.html, v4.12 fallback from roadmap.html. Added version.js to 3 missing pages.', p: 47 },
   { s: 'done', n: 'Fix referral Supabase init error + bundle rebuild', d: 'v5.13: Fixed supabaseUrl is required error on Referrals tab. Root cause: referrals.js IIFE tried window.bjSupabase (undefined) then fell back to createClient(window.SUPABASE_URL) which was also undefined. Fix: expose sb as window.bjSupabase in globals.js. Fixes 4 call sites. Bundle rebuilt to v5.13.', p: 47 },
+  { s: 'done', n: 'Toast notifications for error paths', d: 'v5.14: Added user-facing toast notifications to 5 modules: pipeline.js (11), settings.js (2), admin.js (22), stats.js (2), billing.js (7). Total 44 toastError/toastWarning calls alongside existing console.error/warn. Covers: pipeline CRUD failures, billing credit errors, stats load failures, feedback submit errors, admin tab load failures. Intentionally skipped: batch background operations (migration fetch, pipeline fetch) to avoid toast spam.', p: 47 },
 ];
 
 

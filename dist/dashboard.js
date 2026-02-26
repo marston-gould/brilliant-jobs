@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.13';
+var BJ_VERSION = 'v5.14';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -9464,7 +9464,7 @@ async function loadPendingSignals() {
       posthog.capture('signal_detected', { count: sigCount, sources: sources });
     }
   } catch (e) {
-    console.error('[BJ] Signal load error:', e);
+    console.error('[BJ] Signal load error:', e); toastError('Failed to load pipeline signals');
   }
 }
 
@@ -9499,7 +9499,7 @@ async function confirmPipelineSignal(signalId, action, correctedStage) {
     await loadPipelineFromSupabase();
     renderPipeline();
   } catch (e) {
-    console.error('[BJ] Signal confirm error:', e);
+    console.error('[BJ] Signal confirm error:', e); toastError('Failed to update signal');
   }
 }
 
@@ -9564,7 +9564,7 @@ async function loadPipelineFromSupabase() {
     _pipelineLoaded = true;
     console.log('[BJ] Pipeline loaded from Supabase:', data?.length || 0, 'entries');
   } catch (e) {
-    console.error('[BJ] Pipeline load error:', e);
+    console.error('[BJ] Pipeline load error:', e); toastError('Failed to load your pipeline');
     // Fallback: try localStorage if Supabase fails
     _pipelineCache = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
   }
@@ -9620,7 +9620,7 @@ async function savePipelineEntry(jobId, meta) {
       }
     }
   } catch (e) {
-    console.error('[BJ] Pipeline save error:', e);
+    console.error('[BJ] Pipeline save error:', e); toastError('Failed to save pipeline changes');
   }
 }
 
@@ -9702,7 +9702,7 @@ async function migratePipelineToSupabase() {
     .upsert(rows, { onConflict: 'user_id, job_id, ats_source' });
 
   if (error) {
-    console.error('[BJ] Pipeline migration error:', error);
+    console.error('[BJ] Pipeline migration error:', error); toastWarning('Pipeline migration encountered an issue');
     return false;
   }
 
@@ -9829,7 +9829,7 @@ async function unsaveFromPipeline(jobId) {
         .delete()
         .eq('user_id', currentUser.id)
         .eq('job_id', jobId);
-    } catch (e) { console.error('[BJ] Pipeline delete error:', e); }
+    } catch (e) { console.error('[BJ] Pipeline delete error:', e); toastError('Failed to remove pipeline entry'); }
   }
 
   // Update legacy arrays
@@ -10268,7 +10268,7 @@ async function renderGhostMonitor() {
     tbody.innerHTML = html;
 
   } catch (err) {
-    console.error('[BJ] Ghost monitor error:', err);
+    console.error('[BJ] Ghost monitor error:', err); toastWarning('Ghost monitor failed to load');
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--red);padding:32px;">Error loading ghost data: ' + (err.message || 'unknown') + '</td></tr>';
   }
 }
@@ -10337,7 +10337,7 @@ async function setTrackingMode(jobId, mode) {
   try {
     await sb.from('user_pipeline').update({ tracking_mode: mode }).eq('id', meta._dbId);
     renderPipeline();
-  } catch (e) { console.error('[BJ] Tracking mode error:', e); }
+  } catch (e) { console.error('[BJ] Tracking mode error:', e); toastError('Failed to change tracking mode'); }
 }
 
 function showCustomReminder(jobId) {
@@ -10350,7 +10350,7 @@ function showCustomReminder(jobId) {
   meta.custom_reminder_at = date.toISOString();
   sb.from('user_pipeline').update({ custom_reminder_at: date.toISOString() }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => console.error('[BJ] Custom reminder error:', e));
+    .catch(e => { console.error('[BJ] Custom reminder error:', e); toastError('Failed to set reminder'); });
 }
 
 function showStatusNote(jobId) {
@@ -10361,7 +10361,7 @@ function showStatusNote(jobId) {
   meta.status_note = note || null;
   sb.from('user_pipeline').update({ status_note: note || null }).eq('id', meta._dbId)
     .then(() => renderPipeline())
-    .catch(e => console.error('[BJ] Status note error:', e));
+    .catch(e => { console.error('[BJ] Status note error:', e); toastError('Failed to save note'); });
 }
 
 // ── Manual Pipeline Entry ────────────────────────────────────
@@ -10453,7 +10453,7 @@ async function saveManualPipelineEntry() {
     renderPipeline();
     console.log('[BJ] Manual pipeline entry added:', manualId);
   } catch (e) {
-    console.error('[BJ] Manual add error:', e);
+    console.error('[BJ] Manual add error:', e); toastError('Failed to add pipeline entry');
     alert('Failed to add: ' + (e.message || 'Unknown error'));
   }
 }
@@ -14461,7 +14461,7 @@ async function submitFeedback() {
         const { data: urlData } = sb.storage.from('feedback-uploads').getPublicUrl(path);
         if (urlData?.publicUrl) imageUrls.push(urlData.publicUrl);
       }
-    } catch (e) { console.warn('[BJ] File upload failed:', e); }
+    } catch (e) { console.warn('[BJ] File upload failed:', e); toastError('File upload failed'); }
   }
 
   const payload = {
@@ -14495,7 +14495,7 @@ async function submitFeedback() {
     $('#fb-form-view').style.display = 'none';
     $('#fb-success-view').style.display = 'flex';
   } catch (e) {
-    console.error('[BJ] Feedback submit error:', e);
+    console.error('[BJ] Feedback submit error:', e); toastError('Failed to submit feedback');
     showToast('Failed to submit feedback. Please try again.', { type: 'error' });
     btn.disabled = false;
     btn.textContent = 'Submit';
@@ -14666,7 +14666,7 @@ async function fetchAndRenderStats() {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
       else { notice.style.display = 'none'; }
     }
-  } catch (err) { console.error('[Stats] Fetch error:', err); showEmptyState('error'); }
+  } catch (err) { console.error('[Stats] Fetch error:', err); toastError('Failed to load stats data'); showEmptyState('error'); }
 }
 
 function getSelectedFilterConfigs() {
@@ -14686,7 +14686,7 @@ async function fetchFilterData(sf) {
     if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
     q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
     var res = await q;
-    if (res.error) { console.error('[Stats] Query error:', res.error); return []; }
+    if (res.error) { console.error('[Stats] Query error:', res.error); toastWarning('Stats query failed'); return []; }
     return res.data || [];
   } catch (e) { console.error('[Stats] fetchFilterData:', e); return []; }
 }
@@ -15507,7 +15507,7 @@ async function loadBoardHealth() {
     // Load feed health charts
     loadFeedHealthCharts();
   } catch (err) {
-    console.error('[Admin] loadBoardHealth error:', err);
+    console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
   }
 }
 
@@ -15578,7 +15578,7 @@ async function exportBoardsCsv(type) {
 
     if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
   } catch (err) {
-    console.error('[Admin] Export error:', err);
+    console.error('[Admin] Export error:', err); toastError('Export failed');
     if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '⬇ Export ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Boards'; }
@@ -15693,7 +15693,7 @@ async function loadFeedHealthCharts() {
       Object.keys(_fhCharts).forEach(function(k) { if (_fhCharts[k]) _fhCharts[k].resize(); });
     });
   } catch (err) {
-    console.error('[Admin] Feed health charts error:', err);
+    console.error('[Admin] Feed health charts error:', err); toastWarning('Feed health charts failed to load');
   }
 }
 
@@ -15764,7 +15764,7 @@ async function loadRefreshCycle() {
       });
     }
   } catch (err) {
-    console.error('[Admin] loadRefreshCycle error:', err);
+    console.error('[Admin] loadRefreshCycle error:', err); toastWarning('Refresh cycle data failed to load');
   }
 }
 
@@ -15804,7 +15804,7 @@ async function loadCohortTab() {
     // Build cohort filter chips
     renderCohortData(cohorts);
   } catch (err) {
-    console.error('[Admin] loadCohortTab error:', err);
+    console.error('[Admin] loadCohortTab error:', err); toastError('Failed to load cohort data');
   }
 }
 
@@ -16098,7 +16098,7 @@ async function loadUsersTab() {
       }
     }
   } catch (err) {
-    console.error('[Admin] loadUsersTab error:', err);
+    console.error('[Admin] loadUsersTab error:', err); toastError('Failed to load users data');
   }
 }
 
@@ -16711,7 +16711,7 @@ async function triggerSeoSync(tasks) {
     _adminTabInit['seo'] = false;
     loadSeoTab();
   } catch(err) {
-    console.error('[Admin] SEO sync error:', err);
+    console.error('[Admin] SEO sync error:', err); toastError('SEO sync failed');
     if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; }
     alert('Sync failed: ' + err.message);
   }
@@ -16810,7 +16810,7 @@ async function loadRevenueTab(daysBack) {
     window.addEventListener('resize', function() { tierChart.resize(); dailyChart.resize(); });
 
   } catch (err) {
-    console.error('[Admin] loadRevenueTab error:', err);
+    console.error('[Admin] loadRevenueTab error:', err); toastError('Failed to load revenue data');
   }
 }
 
@@ -16879,7 +16879,7 @@ async function loadSurveysTab() {
     renderSurveyRecentTable(d.recent || []);
 
   } catch (err) {
-    console.error('[Admin] loadSurveysTab error:', err);
+    console.error('[Admin] loadSurveysTab error:', err); toastError('Failed to load survey data');
   }
 }
 
@@ -17074,7 +17074,7 @@ async function loadGhostTab() {
     renderAdminGhostChart(stats);
 
   } catch (err) {
-    console.error('[BJ] Ghost admin error:', err);
+    console.error('[BJ] Ghost admin error:', err); toastError('Ghost admin failed to load');
     var tbody = document.getElementById('ag-company-body');
     if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + (err.message || 'unknown') + '</td></tr>';
   }
@@ -17492,7 +17492,7 @@ function renderFeedbackTable() {
 window.updateFeedbackStatus = async function(id, newStatus) {
   var { error } = await sb.from('admin_feedback').update({ status: newStatus }).eq('id', id);
   if (error) {
-    console.error('[Feedback] Status update failed:', error);
+    console.error('[Feedback] Status update failed:', error); toastError('Status update failed');
     if (typeof showToast === 'function') showToast('Status update failed', { type: 'error' });
     return;
   }
@@ -17542,7 +17542,7 @@ window.triggerFeedbackSync = async function() {
     if (typeof showToast === 'function') showToast('Synced: ' + (data.canny_fr || 0) + ' FR, ' + (data.canny_bug || 0) + ' bugs', { type: 'success' });
     loadFeedbackTab(); // Reload
   } catch (e) {
-    console.error('[Feedback] Sync failed:', e);
+    console.error('[Feedback] Sync failed:', e); toastError('Feedback sync failed');
     if (typeof showToast === 'function') showToast('Sync failed: ' + e.message, { type: 'error' });
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '↻ Sync'; }
@@ -18186,7 +18186,7 @@ async function loadAdminSignals() {
       }).join('');
     }
   } catch (e) {
-    console.error('[Admin] Signals tab error:', e);
+    console.error('[Admin] Signals tab error:', e); toastError('Signals tab failed to load');
   }
 }
 
@@ -18320,7 +18320,7 @@ async function loadReferralsAdminTab() {
     }
 
   } catch (e) {
-    console.error('[Admin] Referrals tab error:', e);
+    console.error('[Admin] Referrals tab error:', e); toastError('Referrals tab failed to load');
   }
 }
 
@@ -18342,7 +18342,7 @@ window.adminRefAction = async function(referralId, referrerId, action) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
-    console.error('[Admin] Referral action error:', e);
+    console.error('[Admin] Referral action error:', e); toastError('Referral action failed');
     alert('Error: ' + e.message);
   }
 };
@@ -18391,7 +18391,7 @@ window.adminClawback = async function(rewardId, userId) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
-    console.error('[Admin] Clawback error:', e);
+    console.error('[Admin] Clawback error:', e); toastError('Clawback failed');
     alert('Error: ' + e.message);
   }
 };
@@ -18405,7 +18405,7 @@ window.adminUnban = async function(userId) {
     _adminTabInit['referrals'] = false;
     loadReferralsAdminTab();
   } catch (e) {
-    console.error('[Admin] Unban error:', e);
+    console.error('[Admin] Unban error:', e); toastError('Unban failed');
   }
 };
 
@@ -18465,7 +18465,7 @@ async function loadContentTab() {
 
     fetchContentStories();
   } catch (e) {
-    console.error("[Admin] Content tab error:", e);
+    console.error('[Admin] Content tab error:', e); toastError('Content tab failed to load');
   }
 }
 
@@ -18535,7 +18535,7 @@ async function fetchContentStories() {
     window._contentStories = {};
     stories.forEach(function(s) { window._contentStories[s.id] = s; });
   } catch(e) {
-    console.error("[Admin] Fetch content stories error:", e);
+    console.error('[Admin] Fetch content stories error:', e); toastWarning('Failed to load content stories');
   }
 }
 
@@ -18713,7 +18713,7 @@ async function loadEnrichmentTab() {
     // Load refresh schedule (A5)
     loadRefreshSchedule();
   } catch(e) {
-    console.error('[Admin] Enrichment error:', e);
+    console.error('[Admin] Enrichment error:', e); toastError('Enrichment data failed to load');
   }
 }
 
@@ -18751,7 +18751,7 @@ async function loadRefreshSchedule() {
       }).join('');
     }
   } catch(e) {
-    console.error('[Admin] Refresh schedule error:', e);
+    console.error('[Admin] Refresh schedule error:', e); toastWarning('Refresh schedule failed to load');
   }
 }
 
@@ -18843,7 +18843,7 @@ async function loadMockAtsTab() {
     container.innerHTML = statsHtml + tableHtml;
 
   } catch (e) {
-    console.error('[Admin] Mock ATS tab error:', e);
+    console.error('[Admin] Mock ATS tab error:', e); toastError('Mock ATS failed to load');
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
   }
 }
@@ -18881,7 +18881,7 @@ async function loadCreditBalance() {
       checkLowCreditAlert(data);
     }
   } catch (e) {
-    console.warn('[Billing] Failed to load credit balance:', e.message);
+    console.warn('[Billing] Failed to load credit balance:', e.message); toastWarning('Unable to load credit balance');
   }
 }
 
@@ -18898,7 +18898,7 @@ async function loadUserPricing() {
       renderUpgradeBanner(data);
     }
   } catch (e) {
-    console.warn('[Billing] Failed to load pricing:', e.message);
+    console.warn('[Billing] Failed to load pricing:', e.message); toastWarning('Unable to load pricing');
   }
 }
 
@@ -18933,7 +18933,7 @@ async function loadCreditHistory() {
       renderBurnRate(data);
     }
   } catch (e) {
-    console.warn('[Billing] Failed to load credit history:', e.message);
+    console.warn('[Billing] Failed to load credit history:', e.message); toastWarning('Unable to load credit history');
   }
 }
 
@@ -19208,7 +19208,7 @@ async function debitCreditsForAction(amount, costCategory, description, costCent
       p_cost_cents: costCents || 0
     });
     if (result.error) {
-      console.error('[Billing] debit_credits error:', result.error);
+      console.error('[Billing] debit_credits error:', result.error); toastError('Credit deduction failed');
       return { success: false, error: result.error.message };
     }
     var data = result.data;
@@ -19228,7 +19228,7 @@ async function debitCreditsForAction(amount, costCategory, description, costCent
     }
     return data;
   } catch (e) {
-    console.error('[Billing] debitCreditsForAction error:', e);
+    console.error('[Billing] debitCreditsForAction error:', e); toastError('Credit deduction failed');
     return { success: false, error: e.message };
   }
 }
@@ -19255,7 +19255,7 @@ async function triggerAutoRefill() {
       showToast('Auto-refill failed: ' + (data.error || 'payment declined') + '. Check your payment method.', 'error');
     }
   } catch (e) {
-    console.warn('[Billing] Auto-refill trigger error:', e);
+    console.warn('[Billing] Auto-refill trigger error:', e); toastWarning('Auto-refill check failed');
   }
 }
 
@@ -19414,7 +19414,7 @@ async function loadHireFeeStatus() {
       activeEl.style.display = data.has_payment_method ? '' : 'none';
     }
   } catch (e) {
-    console.warn('[Billing] Failed to load hire fee status:', e);
+    console.warn('[Billing] Failed to load hire fee status:', e); toastWarning('Unable to load hire fee status');
   }
 }
 
