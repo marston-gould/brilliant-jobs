@@ -1156,9 +1156,9 @@
         <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Salary Data &rarr;</div>
       </a>
       <a href="/hiring-trends" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(34,197,94,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
-        <div style="font-size:26px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;">280K+</div>
+        <div style="font-size:26px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;" id="lp-mi-jobs">280K+</div>
         <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Active job listings</div>
-        <div style="font-size:11px;color:var(--green);margin-top:2px;">Across 38,000+ companies</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">Across <span id="lp-mi-companies">38,000+</span> companies</div>
         <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Hiring Trends &rarr;</div>
       </a>
       <a href="/jobs-by-industry" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(168,85,247,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -1780,6 +1780,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('[data-merch-stat="companies"]').forEach(function(el) {
           el.textContent = stats.companies.toLocaleString() + '+';
         });
+        // Market Intelligence cards
+        var miJobs = document.getElementById('lp-mi-jobs');
+        if (miJobs) miJobs.textContent = (Math.floor(stats.jobs / 1000)).toLocaleString() + 'K+';
+        var miComp = document.getElementById('lp-mi-companies');
+        if (miComp) miComp.textContent = stats.companies.toLocaleString() + '+';
         if (stats.metros != null) {
           document.getElementById('lp-metros').textContent = stats.metros.toLocaleString();
         }
