@@ -232,6 +232,33 @@ function _getActiveResume() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// D6: NOTIFICATION HELPER — fires apply workflow notifications
+// ═══════════════════════════════════════════════════════════
+
+async function _fireApplyNotification(type, opts) {
+  if (!currentUser) return;
+  var token = await _getAuthToken();
+  if (!token) return;
+
+  try {
+    await fetch(SUPABASE_URL + '/functions/v1/send-notification', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify(Object.assign({
+        user_id: currentUser.id,
+        notification_type: type,
+      }, opts)),
+    });
+  } catch (e) {
+    console.error('[apply-workflow] Notification send error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // SCORE GATE MODAL
 // ═══════════════════════════════════════════════════════════
 
@@ -558,6 +585,14 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   if (result.ok) {
     _updatePipelineApplied(jobId);
     if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+    // D6: Fire notification
+    _fireApplyNotification('apply_auto_submitted', {
+      subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
+      html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
+      job_id: jobId,
+      job_title: jobTitle,
+      company_name: companyName,
+    });
   } else if (result.error === 'rejected') {
     if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
   } else if (result.error === 'timeout') {
@@ -745,6 +780,14 @@ async function approvePendingApp(appId) {
   if (result.ok) {
     _updatePipelineApplied(app.job_id);
     if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    // D6: Fire notification
+    _fireApplyNotification('apply_auto_submitted', {
+      subject: 'Applied: ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+      html: '<p>Your resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+    });
   } else if (result.error === 'rejected') {
     if (typeof showToast === 'function') showToast('Rejected: ' + (result.detail || 'Unknown') + '. You can retry.', { type: 'error', duration: 6000 });
   } else if (result.error === 'timeout') {
@@ -779,6 +822,14 @@ async function approveRewrittenApp(appId) {
   if (result.ok) {
     _updatePipelineApplied(app.job_id);
     if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    // D6: Rewrite submitted notification
+    _fireApplyNotification('apply_rewrite_submitted', {
+      subject: 'Applied (rewritten): ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+      html: '<p>Your AI-rewritten resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+    });
   } else {
     if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
   }
