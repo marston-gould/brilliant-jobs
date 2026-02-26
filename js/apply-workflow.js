@@ -1,12 +1,16 @@
 /**
- * Brilliant Jobs — Apply Workflow v4.83
+ * Brilliant Jobs — Apply Workflow v4.85
  * Score Gate Modal, Pending Applications, and Apply State Machine
  * 
- * Phase 1: UI Shell (no ATS endpoints)
+ * Phase 2: Backend Wired (Pod 2 — D4 + D5)
  * - Score Gate Modal: intercepts Apply when score is low/unscored
- * - Pending Applications: queued items awaiting action
+ * - Pending Applications: Supabase-backed with real ATS submission
  * - Apply Settings: per-filter configuration
  * - Rewrite Review Modal: shows AI rewrite diff
+ * - scoreAndRecheck: calls score-resume EF (1 credit)
+ * - triggerRewrite: opens existing rewrite panel (3 credits)
+ * - proceedToApply: creates pending_applications row + calls mock-ats-submit
+ * - approvePendingApp: calls mock-ats-submit on approval
  */
 
 // ═══════════════════════════════════════════════════════════
@@ -48,6 +52,7 @@ var DEFAULT_APPLY_SETTINGS = {
 
 var pendingApplications = [];
 var userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS);
+var _applySubmitting = false; // Prevent double-submit
 
 function loadApplySettings() {
   try {
@@ -60,15 +65,170 @@ function saveApplySettings() {
   try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch (e) {}
 }
 
-function loadPendingApplications() {
+// ─── Supabase-backed pending applications ───────────────────
+
+async function loadPendingApplications() {
+  if (!currentUser) {
+    pendingApplications = [];
+    return;
+  }
   try {
-    var raw = localStorage.getItem('bj_pending_applications');
-    if (raw) pendingApplications = JSON.parse(raw);
-  } catch (e) { pendingApplications = []; }
+    var { data, error } = await sb
+      .from('pending_applications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .in('status', ['pending', 'approved', 'failed'])
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[apply-workflow] Load pending apps error:', error.message);
+      pendingApplications = [];
+    } else {
+      pendingApplications = data || [];
+    }
+  } catch (e) {
+    console.error('[apply-workflow] Load pending apps exception:', e);
+    pendingApplications = [];
+  }
 }
 
-function savePendingApplications() {
-  try { localStorage.setItem('bj_pending_applications', JSON.stringify(pendingApplications)); } catch (e) {}
+async function savePendingApplication(app) {
+  if (!currentUser) return null;
+  try {
+    var { data, error } = await sb
+      .from('pending_applications')
+      .insert(app)
+      .select()
+      .single();
+    if (error) {
+      console.error('[apply-workflow] Insert pending app error:', error.message);
+      if (typeof showToast === 'function') showToast('Failed to save application: ' + error.message, { type: 'error' });
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('[apply-workflow] Insert pending app exception:', e);
+    return null;
+  }
+}
+
+async function updatePendingApplication(id, updates) {
+  if (!currentUser) return false;
+  try {
+    var { error } = await sb
+      .from('pending_applications')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+    if (error) {
+      console.error('[apply-workflow] Update pending app error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[apply-workflow] Update pending app exception:', e);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Get auth token for EF calls
+// ═══════════════════════════════════════════════════════════
+
+async function _getAuthToken() {
+  var session = await sb.auth.getSession();
+  return session?.data?.session?.access_token || null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Call mock-ats-submit Edge Function
+// ═══════════════════════════════════════════════════════════
+
+async function callMockAtsSubmit(pendingApp, resumeFileId, resumeFilename) {
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return { ok: false, error: 'no_auth' };
+  }
+
+  var idempotencyKey = crypto.randomUUID();
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/mock-ats-submit', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      signal: AbortSignal.timeout(30000), // 30s client timeout
+      body: JSON.stringify({
+        job_id: pendingApp.job_id,
+        ats_source: _guessAtsSource(pendingApp.job_url),
+        ats_job_url: pendingApp.job_url || '',
+        resume_file_id: resumeFileId || crypto.randomUUID(),
+        resume_filename: resumeFilename || 'resume.pdf',
+        resume_version: pendingApp.rewritten_resume_id ? 'rewritten' : 'original',
+        rewrite_id: pendingApp.rewritten_resume_id || null,
+        applicant: {
+          name: currentUser.user_metadata?.full_name || currentUser.email || '',
+          email: currentUser.email || '',
+        },
+        apply_mode: pendingApp.approval_mode || 'manual',
+        score: pendingApp.original_score || null,
+        was_rewritten: !!pendingApp.rewritten_resume_id,
+        filter_id: pendingApp.filter_id || null,
+        pending_application_id: pendingApp.id,
+        idempotency_key: idempotencyKey,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (res.ok) {
+      return { ok: true, data: data };
+    } else if (res.status === 422) {
+      return { ok: false, error: 'rejected', detail: data.detail || data.error || 'Application rejected by ATS' };
+    } else {
+      return { ok: false, error: data.error || 'submission_failed' };
+    }
+  } catch (e) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+      return { ok: false, error: 'timeout' };
+    }
+    console.error('[apply-workflow] mock-ats-submit error:', e);
+    return { ok: false, error: 'network_error' };
+  }
+}
+
+function _guessAtsSource(url) {
+  if (!url) return 'greenhouse';
+  if (url.indexOf('greenhouse') >= 0) return 'greenhouse';
+  if (url.indexOf('lever.co') >= 0) return 'lever';
+  if (url.indexOf('ashby') >= 0) return 'ashby';
+  if (url.indexOf('workable') >= 0) return 'workable';
+  if (url.indexOf('recruitee') >= 0) return 'recruitee';
+  if (url.indexOf('usajobs') >= 0) return 'usajobs';
+  return 'greenhouse';
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Get active resume for current user
+// ═══════════════════════════════════════════════════════════
+
+function _getActiveResume() {
+  // Check resumes module for selected resume
+  if (typeof window._activeResumeId !== 'undefined' && window._activeResumeId) {
+    return { id: window._activeResumeId, filename: window._activeResumeFilename || 'resume.pdf' };
+  }
+  // Fallback: check localStorage
+  try {
+    var raw = localStorage.getItem('bj_resumes');
+    if (raw) {
+      var resumes = JSON.parse(raw);
+      if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
+    }
+  } catch (e) {}
+  return { id: crypto.randomUUID(), filename: 'resume.pdf' };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -139,8 +299,8 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
       '</div>' +
       '<div class="sg-footer">' +
         '<button class="sg-btn sg-btn-secondary" onclick="closeScoreGateModal()">Cancel</button>' +
-        (hasScore ? '' : '<button class="sg-btn sg-btn-accent" onclick="scoreAndRecheck(\'' + escapeHtml(jobId) + '\')">Score Now (1 credit)</button>') +
-        '<button class="sg-btn sg-btn-rewrite" onclick="triggerRewrite(\'' + escapeHtml(jobId) + '\')">AI Rewrite (3 credits)</button>' +
+        (hasScore ? '' : '<button class="sg-btn sg-btn-accent" onclick="scoreAndRecheck(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobUrl) + '\')">Score Now (1 credit)</button>') +
+        '<button class="sg-btn sg-btn-rewrite" onclick="triggerRewrite(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\')">AI Rewrite (3 credits)</button>' +
         '<button class="sg-btn sg-btn-primary" onclick="proceedToApply(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobUrl) + '\')">Apply Anyway</button>' +
       '</div>' +
       '<div class="sg-remember">' +
@@ -173,13 +333,248 @@ function closeScoreGateModal() {
   }
 }
 
-function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
+// ═══════════════════════════════════════════════════════════
+// D5: scoreAndRecheck — Call score-resume EF (1 credit)
+// ═══════════════════════════════════════════════════════════
+
+async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  // Credit check: score = 1 credit
+  var ent = await checkEntitlement('resume_grading', 0);
+  if (!ent.allowed) {
+    if (typeof showUpgradePrompt === 'function') showUpgradePrompt('Resume Scoring', ent);
+    else if (typeof showToast === 'function') showToast('Upgrade required for resume scoring.', { type: 'error' });
+    return;
+  }
+
+  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balance < 1) {
+    if (typeof showToast === 'function') showToast('Scoring costs 1 credit. You have ' + (balance || 0) + '. Purchase more in Settings.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Get active resume text
+  var resume = _getActiveResume();
+  var resumeText = '';
+  try {
+    var { data: archiveData } = await sb
+      .from('resume_archive')
+      .select('parsed_text')
+      .eq('id', resume.id)
+      .single();
+    resumeText = archiveData?.parsed_text || '';
+  } catch (e) {}
+
+  if (!resumeText) {
+    // Fallback: check localStorage
+    try {
+      var raw = localStorage.getItem('bj_resumes');
+      if (raw) {
+        var resumes = JSON.parse(raw);
+        if (resumes.length > 0) resumeText = resumes[0].text || '';
+      }
+    } catch (e) {}
+  }
+
+  if (!resumeText) {
+    if (typeof showToast === 'function') showToast('No resume text found. Upload a resume first on the Resumes page.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Close current modal, show loading
   closeScoreGateModal();
-  // Open ATS page
-  if (jobUrl) window.open(jobUrl, '_blank');
-  // Mark as applied in pipeline
+  if (typeof showToast === 'function') showToast('Scoring your resume against this job... (1 credit)', { duration: 8000 });
+
+  // Call score-resume EF in single mode
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        mode: 'single',
+        tier: 'basic',
+        job_ids: [jobId],
+        resume_id: resume.id,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || data.error) {
+      if (typeof showToast === 'function') showToast('Scoring failed: ' + (data.error || 'Unknown error'), { type: 'error' });
+      return;
+    }
+
+    // Cache the score for this job
+    if (typeof jobMatchScores === 'undefined') window.jobMatchScores = {};
+    jobMatchScores[jobId] = data;
+
+    if (typeof showToast === 'function') showToast('Score: ' + (data.match_score || '?') + '/100', { duration: 3000 });
+
+    // Re-show the Score Gate Modal with the new score
+    showScoreGateModal(jobId, jobTitle || '', companyName || '', jobUrl || '', data);
+
+  } catch (e) {
+    console.error('[apply-workflow] scoreAndRecheck error:', e);
+    if (typeof showToast === 'function') showToast('Scoring failed. Please try again.', { type: 'error' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D5: triggerRewrite — Opens existing rewrite panel (3 credits)
+// ═══════════════════════════════════════════════════════════
+
+async function triggerRewrite(jobId, jobTitle, companyName) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  // Credit check: rewrite = 3 credits (Pro only)
+  if (typeof _rwCanRewrite === 'function') {
+    var canRewrite = await _rwCanRewrite();
+    if (!canRewrite) return; // _rwCanRewrite already shows error toasts
+  } else {
+    // Fallback credit check if rewrite.js not loaded
+    var ent = await checkEntitlement('ai_rewrite', 0);
+    if (!ent.allowed) {
+      if (typeof showUpgradePrompt === 'function') showUpgradePrompt('AI Resume Rewrite', ent);
+      else if (typeof showToast === 'function') showToast('AI Rewrite requires Pro plan.', { type: 'error' });
+      return;
+    }
+    var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+    if (balance < 3) {
+      if (typeof showToast === 'function') showToast('Rewrite costs 3 credits. You have ' + (balance || 0) + '.', { type: 'error', duration: 5000 });
+      return;
+    }
+  }
+
+  closeScoreGateModal();
+
+  // Get active resume
+  var resume = _getActiveResume();
+  var matchScore = null;
+  if (typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId]) {
+    matchScore = jobMatchScores[jobId].match_score || null;
+  }
+
+  // Open the existing rewrite panel (from rewrite.js)
+  if (typeof openRewritePanel === 'function') {
+    openRewritePanel(jobId, jobTitle || '', companyName || '', resume.id, matchScore);
+  } else {
+    if (typeof showToast === 'function') showToast('Rewrite panel not available. Please reload the page.', { type: 'error' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D4: proceedToApply — Create pending_applications row + submit
+// ═══════════════════════════════════════════════════════════
+
+async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
+  closeScoreGateModal();
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  var mode = getApplyModeForJob(jobId);
+
+  // ── Mode 1: Manual — just open URL, update pipeline ──
+  if (mode === APPLY_MODES.MANUAL) {
+    if (jobUrl) window.open(jobUrl, '_blank');
+    _updatePipelineApplied(jobId);
+    if (typeof showToast === 'function') showToast('Opened application page for ' + (companyName || 'this job'));
+    _applySubmitting = false;
+    return;
+  }
+
+  // ── Modes 2-6: Create pending_application + submit via mock ATS ──
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in to apply.', { type: 'error' });
+    _applySubmitting = false;
+    return;
+  }
+
+  if (typeof showToast === 'function') showToast('Submitting application...', { duration: 10000 });
+
+  // Compute approval mode
+  var approvalMode = 'manual';
+  if (mode === APPLY_MODES.AUTO) approvalMode = 'auto_no_approval';
+  else if (mode === APPLY_MODES.SCORE_GATED_AUTO) approvalMode = userApplySettings.default_approval_required ? 'auto_with_approval' : 'auto_no_approval';
+  else if (mode === APPLY_MODES.AUTO_REWRITE) approvalMode = 'rewrite_review';
+  else if (mode === APPLY_MODES.AUTOPILOT) approvalMode = 'auto_no_approval';
+
+  // Get score if available
+  var scoreResult = getScoreForJob(jobId);
+  var originalScore = scoreResult ? (scoreResult.match_score || null) : null;
+
+  // Compute expiry
+  var expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + (userApplySettings.auto_expire_hours || 48));
+
+  // Get resume
+  var resume = _getActiveResume();
+
+  // Create pending_applications row
+  var pendingRow = {
+    user_id: currentUser.id,
+    job_id: jobId,
+    resume_id: resume.id,
+    original_score: originalScore,
+    score_result: scoreResult || null,
+    status: 'approved', // Skip pending for manual apply-anyway clicks
+    approval_mode: approvalMode,
+    job_title: jobTitle || '',
+    company_name: companyName || '',
+    job_url: jobUrl || '',
+    expires_at: expiresAt.toISOString(),
+    idempotency_key: crypto.randomUUID(),
+  };
+
+  var savedApp = await savePendingApplication(pendingRow);
+  if (!savedApp) {
+    if (typeof showToast === 'function') showToast('Failed to create application record.', { type: 'error' });
+    _applySubmitting = false;
+    return;
+  }
+
+  // Submit to mock ATS
+  var result = await callMockAtsSubmit(savedApp, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(jobId);
+    if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
+    if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
+  }
+
+  // Refresh pending applications list
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+function _updatePipelineApplied(jobId) {
+  // Ensure it's in pipeline
   if (typeof toggleSaveJob === 'function') {
-    // Ensure it's in pipeline first
     if (typeof savedJobIds !== 'undefined' && savedJobIds.indexOf(jobId) < 0) {
       toggleSaveJob(jobId, null);
     }
@@ -190,21 +585,6 @@ function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   meta[jobId].stage = 'applied';
   meta[jobId].appliedAt = new Date().toISOString();
   if (typeof savePipelineMeta === 'function') savePipelineMeta(meta);
-  if (typeof showToast === 'function') showToast('Opened application page for ' + (companyName || 'this job'));
-}
-
-// Placeholder: will call score-resume EF when wired
-function scoreAndRecheck(jobId) {
-  if (typeof showToast === 'function') showToast('Scoring your resume against this job...', { duration: 3000 });
-  // TODO: Call score-resume Edge Function, then re-show modal with score
-  closeScoreGateModal();
-}
-
-// Placeholder: will call rewrite flow when wired
-function triggerRewrite(jobId) {
-  if (typeof showToast === 'function') showToast('AI resume rewrite queued (3 credits)', { duration: 3000 });
-  // TODO: Call rewrite flow, show Rewrite Review Modal
-  closeScoreGateModal();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -269,7 +649,9 @@ function renderPendingApplications() {
   var container = document.getElementById('pending-apps-panel');
   if (!container) return;
 
-  var pending = pendingApplications.filter(function(a) { return a.status === APPLY_STATUS.PENDING; });
+  var pending = pendingApplications.filter(function(a) {
+    return a.status === APPLY_STATUS.PENDING || a.status === APPLY_STATUS.FAILED;
+  });
   
   if (pending.length === 0) {
     container.style.display = 'none';
@@ -294,21 +676,31 @@ function renderPendingApplications() {
       scoreHtml = '<span class="pa-score pa-score-none">Unscored</span>';
     }
 
+    var statusBadge = '';
+    if (app.status === APPLY_STATUS.FAILED) {
+      statusBadge = '<span class="pa-badge pa-badge-failed">Failed — Retry?</span>';
+    }
+
     var actionsHtml = '';
-    if (app.approval_mode === 'rewrite_review') {
+    if (app.status === APPLY_STATUS.FAILED) {
+      // Failed: show retry
+      actionsHtml =
+        '<button class="pa-btn pa-btn-primary" onclick="retryPendingApp(\'' + app.id + '\')">Retry Submit</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else if (app.approval_mode === 'rewrite_review') {
       actionsHtml = 
-        '<button class="pa-btn pa-btn-primary" onclick="approveRewrittenApp(' + i + ')">Submit Rewritten</button>' +
-        '<button class="pa-btn pa-btn-secondary" onclick="approveOriginalApp(' + i + ')">Submit Original</button>' +
-        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(' + i + ')">Skip</button>';
+        '<button class="pa-btn pa-btn-primary" onclick="approveRewrittenApp(\'' + app.id + '\')">Submit Rewritten</button>' +
+        '<button class="pa-btn pa-btn-secondary" onclick="approveOriginalApp(\'' + app.id + '\')">Submit Original</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
     } else if (app.approval_mode === 'auto_with_approval') {
       actionsHtml = 
-        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(' + i + ')">Approve & Submit</button>' +
-        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(' + i + ')">Skip</button>';
+        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(\'' + app.id + '\')">Approve & Submit</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
     } else {
       actionsHtml = 
-        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(' + i + ')">Apply</button>' +
-        '<button class="pa-btn pa-btn-accent" onclick="scorePendingApp(' + i + ')">Score First</button>' +
-        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(' + i + ')">Skip</button>';
+        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(\'' + app.id + '\')">Apply</button>' +
+        '<button class="pa-btn pa-btn-accent" onclick="scorePendingApp(\'' + app.id + '\')">Score First</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
     }
 
     var rewriteBadge = app.rewritten_score ? '<span class="pa-badge pa-badge-rewrite">Rewritten</span>' : '';
@@ -319,7 +711,7 @@ function renderPendingApplications() {
         '<div class="pa-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
       '</div>' +
       '<div class="pa-card-center">' +
-        scoreHtml + rewriteBadge +
+        scoreHtml + rewriteBadge + statusBadge +
         (app.rewrite_summary ? '<div class="pa-rewrite-summary">' + escapeHtml(app.rewrite_summary) + '</div>' : '') +
       '</div>' +
       '<div class="pa-card-actions">' + actionsHtml + '</div>' +
@@ -327,59 +719,143 @@ function renderPendingApplications() {
   }).join('');
 }
 
-function approvePendingApp(idx) {
-  if (!pendingApplications[idx]) return;
-  var app = pendingApplications[idx];
-  app.status = APPLY_STATUS.APPROVED;
-  app.responded_at = new Date().toISOString();
-  savePendingApplications();
-  
-  // Open ATS page (or submit via API when available)
-  if (app.job_url) window.open(app.job_url, '_blank');
-  
-  // Move to submitted
-  app.status = APPLY_STATUS.SUBMITTED;
-  app.submitted_at = new Date().toISOString();
-  savePendingApplications();
+// ═══════════════════════════════════════════════════════════
+// D4: Pending Application Actions — Supabase-backed
+// ═══════════════════════════════════════════════════════════
+
+async function approvePendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Update status to approved
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting to ' + (app.company_name || 'ATS') + '...', { duration: 10000 });
+
+  // Submit to mock ATS
+  var resume = _getActiveResume();
+  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job') + '!', { type: 'success' });
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Rejected: ' + (result.detail || 'Unknown') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
+    if (typeof showToast === 'function') showToast('ATS timed out. You can retry.', { type: 'error', duration: 6000 });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
   renderPendingApplications();
-  
-  if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job'));
+  _applySubmitting = false;
 }
 
-function approveRewrittenApp(idx) {
-  if (!pendingApplications[idx]) return;
-  var app = pendingApplications[idx];
-  app.status = APPLY_STATUS.SUBMITTED;
-  app.submitted_at = new Date().toISOString();
-  app.used_rewrite = true;
-  savePendingApplications();
+async function approveRewrittenApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Use the rewritten resume
+  var resumeId = app.rewritten_resume_id || app.resume_id;
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting rewritten resume...', { duration: 10000 });
+
+  var result = await callMockAtsSubmit(app, resumeId, 'resume-rewritten.pdf');
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
   renderPendingApplications();
-  if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job'));
+  _applySubmitting = false;
 }
 
-function approveOriginalApp(idx) {
-  if (!pendingApplications[idx]) return;
-  var app = pendingApplications[idx];
-  app.status = APPLY_STATUS.SUBMITTED;
-  app.submitted_at = new Date().toISOString();
-  app.used_rewrite = false;
-  savePendingApplications();
+async function approveOriginalApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting original resume...', { duration: 10000 });
+
+  var resume = _getActiveResume();
+  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Submitted original resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
   renderPendingApplications();
-  if (typeof showToast === 'function') showToast('Submitted original resume to ' + (app.company_name || 'job'));
+  _applySubmitting = false;
 }
 
-function skipPendingApp(idx) {
-  if (!pendingApplications[idx]) return;
-  pendingApplications[idx].status = APPLY_STATUS.SKIPPED;
-  pendingApplications[idx].responded_at = new Date().toISOString();
-  savePendingApplications();
-  renderPendingApplications();
-  if (typeof showToast === 'function') showToast('Skipped');
+async function skipPendingApp(appId) {
+  var success = await updatePendingApplication(appId, {
+    status: APPLY_STATUS.SKIPPED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (success) {
+    // Remove from local array
+    pendingApplications = pendingApplications.filter(function(a) { return a.id !== appId; });
+    renderPendingApplications();
+    if (typeof showToast === 'function') showToast('Skipped');
+  } else {
+    if (typeof showToast === 'function') showToast('Failed to update. Try again.', { type: 'error' });
+  }
 }
 
-function scorePendingApp(idx) {
-  if (typeof showToast === 'function') showToast('Scoring resume... (1 credit)', { duration: 3000 });
-  // TODO: Call score-resume EF
+async function retryPendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  // Reset to approved with new idempotency key, then re-submit
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    idempotency_key: crypto.randomUUID(),
+  });
+
+  // Re-fetch to get the updated row
+  await loadPendingApplications();
+  var updatedApp = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!updatedApp) return;
+
+  await approvePendingApp(appId);
+}
+
+async function scorePendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+  // Delegate to scoreAndRecheck which handles credit check + EF call
+  await scoreAndRecheck(app.job_id, app.job_title, app.company_name, app.job_url);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -449,12 +925,20 @@ function closeRewriteReviewModal() {
 // ═══════════════════════════════════════════════════════════
 
 loadApplySettings();
-loadPendingApplications();
 
-// Render pending apps on page load if panel exists
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(renderPendingApplications, 500);
-});
+// Load pending applications from Supabase after auth is ready
+(async function() {
+  // Wait for auth to be ready (currentUser set by app.js)
+  var attempts = 0;
+  while (!window.currentUser && attempts < 20) {
+    await new Promise(function(r) { setTimeout(r, 250); });
+    attempts++;
+  }
+  if (window.currentUser) {
+    await loadPendingApplications();
+    renderPendingApplications();
+  }
+})();
 
 // ═══════════════════════════════════════════════════════════
 // MODE SELECTOR UI — wire to Rules panel buttons
