@@ -16,6 +16,7 @@ window.toggleAppSettings = function() {
   var isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'block';
   if (btn) btn.classList.toggle('active', !isOpen);
+  if (!isOpen) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 };
 
 window.switchSettingsTab = function(tab) {
