@@ -52,6 +52,8 @@
       padding: 16px 32px;
       display: flex; align-items: center; gap: 12px;
     }
+        .top-bar .bj-login{margin-left:auto;padding:7px 18px;background:#fff;color:#0b0e18;border-radius:8px;font-weight:700;font-size:12px;text-decoration:none;transition:all 0.15s;letter-spacing:0.3px}
+    .top-bar .bj-login:hover{background:rgba(255,255,255,0.85)}
     .top-bar-mark {
       width: 28px; height: 28px; background: #fff; border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
@@ -250,12 +252,14 @@
       .data-table th, .data-table td { padding: 8px 10px; }
     }
   </style>
+  <script src="/js/version.js"></script>
 </head>
 <body>
 
 <div class="top-bar">
   <a href="/" class="top-bar-mark">B</a>
   <a href="/" class="brand-link">Brilliant Jobs</a>
+  <a href="/dashboard" class="bj-login">Log In</a>
 </div>
 
 <main>
@@ -412,6 +416,10 @@
   <div class="updated">Last updated: February 2026</div>
 </div>
 </main>
+
+  <footer style="text-align:center;padding:24px 0;color:#666;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);margin-top:48px">
+    &copy; <span class="bj-year"></span> Brilliant Jobs · <a href="/terms" style="color:#888">Terms</a> · <a href="/privacy" style="color:#888">Privacy</a> · <span class="bj-version" style="color:#555"></span>
+  </footer>
 </body>
 </html>
 
