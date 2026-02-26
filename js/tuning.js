@@ -1109,7 +1109,7 @@ async function updatePoorMatchSuggestions() {
   const sugContainer = $('#tuning-suggestions');
 
   if (hiddenJobIds.length === 0) {
-    container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">No hidden jobs yet. Hide irrelevant jobs from the feed and reasons will be tracked here.</span>';
+    container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Nothing dismissed yet. When you hide jobs from the feed, they appear here — and we start learning what to filter out automatically.</span>';
     if (sugContainer) sugContainer.innerHTML = '';
     return;
   }
@@ -1139,7 +1139,7 @@ async function updatePoorMatchSuggestions() {
 
   // Show recent hidden jobs (newest first, max 20)
   const recent = [...hiddenJobIds].reverse().slice(0, 20);
-  let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} hidden job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
+  let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} dismissed job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
 
   // Pre-compute title word frequencies for per-card annotations
   const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
@@ -1173,11 +1173,11 @@ async function updatePoorMatchSuggestions() {
       const recurring = words.filter(w => titleWordCounts[w] >= 2);
       if (recurring.length > 0) {
         const unique = [...new Set(recurring)].slice(0, 3);
-        patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">Pattern: "${unique.join('", "')}" appears in ${Math.max(...unique.map(w => titleWordCounts[w]))} hidden jobs</div>`;
+        patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">You've dismissed ${Math.max(...unique.map(w => titleWordCounts[w]))} jobs with "${unique.join('", "')}" — block this pattern?</div>`;
       }
     }
     if (!patternNote && h.company && companyCountsAll[h.company.trim()] >= 2) {
-      patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">Pattern: ${h.company} hidden ${companyCountsAll[h.company.trim()]} times</div>`;
+      patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">You've dismissed ${companyCountsAll[h.company.trim()]} jobs from ${h.company} — block this company?</div>`;
     }
 
     html += `<div class="poor-match-card">
@@ -1187,7 +1187,7 @@ async function updatePoorMatchSuggestions() {
         ${patternNote}
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
-      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="Analyze this job and create a rule so similar ones stop appearing">✦ Block Similar</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
@@ -1221,12 +1221,12 @@ async function updatePoorMatchSuggestions() {
     return;
   }
 
-  let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Suggested exclusions</div>';
+  let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Patterns We Found</div>';
 
   if (titleSuggestions.length > 0) {
     const topWord = titleSuggestions[0];
-    sugHtml += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;padding:8px 12px;background:var(--bg-input);border-radius:8px;border-left:3px solid var(--warm);">You've hidden ${hiddenJobIds.length} jobs — <strong>"${topWord[0]}"</strong> appears in ${topWord[1]} of them. Add it as an exclusion?</div>`;
-    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Title keywords appearing in multiple hidden jobs:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+    sugHtml += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;padding:8px 12px;background:var(--bg-input);border-radius:8px;border-left:3px solid var(--warm);">The word <strong>"${topWord[0]}"</strong> shows up in ${topWord[1]} of the ${hiddenJobIds.length} jobs you've dismissed. Add it as a rule and these stop appearing in your feed.</div>`;
+    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Click any keyword to block jobs containing it:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     titleSuggestions.forEach(([word, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('title', '${word}', this)">${word} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
     });
@@ -1234,7 +1234,7 @@ async function updatePoorMatchSuggestions() {
   }
 
   if (companySuggestions.length > 0) {
-    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you frequently hide:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you keep dismissing — click to block all future jobs from them:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     companySuggestions.forEach(([co, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('company', '${co.replace(/'/g, "\\'")}', this)">${co} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
     });
