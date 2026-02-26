@@ -80,9 +80,7 @@ function renderAppQueue() {
   const failed = [...appQueue, ...appHistory].filter(a => a.status === 'failed').length;
   const _el = id => document.getElementById(id);
   if (_el('a-queued')) _el('a-queued').textContent = queued;
-  if (_el('a-pending')) _el('a-pending').textContent = pending;
   if (_el('a-submitted')) _el('a-submitted').textContent = submitted;
-  if (_el('a-failed')) _el('a-failed').textContent = failed;
 
   // Hero lifecycle stats
   const allApps = (typeof appHistory !== 'undefined' && Array.isArray(appHistory)) ? [...appQueue, ...appHistory] : [...appQueue];
