@@ -1061,6 +1061,9 @@ function renderSavedFilters() {
       whatNotPills = JSON.parse(JSON.stringify(sf.whatNotPills || []));
       whereNotPills = JSON.parse(JSON.stringify(sf.whereNotPills || []));
       whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
+      skillsPills = JSON.parse(JSON.stringify(sf.skillsPills || []));
+      levelPills = JSON.parse(JSON.stringify(sf.levelPills || []));
+      jdPills = JSON.parse(JSON.stringify(sf.jdPills || []));
       // Restore includeNoSalary checkbox
       const noSalaryCb = $('#save-filter-include-no-salary');
       if (noSalaryCb) noSalaryCb.checked = sf.includeNoSalary !== false;
