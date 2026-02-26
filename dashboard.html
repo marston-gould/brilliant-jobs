@@ -759,7 +759,7 @@
             <div class="hero-stats">
               <div class="hero-stat"><div class="hero-stat-val" id="j-total">0</div><div class="hero-stat-label">Total Jobs</div></div>
               <div class="hero-stat"><div class="hero-stat-val" id="j-companies">0</div><div class="hero-stat-label">Companies</div></div>
-              <div class="hero-stat"><div class="hero-stat-val hs-accent" id="j-new">0</div><div class="hero-stat-label">New Today</div></div>
+              <div class="hero-stat"><div class="hero-stat-val" id="j-new" style="color:#3b82f6;">0</div><div class="hero-stat-label">New Today</div></div>
               <div class="hero-stat" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="hero-stat-val hs-green" id="j-saved">0</div><div class="hero-stat-label">Pipeline</div></div>
             </div>
           </div>
@@ -872,21 +872,17 @@
             </div>
           </div>
           <div class="qb-row-pair">
-            <div class="qb-row">
+            <div class="qb-row" style="grid-column:1/-1;">
               <label class="qb-row-label">How Much</label>
-              <div class="qb-salary-field" style="flex:1;">
-                <span class="qb-salary-prefix">$</span>
-                <input type="text" class="qb-salary-input" id="qb-input-pay-min" placeholder="Min">
+              <div class="query-builder" id="query-builder-pay" style="flex:1;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">
+                <div id="qb-pay-pill-inline" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+                <span class="qb-salary-prefix" style="color:var(--text-faint);font-size:12px;margin-left:2px;">$</span>
+                <input type="text" class="qb-input" id="qb-input-pay-min" placeholder="Min" style="width:70px;min-width:0;flex:0 0 auto;border:none;padding:4px 2px;">
+                <span style="color:var(--text-faint);font-size:11px;">to</span>
+                <span class="qb-salary-prefix" style="color:var(--text-faint);font-size:12px;">$</span>
+                <input type="text" class="qb-input" id="qb-input-pay-max" placeholder="Max" style="width:70px;min-width:0;flex:0 0 auto;border:none;padding:4px 2px;">
               </div>
             </div>
-            <div class="qb-row">
-              <label class="qb-row-label not-label">TO</label>
-              <div class="qb-salary-field" style="flex:1;">
-                <span class="qb-salary-prefix">$</span>
-                <input type="text" class="qb-salary-input" id="qb-input-pay-max" placeholder="Max">
-              </div>
-            </div>
-            <div id="qb-pay-pill-inline" style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 0 0 0;grid-column:1/-1;"></div>
           </div>
           <div class="qb-hint">
             <kbd>Enter</kbd> to add filter &nbsp; <kbd>or</kbd> before a term to add alternatives &nbsp; Click a tag to add options &nbsp; <kbd>Backspace</kbd> to remove last
