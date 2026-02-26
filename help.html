@@ -74,11 +74,20 @@
       padding: 8px 10px; margin: 10px 0; font-size: 12px; color: var(--text-dim);
     }
     .tip strong { color: #b47a08; }
+    .bj-topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 0;margin-block-end:8px}
+    .bj-topbar .bj-home{font-weight:700;font-size:14px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:8px}
+    .bj-topbar .bj-home:hover{color:var(--accent)}
+    .bj-topbar .bj-login{padding:6px 16px;background:var(--accent);color:#fff;border-radius:6px;font-weight:700;font-size:12px;text-decoration:none;transition:all 0.15s}
+    .bj-topbar .bj-login:hover{background:var(--accent-hover)}
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; color: var(--accent-hover); }
   </style>
 </head>
 <body>
+<nav class="bj-topbar">
+  <a href="/" class="bj-home">✦ Brilliant Jobs</a>
+  <a href="/dashboard" class="bj-login">Log In</a>
+</nav>
 <main>
   <h1><span class="mark">B</span> Brilliant Jobs — Chrome Extension Guide</h1>
 
@@ -123,7 +132,11 @@
   <p style="margin-top: 20px; font-size: 11px; color: var(--text-faint);">
     Full documentation: <a href="https://brilliantjobs.app/help" target="_blank">brilliantjobs.app/help</a>
   </p>
+<footer style="text-align:center;padding:16px 0;color:var(--text-faint);font-size:10px;border-top:1px solid var(--border);margin-top:24px">
+  &copy; <span class="bj-year"></span> Brilliant Jobs · <span class="bj-version"></span>
+</footer>
 </main>
+<script src="/js/version.js"></script>
 </body>
 </html>
 
