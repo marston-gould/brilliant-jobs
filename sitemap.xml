@@ -10,6 +10,8 @@
   <url><loc>https://brilliantjobs.app/terms</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://brilliantjobs.app/privacy</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://brilliantjobs.app/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brilliantjobs.app/pricing</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/ghost-report</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
 
   <!-- SEO Data Pages (auto-generated) -->
   <url><loc>https://brilliantjobs.app/job-market-data</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
@@ -139,4 +141,6 @@
   <url><loc>https://brilliantjobs.app/trends/security-engineer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://brilliantjobs.app/trends/software-engineer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://brilliantjobs.app/trends/ux-designer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <!-- City pages sitemap: see sitemap-cities.xml for 2,178 city landing pages -->
+  <url><loc>https://brilliantjobs.app/sitemap-cities.xml</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
 </urlset>

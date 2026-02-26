@@ -1,5 +1,5 @@
-const BJ_VERSION = 'v4.63';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded — Phase D: Signal analytics + notification templates');
+// BJ_VERSION is defined in js/version.js (single source of truth)
+// version.js auto-populates #nav-version and .bj-version elements
 
 // Auth
 async function init() {
@@ -8,8 +8,6 @@ async function init() {
   currentUser = session.user;
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
-  const vEl = document.getElementById('nav-version');
-  if (vEl) vEl.textContent = BJ_VERSION;
 
 // Pre-warm static ref table caches (v3.84)
 if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
@@ -108,6 +106,31 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
     }
   }
+
+  // Block 7: Check for pending pills from city page conversion
+  try {
+    var pendingPills = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]');
+    if (pendingPills.length > 0) {
+      localStorage.removeItem('bj_pending_pills');
+      // Apply to active filter (or first filter, or create new)
+      var target = currentFilter || (savedFilters && savedFilters.length > 0 ? savedFilters[0] : null);
+      if (target) {
+        var pillsKey = target.pills ? 'pills' : 'keywords';
+        if (!target[pillsKey]) target[pillsKey] = [];
+        pendingPills.forEach(function(pp) {
+          var pillType = pp.type === 'title' ? 'TITLE' : pp.type === 'skill' ? 'SKILLS' : pp.type === 'industry' ? 'INDUSTRY' : 'KEYWORD';
+          var exists = target[pillsKey].some(function(p) { return p.type === pillType && p.value === pp.value; });
+          if (!exists) {
+            target[pillsKey].push({ type: pillType, value: pp.value, _from: 'city_page' });
+          }
+        });
+        localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+        var names = pendingPills.map(function(p) { return '"' + p.value + '"'; }).join(', ');
+        showToast('Added ' + names + ' to your search filters', { type: 'success', duration: 5000 });
+        if (window.posthog) posthog.capture('pending_pills_applied', { count: pendingPills.length, pills: pendingPills });
+      }
+    }
+  } catch(e) { console.warn('[pills] Pending pill apply failed:', e.message); }
   
   // Load tuning from Supabase
   let tuningFromCloud = false;
@@ -428,6 +451,9 @@ async function checkExtensionStatus() {
           detail.textContent = profile.scanner_running
             ? `Active now · last synced at ${timeStr}`
             : `Last active ${todayStr} at ${timeStr}`;
+          // Hide download button when connected
+          var dlBox = $('#download-box');
+          if (dlBox) dlBox.style.display = 'none';
         } else {
           dot.className = 'ext-dot off';
           text.textContent = 'Extension inactive';
