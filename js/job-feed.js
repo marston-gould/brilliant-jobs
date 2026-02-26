@@ -407,11 +407,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
-  // WHEN — updated_at gte (job freshness based on last ATS refresh, not first discovery)
+  // WHEN — first_seen_at gte (job age based on when we first discovered it, matches DAYS column)
   for (const pill of wn) {
     for (const v of pill.values) {
       const since = parseWhenValue(v);
-      if (since) query = query.gte('updated_at', since.toISOString());
+      if (since) query = query.gte('first_seen_at', since.toISOString());
     }
   }
 

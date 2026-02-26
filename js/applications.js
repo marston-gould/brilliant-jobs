@@ -35,10 +35,14 @@ $$('.app-mode-select').forEach(btn => {
       b.classList.remove('active');
       b.className = b.className.replace(/btn-primary/g, 'btn-secondary');
       b.style.border = '';
+      const sub = b.querySelector('div:last-child');
+      if (sub) sub.style.color = 'var(--text-dim)';
     });
     btn.classList.add('active');
     btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
     btn.style.border = '2px solid var(--accent)';
+    const activeSub = btn.querySelector('div:last-child');
+    if (activeSub) activeSub.style.color = 'rgba(255,255,255,0.85)';
     appMode = btn.dataset.mode;
     localStorage.setItem('bj_app_mode', appMode);
   });
@@ -46,14 +50,17 @@ $$('.app-mode-select').forEach(btn => {
 
 // Set active mode on load
 $$('.app-mode-select').forEach(btn => {
+  const sub = btn.querySelector('div:last-child');
   if (btn.dataset.mode === appMode) {
     btn.classList.add('active');
     btn.className = btn.className.replace(/btn-secondary/g, 'btn-primary');
     btn.style.border = '2px solid var(--accent)';
+    if (sub) sub.style.color = 'rgba(255,255,255,0.85)';
   } else {
     btn.classList.remove('active');
     btn.className = btn.className.replace(/btn-primary/g, 'btn-secondary');
     btn.style.border = '';
+    if (sub) sub.style.color = 'var(--text-dim)';
   }
 });
 
