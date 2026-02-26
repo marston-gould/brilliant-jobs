@@ -428,6 +428,9 @@ async function checkExtensionStatus() {
           detail.textContent = profile.scanner_running
             ? `Active now · last synced at ${timeStr}`
             : `Last active ${todayStr} at ${timeStr}`;
+          // Hide download button when connected
+          var dlBox = $('#download-box');
+          if (dlBox) dlBox.style.display = 'none';
         } else {
           dot.className = 'ext-dot off';
           text.textContent = 'Extension inactive';
