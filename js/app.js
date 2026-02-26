@@ -108,6 +108,34 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   
   // Load tuning from Supabase
+  // First: normalize any legacy WHEN pills in saved filters
+  let whenNormDirty = false;
+  savedFilters.forEach(sf => {
+    if (sf.whenPills && sf.whenPills.length > 0) {
+      sf.whenPills.forEach(pill => {
+        if (pill.values && pill.values.length > 0) {
+          const norm = typeof normalizeWhenValue === 'function' ? normalizeWhenValue(pill.values[0]) : null;
+          if (norm && norm.label !== pill.values[0]) {
+            pill.values[0] = norm.label;
+            whenNormDirty = true;
+          }
+        }
+      });
+    }
+  });
+  if (whenNormDirty) {
+    if (filtersFromCloud && userId) {
+      // Persist normalized values back to cloud
+      for (let i = 0; i < savedFilters.length; i++) {
+        const sf = savedFilters[i];
+        if (sf._id) {
+          sb.from('user_filters').update({ filter_data: sf }).eq('id', sf._id).then(() => {});
+        }
+      }
+    }
+    localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  }
+
   let tuningFromCloud = false;
   if (userId) {
     const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();

@@ -478,24 +478,45 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   return query;
 }
 
-function parseWhenValue(v) {
-  const lower = v.toLowerCase().trim();
-  const now = new Date();
-  if (lower.includes('today') || lower === '1d') {
-    const d = new Date(now); d.setDate(d.getDate() - 1); return d;
-  } else if (lower === 'week' || lower === '7d' || lower === '7 days' || lower === 'this week' || lower === '1 week') {
-    const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-  } else if (lower.includes('month') && !lower.includes('3')) {
-    const d = new Date(now); d.setDate(d.getDate() - 30); return d;
-  } else if (lower.includes('3 month') || lower === '90d') {
-    const d = new Date(now); d.setDate(d.getDate() - 90); return d;
-  }
-  // Generic "N days" / "Nd" / "last N days" / "N weeks"
-  var m = lower.match(/(\d+)\s*d(?:ays?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1])); return d; }
-  m = lower.match(/(\d+)\s*w(?:eeks?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1]) * 7); return d; }
+/**
+ * Normalize free-text WHEN input to a canonical label.
+ * Returns { label: string, days: number } or null if unrecognizable.
+ * Canonical labels: "today", "yesterday", "last N days", "last N weeks", "last N months"
+ */
+function normalizeWhenValue(raw) {
+  const lower = raw.toLowerCase().trim();
+  if (!lower) return null;
+
+  // Exact matches & common aliases
+  if (lower === 'today' || lower === '1d' || lower === 'now') return { label: 'today', days: 1 };
+  if (lower === 'yesterday' || lower === '2d') return { label: 'yesterday', days: 2 };
+  if (/^(this\s+)?week$/.test(lower) || lower === '7d' || lower === '7 days' || lower === '1 week' || lower === '1w') return { label: 'last 7 days', days: 7 };
+  if (/^(this\s+)?month$/.test(lower) || lower === '30d' || lower === '30 days' || lower === '1 month' || lower === '1m') return { label: 'last 30 days', days: 30 };
+  if (/^3\s*months?$/.test(lower) || lower === '90d' || lower === '90 days' || lower === '3m') return { label: 'last 3 months', days: 90 };
+  if (/^6\s*months?$/.test(lower) || lower === '180d' || lower === '6m') return { label: 'last 6 months', days: 180 };
+
+  // Generic "N days" / "Nd" / "last N days"
+  var m = lower.match(/(?:last\s+)?(\d+)\s*d(?:ays?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n} days`, days: n }; }
+
+  // Generic "N weeks" / "Nw" / "last N weeks"
+  m = lower.match(/(?:last\s+)?(\d+)\s*w(?:eeks?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 7} days`, days: n * 7 }; }
+
+  // Generic "N months" / "Nm" / "last N months"
+  m = lower.match(/(?:last\s+)?(\d+)\s*m(?:onths?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 30} days`, days: n * 30 }; }
+
   return null;
+}
+
+function parseWhenValue(v) {
+  const result = normalizeWhenValue(v);
+  if (!result) return null;
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(d.getDate() - result.days);
+  return d;
 }
 
 function getCheckedSavedFilters() {

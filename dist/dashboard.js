@@ -1,3 +1,36 @@
+// === js/version.js ===
+/**
+ * Brilliant Jobs — Global Version & Site-Wide Utilities
+ * SINGLE SOURCE OF TRUTH. Every page includes this file.
+ * To bump the version, change ONLY this line.
+ */
+var BJ_VERSION = 'v4.94';
+
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    // Version display: any .bj-version or #nav-version
+    document.querySelectorAll('.bj-version').forEach(function(el) {
+      el.textContent = BJ_VERSION;
+    });
+    var nav = document.getElementById('nav-version');
+    if (nav) nav.textContent = BJ_VERSION;
+
+    // Copyright year: any .bj-year element
+    var year = new Date().getFullYear();
+    document.querySelectorAll('.bj-year').forEach(function(el) {
+      el.textContent = year;
+    });
+    // Also handle legacy id="year" elements
+    var legacyYear = document.getElementById('year');
+    if (legacyYear) legacyYear.textContent = year;
+  });
+
+  // Console log for every page
+  var page = document.title || location.pathname;
+  console.log('[BJ] ' + page + ' ' + BJ_VERSION + ' loaded');
+})();
+
+
 // === js/globals.js ===
 // ============================================================
 // GLOBALS — Shared state across all dashboard modules
@@ -551,6 +584,10 @@ var payPills = [];
 var whatNotPills = [];
 var whereNotPills = [];
 var whoNotPills = [];
+var skillsPills = [];
+var levelPills = [];
+var jdPills = [];
+var deptPills = [];
 var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
 var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
 var DEFAULT_RADIUS = 30;
@@ -886,7 +923,7 @@ function classifyTerm(term) {
   return 'keyword';
 }
 
-function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length; }
+function allPills() { return whatPills.length + wherePills.length + whenPills.length + whoPills.length + payPills.length + whatNotPills.length + whereNotPills.length + whoNotPills.length + skillsPills.length + levelPills.length + jdPills.length + deptPills.length; }
 
 function renderPillsFor(pillArray, builderId, inputId, isLocation, extraClass, onRemove) {
   const builder = $(builderId);
@@ -1066,6 +1103,10 @@ function renderAllPills() {
   renderPillsFor(whoPills, '#query-builder-who', '#qb-input-who', false, 'who-pill');
   renderPillsFor(whoNotPills, '#query-builder-who-not', '#qb-input-who-not', false, 'not-pill');
   renderPayPills();
+  renderPillsFor(skillsPills, '#query-builder-skills', '#qb-input-skills', false, 'skills-pill');
+  renderPillsFor(levelPills, '#query-builder-level', '#qb-input-level', false, 'level-pill');
+  renderPillsFor(jdPills, '#query-builder-jd', '#qb-input-jd', false, 'jd-pill');
+  renderPillsFor(deptPills, '#query-builder-dept', '#qb-input-dept', false, 'dept-pill');
 
   // Show/hide toolbar
   const hasAny = allPills() > 0;
@@ -1521,27 +1562,91 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
   }
 
+  // SKILLS — filter on extracted_skills array (contains any)
+  const sk = sf.skillsPills || [];
+  for (const pill of sk) {
+    const terms = pill.values.map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (terms.length > 0) {
+      // Use cs (contains) operator — job must have at least one of these skills
+      query = query.or(terms.map(t => `extracted_skills.cs.{${t}}`).join(','));
+    }
+  }
+
+  // LEVEL — filter on extracted_seniority
+  const lv = sf.levelPills || [];
+  if (lv.length > 0) {
+    const levels = lv.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (levels.length === 1) {
+      query = query.eq('extracted_seniority', levels[0]);
+    } else if (levels.length > 1) {
+      query = query.in('extracted_seniority', levels);
+    }
+  }
+
+  // JD CONTAINS — full-text search on content_tsv
+  const jd = sf.jdPills || [];
+  for (const pill of jd) {
+    for (const v of pill.values) {
+      const safe = v.replace(/[,()]/g, '').trim();
+      if (safe) {
+        query = query.textSearch('content_tsv', safe, { type: 'websearch', config: 'english' });
+      }
+    }
+  }
+
+  // DEPARTMENT — filter on extracted_department
+  const dp = sf.deptPills || [];
+  if (dp.length > 0) {
+    const depts = dp.flatMap(p => p.values.map(v => v.trim().toLowerCase())).filter(Boolean);
+    if (depts.length === 1) {
+      query = query.eq('extracted_department', depts[0]);
+    } else if (depts.length > 1) {
+      query = query.in('extracted_department', depts);
+    }
+  }
+
   return query;
 }
 
-function parseWhenValue(v) {
-  const lower = v.toLowerCase().trim();
-  const now = new Date();
-  if (lower.includes('today') || lower === '1d') {
-    const d = new Date(now); d.setDate(d.getDate() - 1); return d;
-  } else if (lower === 'week' || lower === '7d' || lower === '7 days' || lower === 'this week' || lower === '1 week') {
-    const d = new Date(now); d.setDate(d.getDate() - 7); return d;
-  } else if (lower.includes('month') && !lower.includes('3')) {
-    const d = new Date(now); d.setDate(d.getDate() - 30); return d;
-  } else if (lower.includes('3 month') || lower === '90d') {
-    const d = new Date(now); d.setDate(d.getDate() - 90); return d;
-  }
-  // Generic "N days" / "Nd" / "last N days" / "N weeks"
-  var m = lower.match(/(\d+)\s*d(?:ays?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1])); return d; }
-  m = lower.match(/(\d+)\s*w(?:eeks?)?/);
-  if (m) { const d = new Date(now); d.setDate(d.getDate() - parseInt(m[1]) * 7); return d; }
+/**
+ * Normalize free-text WHEN input to a canonical label.
+ * Returns { label: string, days: number } or null if unrecognizable.
+ * Canonical labels: "today", "yesterday", "last N days", "last N weeks", "last N months"
+ */
+function normalizeWhenValue(raw) {
+  const lower = raw.toLowerCase().trim();
+  if (!lower) return null;
+
+  // Exact matches & common aliases
+  if (lower === 'today' || lower === '1d' || lower === 'now') return { label: 'today', days: 1 };
+  if (lower === 'yesterday' || lower === '2d') return { label: 'yesterday', days: 2 };
+  if (/^(this\s+)?week$/.test(lower) || lower === '7d' || lower === '7 days' || lower === '1 week' || lower === '1w') return { label: 'last 7 days', days: 7 };
+  if (/^(this\s+)?month$/.test(lower) || lower === '30d' || lower === '30 days' || lower === '1 month' || lower === '1m') return { label: 'last 30 days', days: 30 };
+  if (/^3\s*months?$/.test(lower) || lower === '90d' || lower === '90 days' || lower === '3m') return { label: 'last 3 months', days: 90 };
+  if (/^6\s*months?$/.test(lower) || lower === '180d' || lower === '6m') return { label: 'last 6 months', days: 180 };
+
+  // Generic "N days" / "Nd" / "last N days"
+  var m = lower.match(/(?:last\s+)?(\d+)\s*d(?:ays?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n} days`, days: n }; }
+
+  // Generic "N weeks" / "Nw" / "last N weeks"
+  m = lower.match(/(?:last\s+)?(\d+)\s*w(?:eeks?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 7} days`, days: n * 7 }; }
+
+  // Generic "N months" / "Nm" / "last N months"
+  m = lower.match(/(?:last\s+)?(\d+)\s*m(?:onths?)?/);
+  if (m) { const n = parseInt(m[1]); return { label: `last ${n * 30} days`, days: n * 30 }; }
+
   return null;
+}
+
+function parseWhenValue(v) {
+  const result = normalizeWhenValue(v);
+  if (!result) return null;
+  const now = new Date();
+  const d = new Date(now);
+  d.setDate(d.getDate() - result.days);
+  return d;
 }
 
 function getCheckedSavedFilters() {
@@ -1654,6 +1759,12 @@ async function searchJobs(page = 0) {
     // Hidden job IDs to exclude from queries
     const hiddenIds = hiddenJobIds.map(h => h.id);
 
+    // Check if relevance sort is active and JD/text search terms exist
+    const relevanceSort = jobSortStack.length > 0 && jobSortStack[0].field === 'relevance';
+    const jdTerms = (filtersToRun[0]?.jdPills || []).flatMap(p => p.values).filter(Boolean);
+    const whatTerms = (filtersToRun[0]?.whatPills || filtersToRun[0]?.pills || []).flatMap(p => p.values).filter(Boolean);
+    const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
+
     if (filtersToRun.length === 1) {
       // Single filter — straightforward query with count + pagination
       let query = sb.from('ats_jobs').select('*', { count: 'exact' });
@@ -1664,7 +1775,7 @@ async function searchJobs(page = 0) {
 
       // Multi-sort (skip 'level' — client-side only)
       for (const s of jobSortStack) {
-        if (s.field === 'level' || s.field === 'match') continue;
+        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
         query = query.order(s.field, { ascending: s.asc });
       }
 
@@ -1685,7 +1796,7 @@ async function searchJobs(page = 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
         }
         for (const s of jobSortStack) {
-          if (s.field === 'level' || s.field === 'match') continue;
+          if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
           q = q.order(s.field, { ascending: s.asc });
         }
         q = q.range(0, perFilter - 1);
@@ -1770,6 +1881,33 @@ async function searchJobs(page = 0) {
 
     // Client-side match sort
     const matchSort = jobSortStack.find(s => s.field === 'match');
+
+    // Relevance sort — score jobs by how many search terms appear in title
+    const relevanceSortActive = jobSortStack.find(s => s.field === 'relevance');
+    if (relevanceSortActive && searchTerms) {
+      const terms = searchTerms.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      if (terms.length > 0) {
+        allJobs.forEach(j => {
+          const titleLower = (j.title || '').toLowerCase();
+          const locLower = (j.location || '').toLowerCase();
+          const compLower = (j.company_name || '').toLowerCase();
+          let score = 0;
+          for (const t of terms) {
+            if (titleLower.includes(t)) score += 3;
+            if (compLower.includes(t)) score += 1;
+            if (locLower.includes(t)) score += 1;
+          }
+          // Boost if skills match
+          if (j.extracted_skills && j.extracted_skills.length > 0) {
+            for (const t of terms) {
+              if (j.extracted_skills.some(s => s.includes(t))) score += 2;
+            }
+          }
+          j._relevanceScore = score;
+        });
+        allJobs.sort((a, b) => (b._relevanceScore || 0) - (a._relevanceScore || 0));
+      }
+    }
     if (matchSort) {
       currentJobs.sort((a, b) => {
         const ra = jobMatchScores[a.greenhouse_id];
@@ -2354,6 +2492,9 @@ function renderSortPills() {
     return true;
   });
 
+  // Clear existing pills before re-rendering
+  container.querySelectorAll('.sort-pill').forEach(p => p.remove());
+
   // Color map matching filter row colors: title=blue, company=pink, location=amber, salary=green, days=purple, ghost=red
   const sortColorMap = {
     title: { bg: 'rgba(61,126,255,0.1)', text: 'var(--accent)', dot: 'var(--accent)' },
@@ -2615,14 +2756,46 @@ $('#query-builder-who')?.addEventListener('click', e => {
 
 // Input handling — When row
 const qbInputWhen = $('#qb-input-when');
+
+function commitWhenPill() {
+  const raw = qbInputWhen.value.trim();
+  if (!raw) return;
+  // Validate & normalize
+  const norm = normalizeWhenValue(raw);
+  if (!norm) {
+    // Show inline error
+    qbInputWhen.style.borderColor = 'var(--red)';
+    qbInputWhen.style.color = 'var(--red)';
+    let errEl = qbInputWhen.parentElement.querySelector('.when-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.className = 'when-error';
+      errEl.style.cssText = 'font-size:10px;color:var(--red);margin-top:2px;position:absolute;bottom:-14px;left:0;white-space:nowrap;';
+      qbInputWhen.parentElement.style.position = 'relative';
+      qbInputWhen.parentElement.appendChild(errEl);
+    }
+    errEl.textContent = 'Try: today, yesterday, 7 days, 2 weeks, month, 3 months';
+    setTimeout(() => {
+      qbInputWhen.style.borderColor = '';
+      qbInputWhen.style.color = '';
+      if (errEl) errEl.remove();
+    }, 4000);
+    return;
+  }
+  // Use the normalized canonical label
+  qbInputWhen.value = '';
+  whenPills.push({ values: [norm.label], type: 'when' });
+  renderAllPills();
+}
+
 qbInputWhen.addEventListener('keydown', e => {
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+    commitWhenPill();
   } else if (e.key === 'Tab') {
     if (qbInputWhen.value.trim()) {
       e.preventDefault();
-      commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+      commitWhenPill();
       focusNextInput('qb-input-when');
     }
   } else if (e.key === 'Backspace' && qbInputWhen.value === '' && whenPills.length > 0) {
@@ -2631,7 +2804,7 @@ qbInputWhen.addEventListener('keydown', e => {
   }
 });
 qbInputWhen.addEventListener('blur', () => {
-  commitPill(qbInputWhen, whenPills, raw => ({ values: [raw], type: 'when' }));
+  commitWhenPill();
 });
 
 // Input handling — Who row
@@ -2687,8 +2860,99 @@ qbInputWho.addEventListener('input', () => {
 
 
 
-} // end sort-bar guard
 
+
+// ============================================================
+// SKILLS input bindings
+// ============================================================
+const qbInputSkills = $('#qb-input-skills');
+if (qbInputSkills) {
+  qbInputSkills.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+    } else if (e.key === 'Backspace' && qbInputSkills.value === '' && skillsPills.length > 0) {
+      skillsPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputSkills.addEventListener('blur', () => {
+    commitPill(qbInputSkills, skillsPills, raw => ({ values: [raw.toLowerCase()], type: 'skills' }));
+  });
+  $('#query-builder-skills')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputSkills.focus();
+  });
+}
+
+// ============================================================
+// LEVEL input bindings
+// ============================================================
+const qbInputLevel = $('#qb-input-level');
+if (qbInputLevel) {
+  qbInputLevel.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+    } else if (e.key === 'Backspace' && qbInputLevel.value === '' && levelPills.length > 0) {
+      levelPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputLevel.addEventListener('blur', () => {
+    commitPill(qbInputLevel, levelPills, raw => ({ values: [raw.toLowerCase()], type: 'level' }));
+  });
+  $('#query-builder-level')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputLevel.focus();
+  });
+}
+
+// ============================================================
+// JD CONTAINS input bindings
+// ============================================================
+const qbInputJd = $('#qb-input-jd');
+if (qbInputJd) {
+  qbInputJd.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+    } else if (e.key === 'Backspace' && qbInputJd.value === '' && jdPills.length > 0) {
+      jdPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputJd.addEventListener('blur', () => {
+    commitPill(qbInputJd, jdPills, raw => ({ values: [raw], type: 'jd' }));
+  });
+  $('#query-builder-jd')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputJd.focus();
+  });
+}
+
+
+
+// ============================================================
+// DEPARTMENT input bindings
+// ============================================================
+const qbInputDept = $('#qb-input-dept');
+if (qbInputDept) {
+  qbInputDept.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+    } else if (e.key === 'Backspace' && qbInputDept.value === '' && deptPills.length > 0) {
+      deptPills.pop();
+      renderAllPills();
+    }
+  });
+  qbInputDept.addEventListener('blur', () => {
+    commitPill(qbInputDept, deptPills, raw => ({ values: [raw.toLowerCase()], type: 'dept' }));
+  });
+  $('#query-builder-dept')?.addEventListener('click', e => {
+    if (!e.target.closest('.qb-pill')) qbInputDept.focus();
+  });
+}
+
+} // end sort-bar guard
 
 // === js/keywords.js ===
 // ============================================================
@@ -4926,6 +5190,10 @@ document.addEventListener('click', e => {
   if (link && link.dataset.jobid) {
     e.preventDefault();
     openJobModal(link.dataset.jobid);
+    // Log click signal (fire-and-forget)
+    if (typeof sb !== 'undefined' && sb.auth) {
+      sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' }).catch(() => {});
+    }
   }
   // "→" click in preview snippet opens modal
   const more = e.target.closest('.preview-more');
@@ -5744,6 +6012,10 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
 // Modal actions — sync back to feed
 function modalApply(jobId, url) {
   window.open(url, '_blank');
+  // Log apply signal
+  if (typeof sb !== 'undefined' && sb.auth) {
+    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' }).catch(() => {});
+  }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
 
@@ -5910,6 +6182,10 @@ function showHideReasonPopup(jobId, title, company, anchorEl, afterHide, jobUrl,
 function hideJob(jobId, btn) {
   const row = btn.closest('tr');
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
+  // Log hide signal
+  if (typeof sb !== 'undefined' && sb.auth) {
+    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' }).catch(() => {});
+  }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
   if (typeof savedFilters !== 'undefined') {
@@ -5933,6 +6209,10 @@ function toggleSaveJob(jobId, btn) {
     savedJobIds.push(jobId);
     btn.textContent = 'Pipeline ✓';
     btn.classList.add('saved-btn');
+    // Log save signal
+    if (typeof sb !== 'undefined' && sb.auth) {
+      sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' }).catch(() => {});
+    }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
   savePipelineMeta(meta);
@@ -7861,6 +8141,10 @@ $('#clear-filters-btn').addEventListener('click', () => {
   whatNotPills = [];
   whereNotPills = [];
   whoNotPills = [];
+  skillsPills = [];
+  levelPills = [];
+  jdPills = [];
+  deptPills = [];
   renderAllPills();
 });
 
@@ -7905,6 +8189,10 @@ async function commitSaveFilter() {
     whatNotPills: JSON.parse(JSON.stringify(whatNotPills)),
     whereNotPills: JSON.parse(JSON.stringify(whereNotPills)),
     whoNotPills: JSON.parse(JSON.stringify(whoNotPills)),
+    skillsPills: JSON.parse(JSON.stringify(skillsPills)),
+    levelPills: JSON.parse(JSON.stringify(levelPills)),
+    jdPills: JSON.parse(JSON.stringify(jdPills)),
+    deptPills: JSON.parse(JSON.stringify(deptPills)),
     includeNoSalary: $('#save-filter-include-no-salary').checked,
     includeRemote: $('#save-filter-include-remote').checked,
     createdAt: Date.now(),
@@ -8209,6 +8497,7 @@ function renderSavedFilters() {
         </div>
         ${trendBadge}
         <span class="sf-dup" data-dupidx="${sf._idx}" title="Duplicate filter" style="font-size:11px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">⧉</span>
+        <span class="sf-health-btn" data-idx="${sf._idx}" title="Filter health & suggestions" style="font-size:10px;color:var(--text-faint);cursor:pointer;padding:2px 4px;opacity:0;transition:opacity 0.1s;">💡</span>
         <span class="sf-levels-btn" data-idx="${sf._idx}" title="${sf.assignedLevels?.length ? sf.assignedLevels.length + ' levels assigned — click to edit' : sf.levelHierarchy ? 'Custom levels — click to edit' : 'Assign levels to this filter'}" style="font-size:10px;color:${sf.assignedLevels?.length ? 'var(--green)' : sf.levelHierarchy ? 'var(--accent)' : 'var(--text-faint)'};cursor:pointer;padding:2px 4px;opacity:${sf.assignedLevels?.length || sf.levelHierarchy ? '0.8' : '0'};transition:opacity 0.1s;">⚙</span>
       </div>
     </div>`;
@@ -8239,6 +8528,10 @@ function renderSavedFilters() {
       whatNotPills = JSON.parse(JSON.stringify(sf.whatNotPills || []));
       whereNotPills = JSON.parse(JSON.stringify(sf.whereNotPills || []));
       whoNotPills = JSON.parse(JSON.stringify(sf.whoNotPills || []));
+      skillsPills = JSON.parse(JSON.stringify(sf.skillsPills || []));
+      levelPills = JSON.parse(JSON.stringify(sf.levelPills || []));
+      jdPills = JSON.parse(JSON.stringify(sf.jdPills || []));
+      deptPills = JSON.parse(JSON.stringify(sf.deptPills || []));
       // Restore includeNoSalary checkbox
       const noSalaryCb = $('#save-filter-include-no-salary');
       if (noSalaryCb) noSalaryCb.checked = sf.includeNoSalary !== false;
@@ -11025,7 +11318,7 @@ async function updatePoorMatchSuggestions() {
   const sugContainer = $('#tuning-suggestions');
 
   if (hiddenJobIds.length === 0) {
-    container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">No hidden jobs yet. Hide irrelevant jobs from the feed and reasons will be tracked here.</span>';
+    container.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Nothing dismissed yet. When you hide jobs from the feed, they appear here — and we start learning what to filter out automatically.</span>';
     if (sugContainer) sugContainer.innerHTML = '';
     return;
   }
@@ -11055,7 +11348,7 @@ async function updatePoorMatchSuggestions() {
 
   // Show recent hidden jobs (newest first, max 20)
   const recent = [...hiddenJobIds].reverse().slice(0, 20);
-  let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} hidden job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
+  let html = `<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${hiddenJobIds.length} dismissed job${hiddenJobIds.length !== 1 ? 's' : ''}</div>`;
 
   // Pre-compute title word frequencies for per-card annotations
   const stopWords = new Set(['the','and','or','a','an','of','for','in','at','to','with','on','is','are','we','our','this','that','you','your','it','as','be','by','from','has','have','will','can','do','all','not','but','if','so','no','up','about','into','out','just','new','one','its','been','more','also','was','were','than','other','they','had','each','very','how','may']);
@@ -11089,11 +11382,11 @@ async function updatePoorMatchSuggestions() {
       const recurring = words.filter(w => titleWordCounts[w] >= 2);
       if (recurring.length > 0) {
         const unique = [...new Set(recurring)].slice(0, 3);
-        patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">Pattern: "${unique.join('", "')}" appears in ${Math.max(...unique.map(w => titleWordCounts[w]))} hidden jobs</div>`;
+        patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">You've dismissed ${Math.max(...unique.map(w => titleWordCounts[w]))} jobs with "${unique.join('", "')}" — block this pattern?</div>`;
       }
     }
     if (!patternNote && h.company && companyCountsAll[h.company.trim()] >= 2) {
-      patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">Pattern: ${h.company} hidden ${companyCountsAll[h.company.trim()]} times</div>`;
+      patternNote = `<div style="font-size:10px;color:var(--warm);margin-top:2px;">You've dismissed ${companyCountsAll[h.company.trim()]} jobs from ${h.company} — block this company?</div>`;
     }
 
     html += `<div class="poor-match-card">
@@ -11103,7 +11396,7 @@ async function updatePoorMatchSuggestions() {
         ${patternNote}
       </div>
       <span class="poor-match-reason">${reasonLabel}</span>
-      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="AI analysis of why this was a poor match — suggests exclusion rules">✦ Add Exclusion</button>
+      <button class="poor-match-unhide" onclick="analyzeHiddenJob('${h.id}', this)" style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(77,142,255,0.15));color:var(--accent);border:1px solid rgba(77,142,255,0.3);" title="Analyze this job and create a rule so similar ones stop appearing">✦ Block Similar</button>
       <button class="poor-match-unhide" onclick="unhideJob('${h.id}', this)">Unhide</button>
     </div>`;
   });
@@ -11137,12 +11430,12 @@ async function updatePoorMatchSuggestions() {
     return;
   }
 
-  let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Suggested exclusions</div>';
+  let sugHtml = '<div style="font-size:11px;font-weight:700;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Patterns We Found</div>';
 
   if (titleSuggestions.length > 0) {
     const topWord = titleSuggestions[0];
-    sugHtml += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;padding:8px 12px;background:var(--bg-input);border-radius:8px;border-left:3px solid var(--warm);">You've hidden ${hiddenJobIds.length} jobs — <strong>"${topWord[0]}"</strong> appears in ${topWord[1]} of them. Add it as an exclusion?</div>`;
-    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Title keywords appearing in multiple hidden jobs:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+    sugHtml += `<div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;padding:8px 12px;background:var(--bg-input);border-radius:8px;border-left:3px solid var(--warm);">The word <strong>"${topWord[0]}"</strong> shows up in ${topWord[1]} of the ${hiddenJobIds.length} jobs you've dismissed. Add it as a rule and these stop appearing in your feed.</div>`;
+    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;">Click any keyword to block jobs containing it:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     titleSuggestions.forEach(([word, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('title', '${word}', this)">${word} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
     });
@@ -11150,7 +11443,7 @@ async function updatePoorMatchSuggestions() {
   }
 
   if (companySuggestions.length > 0) {
-    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you frequently hide:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
+    sugHtml += '<div style="font-size:11px;color:var(--text-faint);margin:10px 0 6px;">Companies you keep dismissing — click to block all future jobs from them:</div><div style="display:flex;flex-wrap:wrap;gap:0;">';
     companySuggestions.forEach(([co, count]) => {
       sugHtml += `<span class="suggestion-chip" onclick="addSuggestedExclusion('company', '${co.replace(/'/g, "\\'")}', this)">${co} <span class="chip-count">×${count}</span> <span style="color:var(--accent);">+</span></span>`;
     });
@@ -11598,7 +11891,7 @@ function renderResumes() {
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
-          <button onclick="archiveResume(${i})" title="Archive — preserves match history and scores. Restore anytime.">\ud83d\udce6</button>
+          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
           <button class="danger" onclick="removeResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
@@ -11703,7 +11996,6 @@ function renderResumeArchive(archivedResumes) {
 
   section.style.display = '';
   labelEl.textContent = archivedResumes.length + ' archived';
-  labelEl.title = 'Archived resumes keep their match scores and pipeline history. Restore them anytime without losing context.';
 
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
@@ -11729,7 +12021,7 @@ function renderResumeArchive(archivedResumes) {
         <div style="font-size:10px;color:var(--text-faint);">Uploaded ${r.uploadedAt || '—'} · Archived ${r.archivedAt || '—'}</div>
       </div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text-faint);white-space:nowrap;">${jobsApplied} apps · ${rate} rate</div>
-      <button class="rc-btn rc-rename" onclick="unarchiveResume(${i})" style="background:var(--accent);">Restore</button>
+      <button class="rc-btn rc-download" onclick="unarchiveResume(${i})">Restore</button>
       <button class="rc-btn rc-delete" onclick="removeResume(${i})">Delete</button>
     </div>`;
   }).join('');
@@ -12209,7 +12501,7 @@ window.renameResume = function(idx) {
 };
 
 window.removeResume = function(idx) {
-  if (!confirm(`Delete "${resumes[idx].name}"? This permanently removes the file and all match history. Consider archiving instead to preserve your scores.`)) return;
+  if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
   // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
   if (resumes[idx].storagePath && currentUser) {
@@ -14666,6 +14958,7 @@ function switchAdminTab(tabId) {
       case 'signals': loadAdminSignals(); break;
       case 'content': loadContentTab(); break;
       case 'enrichment': loadEnrichmentTab(); break;
+      case 'mock-ats': loadMockAtsTab(); break;
     }
   }
 }
@@ -17805,6 +18098,106 @@ async function loadRefreshSchedule() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// D7: MOCK ATS LOG TAB (v4.85)
+// Shows mock_ats_submissions with payload inspection
+// ═══════════════════════════════════════════════════════════
+
+async function loadMockAtsTab() {
+  var container = document.getElementById('admin-panel-mock-ats');
+  if (!container) return;
+
+  container.innerHTML = '<div class="admin-loading">Loading mock ATS submissions...</div>';
+
+  try {
+    var { data, error } = await sb
+      .from('mock_ats_submissions')
+      .select('id, user_id, job_id, ats_source, response_type, response_body, payload, created_at, idempotency_key')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      container.innerHTML = '<div class="admin-red">Error loading mock ATS data: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;">No mock ATS submissions yet.</div>';
+      return;
+    }
+
+    // Stats summary
+    var total = data.length;
+    var success = data.filter(function(r) { return r.response_type === 'success'; }).length;
+    var rejected = data.filter(function(r) { return r.response_type === 'rejected'; }).length;
+    var timeout = data.filter(function(r) { return r.response_type === 'timeout'; }).length;
+
+    var statsHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
+      '<div class="admin-stat-card"><div class="admin-stat-val">' + total + '</div><div class="admin-stat-label">Total</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#22c55e40"><div class="admin-stat-val" style="color:#22c55e">' + success + '</div><div class="admin-stat-label">Success</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#f59e0b40"><div class="admin-stat-val" style="color:#f59e0b">' + rejected + '</div><div class="admin-stat-label">Rejected</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#ef444440"><div class="admin-stat-val" style="color:#ef4444">' + timeout + '</div><div class="admin-stat-label">Timeout</div></div>' +
+      '</div>';
+
+    // Table
+    var tableHtml = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%;font-size:13px;">' +
+      '<thead><tr>' +
+      '<th>Time</th><th>Job ID</th><th>ATS</th><th>Result</th><th>User</th><th>Details</th>' +
+      '</tr></thead><tbody>';
+
+    tableHtml += data.map(function(row) {
+      var time = new Date(row.created_at).toLocaleString();
+      var badge = '';
+      if (row.response_type === 'success') badge = '<span class="admin-badge admin-badge-green">✓ Success</span>';
+      else if (row.response_type === 'rejected') badge = '<span class="admin-badge admin-badge-amber">✗ Rejected</span>';
+      else badge = '<span class="admin-badge admin-badge-red">⏱ Timeout</span>';
+
+      var detailSnippet = '';
+      if (row.response_body) {
+        if (row.response_type === 'success') detailSnippet = row.response_body.confirmation_id || '';
+        else if (row.response_type === 'rejected') detailSnippet = (row.response_body.error || '') + ': ' + (row.response_body.detail || '');
+        else detailSnippet = 'timeout';
+      }
+
+      var jobIdShort = (row.job_id || '').length > 20 ? row.job_id.substring(0, 20) + '…' : (row.job_id || '');
+      var userIdShort = (row.user_id || '').substring(0, 8) + '…';
+
+      return '<tr data-row-id="' + row.id + '" style="cursor:pointer;" onclick="toggleMockAtsDetail(this)">' +
+        '<td style="white-space:nowrap;font-size:12px;color:var(--text-dim)">' + time + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;" title="' + escapeHtml(row.job_id || '') + '">' + escapeHtml(jobIdShort) + '</td>' +
+        '<td>' + escapeHtml(row.ats_source || '') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-family:var(--mono);font-size:11px;" title="' + escapeHtml(row.user_id || '') + '">' + escapeHtml(userIdShort) + '</td>' +
+        '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(detailSnippet) + '</td>' +
+        '</tr>' +
+        '<tr class="mock-ats-detail" style="display:none;"><td colspan="6">' +
+          '<div style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">' +
+            '<div style="margin-bottom:8px;"><strong>Request Payload:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:300px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.payload, null, 2)) + '</pre>' +
+            '<div style="margin:8px 0;"><strong>Response:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:200px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.response_body, null, 2)) + '</pre>' +
+            '<div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Idempotency: ' + escapeHtml(row.idempotency_key || 'none') + '</div>' +
+          '</div>' +
+        '</td></tr>';
+    }).join('');
+
+    tableHtml += '</tbody></table></div>';
+
+    container.innerHTML = statsHtml + tableHtml;
+
+  } catch (e) {
+    console.error('[Admin] Mock ATS tab error:', e);
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function toggleMockAtsDetail(row) {
+  var detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('mock-ats-detail')) {
+    detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  }
+}
+
 
 // === js/billing.js ===
 // js/billing.js — Subscription page, credit balance, pricing, checkout flows
@@ -20404,9 +20797,1073 @@ window.getUserTier = getUserTier;
 window.requiredTierFor = requiredTier;
 
 
+// === js/apply-workflow.js ===
+/**
+ * Brilliant Jobs — Apply Workflow v4.85
+ * Score Gate Modal, Pending Applications, and Apply State Machine
+ * 
+ * Phase 2: Backend Wired (Pod 2 — D4 + D5)
+ * - Score Gate Modal: intercepts Apply when score is low/unscored
+ * - Pending Applications: Supabase-backed with real ATS submission
+ * - Apply Settings: per-filter configuration
+ * - Rewrite Review Modal: shows AI rewrite diff
+ * - scoreAndRecheck: calls score-resume EF (1 credit)
+ * - triggerRewrite: opens existing rewrite panel (3 credits)
+ * - proceedToApply: creates pending_applications row + calls mock-ats-submit
+ * - approvePendingApp: calls mock-ats-submit on approval
+ */
+
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+
+var APPLY_MODES = {
+  MANUAL:           'manual',
+  SCORE_GATED:      'score_gated',
+  AUTO:             'auto',
+  SCORE_GATED_AUTO: 'score_gated_auto',
+  AUTO_REWRITE:     'auto_rewrite',
+  AUTOPILOT:        'autopilot'
+};
+
+var APPLY_STATUS = {
+  PENDING:    'pending',
+  APPROVED:   'approved',
+  SUBMITTED:  'submitted',
+  SKIPPED:    'skipped',
+  EXPIRED:    'expired',
+  FAILED:     'failed'
+};
+
+var DEFAULT_APPLY_SETTINGS = {
+  default_apply_mode: APPLY_MODES.MANUAL,
+  default_score_threshold: 70,
+  default_approval_required: true,
+  default_notification_channels: ['in_app', 'email'],
+  sms_enabled: false,
+  quiet_hours_start: '22:00',
+  quiet_hours_end: '07:00',
+  auto_expire_hours: 48
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+
+var pendingApplications = [];
+var userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS);
+var _applySubmitting = false; // Prevent double-submit
+
+function loadApplySettings() {
+  try {
+    var raw = localStorage.getItem('bj_apply_settings');
+    if (raw) userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS, JSON.parse(raw));
+  } catch (e) {}
+}
+
+function saveApplySettings() {
+  try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch (e) {}
+}
+
+// ─── Supabase-backed pending applications ───────────────────
+
+async function loadPendingApplications() {
+  if (!currentUser) {
+    pendingApplications = [];
+    return;
+  }
+  try {
+    var { data, error } = await sb
+      .from('pending_applications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .in('status', ['pending', 'approved', 'failed'])
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[apply-workflow] Load pending apps error:', error.message);
+      pendingApplications = [];
+    } else {
+      pendingApplications = data || [];
+    }
+  } catch (e) {
+    console.error('[apply-workflow] Load pending apps exception:', e);
+    pendingApplications = [];
+  }
+}
+
+async function savePendingApplication(app) {
+  if (!currentUser) return null;
+  try {
+    var { data, error } = await sb
+      .from('pending_applications')
+      .insert(app)
+      .select()
+      .single();
+    if (error) {
+      console.error('[apply-workflow] Insert pending app error:', error.message);
+      if (typeof showToast === 'function') showToast('Failed to save application: ' + error.message, { type: 'error' });
+      return null;
+    }
+    return data;
+  } catch (e) {
+    console.error('[apply-workflow] Insert pending app exception:', e);
+    return null;
+  }
+}
+
+async function updatePendingApplication(id, updates) {
+  if (!currentUser) return false;
+  try {
+    var { error } = await sb
+      .from('pending_applications')
+      .update(updates)
+      .eq('id', id)
+      .eq('user_id', currentUser.id);
+    if (error) {
+      console.error('[apply-workflow] Update pending app error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[apply-workflow] Update pending app exception:', e);
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Get auth token for EF calls
+// ═══════════════════════════════════════════════════════════
+
+async function _getAuthToken() {
+  var session = await sb.auth.getSession();
+  return session?.data?.session?.access_token || null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Call mock-ats-submit Edge Function
+// ═══════════════════════════════════════════════════════════
+
+async function callMockAtsSubmit(pendingApp, resumeFileId, resumeFilename) {
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return { ok: false, error: 'no_auth' };
+  }
+
+  var idempotencyKey = crypto.randomUUID();
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/mock-ats-submit', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      signal: AbortSignal.timeout(30000), // 30s client timeout
+      body: JSON.stringify({
+        job_id: pendingApp.job_id,
+        ats_source: _guessAtsSource(pendingApp.job_url),
+        ats_job_url: pendingApp.job_url || '',
+        resume_file_id: resumeFileId || crypto.randomUUID(),
+        resume_filename: resumeFilename || 'resume.pdf',
+        resume_version: pendingApp.rewritten_resume_id ? 'rewritten' : 'original',
+        rewrite_id: pendingApp.rewritten_resume_id || null,
+        applicant: {
+          name: currentUser.user_metadata?.full_name || currentUser.email || '',
+          email: currentUser.email || '',
+        },
+        apply_mode: pendingApp.approval_mode || 'manual',
+        score: pendingApp.original_score || null,
+        was_rewritten: !!pendingApp.rewritten_resume_id,
+        filter_id: pendingApp.filter_id || null,
+        pending_application_id: pendingApp.id,
+        idempotency_key: idempotencyKey,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (res.ok) {
+      return { ok: true, data: data };
+    } else if (res.status === 422) {
+      return { ok: false, error: 'rejected', detail: data.detail || data.error || 'Application rejected by ATS' };
+    } else {
+      return { ok: false, error: data.error || 'submission_failed' };
+    }
+  } catch (e) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+      return { ok: false, error: 'timeout' };
+    }
+    console.error('[apply-workflow] mock-ats-submit error:', e);
+    return { ok: false, error: 'network_error' };
+  }
+}
+
+function _guessAtsSource(url) {
+  if (!url) return 'greenhouse';
+  if (url.indexOf('greenhouse') >= 0) return 'greenhouse';
+  if (url.indexOf('lever.co') >= 0) return 'lever';
+  if (url.indexOf('ashby') >= 0) return 'ashby';
+  if (url.indexOf('workable') >= 0) return 'workable';
+  if (url.indexOf('recruitee') >= 0) return 'recruitee';
+  if (url.indexOf('usajobs') >= 0) return 'usajobs';
+  return 'greenhouse';
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Get active resume for current user
+// ═══════════════════════════════════════════════════════════
+
+function _getActiveResume() {
+  // Check resumes module for selected resume
+  if (typeof window._activeResumeId !== 'undefined' && window._activeResumeId) {
+    return { id: window._activeResumeId, filename: window._activeResumeFilename || 'resume.pdf' };
+  }
+  // Fallback: check localStorage
+  try {
+    var raw = localStorage.getItem('bj_resumes');
+    if (raw) {
+      var resumes = JSON.parse(raw);
+      if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
+    }
+  } catch (e) {}
+  return { id: crypto.randomUUID(), filename: 'resume.pdf' };
+}
+
+// ═══════════════════════════════════════════════════════════
+// D6: NOTIFICATION HELPER — fires apply workflow notifications
+// ═══════════════════════════════════════════════════════════
+
+async function _fireApplyNotification(type, opts) {
+  if (!currentUser) return;
+  var token = await _getAuthToken();
+  if (!token) return;
+
+  try {
+    await fetch(SUPABASE_URL + '/functions/v1/send-notification', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify(Object.assign({
+        user_id: currentUser.id,
+        notification_type: type,
+      }, opts)),
+    });
+  } catch (e) {
+    console.error('[apply-workflow] Notification send error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCORE GATE MODAL
+// ═══════════════════════════════════════════════════════════
+
+function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
+  // Remove any existing modal
+  var existing = document.getElementById('score-gate-modal');
+  if (existing) existing.remove();
+
+  var hasScore = scoreResult && typeof scoreResult.match_score === 'number';
+  var score = hasScore ? scoreResult.match_score : null;
+  var threshold = userApplySettings.default_score_threshold;
+  var isAbove = hasScore && score >= threshold;
+
+  // If score is above threshold, just proceed
+  if (isAbove) {
+    proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    return;
+  }
+
+  var scoreDisplay = hasScore ? score : '?';
+  var scoreClass = hasScore ? (score >= 75 ? 'high' : score >= 50 ? 'mid' : 'low') : 'none';
+  var scoreLabel = hasScore ? (score >= 75 ? 'Strong' : score >= 50 ? 'Partial' : 'Weak') : 'Unscored';
+
+  var breakdownHtml = '';
+  if (scoreResult && scoreResult.recommendations) {
+    var missing = scoreResult.recommendations.missing_skills || [];
+    breakdownHtml = '<div class="sg-breakdown">';
+    if (scoreResult.analysis_summary) {
+      breakdownHtml += '<div class="sg-summary">' + escapeHtml(scoreResult.analysis_summary) + '</div>';
+    }
+    if (missing.length > 0) {
+      breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
+        missing.map(function(s) { return '<span class="sg-missing-chip">' + escapeHtml(s) + '</span>'; }).join(' ') + 
+        '</div>';
+    }
+    breakdownHtml += '</div>';
+  }
+
+  var modal = document.createElement('div');
+  modal.id = 'score-gate-modal';
+  modal.className = 'sg-overlay';
+  modal.innerHTML = 
+    '<div class="sg-modal">' +
+      '<div class="sg-header">' +
+        '<div class="sg-title">Resume Match Check</div>' +
+        '<button class="sg-close" onclick="closeScoreGateModal()">&times;</button>' +
+      '</div>' +
+      '<div class="sg-body">' +
+        '<div class="sg-job-info">' +
+          '<div class="sg-job-title">' + escapeHtml(jobTitle) + '</div>' +
+          '<div class="sg-job-company">' + escapeHtml(companyName) + '</div>' +
+        '</div>' +
+        '<div class="sg-score-row">' +
+          '<div class="sg-score-badge sg-score-' + scoreClass + '">' +
+            '<div class="sg-score-val">' + scoreDisplay + '</div>' +
+            '<div class="sg-score-label">' + scoreLabel + '</div>' +
+          '</div>' +
+          '<div class="sg-threshold-info">' +
+            (hasScore 
+              ? 'Your resume scores <strong>' + score + '</strong> against this job. Your threshold is <strong>' + threshold + '</strong>.'
+              : 'This job hasn\'t been scored against your resume yet.') +
+          '</div>' +
+        '</div>' +
+        breakdownHtml +
+      '</div>' +
+      '<div class="sg-footer">' +
+        '<button class="sg-btn sg-btn-secondary" onclick="closeScoreGateModal()">Cancel</button>' +
+        (hasScore ? '' : '<button class="sg-btn sg-btn-accent" onclick="scoreAndRecheck(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobUrl) + '\')">Score Now (1 credit)</button>') +
+        '<button class="sg-btn sg-btn-rewrite" onclick="triggerRewrite(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\')">AI Rewrite (3 credits)</button>' +
+        '<button class="sg-btn sg-btn-primary" onclick="proceedToApply(\'' + escapeHtml(jobId) + '\',\'' + escapeHtml(jobTitle).replace(/'/g, "\\'") + '\',\'' + escapeHtml(companyName).replace(/'/g, "\\'") + '\',\'' + escapeHtml(jobUrl) + '\')">Apply Anyway</button>' +
+      '</div>' +
+      '<div class="sg-remember">' +
+        '<label><input type="checkbox" id="sg-remember-check"> Don\'t show this for scores above <input type="number" id="sg-remember-val" value="' + threshold + '" min="0" max="100" style="width:48px;text-align:center;"></label>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+
+  // Close on backdrop click
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeScoreGateModal();
+  });
+}
+
+function closeScoreGateModal() {
+  var modal = document.getElementById('score-gate-modal');
+  if (modal) {
+    // Check if user updated their threshold
+    var check = document.getElementById('sg-remember-check');
+    var val = document.getElementById('sg-remember-val');
+    if (check && check.checked && val) {
+      var newThreshold = parseInt(val.value);
+      if (!isNaN(newThreshold) && newThreshold >= 0 && newThreshold <= 100) {
+        userApplySettings.default_score_threshold = newThreshold;
+        saveApplySettings();
+      }
+    }
+    modal.remove();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D5: scoreAndRecheck — Call score-resume EF (1 credit)
+// ═══════════════════════════════════════════════════════════
+
+async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  // Credit check: score = 1 credit
+  var ent = await checkEntitlement('resume_grading', 0);
+  if (!ent.allowed) {
+    if (typeof showUpgradePrompt === 'function') showUpgradePrompt('Resume Scoring', ent);
+    else if (typeof showToast === 'function') showToast('Upgrade required for resume scoring.', { type: 'error' });
+    return;
+  }
+
+  var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+  if (balance < 1) {
+    if (typeof showToast === 'function') showToast('Scoring costs 1 credit. You have ' + (balance || 0) + '. Purchase more in Settings.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Get active resume text
+  var resume = _getActiveResume();
+  var resumeText = '';
+  try {
+    var { data: archiveData } = await sb
+      .from('resume_archive')
+      .select('parsed_text')
+      .eq('id', resume.id)
+      .single();
+    resumeText = archiveData?.parsed_text || '';
+  } catch (e) {}
+
+  if (!resumeText) {
+    // Fallback: check localStorage
+    try {
+      var raw = localStorage.getItem('bj_resumes');
+      if (raw) {
+        var resumes = JSON.parse(raw);
+        if (resumes.length > 0) resumeText = resumes[0].text || '';
+      }
+    } catch (e) {}
+  }
+
+  if (!resumeText) {
+    if (typeof showToast === 'function') showToast('No resume text found. Upload a resume first on the Resumes page.', { type: 'error', duration: 5000 });
+    return;
+  }
+
+  // Close current modal, show loading
+  closeScoreGateModal();
+  if (typeof showToast === 'function') showToast('Scoring your resume against this job... (1 credit)', { duration: 8000 });
+
+  // Call score-resume EF in single mode
+  var token = await _getAuthToken();
+  if (!token) {
+    if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
+    return;
+  }
+
+  try {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/score-resume', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        mode: 'single',
+        tier: 'basic',
+        job_ids: [jobId],
+        resume_id: resume.id,
+      }),
+    });
+
+    var data = await res.json();
+
+    if (!res.ok || data.error) {
+      if (typeof showToast === 'function') showToast('Scoring failed: ' + (data.error || 'Unknown error'), { type: 'error' });
+      return;
+    }
+
+    // Cache the score for this job
+    if (typeof jobMatchScores === 'undefined') window.jobMatchScores = {};
+    jobMatchScores[jobId] = data;
+
+    if (typeof showToast === 'function') showToast('Score: ' + (data.match_score || '?') + '/100', { duration: 3000 });
+
+    // Re-show the Score Gate Modal with the new score
+    showScoreGateModal(jobId, jobTitle || '', companyName || '', jobUrl || '', data);
+
+  } catch (e) {
+    console.error('[apply-workflow] scoreAndRecheck error:', e);
+    if (typeof showToast === 'function') showToast('Scoring failed. Please try again.', { type: 'error' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D5: triggerRewrite — Opens existing rewrite panel (3 credits)
+// ═══════════════════════════════════════════════════════════
+
+async function triggerRewrite(jobId, jobTitle, companyName) {
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in first.', { type: 'error' });
+    return;
+  }
+
+  // Credit check: rewrite = 3 credits (Pro only)
+  if (typeof _rwCanRewrite === 'function') {
+    var canRewrite = await _rwCanRewrite();
+    if (!canRewrite) return; // _rwCanRewrite already shows error toasts
+  } else {
+    // Fallback credit check if rewrite.js not loaded
+    var ent = await checkEntitlement('ai_rewrite', 0);
+    if (!ent.allowed) {
+      if (typeof showUpgradePrompt === 'function') showUpgradePrompt('AI Resume Rewrite', ent);
+      else if (typeof showToast === 'function') showToast('AI Rewrite requires Pro plan.', { type: 'error' });
+      return;
+    }
+    var { data: balance } = await sb.rpc('get_credit_balance', { p_user_id: currentUser.id });
+    if (balance < 3) {
+      if (typeof showToast === 'function') showToast('Rewrite costs 3 credits. You have ' + (balance || 0) + '.', { type: 'error', duration: 5000 });
+      return;
+    }
+  }
+
+  closeScoreGateModal();
+
+  // Get active resume
+  var resume = _getActiveResume();
+  var matchScore = null;
+  if (typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId]) {
+    matchScore = jobMatchScores[jobId].match_score || null;
+  }
+
+  // Open the existing rewrite panel (from rewrite.js)
+  if (typeof openRewritePanel === 'function') {
+    openRewritePanel(jobId, jobTitle || '', companyName || '', resume.id, matchScore);
+  } else {
+    if (typeof showToast === 'function') showToast('Rewrite panel not available. Please reload the page.', { type: 'error' });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D4: proceedToApply — Create pending_applications row + submit
+// ═══════════════════════════════════════════════════════════
+
+async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
+  closeScoreGateModal();
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  var mode = getApplyModeForJob(jobId);
+
+  // ── Mode 1: Manual — just open URL, update pipeline ──
+  if (mode === APPLY_MODES.MANUAL) {
+    if (jobUrl) window.open(jobUrl, '_blank');
+    _updatePipelineApplied(jobId);
+    if (typeof showToast === 'function') showToast('Opened application page for ' + (companyName || 'this job'));
+    _applySubmitting = false;
+    return;
+  }
+
+  // ── Modes 2-6: Create pending_application + submit via mock ATS ──
+  if (!currentUser) {
+    if (typeof showToast === 'function') showToast('Please log in to apply.', { type: 'error' });
+    _applySubmitting = false;
+    return;
+  }
+
+  if (typeof showToast === 'function') showToast('Submitting application...', { duration: 10000 });
+
+  // Compute approval mode
+  var approvalMode = 'manual';
+  if (mode === APPLY_MODES.AUTO) approvalMode = 'auto_no_approval';
+  else if (mode === APPLY_MODES.SCORE_GATED_AUTO) approvalMode = userApplySettings.default_approval_required ? 'auto_with_approval' : 'auto_no_approval';
+  else if (mode === APPLY_MODES.AUTO_REWRITE) approvalMode = 'rewrite_review';
+  else if (mode === APPLY_MODES.AUTOPILOT) approvalMode = 'auto_no_approval';
+
+  // Get score if available
+  var scoreResult = getScoreForJob(jobId);
+  var originalScore = scoreResult ? (scoreResult.match_score || null) : null;
+
+  // Compute expiry
+  var expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + (userApplySettings.auto_expire_hours || 48));
+
+  // Get resume
+  var resume = _getActiveResume();
+
+  // Create pending_applications row
+  var pendingRow = {
+    user_id: currentUser.id,
+    job_id: jobId,
+    resume_id: resume.id,
+    original_score: originalScore,
+    score_result: scoreResult || null,
+    status: 'approved', // Skip pending for manual apply-anyway clicks
+    approval_mode: approvalMode,
+    job_title: jobTitle || '',
+    company_name: companyName || '',
+    job_url: jobUrl || '',
+    expires_at: expiresAt.toISOString(),
+    idempotency_key: crypto.randomUUID(),
+  };
+
+  var savedApp = await savePendingApplication(pendingRow);
+  if (!savedApp) {
+    if (typeof showToast === 'function') showToast('Failed to create application record.', { type: 'error' });
+    _applySubmitting = false;
+    return;
+  }
+
+  // Submit to mock ATS
+  var result = await callMockAtsSubmit(savedApp, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(jobId);
+    if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+    // D6: Fire notification
+    _fireApplyNotification('apply_auto_submitted', {
+      subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
+      html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
+      job_id: jobId,
+      job_title: jobTitle,
+      company_name: companyName,
+    });
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
+    if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
+  }
+
+  // Refresh pending applications list
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+function _updatePipelineApplied(jobId) {
+  // Ensure it's in pipeline
+  if (typeof toggleSaveJob === 'function') {
+    if (typeof savedJobIds !== 'undefined' && savedJobIds.indexOf(jobId) < 0) {
+      toggleSaveJob(jobId, null);
+    }
+  }
+  // Update pipeline stage to applied
+  var meta = typeof getPipelineMeta === 'function' ? getPipelineMeta() : {};
+  if (!meta[jobId]) meta[jobId] = { stage: 'applied', savedAt: new Date().toISOString() };
+  meta[jobId].stage = 'applied';
+  meta[jobId].appliedAt = new Date().toISOString();
+  if (typeof savePipelineMeta === 'function') savePipelineMeta(meta);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENHANCED APPLY BUTTON
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Called when user clicks Apply on a job row.
+ * Checks apply mode and score to decide whether to show gate.
+ */
+function handleApplyClick(jobId, jobTitle, companyName, jobUrl, btn) {
+  var mode = getApplyModeForJob(jobId);
+  
+  if (mode === APPLY_MODES.MANUAL) {
+    // Mode 1: Direct apply, no gate
+    proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    return;
+  }
+
+  // Modes 2+: Check score
+  var scoreResult = getScoreForJob(jobId);
+  var hasScore = scoreResult && typeof scoreResult.match_score === 'number';
+  var score = hasScore ? scoreResult.match_score : null;
+  var threshold = userApplySettings.default_score_threshold;
+
+  if (mode === APPLY_MODES.SCORE_GATED) {
+    // Mode 2: Show gate if low/unscored
+    if (!hasScore || score < threshold) {
+      showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult);
+    } else {
+      proceedToApply(jobId, jobTitle, companyName, jobUrl);
+    }
+    return;
+  }
+
+  // Modes 3-6: Auto modes (handled by auto-apply engine, not manual click)
+  // For manual clicks in auto mode, just apply directly
+  proceedToApply(jobId, jobTitle, companyName, jobUrl);
+}
+
+function getApplyModeForJob(jobId) {
+  // Check if job belongs to a filter with specific apply settings
+  // For now, return the global default
+  return userApplySettings.default_apply_mode || APPLY_MODES.MANUAL;
+}
+
+function getScoreForJob(jobId) {
+  // Check if we have a cached score for this job
+  if (typeof jobMatchScores !== 'undefined' && jobMatchScores[jobId]) {
+    var s = jobMatchScores[jobId];
+    if (typeof s === 'object') return s;
+    if (typeof s === 'number') return { match_score: s };
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PENDING APPLICATIONS PANEL
+// ═══════════════════════════════════════════════════════════
+
+function renderPendingApplications() {
+  var container = document.getElementById('pending-apps-panel');
+  if (!container) return;
+
+  var pending = pendingApplications.filter(function(a) {
+    return a.status === APPLY_STATUS.PENDING || a.status === APPLY_STATUS.FAILED;
+  });
+  
+  if (pending.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = '';
+  var countEl = document.getElementById('pending-apps-count');
+  if (countEl) countEl.textContent = pending.length;
+
+  var body = document.getElementById('pending-apps-body');
+  if (!body) return;
+
+  body.innerHTML = pending.map(function(app, i) {
+    var scoreHtml = '';
+    if (app.rewritten_score) {
+      scoreHtml = '<span class="pa-score pa-score-improved">' + app.original_score + ' → ' + app.rewritten_score + ' (+' + (app.rewritten_score - app.original_score) + ')</span>';
+    } else if (app.original_score) {
+      var cls = app.original_score >= 75 ? 'high' : app.original_score >= 50 ? 'mid' : 'low';
+      scoreHtml = '<span class="pa-score pa-score-' + cls + '">' + app.original_score + '</span>';
+    } else {
+      scoreHtml = '<span class="pa-score pa-score-none">Unscored</span>';
+    }
+
+    var statusBadge = '';
+    if (app.status === APPLY_STATUS.FAILED) {
+      statusBadge = '<span class="pa-badge pa-badge-failed">Failed — Retry?</span>';
+    }
+
+    var actionsHtml = '';
+    if (app.status === APPLY_STATUS.FAILED) {
+      // Failed: show retry
+      actionsHtml =
+        '<button class="pa-btn pa-btn-primary" onclick="retryPendingApp(\'' + app.id + '\')">Retry Submit</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else if (app.approval_mode === 'rewrite_review') {
+      actionsHtml = 
+        '<button class="pa-btn pa-btn-primary" onclick="approveRewrittenApp(\'' + app.id + '\')">Submit Rewritten</button>' +
+        '<button class="pa-btn pa-btn-secondary" onclick="approveOriginalApp(\'' + app.id + '\')">Submit Original</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else if (app.approval_mode === 'auto_with_approval') {
+      actionsHtml = 
+        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(\'' + app.id + '\')">Approve & Submit</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    } else {
+      actionsHtml = 
+        '<button class="pa-btn pa-btn-primary" onclick="approvePendingApp(\'' + app.id + '\')">Apply</button>' +
+        '<button class="pa-btn pa-btn-accent" onclick="scorePendingApp(\'' + app.id + '\')">Score First</button>' +
+        '<button class="pa-btn pa-btn-ghost" onclick="skipPendingApp(\'' + app.id + '\')">Skip</button>';
+    }
+
+    var rewriteBadge = app.rewritten_score ? '<span class="pa-badge pa-badge-rewrite">Rewritten</span>' : '';
+
+    return '<div class="pa-card" data-app-id="' + (app.id || i) + '">' +
+      '<div class="pa-card-left">' +
+        '<div class="pa-job-title">' + escapeHtml(app.job_title || 'Unknown Job') + '</div>' +
+        '<div class="pa-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
+      '</div>' +
+      '<div class="pa-card-center">' +
+        scoreHtml + rewriteBadge + statusBadge +
+        (app.rewrite_summary ? '<div class="pa-rewrite-summary">' + escapeHtml(app.rewrite_summary) + '</div>' : '') +
+      '</div>' +
+      '<div class="pa-card-actions">' + actionsHtml + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// D4: Pending Application Actions — Supabase-backed
+// ═══════════════════════════════════════════════════════════
+
+async function approvePendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Update status to approved
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting to ' + (app.company_name || 'ATS') + '...', { duration: 10000 });
+
+  // Submit to mock ATS
+  var resume = _getActiveResume();
+  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Applied to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    // D6: Fire notification
+    _fireApplyNotification('apply_auto_submitted', {
+      subject: 'Applied: ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+      html: '<p>Your resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+    });
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Rejected: ' + (result.detail || 'Unknown') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
+    if (typeof showToast === 'function') showToast('ATS timed out. You can retry.', { type: 'error', duration: 6000 });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+async function approveRewrittenApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  // Use the rewritten resume
+  var resumeId = app.rewritten_resume_id || app.resume_id;
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting rewritten resume...', { duration: 10000 });
+
+  var result = await callMockAtsSubmit(app, resumeId, 'resume-rewritten.pdf');
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Submitted rewritten resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+    // D6: Rewrite submitted notification
+    _fireApplyNotification('apply_rewrite_submitted', {
+      subject: 'Applied (rewritten): ' + (app.job_title || 'Job') + ' at ' + (app.company_name || 'Company'),
+      html: '<p>Your AI-rewritten resume was submitted for <strong>' + escapeHtml(app.job_title || '') + '</strong> at <strong>' + escapeHtml(app.company_name || '') + '</strong>.</p>',
+      job_id: app.job_id,
+      job_title: app.job_title,
+      company_name: app.company_name,
+    });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+async function approveOriginalApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  if (_applySubmitting) return;
+  _applySubmitting = true;
+
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (typeof showToast === 'function') showToast('Submitting original resume...', { duration: 10000 });
+
+  var resume = _getActiveResume();
+  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+
+  if (result.ok) {
+    _updatePipelineApplied(app.job_id);
+    if (typeof showToast === 'function') showToast('Submitted original resume to ' + (app.company_name || 'job') + '!', { type: 'success' });
+  } else {
+    if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown') + '. You can retry.', { type: 'error' });
+  }
+
+  await loadPendingApplications();
+  renderPendingApplications();
+  _applySubmitting = false;
+}
+
+async function skipPendingApp(appId) {
+  var success = await updatePendingApplication(appId, {
+    status: APPLY_STATUS.SKIPPED,
+    responded_at: new Date().toISOString(),
+  });
+
+  if (success) {
+    // Remove from local array
+    pendingApplications = pendingApplications.filter(function(a) { return a.id !== appId; });
+    renderPendingApplications();
+    if (typeof showToast === 'function') showToast('Skipped');
+  } else {
+    if (typeof showToast === 'function') showToast('Failed to update. Try again.', { type: 'error' });
+  }
+}
+
+async function retryPendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+
+  // Reset to approved with new idempotency key, then re-submit
+  await updatePendingApplication(appId, {
+    status: APPLY_STATUS.APPROVED,
+    idempotency_key: crypto.randomUUID(),
+  });
+
+  // Re-fetch to get the updated row
+  await loadPendingApplications();
+  var updatedApp = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!updatedApp) return;
+
+  await approvePendingApp(appId);
+}
+
+async function scorePendingApp(appId) {
+  var app = pendingApplications.find(function(a) { return a.id === appId; });
+  if (!app) return;
+  // Delegate to scoreAndRecheck which handles credit check + EF call
+  await scoreAndRecheck(app.job_id, app.job_title, app.company_name, app.job_url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// REWRITE REVIEW MODAL
+// ═══════════════════════════════════════════════════════════
+
+function showRewriteReviewModal(app) {
+  var existing = document.getElementById('rewrite-review-modal');
+  if (existing) existing.remove();
+
+  var changes = app.rewrite_summary || 'No changes summary available.';
+  var beforeScore = app.original_score || '?';
+  var afterScore = app.rewritten_score || '?';
+  var improvement = (app.rewritten_score && app.original_score) ? (app.rewritten_score - app.original_score) : 0;
+
+  var modal = document.createElement('div');
+  modal.id = 'rewrite-review-modal';
+  modal.className = 'sg-overlay';
+  modal.innerHTML =
+    '<div class="sg-modal" style="max-width:560px;">' +
+      '<div class="sg-header">' +
+        '<div class="sg-title">Resume Rewrite Review</div>' +
+        '<button class="sg-close" onclick="closeRewriteReviewModal()">&times;</button>' +
+      '</div>' +
+      '<div class="sg-body">' +
+        '<div class="sg-job-info">' +
+          '<div class="sg-job-title">' + escapeHtml(app.job_title || '') + '</div>' +
+          '<div class="sg-job-company">' + escapeHtml(app.company_name || '') + '</div>' +
+        '</div>' +
+        '<div class="rr-score-comparison">' +
+          '<div class="rr-score-before">' +
+            '<div class="rr-score-val">' + beforeScore + '</div>' +
+            '<div class="rr-score-label">Before</div>' +
+          '</div>' +
+          '<div class="rr-arrow">→</div>' +
+          '<div class="rr-score-after">' +
+            '<div class="rr-score-val">' + afterScore + '</div>' +
+            '<div class="rr-score-label">After</div>' +
+          '</div>' +
+          (improvement > 0 ? '<div class="rr-improvement">+' + improvement + '</div>' : '') +
+        '</div>' +
+        '<div class="rr-changes">' +
+          '<div class="rr-changes-label">Changes made:</div>' +
+          '<div class="rr-changes-body">' + escapeHtml(changes) + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="sg-footer">' +
+        '<button class="sg-btn sg-btn-secondary" onclick="closeRewriteReviewModal()">Cancel</button>' +
+        '<button class="sg-btn sg-btn-primary" onclick="submitRewrittenFromModal()">Submit Rewritten</button>' +
+        '<button class="sg-btn sg-btn-ghost" onclick="submitOriginalFromModal()">Submit Original</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) {
+    if (e.target === modal) closeRewriteReviewModal();
+  });
+}
+
+function closeRewriteReviewModal() {
+  var modal = document.getElementById('rewrite-review-modal');
+  if (modal) modal.remove();
+}
+
+// ═══════════════════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════════════════
+
+loadApplySettings();
+
+// Load pending applications from Supabase after auth is ready
+(async function() {
+  // Wait for auth to be ready (currentUser set by app.js)
+  var attempts = 0;
+  while (!window.currentUser && attempts < 20) {
+    await new Promise(function(r) { setTimeout(r, 250); });
+    attempts++;
+  }
+  if (window.currentUser) {
+    await loadPendingApplications();
+    renderPendingApplications();
+  }
+})();
+
+// ═══════════════════════════════════════════════════════════
+// MODE SELECTOR UI — wire to Rules panel buttons
+// ═══════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', function() {
+  var modeButtons = document.querySelectorAll('.app-mode-select');
+  modeButtons.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      modeButtons.forEach(function(b) {
+        b.classList.remove('active');
+        b.style.border = '';
+      });
+      btn.classList.add('active');
+      btn.style.border = '2px solid var(--accent)';
+      
+      var mode = btn.getAttribute('data-mode');
+      userApplySettings.default_apply_mode = mode;
+      saveApplySettings();
+      updateApplySettingsVisibility(mode);
+    });
+  });
+
+  // Initialize visibility based on saved mode
+  var savedMode = userApplySettings.default_apply_mode || 'manual';
+  var activeBtn = document.querySelector('.app-mode-select[data-mode="' + savedMode + '"]');
+  if (activeBtn) {
+    modeButtons.forEach(function(b) { b.classList.remove('active'); b.style.border = ''; });
+    activeBtn.classList.add('active');
+    activeBtn.style.border = '2px solid var(--accent)';
+  }
+  updateApplySettingsVisibility(savedMode);
+
+  // Threshold slider
+  var thresholdSlider = document.getElementById('fas-threshold');
+  if (thresholdSlider) {
+    thresholdSlider.value = userApplySettings.default_score_threshold || 70;
+    document.getElementById('fas-threshold-val').textContent = thresholdSlider.value;
+    thresholdSlider.addEventListener('change', function() {
+      userApplySettings.default_score_threshold = parseInt(this.value);
+      saveApplySettings();
+    });
+  }
+
+  // Auto-rewrite toggle shows rewrite approval options
+  var rewriteToggle = document.getElementById('fas-auto-rewrite');
+  if (rewriteToggle) {
+    rewriteToggle.addEventListener('change', function() {
+      var row = document.getElementById('fas-rewrite-approval-row');
+      if (row) row.style.display = this.checked ? '' : 'none';
+    });
+  }
+});
+
+function updateApplySettingsVisibility(mode) {
+  var scoreGate = document.getElementById('score-gate-settings');
+  var approval = document.getElementById('approval-settings');
+  var rewriteRow = document.getElementById('fas-rewrite-row');
+  var rewriteApprovalRow = document.getElementById('fas-rewrite-approval-row');
+
+  var usesScore = ['score_gated', 'score_gated_auto', 'auto_rewrite', 'autopilot'].indexOf(mode) >= 0;
+  var usesAuto = ['auto', 'score_gated_auto', 'auto_rewrite', 'autopilot'].indexOf(mode) >= 0;
+  var usesRewrite = ['auto_rewrite', 'autopilot'].indexOf(mode) >= 0;
+
+  if (scoreGate) scoreGate.style.display = usesScore ? '' : 'none';
+  if (approval) approval.style.display = usesAuto ? '' : 'none';
+  if (rewriteRow) rewriteRow.style.display = usesRewrite ? '' : 'none';
+  if (rewriteApprovalRow) rewriteApprovalRow.style.display = usesRewrite && document.getElementById('fas-auto-rewrite') && document.getElementById('fas-auto-rewrite').checked ? '' : 'none';
+}
+
+
 // === js/app.js ===
-const BJ_VERSION = 'v4.83';
-console.log('[BJ] Dashboard ' + BJ_VERSION + ' loaded');
+// BJ_VERSION is defined in js/version.js (single source of truth)
+// version.js auto-populates #nav-version and .bj-version elements
 
 // Auth
 async function init() {
@@ -20415,8 +21872,6 @@ async function init() {
   currentUser = session.user;
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
-  const vEl = document.getElementById('nav-version');
-  if (vEl) vEl.textContent = BJ_VERSION;
 
 // Pre-warm static ref table caches (v3.84)
 if (typeof prewarmRefCaches === 'function') prewarmRefCaches();
@@ -20517,6 +21972,34 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   
   // Load tuning from Supabase
+  // First: normalize any legacy WHEN pills in saved filters
+  let whenNormDirty = false;
+  savedFilters.forEach(sf => {
+    if (sf.whenPills && sf.whenPills.length > 0) {
+      sf.whenPills.forEach(pill => {
+        if (pill.values && pill.values.length > 0) {
+          const norm = typeof normalizeWhenValue === 'function' ? normalizeWhenValue(pill.values[0]) : null;
+          if (norm && norm.label !== pill.values[0]) {
+            pill.values[0] = norm.label;
+            whenNormDirty = true;
+          }
+        }
+      });
+    }
+  });
+  if (whenNormDirty) {
+    if (filtersFromCloud && userId) {
+      // Persist normalized values back to cloud
+      for (let i = 0; i < savedFilters.length; i++) {
+        const sf = savedFilters[i];
+        if (sf._id) {
+          sb.from('user_filters').update({ filter_data: sf }).eq('id', sf._id).then(() => {});
+        }
+      }
+    }
+    localStorage.setItem('bj_saved_filters', JSON.stringify(savedFilters));
+  }
+
   let tuningFromCloud = false;
   if (userId) {
     const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
