@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=5.05" defer></script>
+  <script src="dist/dashboard.min.js?v=5.06" defer></script>
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -1496,61 +1496,6 @@
             </button>
           </div>
 
-          <!-- QUEUE VIEW -->
-          <div id="app-view-queue-panel" class="app-view-panel active">
-
-          <!-- PENDING APPLICATIONS (auto-apply approvals + rewrite reviews) -->
-          <div id="pending-apps-panel" class="card" style="display:none;margin-bottom:16px;border-left:3px solid var(--warm);">
-            <div class="pending-apps-header">
-              <div style="display:flex;align-items:center;">
-                <span class="pending-apps-title">Pending Applications</span>
-                <span class="pending-apps-count" id="pending-apps-count">0</span>
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pending-apps-body').classList.toggle('collapsed')" style="font-size:10px;padding:3px 8px;">Toggle</button>
-            </div>
-            <div id="pending-apps-body">
-              <!-- Dynamically rendered by apply-workflow.js -->
-            </div>
-          </div>
-
-          <!-- QUEUE PANEL -->
-          <div class="app-flow-panel active" id="panel-queue">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <div class="card-title" style="margin:0;">Application Queue</div>
-              <div style="display:flex;gap:8px;">
-                <button class="btn btn-secondary btn-sm" id="a-add-manual">+ Manual Add</button>
-                <button class="btn btn-primary btn-sm" id="a-process-queue" disabled>Process Queue</button>
-              </div>
-            </div>
-            <div style="overflow-x:auto;">
-              <table class="app-queue-table" id="app-queue-table">
-                <thead>
-                  <tr>
-                    <th style="width:28px;"><input type="checkbox" id="a-select-all"></th>
-                    <th>Job</th>
-                    <th>Company</th>
-                    <th>Resume</th>
-                    <th>Mode</th>
-                    <th>Status</th>
-                    <th>Added</th>
-                    <th style="width:60px;"></th>
-                  </tr>
-                </thead>
-                <tbody id="app-queue-body">
-                  <tr>
-                    <td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-                      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
-                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
-                      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
-                        Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
           <!-- SETTINGS PANEL (collapsible — Rules + Notifications) -->
           <div class="app-settings-panel" id="app-settings-panel" style="display:none;">
             <div class="app-settings-header">
@@ -2179,6 +2124,62 @@
           </div>
             </div><!-- end settings-content-notifications -->
           </div><!-- end app-settings-panel -->
+
+          <!-- QUEUE VIEW -->
+          <div id="app-view-queue-panel" class="app-view-panel active">
+
+          <!-- PENDING APPLICATIONS (auto-apply approvals + rewrite reviews) -->
+          <div id="pending-apps-panel" class="card" style="display:none;margin-bottom:16px;border-left:3px solid var(--warm);">
+            <div class="pending-apps-header">
+              <div style="display:flex;align-items:center;">
+                <span class="pending-apps-title">Pending Applications</span>
+                <span class="pending-apps-count" id="pending-apps-count">0</span>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pending-apps-body').classList.toggle('collapsed')" style="font-size:10px;padding:3px 8px;">Toggle</button>
+            </div>
+            <div id="pending-apps-body">
+              <!-- Dynamically rendered by apply-workflow.js -->
+            </div>
+          </div>
+
+          <!-- QUEUE PANEL -->
+          <div class="app-flow-panel active" id="panel-queue">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <div class="card-title" style="margin:0;">Application Queue</div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-secondary btn-sm" id="a-add-manual">+ Manual Add</button>
+                <button class="btn btn-primary btn-sm" id="a-process-queue" disabled>Process Queue</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="app-queue-table" id="app-queue-table">
+                <thead>
+                  <tr>
+                    <th style="width:28px;"><input type="checkbox" id="a-select-all"></th>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Added</th>
+                    <th style="width:60px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="app-queue-body">
+                  <tr>
+                    <td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                      <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
+                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No applications queued</div>
+                      <div style="font-size:12px;max-width:360px;margin:0 auto;line-height:1.5;">
+                        Add jobs manually, or save jobs from Discovery to auto-queue them based on your rules.
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
 
           <!-- HISTORY VIEW -->
           <div id="app-view-history-panel" class="app-view-panel">
