@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-26
 **Target launch:** March 2026
-**Current version:** v4.90
+**Current version:** v5.00
 
 ---
 
@@ -1775,3 +1775,59 @@ All 16 spec items verified against live infrastructure:
 | pg_cron #27 | refresh-city-stats (0 */6 * * *) |
 
 **Phase 43 total: 17 items | 17 complete ✅. Version: v4.91→v4.93. Fully deployed to production.**
+
+---
+
+## Phase 44: Data Integrity & Sync Consolidation (v4.94–v5.00) — 2026-02-26 ✅ COMPLETE
+
+**Goal:** Fix cascading data quality issues — WHEN filter failures, dead job resurrection, stat card inconsistencies, localStorage/Supabase desync — and consolidate the sync architecture around a single write path.
+
+**Source:** User-reported bugs (empty active resumes, 2-job search results, NEW TODAY > TOTAL, dead jobs reappearing) traced to systemic root causes in filter logic, refresh cron, and split sync systems.
+
+### Bug Fixes (v4.94–v4.98)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S1 | WHEN filter validation + normalization | v4.94 | ✅ | `normalizeWhenValue()` standardizes time inputs (today, yesterday, last N days/weeks/months). Handles shorthand: "2w" → "last 14 days". Sort bar validates on Enter/blur with inline red error for unrecognized input. |
+| S2 | Active Resumes empty tab recovery | v4.94 | ✅ | Data sync mismatch: localStorage `bj_resumes` empty while Supabase `resume_archive` had 3 resumes. `renderResumes()` now detects empty state and triggers async cloud recovery with preserved metadata. |
+| S3 | Unified sync layer v1 | v4.95 | ✅ | SYNC_REGISTRY maps 5 data domains to localStorage keys, globals, and Supabase sources. `syncEnsure()` checks localStorage first, fetches from cloud if empty. `syncHealthCheck()` runs 500ms after auth. Plan card flex layout fix (bottom-pinned buttons). |
+| S4 | Dead jobs reappearing | v4.96 | ✅ | Root cause: `refresh-jobs` and `refresh-usajobs` upsert rows with `status='open'`, overwriting `status='closed'` set by `handleDeadJob()`. Fix: removed `status` from upsert — defaults to 'open' on INSERT, never overwritten on UPDATE. Edge Functions redeployed. |
+| S5 | Stat card NEW TODAY > TOTAL | v4.96 | ✅ | TOTAL count query used `buildFilterQuery` which applied WHEN time filter. NEW TODAY added its own 24h window. If WHEN narrower than 24h, TOTAL < NEW TODAY (mathematically impossible). Fix: TOTAL stat strips WHEN pills before query (`sfNoWhen`). |
+| S6 | WHEN filter indicator | v4.97 | ✅ | Filter count bar now shows purple `⏱ today` badge when WHEN time pill is active. Makes time restriction visible. |
+| S7 | Pagination 50→20 per page | v4.98 | ✅ | `JOBS_PER_PAGE` reduced from 50 to 20. Typical screen showed only 23 jobs at 50/page — 20 fits one screen with pagination controls. |
+
+### Infrastructure (v4.99–v5.00)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S8 | Remote search truncation fix | v4.99 | ✅ | Fixed location search query truncation for "remote" WHERE pills. |
+| S9 | WHEN filter wrong column | v5.00 | ✅ | WHEN filter was using `first_seen_at` (only 4 jobs today) instead of `updated_at` (276 jobs today). `first_seen_at` only records scraper discovery time; `updated_at` reflects last refresh confirmation. Fixed WHEN to use `updated_at`. |
+| S10 | Restore `updated_at` in refresh-jobs upsert | v5.00 | ✅ | `updated_at` was accidentally removed from refresh-jobs upsert rows, which would freeze all job timestamps at INSERT time. Restored so refresh cron keeps `updated_at` current. Edge Function redeployed. |
+| S11 | Eliminate localStorage sync bypasses | v5.00 | ✅ | Audit found 4 places writing directly to localStorage for synced keys, bypassing `saveUserData()` cloud sync. All 4 fixed. Removed redundant `localStorage.setItem` calls preceding `saveUserData`. |
+| S12 | Sync architecture consolidation | v5.00 | ✅ | Eliminated duplicate sync system (sync.js v1 competed with globals.js `saveUserData/_flushUserData`). sync.js now focuses solely on boot-time health check + cloud recovery. globals.js owns ALL writes (30 call sites). Zero direct LS writes to synced keys remaining. |
+
+### AI Infrastructure (deployed between v4.95–v4.96)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S13 | `enrich-jd-ai` Edge Function | v4.95+ | ✅ | AI-powered JD skills/requirements extraction via Claude Haiku. Batch processing with `jd_ai_enrichment_progress` function + pg_cron schedule. Concurrency reduced to 5 to eliminate rate limit errors (50/50 success rate). |
+
+### Sync Architecture — Final State
+
+| Component | Owner | Responsibility |
+|-----------|-------|---------------|
+| `saveUserData(lsKey, jsonStr)` | globals.js | ALL writes: localStorage + debounced Supabase PATCH |
+| `_flushUserData()` | globals.js | Batch Supabase writes for pending keys |
+| `loadUserData(userId)` | globals.js | Login-time: Supabase → localStorage merge |
+| `syncHealthCheck()` | sync.js | Post-auth safety net: detect empty LS keys, recover from Supabase + dedicated tables |
+| Direct `localStorage.setItem` | ❌ BANNED | 0 remaining for synced keys. Only UI state keys (bj_collapse, bj_sf_checked) use direct LS. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.00 |
+| dashboard.html nav | v5.00 |
+| Edge Functions deployed | refresh-jobs, refresh-usajobs, enrich-jd-ai |
+
+**Phase 44 total: 13 items | 13 complete ✅. Version: v4.94→v5.00. Fully deployed to production.**
