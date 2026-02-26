@@ -6,3 +6,4 @@ Disallow: /roadmap
 Disallow: /roadmap.html
 
 Sitemap: https://brilliantjobs.app/sitemap.xml
+Sitemap: https://brilliantjobs.app/sitemap-cities.xml

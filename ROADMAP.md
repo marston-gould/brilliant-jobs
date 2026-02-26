@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-24
+**Last updated:** 2026-02-26
 **Target launch:** March 2026
-**Current version:** v4.48.1
+**Current version:** v4.90
 
 ---
 
@@ -900,6 +900,72 @@
 
 ---
 
+## Phase 37: Content Engine Remaining — Handoff v3 (v4.71) — 2026-02-25
+
+**Goal:** Roadmap update from Pod 1 Content Engine Handoff v3. Segments remaining CE work into 4 categories: Permanent Pages (A), Topical Coverage (B), Integration Wiring (C), Enrichment Monitoring (D). Adds 17 items totaling 37-52 dev days.
+
+**Source:** `docs/CONTENT_ENGINE_REMAINING_HANDOFF.docx` (v3)
+
+### Section A: Permanent Pages (6 items, 19-25 days)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| A1 | Company SEO Pages + Ghost Rate Reports | 5-7d | 🔲 | /company/:slug. Extend seo_page_cache with company-level rows. Schema.org Organization. Sitemap top 500. |
+| A2 | College Major Outcomes Page | 3d | 🔲 | NEW. /college-major-outcomes. 73 majors, NY Fed data × BJ ATS data. major_keyword_mapping table + get_jobs_by_major() RPC. |
+| A3 | Jobs by Location Data Page | 4-5d | 🚫 DEFERRED | /jobs-by-location. Blocked on country parsing (GH 0.8%, Lever 0%, Ashby 0%). |
+| A4 | Remote vs Non-Remote Tracker | 3-4d | 🔲 | /remote-vs-office. get_remote_differential() RPC. Launchable at 36% loc_type. Salary needs 40%+. |
+| A5 | Content Freshness Rotation | 2-3d | 🔲 | Infrastructure: last_refreshed_at, refresh_interval_days, data_volatility_score on seo_page_cache. Tiered: 7d/14d/30d. |
+| A6 | Filter-Driven Trend Indicators | 2-3d | 🔲 | get_filter_trend() RPC. Trend badges on saved filter cards. Needs 14+ days content_snapshots. |
+
+### Section B: Topical Coverage (6 items, 11-17 days)
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| B1 | Metro Comparison Stories | 1d | 🔲 | metro_comparison template + threshold tuning (salary Δ 10%+, volume ratio 20%+). Rule exists. |
+| B2 | Multi-Dimensional Insight Stories | 2-3d | 🔲 | 3 detection rules (salary_x_remote, role_x_industry, level_x_location). Blocked on 60%+ coverage. |
+| B3 | Economic Overlay Stories | 3-4d | 🔲 | compute-correlations weekly cron. 3 rules: econ_divergence, econ_inflection, econ_milestone. Needs 90+ days econ data. |
+| B4 | Community Benchmark Stories | 2d | 🔲 | benchmark_shift rule + quarterly cron. Needs 50+ pipeline entries/segment. |
+| B5 | NY Fed Crossover Stories | 2-3d | 🔲 | NEW. 5 templates: T11 Quarterly Update, T12 Major Spotlight, T13 Salary Divergence, T14 College Premium, T15 Underemployment × Hiring. |
+| B6 | Annual State-of-the-Market Report | 3-4d | 🔲 | annual_report template. Manual trigger + admin approval. First report Q4 2026. |
+
+### Section C: Integration Wiring (4 items, 5-7 days) — ALL NEW
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| C1 | Dashboard Insight Cards Wiring | 1-2d | 🔲 | Insight cards above jobs feed. /content-api/merch-dashboard with filter context. Dismiss with 24h reset. |
+| C2 | Email Digest Integration | 2-3d | 🔲 | Extend weekly-summary EF with top 3 stories section from content_stories. |
+| C3 | Landing Page Merchandising Wiring | 1d | 🔲 | data-merch-placement div → merch-client.js → /content-api/merch-index → 3 story cards. |
+| C4 | Blog Index + Discovery | 0.5-1d | 🔲 | Nav link, footer link, RSS, blog-to-dashboard CTAs. |
+
+### Section D: Enrichment Monitoring (1 item, 2-3 days) — NEW
+
+| # | Item | Est. | Status | Notes |
+|---|------|------|--------|-------|
+| D1 | Enrichment Coverage Dashboard | 2-3d | 🔲 | Admin tab: 4 coverage cards, trend chart, gate indicators (40%/60%), throughput, platform breakdown. BUILD FIRST. |
+
+### Recommended Build Order
+
+| Wave | Items | Days | Theme |
+|------|-------|------|-------|
+| 1 | D1, A5, A6, C4, C3 | 6-10 | Foundation + quick integration wins |
+| 2 | C1, C2 | 3-5 | Integration wiring — content reaches users |
+| 3 | A1, A2 | 8-10 | Company pages + college outcomes |
+| 4 | B1, B4, B5, B2, B3 | 10-14 | Topical story templates |
+| 5 | A4, A3 | 7-9 | Gated: remote tracker + jobs by location |
+| Deferred | B6 | 3-4 | Annual report template — Q3-Q4 2026 |
+
+### Coverage Gates
+
+| Field | Current | Target | Unblocks |
+|-------|---------|--------|----------|
+| Salary | 10% | 40%+ | A4 Remote tracker, B2 Multi-dim stories |
+| Location Type | 36% | 60%+ | A4 Remote tracker, B2 Multi-dim stories |
+| Department | 44% | 60%+ | B2 Multi-dim stories |
+| Country (GH/Lever/Ashby) | 0-0.8% | 80%+ | A3 Jobs by Location |
+
+**Phase 37 total: 17 items | 37-52 dev days | v4.71 roadmap update.**
+
+
 ## Master Status Summary
 
 | Phase | Items | Version Range | Status |
@@ -924,7 +990,12 @@
 | **S2** Survey System Hardening | 6/6 | v4.29 | ✅ Complete |
 | **T** Intelligent Pipeline Tracking | 22/22 | v4.30–v4.32 | ✅ Complete |
 | **Hotfixes** | 15 versions | v3.56–v3.70 | ✅ Stabilized |
-| **Total built** | **279+ items** | **v2.68–v4.32** | **17 items 🚫 BLOCKED** |
+| **31** Daily Fixes & Admin Panel | 22/22 | v4.42–v4.48.1 | ✅ Complete |
+| **31b** Merchandising System | 5/5 | v4.51 | ✅ Complete |
+| **32** Layout & Query Builder Fixes | 4/4 | v4.52–v4.54 | ✅ Complete |
+| **33** Resume Archive + Metrics | 31/31 | v4.55–v4.60 | ✅ Complete (all 8 phases) |
+| **34** Pipeline Intelligence Version Sync | 6/6 | v4.61 | ✅ Complete |
+| **Total built** | **350+ items** | **v2.68–v4.61** | **17 items 🚫 BLOCKED** |
 
 ### 🚫 Blocked Items Quick Reference
 
@@ -970,6 +1041,12 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-25 | CE-v3 | — | **Content Engine Handoff v3 roadmap update (v4.71).** Added 17 items across 4 categories from Pod 1 CE Handoff v3: Section A Permanent Pages (6 items: company pages, college outcomes, jobs-by-location, remote tracker, freshness rotation, trend indicators), Section B Topical Coverage (6 items: metro/multi-dim/economic/benchmark/NY Fed stories, annual report), Section C Integration Wiring (4 NEW items: dashboard insight cards, email digest, landing page merch, blog discovery), Section D Enrichment Monitoring (1 NEW item: coverage dashboard). Supersedes v4.70 removal — items re-added with proper categorization. Total: 37-52 dev days. |
+| 2026-02-25 | CE-TRIM | — | **Content Engine roadmap trim (v4.70).** Removed 6 user-pipeline-dependent items from roadmap: Public Company Ghost Rate Reports, Community Benchmark Data, Programmatic Company SEO Pages, Multi-Dimensional Insight Pages, Annual State-of-the-Market Report, Jobs by Location Data Page. These require user activity at scale (50+ pipeline entries per segment, 10K company pages for ghost rates) that won't exist until well after launch. Retained viable items: Content Freshness Rotation, Filter-Driven Trend Indicators, Remote vs Non-Remote Tracker, Public Data Benchmark Overlays, Metro Comparison Pages. |
+| 2026-02-25 | 33 | RA1–RA31 | **Phase 33: Resume Archive + Metrics (v4.55–v4.60).** All 8 phases in single session. 3 new tables (resume_archive, resume_score_history, resume_job_usage). 7 functions + 2 triggers + 1 pg_cron. Archive tab UI with storage bar + version timeline. Expiry cron (daily 3AM) with tier-gated restore. Resume Metrics tab on Stats page: sparkline, level fit, pipeline funnel, usage log. Tier gating module. Pipeline→usage auto-sync trigger. 3 new JS modules (22 total, 604KB minified). 24 cron jobs. |
+| 2026-02-24 | 32 | F23–F26 | **Phase 32: Layout & Query Builder Fixes (v4.52–v4.54).** `.main` div nesting fix, sort-pills HTML, roadmap JS parser fix, admin CSV export. |
+| 2026-02-24 | 31b | M1–M5 | **Merchandising System (v4.51).** 3 tables (merch_placements, merch_rules, merch_content). 52-entry copy bank migration. Admin tab with master-detail editing. Frontend merch-client.js. |
+| 2026-02-24 | 31 | F1–F22 | **Phase 31: Daily Fixes & Admin Panel (v4.42–v4.48.1).** 22 items across 7 versions + 2 Edge Functions + Nano→Small upgrade. Tailwind safelist, HTML nesting, forgot password, setup cards, resume Storage persistence, SEO Extract Report, admin feedback system, merchandising. |
 | 2026-02-24 | T | T1–T22 | **Phase T: Intelligent Pipeline Tracking (v4.30–v4.32).** 4 new DB tables (pipeline_tracking_settings, pipeline_signals, signal_patterns + 21 seeds, user_pipeline +7 columns). 3 new Edge Functions (prompt-pipeline-updates, confirm-pipeline-signal, scan-pipeline-signals). gmail-scan refactored: auto-advance → confirmation-first pipeline_signals. 5-color dot system (green/blue-pulse/yellow/red/gray). Inline signal + prompt cards. ⋮ context menu (mute/reminder/note). Pipeline Intelligence settings UI. PostHog events (5). Last Activity column. Stage header signal badges. 32 Edge Functions total, 17 pg_cron jobs. |
 | 2026-02-24 | S2 | M-R1–R6 | **Survey system hardening (v4.29).** nps-pulse EF deployed (bug fix: last_sign_in_at → last_seen_at) + pg_cron. periodic-survey-pulse EF + cron. NPS formula fixed (avg → standard). survey_social_proof anon access fixed. micro-survey priority already built. 29 Edge Functions, 14 pg_cron. |
 | 2026-02-24 | R | R1–R9 | **Phase R: AI Rewrite JD-Match Boost (v4.28).** Complete "Boost Match" pipeline: 2 new Edge Functions (rewrite-resume-analyze, rewrite-resume-execute), 4 AI agents (Gap Analyzer + Question Generator on Haiku, Resume Rewriter on Sonnet, Quality Checker on Haiku). Slide-out panel UI (analyze → Q&A → diff → accept). Boost pill on Jobs Feed match column (< 85%). Client-side DOCX generation via docx-js + Supabase Storage upload. resume_texts table + 11 new rewrite_sessions columns + init_rewrite_session RPC. Build hardening: fixed esbuild scope collision. 27 Edge Functions total. |
@@ -1176,6 +1253,7 @@ M-R1–R6 complete — see **Phase S2** above (v4.29).
 | — | 30 * * * * | prompt-pipeline-hourly | Phase T |
 | — | */15 * * * * | scan-pipeline-signals-15m | Phase T |
 | — | 0 4 * * 0 | pattern-confidence-decay | Phase T |
+| — | 0 3 * * * | expire-archived-resumes | Phase 33 |
 
 ---
 
@@ -1257,6 +1335,18 @@ Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge
 |---|------|--------|-------|
 | F22 | Null ref TypeError | ✅ | `$('#sort-add-btn').addEventListener` crashed at parse time. Added `?.` to 5 bare querySelector().addEventListener calls in sort-bar.js + billing.js. |
 
+
+
+### Merchandising System (v4.51)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| M1 | Database schema + RPC | ✅ | 3 tables: `merch_placements`, `merch_rules`, `merch_content`. RLS + indexes. `get_merch_content()` SECURITY DEFINER RPC with priority cascade (cohort-specific > all-cohorts, audience-specific > all). Visit gating, seasonal filtering. |
+| M2 | Copy bank migration (52 entries) | ✅ | 34 returning + 18 lapsed from ROTATING_HERO_COPY_SPEC. 5 deep-visit entries gated at min_visits=3. 8 categories. |
+| M3 | Admin Merchandising tab | ✅ | 9th admin tab. Master-detail: placement list → rules → content entries. Edit modal with live HTML preview + {JOBS}/{COMPANIES} hydration. Bulk JSON import. Full CRUD with cascade delete. |
+| M4 | Frontend merch-client.js | ✅ | Lightweight IIFE. Raw fetch to RPC (no SDK). Unseen-entry rotation via localStorage. Injects into `data-merch-field` targets. PostHog: `merch_content_shown` + `merch_content_click`. Static fallback = progressive enhancement. |
+| M5 | QA & version sync v4.51 | ✅ | 28/28 tests pass. Dashboard nav-version, BJ_VERSION, console.log, dist bundle all v4.51. |
+
 ### Deployment Summary
 
 | Version | Files | Changes |
@@ -1272,3 +1362,390 @@ Resolved 19 daily issues + 2 feature builds across 7 version deployments, 2 Edge
 | Edge | hire-fee/index.ts | CORS dynamic origin |
 | Edge | seo-sync/index.ts | JWT base64 + PEM fix |
 | Edge | sync-feedback/index.ts | New: Canny + feedback sync |
+| v4.51 | dashboard.html, js/admin.js, js/app.js, index.html, js/merch-client.js, dist/* | Merchandising system: DB schema, admin tab, frontend integration |
+
+---
+
+## Phase 32: Layout & Query Builder Fixes (v4.52–v4.54) — 2026-02-24
+
+**Status:** ✅ COMPLETE
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| F23 | `.main` div nesting fix | v4.52 | ✅ | Extra `</div>` after page-stats closed `.main` prematurely. All 16 pages now inside `.main`. |
+| F24 | Sort-pills HTML element | v4.53 | ✅ | Missing `#sort-pills` blocked all query builder event handlers from binding. |
+| F25 | Roadmap JS parser fix | v4.53 | ✅ | Phase 31-33 items were jammed inside `blockedMap` object literal. Moved to `features` array. |
+| F26 | Admin CSV export | v4.54 | ✅ | Export dead/unscraped/active/all boards as CSV from admin panel. |
+
+---
+
+## Phase 33: Resume Archive + Metrics (v4.55–v4.60) — 2026-02-25
+
+**Estimated:** ~10 sessions | **Actual:** Single session | **Status:** ✅ COMPLETE (all 8 phases)
+
+Implemented the full Resume Archive + Resume Metrics Intelligence system from the Pod 1 handoff spec. 3 new tables, 7 functions, 2 triggers, 1 cron job, 3 new JS modules (22 total in bundle).
+
+### Phase 1: Schema + Storage Foundation (v4.55)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA1 | `resume_archive` table (18 cols) | ✅ | UUID PK, version tracking, SHA-256 dedup, JSONB metadata_snapshot, 4 RLS policies, 4 indexes |
+| RA2 | `resume_score_history` table (13 cols) | ✅ | Score type (ai/ngram/manual), scoring model, analysis_json JSONB, 2 RLS, 3 indexes |
+| RA3 | `resume_job_usage` table (11 cols) | ✅ | Pipeline stage tracking, denormalized company/title, 3 RLS, 3 indexes |
+| RA4 | Helper functions (3) | ✅ | `check_resume_dedup`, `next_version_number`, `check_resume_limits` (fixed to use `profiles.plan`) |
+
+### Phase 2: Data Migration + Sync (v4.56)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA5 | Migrate 3 resumes | ✅ | SallieMae (real SHA-256 from Storage), NinjaTrader + Redfin (from profiles.user_data.resumes) |
+| RA6 | `sync_resume_to_archive()` | ✅ | Dedup detection, version lineage, tier limit enforcement. Returns success/error JSON. |
+| RA7 | `migrate_resumes_to_archive()` | ✅ | Batch migration function for existing `resumes` table rows (50 per batch) |
+| RA8 | `updated_at` trigger | ✅ | Auto-updates `updated_at` on any resume_archive row change |
+
+### Phase 3: Archive Tab UI (v4.57)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA9 | Active/Archive tab toggle | ✅ | Pill-button pattern matching Applications List/Board toggle |
+| RA10 | Storage usage bar | ✅ | Current usage vs tier limit, color-coded (green/amber/red), upgrade CTA at 80% |
+| RA11 | Archive table | ✅ | Name, Version, Created, Last Used, Size, Status badges, search filter, actions |
+| RA12 | Version timeline | ✅ | Expandable panel with green/gray dots + connector lines |
+| RA13 | `js/resume-archive.js` | ✅ | 20th JS module. Tab switching, archive load, actions, deep-linking (`#resumes?tab=archive`) |
+
+### Phase 4: Expiry Cron + Restore (v4.58)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA14 | `expire_archived_resumes()` | ✅ | Soft-deletes expired archives (retains metadata_snapshot, marks storage_path as expired) |
+| RA15 | pg_cron: `expire-archived-resumes` | ✅ | Daily at 3 AM UTC. 24th cron job. |
+| RA16 | `restore_archived_resume()` | ✅ | Tier-gated: Free expired → EXPIRED_UPGRADE_REQUIRED → subscription redirect. Starter/Pro → restore. |
+| RA17 | Tier-based expiry | ✅ | Archive sets `archive_expires_at`: Free=30d, Starter=90d, Pro=unlimited |
+| RA18 | Expired UI state | ✅ | Red "Expired" badge, expiry countdown for archived resumes, "Restore ↑" button |
+
+### Phase 5: Score History Wiring — DEFERRED TO NEXT
+
+Tables created in Phase 1. Edge Function dual-write pending.
+
+### Phase 6: Resume Metrics Intelligence UI (v4.59)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA19 | Market Stats / Resume Metrics tab toggle | ✅ | Pill toggle on Stats page (same pattern as Resumes) |
+| RA20 | Resume selector dropdown | ✅ | Populated from `resume_archive` where `is_active = true` |
+| RA21 | Score Summary card + sparkline | ✅ | Last score (large), type, detail. ECharts sparkline of last 10 scores. |
+| RA22 | Level Fit bar chart | ✅ | Horizontal bar by Entry/Mid/Senior/Lead/Executive with auto-insight text |
+| RA23 | Pipeline Funnel | ✅ | ECharts funnel: Applied → Screened → Interview → Offer with counts + % |
+| RA24 | Application Log table | ✅ | Company, Job Title, Applied date, Score, Stage. Filterable. |
+| RA25 | Cross-linking | ✅ | Archive → Metrics and Metrics → Archive navigation |
+| RA26 | `js/resume-metrics.js` | ✅ | 21st JS module. ECharts dispose/resize, deep-linking. |
+
+### Phase 7+8: Tier Gating + Pipeline Tracking (v4.60)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| RA27 | `js/tier-gating.js` | ✅ | 22nd JS module. TIER_GATES config, `showTierGate()` overlay, `canAccessFeature()`, `getUserTier()` |
+| RA28 | Free tier gating | ✅ | Sparkline, level fit, pipeline, usage log all gated with blurred overlay + upgrade CTA |
+| RA29 | `trg_pipeline_to_usage` trigger | ✅ | Auto-syncs user_pipeline INSERT/UPDATE → resume_job_usage. Resolves resume name → ID. |
+| RA30 | `sync_pipeline_to_resume_usage()` | ✅ | Manual RPC for backfill. Tested: resolves resume names, updates `last_used_at`. |
+| RA31 | Unique index on usage | ✅ | `idx_job_usage_unique ON resume_job_usage(user_id, job_id)` prevents dupes |
+
+### Deployment Summary
+
+| Version | Commit | Files | Changes |
+|---------|--------|-------|---------|
+| v4.55 | `4dcff0fa` + `c3292c41` | dashboard.html, js/app.js, dist/* | Schema: 3 tables, RLS, indexes, helper functions |
+| v4.56 | `fd311ee7` + `27deaa05` | dashboard.html, js/app.js, dist/* | Migration: 3 resumes, sync function, version tracking |
+| v4.57 | `94ac1e5e` | dashboard.html, js/app.js, js/resume-archive.js, build.js, dist/* | Archive tab UI |
+| v4.58 | `f87751e7` | dashboard.html, js/app.js, js/resume-archive.js, dist/* | Expiry cron + restore flow |
+| v4.59 | `2a09d069` | dashboard.html, js/app.js, js/resume-metrics.js, build.js, dist/* | Resume Metrics Intelligence UI |
+| v4.60 | `1a6f591a` | dashboard.html, js/app.js, js/tier-gating.js, build.js, dist/* | Tier gating + pipeline tracking |
+
+### New Database Objects
+
+| Type | Name | Notes |
+|------|------|-------|
+| Table | `resume_archive` | 18 columns, 4 RLS, 4 indexes |
+| Table | `resume_score_history` | 13 columns, 2 RLS, 3 indexes |
+| Table | `resume_job_usage` | 11 columns, 3 RLS, 3+1 indexes |
+| Function | `check_resume_dedup` | SHA-256 dedup check |
+| Function | `next_version_number` | Auto-increment within lineage |
+| Function | `check_resume_limits` | Tier-aware usage/limit check |
+| Function | `sync_resume_to_archive` | Client-facing: dedup + version + limits |
+| Function | `expire_archived_resumes` | Soft-delete expired archives |
+| Function | `restore_archived_resume` | Tier-gated restore |
+| Function | `sync_pipeline_to_resume_usage` | Manual pipeline→usage bridge |
+| Trigger | `update_resume_archive_updated_at` | Auto-update timestamp |
+| Trigger | `trg_pipeline_to_usage` | Auto-sync pipeline→usage on INSERT/UPDATE |
+| Cron | `expire-archived-resumes` | Daily 3 AM UTC (24th cron job) |
+
+---
+
+## Phase 34: Pipeline Intelligence — Version Sync (v4.61) — 2026-02-25
+
+**Goal:** Close remaining Phase A/B gaps: add `calendar.events.readonly` OAuth scope to `gmail-auth`, synchronize version numbers across dashboard.html, js/app.js, and dist/dashboard.min.js.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| VS1 | `gmail-auth` calendar scope | v4.61 | ✅ | Added `calendar.events.readonly` to OAuth scope string. Required for `scan-pipeline-signals` to read Google Calendar events. |
+| VS2 | dashboard.html version bump | v4.61 | ✅ | v4.54 → v4.61. Was behind by 6 versions. |
+| VS3 | js/app.js version bump | v4.61 | ✅ | v4.60 → v4.61. Console log sync. |
+| VS4 | dist/dashboard.min.js rebuild | v4.61 | ✅ | 22 files → 589.9KB minified. All 3 version stamps synchronized. |
+| VS5 | Edge Function redeploy | v4.61 | ✅ | `gmail-auth` redeployed with calendar scope. Verified all 4 pipeline EFs responding (gmail-auth, scan-pipeline-signals, prompt-pipeline-updates, confirm-pipeline-signal). |
+| VS6 | Vercel deploy | v4.61 | ✅ | Triggered. Frontend version sync live. |
+
+### Phase A/B Verification (Complete)
+
+All 16 spec items verified against live infrastructure:
+
+**Phase A (Pipeline Migration + Manual Prompts):** `user_pipeline` (34 cols), `pipeline_tracking_settings` (13 cols), localStorage→Supabase migration, `prompt-pipeline-updates` EF + hourly cron, 5-color dot system, inline prompt/signal cards, settings panel, Last Activity column.
+
+**Phase B (OAuth + Signal Infrastructure):** `gmail_connections` (10 cols, 1 active), `gmail-auth` EF (now with calendar scope), Gmail/Calendar connect UI, `pipeline_signals` (13 cols), `signal_patterns` (21 seeds), `confirm-pipeline-signal` EF, blue pulsing dot + card, signal detection toggle.
+
+**pg_cron (4 pipeline jobs):** `scan-pipeline-signals-15m`, `prompt-pipeline-hourly`, `gmail-scan-6h`, `purge-old-signals`.
+
+---
+
+## Phase 35: Calendar Intelligence + Cross-User Learning (v4.62) — 2026-02-25
+
+**Goal:** Phase C of the Intelligent Pipeline Tracking spec. Upgrade calendar scanning to use learned patterns from signal_patterns table (cross-user), add interview round detection, fix confirm-pipeline-signal pattern updates, add pattern decay cron.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| C1 | `scan-pipeline-signals` v2→v3 | v4.62 | ✅ | Reads `signal_patterns` table for learned confidence scores instead of hardcoded values. Cross-user data improves detection for all users as they confirm/dismiss signals. |
+| C2 | Interview round detection | v4.62 | ✅ | Regex-based round extraction from calendar titles: final, onsite, panel, technical, hiring manager, phone screen, intro, round 1/2, late stage. Stored in `evidence_metadata.interview_round`. |
+| C3 | Match method tracking | v4.62 | ✅ | `evidence_metadata.match_method` records whether match was via `attendee_domain` (high conf) or `title_match` (lower conf). Domain matches get +5% confidence boost. |
+| C4 | `confirm-pipeline-signal` v1→v2 | v4.62 | ✅ | Fixed broken `exec_sql` pattern update — now uses direct Supabase queries. Cross-user learning: confirm/dismiss updates `signal_patterns.confirmations`/`dismissals` + recalculates `confidence_score` for ALL users. New patterns auto-inserted on first encounter. |
+| C5 | `decay_signal_patterns()` RPC | v4.62 | ✅ | Weekly 5% decay on patterns not seen in 30+ days. Auto-deletes junk patterns (>90d, 0 confirms, 3+ dismissals). |
+| C6 | pg_cron: `decay-signal-patterns` | v4.62 | ✅ | Weekly Sunday 5am UTC. Prevents stale patterns from polluting detection. |
+| C7 | Frontend: calendar icon + round badge | v4.62 | ✅ | Calendar signals show 📅 icon (vs ✉ for email). Interview round rendered as colored badge (e.g., "Final Round", "Technical"). Confidence % indicator on all signal cards. |
+| C8 | CSS: `.pl-round-badge`, `.pl-signal-confidence` | v4.62 | ✅ | Accent-colored pill badge for round labels. Color-coded confidence (green ≥80%, amber ≥60%, red <60%). |
+| C9 | Version sync v4.62 | v4.62 | ✅ | dashboard.html, js/app.js, dist/dashboard.min.js, styles.css all v4.62. |
+
+**Phase 35 total:** 9 items | All complete.
+
+---
+
+## Phase 36: Signal Analytics + Notification Templates (v4.63) — 2026-02-25
+
+**Goal:** Phase D of the Intelligent Pipeline Tracking spec. Admin signal metrics tab, PostHog instrumentation for pipeline events, notification type registration for signal alerts.
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| D1 | Admin Signals tab (10th tab) | v4.63 | ✅ | 5 KPIs (total, pending, confirmed, dismissed, confirm rate). Signals-by-source pie chart (ECharts). Pattern confidence distribution bar chart. Learned patterns table (type, pattern, signal, conf%, confirms, dismissals, last seen). Recent signals table (user, source, type, stage, confidence, status, date). |
+| D2 | PostHog: pipeline_stage_changed | v4.63 | ✅ | Fires on every stage transition in `movePipelineStage()`. Includes job_id, new_stage, company, company_domain. |
+| D3 | PostHog: pipeline_entry_created | v4.63 | ✅ | Fires on first-time pipeline save (when _dbId didn't exist). Includes job_id, stage, company, ats_source. |
+| D4 | Notification types: signal_calendar | v4.63 | ✅ | SMS-enabled. "Calendar interview detected" — real-time alerts when calendar scanning finds interview events matching pipeline companies. |
+| D5 | Notification types: signal_email | v4.63 | ✅ | "Email signal detected" — real-time alerts when Gmail scanning detects recruiter responses. |
+| D6 | Notification types: pipeline_prompt | v4.63 | ✅ | "Pipeline check-in prompts" — daily digest of stale pipeline entries that need user attention. |
+| D7 | Version sync v4.63 | v4.63 | ✅ | dashboard.html, js/app.js, dist/dashboard.min.js all v4.63. |
+
+**Phase 36 total:** 7 items | All complete.
+
+---
+
+## Phase 38: Styling Fixes (v4.79a) — 2026-02-25
+
+**Goal:** Fix two styling bugs: missing CSS for hidden job cards on Tuning page, and inconsistent heading accent colors across onboarding heroes.
+
+**Source:** Pod 1 visual QA
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| S1 | Hidden job card CSS (Tuning page) | v4.79a | ✅ | Added 6 missing CSS classes to styles.css: `.poor-match-card`, `.poor-match-info`, `.poor-match-title`, `.poor-match-meta`, `.poor-match-reason`, `.poor-match-unhide`. Flex layout, text truncation, hover states, button styling. |
+| S2 | Hero heading color consistency | v4.79a | ✅ | Wrapped accent phrases in `<span style="color:#f59e0b">` to match index page "Your search continues" amber. Affected: "This is how you take control." (Get Started), "Track everything." (Setup), "Better matches." (Tuning). |
+| S3 | CSS cache bust | v4.79a | ✅ | Bumped `styles.css?v=4.78e` → `?v=4.79a` in dashboard.html. |
+| S4 | Vercel deploy | v4.79a | ✅ | Deploy triggered and verified live. New CSS confirmed serving in production. |
+
+**Phase 38 total:** 4 items | All complete | Styling-only — no version bump to dashboard.
+
+
+## Phase 39: Bug Tracker Resolution (v4.83) — 2026-02-25
+
+**Goal:** Resolve 6 outstanding bugs from Pod 2 tracker across resumes.js and tuning.js.
+
+**Source:** Pod 2 bug tracker, session with Claude
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| B1 | Archive persistence failure (P1) | v4.83 | ✅ | `archiveResume()` now awaits Supabase write, checks `error`, shows toast on failure, only updates local state on DB success. Added `_archivedLocallyAt` timestamp guard (60s grace). `reconcileResumeArchive()` skips reconciliation if `recentlyChanged` within 60s. Same pattern applied to `unarchiveResume()`. Commits: f921e9bf, 40825389. |
+| B2 | Score badge labels (P2) | v4.83 | ✅ | Thresholds: high ≥ 75 (was 70), mid ≥ 50 (was 40), low < 50. Labels: "Strong" / "Partial" / "Weak". Removed % suffix, added `nri-score-label` div. Commit: f921e9bf. |
+| B3 | Archived count = 0 (P1) | v4.83 | ✅ | Resolved automatically — same root cause as B1 (archive write not awaited). |
+| B4 | Archive motivation copy (P3) | v4.83 | ✅ | Archive button tooltip: "Archive — preserves match history and scores. Restore anytime." Delete confirmation emphasizes permanence and suggests archiving. Archive section label tooltip explains score/history preservation. Commit: 40825389. |
+| B5 | Tuning pill font | v4.83 | ✅ | Fixed by Pod 1 (Tailwind safelist expansion, 152 classes restored). |
+| B6 | Poor match suggestions empty (P2) | v4.83 | ✅ | Per-card pattern notes: "Pattern: 'intern' appears in 4 hidden jobs". Fallback to company pattern. Actionable exclusion banner. De-duplicated stopWords/counting. Commit: d05d6770. |
+
+**Phase 39 total:** 6 items | All complete | Files: js/resumes.js, js/tuning.js | Bundle rebuild required (v4.83).
+
+**Git verification:** Pod 2 commits (f921e9bf, d05d6770, d452209e) via GitHub API. Pod 1 made 6 subsequent commits to dashboard.html (hero redesign, extension card, etc.) — no conflicts with resumes.js or tuning.js. All 14 fix markers verified in remote source files and minified bundle.
+
+---
+
+## Phase 40: Feed Quality & Search Relevance (v4.86–v4.90) — 2026-02-25
+
+**Goal:** Enable JD-content-aware filtering so users can search by skills, experience, and description keywords — not just metadata.
+
+**Source:** Pod 2 proposal, session with Claude (FEED_QUALITY_PHASES.md, FEED_QUALITY_PROPOSAL.md)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| FQ1 | Skills dictionary — corpus frequency analysis | v4.86 | ✅ | `extract_jd_metadata_v2` PL/pgSQL function. Autonomous pg_cron backfill across 128K+ jobs. Extracts skills into `extracted_skills[]` array column. |
+| FQ2 | Deterministic JD extraction function | v4.86 | ✅ | `extract_jd_metadata_v2()` PL/pgSQL. Regex extraction of skills, seniority, department from `content` field. New columns: `extracted_skills[]`, `extracted_seniority`, `extracted_department`. GIN index on extracted_skills. |
+| FQ3 | Backfill + pipeline integration | v4.86–v4.87 | ✅ | Batch extraction on 128K+ jobs via pg_cron. `jd-extraction-ongoing` cron (every 5 min) catches new jobs. `loc_type` backfill: 12K+ remote jobs properly tagged. `trg_sync_loc_type` trigger for ongoing sync. |
+| FQ4 | PostgreSQL full-text search (tsvector) | v4.86 | ✅ | `content_tsv` tsvector column, GIN index, auto-update trigger. `websearch_to_tsquery` for JD CONTAINS pill. Used by relevance sort and JD search. |
+| FQ5 | SKILLS pill type in Query Builder | v4.86 | ✅ | Green pill. Queries `extracted_skills` using `.cs` (contains) operator. Multiple pills AND together. Full lifecycle: input bindings, serialization, edit flow, clear-all, saved filter persistence. |
+| FQ6 | LEVEL filter (replaces EXPERIENCE range) | v4.86 | ✅ | Purple pill querying `extracted_seniority` (senior/mid/junior/executive/intern). Single or multi-select via `.eq`/`.in`. Full pill lifecycle. QB layout: Skills+Dept row, Level+JD row. |
+| FQ7 | JD CONTAINS pill type (full-text) | v4.86 | ✅ | Amber pill. Free text → `websearch_to_tsquery` against `content_tsv`. Stemming automatic. Multiple pills AND together. |
+| FQ8 | Relevance sort option | v4.88 | ✅ | Feed sort dropdown option. Client-side scoring: title 3x, skills 2x, company 1x, location 1x. `_relevanceScore` per job. `search_jobs_by_relevance` RPC for server-side `ts_rank`. |
+| FQ9 | buildFilterQuery() expansion | v4.86 | ✅ | All new pill types wired into job-feed.js: SKILLS (`.cs`), LEVEL (`.eq`/`.in`), DEPARTMENT (`.eq`/`.in`), JD CONTAINS (`.textSearch`). Saved filter schema updated. `allPills()` and `renderAllPills()` expanded. |
+| FQ9b | DEPARTMENT filter pill | v4.88 | ✅ | Blue pill querying `extracted_department` (engineering, marketing, sales, data, hr, finance, legal, etc.). Full lifecycle wired. |
+| FQ10 | User feed signals table | v4.90 | ✅ | `feed_signals` table: user_id, greenhouse_id, signal_type, filter_name. RLS: users read/write own. `log_feed_signal` RPC (fire-and-forget). `get_feed_signal_stats` RPC. Signals: click, hide, save, apply. |
+| FQ11 | Filter health score | v4.89 | ✅ | `get_filter_health` RPC: total matches, salary %, skills %, remote count, top skills, top departments. Weighted composite (salary 40%, skills 30%, content 30%). 💡 button on each saved filter → popover. |
+| FQ12 | Smart skill suggestions | v4.89 | ✅ | Health popover shows top skills from matching jobs not in filter. Click → adds skill pill instantly with toast. `bjShowImproveSuggestions` / `bjApplyImproveSuggestions`. |
+| FQ13 | Resume mismatch warnings | TBD | 📋 PLANNED | Cross-reference resume skills vs top jd_skills. Alert if 70%+ JDs require missing skill. |
+| FQ14 | AI enrichment pilot (5K jobs) | TBD | 📋 PLANNED | `enrich-jd` EF. Claude Haiku: function, technical_level, mgmt_scope, summary, differentiators. 5K-job pilot (~$4). 4-layer evaluation. Go/no-go gate. |
+| FQ15 | Full AI backfill (if pilot passes) | TBD | 📋 PLANNED | Phase 4b: full 350K backfill (~$280). pg_cron pipeline. Pro-gated FUNCTION and TECHNICAL DEPTH filters. "Why This Job?" feed card expansion. |
+
+**Phase 40 status:** 13/16 complete. 3 remaining (resume mismatch, AI enrichment pilot, full backfill).
+
+
+## Phase 40b: Pod 1 Sprint — Pricing, Global Version, AEO (v4.84) — 2026-02-25
+
+**Goal:** Fix version drift across all pages, add login/copyright to external pages, replace pricing toggle with duration slider, fix sort pill duplication, produce /jobs-in/ city pages handoff.
+
+**Source:** Pod 1 session with Claude
+
+### Global Version System (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| V1 | Create js/version.js — single source of truth | v4.84 | ✅ | `var BJ_VERSION = 'v4.84'`. Auto-populates `.bj-version`, `#nav-version`, `.bj-year` elements. Console log on every page. |
+| V2 | Remove hardcoded versions from all pages | v4.84 | ✅ | Killed: index (v4.77 footer, v4.81 console, v4.83 comment), pricing (v4.22 console), data-lab (v4.78), 5 SEO pages (v4.78), app.js (v4.83 const). |
+| V3 | Wire version.js into all 13 HTML pages | v4.84 | ✅ | index, pricing, dashboard, data-lab, salary-data, hiring-trends, jobs-by-industry, career-level-data, market-dynamics, ghost-report, help, terms, privacy, uninstall, survey, 404, 503. |
+| V4 | Dynamic copyright year (bj-year class) | v4.84 | ✅ | `new Date().getFullYear()` populates all `.bj-year` spans. Replaced `document.write()` and inline scripts. Auto-rolls Jan 1. |
+
+### External Page Polish (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| E1 | Login button on all SEO data pages | v4.84 | ✅ | `.bj-topbar` nav with "✦ Brilliant Jobs" + "Log In" → /dashboard. 6 pages: data-lab, salary-data, hiring-trends, jobs-by-industry, career-level-data, market-dynamics. |
+| E2 | Login button on ghost-report | v4.84 | ✅ | Same `.bj-topbar` inside existing `.container`. |
+| E3 | Login button on terms, privacy, uninstall | v4.84 | ✅ | Added to existing `.top-bar` via `margin-left:auto`. |
+| E4 | Login button on help.html | v4.84 | ✅ | Light-theme variant (blue button on white bg). |
+| E5 | Copyright footer on all pages missing it | v4.84 | ✅ | SEO pages (6), ghost-report, terms, privacy, uninstall, help — all now have `© {year} Brilliant Jobs`. |
+
+### Pricing Page Overhaul (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| PR1 | Duration slider (1-12 months) | v4.84 | ✅ | Replaced Monthly/Annual toggle. Progressive discounts: 0%→40% over 1→12 months. Slider with filled track. |
+| PR2 | Discount curve from job search data | v4.84 | ✅ | 12-step curve aligned to BLS job search duration statistics (23%→90% cumulative). |
+| PR3 | Contextual insights per month | v4.84 | ✅ | "60% still searching — this is the national median" (5mo), "68% — senior roles take this long" (6mo), etc. |
+| PR4 | Strikethrough original prices | v4.84 | ✅ | ~~$20~~ $18/month when discount active. `.plan-price-original` class. |
+| PR5 | Total cost line | v4.84 | ✅ | "Starter: $54 total (save $6) · Pro: $108 total" below slider. |
+| PR6 | FAQ: duration discount explanation | v4.84 | ✅ | "Choose how many months to commit. Longer = deeper discount. Up to 40% at 12 months." |
+| PR7 | Fix: stray CSS brace broke pricing grid | v4.84 | ✅ | Extra `}` from slider CSS replacement closed style block early. All card styles ignored. |
+| PR8 | Fix: slider label alignment | v4.84 | ✅ | Labels positioned at mathematically correct % (18.2%, 45.5%, 72.7%) instead of evenly spaced. |
+
+### Bug Fixes (v4.84)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| BF1 | Sort pills duplicating on add/toggle/remove | v4.84 | ✅ | `renderSortPills()` never cleared container before re-rendering. Added `.sort-pill` removal at function start. |
+
+### Handoff Documents (v4.84)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| H1 | /jobs-in/{city} city pages handoff | ✅ | 16-section, 664-paragraph docx. Phase 1: page shell + hook pills (~13.5h). Phase 2: user-search pills (~7h). Includes AEO strategy, 4 JSON-LD schemas, Jobs Feed interaction spec. |
+
+**Phase 40b total:** 19 items | All complete | Version: v4.84
+**Files modified:** js/version.js (NEW), js/app.js, js/sort-bar.js, build.js, dist/dashboard.min.js, dashboard.html, index.html, pricing.html, data-lab.html, salary-data.html, hiring-trends.html, jobs-by-industry.html, career-level-data.html, market-dynamics.html, ghost-report.html, help.html, terms.html, privacy.html, uninstall.html, survey.html, 404.html, 503.html
+
+---
+
+## Phase 39b: Pod 1 UX & Design Sprint (v4.82–v4.83) — 2026-02-25
+
+**Goal:** Resolve CSS/HTML/UX bugs from bug tracker, redesign Jobs Feed and Resumes pages for design coherence, improve feed merchandising capabilities.
+
+**Source:** Pod 1 session with Claude, 6 reported bugs + feed UX review
+
+### Tailwind & CSS Fixes (v4.82)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P1 | Tailwind safelist expansion | v4.82 | ✅ | 152 purged classes restored. Expanded from 1 pattern to 13 patterns covering 654 custom classes. |
+| P2 | Score badge CSS colors | v4.82 | ✅ | `.nri-score.mid` blue→amber, `.nri-score.low` amber→red. Added `.nri-score-label` class. |
+| P3 | Archive button CSS standalone | v4.83 | ✅ | `.rc-btn` no longer requires `.rc-actions` parent. Added font-family + transition. |
+| P4 | Tuning pill font fix | v4.82 | ✅ | Added explicit `font-family: var(--sans)` to `.qb-pill` base class. |
+| P5 | Ghost Rate column removed | v4.83 | ✅ | Removed from header + row rendering. Colspans updated 10→9. Will resurface as per-company visual cue when data available. |
+
+### Feed UX Redesign (v4.83)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P6 | Jobs Feed hero banner | v4.83 | ✅ | Navy hero matching Setup/Tuning/Resumes pattern. Stat cards absorbed into hero as compact chips (Total Jobs, Companies, New Today, Pipeline). |
+| P7 | Resumes hero stats | v4.83 | ✅ | Same pattern: stat-grid replaced with hero-embedded chips (Active, Levels, Assigned, Coverage, Archived). |
+| P8 | Intel/merch 2-card slot | v4.83 | ✅ | Replaced Market Intelligence box. Left card = contextual insight (salary ranges, new jobs). Right card = merch-client rotatable (upsell, feature announcement). Both dismissible. |
+| P9 | Contextual intel card JS | v4.83 | ✅ | `updateIntelInsight()` populates card from actual filter/job data: salary p25–p75, new jobs count, filter name. |
+| P10 | Stat chip stacked layout | v4.83 | ✅ | Hero stat chips changed from horizontal side-by-side to stacked (number on top, label below). |
+
+### Feed Controls & Copy (v4.83)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P11 | Generate from Resume CTA | v4.83 | ✅ | Moved from inside collapsed filter builder to standalone card ABOVE Job Filter Builder. |
+| P12 | Extension card fix | v4.83 | ✅ | "Download Extension" button now hidden when green dot shows connected. |
+| P13 | Sort pill dedup | v4.82 | ✅ | Set-based dedup guard in `renderSortPills()`. Filters jobSortStack on every render. |
+| P14 | Get Started copy update | v4.82 | ✅ | "Save" → "Pipeline", description updated to match actual Save→Pipeline→Bulk Apply flow. |
+| P15 | Table header alignment | v4.82 | ✅ | Added missing Ghost Rate `<th>` (then removed entire column in P5). Rebalanced column widths. |
+
+### Exclusion Language Overhaul (v4.83)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P16 | Hide popup rewrite | v4.83 | ✅ | "Why hide this?" → "Why doesn't this belong?" + explainer: "This trains your exclusion filters — hide 3+ and we'll suggest patterns to auto-remove similar jobs." |
+| P17 | Hide reason labels | v4.83 | ✅ | Action-oriented: "Wrong title → exclude similar roles", "Wrong company → block this employer". |
+| P18 | Hide button tooltip | v4.83 | ✅ | "Hide this job — trains your exclusion filters to remove similar listings" |
+| P19 | Improve Filters button | v4.83 | ✅ | "🔧 Improve Filters (3 hidden)" → "🔧 3 hidden — generate exclusions" |
+
+### Version Sync
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P20 | Version sync v4.83 | v4.83 | ✅ | BJ_VERSION in js/app.js (single source of truth), CSS bust, nav display, comment headers across index.html + pricing.html. |
+
+**Phase 39b total:** 20 items | All complete | Version range: v4.82 → v4.83
+**Files modified:** tailwind.config.js, src/input.css, styles.css, dashboard.html, js/job-feed.js, js/keywords.js, js/sort-bar.js, js/app.js, index.html, pricing.html, dist/dashboard.min.js
+
+## Phase 42b: City Pages Sprint Complete + SEO Canonicals (v4.91) — 2026-02-26
+
+**Goal:** Complete the City Pages + Internal Linking sprint, add self-referencing canonicals to all static pages.
+
+### City Pages Sprint (feat/city-pages-linking-sprint) — 15 commits
+
+| # | Item | Block | Status | Notes |
+|---|------|-------|--------|-------|
+| 1 | Quick fixes (blog links, sitemap) | 0 | ✅ | Fixed `/jobs-in-city` → `/jobs-in/city`. Added `/pricing` and `/ghost-report` to sitemap. |
+| 2 | DB schema | 1 | ✅ | `city_pages` + `city_popular_pills` tables with RLS. |
+| 3 | `refresh-city-stats` Edge Function | 2 | ✅ | 6h cron. Aggregates job stats per metro. |
+| 4 | SSR template + hook pills | 3 | ✅ | `jobs-in.html` template. Hook pills (top titles, skills, industries). Vercel rewrite `/jobs-in/:metro` → `seo-page.js`. |
+| 5 | JSON-LD structured data | 4 | ✅ | City pages: Place + ItemList/JobPosting (top 5 employers) + FAQPage (salary, companies, remote %, trend). Trends pages: Occupation + FAQPage. |
+| 6 | Hub + homepage + Data Lab | 5 | ✅ | Browse by City sections on homepage, hub (`/job-market-data`), and Data Lab. |
+| 7 | Bidirectional cross-linking | 6 | ✅ | SSR: trends↔city, metro↔metro, trends↔trends, hub↔Data Lab. Data Lab subpages: client-side fetch from `city_pages` → 15 city links + 15 role links with 24h localStorage cache. |
+| 8 | Pill conversion flow | 7 | ✅ | Anonymous → signup modal with pill context. Authenticated → `bj_pending_pills` localStorage → dashboard applies to active filter on init. PostHog events: `pill_signup_modal_shown`, `pill_filter_added`, `pending_pills_applied`. |
+| 9 | City sitemap | — | ✅ | `sitemap-cities.xml` with 2,178 URLs, tiered priority. Added to `robots.txt` + main `sitemap.xml`. |
+
+### SEO Canonicals
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 10 | Self-referencing canonical tags | ✅ | Added `rel=canonical` to 7 static pages missing them: `index.html` (`/`), `pricing.html`, `privacy.html`, `terms.html`, `help.html`, `survey.html`, `uninstall.html`. Prevents query-string duplicate content. |
+
+### Investigation (TODO)
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 11 | Investigate unhandled parametric SSR pages | 🔲 | 4 Vercel routes wired but no handler in `seo-page.js`: `/company/:slug` (no cache data), `/jobs-:a-vs-:b` (10 comparison pages cached with data), `/college-major-outcomes` (15 majors in `major_job_cache`), `/jobs-by-location` (no data — city pages may suffice). Need to evaluate build priority and data readiness for each. |
+
+**Phase 42b status:** 10/11 complete. 1 investigation task planned.

@@ -249,6 +249,10 @@ const NOTIF_TYPES = [
   { id: 'autorefill_success', label: 'Auto-refill confirmations', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
   { id: 'autorefill_failed', label: 'Auto-refill failed', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
   { id: 'credit_exhausted', label: 'Credits exhausted mid-month', tier: 'credit', defaultFreq: 'realtime', smsDefault: false },
+  // v2: Pipeline signals
+  { id: 'signal_calendar', label: 'Calendar interview detected', tier: 'realtime', defaultFreq: 'realtime', smsDefault: true },
+  { id: 'signal_email', label: 'Email signal detected', tier: 'realtime', defaultFreq: 'realtime', smsDefault: false },
+  { id: 'pipeline_prompt', label: 'Pipeline check-in prompts', tier: 'daily', defaultFreq: 'daily', smsDefault: false },
 ];
 
 let notifPrefs = null;   // notification_preferences row
