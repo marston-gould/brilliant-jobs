@@ -10,12 +10,12 @@ if (hiddenJobIds.length > 0 && typeof hiddenJobIds[0] === 'string') {
 function isJobHidden(ghId) { return hiddenJobIds.some(h => h.id === ghId); }
 
 const HIDE_REASONS = [
-  { key: 'wrong_title', label: 'Wrong title' },
-  { key: 'wrong_location', label: 'Wrong location' },
-  { key: 'wrong_company', label: 'Wrong company' },
-  { key: 'too_old', label: 'Too old' },
-  { key: 'wrong_pay', label: 'Wrong pay' },
-  { key: 'other', label: 'Other / not relevant' },
+  { key: 'wrong_title', label: 'Wrong title — exclude similar roles' },
+  { key: 'wrong_location', label: 'Wrong location — exclude this area' },
+  { key: 'wrong_company', label: 'Wrong company — block this employer' },
+  { key: 'too_old', label: 'Too old / stale listing' },
+  { key: 'wrong_pay', label: 'Pay too low for this role' },
+  { key: 'other', label: 'Other — not relevant to me' },
 ];
 
 function debouncedSearchJobs() {
@@ -1110,7 +1110,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
-      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;">✕</button></td>
+      <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
       <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
