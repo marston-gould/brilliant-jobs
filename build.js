@@ -23,6 +23,7 @@ const jsFiles = [
   'js/resume-archive.js',
   'js/resume-metrics.js',
   'js/tier-gating.js',
+  'js/apply-workflow.js',
   'js/app.js',
 ];
 
