@@ -726,7 +726,7 @@ function buildInlineGrade(ri, data) {
       var fname = filterNames[fi];
       var fs = data.filters[fname];
       var fg = scoreToGrade(fs.score);
-      html += '<span title="' + fname + ': ' + fs.score + '% (' + fs.matched + '/' + fs.total + ' terms)" style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + fg.color + '15;color:' + fg.color + ';font-weight:600;font-family:var(--mono);cursor:help;">' + fg.grade + '</span>';
+      html += '<span title="' + escapeHtml(fname) + ': ' + fs.score + '% (' + fs.matched + '/' + fs.total + ' terms)" style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + fg.color + '15;color:' + fg.color + ';font-weight:600;font-family:var(--mono);cursor:help;">' + fg.grade + '</span>';
     }
     html += '</div>';
   }
@@ -746,7 +746,7 @@ function buildInlineGrade(ri, data) {
     html += '<div style="margin-bottom:10px;">';
     html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
     html += '<span style="font-family:var(--mono);font-size:11px;font-weight:700;color:' + fg2.color + ';">' + fg2.grade + ' ' + fs2.score + '%</span>';
-    html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname2 + '</span>';
+    html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + escapeHtml(fname2) + '</span>';
     html += '<span style="font-size:9px;color:var(--text-faint);">' + fs2.matched + '/' + fs2.total + ' terms \u00b7 ' + fs2.jdsAnalyzed + ' JDs</span>';
     html += '</div>';
 
@@ -861,10 +861,10 @@ function buildReadinessSide(ri, data) {
     if (filterNames.length > 1) {
       html += '<span style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
     }
-    html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + fname + '</span>';
+    html += '<span style="font-size:11px;font-weight:600;color:var(--text);">' + escapeHtml(fname) + '</span>';
     if (fs.ai) {
       html += '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(77,142,255,0.15);color:#4d8eff;font-weight:600;">AI</span>';
-      html += '<span style="font-size:11px;color:var(--text-faint);">' + (fs.fitStatus || '') + ' \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
+      html += '<span style="font-size:11px;color:var(--text-faint);">' + escapeHtml(fs.fitStatus || '') + ' \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
     } else {
       html += '<span style="font-size:9px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
     }
@@ -873,7 +873,7 @@ function buildReadinessSide(ri, data) {
 
     // ─── AI results rendering ───
     if (fs.ai && fs.summary) {
-      html += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.6;">' + fs.summary + '</div>';
+      html += '<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;line-height:1.6;">' + escapeHtml(fs.summary || '') + '</div>';
 
       // Premium: dimension score bars
       if (fs.premium && fs.dimensionScores) {
@@ -1649,7 +1649,7 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
     html += '<a href="' + coverUrl + '" download="cover-letter.docx" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#7c3aed;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;margin-bottom:6px;">\ud83d\udcc4 Cover Letter</a>';
   }
 
-  html += '<div style="font-size:10px;color:var(--green);margin:6px 0;">\u2713 Resume auto-saved to library and assigned to "' + fname + '"</div>';
+  html += '<div style="font-size:10px;color:var(--green);margin:6px 0;">\u2713 Resume auto-saved to library and assigned to "' + escapeHtml(fname) + '"</div>';
   html += '<div style="margin-top:6px;font-size:11px;color:var(--text-dim);"><strong>Template:</strong> ' + (data.template_used || 'executive') + ' \u00b7 <strong>Changes:</strong> ' + (data.changes_made || []).length + ' \u00b7 <strong>Time:</strong> ' + ((data.timing?.total_ms || 0) / 1000).toFixed(1) + 's (' + (data.agents_used || 1) + ' agents)</div>';
 
   if (data.qa_report) {
@@ -1950,7 +1950,7 @@ async function bjRequestRevision(stateKey) {
 
   } catch (e) {
     console.error('[BJ] Revision error:', e);
-    if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Error: ' + e.message + '</div>';
+    if (btn) btn.innerHTML = '<div style="padding:8px;font-size:11px;color:var(--red);">Error: ' + escapeHtml(e.message) + '</div>';
   }
 }
 
@@ -2061,7 +2061,7 @@ function renderReadinessResults(scores) {
       // Score header row
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
       html += '<span style="font-family:var(--mono);font-size:13px;font-weight:600;color:' + fc + ';">' + fs.score + '%</span>';
-      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">' + fname + '</span>';
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">' + escapeHtml(fname) + '</span>';
       html += '<span style="font-size:10px;color:var(--text-faint);">' + fs.matched + '/' + fs.total + ' terms \u00b7 ' + fs.jdsAnalyzed + ' JDs</span>';
       html += '<span onclick="document.getElementById(\'' + detailId + '\').style.display=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'\':\'none\';this.textContent=document.getElementById(\'' + detailId + '\').style.display===\'none\'?\'Show keywords \u25b8\':\'Hide keywords \u25be\'" style="font-size:10px;color:var(--accent);cursor:pointer;margin-left:auto;font-weight:500;">Show keywords \u25b8</span>';
       html += '</div>';
@@ -2942,7 +2942,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
           if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
           if (data.offices?.length) meta.push(data.offices.map(o => o.name).join(', '));
           if (meta.length) {
-            bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${meta.join('  ·  ')}</div>` + bodyEl.innerHTML;
+            bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${escapeHtml(meta.join('  ·  '))}</div>` + bodyEl.innerHTML;
           }
           // Cache the decoded version locally and in Supabase
           const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
@@ -2996,7 +2996,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
           if (data.departments?.length) meta.push(data.departments.map(d => d.name).join(', '));
           if (data.offices?.length) meta.push(data.offices.map(o => o.name).join(', '));
           if (meta.length) {
-            bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${meta.join('  ·  ')}</div>` + bodyEl.innerHTML;
+            bodyEl.innerHTML = `<div style="font-size:11px;color:var(--text-faint);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);">${escapeHtml(meta.join('  ·  '))}</div>` + bodyEl.innerHTML;
           }
           const cachedJob = allJobs.find(j => j.greenhouse_id === jobId);
           if (cachedJob) cachedJob.content = htmlContent;
