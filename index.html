@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v4.83 - 2026-02-23 -->
+<!-- Brilliant Jobs Landing Page -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -18,6 +18,7 @@
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preconnect" href="https://qojhagupdnbtomfoxnsf.supabase.co">
+  <script src="/js/version.js"></script>
   <script src="https://analytics.ahrefs.com/analytics.js" data-key="epmlewecGa7zjdRysfTLMg" async></script>
   <style>
     @font-face {
@@ -746,7 +747,7 @@
   <!-- Segment detection — runs before body paint to prevent FOUC (v3.59) -->
   <script>
   (function() {
-    console.log('[BJ] Landing page v4.81 — Merchandising');
+    // Version logging handled by js/version.js
     var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
     localStorage.setItem('bj_visits', String(visits + 1));
     var hasAccount = localStorage.getItem('bj_has_account') === 'true';
@@ -1327,7 +1328,7 @@
       <a href="/privacy">Privacy</a>
       <a href="/help">Contact</a>
     </div>
-    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · v4.77</p>
+    <p class="footer-copy">&copy; <span id="year"></span><script>document.getElementById("year").textContent=new Date().getFullYear()</script> Brilliant Jobs. All rights reserved. · <span class="bj-version"></span></p>
   </footer>
 
   <!-- AUTH MODAL -->
