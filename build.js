@@ -2,6 +2,7 @@ import { buildSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 
 const jsFiles = [
+  'js/version.js',
   'js/globals.js',
   'js/query-builder.js',
   'js/job-feed.js',
