@@ -186,7 +186,7 @@ function renderResumes() {
         <div class="nri-actions" onclick="event.stopPropagation()">
           <button onclick="downloadResume(${i})" title="Download">\u2b07</button>
           <button onclick="renameResume(${i})" title="Rename">\u270e</button>
-          <button onclick="archiveResume(${i})" title="Archive">\ud83d\udce6</button>
+          <button onclick="archiveResume(${i})" title="Archive — preserves match history and scores. Restore anytime.">\ud83d\udce6</button>
           <button class="danger" onclick="removeResume(${i})" title="Delete">\u2715</button>
         </div>
       </div>
@@ -291,6 +291,7 @@ function renderResumeArchive(archivedResumes) {
 
   section.style.display = '';
   labelEl.textContent = archivedResumes.length + ' archived';
+  labelEl.title = 'Archived resumes keep their match scores and pipeline history. Restore them anytime without losing context.';
 
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
 
@@ -796,7 +797,7 @@ window.renameResume = function(idx) {
 };
 
 window.removeResume = function(idx) {
-  if (!confirm(`Permanently delete "${resumes[idx].name}"?`)) return;
+  if (!confirm(`Delete "${resumes[idx].name}"? This permanently removes the file and all match history. Consider archiving instead to preserve your scores.`)) return;
   // Clean up stored file from IndexedDB and Storage
   bjFileStore.delete(resumes[idx].id).catch(() => {});
   if (resumes[idx].storagePath && currentUser) {
