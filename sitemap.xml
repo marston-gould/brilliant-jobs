@@ -141,4 +141,6 @@
   <url><loc>https://brilliantjobs.app/trends/security-engineer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://brilliantjobs.app/trends/software-engineer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://brilliantjobs.app/trends/ux-designer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <!-- City pages sitemap: see sitemap-cities.xml for 2,178 city landing pages -->
+  <url><loc>https://brilliantjobs.app/sitemap-cities.xml</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
 </urlset>
