@@ -368,7 +368,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 25, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 24 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules)
+    Brilliant Jobs · Internal Roadmap · Updated February 26, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 32 Edge Functions · 24 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules)
   </div>
 
 </div>
@@ -1437,6 +1437,16 @@ const features = [
   { s: 'todo', n: 'Resume mismatch warnings', d: 'Cross-reference resume skills vs top jd_skills in filter results. Alert if 70%+ JDs require a missing skill.', b: 'pre-launch', p: 41 },
   { s: 'todo', n: 'AI enrichment pilot (5K jobs)', d: 'enrich-jd Edge Function. Claude Haiku classification: function, technical_level, mgmt_scope, summary, differentiators. 5K-job pilot across 5 ambiguous title clusters (~$4). 4-layer evaluation with go/no-go gate.', b: 'pre-launch', p: 41 },
   { s: 'todo', n: 'Full AI backfill + Pro-gated filters', d: 'Phase 4b (if pilot passes): full 350K backfill (~$280). pg_cron pipeline. FUNCTION and TECHNICAL DEPTH filters (Pro-gated). "Why This Job?" feed card expansion.', b: 'pre-launch', p: 41 },
+
+  // Phase 42: Global Version, Pricing Slider, City Pages (v4.84-v4.85) — Feb 25-26, 2026
+  { s: 'done', n: 'Global version system (js/version.js)', d: 'Single source of truth for version + copyright year. var BJ_VERSION auto-populates .bj-version, #nav-version, console log. .bj-year replaces document.write() for copyright. Killed 6+ hardcoded version strings across 17 pages.', p: 42 },
+  { s: 'done', n: 'Login buttons on all external pages', d: '10 pages gained login CTA: 6 SEO data pages (dark .bj-topbar), ghost-report, terms, privacy, uninstall, help (light variant). Consistent Log In placement.', p: 42 },
+  { s: 'done', n: 'Dynamic copyright on all pages', d: 'Replaced hardcoded years and document.write() across 17 pages with .bj-year spans populated by version.js. Auto-rolls to next year on Jan 1.', p: 42 },
+  { s: 'done', n: 'Duration slider pricing (1-12 months)', d: 'Replaced Monthly/Annual toggle with 1-12 month slider. Progressive discounts 0-40% grounded in BLS job search duration data. Contextual insights per month. Strikethrough prices, total cost line, filled track.', p: 42 },
+  { s: 'done', n: 'Pricing grid CSS fix', d: 'Stray closing brace broke .pricing-grid. Cards stacked full-width. Removed extra brace, repositioned slider labels to correct percentages.', p: 42 },
+  { s: 'done', n: 'Sort pills duplication fix', d: 'renderSortPills() appended pills without clearing container. Every add/toggle/remove doubled pills. Added .sort-pill removal at function start.', p: 42 },
+  { s: 'done', n: '/jobs-in/{city} pages handoff document', d: 'Pod 2 handoff: 16-section docx. Phase 1 (~13.5h): city_pages table, refresh-city-stats EF, hook pills, 4 JSON-LD schemas, FAQs, Vercel ISR. Phase 2 (~7h): user-search pills, dashboard card. AEO strategy.', p: 42 },
+  { s: 'progress', n: '/jobs-in/{city} dynamic city pages (Pod 2)', d: 'Pod 2 implementation of city pages spec. Phase 1: page template + hook pills + SEO. Phase 2: user-search pills + dashboard card. Handoff delivered.', b: 'dependency', p: 42 },
 ];
 
 
@@ -1565,7 +1575,8 @@ function render() {
     38: 'Signal Analytics + Notification Templates',
     39: 'Content Distribution & Social Publishing',
     40: 'Bug Tracker Resolution',
-    41: 'Feed Quality & Search Relevance'
+    41: 'Feed Quality & Search Relevance',
+    42: 'Global Version, Pricing & City Pages'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
