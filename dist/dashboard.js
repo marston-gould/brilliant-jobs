@@ -4889,9 +4889,9 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
   if (data.cover_letter) {
     html += '<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;">Cover Letter Preview (' + (data.cover_letter.word_count||'?') + ' words)</summary>';
     html += '<div style="padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:0 0 6px 6px;">';
-    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (data.cover_letter.salutation||'') + '</div>';
-    (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + p + '</div>'; });
-    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + (data.cover_letter.closing||'') + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (escapeHtml(data.cover_letter.salutation||'')) + '</div>';
+    (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + escapeHtml(p) + '</div>'; });
+    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + (escapeHtml(data.cover_letter.closing||'')) + '</div>';
     html += '</div></details>';
   }
 
@@ -6843,12 +6843,12 @@ async function bjRenderCoverLetterArchive() {
       var downloadUrl = SUPABASE_URL + '/storage/v1/object/public/' + cl.storage_path;
       html += '<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg-input);">';
       html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">';
-      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + (cl.filter_name || 'General') + '</span>' + tierBadge;
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + escapeHtml(cl.filter_name || 'General') + '</span>' + tierBadge;
       html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;">' + date + ' \u00b7 ' + (cl.word_count || '?') + ' words</span></div>';
       html += '<div id="cl-preview-' + cl.id + '" style="display:none;font-size:11px;color:var(--text-dim);margin:6px 0;padding:8px;background:var(--bg-main);border-radius:4px;line-height:1.5;">';
-      html += '<div style="font-style:italic;margin-bottom:4px;">' + (cl.salutation || '') + '</div>';
-      (cl.paragraphs || []).forEach(function(p) { html += '<div style="margin-bottom:6px;">' + p + '</div>'; });
-      html += '<div>' + (cl.closing || '') + '</div></div>';
+      html += '<div style="font-style:italic;margin-bottom:4px;">' + escapeHtml(cl.salutation || '') + '</div>';
+      (cl.paragraphs || []).forEach(function(p) { html += '<div style="margin-bottom:6px;">' + escapeHtml(p) + '</div>'; });
+      html += '<div>' + escapeHtml(cl.closing || '') + '</div></div>';
       html += '<div style="display:flex;gap:6px;">';
       html += '<button class="btn btn-sm" onclick="var e=document.getElementById(\'cl-preview-' + cl.id + '\');e.style.display=e.style.display===\'none\'?\'\':\'none\';" style="font-size:9px;padding:2px 8px;">Preview</button>';
       html += '<a href="' + downloadUrl + '" download class="btn btn-sm" style="font-size:9px;padding:2px 8px;text-decoration:none;">Download</a>';
@@ -16798,7 +16798,7 @@ async function loadRevenueTab(daysBack) {
     var usersBody = document.getElementById('ar-users-body');
     if (usersBody) {
       usersBody.innerHTML = (d.top_users || []).map(function(u) {
-        var email = u.email || u.user_id.substring(0, 8) + '...';
+        var email = escapeHtml(u.email || u.user_id.substring(0, 8)) + '...';
         return '<tr><td class="admin-platform-name">' + email + '</td>' +
           '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(u.credits_used) + '</td>' +
           '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(u.credits_granted) + '</td>' +
@@ -17060,7 +17060,7 @@ async function loadGhostTab() {
         var avgDays = s.avg_response_days > 0 ? s.avg_response_days + 'd' : '—';
 
         return '<tr>' +
-          '<td style="font-weight:600;text-transform:capitalize;">' + (s.company_slug || '—').replace(/-/g, ' ') + '</td>' +
+          '<td style="font-weight:600;text-transform:capitalize;">' + escapeHtml((s.company_slug || '—').replace(/-/g, ' ')) + '</td>' +
           '<td>' + (s.total_applications || 0) + '</td>' +
           '<td>' + responded + '</td>' +
           '<td>' + (s.ghosted_count || 0) + '</td>' +
@@ -17464,7 +17464,7 @@ function renderFeedbackTable() {
     var daysSince = Math.floor((now - new Date(r.submitted_at).getTime()) / 86400000);
     var staleColor = daysSince < 7 ? '#22c55e' : daysSince < 30 ? '#f59e0b' : '#ef4444';
     var user = r.user_id && _afbUserMap[r.user_id] ? _afbUserMap[r.user_id].email : '—';
-    var userShort = user.length > 16 ? user.slice(0, 14) + '…' : user;
+    var userShort = escapeHtml(user.length > 16 ? user.slice(0, 14) + '…' : user);
     var title = (r.title || r.content || '').slice(0, 80);
     var relTime = daysSince === 0 ? 'today' : daysSince === 1 ? '1d ago' : daysSince < 7 ? daysSince + 'd ago' : daysSince < 30 ? Math.floor(daysSince / 7) + 'w ago' : Math.floor(daysSince / 30) + 'mo ago';
 
@@ -18244,8 +18244,8 @@ async function loadReferralsAdminTab() {
           var statusPill = '<span class="ref-status-pill ref-status-' + r.status + '">' + r.status + '</span>';
 
           return '<tr>' +
-            '<td>' + (referrer.email || r.referrer_id.substring(0,8)) + '</td>' +
-            '<td>' + (r.referred_email || '—') + '</td>' +
+            '<td>' + escapeHtml(referrer.email || r.referrer_id.substring(0,8)) + '</td>' +
+            '<td>' + escapeHtml(r.referred_email || '—') + '</td>' +
             '<td>' + r.attribution_method + '</td>' +
             '<td><span style="color:' + scoreColor + ';font-weight:700;">' + (r.fraud_score || 0).toFixed(2) + '</span></td>' +
             '<td>' + (signalTags || '—') + '</td>' +
@@ -18284,7 +18284,7 @@ async function loadReferralsAdminTab() {
         var clawed = r.clawed_back_at ? '<span style="color:#dc2626;font-size:10px;">CLAWED BACK</span>' : '';
 
         return '<tr>' +
-          '<td>' + (user.email || r.user_id.substring(0,8)) + '</td>' +
+          '<td>' + escapeHtml(user.email || r.user_id.substring(0,8)) + '</td>' +
           '<td>' + r.reward_type + '</td>' +
           '<td>' + valStr + ' ' + clawed + '</td>' +
           '<td>T' + r.tier_at_grant + '</td>' +
@@ -18310,8 +18310,8 @@ async function loadReferralsAdminTab() {
         if (bannedEmpty) bannedEmpty.style.display = 'none';
         bannedBody.innerHTML = banned.map(function(u) {
           return '<tr>' +
-            '<td>' + (u.full_name || '—') + '</td>' +
-            '<td>' + u.email + '</td>' +
+            '<td>' + escapeHtml(u.full_name || '—') + '</td>' +
+            '<td>' + escapeHtml(u.email) + '</td>' +
             '<td>' + u.referral_count + '</td>' +
             '<td><button class="merch-btn-sm" onclick="adminUnban(\'' + u.id + '\')" style="font-size:10px;">Unban</button></td>' +
           '</tr>';
@@ -18546,7 +18546,7 @@ function previewStory(id) {
   panel.style.display = "block";
   document.getElementById("ct-preview-headline").textContent = s.headline || "--";
   document.getElementById("ct-preview-lede").textContent = s.lede || "--";
-  document.getElementById("ct-preview-body").innerHTML = s.body_html || "<em>No content generated yet</em>";
+  document.getElementById("ct-preview-body").innerHTML = (typeof DOMPurify !== "undefined" && s.body_html ? DOMPurify.sanitize(s.body_html) : s.body_html) || "<em>No content generated yet</em>";
   document.getElementById("ct-preview-meta").textContent = s.meta_description || "--";
   document.getElementById("ct-preview-social").textContent = s.social_snippet || "--";
   document.getElementById("ct-preview-link").textContent = s.evergreen_link || "--";

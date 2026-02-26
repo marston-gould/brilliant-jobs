@@ -1679,9 +1679,9 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
   if (data.cover_letter) {
     html += '<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;">Cover Letter Preview (' + (data.cover_letter.word_count||'?') + ' words)</summary>';
     html += '<div style="padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:0 0 6px 6px;">';
-    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (data.cover_letter.salutation||'') + '</div>';
-    (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + p + '</div>'; });
-    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + (data.cover_letter.closing||'') + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (escapeHtml(data.cover_letter.salutation||'')) + '</div>';
+    (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + escapeHtml(p) + '</div>'; });
+    html += '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;">' + (escapeHtml(data.cover_letter.closing||'')) + '</div>';
     html += '</div></details>';
   }
 
@@ -3633,12 +3633,12 @@ async function bjRenderCoverLetterArchive() {
       var downloadUrl = SUPABASE_URL + '/storage/v1/object/public/' + cl.storage_path;
       html += '<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg-input);">';
       html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">';
-      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + (cl.filter_name || 'General') + '</span>' + tierBadge;
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + escapeHtml(cl.filter_name || 'General') + '</span>' + tierBadge;
       html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;">' + date + ' \u00b7 ' + (cl.word_count || '?') + ' words</span></div>';
       html += '<div id="cl-preview-' + cl.id + '" style="display:none;font-size:11px;color:var(--text-dim);margin:6px 0;padding:8px;background:var(--bg-main);border-radius:4px;line-height:1.5;">';
-      html += '<div style="font-style:italic;margin-bottom:4px;">' + (cl.salutation || '') + '</div>';
-      (cl.paragraphs || []).forEach(function(p) { html += '<div style="margin-bottom:6px;">' + p + '</div>'; });
-      html += '<div>' + (cl.closing || '') + '</div></div>';
+      html += '<div style="font-style:italic;margin-bottom:4px;">' + escapeHtml(cl.salutation || '') + '</div>';
+      (cl.paragraphs || []).forEach(function(p) { html += '<div style="margin-bottom:6px;">' + escapeHtml(p) + '</div>'; });
+      html += '<div>' + escapeHtml(cl.closing || '') + '</div></div>';
       html += '<div style="display:flex;gap:6px;">';
       html += '<button class="btn btn-sm" onclick="var e=document.getElementById(\'cl-preview-' + cl.id + '\');e.style.display=e.style.display===\'none\'?\'\':\'none\';" style="font-size:9px;padding:2px 8px;">Preview</button>';
       html += '<a href="' + downloadUrl + '" download class="btn btn-sm" style="font-size:9px;padding:2px 8px;text-decoration:none;">Download</a>';
