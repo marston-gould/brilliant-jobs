@@ -127,7 +127,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
   
   if (remotePills.length > 0 && !hasNonRemotePills && textPills.length === 0) {
     // Pure remote search — let buildFilterQuery handle it with ilike
-    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true };
+    return { includeIds: null, excludeIds: new Set(), boundingBox: null, isUSSearch: false, isRemoteOnly: true, _stateCodes: [], _radiusPills: [], _hasRemote: true };
   }
   
   if (shouldSearchRemote) {
@@ -206,6 +206,11 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
     excludeIds: new Set(),
     boundingBox,
     isUSSearch,
+    isRemoteOnly: false,
+    // Preserve original search params for SQL-native fallback when ID set is too large
+    _stateCodes: simpleCodes.concat(ambiguousPills.map(p => p.stateCode)),
+    _radiusPills: radiusPills,
+    _hasRemote: remotePills.length > 0 || includeRemote,
   };
 }
 
@@ -259,8 +264,10 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // WHERE — use pre-fetched location IDs or bounding box
   if (locationIds && locationIds.isRemoteOnly) {
     // Pure remote search — filter inline instead of using pre-fetched IDs
+    console.log('[BJ] Location filter: remote-only mode');
     query = query.or('location.ilike.Remote%,location.ilike.%remote%,is_remote.eq.true');
   } else if (locationIds && locationIds.includeIds !== null) {
+    console.log(`[BJ] Location filter: ${locationIds.includeIds.length} IDs, boundingBox=${!!locationIds.boundingBox}`);
     if (locationIds.includeIds.length === 0) {
       // No matches — force empty result
       query = query.in('greenhouse_id', ['__NO_MATCH__']);
@@ -276,8 +283,38 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
         .gte('job_lng', bb.minLng)
         .lte('job_lng', bb.maxLng);
     } else {
-      // Fallback: chunk IDs into batches (use first 200 as approximation)
-      query = query.in('greenhouse_id', locationIds.includeIds.slice(0, 200));
+      // Too many IDs for .in() and no bounding box — use SQL-native location filters
+      // This applies state + radius + remote constraints directly as WHERE clauses
+      console.log(`[BJ] Location filter: SQL-native fallback (${locationIds.includeIds.length} IDs too many for .in())`);
+      const locClauses = [];
+
+      // State-based filtering
+      if (locationIds._stateCodes && locationIds._stateCodes.length > 0) {
+        locClauses.push(...locationIds._stateCodes.map(sc => `loc_state.eq.${sc}`));
+      }
+
+      // Radius-based: generate bounding box per radius pill
+      if (locationIds._radiusPills && locationIds._radiusPills.length > 0) {
+        for (const rp of locationIds._radiusPills) {
+          const latD = rp.radius_mi / 69;
+          const lngD = rp.radius_mi / (69 * Math.cos(rp.lat * Math.PI / 180));
+          locClauses.push(
+            `and(job_lat.gte.${(rp.lat - latD).toFixed(4)},job_lat.lte.${(rp.lat + latD).toFixed(4)},job_lng.gte.${(rp.lng - lngD).toFixed(4)},job_lng.lte.${(rp.lng + lngD).toFixed(4)})`
+          );
+        }
+      }
+
+      // Remote jobs
+      if (locationIds._hasRemote) {
+        locClauses.push('loc_type.eq.remote', 'location.ilike.%remote%');
+      }
+
+      if (locClauses.length > 0) {
+        query = query.or(locClauses.join(','));
+      } else {
+        // Absolute fallback — shouldn't reach here but prevent empty results
+        query = query.in('greenhouse_id', locationIds.includeIds.slice(0, 200));
+      }
     }
 
     // Country disambiguation: if searching US locations, exclude clearly non-US jobs
