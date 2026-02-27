@@ -1112,7 +1112,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
   if (msg.type === 'startScanner') {
-    startScanner(msg.includePast).then(() => sendResponse({ ok: true }));
+    // Phase 5 RBAC: Only admin users can start the scanner
+    chrome.storage.local.get('userRole').then(data => {
+      if (data.userRole !== 'admin') {
+        console.warn('[BJ] Scanner start blocked — non-admin role:', data.userRole);
+        sendResponse({ ok: false, error: 'admin_only' });
+        return;
+      }
+      startScanner(msg.includePast).then(() => sendResponse({ ok: true }));
+    });
     return true;
   }
   if (msg.type === 'stopScanner') {
@@ -1320,3 +1328,4 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   if (tabs[0]) updateIcon(tabs[0].url);
 });
+

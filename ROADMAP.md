@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-26
+**Last updated:** 2026-02-27
 **Target launch:** March 2026
-**Current version:** v5.05
+**Current version:** v5.25
 
 ---
 
@@ -1041,6 +1041,8 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-02-27 | 48 | RH1–RH12 | **Phase 48: Referral Hub Redesign (v5.19–v5.25).** Full 4-phase redesign per spec v3. Phase 1: copy rewrite, hero banner, SVG badge icons, tier names (Signal/Source/Radar/Intel/Clearance), design system alignment (v5.19). Phase 2: leaderboard rewards backend — `leaderboard_rewards` table, `distribute_leaderboard_rewards` RPC (SECURITY DEFINER), pg_cron weekly+monthly, `get_leaderboard` RPC, Resend email template (v5.20). Phase 3: leaderboard frontend — period toggle, reward tier grid, countdown timer, user rank highlight, Earning column, 20-user threshold with progress bar (v5.22). Phase 4: milestone rewards — `referral_milestones` table, `process_tier_bonus` RPC (idempotent credit+Pro grants per tier), `check_clearance_retention` quarterly cron, profile flair system (icons, colored names, TOP REFERRER badge) (v5.25). Bug fixes: tab restore for referrals+ghost tabs, LinkedIn-based referral codes (`marston` instead of `BJ-972148`), `/in/` format links, updated `get_referral_stats` + `generate_referral_code` RPCs. |
+| 2026-02-27 | — | — | **Hotfix: localStorage enc: crash (v5.23–v5.24).** PII encryption layer (v5.16) encrypted `bj_resumes`/`bj_readiness` with `enc:` prefix. 68 `JSON.parse(localStorage.getItem())` calls across 13 JS files would crash on `enc:` values. Fix: global `safeReadLS()` helper, `readPiiData()` patched, `decryptFromStorage()` hardened. |
 | 2026-02-26 | 47 | H1–H5 | **Phase 47: Hotfixes & UX Polish (v5.06, v5.11–v5.17).** Settings gear panel fix (v5.06). WHEN filter + pagination + result capping fix (v5.11). `united states` WHERE pill → `loc_country=US` (v5.11.1). Version system hardening — zero hardcoded strings, version.js sole source (v5.12). Referral Supabase init fix (v5.13). Toast notifications for 44 remaining error paths across 5 modules (v5.14). innerHTML XSS audit — 26 escapeHtml + 2 DOMPurify across admin.js + keywords.js (v5.15). AES-GCM encryption for PII in localStorage (v5.16). Resume Score Button UX redesign — single "Score Resume" button replaces dual Analyze/✨ Deep, tier-routed modal for Pro (v5.17). |
 | 2026-02-26 | 46 | R1–R7 | **Phase 46: Referral Program (v5.07–v5.10).** Full referral system: DB schema (referrals, referral_rewards, referral_fraud_flags) + RPCs + triggers (v5.07). Referral Hub page with stats, sharing, badges, leaderboard (v5.08). 3 Edge Functions: process-referral-reward, check-referral-activation, referral-fraud-scan + pg_cron (v5.09). Fraud detection: fingerprint.js, referral-capture.js, clawback EF, admin Referrals panel with ban mgmt (v5.10). Attribution on login hook. Bundle rebuilt with all referral modules. |
 | 2026-02-26 | 45 | V1–V14 | **Phase 45: Visual Consistency Pass (v5.01–v5.05).** 14 items. Applications/Pipeline page visual overhaul, resume delete flow with download-before-delete modal, WHEN filter column correction back to first_seen_at, app mode button contrast fix. |
@@ -1952,3 +1954,63 @@ Phase 44 item S9 changed WHEN from `first_seen_at` to `updated_at`, reasoning th
 | Console log | [BJ] Brilliant Jobs Dashboard v5.17 loaded |
 
 **Phase 47 total: 9 items | 9 complete ✅. Version: v5.06→v5.17. Fully deployed to production.**
+
+---
+
+## Phase 48: Referral Hub Redesign (v5.19–v5.25) — 2026-02-27 ✅ COMPLETE
+
+Source: referral-hub-redesign-spec v3 (Feb 26, 2026)
+
+### Phase 1 — Visual Redesign (v5.19)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| RH1 | Copy rewrite + hero banner | v5.19 | ✅ | "Share the signal. Earn together." hero with gradient. Replaced generic copy with intelligence/data-themed messaging. |
+| RH2 | SVG badge icons (stroke-based) | v5.19 | ✅ | 5 tier badges: Signal (bars), Source (broadcast), Radar (target), Intel (flag), Clearance (shield). No emojis. |
+| RH3 | Tier naming system | v5.19 | ✅ | Signal → Source → Radar → Intel → Clearance. Intelligence-themed names replacing generic "Bronze/Silver/Gold". |
+| RH4 | Design system alignment | v5.19 | ✅ | `.referral-hero` following `.feed-hero`/`.setup-hero` pattern. CSS variables throughout. |
+
+### Phase 2 — Leaderboard Rewards Backend (v5.20)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| RH5 | `leaderboard_rewards` table + RPCs | v5.20 | ✅ | `distribute_leaderboard_rewards` RPC (SECURITY DEFINER). Reward tiers: 1st = 100cr+30d Pro, 2nd = 50cr+14d, 3rd = 25cr+7d, top 10% = 10cr. |
+| RH6 | pg_cron schedules | v5.20 | ✅ | Weekly (Monday 00:00 UTC) + monthly (1st of month) leaderboard reward distribution. |
+| RH7 | `get_leaderboard` RPC + Resend template | v5.20 | ✅ | Period-filtered leaderboard with `is_me` flag, earning columns. Dark-theme email template for reward notifications. |
+
+### Phase 3 — Leaderboard Frontend (v5.22)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| RH8 | Period toggle + reward grid | v5.22 | ✅ | Weekly/Monthly toggle. 4 reward tier cards with visual hierarchy. Countdown timer ("Resets in Xd Xh"). |
+| RH9 | Leaderboard table + rank highlight | v5.22 | ✅ | User rank highlight with "(you)" tag. "Earning" column (credits + Pro days). 20-user minimum threshold with progress bar. |
+
+### Phase 4 — Milestone Rewards + Bug Fixes (v5.25)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| RH10 | Tier unlock bonuses (4A) | v5.25 | ✅ | `referral_milestones` table (idempotent). `process_tier_bonus` RPC: Signal=10cr, Source=25cr, Radar=50cr, Intel=100cr+30d Pro, Clearance=200cr+90d Pro. Toast notification on unlock. |
+| RH11 | Clearance quarterly retention (4B) | v5.25 | ✅ | `check_clearance_retention` RPC: downgrades inactive Clearance→Intel if no activated referral in 90 days. pg_cron quarterly (1st of Jan/Apr/Jul/Oct). Auto-notification on downgrade. |
+| RH12 | Profile flair system (4C) | v5.25 | ✅ | Signal+: tier icon on leaderboard. Radar+: accent-colored name. Clearance: gold name + shield icon + "TOP REFERRER" badge. |
+
+### Bug Fixes (v5.25)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| RH-BF1 | Tab restore fix | v5.25 | ✅ | `initReferralHub()` + `renderGhostMonitor()` added to tab restore block in `app.js`. Fixed "Loading..." on page refresh when referrals was last active tab. |
+| RH-BF2 | LinkedIn-based referral codes | v5.25 | ✅ | Codes now derived from LinkedIn slug (`marston` instead of `BJ-972148`). Links use `/in/` format: `brilliantjobs.app/in/marston`. Updated `get_referral_stats` RPC, `generate_referral_code` trigger, cleaned up obsolete `.replace()` calls. |
+
+### Hotfix (v5.23–v5.24)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| RH-HF1 | localStorage enc: crash fix | v5.23–v5.24 | ✅ | PII encryption (v5.16) prefixed values with `enc:`. 68 `JSON.parse(localStorage.getItem())` calls across 13 JS files crashed on `enc:` values. Global `safeReadLS()` helper. `readPiiData()` + `decryptFromStorage()` hardened. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.25 |
+| Console log | [BJ] Dashboard v5.25 loaded |
+
+**Phase 48 total: 12 items + 2 bug fixes + 1 hotfix | All complete ✅. Version: v5.19→v5.25. Fully deployed to production.**
