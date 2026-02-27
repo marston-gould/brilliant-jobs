@@ -200,6 +200,7 @@
       <div class="tab active" data-tab="harvest">Harvest</div>
       <div class="tab" data-tab="scan">Scan</div>
       <div class="tab" data-tab="jobs">Jobs</div>
+      <div class="tab" data-tab="profiles">Profiles</div>
       <div class="tab" data-tab="data">Data</div>
     </div>
     <div class="scanner-indicator" id="scanner-indicator"><div class="scanner-dot idle" id="scanner-dot"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
@@ -231,6 +232,39 @@
       <button class="btn btn-primary" id="j-scrape">Scrape All Pages</button>
       <button class="btn btn-danger hidden" id="j-stop">Stop</button>
       <button class="btn btn-success hidden" id="j-download">Download TSV</button>
+    </div>
+    <div id="tab-profiles" class="tab-content">
+      <div class="profiles-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <span style="font-size:12px; font-weight:600; color:var(--text-dim);">Application Profiles</span>
+        <button class="btn btn-primary" id="p-add" style="padding:4px 10px; font-size:11px;">+ New Profile</button>
+      </div>
+      <div id="p-list" style="max-height:200px; overflow-y:auto; margin-bottom:8px;">
+        <div style="color:var(--text-faint); font-size:12px; text-align:center; padding:20px 0;">Loading profiles…</div>
+      </div>
+      <!-- New/Edit Profile Form (hidden by default) -->
+      <div id="p-form" style="display:none; border:1px solid var(--border); border-radius:6px; padding:10px; margin-top:8px;">
+        <input type="hidden" id="p-form-id" value="">
+        <div style="margin-bottom:6px;">
+          <label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:2px;">Profile Name</label>
+          <input type="text" id="p-form-name" placeholder="e.g. Software Engineer" style="width:100%; padding:5px 8px; font-size:12px; border:1px solid var(--border); border-radius:4px; background:var(--bg-page); color:var(--text-main);">
+        </div>
+        <div style="margin-bottom:6px;">
+          <label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:2px;">Cover Letter (optional)</label>
+          <textarea id="p-form-cover" rows="3" placeholder="Default cover letter for this profile…" style="width:100%; padding:5px 8px; font-size:12px; border:1px solid var(--border); border-radius:4px; background:var(--bg-page); color:var(--text-main); resize:vertical;"></textarea>
+        </div>
+        <div style="margin-bottom:6px;">
+          <label style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:2px;">Default Answers (JSON, optional)</label>
+          <textarea id="p-form-answers" rows="2" placeholder='{"willing_to_relocate": "Yes"}' style="width:100%; padding:5px 8px; font-size:12px; font-family:monospace; border:1px solid var(--border); border-radius:4px; background:var(--bg-page); color:var(--text-main); resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <input type="checkbox" id="p-form-default">
+          <label for="p-form-default" style="font-size:11px; color:var(--text-dim);">Set as default profile</label>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-primary" id="p-form-save" style="padding:4px 12px; font-size:11px;">Save</button>
+          <button class="btn btn-outline" id="p-form-cancel" style="padding:4px 12px; font-size:11px;">Cancel</button>
+        </div>
+      </div>
     </div>
     <div id="tab-data" class="tab-content">
       <div class="stats"><div class="stat"><div class="stat-value" id="d-connections">0</div><div class="stat-label">Connections</div></div><div class="stat"><div class="stat-value" id="d-companies">0</div><div class="stat-label">Unique Companies</div></div><div class="stat"><div class="stat-value" id="d-hiring">0</div><div class="stat-label">#Hiring</div></div><div class="stat"><div class="stat-value" id="d-otw">0</div><div class="stat-label">#OpenToWork</div></div></div>

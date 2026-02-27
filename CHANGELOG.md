@@ -4,6 +4,25 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+## v5.51 — 2026-02-27
+- **Application Profiles CRUD (Item #7, P2)**: Profiles tab added to extension popup
+  - Full CRUD: create, edit, delete application profiles from extension popup
+  - Profiles tab shows profile cards with name, cover letter status, saved answer count
+  - Default profile highlighted with accent border and badge
+  - Profile form: name, cover letter, default answers (JSON), is_default toggle
+  - `supabase.js`: added `insert()` and `deleteRow()` methods for full PostgREST coverage
+  - Extension version: 2.13.0
+- **Workday Date Picker Widget (Item #13)**: Custom date widget interaction for Workday fields
+  - 4-strategy approach: standard date input → split month/day/year → calendar popup navigation → text input
+  - Calendar popup: auto-navigates to target month/year, selects day by number or aria-label
+  - Wired into `fillWorkdayPage()` as Step 3.5 between dropdowns and radio groups
+  - Handles "Immediately"/"ASAP" as current date, ISO/US/EU date formats
+- **Three-Tier File Upload Fallback (Item #17)**: Complete retry chain for resume uploads
+  - Tier A: API upload — auto-detects ATS upload endpoints (Workday, Greenhouse), POSTs multipart directly
+  - Tier B: Form attach — existing DataTransfer → React props → Drag/drop chain (unchanged)
+  - Tier C: Link paste — pastes hosted resume URL into nearest text/textarea field as last resort
+  - Backward-compatible: existing `uploadFile(input, file)` calls work unchanged; new `opts` parameter is optional
+
 ## v5.49 — 2026-02-27
 - **Background Discovery Pipeline (Item #2, P0)**: Full self-sustaining job discovery loop now operational
   - `board_discovery_queue` table: ATS URLs detected by extension, queued for processing (Item #20)

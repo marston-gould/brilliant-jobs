@@ -20,6 +20,7 @@
 // IMPORTANT: Workday's DOM is heavily data-automation-id driven. Use those selectors preferentially.
 
 import { fillTextInput } from '../fields/textInput.js';
+import { fillDateInput, fillSplitDate } from '../fields/dateFields.js';
 import { fillSelect, fillCheckboxRadio, fillCustomDropdown } from '../fields/dropdown.js';
 import { fillSearchableDropdown } from '../fields/dropdownSearchable.js';
 import { uploadFile, base64ToFile } from '../utils/fileUpload.js';
@@ -247,6 +248,36 @@ async function fillWorkdayPage(profile, preferences, queue) {
     }, label);
   }
 
+  // ── STEP 3.5: Workday date picker widgets (v5.51, Item #13) ──
+  const dateContainers = document.querySelectorAll(
+    '[data-automation-id*="dateSection"], [data-automation-id*="datePicker"], ' +
+    '[data-automation-id*="dateInput"], [data-automation-id*="formField"]:has([data-automation-id*="date"])'
+  );
+
+  for (const container of dateContainers) {
+    if (container.offsetParent === null) continue;
+    // Skip if already filled
+    if (container.dataset.automationFilled === 'true') continue;
+
+    const label = findWorkdayLabel(container);
+    if (!label) continue;
+
+    const dateValue = matchWorkdayLabel(label, profile, preferences);
+    if (!dateValue) continue;
+
+    totalFields++;
+    queue.enqueue(async () => {
+      const result = await fillWorkdayDatePicker(container, dateValue);
+      if (result.success) {
+        container.dataset.automationFilled = 'true';
+        filledCount++;
+      } else {
+        errors.push(`date(${label}): ${result.error || 'failed'}`);
+      }
+      return result;
+    }, label);
+  }
+
   // ── STEP 4: Radio groups / checkboxes (screening questions, EEO) ──
   const radioGroups = document.querySelectorAll(
     '[data-automation-id*="radioGroup"], [role="radiogroup"], ' +
@@ -440,6 +471,224 @@ async function uploadResumeIfPresent(resume, errors) {
     errors.push(`resume: upload failed — ${e.message}`);
     return false;
   }
+}
+
+// ============================================================
+// WORKDAY DATE PICKER (v5.51, Item #13)
+// ============================================================
+// Workday uses custom date widgets with separate month/year display
+// buttons and a calendar popup. The interaction sequence:
+//   1. Try standard <input type="date"> first
+//   2. Try split month/day/year selectors (dateSectionMonth, etc.)
+//   3. Click the date display to open calendar, navigate, and select day
+
+async function fillWorkdayDatePicker(container, dateStr) {
+  const parsed = parseDateLoose(dateStr);
+  if (!parsed) {
+    return { success: false, error: `Could not parse date: ${dateStr}` };
+  }
+
+  // Strategy 1: Standard date input inside the container
+  const dateInput = container.querySelector('input[type="date"]');
+  if (dateInput) {
+    const result = fillDateInput(dateInput, dateStr);
+    if (result.success) return result;
+  }
+
+  // Strategy 2: Split selectors (month/day/year dropdowns or inputs)
+  const monthEl = container.querySelector(
+    '[data-automation-id*="dateSectionMonth"], [data-automation-id*="month"], select[name*="month"]'
+  );
+  const dayEl = container.querySelector(
+    '[data-automation-id*="dateSectionDay"], [data-automation-id*="day"], select[name*="day"]'
+  );
+  const yearEl = container.querySelector(
+    '[data-automation-id*="dateSectionYear"], [data-automation-id*="year"], select[name*="year"]'
+  );
+
+  if (monthEl || yearEl) {
+    // If they're Workday custom buttons (display-only), click to open picker
+    const isButton = monthEl && (monthEl.tagName === 'BUTTON' || monthEl.getAttribute('role') === 'button');
+
+    if (isButton) {
+      // Strategy 3: Open calendar popup and navigate
+      return await fillWorkdayCalendarPopup(container, parsed);
+    }
+
+    // Standard split fields
+    const splitResult = fillSplitDate(
+      { month: monthEl, day: dayEl, year: yearEl },
+      dateStr
+    );
+    if (splitResult.success) return splitResult;
+  }
+
+  // Strategy 3: Click a date display to open the calendar popup
+  const dateDisplay = container.querySelector(
+    '[data-automation-id*="dateDisplay"], [data-automation-id*="date-display"], ' +
+    'button[data-automation-id*="date"], [data-automation-id*="calendarBtn"]'
+  );
+
+  if (dateDisplay) {
+    return await fillWorkdayCalendarPopup(container, parsed);
+  }
+
+  // Strategy 4: Plain text input (type=text) accepting date strings
+  const textInput = container.querySelector(
+    'input[data-automation-id*="date"]:not([type="hidden"]), ' +
+    'input[placeholder*="/"], input[placeholder*="MM"], input[placeholder*="mm"]'
+  );
+
+  if (textInput) {
+    const formatStr = textInput.placeholder?.includes('YYYY')
+      ? `${String(parsed.month).padStart(2, '0')}/${String(parsed.day).padStart(2, '0')}/${parsed.year}`
+      : `${String(parsed.month).padStart(2, '0')}/${String(parsed.day).padStart(2, '0')}/${parsed.year}`;
+
+    const result = await fillTextInput(textInput, formatStr);
+    if (result.success) return result;
+  }
+
+  return { success: false, error: 'No recognized date widget found in container' };
+}
+
+async function fillWorkdayCalendarPopup(container, parsed) {
+  try {
+    // Click to open calendar
+    const trigger = container.querySelector(
+      'button, [role="button"], [data-automation-id*="date"]'
+    );
+    if (!trigger) return { success: false, error: 'No calendar trigger button' };
+
+    trigger.click();
+    await delay(600);
+
+    // Find the calendar popup (Workday renders it in a portal)
+    const calendar = document.querySelector(
+      '[data-automation-id="calendar"], [role="dialog"]:has([role="grid"]), ' +
+      '[data-automation-id*="calendarGrid"], .css-1q9g0if [role="grid"]'
+    );
+    if (!calendar) {
+      // Close and give up
+      document.body.click();
+      await delay(200);
+      return { success: false, error: 'Calendar popup did not appear' };
+    }
+
+    // Navigate to the correct month/year
+    const navigated = await navigateWorkdayCalendar(calendar, parsed);
+    if (!navigated) {
+      document.body.click();
+      await delay(200);
+      return { success: false, error: 'Could not navigate to target month/year' };
+    }
+
+    // Select the day
+    const dayButtons = calendar.querySelectorAll(
+      '[role="gridcell"] button, [data-automation-id*="calendarDay"], td button, ' +
+      '[role="gridcell"][aria-label]'
+    );
+
+    for (const btn of dayButtons) {
+      const ariaLabel = btn.getAttribute('aria-label') || '';
+      const text = btn.textContent.trim();
+
+      // Match by day number (ensuring it's the right day, not from prev/next month)
+      if (text === String(parsed.day) && !btn.classList.contains('outside') &&
+          !btn.getAttribute('aria-disabled')) {
+        btn.click();
+        await delay(400);
+        return { success: true };
+      }
+
+      // Match by aria-label containing the full date
+      if (ariaLabel.includes(String(parsed.day)) &&
+          ariaLabel.toLowerCase().includes(MONTH_ABBREVS[parsed.month - 1])) {
+        btn.click();
+        await delay(400);
+        return { success: true };
+      }
+    }
+
+    document.body.click();
+    await delay(200);
+    return { success: false, error: `Day ${parsed.day} not found in calendar` };
+
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function navigateWorkdayCalendar(calendar, parsed) {
+  const MAX_NAV = 24; // Max 2 years of navigation
+
+  for (let i = 0; i < MAX_NAV; i++) {
+    // Read current month/year from calendar header
+    const header = calendar.querySelector(
+      '[data-automation-id*="monthYear"], [aria-live], .css-1vqj0ow, ' +
+      'button[data-automation-id*="month"], [role="heading"]'
+    );
+
+    if (!header) return false;
+
+    const headerText = header.textContent.trim().toLowerCase();
+    const targetMonth = MONTH_ABBREVS[parsed.month - 1];
+
+    if (headerText.includes(targetMonth) && headerText.includes(String(parsed.year))) {
+      return true; // We're on the right month/year
+    }
+
+    // Determine direction
+    const currentDate = parseCalendarHeader(headerText);
+    if (!currentDate) return false;
+
+    const targetDate = new Date(parsed.year, parsed.month - 1);
+    const currentMonthDate = new Date(currentDate.year, currentDate.month - 1);
+
+    const navBtn = targetDate > currentMonthDate
+      ? calendar.querySelector('[data-automation-id*="next"], [aria-label*="next"], button:has(svg):last-of-type')
+      : calendar.querySelector('[data-automation-id*="prev"], [aria-label*="previous"], button:has(svg):first-of-type');
+
+    if (!navBtn) return false;
+
+    navBtn.click();
+    await delay(400);
+  }
+
+  return false;
+}
+
+const MONTH_ABBREVS = [
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+  'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+];
+
+function parseCalendarHeader(text) {
+  for (let m = 0; m < 12; m++) {
+    if (text.includes(MONTH_ABBREVS[m])) {
+      const yearMatch = text.match(/(\d{4})/);
+      if (yearMatch) return { month: m + 1, year: +yearMatch[1] };
+    }
+  }
+  return null;
+}
+
+function parseDateLoose(str) {
+  if (!str) return null;
+  // ISO
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return { year: +m[1], month: +m[2], day: +m[3] };
+  // US
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return { year: +m[3], month: +m[1], day: +m[2] };
+  // Textual: "March 2025", "Immediately" etc.
+  if (/immediately|asap|now/i.test(str)) {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
+  }
+  // Try native
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
+  return null;
 }
 
 // ============================================================

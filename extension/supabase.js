@@ -71,5 +71,29 @@ const supabase = {
     });
     if (!res.ok) throw new Error(`RPC ${fn}: ${res.status} ${await res.text()}`);
     return res.json();
+  },
+
+  // v5.51: Insert row(s) into a table
+  async insert(table, data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error(`INSERT ${table}: ${res.status} ${await res.text()}`);
+    return res.json();
+  },
+
+  // v5.51: Delete row(s) matching filter params
+  async deleteRow(table, match) {
+    const params = Object.entries(match).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&');
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${params}`, {
+      method: 'DELETE',
+      headers: this.headers()
+    });
+    if (!res.ok) throw new Error(`DELETE ${table}: ${res.status} ${await res.text()}`);
+    // DELETE may return empty body
+    const text = await res.text();
+    return text ? JSON.parse(text) : [];
   }
 };

@@ -1505,3 +1505,194 @@ async function refreshDailyLimitBadge() {
   }
 }
 
+// ============================================================
+// TAB: APPLICATION PROFILES CRUD (v5.51, Item #7)
+// ============================================================
+// CRUD operations against application_profiles table.
+// Each profile stores: name, cover letter, default answers, is_default flag.
+
+let _profilesList = [];
+let _editingProfileId = null;
+
+async function loadProfiles() {
+  const listEl = $('#p-list');
+  if (!listEl) return;
+
+  try {
+    const profiles = await supabase.select(
+      'application_profiles',
+      'select=id,profile_name,cover_letter,default_answers,is_default,resume_id,created_at,updated_at&order=is_default.desc,created_at.asc'
+    );
+    _profilesList = profiles || [];
+    renderProfilesList();
+  } catch (e) {
+    listEl.innerHTML = `<div style="color:#e74c3c; font-size:12px; padding:10px;">Failed to load profiles: ${e.message}</div>`;
+  }
+}
+
+function renderProfilesList() {
+  const listEl = $('#p-list');
+  if (!listEl) return;
+
+  if (_profilesList.length === 0) {
+    listEl.innerHTML = `
+      <div style="text-align:center; padding:20px 0; color:var(--text-faint); font-size:12px;">
+        No profiles yet. Create one to speed up applications.
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = _profilesList.map(p => `
+    <div class="profile-card" data-id="${p.id}" style="
+      border:1px solid var(--border); border-radius:6px; padding:8px 10px; margin-bottom:6px;
+      display:flex; justify-content:space-between; align-items:center;
+      ${p.is_default ? 'border-left:3px solid var(--accent);' : ''}
+    ">
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-main); display:flex; align-items:center; gap:4px;">
+          ${escHtml(p.profile_name)}
+          ${p.is_default ? '<span style="font-size:9px; background:var(--accent); color:#fff; padding:1px 5px; border-radius:3px;">DEFAULT</span>' : ''}
+        </div>
+        <div style="font-size:10px; color:var(--text-faint); margin-top:2px;">
+          ${p.cover_letter ? 'Cover letter ✓' : 'No cover letter'}
+          ${p.default_answers && Object.keys(p.default_answers).length > 0 ? ` · ${Object.keys(p.default_answers).length} saved answers` : ''}
+        </div>
+      </div>
+      <div style="display:flex; gap:4px; flex-shrink:0;">
+        <button class="p-edit-btn" data-id="${p.id}" style="
+          padding:2px 8px; font-size:10px; border:1px solid var(--border); border-radius:3px;
+          background:var(--bg-page); color:var(--text-dim); cursor:pointer;
+        ">Edit</button>
+        <button class="p-delete-btn" data-id="${p.id}" style="
+          padding:2px 8px; font-size:10px; border:1px solid #e74c3c; border-radius:3px;
+          background:transparent; color:#e74c3c; cursor:pointer;
+        ">✕</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Attach edit handlers
+  listEl.querySelectorAll('.p-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => editProfile(btn.dataset.id));
+  });
+
+  // Attach delete handlers
+  listEl.querySelectorAll('.p-delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteProfile(btn.dataset.id));
+  });
+}
+
+function showProfileForm(profile = null) {
+  const form = $('#p-form');
+  if (!form) return;
+
+  _editingProfileId = profile ? profile.id : null;
+
+  $('#p-form-id').value = profile?.id || '';
+  $('#p-form-name').value = profile?.profile_name || '';
+  $('#p-form-cover').value = profile?.cover_letter || '';
+  $('#p-form-answers').value = (profile?.default_answers && Object.keys(profile.default_answers).length > 0)
+    ? JSON.stringify(profile.default_answers, null, 2)
+    : '';
+  $('#p-form-default').checked = profile?.is_default || false;
+
+  form.style.display = 'block';
+  $('#p-form-name').focus();
+}
+
+function hideProfileForm() {
+  const form = $('#p-form');
+  if (form) form.style.display = 'none';
+  _editingProfileId = null;
+}
+
+function editProfile(id) {
+  const profile = _profilesList.find(p => p.id === id);
+  if (profile) showProfileForm(profile);
+}
+
+async function saveProfile() {
+  const name = ($('#p-form-name').value || '').trim();
+  if (!name) {
+    addLog('unified-log', '⚠ Profile name is required', 'warn');
+    return;
+  }
+
+  // Parse default_answers JSON
+  let defaultAnswers = {};
+  const answersRaw = ($('#p-form-answers').value || '').trim();
+  if (answersRaw) {
+    try {
+      defaultAnswers = JSON.parse(answersRaw);
+    } catch (e) {
+      addLog('unified-log', '⚠ Invalid JSON in default answers', 'warn');
+      return;
+    }
+  }
+
+  const payload = {
+    profile_name: name,
+    cover_letter: ($('#p-form-cover').value || '').trim() || null,
+    default_answers: defaultAnswers,
+    is_default: $('#p-form-default').checked,
+  };
+
+  try {
+    if (_editingProfileId) {
+      // Update existing
+      await supabase.update('application_profiles', { id: _editingProfileId }, payload);
+      addLog('unified-log', `✓ Profile "${name}" updated`, 'success');
+    } else {
+      // Insert new
+      await supabase.insert('application_profiles', payload);
+      addLog('unified-log', `✓ Profile "${name}" created`, 'success');
+    }
+
+    hideProfileForm();
+    await loadProfiles();
+  } catch (e) {
+    addLog('unified-log', `✗ Save failed: ${e.message}`, 'error');
+  }
+}
+
+async function deleteProfile(id) {
+  const profile = _profilesList.find(p => p.id === id);
+  if (!profile) return;
+
+  if (!confirm(`Delete profile "${profile.profile_name}"?`)) return;
+
+  try {
+    await supabase.deleteRow('application_profiles', { id });
+    addLog('unified-log', `✓ Profile "${profile.profile_name}" deleted`, 'success');
+    await loadProfiles();
+  } catch (e) {
+    addLog('unified-log', `✗ Delete failed: ${e.message}`, 'error');
+  }
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// Wire up Profiles tab buttons
+document.addEventListener('DOMContentLoaded', () => {
+  const addBtn = $('#p-add');
+  if (addBtn) addBtn.addEventListener('click', () => showProfileForm());
+
+  const saveBtn = $('#p-form-save');
+  if (saveBtn) saveBtn.addEventListener('click', saveProfile);
+
+  const cancelBtn = $('#p-form-cancel');
+  if (cancelBtn) cancelBtn.addEventListener('click', hideProfileForm);
+});
+
+// Load profiles when Profiles tab is activated
+const _origTabHandler = document.querySelector('.tabs')?.onclick;
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('tab') && e.target.dataset.tab === 'profiles') {
+    loadProfiles();
+  }
+});
+
