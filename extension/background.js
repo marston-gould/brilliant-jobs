@@ -6,6 +6,7 @@
 // v3.6.0: P6 Security hardening — triple-layer origin guard, PII encryption, rate limiting
 // v3.7.0: P7 Tier gating — Free/Starter/Pro gates on autofill, daily usage counters
 // v3.8.0: P9 Phase 10 — JD match scoring (jdMatcher.js), auto-tracking (autoTracker.js), dashboard:getJDMatch
+// v3.9.0: P10-E Phase 11 — Indeed + Workday handlers, expanded ATS capabilities
 
 importScripts('supabase.js');
 importScripts('utils/originGuard.js');
@@ -1378,7 +1379,7 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
           success: true,
           installed: true,
           version: chrome.runtime.getManifest().version,
-          capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
+          capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply', 'indeed', 'workday'],
           atsPageState: atsPageState || null,
           tier: tierStatus.tier,
           tierStatus: tierStatus,
@@ -1388,7 +1389,7 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
           success: true,
           installed: true,
           version: chrome.runtime.getManifest().version,
-          capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
+          capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply', 'indeed', 'workday'],
           atsPageState: atsPageState || null,
           tier: 'free',
           tierStatus: { tier: 'free', dailyUsed: 0, dailyLimit: 0, remaining: 0 },

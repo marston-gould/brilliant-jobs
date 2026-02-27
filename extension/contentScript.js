@@ -45,6 +45,16 @@
       hostnames: ['www.linkedin.com'],
       pathPattern: /^\/jobs\//,
       module: 'handlers/linkedin-easy-apply.js'
+    },
+    'indeed': {
+      hostnames: ['smartapply.indeed.com', 'apply.indeed.com', 'm5.apply.indeed.com'],
+      hostnamePattern: /\.indeed\.com$/,
+      pathPattern: /\/(viewjob|applystart|apply|indeedapply)/,
+      module: 'handlers/indeed.js'
+    },
+    'workday': {
+      hostnamePattern: /\.myworkdayjobs\.com$/,
+      module: 'handlers/workday.js'
     }
   };
 
@@ -126,6 +136,20 @@
       '.jobs-unified-description__content',
       'article.jobs-description',
     ],
+    'indeed': [
+      '#jobDescriptionText',
+      '.jobsearch-jobDescriptionText',
+      '#jobDescription',
+      '.job-description',
+      '[data-testid="jobDescription"]',
+    ],
+    'workday': [
+      '[data-automation-id="jobPostingDescription"]',
+      '.css-cygeeu',
+      '[data-automation-id="jobPostingDetails"]',
+      '.job-description',
+      'div[class*="jobDescription"]',
+    ],
   };
 
   /**
@@ -140,6 +164,8 @@
     'workable': 'h1.job-title, header h1, [data-ui="job-title"]',
     'recruitee': 'h1.offer-title, h1.job-title, .posting-title h1',
     'linkedin-easy-apply': '.jobs-unified-top-card__job-title, .job-details-jobs-unified-top-card__job-title, h1.t-24',
+    'indeed': '.jobsearch-JobInfoHeader-title, h1.icl-u-xs-mb--xs, [data-testid="jobTitle"], h1[class*="JobTitle"]',
+    'workday': '[data-automation-id="jobPostingHeader"] h2, h2[data-automation-id="jobTitle"], .css-1q2dra3 h2',
   };
 
   const COMPANY_SELECTORS = {
@@ -150,6 +176,8 @@
     'workable': '.company-header__name, [data-ui="company-name"]',
     'recruitee': '.company-name, .offer-company',
     'linkedin-easy-apply': '.jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name a',
+    'indeed': '.jobsearch-InlineCompanyRating-companyHeader, [data-testid="companyName"], a[data-tn-element="companyName"]',
+    'workday': '[data-automation-id="jobPostingHeader"] [data-automation-id="company"], .css-1q2dra3 a[href*="company"]',
   };
 
   function extractJobDescription(atsId) {
