@@ -1,5 +1,6 @@
 // utils/autoTracker.js — Auto-Application Tracking to Supabase
-// v3.8.0: Phase 10 (P9) — On successful form submission detected
+// v3.8.0: Phase 10 (P9)
+// v3.9.0: v5.41 — Confirmation tracking columns, job_id fix — On successful form submission detected
 // by ApplicationTracker, automatically create/update pending_applications
 // row in Supabase with status and timestamp.
 //
@@ -167,6 +168,8 @@ var BJ_AUTO_TRACKER = (function () {
                 submitted_at: new Date().toISOString(),
                 submission_method: 'extension_autofill',
                 extension_tracked: true,
+                confirmation_detected_at: status === 'submitted_confirmed' ? new Date().toISOString() : null,
+                confirmation_pattern: info.pattern || null,
               }),
             }
           );
@@ -191,6 +194,7 @@ var BJ_AUTO_TRACKER = (function () {
           },
           body: JSON.stringify({
             user_id: session.user_id,
+            job_id: (jobMeta.externalJobId || url).substring(0, 255),
             job_url: url,
             status: status === 'submitted_confirmed' ? 'submitted' : 'pending_confirmation',
             approval_mode: 'auto_no_approval',
@@ -199,6 +203,8 @@ var BJ_AUTO_TRACKER = (function () {
             extension_tracked: true,
             ats_source: jobMeta.atsSource || null,
             external_job_id: jobMeta.externalJobId || null,
+            confirmation_detected_at: status === 'submitted_confirmed' ? new Date().toISOString() : null,
+            confirmation_pattern: info.pattern || null,
             idempotency_key: crypto.randomUUID(),
           }),
         }
