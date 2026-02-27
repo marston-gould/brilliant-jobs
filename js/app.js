@@ -367,6 +367,8 @@ if (lastTab && $(`#page-${lastTab}`)) {
   if (lastTab === 'admin' && typeof initAdminPage === 'function') initAdminPage();
   if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
   if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
+  if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
 }
 
 // Extension detection — check if extension has updated the profile recently
