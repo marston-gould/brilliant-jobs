@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "Discover jobs through your professional network",
   "permissions": [
     "activeTab",
@@ -21,14 +21,22 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/*"],
-      "js": ["interceptor.js"],
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "js": [
+        "interceptor.js"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["https://www.linkedin.com/*"],
-      "js": ["interceptor-bridge.js"],
+      "matches": [
+        "https://www.linkedin.com/*"
+      ],
+      "js": [
+        "interceptor-bridge.js"
+      ],
       "run_at": "document_start"
     }
   ],
