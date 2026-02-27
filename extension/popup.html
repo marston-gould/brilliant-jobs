@@ -76,29 +76,6 @@
     .scanner-indicator-count { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
     .tab-content { display: none; padding: 14px 16px; }
     .tab-content.active { display: block; }
-    /* Match Score Overlay Widget */
-    .match-overlay { display: none; background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 10px 16px; }
-    .match-overlay.active { display: block; }
-    .match-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .match-label { font-size: 10px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; }
-    .match-ats { font-size: 10px; color: var(--text-dim); background: var(--bg-input); padding: 2px 8px; border-radius: 4px; }
-    .match-score-row { display: flex; align-items: center; gap: 10px; }
-    .match-score-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; font-family: var(--mono); flex-shrink: 0; }
-    .match-score-circle.high { background: var(--green-dim); color: #16a34a; border: 2px solid #22c55e; }
-    .match-score-circle.med { background: var(--warm-dim); color: #b47a08; border: 2px solid #f59e0b; }
-    .match-score-circle.low { background: var(--red-dim); color: #dc2626; border: 2px solid #ef4444; }
-    .match-details { flex: 1; min-width: 0; }
-    .match-bar { height: 6px; border-radius: 3px; background: var(--bg-input); overflow: hidden; margin-bottom: 4px; }
-    .match-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-    .match-bar-fill.high { background: var(--green); }
-    .match-bar-fill.med { background: var(--warm); }
-    .match-bar-fill.low { background: var(--red); }
-    .match-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-    .match-tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; }
-    .match-tag.hit { background: var(--green-dim); color: #16a34a; }
-    .match-tag.miss { background: var(--red-dim); color: #dc2626; }
-    .match-confidence { font-size: 9px; color: var(--text-faint); margin-top: 4px; }
-
     .stats { display: flex; gap: 8px; margin-bottom: 12px; }
     .stat { flex: 1; background: var(--bg-card); border-radius: 8px; padding: 8px 10px; text-align: center; border: 1px solid var(--border); }
     .stat-value { font-size: 20px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
@@ -211,20 +188,6 @@
       <div class="tab" data-tab="data">Data</div>
     </div>
     <div class="scanner-indicator" id="scanner-indicator"><div class="scanner-dot idle" id="scanner-dot"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
-    <div class="match-overlay" id="match-overlay">
-      <div class="match-header">
-        <span class="match-label">JD Match Score</span>
-        <span class="match-ats" id="match-ats-badge"></span>
-      </div>
-      <div class="match-score-row">
-        <div class="match-score-circle" id="match-score-circle">—</div>
-        <div class="match-details">
-          <div class="match-bar"><div class="match-bar-fill" id="match-bar-fill" style="width:0%"></div></div>
-          <div class="match-tags" id="match-tags"></div>
-          <div class="match-confidence" id="match-confidence"></div>
-        </div>
-      </div>
-    </div>
     <div id="tab-harvest" class="tab-content active">
       <div class="stats"><div class="stat"><div class="stat-value" id="h-count">0</div><div class="stat-label">Connections Found</div></div><div class="stat"><div class="stat-value" id="h-companies">0</div><div class="stat-label">Parsed Companies</div></div></div>
       <div class="source-list"><div class="source-item"><span class="source-dot dot-active"></span><span>Connections</span><span class="source-badge badge-ready">Ready</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Followers</span><span class="source-badge badge-soon">Coming Soon</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Following</span><span class="source-badge badge-soon">Coming Soon</span></div></div>
@@ -262,5 +225,4 @@
   <script src="popup-post.js"></script>
 </body>
 </html>
-
 

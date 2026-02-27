@@ -1,6 +1,6 @@
 // handlers/lever.js — Lever ATS Form Filler
 // v3.0.0: Standard HTML forms with consistent name attributes.
-// No React, no custom widgets. Quick win to prove the handler architecture.
+// v3.9.0: AI-powered custom question answering via Claude Haiku (C2).
 //
 // Field mapping (from competitive analysis):
 //   [name='name']         → fullName (single field, combine first+last)
@@ -16,6 +16,7 @@ import { fillTextInput } from '../fields/textInput.js';
 import { fillSelect, fillCheckboxRadio } from '../fields/dropdown.js';
 import { uploadFile, base64ToFile } from '../utils/fileUpload.js';
 import { FieldFillerQueue } from '../utils/fieldFillerQueue.js';
+import { answerCustomQuestions, collectUnmatchedQuestions } from '../utils/aiAnswerer.js';
 
 // Lever field name → profile property mapping
 const LEVER_FIELD_MAP = {
@@ -35,14 +36,17 @@ const LEVER_FIELD_MAP = {
  *
  * @param {Object} params
  * @param {Object} params.profile - User profile data
- * @param {Object} params.resume - { base64, filename, mimeType }
+ * @param {Object} params.resume - { base64, filename, mimeType, text }
  * @param {Object} params.preferences - User preferences (visa, relocation, etc.)
+ * @param {Object} params.jobContext - { title, company } for AI context
+ * @param {string} params.authToken - Supabase auth token for AI calls
  * @returns {Object} { success: boolean, filledCount: number, totalFields: number, errors: string[] }
  */
-async function fill({ profile, resume, preferences }) {
+async function fill({ profile, resume, preferences, jobContext, authToken }) {
   const errors = [];
   let filledCount = 0;
   let totalFields = 0;
+  const filledFieldIds = new Set();
 
   const queue = new FieldFillerQueue({
     betweenFields: 100,
@@ -58,6 +62,7 @@ async function fill({ profile, resume, preferences }) {
     if (!input) continue;
 
     totalFields++;
+    filledFieldIds.add(input.id || input.name || fieldName);
     queue.enqueue(async () => {
       const result = await fillTextInput(input, value);
       if (result.success) filledCount++;
@@ -73,6 +78,7 @@ async function fill({ profile, resume, preferences }) {
     if (!value) continue;
 
     totalFields++;
+    filledFieldIds.add(select.id || select.name || label);
     queue.enqueue(async () => {
       const result = fillSelect(select, value);
       if (result.success) filledCount++;
@@ -88,6 +94,7 @@ async function fill({ profile, resume, preferences }) {
     if (value === undefined) continue;
 
     totalFields++;
+    filledFieldIds.add(cb.id || cb.name || label);
     const result = fillCheckboxRadio(cb, value);
     if (result.success) filledCount++;
   }
@@ -105,8 +112,41 @@ async function fill({ profile, resume, preferences }) {
     else errors.push(`Resume upload: ${result.error}`);
   }
 
-  // Wait for queue to drain
+  // Wait for queue to drain before AI phase
   await queue.enqueueAll([]);
+
+  // ---- AI-powered custom question answering (C2) ----
+  try {
+    const formContainer = document.querySelector('.application-form, form, .posting-page');
+    const unmatched = collectUnmatchedQuestions(formContainer, filledFieldIds);
+
+    if (unmatched.length > 0 && authToken) {
+      console.log(`[lever] ${unmatched.length} unmatched custom questions — calling AI`);
+      const answers = await answerCustomQuestions(
+        unmatched, profile, resume, jobContext || {}, authToken
+      );
+
+      for (const ans of answers) {
+        if (!ans.answer || ans.confidence === 'low') continue;
+
+        const field = document.getElementById(ans.id) ||
+                      document.querySelector(`[name="${ans.id}"]`);
+        if (!field) continue;
+
+        totalFields++;
+        if (field.tagName === 'SELECT') {
+          const result = fillSelect(field, ans.answer);
+          if (result.success) filledCount++;
+        } else if (field.tagName === 'TEXTAREA' || field.type === 'text' || field.type === 'url' || field.type === 'number') {
+          const result = await fillTextInput(field, ans.answer);
+          if (result.success) filledCount++;
+        }
+      }
+    }
+  } catch (aiErr) {
+    // AI answering is best-effort — never block form fill
+    console.warn('[lever] AI question answering error (non-blocking):', aiErr.message || aiErr);
+  }
 
   return {
     success: errors.length === 0,

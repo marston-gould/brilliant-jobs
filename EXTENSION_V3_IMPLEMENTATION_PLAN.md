@@ -638,24 +638,3 @@ Every deployment MUST update:
 2. Dashboard: version in UI footer + browser console
 3. Commit message references phase number
 4. Roadmap item status updated from `todo` to `done`
-
-
----
-
-## Competitor Reference Extensions
-
-11 example Chrome extensions are available in `extension/examples/` for reference during v3 development:
-
-1. **Career.io Auto Apply**
-2. **FastApply**
-3. **Huntr**
-4. **JobForm Automater**
-5. **Leeco AI**
-6. **LinkedIn Agent Auto Apply**
-7. **Linkedin Jobs AI Auto Apply**
-8. **LoopCV Apply Tool**
-9. **OwlApply**
-10. **Smart Applai**
-11. **Teemo AI Auto Apply**
-
-Study these for: form-fill patterns, ATS detection, content script injection, popup UX, permissions model, and auto-apply workflows. These are the competitive landscape for our Extension v3 auto-apply feature.

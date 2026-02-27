@@ -25,7 +25,6 @@ const jsFiles = [
   'js/resume-archive.js',
   'js/resume-metrics.js',
   'js/tier-gating.js',
-  'js/extension-download.js',
   'js/apply-workflow.js',
   'js/fingerprint.js',
   'js/referrals.js',
