@@ -8,6 +8,43 @@
 
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const EF_PATH = '/functions/v1/answer-form-question';
+// v5.48: Answer cache (Item #18) — reuse AI answers for identical questions
+const _answerCache = new Map();
+const CACHE_MAX_SIZE = 200;
+const CACHE_STORAGE_KEY = 'bj_answer_cache';
+
+function _normalizeLabel(label) {
+  return (label || '').toLowerCase().trim()
+    .replace(/[*:?]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\(optional\)/i, '')
+    .replace(/\(required\)/i, '')
+    .trim();
+}
+
+async function _loadCacheFromStorage() {
+  try {
+    const result = await chrome.storage.local.get(CACHE_STORAGE_KEY);
+    const entries = result[CACHE_STORAGE_KEY];
+    if (Array.isArray(entries)) {
+      for (const [key, val] of entries) {
+        _answerCache.set(key, val);
+      }
+    }
+  } catch (e) { /* cache load is best-effort */ }
+}
+
+async function _saveCacheToStorage() {
+  try {
+    const entries = Array.from(_answerCache.entries()).slice(-CACHE_MAX_SIZE);
+    await chrome.storage.local.set({ [CACHE_STORAGE_KEY]: entries });
+  } catch (e) { /* cache save is best-effort */ }
+}
+
+// Load cache on module init
+_loadCacheFromStorage();
+
+
 
 /**
  * Batch-answer custom form questions using Claude Haiku via the
@@ -28,8 +65,28 @@ export async function answerCustomQuestions(questions, profile, resume, jobConte
     return questions.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
   }
 
+  // v5.48: Check cache first — split into cached hits and uncached misses
+  const cachedResults = [];
+  const uncachedQuestions = [];
+
+  for (const q of questions) {
+    const cacheKey = _normalizeLabel(q.label) + '|' + (q.fieldType || 'text');
+    const cached = _answerCache.get(cacheKey);
+    if (cached && cached.confidence !== 'low') {
+      cachedResults.push({ id: q.id, answer: cached.answer, confidence: cached.confidence, fromCache: true });
+    } else {
+      uncachedQuestions.push(q);
+    }
+  }
+
+  // If everything was cached, return immediately
+  if (uncachedQuestions.length === 0) {
+    console.log('[aiAnswerer] All', questions.length, 'answers served from cache');
+    return cachedResults;
+  }
+
   // Cap at 10 per call (EF limit)
-  const batch = questions.slice(0, 10);
+  const batch = uncachedQuestions.slice(0, 10);
 
   const payload = {
     questions: batch.map(q => ({
@@ -81,7 +138,24 @@ export async function answerCustomQuestions(questions, profile, resume, jobConte
     }
 
     const data = await resp.json();
-    return data.answers || batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
+    const answers = data.answers || batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
+
+    // v5.48: Cache successful answers for reuse
+    for (let i = 0; i < batch.length && i < answers.length; i++) {
+      if (answers[i].confidence !== 'low' && answers[i].answer) {
+        const cacheKey = _normalizeLabel(batch[i].label) + '|' + (batch[i].fieldType || 'text');
+        _answerCache.set(cacheKey, { answer: answers[i].answer, confidence: answers[i].confidence });
+        // Evict oldest if over limit
+        if (_answerCache.size > CACHE_MAX_SIZE) {
+          const firstKey = _answerCache.keys().next().value;
+          _answerCache.delete(firstKey);
+        }
+      }
+    }
+    _saveCacheToStorage();
+
+    // Merge cached + fresh results
+    return [...cachedResults, ...answers];
 
   } catch (err) {
     console.warn('[aiAnswerer] Error calling EF:', err.message || err);
