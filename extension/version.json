@@ -1,10 +1,10 @@
 {
-  "version": "3.7.0",
-  "build": "2026-02-26g",
+  "version": "3.8.0",
+  "build": "2026-02-26h",
   "files": {
-    "manifest.json": "3.7.0",
-    "background.js": "3.7.0",
-    "contentScript.js": "3.0.0",
+    "manifest.json": "3.8.0",
+    "background.js": "3.8.0",
+    "contentScript.js": "3.8.0",
     "popup.html": "2.8.0",
     "popup.js": "2.8.0",
     "supabase.js": "2.5.0",
@@ -32,11 +32,13 @@
     "fields/dateFields.js": "3.1.0",
     "fields/checkbox.js": "3.1.0",
     "fields/radioGroup.js": "3.1.0",
-    "fields/dropdownSearchable.js": "3.1.0"
+    "fields/dropdownSearchable.js": "3.1.0",
+    "utils/jdMatcher.js": "3.8.0",
+    "utils/autoTracker.js": "3.8.0"
   },
   "changelog": {
     "3.7.0": "Phase 9 (P7) Extension Tier Gating: BJ_TIER_GATE utility (tierGate.js) gates autofill behind subscription tiers. Free tier: extension installed + scanning works but autofill disabled with upgrade CTA. Starter tier: autofill enabled for 5 applications/day, counter resets midnight UTC. Pro tier: unlimited autofill. dashboard:ping now returns tier + tierStatus with daily usage. New dashboard:setTier message for dashboard to push tier updates. dashboard:apply and dashboard:fillCurrent gated through BJ_TIER_GATE.check() before processing. Usage recorded via BJ_TIER_GATE.recordUsage() on successful fill. Dashboard apply-workflow.js checks auto_apply entitlement before dispatching browser fill, shows upgrade prompt if blocked.",
-    "3.6.0": "Phase 8 (P6) Extension Security Hardening: Triple-layer origin verification — BJ_ORIGIN_GUARD validates sender URL (Layer 2) + tab URL (Layer 3) on top of Chrome's externally_connectable (Layer 1). Rate limiting at 60 msgs/min. PII encryption at rest — BJ_CRYPTO uses AES-GCM-256 with PBKDF2 key derived from extension install ID. authSession + userProfile encrypted in chrome.storage.local with transparent migration from plaintext. Manifest hardened: removed optional_host_permissions for Indeed/Workday (not yet needed), removed dev/staging from externally_connectable, added CSP directive (script-src 'self', object-src 'self').",
+    "3.6.0": "Phase 8 (P6) Extension Security Hardening: Triple-layer origin verification \u2014 BJ_ORIGIN_GUARD validates sender URL (Layer 2) + tab URL (Layer 3) on top of Chrome's externally_connectable (Layer 1). Rate limiting at 60 msgs/min. PII encryption at rest \u2014 BJ_CRYPTO uses AES-GCM-256 with PBKDF2 key derived from extension install ID. authSession + userProfile encrypted in chrome.storage.local with transparent migration from plaintext. Manifest hardened: removed optional_host_permissions for Indeed/Workday (not yet needed), removed dev/staging from externally_connectable, added CSP directive (script-src 'self', object-src 'self').",
     "3.5.0": "Phase 7 (P10-C) LinkedIn Easy Apply: linkedin-easy-apply.js (full handler replacing stub). Multi-step modal navigation with MutationObserver step detection. Custom [role='listbox'] dropdown filling. City typeahead with 1000ms autocomplete delay + ArrowDown+Enter fallback. Resume radio card selection (not file upload). Smart question mapping (visa, authorization, relocation, salary, etc). 2-min stuck detection timeout. Daily limit detection. 20s loading screen timeout. Unfollow company before submit. Human-like delays (200-600ms). manifest.json: v3.5.0, added linkedin.com/jobs/* to content_scripts. background.js: added linkedin-easy-apply to capabilities. contentScript.js: added linkedin-easy-apply ATS_HANDLERS entry with pathPattern. apply-workflow.js: added linkedin to _guessAtsSource.",
     "3.4.0": "Phase 6 (P5) Apply Pathway Rework: externally_connectable in manifest for dashboard-extension communication. onMessageExternal handler in background.js (dashboard:ping, dashboard:apply, dashboard:getState, dashboard:fillCurrent). handleDashboardApply opens ATS URL in new tab + fills via content script. Dashboard apply-workflow.js v5.29: extension detection via dashboard:ping, dual-path submission (API for Recruitee/Greenhouse, browser fill for Lever/Ashby/Workable via extension, manual fallback), getSubmissionPath routing, dispatchBrowserFill dispatch, _buildProfileForFill profile builder.",
     "3.3.0": "Phase 5 (P10-D) Ashby/Workable/Recruitee: ashby.js (323 lines, Ashby field containers, custom combobox/listbox, EEO fields), workable.js (324 lines, Workable data-ui selectors, name-based + label-based mapping), recruitee.js (294 lines, candidate[] name mapping, GDPR checkbox skip, server-side submission metadata). All 5 ATS platforms now have complete handlers.",
@@ -45,6 +47,7 @@
     "3.0.0": "P0 Architecture Rebuild: multi-ATS manifest, handler routing, contentScript.js, shared utils (reactProps, fieldFillerQueue, mutationWatcher, applicationTracker, fileUpload), field fillers (textInput, dropdown), Lever handler (complete), stub handlers for Greenhouse/Ashby/Workable/Recruitee/LinkedIn",
     "2.8.0": "Phase 5 RBAC: role-based tab gating, admin badge, scanner admin-only gate",
     "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo",
-    "2.6.6": "Fix visited/queued counts: load from Supabase on popup open"
+    "2.6.6": "Fix visited/queued counts: load from Supabase on popup open",
+    "3.8.0": "Phase 10 (P9) JD Extraction + Tracking: Enhanced per-ATS JD selectors with broader fallbacks and title/company extraction. New jdMatcher.js computes instant JD-to-resume compatibility score (keyword + tech keyword matching, weighted scoring, confidence levels). New autoTracker.js auto-tracks form submissions to Supabase pending_applications (detects submit events, confirmation pages, records both confirmed and unconfirmed submissions). background.js adds ats:submitDetected/ats:confirmationDetected handlers, auto-scores JD on page detect, new dashboard:getJDMatch external message. contentScript.js v3.8.0 integrates inline submit tracking without requiring ApplicationTracker import."
   }
 }

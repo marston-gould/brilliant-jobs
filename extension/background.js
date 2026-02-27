@@ -5,11 +5,14 @@
 // v3.5.0: Added linkedin-easy-apply to capabilities — dashboard:apply, dashboard:ping, dashboard:getState
 // v3.6.0: P6 Security hardening — triple-layer origin guard, PII encryption, rate limiting
 // v3.7.0: P7 Tier gating — Free/Starter/Pro gates on autofill, daily usage counters
+// v3.8.0: P9 Phase 10 — JD match scoring (jdMatcher.js), auto-tracking (autoTracker.js), dashboard:getJDMatch
 
 importScripts('supabase.js');
 importScripts('utils/originGuard.js');
 importScripts('utils/crypto.js');
 importScripts('utils/tierGate.js');
+importScripts('utils/jdMatcher.js');
+importScripts('utils/autoTracker.js');
 
 // ============================================================
 // STATE
@@ -1242,6 +1245,26 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       detectedAt: new Date().toISOString()
     };
     logMsg(`ATS detected: ${msg.ats} (${msg.fieldCount} fields)`, 'info');
+
+    // v3.8.0: Auto-score JD against resume if JD extracted
+    if (msg.jd && msg.jd.text && sender.tab && sender.tab.id) {
+      BJ_JD_MATCHER.matchAndCache(sender.tab.id, msg.jd.text, msg.url).then(function(matchResult) {
+        atsPageState.jdMatch = matchResult;
+        logMsg('JD match score: ' + matchResult.score + '% (confidence: ' + matchResult.confidence + ')', 'info');
+        chrome.runtime.sendMessage({
+          type: 'ats:jdMatchResult',
+          score: matchResult.score,
+          confidence: matchResult.confidence,
+          techMatched: matchResult.techMatched,
+          techMissing: matchResult.techMissing,
+          url: msg.url,
+          tabId: sender.tab.id,
+        }).catch(function() {});
+      }).catch(function(err) {
+        logMsg('JD match error: ' + err.message, 'warn');
+      });
+    }
+
     chrome.runtime.sendMessage({
       type: 'ats:pageState',
       ...atsPageState
@@ -1259,6 +1282,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       fieldCount: msg.fieldCount,
       url: msg.url
     }).catch(() => {});
+    return;
+  }
+
+  // v3.8.0: Submit detected by contentScript → auto-track to Supabase
+  if (msg.type === 'ats:submitDetected') {
+    var submitInfo = Object.assign({}, msg, { tabId: sender.tab ? sender.tab.id : null });
+    BJ_AUTO_TRACKER.onSubmitDetected(submitInfo);
+    logMsg('Submit detected: ' + (msg.buttonText || msg.type) + ' on ' + msg.url, 'info');
+    return;
+  }
+
+  // v3.8.0: Confirmation detected → auto-track confirmed submission
+  if (msg.type === 'ats:confirmationDetected') {
+    var confirmInfo = Object.assign({}, msg, { tabId: sender.tab ? sender.tab.id : null });
+    BJ_AUTO_TRACKER.onConfirmationDetected(confirmInfo);
+    logMsg('Application confirmed: ' + msg.url, 'info');
     return;
   }
 
@@ -1446,6 +1485,28 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
       return;
     }
 
+    // v3.8.0: Dashboard requesting JD match score for current ATS page
+    if (msg.type === 'dashboard:getJDMatch') {
+      if (atsPageState && atsPageState.jdMatch) {
+        sendResponse({ success: true, match: atsPageState.jdMatch });
+      } else if (atsPageState && atsPageState.jd && atsPageState.jd.text) {
+        // Re-compute if cached result missing
+        BJ_JD_MATCHER.matchAndCache(
+          atsPageState.tabId || 0,
+          atsPageState.jd.text,
+          atsPageState.url
+        ).then(function(result) {
+          atsPageState.jdMatch = result;
+          sendResponse({ success: true, match: result });
+        }).catch(function(err) {
+          sendResponse({ success: false, error: err.message });
+        });
+      } else {
+        sendResponse({ success: false, error: 'no_jd_available', message: 'No JD extracted on current ATS page.' });
+      }
+      return;
+    }
+
     sendResponse({ success: false, error: 'unknown_message_type' });
   }).catch(err => {
     logMsg(`Origin guard error: ${err.message}`, 'error');
@@ -1503,6 +1564,13 @@ async function handleDashboardApply(msg) {
     });
 
     logMsg(`Dashboard apply result: ${JSON.stringify(result)}`, result?.success ? 'info' : 'warn');
+
+    // v3.8.0: Auto-track successful fill to Supabase
+    if (result?.success) {
+      BJ_AUTO_TRACKER.recordFillSuccess(jobUrl, result?.ats || 'unknown', result).catch(function(err) {
+        logMsg('Auto-track failed: ' + err.message, 'warn');
+      });
+    }
 
     return {
       success: result?.success || false,
@@ -1809,4 +1877,5 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   if (tabs[0]) updateIcon(tabs[0].url);
 });
+
 

@@ -1,6 +1,8 @@
 // contentScript.js — ATS Detection & Handler Router
 // v3.0.0: Multi-ATS content script that detects the current platform
 // and routes to the appropriate handler.
+// v3.8.0: Phase 10 (P9) — Enhanced JD selectors, ApplicationTracker
+// integration for auto-tracking, JD match data sent to background.
 //
 // This script is injected on all ATS domains (manifest content_scripts).
 // It does NOT auto-fill. It waits for a message from background.js
@@ -55,13 +57,15 @@
 
     for (const [id, config] of Object.entries(ATS_HANDLERS)) {
       if (config.hostnames && config.hostnames.includes(hostname)) {
+        // Additional path check for platforms that need it (LinkedIn)
+        if (config.pathPattern) {
+          if (config.pathPattern.test(window.location.pathname)) return { id, config };
+          continue;
+        }
         return { id, config };
       }
       if (config.hostnamePattern && config.hostnamePattern.test(hostname)) {
         return { id, config };
-      }
-      if (config.hostnames && config.hostnames.includes(hostname) && config.pathPattern) {
-        if (config.pathPattern.test(window.location.pathname)) return { id, config };
       }
     }
     return null;
@@ -69,21 +73,87 @@
 
   // ============================================================
   // JD EXTRACTION (runs on page load — no user action needed)
+  // v3.8.0: Enhanced selectors with broader fallbacks per ATS
   // ============================================================
 
   const JD_SELECTORS = {
-    'greenhouse-legacy': '#content .content, section#content .body',
-    'greenhouse-react': '[data-mapped="true"] .job-post-content, .job__description',
-    'lever': '.posting-page .content .posting-categories + div, .posting .content-wrapper .posting-headline + div',
-    'ashby': 'div[data-ui="job-description"], .ashby-job-posting-description',
-    'workable': '.job-description, [data-ui="job-description"]',
-    'recruitee': '.job-description, .posting-description',
-    'linkedin-easy-apply': '.jobs-description__content, .jobs-box__html-content, .jobs-description-content__text'
+    'greenhouse-legacy': [
+      '#content .content',
+      'section#content .body',
+      '.body .content',
+      '#app_body .content',
+      '.job-post .content',
+    ],
+    'greenhouse-react': [
+      '[data-mapped="true"] .job-post-content',
+      '.job__description',
+      '.job-post__description',
+      '[class*="jobDescription"]',
+      '.css-1v5elnn', // common GH React class
+    ],
+    'lever': [
+      '.posting-page .content .posting-categories + div',
+      '.posting .content-wrapper .posting-headline + div',
+      '.posting-page .content section',
+      '.posting .content-wrapper .section-wrapper',
+      'div[data-qa="posting-description"]',
+    ],
+    'ashby': [
+      'div[data-ui="job-description"]',
+      '.ashby-job-posting-description',
+      '.ashby-job-posting-brief-description + div',
+      'main .job-posting-description',
+      '.job-posting__description',
+    ],
+    'workable': [
+      '.job-description',
+      '[data-ui="job-description"]',
+      'section.job-description',
+      '.job-details .description',
+      '[class*="jobDescription"]',
+    ],
+    'recruitee': [
+      '.job-description',
+      '.posting-description',
+      '.job-details__description',
+      '.offer-description',
+      'section.description',
+    ],
+    'linkedin-easy-apply': [
+      '.jobs-description__content',
+      '.jobs-box__html-content',
+      '.jobs-description-content__text',
+      '.jobs-unified-description__content',
+      'article.jobs-description',
+    ],
+  };
+
+  /**
+   * Extract job title from the page.
+   * v3.8.0: Per-ATS title selectors.
+   */
+  const TITLE_SELECTORS = {
+    'greenhouse-legacy': '.app-title, .job-title, h1.heading',
+    'greenhouse-react': 'h1.job-title, h1[class*="title"], .job-post h1',
+    'lever': '.posting-headline h2, .posting-headline .display-4',
+    'ashby': 'h1[class*="title"], .ashby-job-posting-heading h1',
+    'workable': 'h1.job-title, header h1, [data-ui="job-title"]',
+    'recruitee': 'h1.offer-title, h1.job-title, .posting-title h1',
+    'linkedin-easy-apply': '.jobs-unified-top-card__job-title, .job-details-jobs-unified-top-card__job-title, h1.t-24',
+  };
+
+  const COMPANY_SELECTORS = {
+    'greenhouse-legacy': '.company-name, .logo + span',
+    'greenhouse-react': '.company-name, [class*="companyName"]',
+    'lever': '.posting-headline .display-4 ~ .posting-categories .sort-by-team, .posting-headline .display-4 ~ .posting-categories .posting-category',
+    'ashby': '.ashby-job-posting-heading [class*="company"], .org-name',
+    'workable': '.company-header__name, [data-ui="company-name"]',
+    'recruitee': '.company-name, .offer-company',
+    'linkedin-easy-apply': '.jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name a',
   };
 
   function extractJobDescription(atsId) {
-    const selectorChain = JD_SELECTORS[atsId] || '';
-    const selectors = selectorChain.split(',').map(s => s.trim());
+    const selectors = JD_SELECTORS[atsId] || [];
 
     for (const selector of selectors) {
       const el = document.querySelector(selector);
@@ -92,11 +162,53 @@
           text: el.textContent.trim(),
           html: el.innerHTML,
           url: window.location.href,
+          title: extractJobTitle(atsId),
+          company: extractCompanyName(atsId),
           extractedAt: new Date().toISOString()
         };
       }
     }
+
+    // Fallback: try generic selectors
+    const fallbacks = [
+      '.job-description', '[class*="description"]', 'article', 'main .content',
+    ];
+    for (const selector of fallbacks) {
+      const el = document.querySelector(selector);
+      if (el && el.textContent.trim().length > 100) {
+        return {
+          text: el.textContent.trim(),
+          html: el.innerHTML,
+          url: window.location.href,
+          title: extractJobTitle(atsId),
+          company: extractCompanyName(atsId),
+          extractedAt: new Date().toISOString(),
+          fallback: true,
+        };
+      }
+    }
+
     return null;
+  }
+
+  function extractJobTitle(atsId) {
+    const selectorStr = TITLE_SELECTORS[atsId] || '';
+    for (const sel of selectorStr.split(',').map(s => s.trim())) {
+      const el = document.querySelector(sel);
+      if (el && el.textContent.trim()) return el.textContent.trim();
+    }
+    // Fallback to <title>
+    const titleEl = document.querySelector('title');
+    return titleEl ? titleEl.textContent.split('|')[0].split('-')[0].trim() : '';
+  }
+
+  function extractCompanyName(atsId) {
+    const selectorStr = COMPANY_SELECTORS[atsId] || '';
+    for (const sel of selectorStr.split(',').map(s => s.trim())) {
+      const el = document.querySelector(sel);
+      if (el && el.textContent.trim()) return el.textContent.trim();
+    }
+    return '';
   }
 
   // ============================================================
@@ -177,6 +289,108 @@
     }
 
     return '';
+  }
+
+  // ============================================================
+  // APPLICATION SUBMISSION TRACKING (v3.8.0)
+  // Watches for form submits and confirmation pages.
+  // Reports to background.js for Supabase auto-tracking.
+  // ============================================================
+
+  const SUBMIT_PATTERN = /(apply|submit|send\s+application|confirm\s+application|complete\s+application)/i;
+  const CONFIRMATION_PATTERNS = [
+    /application\s+(received|submitted|sent|confirmed)/i,
+    /thank\s+you\s+for\s+(applying|your\s+application)/i,
+    /successfully\s+(submitted|applied)/i,
+    /we('ve|\s+have)\s+received\s+your/i,
+    /your\s+application\s+has\s+been/i,
+    /application\s+complete/i,
+  ];
+
+  let _pendingSubmit = null;
+  let _confirmationInterval = null;
+
+  function startSubmitTracking() {
+    // Watch form submits
+    document.addEventListener('submit', function (event) {
+      const form = event.target;
+      if (form?.tagName === 'FORM') {
+        _handleSubmitEvent({
+          type: 'form_submit',
+          action: form.action,
+          method: form.method,
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }, true);
+
+    // Watch button clicks matching submit patterns
+    document.addEventListener('click', function (event) {
+      const el = event.target.closest('button, a, [role="button"], input[type="submit"]');
+      if (!el) return;
+
+      const text = (el.textContent || el.value || el.getAttribute('aria-label') || '').trim();
+      if (SUBMIT_PATTERN.test(text)) {
+        _handleSubmitEvent({
+          type: 'button_click',
+          buttonText: text,
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }, true);
+
+    // Check for confirmation page periodically
+    _confirmationInterval = setInterval(function () {
+      if (_pendingSubmit) {
+        _checkForConfirmation();
+      }
+    }, 1500);
+  }
+
+  function _handleSubmitEvent(info) {
+    _pendingSubmit = info;
+
+    // Report to background.js → autoTracker
+    chrome.runtime.sendMessage({
+      type: 'ats:submitDetected',
+      ...info,
+    }).catch(() => {});
+
+    // Auto-clear after 60s if no confirmation
+    setTimeout(() => {
+      if (_pendingSubmit === info) {
+        _pendingSubmit = null;
+      }
+    }, 60000);
+  }
+
+  function _checkForConfirmation() {
+    const bodyText = (document.body?.textContent || '').substring(0, 5000);
+    const titleText = document.title || '';
+    const combinedText = bodyText + ' ' + titleText;
+
+    for (const pattern of CONFIRMATION_PATTERNS) {
+      if (pattern.test(combinedText)) {
+        const confirmation = {
+          type: 'confirmation_detected',
+          pattern: pattern.source,
+          url: window.location.href,
+          submitInfo: _pendingSubmit,
+          timestamp: new Date().toISOString(),
+        };
+
+        chrome.runtime.sendMessage({
+          type: 'ats:confirmationDetected',
+          ...confirmation,
+        }).catch(() => {});
+
+        _pendingSubmit = null;
+        clearInterval(_confirmationInterval);
+        break;
+      }
+    }
   }
 
   // ============================================================
@@ -335,10 +549,15 @@
       ats: ats.id,
       url: window.location.href,
       jd,
+      title: jd?.title || '',
+      company: jd?.company || '',
       fieldCount: fields.length
     }).catch(() => {});
 
     // Start observing for dynamic form changes
     startMutationObserver();
+
+    // Start submission tracking (v3.8.0)
+    startSubmitTracking();
   }
 })();
