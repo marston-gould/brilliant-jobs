@@ -1,8 +1,8 @@
 {
-  "version": "2.9.0",
-  "build": "2026-02-27b",
+  "version": "2.10.0",
+  "build": "2026-02-27c",
   "files": {
-    "background.js": "2.8.0",
+    "background.js": "2.10.0",
     "popup.html": "2.8.0",
     "popup.js": "2.8.0",
     "supabase.js": "2.5.0",
@@ -17,12 +17,14 @@
     "handlers/workday.js": "2.9.0",
     "handlers/linkedin-easy-apply.js": "2.9.0",
     "handlers/indeed.js": "2.9.0",
-    "handlers/greenhouse-legacy.js": "2.9.0"
+    "handlers/greenhouse-legacy.js": "2.9.0",
+    "utils/autoTracker.js": "2.10.0"
   },
   "changelog": {
     "2.9.0": "v5.40: Multilingual label detection (C1) + Human-sim typing wired into handlers (B7)",
     "2.8.0": "Phase 5 RBAC: role-based tab gating, admin badge, scanner admin-only gate",
     "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo",
-    "2.6.6": "Fix visited/queued counts: load from Supabase on popup open"
+    "2.6.6": "Fix visited/queued counts: load from Supabase on popup open",
+    "2.10.0": "v5.41: Application success feedback loop (C4) \u2014 autoTracker wired into background.js, confirmation tracking"
   }
 }

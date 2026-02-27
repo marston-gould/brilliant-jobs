@@ -1,7 +1,9 @@
 // background.js — Service worker for Brilliant Jobs
 // v2.0: Merged extension with daily reset fix, keepalive, notifications
+// v2.1: Application success feedback loop (C4) — autoTracker wired in
 
 importScripts('supabase.js');
+importScripts('utils/autoTracker.js');
 
 // ============================================================
 // STATE
@@ -1134,6 +1136,76 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'resumeScanner') {
     resumeScanner();
     sendResponse({ ok: true });
+  }
+
+  // ── Application Success Feedback Loop (v5.41 / C4) ──
+  // Wire autoTracker to handle submit + confirmation events from contentScript
+  if (msg.type === 'ats:submitDetected') {
+    const tabId = sender?.tab?.id || 'unknown';
+    const result = BJ_AUTO_TRACKER.onSubmitDetected({ ...msg, tabId });
+
+    // Log to extension_events for telemetry
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) return;
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        await fetch(SB_URL + '/rest/v1/extension_events', {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: session.user_id,
+            event_type: 'submit_detected',
+            event_data: { buttonText: msg.buttonText, formAction: msg.action },
+            ats_platform: BJ_AUTO_TRACKER.guessAtsSource(msg.url),
+            job_url: msg.url,
+            extension_version: '2.10.0',
+          }),
+        });
+      } catch (e) { /* telemetry is best-effort */ }
+    })();
+
+    sendResponse(result);
+    return;
+  }
+
+  if (msg.type === 'ats:confirmationDetected') {
+    const tabId = sender?.tab?.id || 'unknown';
+    const result = BJ_AUTO_TRACKER.onConfirmationDetected({ ...msg, tabId });
+
+    // Log to extension_events for telemetry
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) return;
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        await fetch(SB_URL + '/rest/v1/extension_events', {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: session.user_id,
+            event_type: 'confirmation_detected',
+            event_data: { pattern: msg.pattern, confirmationUrl: msg.url },
+            ats_platform: BJ_AUTO_TRACKER.guessAtsSource(msg.submitInfo?.url || msg.url),
+            job_url: msg.submitInfo?.url || msg.url,
+            extension_version: '2.10.0',
+          }),
+        });
+      } catch (e) { /* telemetry is best-effort */ }
+    })();
+
+    sendResponse(result);
+    return;
   }
 });
 
