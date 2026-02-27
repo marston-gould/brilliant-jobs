@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.8.0",
-  "description": "Discover jobs through your professional network",
+  "version": "3.0.0",
+  "description": "Discover jobs through your professional network — with smart autofill",
   "permissions": [
     "activeTab",
     "scripting",
@@ -14,7 +14,19 @@
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
-    "https://qojhagupdnbtomfoxnsf.supabase.co/*"
+    "https://qojhagupdnbtomfoxnsf.supabase.co/*",
+    "https://boards.greenhouse.io/*",
+    "https://boards.eu.greenhouse.io/*",
+    "https://job-boards.greenhouse.io/*",
+    "https://job-boards.eu.greenhouse.io/*",
+    "https://jobs.lever.co/*",
+    "https://jobs.ashbyhq.com/*",
+    "https://apply.workable.com/*",
+    "https://*.recruitee.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*.indeed.com/*",
+    "https://*.myworkdayjobs.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -38,6 +50,22 @@
         "interceptor-bridge.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://boards.greenhouse.io/*",
+        "https://boards.eu.greenhouse.io/*",
+        "https://job-boards.greenhouse.io/*",
+        "https://job-boards.eu.greenhouse.io/*",
+        "https://jobs.lever.co/*",
+        "https://jobs.ashbyhq.com/*",
+        "https://apply.workable.com/*",
+        "https://*.recruitee.com/*"
+      ],
+      "js": [
+        "contentScript.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "side_panel": {
