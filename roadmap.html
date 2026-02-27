@@ -701,7 +701,7 @@ const features = [
   { s: 'done', n: '[REC] Board discovery', d: 'DataForSEO alphabet crawl: 1,333 Recruitee boards discovered. All imported to ats_companies with source=recruitee.', p: 10 },
   { s: 'done', n: '[REC] Job scraper + refresh + closed detection', d: 'Recruitee parser in refresh-jobs v10: fetches {slug}.recruitee.com/api/offers. Extracts title, location, department, remote flag. In 10-min cron cycle.', p: 10 },
   { s: 'todo', n: '[REC] Location normalization', d: 'Run normalize_job_locations() on Recruitee jobs.', b: 'post-launch', p: 10, b: 'deferred' },
-  { s: 'todo', n: '[REC] API resume submission (zero-auth)', d: 'Recruitee Careers Site API requires NO authentication. POST to {slug}.recruitee.com/api/offers/{offer_slug}/candidates with multipart form-data (candidate[name], candidate[email], candidate[cv]). Add async=true for large PDF uploads. Fastest path to fully automated submission — implement first as proof of concept for Tier 2 architecture.', b: 'post-launch', p: 10, b: 'external' },
+  { s: 'done', n: '[REC] API resume submission (zero-auth)', d: 'v5.18: submit-application Edge Function. Zero-auth POST to {slug}.recruitee.com/api/offers/{offer_slug}/candidates. Resume fetched from Supabase Storage, POSTed as multipart. URL parsing handles both standard (.recruitee.com) and custom domain patterns. Idempotency + pending_applications update. Mock fallback for other platforms.', p: 10 },
 
   // ── PDL Company Dataset Discovery ──
   { s: 'done', n: 'PDL dataset ATS probing', d: 'Tested 1,500 US companies from PDL 34M dataset against 5 ATS APIs. 3 hits from 400 companies (0.75% hit rate). Non-Greenhouse platforms use unpredictable slugs. Not viable for discovery. PDL remains excellent for enrichment only.', p: 10 },
