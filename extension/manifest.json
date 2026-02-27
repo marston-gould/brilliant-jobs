@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "3.5.0",
-  "description": "Discover jobs through your professional network \u2014 with smart autofill",
+  "version": "3.6.0",
+  "description": "Discover jobs through your professional network — with smart autofill",
   "permissions": [
     "activeTab",
     "scripting",
@@ -24,17 +24,14 @@
     "https://apply.workable.com/*",
     "https://*.recruitee.com/*"
   ],
-  "optional_host_permissions": [
-    "https://*.indeed.com/*",
-    "https://*.myworkdayjobs.com/*"
-  ],
   "externally_connectable": {
     "matches": [
       "https://brilliantjobs.app/*",
-      "https://*.brilliantjobs.app/*",
-      "https://dev.brilliantjobs.app/*",
-      "https://staging.brilliantjobs.app/*"
+      "https://*.brilliantjobs.app/*"
     ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'"
   },
   "background": {
     "service_worker": "background.js"
@@ -89,6 +86,7 @@
     "default_path": "popup.html"
   },
   "action": {
+    "default_popup": "popup.html",
     "default_icon": {
       "16": "icon16.png",
       "48": "icon48.png",
