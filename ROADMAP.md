@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-27
 **Target launch:** March 2026
-**Current version:** v5.47
+**Current version:** v5.48
 
 ---
 
@@ -2015,3 +2015,59 @@ Source: referral-hub-redesign-spec v3 (Feb 26, 2026)
 | Console log | [BJ] Dashboard v5.25 loaded |
 
 **Phase 48 total: 12 items + 2 bug fixes + 1 hotfix | All complete ✅. Version: v5.19→v5.25. Fully deployed to production.**
+
+---
+
+## Phase 49: Extension Infrastructure (v5.44–v5.48)
+
+### v5.44 — Fingerprint-Randomized Extension Builds
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-1 | Per-download fingerprint randomization | v5.44 | ✅ | Each extension download gets unique fingerprint values. Prevents fleet detection. |
+| EXT-2 | ROADMAP version sync | v5.44 | ✅ | Fixed stale ROADMAP.md (was v5.42). |
+
+### v5.45 — Extension Update Notification (Item #4)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-3 | Extension version sync to Supabase | v5.45 | ✅ | Extension reports version via `syncStateToSupabase` → `profiles.extension_version`. |
+| EXT-4 | Dashboard mismatch detection | v5.45 | ✅ | `REQUIRED_EXTENSION_VERSION` const. Amber nav dot + update banner on Setup page. |
+
+### v5.46 — Extension Tier 3 Batch + Discovery Pipeline
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-5 | Extension ID broadcast (Item #8) | v5.46 | ✅ | Simple message pass from extension to dashboard. |
+| EXT-6 | Tier change push notification (Item #11) | v5.46 | ✅ | Listener + toast when plan changes mid-session. |
+| EXT-7 | Dashboard JD match in apply modal (Item #12) | v5.46 | ✅ | Fetch + render existing score data in apply modal. |
+| EXT-8 | application_profiles table (Item #21) | v5.46 | ✅ | Schema + RLS for multiple fill personas. |
+| EXT-9 | discover-boards Edge Function (Item #2 partial) | v5.46 | ✅ | Background Discovery Pipeline server-side component. |
+
+### v5.47 — Auto-Apply Trigger Engine + Feed Health Admin
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-10 | Auto-Apply Trigger Engine (Item #1) | v5.47 | ✅ | Edge Function `auto-apply-trigger` on pg_cron (10 min). Score-gated matching of new jobs to saved filters → `pending_applications`. |
+| EXT-11 | Feed Health Admin Tab (Item #3) | v5.47 | ✅ | Admin dashboard: companies discovered, boards found by source, Easy Apply captured, ATS link-outs, extension fleet stats. |
+
+### v5.48 — Extension Hardening: Confirmation, Redirect, Caching, Crypto, Limits
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-12 | Expanded confirmation detection (Item #16) | v5.48 | ✅ | 30+ patterns covering Greenhouse, Lever, Workday, Indeed, LinkedIn, Ashby, iCIMS, BambooHR, Jobvite, SmartRecruiters. URL path patterns + title-based detection. |
+| EXT-13 | ATS redirect detection (Item #15) | v5.48 | ✅ | `tabs.onUpdated` listener pattern-matches external URLs to 11 ATS platforms. Logs to `extension_events` for feed health. Detects LinkedIn → ATS handoffs. |
+| EXT-14 | Custom question cached answers (Item #18) | v5.48 | ✅ | Answer cache in `chrome.storage.local`. TTL: 7 days, max 200 entries. Cache hit skips EF call. `clearAnswerCache()` export for profile changes. |
+| EXT-15 | Encrypted storage migration (Item #9) | v5.48 | ✅ | `BJ_CRYPTO_MIGRATION.migrate()` runs on install/update. Migrates plaintext `bjProfile`, `bjResumeRef`, `bjSavedFilters`, `_bj_answer_cache` to AES-GCM encrypted format. Idempotent. |
+| EXT-16 | Starter tier daily limit badge (Item #10) | v5.48 | ✅ | Visual progress bar in extension popup. Shows `used / limit` with color states (normal → amber → red). Queries `pending_applications` for today's count. Starter tier only. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.48 |
+| dashboard.min.js cache buster | v=5.48 |
+| styles.css cache buster | v=5.48 |
+| Console log | [BJ] Dashboard v5.48 loaded |
+
+**Phase 49 total: 16 items across v5.44–v5.48 | All complete ✅. Fully deployed to production.**
