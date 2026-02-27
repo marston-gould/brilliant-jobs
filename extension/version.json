@@ -1,6 +1,6 @@
 {
-  "version": "3.1.0",
-  "build": "2026-02-26a",
+  "version": "3.2.0",
+  "build": "2026-02-26b",
   "files": {
     "manifest.json": "3.0.0",
     "background.js": "3.1.0",
@@ -13,8 +13,8 @@
     "interceptor.js": "2.5.0",
     "interceptor-bridge.js": "2.5.0",
     "handlers/lever.js": "3.0.0",
-    "handlers/greenhouse-legacy.js": "3.0.0-stub",
-    "handlers/greenhouse-react.js": "3.0.0-stub",
+    "handlers/greenhouse-legacy.js": "3.2.0",
+    "handlers/greenhouse-react.js": "3.2.0",
     "handlers/ashby.js": "3.0.0-stub",
     "handlers/workable.js": "3.0.0-stub",
     "handlers/recruitee.js": "3.0.0-stub",
@@ -32,6 +32,7 @@
     "fields/dropdownSearchable.js": "3.1.0"
   },
   "changelog": {
+    "3.2.0": "Phase 3 (P10-B) Greenhouse Dual-Board: greenhouse-legacy.js (select2 dropdowns, div.field containers, education repeating sections, EEO fields, resume+cover upload) + greenhouse-react.js (React props hacking, react-select 6-step dropdown, React version detection, serialized field filler queue, React radio groups)",
     "3.1.0": "P0 Architecture Complete: ATS message bridge in background.js (ats:fill, ats:openAndFill, ats:pageDetected, ats:fieldsChanged), date fields filler, checkbox/toggle filler, radio group filler with smart question mapping, searchable dropdown filler (react-select, select2, custom listbox)",
     "3.0.0": "P0 Architecture Rebuild: multi-ATS manifest, handler routing, contentScript.js, shared utils (reactProps, fieldFillerQueue, mutationWatcher, applicationTracker, fileUpload), field fillers (textInput, dropdown), Lever handler (complete), stub handlers for Greenhouse/Ashby/Workable/Recruitee/LinkedIn",
     "2.8.0": "Phase 5 RBAC: role-based tab gating, admin badge, scanner admin-only gate",
