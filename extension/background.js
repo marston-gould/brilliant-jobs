@@ -62,7 +62,8 @@ async function syncStateToSupabase() {
       scanner_next_resume_at: (scannerState.nextActionAt || scannerState.scheduledResumeAt)
         ? new Date(scannerState.nextActionAt || scannerState.scheduledResumeAt).toISOString() : null,
       scanner_running: scannerState.running,
-      last_scan_at: new Date().toISOString()
+      last_scan_at: new Date().toISOString(),
+      extension_version: chrome.runtime.getManifest().version
     });
   } catch (e) {
     // Silent fail — local state is primary, Supabase is backup
