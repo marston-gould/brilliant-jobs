@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.35';
+var BJ_VERSION = 'v5.36';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -21674,7 +21674,7 @@ window.requiredTierFor = requiredTier;
 
 // === js/extension-download.js ===
 // js/extension-download.js — Phase 12: Fingerprinted Extension Download
-// Dashboard v5.35 | Extension 4.0.0
+// Dashboard v5.36 | Extension 4.0.0
 //
 // Handles:
 // 1. Requesting a unique build from the build-extension Edge Function
@@ -21939,7 +21939,7 @@ window.requiredTierFor = requiredTier;
 
 // === js/apply-workflow.js ===
 /**
- * Brilliant Jobs — Apply Workflow v5.29
+ * Brilliant Jobs — Apply Workflow v5.36
  * Score Gate Modal, Pending Applications, and Apply State Machine
  * 
  * Phase 4: Real Apply Pathway (Pod 2)
@@ -21955,6 +21955,9 @@ window.requiredTierFor = requiredTier;
  *              Browser fill (Lever/Ashby/Workable/others) via Chrome extension
  * - Extension detection: dashboard:ping checks if extension is installed
  * - Extension dispatch: dashboard:apply opens ATS URL and fills via extension
+ * - Channel map: resolveChannel() translates hardcoded names to fingerprinted versions
+ * - Resume sync: pushes resume text to extension for jdMatcher scoring
+ * - Auto-status: listens for extension status updates → pending_applications
  */
 
 // ═══════════════════════════════════════════════════════════
@@ -22077,7 +22080,7 @@ function _pingExtension(extensionId) {
       return;
     }
     try {
-      chrome.runtime.sendMessage(extensionId, { type: 'dashboard:ping' }, function(response) {
+      chrome.runtime.sendMessage(extensionId, { type: (window._bjExtensionDownload ? window._bjExtensionDownload.resolveChannel('dashboard:ping') : 'dashboard:ping') }, function(response) {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
         } else {
@@ -22100,7 +22103,7 @@ function _syncTierToExtension(extensionId) {
   var tier = window._bjUserPlan || 'free';
   try {
     chrome.runtime.sendMessage(extensionId || _extensionState.extensionId, {
-      type: 'dashboard:setTier',
+      type: (window._bjExtensionDownload ? window._bjExtensionDownload.resolveChannel('dashboard:setTier') : 'dashboard:setTier'),
       tier: tier
     }, function(response) {
       if (chrome.runtime.lastError) return; // silently ignore
@@ -22187,7 +22190,7 @@ async function dispatchBrowserFill(jobUrl, pendingAppId) {
   return new Promise(function(resolve) {
     try {
       chrome.runtime.sendMessage(_extensionState.extensionId, {
-        type: 'dashboard:apply',
+        type: (window._bjExtensionDownload ? window._bjExtensionDownload.resolveChannel('dashboard:apply') : 'dashboard:apply'),
         jobUrl: jobUrl,
         profile: profile,
         resume: resume ? { filename: resume.filename, id: resume.id } : null,
@@ -23237,10 +23240,144 @@ function closeRewriteReviewModal() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// RESUME TEXT SYNC: DASHBOARD → EXTENSION
+// Sends current resume text to extension for jdMatcher scoring
+// ═══════════════════════════════════════════════════════════
+
+async function syncResumeToExtension() {
+  if (!_extensionState.installed || !_extensionState.extensionId) return;
+
+  var resume = _getActiveResume();
+  if (!resume) return;
+
+  var resumeText = '';
+  try {
+    var sb = window._bjSupabase;
+    if (sb) {
+      var { data: archiveData } = await sb
+        .from('resume_archive')
+        .select('parsed_text')
+        .eq('id', resume.id)
+        .single();
+      resumeText = archiveData?.parsed_text || '';
+    }
+  } catch (e) {}
+
+  if (!resumeText) {
+    try {
+      var raw = localStorage.getItem('bj_resumes');
+      if (raw && !raw.startsWith('enc:')) {
+        var resumes = JSON.parse(raw);
+        if (resumes.length > 0) resumeText = resumes[0].text || '';
+      }
+    } catch (e) {}
+  }
+
+  if (!resumeText) {
+    console.warn('[apply-workflow] No resume text available for extension sync');
+    return;
+  }
+
+  var channelName = window._bjExtensionDownload
+    ? window._bjExtensionDownload.resolveChannel('dashboard:fillCurrent')
+    : 'dashboard:fillCurrent';
+
+  try {
+    chrome.runtime.sendMessage(_extensionState.extensionId, {
+      type: channelName,
+      action: 'resumeSync',
+      resumeText: resumeText,
+      resumeId: resume.id,
+      resumeName: resume.filename || resume.name || 'resume',
+    }, function(response) {
+      if (chrome.runtime.lastError) return;
+      if (response && response.success) {
+        console.log('[apply-workflow] Resume text synced to extension (' + resumeText.length + ' chars)');
+      }
+    });
+  } catch (e) {
+    console.warn('[apply-workflow] Resume sync to extension failed:', e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTO-STATUS UPDATE: EXTENSION → DASHBOARD
+// Listens for application status updates from extension and
+// updates pending_applications accordingly
+// ═══════════════════════════════════════════════════════════
+
+function initExtensionStatusListener() {
+  // Listen for messages from the extension via window.postMessage
+  // The extension sends status updates after form submission
+  window.addEventListener('message', async function(event) {
+    if (event.origin !== window.location.origin) return;
+    if (!event.data || event.data.source !== 'bj-extension') return;
+
+    var msg = event.data;
+
+    if (msg.type === 'applicationStatus') {
+      console.log('[apply-workflow] Extension status update:', msg.status, 'for', msg.pendingAppId);
+
+      if (!msg.pendingAppId) return;
+
+      var sb = window._bjSupabase;
+      if (!sb) return;
+
+      try {
+        var updateData = {
+          status: msg.status || 'submitted',
+          updated_at: new Date().toISOString(),
+        };
+
+        if (msg.status === 'submitted') {
+          updateData.submitted_at = new Date().toISOString();
+          updateData.submission_method = 'browser_fill';
+        }
+
+        if (msg.confirmationDetected) {
+          updateData.confirmation_detected = true;
+          updateData.confirmation_url = msg.confirmationUrl || null;
+        }
+
+        if (msg.error) {
+          updateData.status = 'failed';
+          updateData.error_detail = msg.error;
+        }
+
+        await sb
+          .from('pending_applications')
+          .update(updateData)
+          .eq('id', msg.pendingAppId);
+
+        console.log('[apply-workflow] Updated pending_application', msg.pendingAppId, 'to', updateData.status);
+
+        // Refresh local state
+        await loadPendingApplications();
+        renderPendingApplications();
+
+        // Show toast
+        if (typeof showToast === 'function') {
+          if (updateData.status === 'submitted') {
+            showToast('Application submitted via extension!', { type: 'success', duration: 4000 });
+          } else if (updateData.status === 'failed') {
+            showToast('Application failed: ' + (msg.error || 'Unknown error'), { type: 'error', duration: 6000 });
+          }
+        }
+      } catch (e) {
+        console.error('[apply-workflow] Failed to update pending_application:', e);
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════
 
 loadApplySettings();
+
+// Initialize extension status listener for auto-status updates
+initExtensionStatusListener();
 
 // Load pending applications from Supabase after auth is ready
 (async function() {
@@ -23253,6 +23390,12 @@ loadApplySettings();
   if (window.currentUser) {
     await loadPendingApplications();
     renderPendingApplications();
+
+    // Detect extension, then sync resume text
+    var extDetected = await detectExtension();
+    if (extDetected) {
+      syncResumeToExtension();
+    }
   }
 })();
 
@@ -24923,5 +25066,3 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) {}
 }
-
-
