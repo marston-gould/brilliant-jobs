@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.17';
+var BJ_VERSION = 'v5.19';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -2607,7 +2607,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       saveBtn = isSaved
         ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline ✓</button>`
         : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline</button>`;
-      const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
+      const jobUrl = job.apply_url || (job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#');
       applyBtn = applyButton(['greenhouse'], { greenhouse: jobUrl }, job.greenhouse_id);
     }
 
@@ -22830,7 +22830,8 @@ function updateApplySettingsVisibility(mode) {
 // === js/referrals.js ===
 // ============================================================
 // REFERRALS — Referral Hub page logic
-// v5.08: Phase 2 — Referral Hub + sharing UX
+// v5.19: Phase 1 — Copy + hero banner + design system alignment
+// Spec: referral-hub-redesign-spec v3 (Feb 26, 2026)
 // ============================================================
 
 (function () {
@@ -22840,17 +22841,34 @@ function updateApplySettingsVisibility(mode) {
   let referralStats = null;
   let referralHistory = [];
 
-  // ---- Tier labels ----
-  const TIER_LABELS = ['—', 'Starter', 'Advocate', 'Evangelist', 'Champion', 'Ambassador'];
+  // ---- Tier labels — spec 3.4: intelligence/data-themed ----
+  const TIER_LABELS = ['—', 'Signal', 'Source', 'Radar', 'Intel', 'Clearance'];
+
+  // ---- Badge SVG icons (stroke-based, no emojis — spec audit) ----
   const BADGE_LABELS = {
-    connector: { name: 'Connector', icon: '🔗', desc: '1 referral' },
-    advocate: { name: 'Advocate', icon: '📣', desc: '3 referrals' },
-    evangelist: { name: 'Evangelist', icon: '🚀', desc: '5 referrals' },
-    champion: { name: 'Champion', icon: '🏆', desc: '10 referrals' },
-    ambassador: { name: 'Ambassador', icon: '👑', desc: '25 referrals' }
+    signal: {
+      name: 'Signal', desc: 'First referral landed',
+      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h2"/><path d="M6 8v8"/><path d="M10 4v16"/><path d="M14 8v8"/><path d="M18 6v12"/><path d="M22 2v20"/></svg>'
+    },
+    source: {
+      name: 'Source', desc: '3 activated referrals',
+      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 010 8.49"/><path d="M7.76 16.24a6 6 0 010-8.49"/><path d="M19.07 4.93a10 10 0 010 14.14"/><path d="M4.93 19.07a10 10 0 010-14.14"/></svg>'
+    },
+    radar: {
+      name: 'Radar', desc: 'On the network\u2019s radar',
+      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/></svg>'
+    },
+    intel: {
+      name: 'Intel', desc: 'Feeding intel to the grid',
+      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>'
+    },
+    clearance: {
+      name: 'Clearance', desc: 'Top clearance, inner circle',
+      icon: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>'
+    }
   };
 
-  const ALL_BADGES = ['connector', 'advocate', 'evangelist', 'champion', 'ambassador'];
+  const ALL_BADGES = ['signal', 'source', 'radar', 'intel', 'clearance'];
 
   // ---- Init ----
   window.initReferralHub = async function () {
@@ -22864,7 +22882,10 @@ function updateApplySettingsVisibility(mode) {
       if (!sb) { container.innerHTML = '<div style="padding:20px;color:var(--warm);">Unable to connect.</div>'; return; }
 
       const { data: { user } } = await sb.auth.getUser();
-      if (!user) { container.innerHTML = '<div style="padding:20px;">Please log in to view your referral hub.</div>'; return; }
+      if (!user) {
+        container.innerHTML = '<div class="ref-empty">Log in to access your referral link and track earnings.</div>';
+        return;
+      }
 
       // Fetch stats via RPC
       const { data: stats, error: statsErr } = await sb.rpc('get_referral_stats', { p_user_id: user.id });
@@ -22882,7 +22903,7 @@ function updateApplySettingsVisibility(mode) {
       renderReferralHub(container);
     } catch (err) {
       console.error('[Referrals] Init error:', err);
-      container.innerHTML = '<div style="padding:20px;color:var(--warm);">Error loading referral data. Please try again.</div>';
+      container.innerHTML = '<div class="ref-empty">Unable to load referral data. Refresh to retry.</div>';
     }
   };
 
@@ -22894,124 +22915,115 @@ function updateApplySettingsVisibility(mode) {
     const tierPct = s.progress_to_next || 0;
     const nextTierAt = s.next_tier_at;
     const remaining = nextTierAt ? nextTierAt - s.referral_count : 0;
+    // Spec 3.3: /in/ format for referral links
+    const refLink = (s.referral_link || '').replace('/r/', '/in/');
 
     container.innerHTML = `
-      <!-- Share Banner -->
-      <div class="ref-share-banner">
-        <div class="ref-share-banner-text">
-          <div class="ref-share-title">Invite friends, earn rewards</div>
-          <div class="ref-share-subtitle">Both you and your friend get 7 days of Pro + 25 credits when they activate</div>
+      <!-- Hero Banner — spec 3.1: .referral-hero following .feed-hero/.setup-hero pattern -->
+      <div class="referral-hero">
+        <div style="font-size:18px;font-weight:800;margin-bottom:4px;">
+          Share the signal. <span style="color:#f59e0b;">Earn together.</span>
         </div>
-        <div class="ref-share-actions">
-          <button class="btn-primary ref-share-btn" onclick="window._refCopyLink()" id="ref-copy-link-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            Copy Link
-          </button>
-          <button class="btn-secondary ref-share-btn" onclick="window._refCopyCode()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-            Copy Code
-          </button>
+        <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;max-width:480px;">
+          For each friend who signs up and runs their first search: you get 7 days of Pro + 25 AI credits. They get the same.
         </div>
-      </div>
-
-      <!-- Stats Grid -->
-      <div class="ref-stats-grid">
-        <div class="card ref-stat-card">
-          <div class="ref-stat-val">${s.referral_count}</div>
-          <div class="ref-stat-label">Total Referrals</div>
-        </div>
-        <div class="card ref-stat-card">
-          <div class="ref-stat-val">${TIER_LABELS[s.current_tier] || 'None'}</div>
-          <div class="ref-stat-label">Current Tier</div>
-        </div>
-        <div class="card ref-stat-card">
-          <div class="ref-stat-val">${s.stats.rewarded}</div>
-          <div class="ref-stat-label">Rewards Earned</div>
-        </div>
-        <div class="card ref-stat-card">
-          <div class="ref-stat-val">${s.stats.total_invites}</div>
-          <div class="ref-stat-label">Invites Sent</div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <div class="hero-stat-val">${s.referral_count}</div>
+            <div class="hero-stat-label">Referrals</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val hs-accent">${TIER_LABELS[s.current_tier] || '\u2014'}</div>
+            <div class="hero-stat-label">Current Tier</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val hs-green">${s.stats.rewarded}</div>
+            <div class="hero-stat-label">Rewards Earned</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-val hs-dim">${s.stats.total_invites}</div>
+            <div class="hero-stat-label">Invites Sent</div>
+          </div>
         </div>
       </div>
 
       <!-- Progress to Next Tier -->
       ${nextTierAt ? `
-      <div class="card ref-progress-card">
-        <div class="ref-progress-header">
-          <span class="ref-progress-label">Progress to ${TIER_LABELS[s.current_tier + 1] || 'Next Tier'}</span>
-          <span class="ref-progress-count">${s.referral_count} / ${nextTierAt}</span>
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:600;">Progress to ${TIER_LABELS[s.current_tier + 1] || 'Next Tier'}</span>
+          <span style="font-size:13px;color:var(--text-dim);font-family:var(--mono);">${s.referral_count} / ${nextTierAt}</span>
         </div>
-        <div class="ref-progress-bar-bg">
-          <div class="ref-progress-bar-fill" style="width:${Math.min(tierPct, 100)}%"></div>
+        <div class="progress-bar-bg" style="height:6px;">
+          <div class="progress-bar-fill" style="width:${Math.min(tierPct, 100)}%;"></div>
         </div>
-        <div class="ref-progress-hint">${remaining} more referral${remaining !== 1 ? 's' : ''} to unlock ${TIER_LABELS[s.current_tier + 1]} rewards</div>
+        <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">${remaining} more referral${remaining !== 1 ? 's' : ''} to unlock ${TIER_LABELS[s.current_tier + 1]} rewards</div>
       </div>
       ` : `
-      <div class="card ref-progress-card">
-        <div class="ref-progress-header">
-          <span class="ref-progress-label">Ambassador — Max Tier Reached!</span>
-          <span class="ref-progress-count">👑</span>
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;font-weight:600;">Clearance \u2014 Max Tier Reached</span>
         </div>
-        <div class="ref-progress-bar-bg">
-          <div class="ref-progress-bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f97316)"></div>
+        <div class="progress-bar-bg" style="height:6px;">
+          <div class="progress-bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f97316);"></div>
         </div>
       </div>
       `}
 
-      <!-- Share Options -->
-      <div class="card ref-share-card">
+      <!-- Share Your Link — spec: "Copy Your Link" / "Copy Code" CTAs -->
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
         <div class="card-title">Share Your Link</div>
-        <div class="ref-link-row">
-          <input type="text" class="ref-link-input" value="${s.referral_link}" readonly id="ref-link-input" />
-          <button class="btn-primary btn-sm" onclick="window._refCopyLink()">Copy</button>
+        <div style="display:flex;gap:8px;margin:12px 0;">
+          <input type="text" class="ref-link-input" value="${refLink}" readonly id="ref-link-input" onclick="this.select()" />
+          <button class="btn btn-primary btn-sm" onclick="window._refCopyLink()" id="ref-copy-link-btn">Copy Your Link</button>
         </div>
-        <div class="ref-code-row">
-          <span class="ref-code-label">Your code:</span>
-          <span class="ref-code-value" id="ref-code-val">${s.referral_code}</span>
-          <button class="btn-secondary btn-sm" onclick="window._refCopyCode()" style="margin-left:8px;">Copy Code</button>
+        <div style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;color:var(--text-dim);">
+          <span>Your code:</span>
+          <span style="font-family:var(--mono);font-weight:700;color:var(--accent);font-size:15px;letter-spacing:1px;" id="ref-code-val">${s.referral_code}</span>
+          <button class="btn btn-secondary btn-sm" onclick="window._refCopyCode()" style="margin-left:4px;">Copy Code</button>
         </div>
-        <div class="ref-share-channels">
-          <button class="ref-channel-btn" onclick="window._refShareLinkedIn()" title="Share on LinkedIn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="window._refShareLinkedIn()" style="display:flex;align-items:center;gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
             LinkedIn
           </button>
-          <button class="ref-channel-btn" onclick="window._refShareEmail()" title="Share via Email">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
+          <button class="btn btn-secondary btn-sm" onclick="window._refShareEmail()" style="display:flex;align-items:center;gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
             Email
           </button>
-          <button class="ref-channel-btn" onclick="window._refShareSMS()" title="Share via Text">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <button class="btn btn-secondary btn-sm" onclick="window._refShareSMS()" style="display:flex;align-items:center;gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             Text
           </button>
         </div>
       </div>
 
-      <!-- Badges -->
-      <div class="card ref-badges-card">
+      <!-- Milestones — spec 3.4: SVG icons, no emojis -->
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
         <div class="card-title">Milestones</div>
-        <div class="ref-badges-grid">
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
           ${ALL_BADGES.map(b => {
             const earned = (s.badges || []).find(x => x.name === b);
             const info = BADGE_LABELS[b];
             return `
-              <div class="ref-badge ${earned ? 'earned' : 'locked'}">
-                <div class="ref-badge-icon">${info.icon}</div>
-                <div class="ref-badge-name">${info.name}</div>
-                <div class="ref-badge-desc">${info.desc}</div>
-                ${earned ? '<div class="ref-badge-check">✓</div>' : ''}
+              <div style="position:relative;text-align:center;padding:16px 14px;border:1px solid ${earned ? 'var(--accent)' : 'var(--border)'};border-radius:10px;min-width:100px;flex:1;background:${earned ? 'rgba(61,130,246,0.06)' : 'transparent'};opacity:${earned ? '1' : '0.45'};">
+                <div style="color:${earned ? 'var(--accent)' : 'var(--text-faint)'};margin-bottom:6px;">${info.icon}</div>
+                <div style="font-size:12px;font-weight:600;">${info.name}</div>
+                <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">${info.desc}</div>
+                ${earned ? '<div style="position:absolute;top:6px;right:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>' : ''}
               </div>
             `;
           }).join('')}
         </div>
       </div>
 
-      <!-- Referral History -->
-      <div class="card ref-history-card">
+      <!-- Referral History — uses admin-table pattern -->
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
         <div class="card-title">Referral History</div>
-        ${referralHistory.length === 0 ? 
-          '<div class="ref-empty">No referrals yet. Share your link to get started!</div>' :
-          `<div class="ref-history-table-wrap">
-            <table class="ref-history-table">
+        ${referralHistory.length === 0 ?
+          '<div class="ref-empty">0 referrals. Your link is ready \u2014 each activated signup earns you 7 days Pro + 25 credits.</div>' :
+          `<div style="overflow-x:auto;margin-top:12px;">
+            <table class="admin-table">
               <thead>
                 <tr>
                   <th>Email</th>
@@ -23035,17 +23047,20 @@ function updateApplySettingsVisibility(mode) {
         }
       </div>
 
-      <!-- Leaderboard Toggle -->
-      <div class="card ref-leaderboard-card">
+      <!-- Leaderboard — spec: opt-in toggle uses .toggle-switch standard -->
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
         <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
           Leaderboard
-          <label class="ref-toggle-label">
-            <input type="checkbox" id="ref-optin-toggle" ${s.sharing_enabled ? 'checked' : ''} onchange="window._refToggleLeaderboard(this.checked)" />
-            <span class="ref-toggle-text">Opt in</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">
+            <div class="toggle-switch" onclick="var cb=this.querySelector('input');cb.checked=!cb.checked;window._refToggleLeaderboard(cb.checked);this.classList.toggle('active',cb.checked);" ${s.sharing_enabled ? 'class="toggle-switch active"' : ''}>
+              <input type="checkbox" id="ref-optin-toggle" ${s.sharing_enabled ? 'checked' : ''} style="display:none;" />
+              <div class="toggle-slider"></div>
+            </div>
+            <span style="font-weight:500;">Show my ranking</span>
           </label>
         </div>
         <div id="ref-leaderboard-body">
-          ${s.sharing_enabled ? '<div style="padding:12px;color:var(--text-dim);font-size:13px;">Loading leaderboard...</div>' : '<div class="ref-empty">Opt in to see how you rank among top referrers.</div>'}
+          ${s.sharing_enabled ? '<div style="padding:12px;color:var(--text-dim);font-size:13px;">Loading leaderboard...</div>' : '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>'}
         </div>
       </div>
     `;
@@ -23054,12 +23069,13 @@ function updateApplySettingsVisibility(mode) {
     if (s.sharing_enabled) loadLeaderboard();
   }
 
-  // ---- Share Actions ----
+  // ---- Share Actions — spec Section 4: rewritten share messages ----
   window._refCopyLink = function () {
     if (!referralStats) return;
-    navigator.clipboard.writeText(referralStats.referral_link).then(() => {
+    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    navigator.clipboard.writeText(link).then(() => {
       const btn = document.getElementById('ref-copy-link-btn');
-      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg> Copy Link'; }, 2000); }
+      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Your Link'; }, 2000); }
       trackInvite('copy_link');
     });
   };
@@ -23073,30 +23089,33 @@ function updateApplySettingsVisibility(mode) {
     });
   };
 
+  // Spec Section 4 — LinkedIn share
   window._refShareLinkedIn = function () {
     if (!referralStats) return;
-    const text = encodeURIComponent(`I've been using Brilliant Jobs to supercharge my job search — smart filters, AI resume scoring, and 350K+ curated listings. Try it free: ${referralStats.referral_link}`);
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(referralStats.referral_link + '&utm_medium=linkedin')}`, '_blank', 'width=600,height=500');
+    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link + '&utm_medium=linkedin')}`, '_blank', 'width=600,height=500');
     trackInvite('linkedin');
   };
 
+  // Spec Section 4 — Email share
   window._refShareEmail = function () {
     if (!referralStats) return;
-    const subject = encodeURIComponent('Check out Brilliant Jobs — smarter job search');
-    const body = encodeURIComponent(`Hey,\n\nI've been using Brilliant Jobs and wanted to share it with you. It aggregates 350K+ jobs from top ATS platforms with AI-powered resume scoring and smart filters.\n\nSign up with my link and we both get 7 days of Pro + 25 credits:\n${referralStats.referral_link}\n\nOr use my code: ${referralStats.referral_code}`);
+    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    const subject = encodeURIComponent('285K+ tracked jobs across 10K companies \u2014 free access');
+    const body = encodeURIComponent(`Hey, I\u2019ve been using Brilliant Jobs \u2014 it aggregates real-time job data from 5 major ATS platforms (285K+ positions across 10K+ companies). The AI credits are useful: 25 credits is enough to score 8 resumes against live postings.\n\nSign up with my link and we both get 7 days of Pro + 25 credits: ${link}\n\nOr use my code: ${referralStats.referral_code}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     trackInvite('email');
   };
 
+  // Spec Section 4 — SMS share
   window._refShareSMS = function () {
     if (!referralStats) return;
-    const msg = encodeURIComponent(`I've been using Brilliant Jobs for my job search — it's great. Try it free with my link: ${referralStats.referral_link}`);
-    // Mobile-friendly SMS intent
+    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    const msg = encodeURIComponent(`285K+ jobs tracked from 10K+ companies. Not a job board \u2014 real ATS data. Free: ${link}`);
     const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
     if (isMobile) {
       window.location.href = `sms:?body=${msg}`;
     } else {
-      // Desktop: copy the message
       navigator.clipboard.writeText(decodeURIComponent(msg));
       alert('Message copied to clipboard! Paste it in your messaging app.');
     }
@@ -23111,7 +23130,7 @@ function updateApplySettingsVisibility(mode) {
       if (enabled) loadLeaderboard();
       else {
         const body = document.getElementById('ref-leaderboard-body');
-        if (body) body.innerHTML = '<div class="ref-empty">Opt in to see how you rank among top referrers.</div>';
+        if (body) body.innerHTML = '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>';
       }
     } catch (err) {
       console.error('[Referrals] Toggle leaderboard error:', err);
@@ -23125,26 +23144,25 @@ function updateApplySettingsVisibility(mode) {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       const { data } = await sb.from('referral_leaderboard').select('*').order('rank', { ascending: true }).limit(20);
       if (!data || data.length === 0) {
-        body.innerHTML = '<div class="ref-empty">No one on the leaderboard yet. Be the first!</div>';
+        body.innerHTML = '<div class="ref-empty">No qualifying referrals this period. Each activated referral earns you a spot.</div>';
         return;
       }
       body.innerHTML = `
-        <table class="ref-history-table">
-          <thead><tr><th>#</th><th>Referrer</th><th>Referrals</th><th>Badge</th></tr></thead>
+        <table class="admin-table" style="margin-top:12px;">
+          <thead><tr><th>#</th><th>Referrer</th><th>Referrals</th></tr></thead>
           <tbody>
             ${data.map(r => `
               <tr>
-                <td>${r.rank}</td>
+                <td style="font-family:var(--mono);font-weight:600;">${r.rank}</td>
                 <td>${r.display_name || 'Anonymous'}</td>
-                <td>${r.referral_count}</td>
-                <td>${r.highest_badge ? BADGE_LABELS[r.highest_badge]?.icon || '' : '—'}</td>
+                <td style="font-family:var(--mono);">${r.referral_count}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       `;
     } catch (err) {
-      body.innerHTML = '<div class="ref-empty">Unable to load leaderboard.</div>';
+      body.innerHTML = '<div class="ref-empty">Unable to load leaderboard. Refresh to retry.</div>';
     }
   }
 
@@ -23164,28 +23182,28 @@ function updateApplySettingsVisibility(mode) {
 
   // ---- Helpers ----
   function maskEmail(email) {
-    if (!email) return '—';
+    if (!email) return '\u2014';
     const [local, domain] = email.split('@');
     if (!domain) return email;
     return local.charAt(0) + '***@' + domain;
   }
 
   function formatDate(iso) {
-    if (!iso) return '—';
+    if (!iso) return '\u2014';
     const d = new Date(iso);
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  // ---- Post-Win Share Modal (injected into pipeline flow) ----
+  // ---- Post-Win Share Modal — spec: "Share the signal" + context-specific data points ----
   window.showReferralShareModal = function (context) {
-    // context: 'interview' | 'offer' | 'general'
     const s = referralStats;
     if (!s) return;
+    const link = (s.referral_link || '').replace('/r/', '/in/');
 
     const messages = {
-      interview: `I just landed an interview through Brilliant Jobs! Try it free:`,
-      offer: `I got a job offer using Brilliant Jobs! Check it out:`,
-      general: `I'm loving Brilliant Jobs for my job search. Try it free:`
+      interview: `Just landed an interview. Brilliant Jobs flagged the role 3 days before it hit LinkedIn:`,
+      offer: `Got the offer. Brilliant Jobs tracked the company\u2019s hiring velocity and salary range before I applied:`,
+      general: `Using Brilliant Jobs to track real hiring data across 10K+ companies. Worth a look:`
     };
     const msg = messages[context] || messages.general;
 
@@ -23194,13 +23212,13 @@ function updateApplySettingsVisibility(mode) {
     modal.innerHTML = `
       <div class="ref-share-modal">
         <button class="ref-share-modal-close" onclick="this.closest('.ref-share-modal-overlay').remove()">&times;</button>
-        <div class="ref-share-modal-title">Share the love!</div>
+        <div class="ref-share-modal-title">Share the signal</div>
         <div class="ref-share-modal-msg">${msg}</div>
-        <div class="ref-share-modal-link">${s.referral_link}</div>
+        <div class="ref-share-modal-link">${link}</div>
         <div class="ref-share-modal-actions">
-          <button class="btn-primary" onclick="window._refCopyLink();this.textContent='Copied!'">Copy Link</button>
-          <button class="btn-secondary" onclick="window._refShareLinkedIn()">LinkedIn</button>
-          <button class="btn-secondary" onclick="window._refShareEmail()">Email</button>
+          <button class="btn btn-primary" onclick="window._refCopyLink();this.textContent='Copied!'">Copy Link</button>
+          <button class="btn btn-secondary" onclick="window._refShareLinkedIn()">LinkedIn</button>
+          <button class="btn btn-secondary" onclick="window._refShareEmail()">Email</button>
         </div>
       </div>
     `;
