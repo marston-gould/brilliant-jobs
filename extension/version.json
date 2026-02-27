@@ -1,10 +1,10 @@
 {
-  "version": "3.9.0",
-  "build": "2026-02-27a",
+  "version": "4.0.0",
+  "build": "2026-02-27b",
   "files": {
     "manifest.json": "3.9.0",
-    "background.js": "3.9.0",
-    "contentScript.js": "3.9.0",
+    "background.js": "4.0.0",
+    "contentScript.js": "4.0.0",
     "popup.html": "2.8.0",
     "popup.js": "2.8.0",
     "supabase.js": "2.5.0",
@@ -51,6 +51,7 @@
     "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo",
     "2.6.6": "Fix visited/queued counts: load from Supabase on popup open",
     "3.8.0": "Phase 10 (P9) JD Extraction + Tracking: Enhanced per-ATS JD selectors with broader fallbacks and title/company extraction. New jdMatcher.js computes instant JD-to-resume compatibility score (keyword + tech keyword matching, weighted scoring, confidence levels). New autoTracker.js auto-tracks form submissions to Supabase pending_applications (detects submit events, confirmation pages, records both confirmed and unconfirmed submissions). background.js adds ats:submitDetected/ats:confirmationDetected handlers, auto-scores JD on page detect, new dashboard:getJDMatch external message. contentScript.js v3.8.0 integrates inline submit tracking without requiring ApplicationTracker import.",
-    "3.9.0": "Phase 11 (P10-E) Indeed + Workday: indeed.js handler with fuzzy label matching (40+ regex patterns), multi-step form navigation, smart question answering, employer-customized form support. workday.js handler with data-automation-id field mapping, multi-page wizard navigation (My Information \u2192 Experience \u2192 Questions \u2192 Disclosures \u2192 Review), custom Workday dropdown filling, resume-first upload for auto-populate, EEO/voluntary disclosure handling. Both handlers support human-like delays, resume upload, and checkbox/radio/select filling."
+    "3.9.0": "Phase 11 (P10-E) Indeed + Workday: indeed.js handler with fuzzy label matching (40+ regex patterns), multi-step form navigation, smart question answering, employer-customized form support. workday.js handler with data-automation-id field mapping, multi-page wizard navigation (My Information \u2192 Experience \u2192 Questions \u2192 Disclosures \u2192 Review), custom Workday dropdown filling, resume-first upload for auto-populate, EEO/voluntary disclosure handling. Both handlers support human-like delays, resume upload, and checkbox/radio/select filling.",
+    "4.0.0": "Phase 12: Build Fingerprint Obfuscation. Per-user unique extension builds via build-extension Edge Function. Randomized channel names, CSS classes, manifest metadata, variable whitespace. extension_builds table tracks all builds. Dashboard extension-download.js module for fingerprinted download + channel map sync."
   }
 }
