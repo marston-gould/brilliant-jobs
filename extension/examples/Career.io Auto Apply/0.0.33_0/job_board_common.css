@@ -1,0 +1,114 @@
+
+/* Font Definitions */
+@font-face {
+    font-family: 'TT Commons';
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    src: url('~/assets/fonts/tt_commons/TTCommons-Regular.woff2') format('woff2'),
+        url('~assets/fonts/tt_commons/TTCommons-Regular.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'TT Commons';
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+    src: url('~assets/fonts/tt_commons/TTCommons-DemiBold.woff2') format('woff2'),
+        url('~assets/fonts/tt_commons/TTCommons-DemiBold.woff') format('woff');
+}
+@font-face {
+    font-family: 'TT Commons';
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+    src: url('~assets/fonts/tt_commons/TTCommons-DemiBold.woff2') format('woff2'),
+        url('~assets/fonts/tt_commons/TTCommons-DemiBold.woff') format('woff');
+}
+
+@font-face {
+    font-family: 'TT Commons';
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    src: url('~assets/fonts/tt_commons/TTCommons-Bold.woff2') format('woff2'),
+        url('~assets/fonts/tt_commons/TTCommons-Bold.woff') format('woff');
+}
+
+#cio-auto-apply:hover {
+    background-color:  #cce8ff;
+}
+
+#cio-auto-apply-container {
+    display: flex;
+    min-width: 164px;
+    height: 44px;
+    position: relative;
+}
+
+#cio-auto-apply.disabled {
+    color: #828ba2;
+    background-color: #d9deeb;
+    cursor: not-allowed;
+    border-color: #fff;
+    pointer-events: auto;
+    img {
+        opacity: 0.4;
+    }
+}
+
+.custom-tooltip {
+    visibility: hidden;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 4px;
+    padding: 5px;
+    width: 90%;
+    position: absolute;
+    bottom: 125%; 
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.custom-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+}
+
+#cio-auto-apply-container button[disabled]:hover + .custom-tooltip,
+#cio-auto-apply-container:hover .custom-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+#cio-auto-apply {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    
+    size: 16px;
+    line-height: 20px;
+    font-weight: 500;
+    font-family: 'TT Commons', system-ui, sans-serif !important;
+    
+    background-color:  #EAF6FF;
+    border: 1px solid #EAF6FF;
+    border-radius: 0.5rem;
+    color:  #1170CD;
+    cursor: pointer;
+    
+    gap: 8px;
+    padding: 8px 12px;
+    width: 100%;
+    height: 100%;
+}

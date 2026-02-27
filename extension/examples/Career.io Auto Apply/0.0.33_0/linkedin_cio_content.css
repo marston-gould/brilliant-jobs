@@ -1,0 +1,105 @@
+#cio-auto-apply {
+    border-radius: 9999px;
+    margin-right: 8px;
+}
+
+/* not used atm created for job match percentage section */
+#cio-job-match{
+    background-color: #EAF6FF;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    border-radius: 16px;
+    position: relative;
+    font-family: 'TT Commons', system-ui, sans-serif;
+}
+
+#cio-job-match .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#cio-job-match .main-content .header {
+    display: flex;
+    justify-content: space-between;
+}
+
+#cio-job-match .main-content .header .match-status{
+    display: flex;
+    gap: 8px;
+    font-weight: 500;
+    font-size: 19px;
+    line-height: 24px;
+}
+#cio-job-match .main-content .header .match-message{
+    align-content: center;
+}
+
+#cio-job-match .main-content .header .match-status .match-percentage{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 20px;
+}
+#cio-job-match .main-content .description{
+    font-weight: 400;
+    font-size: 16px;
+    opacity: 0.6;
+    line-height: 20px;
+}
+
+#cio-job-match .website-reference{
+    display: flex;
+    gap: 4px;
+    color: #1e2532;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    height: 20px;
+}
+
+#cio-job-match .links{
+    display: flex;
+    gap: 24px;
+}
+#cio-job-match .links button{
+    color: #1A91F0;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+@keyframes growProgressBar {
+  0%, 33% { --pgPercentage: 0; }
+  100% { --pgPercentage: var(--value); }
+}
+
+@property --pgPercentage {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+div.match-percentage {
+  --size: 32px;
+  --fg:  #1A91F0;
+  --bg: #C3E5FE;
+  --pgPercentage: var(--value);
+  animation: growProgressBar 3s 1 forwards;
+  width: var(--size);
+  height: var(--size);
+  background: 
+    radial-gradient(closest-side, #EAF6FF 80%, transparent 0 99.9%, #EAF6FF 0),
+    conic-gradient(var(--fg) calc(var(--pgPercentage) * 1%), var(--bg) 0)
+    ;
+  font-family: 'TT Commons', system-ui, sans-serif;
+}
+
+div.match-percentage::before {
+  counter-reset: percentage var(--value);
+  content: counter(percentage);
+}

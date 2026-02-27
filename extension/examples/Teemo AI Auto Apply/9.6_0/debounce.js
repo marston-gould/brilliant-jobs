@@ -1,0 +1,1 @@
+void 0===window.debounce&&(window.debounce=function(e,o){let t,c=[];return function(...n){return clearTimeout(t),new Promise((r,i)=>{c.push({resolve:r,reject:i}),t=setTimeout(async()=>{const o=[...c];c=[];try{const t=await e.apply(this,n);o.forEach(({resolve:e})=>e(t))}catch(e){o.forEach(({reject:o})=>o(e))}},o)})}});

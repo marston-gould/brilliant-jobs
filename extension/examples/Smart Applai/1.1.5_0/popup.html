@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartApplai AI Agent</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="mesh-bg"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="main-container">
+        
+        <!-- HEADER -->
+        <header class="header-new">
+            <div class="header-content-new">
+                <div class="logo-new">
+                    <div class="ai-core-container">
+                        <div class="ai-core"></div>
+                        <div class="ai-core-inner">
+                            <svg class="ai-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="brand-new">
+                        <h1 class="brand-name-new">SMART APPLAI <span class="version-badge">v3.0</span></h1>
+                        <div class="status-inline">
+                            <span class="status-dot" id="statusDot"></span>
+                            <span class="status-text-small" id="statusText">System Ready</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="userMenuBtn" class="user-avatar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- AUTH VIEW (Initially hidden if logged in) -->
+        <section class="auth-section" id="authSection">
+            <div class="auth-welcome">
+                <h2 class="auth-title">Welcome Commander</h2>
+                <p class="auth-subtitle">Initialize your career acceleration engine.</p>
+            </div>
+            <div class="auth-form-container">
+                <form class="auth-form" id="authForm">
+                    <div class="input-group-new">
+                        <label class="input-label-new">Access Email</label>
+                        <input type="email" id="loginEmail" class="fancy-input" placeholder="name@career.ai" required>
+                    </div>
+                    <div class="input-group-new">
+                        <label class="input-label-new">Secure Key</label>
+                        <input type="password" id="loginPassword" class="fancy-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn-primary-new" id="loginSubmitBtn">
+                        <span class="btn-text">Engage System</span>
+                        <span class="btn-spinner hidden">●</span>
+                    </button>
+                    <div class="auth-error" id="loginError"></div>
+                </form>
+            </div>
+        </section>
+
+        <!-- DASHBOARD VIEW (Shown when logged in) -->
+        <section class="dashboard-section hidden" id="dashboardSection">
+            
+            <!-- AI CONTROL CENTER -->
+            <div class="control-center">
+                <div class="ai-core-large">
+                    <div class="ai-core-container-large">
+                        <div class="ai-core-spinning"></div>
+                        <div class="ai-core-inner-large">
+                            <svg class="ai-icon-large" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-info">
+                    <p class="control-label">Automator Status</p>
+                    <h3 class="control-status" id="automationStatus">Standby</h3>
+                <div class="control-buttons">
+                    <button id="startAutomationBtn" class="btn-start">
+                        <span>START ENGINE</span>
+                    </button>
+                    <button id="pauseAutomationBtn" class="btn-pause hidden">
+                        <span>PAUSE</span>
+                    </button>
+                    <button id="resumeAutomationBtn" class="btn-pause hidden">
+                        <span>RESUME</span>
+                    </button>
+                    <button id="stopAutomationBtn" class="btn-stop hidden">
+                        <span>HALT</span>
+                    </button>
+                </div>
+                </div>
+            </div>
+
+            <!-- METRICS GRID -->
+            <div class="metrics-grid">
+                <div class="metric-card metric-primary">
+                    <p class="metric-label">Submissions</p>
+                    <p class="metric-value" id="totalApplications">0</p>
+                    <span class="metric-trend" id="applicationsTrend">+0% vs last week</span>
+                </div>
+                <div class="metric-card metric-secondary">
+                    <p class="metric-label">Success Rate</p>
+                    <p class="metric-value" id="successRate">0<span class="metric-unit">%</span></p>
+                    <span class="metric-trend metric-trend-purple">AI Optimized</span>
+                </div>
+                <div class="metric-card metric-accent">
+                    <p class="metric-label">Avg. Speed</p>
+                    <p class="metric-value" id="avgTime">0<span class="metric-unit">s</span></p>
+                    <span class="metric-trend">Per Application</span>
+                </div>
+                <div class="metric-card metric-success">
+                    <p class="metric-label">Match Rate</p>
+                    <p class="metric-value" id="matchRate">0<span class="metric-unit">%</span></p>
+                    <span class="metric-trend metric-trend-green">AI Powered</span>
+                </div>
+            </div>
+
+            <!-- PLATFORM SELECTOR (TABS) - Multi-select with checkboxes -->
+            <div class="platform-tabs-container">
+                <div class="platform-tabs-header">
+                    <span class="tabs-title">Active Platforms</span>
+                    <span class="tabs-count" id="activePlatformsCount">0 selected</span>
+                </div>
+                <div class="platform-tabs">
+                    <div class="platform-tab-item" data-platform="naukri" id="naukriTab">
+                        <input type="checkbox" id="naukriCheckbox" class="platform-checkbox" data-platform="naukri">
+                        <label for="naukriCheckbox" class="platform-label">
+                            <span class="platform-emoji">💼</span>
+                            <span class="platform-name">Naukri</span>
+                            <span class="platform-status" id="naukriStatus"></span>
+                        </label>
+                        <div class="platform-controls">
+                            <button class="platform-btn platform-btn-start" data-platform="naukri" id="naukriStartBtn">Start</button>
+                            <button class="platform-btn platform-btn-stop" data-platform="naukri" id="naukriStopBtn">Stop</button>
+                        </div>
+                    </div>
+                    <div class="platform-tab-item" data-platform="linkedin" id="linkedinTab">
+                        <input type="checkbox" id="linkedinCheckbox" class="platform-checkbox" data-platform="linkedin">
+                        <label for="linkedinCheckbox" class="platform-label">
+                            <span class="platform-emoji">🔗</span>
+                            <span class="platform-name">LinkedIn</span>
+                            <span class="platform-status" id="linkedinStatus"></span>
+                        </label>
+                        <div class="platform-controls">
+                            <button class="platform-btn platform-btn-start" data-platform="linkedin" id="linkedinStartBtn">Start</button>
+                            <button class="platform-btn platform-btn-stop" data-platform="linkedin" id="linkedinStopBtn">Stop</button>
+                        </div>
+                    </div>
+                    <div class="platform-tab-item" data-platform="indeed" id="indeedTab">
+                        <input type="checkbox" id="indeedCheckbox" class="platform-checkbox" data-platform="indeed">
+                        <label for="indeedCheckbox" class="platform-label">
+                            <span class="platform-emoji">🔍</span>
+                            <span class="platform-name">Indeed</span>
+                            <span class="platform-status" id="indeedStatus"></span>
+                        </label>
+                        <div class="platform-controls">
+                            <button class="platform-btn platform-btn-start" data-platform="indeed" id="indeedStartBtn">Start</button>
+                            <button class="platform-btn platform-btn-stop" data-platform="indeed" id="indeedStopBtn">Stop</button>
+                        </div>
+                    </div>
+                    <div class="platform-tab-item" data-platform="foundit" id="founditTab">
+                        <input type="checkbox" id="founditCheckbox" class="platform-checkbox" data-platform="foundit">
+                        <label for="founditCheckbox" class="platform-label">
+                            <span class="platform-emoji">🎯</span>
+                            <span class="platform-name">Foundit</span>
+                            <span class="platform-status" id="founditStatus"></span>
+                        </label>
+                        <div class="platform-controls">
+                            <button class="platform-btn platform-btn-start" data-platform="foundit" id="founditStartBtn">Start</button>
+                            <button class="platform-btn platform-btn-stop" data-platform="foundit" id="founditStopBtn">Stop</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LIVE ACTIVITY FEED -->
+            <div class="activity-feed">
+                <div class="activity-header">
+                    <span class="activity-title">Live Telemetry</span>
+                    <span class="activity-status" id="activityStatus">Ready for uplink...</span>
+                </div>
+                <div class="activity-log" id="logContent">
+                    <div class="log-entry log-info">[--:--:--] System initialized successfully.</div>
+                    <div class="log-entry log-info">[--:--:--] Awaiting commander instructions...</div>
+                </div>
+            </div>
+
+            <!-- SETTINGS PANEL (Collapsible) -->
+            <div class="settings-panel hidden" id="settingsPanel">
+                <div class="settings-header">
+                    <h3>Configuration</h3>
+                </div>
+                <div class="settings-content">
+                    <div class="setting-item">
+                        <label class="setting-label">AI-Powered Answers</label>
+                        <input type="checkbox" id="aiAnswersToggle" class="toggle-switch" checked>
+                    </div>
+                    <div class="setting-item">
+                        <label class="setting-label">Auto-Resume Job</label>
+                        <input type="checkbox" id="autoResumeToggle" class="toggle-switch">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden elements for JS compatibility -->
+            <div id="applicationsList" class="hidden"></div>
+            <div id="toast" class="hidden"></div>
+            <div id="userEmail" class="hidden"></div>
+            <div id="userName" class="hidden"></div>
+            <div id="userInitials" class="hidden"></div>
+            <div id="loadingOverlay" class="hidden"></div>
+
+        </section>
+
+        <!-- FOOTER NAV -->
+        <nav class="footer-nav">
+            <div class="nav-buttons">
+                <button class="nav-btn nav-active" id="homeBtn" title="Dashboard">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                </button>
+                <button class="nav-btn" id="settingsBtn" title="Settings">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                    </svg>
+                </button>
+                <button class="nav-btn" id="helpBtn" title="Help">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </button>
+                <button class="nav-btn" id="logoutBtn" title="Logout">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="api-latency">
+                <span class="latency-label">API:</span>
+                <span class="latency-value" id="apiLatency">--ms</span>
+            </div>
+        </nav>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

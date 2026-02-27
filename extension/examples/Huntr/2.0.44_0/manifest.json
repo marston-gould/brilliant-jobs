@@ -1,0 +1,36 @@
+{
+   "action": {
+      "default_icon": "assets/huntr-chrome.png",
+      "default_title": "Huntr"
+   },
+   "background": {
+      "service_worker": "background.bundle.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "css": [ "assets/simple-line-icons.css", "assets/animate.css" ],
+      "js": [ "libs/jquery-3.2.1.min.js", "libs/jquery-ui.js", "content.bundle.js" ],
+      "matches": [ "http://*/*", "https://*/*" ]
+   } ],
+   "description": "Collect, track and manage your job applications from across the web. Apply and autofill job applications in one click.",
+   "externally_connectable": {
+      "matches": [ "https://app.huntr.co/*", "https://huntr.co/*", "https://huntrstaging.com/*", "http://localhost:3000/*", "https://maps.googleapis.com/*" ]
+   },
+   "host_permissions": [ "http://*/*", "https://*/*", "https://ajax.googleapis.com/", "https://app.huntr.co/", "http://localhost:3000/*", "https://huntr.co/*", "https://huntrstaging.com/*", "https://fonts.googleapis.com/css?family=Lato:300,400,700,900" ],
+   "icons": {
+      "128": "assets/huntr-chrome-icon_128.png",
+      "16": "assets/huntr-chrome-icon_16.png",
+      "48": "assets/huntr-chrome-icon_48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApXCkTtJxv7SPkK6vQheHuteqHQQgf3SDOPoNFgzEYBoVxk/AgtfxLz7Qc+tSSrnftzkWOdXzcrcs6nikO0GEl1kdWuo7DXMVpjm1vJGgYBxJwkAUWseoDSEv2otcJs890uiAz6HCaccpMUgKeVQUPAzjpjqPcCOYxFt3IJTBkZeaSGzlXlj9YSK+IuEVLZT5sLGPIplju9ZYorfB6PcWpuxua+iCrjJG5Bmu0Syb1j8SmfLd7yMoRotAuA+SNtaN8Y1C8gZjFA2HUnwqdZ1Xo7CIbFFpuOMTMvIOx5ZWjPydmpqWWXNhuOOGMyxPyJxQ9TB04w4/eN+jxGmXTLnb+wIDAQAB",
+   "manifest_version": 3,
+   "name": "Huntr - Job Search Tracker & Autofill",
+   "permissions": [ "alarms", "storage", "tabs", "webNavigation", "scripting", "unlimitedStorage" ],
+   "short_name": "Huntr",
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.0.44",
+   "web_accessible_resources": [ {
+      "matches": [ "http://*/*", "https://*/*" ],
+      "resources": [ "assets/simple-line-icons.css", "assets/animate.css", "assets/huntr-logo-purple.png", "assets/app-logo.png", "assets/fonts/Simple-Line-Icons.ttf" ]
+   } ]
+}

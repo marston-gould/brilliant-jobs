@@ -1,0 +1,37 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "images/logo128.png",
+         "16": "images/logo16.png",
+         "32": "images/logo32.png",
+         "48": "images/logo64.png"
+      },
+      "default_popup": "./intro.html",
+      "default_title": "JobFrom Automator"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "content.js" ],
+      "matches": [ "\u003Call_urls>" ]
+   } ],
+   "content_security_policy": {
+      "content_security_policy": "script-src 'self'; 'wasm-unsafe-eval'; object-src 'self';"
+   },
+   "description": "Automate your job Applications : Auto-Apply on LinkedIn & Monster, AI Auto-Fill Forms, Auto Email HR",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "images/logo128.png",
+      "16": "images/logo16.png",
+      "32": "images/logo32.png",
+      "48": "images/logo64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqpm2K9JIVm4r0PVd3poL2yu1V0BD746DLNGPEzLGgf7VIcTLumZbQDN2a08VBj2FW1jvdHj5gRypVs7jNPjOmSX83+Yf19Eogy7bDHo+04isGjEbFq3yy/CsQVU/TnoL54rtkroEjeEIoWJOIK8BJKNvWrC/eoia0w4QQM5aTIbwe42a5zYf3ucu5aOYVsNRlXyufHM7+jfgJp2Hx3RyIHGcCEq2t8z09FUeqfsLF1M+Uc6Qgc2gwvU+0oaXhUShRiRfgiAIxv2lWSPrAT79M/eym6PIx5lKSNSkedwev4GKqe7zIXxU7axi6j8okvNH/KeyQSE5VHL6Q065LM+m7QIDAQAB",
+   "manifest_version": 3,
+   "name": "JobForm Automator: AI Auto Apply, Autofill Most Forms & Auto Email HR",
+   "permissions": [ "storage", "tabs", "notifications", "alarms", "scripting" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.18"
+}

@@ -1,0 +1,35 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "Leeco.png"
+      },
+      "default_title": "Open Leeco AI"
+   },
+   "background": {
+      "service_worker": "background.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "css": [ "content.css" ],
+      "js": [ "content.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_idle"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'"
+   },
+   "description": "Leeco AI is your all-in-one Chrome extension for automating job search & mastering tech interviews—with an AI mentor at every step.",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "Leeco.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoPNWLaSzn9p1ll2Hx481yiENWY3qq2YoYlTYL7Wobi9w2xq0gWQ2wRewsz9A8rgkptwMu/2JO7m13bBnKcDchD2TLE9zsmQojEjENvSjhPa5ojRm6JRhL7dWn0kVfsDYlkq1T7Pk/1P5xVApYLcPdrkpObGdekeAWRtyPK76INE10nmZFsw5WqkA9C+i93zM6dJqKAr5Yk2ldCHkBwq3IIuF/zPMU9hO5rgrHvd+ShGvMlQrw/ebN+RcGER9EMxj2mc2w2yX+DspgZhz+pZGijXFoTqicok7KHiSR6d8A3u6Qbv4QWf/ttD6wLvFdSK48zUpxAeL/1mofrO2iUnjrwIDAQAB",
+   "manifest_version": 3,
+   "name": "Leeco AI – Auto-Apply Jobs on LinkedIn & Upskill for Job Interviews",
+   "permissions": [ "sidePanel", "activeTab", "storage", "tabs" ],
+   "side_panel": {
+      "default_path": "sidepanel.html"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.1.38"
+}

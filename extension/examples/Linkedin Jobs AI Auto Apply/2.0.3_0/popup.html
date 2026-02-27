@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Auto Apply</title>
+  <style>
+    body {
+      width: 300px;
+      height: 100px;
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f5f5f5;
+    }
+    
+    .redirect-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+    
+    .redirect-message p {
+      margin: 10px 0;
+    }
+    
+    .redirect-message a {
+      color: #0077b5;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    
+    .redirect-message a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body class="popup">
+  <div class="redirect-message">
+    <p>Opening full settings page...</p>
+    <p><a href="#" id="settings-link">Click here if it doesn't open automatically</a></p>
+  </div>
+  
+  <script>
+    // Open the settings page when the popup is opened
+    chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') });
+    
+    // Also provide a manual link in case auto-opening fails
+    document.getElementById('settings-link').addEventListener('click', function(e) {
+      e.preventDefault();
+      chrome.tabs.create({ url: chrome.runtime.getURL('settings.html') });
+    });
+    
+    // Close the popup after a short delay
+    setTimeout(() => {
+      window.close();
+    }, 1000);
+  </script>
+</body>
+</html>
