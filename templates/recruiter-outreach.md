@@ -1,0 +1,1 @@
+Hi Robyn, I hope you're doing well. I just applied to [Role Title] (Req #12345) in [Location]. I have [X years] in [relevant experience], with strength in [1–2 keywords/results]. I attached my resume in case it's helpful. If you're the right contact, I'd love any guidance on next steps. If not, no worries, I appreciate your time.
