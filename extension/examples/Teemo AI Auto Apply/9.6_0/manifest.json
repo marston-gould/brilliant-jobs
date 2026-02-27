@@ -1,0 +1,66 @@
+{
+   "action": {
+      "default_popup": "popup.html"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "recaptcha.js" ],
+      "match_about_blank": false,
+      "matches": [ "*://*.google.com/recaptcha/api2/*", "*://*.google.com/recaptcha/enterprise/*", "*://*.recaptcha.net/recaptcha/api2/*", "*://*.recaptcha.net/recaptcha/enterprise/*" ],
+      "run_at": "document_idle"
+   }, {
+      "all_frames": true,
+      "js": [ "recaptcha-visibility.js" ],
+      "match_about_blank": false,
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_end"
+   }, {
+      "js": [ "constants/api.constants.js", "constants/env.constants.js", "constants/constants.js", "connector.js", "domain.js", "content_utils.js", "debounce.js", "ui/sidebar.js", "create_elements.js", "linkedin_scripts/content.js" ],
+      "matches": [ "*://*.linkedin.com/*", "*://portal.teemo.ai/*" ]
+   }, {
+      "js": [ "constants/api.constants.js", "constants/env.constants.js", "constants/constants.js", "domain.js", "content_utils.js", "ui/sidebar.js", "create_elements.js", "smartapply/questionAnswer.js", "indeed_scripts/i_content.js", "smartapply/applyForm.js" ],
+      "matches": [ "*://*.indeed.com/*", "*://smartapply.indeed.com/*", "*://portal.teemo.ai/*" ]
+   }, {
+      "js": [ "constants/api.constants.js", "constants/env.constants.js", "constants/constants.js", "domain.js", "content_utils.js", "ui/sidebar.js", "create_elements.js", "smartapply/questionAnswer.js", "glassdoor_scripts/g_content.js", "smartapply/applyForm.js" ],
+      "matches": [ "*://*.glassdoor.com/*", "*://*.glassdoor.co.in/*", "*://*.glassdoor.co.uk/*", "*://*.glassdoor.ca/*", "*://*.glassdoor.com.au/*", "*://smartapply.indeed.com/*", "*://portal.teemo.ai/*" ]
+   }, {
+      "js": [ "constants/api.constants.js", "constants/env.constants.js", "constants/constants.js", "connector.js", "domain.js", "content_utils.js", "debounce.js", "ui/sidebar.js", "create_elements.js", "monster/m_content.js" ],
+      "matches": [ "*://*.monster.com/*", "https://www.monster.com/profile/apply*" ],
+      "run_at": "document_idle"
+   }, {
+      "js": [ "constants/api.constants.js", "constants/env.constants.js", "constants/constants.js", "connector.js", "domain.js", "content_utils.js", "ui/sidebar.js", "create_elements.js", "ziprecruiter_scripts/z_content.js" ],
+      "matches": [ "*://*.ziprecruiter.com/*", "*://portal.teemo.ai/*" ],
+      "run_at": "document_idle"
+   }, {
+      "js": [ "constants/api.constants.js", "constants/env.constants.js", "constants/constants.js", "connector.js", "domain.js", "content_utils.js", "ui/sidebar.js", "create_elements.js", "autofill_scripts/uiManager.js", "autofill_scripts/auto-fill-content.js" ],
+      "matches": [ "*://*.job-boards.greenhouse.io/*", "*://boards.greenhouse.io/*", "*://jobs.lever.co/*", "*://jobs.ashbyhq.com/*", "*://*.breezy.hr/*", "*://*.recruitee.com/*", "*://apply.workable.com/*", "*://jobs.jobvite.com/*", "*://jobs.workable.com/*" ]
+   } ],
+   "declarative_net_request": {
+      "rule_resources": [ {
+         "enabled": true,
+         "id": "ruleset_1",
+         "path": "rules.json"
+      } ]
+   },
+   "description": "Teemo AI helps job seekers fill out repetitive applications faster using smart automation. Works on popular job platforms",
+   "externally_connectable": {
+      "matches": [ "https://portal.teemo.ai/*" ]
+   },
+   "host_permissions": [ "https://smartapply.indeed.com/*", "https://www.monster.com/*", "*://*.google.com/recaptcha/*", "*://*.recaptcha.net/recaptcha/*" ],
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjG8tN7oJH4MY2tsGRpKyxfpXoeE4JMPWJpmNcXU/zqvllVlATAMB2QSfFVBVeKimnmumR+CdZTmm2xYIgngou4tvSEB2+4r0hQM8JLrB1h0hYWrnlp+aFmsVwuxbyLG/7FL47giiat5FrDM7MtRXpyt26a9CYliwDq7kA7YXh3I9KgFMRAFQks7T//76gq3cuuWkC2mRMCf7xIQBno7m0u3lbpz29XI2DWcTQEoBDj6BE9juCOz+9tryb1SiDR7VT2zRVRKnF3VuIwyLl/cFOeNZKDxQHkHx/2FimAVwX38gcGiWMot6g5GvlKn0H0QrkwyVTcs2t4s5zG+bjVqfUQIDAQAB",
+   "manifest_version": 3,
+   "name": "Teemo Ai Auto Apply",
+   "permissions": [ "storage", "tabs", "declarativeNetRequest" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "9.06",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "dist/*" ]
+   }, {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "models/*" ]
+   } ]
+}

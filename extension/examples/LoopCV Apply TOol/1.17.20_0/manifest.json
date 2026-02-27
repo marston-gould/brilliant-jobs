@@ -1,0 +1,34 @@
+{
+   "action": {
+      "default_popup": "popup.html",
+      "default_title": "Automate the application process"
+   },
+   "author": "LoopCV",
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "js": [ "linkedinLoopcvBtn.js" ],
+      "matches": [ "https://*.linkedin.com/*" ]
+   } ],
+   "description": "Automate the application process",
+   "externally_connectable": {
+      "matches": [ "http://localhost:8080/*", "https://*.loopcv.pro/*", "https://*.loopcv.com/*", "https://loopcv-dashboard-testing.web.app/*", "https://loopcv-b2c-dev.web.app/*", "https://loopcv-b2c-staging.web.app/*", "https://loopcv-b2b-dev.web.app/*", "https://loopcv-b2b-staging.web.app/*", "https://jobsearch.colaberry.com/*", "https://ai.thecyberspaceuniversity.com/*", "https://jobsearch.maximum-wage.com/*", "https://jobs.careertuners.com/*", "https://app.gotjobby.com/*", "https://jobfinder.viosa.in/*", "https://auto.letsworkremotely.com/*", "https://app.viralcv.fr/*", "https://jobsearch.deirdreorr.com/*", "https://jobsearch.thetechcareerclub.com/*", "https://jobsearch.sparkyourresume.com/*", "https://get-hired.irockresumes.com/*", "https://jobsearch.cooper-squared.com/*", "https://jobsearch.newheightscs.net/*", "https://jobapply.resumespice.com/*", "https://careers.zoeconsults.com/*", "https://app.recruiters-without-borders.com/*", "https://hire.studentschat.co.uk/*", "https://jobsearch.copassion.org/*", "https://jobsearch.salesengineering.io/*", "https://jobs.filmlocal.com/*", "https://jobs.ennovatorsllc.com/*", "https://jobsearch.elcs.info/*", "https://jobquest.jayanalytix.ca/*", "https://thecatalyst.divergence.plus/*", "https://apply.closetheloop.ai/*", "https://app.myjobank.com/*", "https://jobs.jobgetr.ai/*", "https://jobsearch.augmentjobs.com/*", "https://app.flocoaching.com/*", "https://jobsearch.sharpcareerimage.com/*", "https://jobflightai.changeravenllc.com/*", "https://sideapply.alwaysworking.co/*", "https://bengaziapply.bengaziengagement.com/*", "https://bengaziapply.ai.bengaziengagement.com/*", "https://autoapply.filmlocal.com/*", "https://app.matchxpert.com/*", "https://*.alomarapply.com/*", "https://*.l2s.one/*", "https://*.molinatek.com/*", "https://rehabwarriors.work/*", "https://my.proofloops.com/*", "https://*.exceed-group.com/*", "https://*.founder.careers/*", "https://fastremotejobs.com/*", "https://*.threo.com/*", "https://*.hrmcounsel.com/*", "https://*.akmijobs.gr/*", "https://*.mitropolitikojobs.gr/*" ]
+   },
+   "host_permissions": [ "https://*.linkedin.com/*", "https://*.reed.co.uk/*", "https://*.indeed.com/*", "https://*.dice.com/*", "https://*.gulftalent.com/*", "https://*.stepstone.de/*", "https://www.at-ats.com/*", "https://*.greenhouse.io/*" ],
+   "icons": {
+      "128": "icon_128.png",
+      "16": "icon_16.png",
+      "48": "icon_48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlj7QNNakAnXQOcMuskDUkNM3RUe4qXAwTEtACEJiX2tfTwyDOCE9nJjJPPbBddtuCQq/+cmAdeqg5Hee9miD41jG5uGN7SVgDYX0rn/umz6iExebVJTI031udUVKjLRc1D9CFC88EdPvRv9s/Vmxim/VEaPuRp3Qk5r6tmvHxOMmrpcN1jRUD7XGXpfxSZnlmOM5PZPKcFH7YJXSl2DnAYDjthJjoH+cQ83rjIXeep69A/bvZm2Tit7zuQwPRI5Aj6AdpnIIC4xcBba6HOe0K15GB9e6BsoMwGEiuSZQsUrz4rmONgoGqK/YvwlxkBHf5XFgBeKrdAk7+ixoMO9eMQIDAQAB",
+   "manifest_version": 3,
+   "name": "Apply Tool",
+   "permissions": [ "scripting", "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.17.20",
+   "web_accessible_resources": [ {
+      "matches": [ "https://*.linkedin.com/*" ],
+      "resources": [ "loopcv-logo.png" ]
+   } ]
+}

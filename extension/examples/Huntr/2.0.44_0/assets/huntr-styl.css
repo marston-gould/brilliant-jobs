@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css?family=Lato:300,400,700,900');
+
+#huntr-react-container .btn {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: block;
+  cursor: pointer;
+}
+
+.huntr-ext-add-job-container .btn {
+  margin: 30px 20px;
+}
+.huntr-ext-add-job-container .huntr-ext-minimize {
+  position: absolute;
+  right:10px;
+  top: 10px;
+}
+
+.huntr-ext-add-job-container {
+  position: relative;
+}
+
+#huntr-react-container .btn-purple {
+  color: white;
+  background-color: #551BA4;
+}
+
+#huntr-react-container ul li {
+  list-style: none;
+  display: block;
+}
+
+#huntr-react-container .huntr-ext-left-menu ul li {
+  padding: 20px;
+  cursor: pointer;
+  margin: 0px;
+  color: rgba(255,255,255,0.4);
+  font-size: 20px;
+}
+
+#huntr-react-container .huntr-ext-left-menu ul li:hover {
+  color: rgba(255,255,255,0.9);
+
+}
+
+#huntr-react-container ul {
+  margin: 0px;
+  padding: 0px;
+}
+
+#huntr-react-container span.huntr-icon {
+  font-family: 'simple-line-icons' !important;
+}
+
+#huntr-react-container span.huntr-icon:before {
+  font-family: 'simple-line-icons' !important;
+}
+
+#huntr-react-container h1 {
+  font-family: 'Lato', sans-serif !important;
+  text-transform: uppercase !important;
+  color: #4A4A4A !important;
+  letter-spacing: 5px !important;
+  font-size: 16px !important;
+  font-weight: 900;
+}
+
+#huntr-react-container .huntr-ext-app-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+#huntr-react-container .editable-text-field {
+  width: 100%;
+}
+
+#huntr-react-container .huntr-ext-left-menu {
+  float: left;
+  position: relative;
+  height: 100%;
+  background-color: #46346B;
+  color: white;
+  border-radius: 4px 0px 0px 4px;
+}
+
+#huntr-react-container {
+  font-family: 'Lato', sans-serif;
+}
+
+#huntr-react-container .huntr-ext-app-container {
+  position: fixed;
+  right: 30px;
+  top: 30px;
+  z-index: 100000;
+  background-color: white;
+  width: 350px;
+  height: 90%;
+  border-radius: 4px;
+  box-shadow: 0px 0px 30px rgba(0,0,0,0.3);
+}
+
+#huntr-react-container .huntr-ext-app-mini {
+  background-color: #46346B;
+  width: 50px;
+  height: 50px;
+  border-radius: 50px;
+  position: fixed;
+  z-index: 10000;
+  bottom: 30px;
+  right: 30px
+}
+
+#huntr-react-container .huntr-ext-component-container {
+  width: 100%;
+}
+
+#huntr-react-container .huntr-ext-component-container h1 {
+  text-align: center;
+  margin: 60px 0px;
+}
+#huntr-react-container .huntr-ext-component-container input:focus {
+  outline: 0;
+}
+#huntr-react-container .huntr-ext-component-container input {
+  box-shadow: none;
+  background-color: white;
+  outline: 0;
+  box-sizing: border-box;
+  font-family: 'Lato', sans-serif !important;
+  letter-spacing: 0px;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #eee;
+  padding: 15px 20px;
+  font-size: 16px;
+  font-weight: 400;
+  margin: 0px;
+  color: #4A4A4A;
+}

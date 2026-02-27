@@ -1,0 +1,1 @@
+(()=>{const e=document.createElement("div");e.id="cxlpv",e.dataset.hidden=document.hidden,document.documentElement.appendChild(e),e.addEventListener("state",(()=>{e.dataset.hidden=document.hidden}))})();

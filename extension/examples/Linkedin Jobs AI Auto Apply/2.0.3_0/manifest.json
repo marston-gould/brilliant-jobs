@@ -1,0 +1,40 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "laaa_logo_128x128.png",
+         "16": "laaa_logo_16x16.png",
+         "48": "laaa_logo_48x48.png"
+      },
+      "default_title": "Auto Apply Settings"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "js": [ "content.js" ],
+      "matches": [ "https://*.linkedin.com/*" ]
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com"
+   },
+   "description": "Automate & autofill job applications with AI",
+   "host_permissions": [ "https://qerds.com/*", "https://*.linkedin.com/*" ],
+   "icons": {
+      "128": "laaa_logo_128x128.png",
+      "16": "laaa_logo_16x16.png",
+      "48": "laaa_logo_48x48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApg2kH6bbs5vfCEJYdbDfWUfDQl4Fx/QOORgR6sTmtgXSpFgP1ZPwykTtxyr1Pb6Jp2RtZ0vt8E1j3YCKDZHETQWG3qjDdh6c+QYpQytiyvVdcSUfb+yws/z7lCnK2+OvZ+BQE5/svzqfl6ZLYmRd+jB8J+ZPSDIwOTDFojN3Z+sUsSadXQ81oK3tKYnsB0o+OQqJr2Y7bjxKaruEOF4TYBXbebrdAOcBQi0GXZCEXyBcqWhTC9qQaQEEaoJygD4vI2Ur6XsG11B7KgVEnH7MqOz0dLhg79oCwwuCTucMaCcmTH3sH3F23Xc5SW2B+E4KPz8wTqLML46h2g9HImDJVwIDAQAB",
+   "manifest_version": 3,
+   "name": "LinkedIn Jobs AI Auto Apply",
+   "options_ui": {
+      "page": "settings.html"
+   },
+   "permissions": [ "storage", "activeTab", "tabs", "notifications" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.0.3",
+   "web_accessible_resources": [ {
+      "matches": [ "https://*.linkedin.com/*" ],
+      "resources": [ "assets/compressed_resume.yaml" ]
+   } ]
+}
