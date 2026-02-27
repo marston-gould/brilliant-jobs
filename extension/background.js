@@ -1,6 +1,7 @@
 // background.js — Service worker for Brilliant Jobs
 // v2.0: Merged extension with daily reset fix, keepalive, notifications
 // v2.1: Application success feedback loop (C4) — autoTracker wired in
+// v2.2: C4 complete — notification firing on confirmation detection (v5.42)
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
@@ -1164,7 +1165,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             event_data: { buttonText: msg.buttonText, formAction: msg.action },
             ats_platform: BJ_AUTO_TRACKER.guessAtsSource(msg.url),
             job_url: msg.url,
-            extension_version: '2.10.0',
+            extension_version: '2.11.0',
           }),
         });
       } catch (e) { /* telemetry is best-effort */ }
@@ -1177,6 +1178,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'ats:confirmationDetected') {
     const tabId = sender?.tab?.id || 'unknown';
     const result = BJ_AUTO_TRACKER.onConfirmationDetected({ ...msg, tabId });
+
+    // 🔔 Fire Chrome notification on successful application confirmation (C4 completion)
+    const atsSource = BJ_AUTO_TRACKER.guessAtsSource(msg.submitInfo?.url || msg.url);
+    const jobUrl = msg.submitInfo?.url || msg.url || '';
+    const companyHint = (() => {
+      try {
+        const hostname = new URL(jobUrl).hostname;
+        // Extract company slug from ATS URLs
+        if (hostname.includes('greenhouse.io')) {
+          const match = new URL(jobUrl).pathname.match(/^\/([^/]+)/);
+          return match ? match[1].replace(/-/g, ' ') : hostname;
+        }
+        if (hostname.includes('lever.co')) {
+          const match = new URL(jobUrl).pathname.match(/^\/([^/]+)/);
+          return match ? match[1].replace(/-/g, ' ') : hostname;
+        }
+        return hostname.replace(/^(www\.|jobs\.|careers\.)/, '').replace(/\.(com|io|co|org|net).*$/, '');
+      } catch { return 'employer'; }
+    })();
+    notify(
+      '✅ Application Confirmed',
+      `Your application to ${companyHint} (${atsSource}) was successfully submitted.`
+    );
 
     // Log to extension_events for telemetry
     (async () => {
@@ -1198,7 +1222,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             event_data: { pattern: msg.pattern, confirmationUrl: msg.url },
             ats_platform: BJ_AUTO_TRACKER.guessAtsSource(msg.submitInfo?.url || msg.url),
             job_url: msg.submitInfo?.url || msg.url,
-            extension_version: '2.10.0',
+            extension_version: '2.11.0',
           }),
         });
       } catch (e) { /* telemetry is best-effort */ }
