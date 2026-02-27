@@ -224,7 +224,7 @@ function _getActiveResume() {
   }
   // Fallback: check localStorage
   try {
-    var raw = localStorage.getItem('bj_resumes');
+    var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null; if(raw && raw.startsWith('enc:')) raw = null;
     if (raw) {
       var resumes = JSON.parse(raw);
       if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
@@ -401,7 +401,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
   if (!resumeText) {
     // Fallback: check localStorage
     try {
-      var raw = localStorage.getItem('bj_resumes');
+      var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null; if(raw && raw.startsWith('enc:')) raw = null;
       if (raw) {
         var resumes = JSON.parse(raw);
         if (resumes.length > 0) resumeText = resumes[0].text || '';
