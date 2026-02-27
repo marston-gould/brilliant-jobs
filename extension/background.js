@@ -4,10 +4,12 @@
 // v3.4.0: External message bridge
 // v3.5.0: Added linkedin-easy-apply to capabilities — dashboard:apply, dashboard:ping, dashboard:getState
 // v3.6.0: P6 Security hardening — triple-layer origin guard, PII encryption, rate limiting
+// v3.7.0: P7 Tier gating — Free/Starter/Pro gates on autofill, daily usage counters
 
 importScripts('supabase.js');
 importScripts('utils/originGuard.js');
 importScripts('utils/crypto.js');
+importScripts('utils/tierGate.js');
 
 // ============================================================
 // STATE
@@ -1332,12 +1334,26 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
 
     // ── Ping: Dashboard checks if extension is installed + version ──
     if (msg.type === 'dashboard:ping') {
-      sendResponse({
-        success: true,
-        installed: true,
-        version: chrome.runtime.getManifest().version,
-        capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
-        atsPageState: atsPageState || null,
+      BJ_TIER_GATE.getStatus().then(tierStatus => {
+        sendResponse({
+          success: true,
+          installed: true,
+          version: chrome.runtime.getManifest().version,
+          capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
+          atsPageState: atsPageState || null,
+          tier: tierStatus.tier,
+          tierStatus: tierStatus,
+        });
+      }).catch(() => {
+        sendResponse({
+          success: true,
+          installed: true,
+          version: chrome.runtime.getManifest().version,
+          capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
+          atsPageState: atsPageState || null,
+          tier: 'free',
+          tierStatus: { tier: 'free', dailyUsed: 0, dailyLimit: 0, remaining: 0 },
+        });
       });
       return;
     }
@@ -1351,19 +1367,82 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
       return;
     }
 
+    // ── Set tier: Dashboard sends user's subscription tier ──
+    if (msg.type === 'dashboard:setTier') {
+      const tier = msg.tier || 'free';
+      BJ_TIER_GATE.setTier(tier).then(data => {
+        logMsg(`Tier updated to: ${tier}`, 'info');
+        sendResponse({ success: true, tier: data.tier, dailyUsed: data.dailyUsed });
+      }).catch(err => {
+        sendResponse({ success: false, error: err.message });
+      });
+      return;
+    }
+
     // ── Apply via browser fill: Dashboard requests extension to open URL and fill ──
     if (msg.type === 'dashboard:apply') {
-      handleDashboardApply(msg)
-        .then(result => sendResponse(result))
-        .catch(err => sendResponse({ success: false, error: err.message }));
+      BJ_TIER_GATE.check().then(gate => {
+        if (!gate.allowed) {
+          logMsg(`Autofill BLOCKED: ${gate.reason} (tier=${gate.tier}, used=${gate.dailyUsed})`, 'warn');
+          sendResponse({
+            success: false,
+            error: 'tier_blocked',
+            reason: gate.reason,
+            message: gate.message,
+            tier: gate.tier,
+            dailyUsed: gate.dailyUsed,
+            dailyLimit: gate.dailyLimit,
+            remaining: gate.remaining,
+          });
+          return;
+        }
+        handleDashboardApply(msg)
+          .then(result => {
+            // Record usage on successful fill
+            if (result?.success) {
+              BJ_TIER_GATE.recordUsage().then(usage => {
+                result.tierUsage = usage;
+                sendResponse(result);
+              });
+            } else {
+              sendResponse(result);
+            }
+          })
+          .catch(err => sendResponse({ success: false, error: err.message }));
+      }).catch(err => sendResponse({ success: false, error: err.message }));
       return;
     }
 
     // ── Apply via fill on current ATS tab ──
     if (msg.type === 'dashboard:fillCurrent') {
-      handleAtsFill(msg)
-        .then(result => sendResponse(result))
-        .catch(err => sendResponse({ success: false, error: err.message }));
+      BJ_TIER_GATE.check().then(gate => {
+        if (!gate.allowed) {
+          logMsg(`FillCurrent BLOCKED: ${gate.reason} (tier=${gate.tier}, used=${gate.dailyUsed})`, 'warn');
+          sendResponse({
+            success: false,
+            error: 'tier_blocked',
+            reason: gate.reason,
+            message: gate.message,
+            tier: gate.tier,
+            dailyUsed: gate.dailyUsed,
+            dailyLimit: gate.dailyLimit,
+            remaining: gate.remaining,
+          });
+          return;
+        }
+        handleAtsFill(msg)
+          .then(result => {
+            if (result?.success) {
+              BJ_TIER_GATE.recordUsage().then(usage => {
+                result.tierUsage = usage;
+                sendResponse(result);
+              });
+            } else {
+              sendResponse(result);
+            }
+          })
+          .catch(err => sendResponse({ success: false, error: err.message }));
+      }).catch(err => sendResponse({ success: false, error: err.message }));
       return;
     }
 

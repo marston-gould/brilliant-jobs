@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.31';
+var BJ_VERSION = 'v5.32';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -21772,9 +21772,14 @@ async function detectExtension() {
         _extensionState.version = response.version || null;
         _extensionState.capabilities = response.capabilities || [];
         _extensionState.extensionId = extensionIds[i];
+        _extensionState.tier = response.tier || 'free';
+        _extensionState.tierStatus = response.tierStatus || null;
         _extensionState.lastChecked = Date.now();
         console.log('[apply-workflow] Extension detected: v' + response.version +
-          ' — capabilities: ' + (response.capabilities || []).join(', '));
+          ' — capabilities: ' + (response.capabilities || []).join(', ') +
+          ' — tier: ' + (response.tier || 'free'));
+        // Push current user tier to extension so it stays in sync
+        _syncTierToExtension(extensionIds[i]);
         return true;
       }
     } catch (e) {
@@ -21819,6 +21824,27 @@ function _pingExtension(extensionId) {
     // Timeout after 3 seconds
     setTimeout(function() { reject(new Error('ping timeout')); }, 3000);
   });
+}
+
+/**
+ * Sync the user's current subscription tier from dashboard to extension.
+ * Called on extension detect and after plan changes.
+ */
+function _syncTierToExtension(extensionId) {
+  var tier = window._bjUserPlan || 'free';
+  try {
+    chrome.runtime.sendMessage(extensionId || _extensionState.extensionId, {
+      type: 'dashboard:setTier',
+      tier: tier
+    }, function(response) {
+      if (chrome.runtime.lastError) return; // silently ignore
+      if (response && response.success) {
+        console.log('[apply-workflow] Tier synced to extension: ' + tier);
+      }
+    });
+  } catch (e) {
+    // Silent — tier sync is best-effort
+  }
 }
 
 /**
@@ -21870,6 +21896,19 @@ async function dispatchBrowserFill(jobUrl, pendingAppId) {
     return { success: false, error: 'extension_not_installed' };
   }
 
+  // ── P7 Tier Gate: Check auto_apply entitlement before dispatching ──
+  if (typeof checkEntitlement === 'function') {
+    try {
+      var ent = await checkEntitlement('auto_apply', 0);
+      if (!ent.allowed) {
+        if (typeof showUpgradePrompt === 'function') showUpgradePrompt('Auto-Apply', ent);
+        return { success: false, error: 'tier_blocked', reason: ent.behavior === 'off' ? 'free_tier' : 'limit_reached', message: 'Upgrade to Pro to use autofill.' };
+      }
+    } catch (e) {
+      console.warn('[apply-workflow] Entitlement check failed, allowing:', e.message);
+    }
+  }
+
   // Build profile from user data
   var profile = _buildProfileForFill();
   if (!profile) {
@@ -21892,6 +21931,12 @@ async function dispatchBrowserFill(jobUrl, pendingAppId) {
         if (chrome.runtime.lastError) {
           resolve({ success: false, error: chrome.runtime.lastError.message || 'extension_error' });
         } else {
+          // Handle tier_blocked from extension side
+          if (response && response.error === 'tier_blocked') {
+            if (typeof showUpgradePrompt === 'function') {
+              showUpgradePrompt('Auto-Apply', { behavior: response.reason === 'free_tier' ? 'off' : 'fixed', effective_limit: response.dailyLimit });
+            }
+          }
           resolve(response || { success: false, error: 'no_response' });
         }
       });
