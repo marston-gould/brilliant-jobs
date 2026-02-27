@@ -1,5 +1,5 @@
 // extension/utils/aiAnswerer.js — AI-powered form question answerer
-// v1.0: Calls answer-form-question EF for custom questions the label map can't handle.
+// v1.1: Added answer caching (Item #18) — reuse AI answers across same question types
 //
 // Usage in ATS handlers:
 //   import { answerCustomQuestions } from '../utils/aiAnswerer.js';
@@ -9,16 +9,71 @@
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const EF_PATH = '/functions/v1/answer-form-question';
 
+// ── Answer Cache (Item #18) ──────────────────────────────────
+// Cache key = normalized question label + field type.
+// Cache lives in chrome.storage.local under '_bj_answer_cache'.
+// TTL: 7 days. Max entries: 200.
+const CACHE_KEY = '_bj_answer_cache';
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_MAX_ENTRIES = 200;
+
+/**
+ * Normalize a question label for cache key matching.
+ * Strips whitespace, lowercases, removes trailing colons/asterisks.
+ */
+function normalizeCacheKey(label, fieldType) {
+  const clean = (label || '')
+    .toLowerCase()
+    .replace(/[*:?\s]+$/g, '')     // trailing punctuation
+    .replace(/\s+/g, ' ')          // normalize whitespace
+    .trim();
+  return `${fieldType || 'text'}::${clean}`;
+}
+
+/**
+ * Load the answer cache from storage.
+ */
+async function loadCache() {
+  try {
+    const data = await chrome.storage.local.get(CACHE_KEY);
+    return data[CACHE_KEY] || {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Save cache to storage, pruning expired/overflow entries.
+ */
+async function saveCache(cache) {
+  const now = Date.now();
+  const entries = Object.entries(cache);
+
+  // Prune expired
+  const valid = entries.filter(([, v]) => v.ts && (now - v.ts) < CACHE_TTL_MS);
+
+  // If still over limit, drop oldest
+  valid.sort((a, b) => b[1].ts - a[1].ts);
+  const pruned = Object.fromEntries(valid.slice(0, CACHE_MAX_ENTRIES));
+
+  try {
+    await chrome.storage.local.set({ [CACHE_KEY]: pruned });
+  } catch (e) {
+    console.warn('[aiAnswerer] Cache save error:', e.message);
+  }
+  return pruned;
+}
+
 /**
  * Batch-answer custom form questions using Claude Haiku via the
  * answer-form-question Edge Function.
+ * Now with caching: checks cache first, only calls EF for cache misses.
  *
  * @param {Array<{id: string, label: string, fieldType: string, options?: string[], maxLength?: number}>} questions
- *   Unmatched form fields that need AI answers.
- * @param {Object} profile - User profile data (name, email, skills, etc.)
- * @param {Object} resume - { text: string } — extracted resume text
+ * @param {Object} profile - User profile data
+ * @param {Object} resume - { text: string }
  * @param {Object} jobContext - { title?: string, company?: string }
- * @param {string} authToken - Supabase auth token (from background.js session)
+ * @param {string} authToken - Supabase auth token
  * @returns {Promise<Array<{id: string, answer: string, confidence: string}>>}
  */
 export async function answerCustomQuestions(questions, profile, resume, jobContext, authToken) {
@@ -28,8 +83,33 @@ export async function answerCustomQuestions(questions, profile, resume, jobConte
     return questions.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
   }
 
+  // ── Check cache for hits ──
+  const cache = await loadCache();
+  const results = [];
+  const misses = [];
+
+  for (const q of questions) {
+    const key = normalizeCacheKey(q.label, q.fieldType);
+    const cached = cache[key];
+    if (cached && cached.answer && (Date.now() - cached.ts) < CACHE_TTL_MS) {
+      results.push({ id: q.id, answer: cached.answer, confidence: cached.confidence || 'cached' });
+      console.log(`[aiAnswerer] Cache hit: "${q.label}"`);
+    } else {
+      misses.push(q);
+    }
+  }
+
+  // If all cached, return immediately
+  if (misses.length === 0) {
+    console.log(`[aiAnswerer] All ${questions.length} questions served from cache`);
+    return results;
+  }
+
+  console.log(`[aiAnswerer] ${results.length} cache hits, ${misses.length} cache misses — calling EF`);
+
+  // ── Call EF for misses ──
   // Cap at 10 per call (EF limit)
-  const batch = questions.slice(0, 10);
+  const batch = misses.slice(0, 10);
 
   const payload = {
     questions: batch.map(q => ({
@@ -71,22 +151,51 @@ export async function answerCustomQuestions(questions, profile, resume, jobConte
         'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg'
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(20000) // 20s timeout
+      signal: AbortSignal.timeout(20000)
     });
 
     if (!resp.ok) {
       const errText = await resp.text();
       console.warn(`[aiAnswerer] EF returned ${resp.status}:`, errText.slice(0, 200));
-      return batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
+      // Return cache hits + empty for misses
+      return [
+        ...results,
+        ...batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }))
+      ];
     }
 
     const data = await resp.json();
-    return data.answers || batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
+    const efAnswers = data.answers || batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
+
+    // ── Cache new answers ──
+    const now = Date.now();
+    for (let i = 0; i < batch.length; i++) {
+      const q = batch[i];
+      const a = efAnswers[i];
+      if (a && a.answer) {
+        const key = normalizeCacheKey(q.label, q.fieldType);
+        cache[key] = { answer: a.answer, confidence: a.confidence, ts: now };
+      }
+    }
+    await saveCache(cache);
+
+    return [...results, ...efAnswers];
 
   } catch (err) {
     console.warn('[aiAnswerer] Error calling EF:', err.message || err);
-    return batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }));
+    return [
+      ...results,
+      ...batch.map(q => ({ id: q.id, answer: '', confidence: 'low' }))
+    ];
   }
+}
+
+/**
+ * Clear the answer cache. Useful for testing or when profile changes.
+ */
+export async function clearAnswerCache() {
+  await chrome.storage.local.remove(CACHE_KEY);
+  console.log('[aiAnswerer] Answer cache cleared');
 }
 
 /**
@@ -106,21 +215,13 @@ export function collectUnmatchedQuestions(container, filledFieldIds) {
   );
 
   for (const field of fields) {
-    // Skip already-filled fields
     const fieldId = field.id || field.name || `field-${questions.length}`;
     if (filledFieldIds.has(fieldId)) continue;
-
-    // Skip hidden/disabled fields
     if (field.type === 'hidden' || field.disabled) continue;
-
-    // Skip fields that already have values
     if (field.value && field.value.trim()) continue;
 
-    // Find the label
     const label = findLabel(field);
     if (!label) continue;
-
-    // Skip standard fields (name, email, phone, resume)
     if (/^(name|first.?name|last.?name|email|phone|resume|cv|cover.?letter)$/i.test(label)) continue;
 
     const question = {
@@ -131,14 +232,12 @@ export function collectUnmatchedQuestions(container, filledFieldIds) {
                  field.type || 'text'
     };
 
-    // Collect options for select elements
     if (field.tagName === 'SELECT') {
       question.options = Array.from(field.options)
         .map(opt => opt.text.trim())
         .filter(t => t && !t.startsWith('Select') && !t.startsWith('Choose'));
     }
 
-    // Note max length if set
     if (field.maxLength && field.maxLength > 0 && field.maxLength < 10000) {
       question.maxLength = field.maxLength;
     }
@@ -153,22 +252,18 @@ export function collectUnmatchedQuestions(container, filledFieldIds) {
  * Find label text for a form field.
  */
 function findLabel(el) {
-  // Try associated label
   if (el.id) {
     const label = document.querySelector(`label[for="${el.id}"]`);
     if (label) return label.textContent.trim();
   }
 
-  // Try parent label
   const parentLabel = el.closest('label');
   if (parentLabel) {
     const text = parentLabel.textContent.trim();
-    // Remove the field value from label text
     const fieldVal = el.value || '';
     return text.replace(fieldVal, '').trim();
   }
 
-  // Try sibling/container patterns common in ATS forms
   const container = el.closest(
     '.application-question, .custom-question, .field, .form-group, ' +
     '[data-qa], [class*="question"], [class*="field-group"]'
@@ -178,6 +273,5 @@ function findLabel(el) {
     if (label) return label.textContent.trim();
   }
 
-  // Try aria-label
   return el.getAttribute('aria-label') || el.getAttribute('placeholder') || '';
 }
