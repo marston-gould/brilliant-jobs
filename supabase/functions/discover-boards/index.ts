@@ -1,16 +1,23 @@
 // supabase/functions/discover-boards/index.ts
 //
-// Background Discovery Pipeline — Item #2 (v2)
-// Takes companies discovered by the extension scanner and probes known ATS
-// platforms for career pages. New boards get added to ats_companies for crawling.
+// Background Discovery Pipeline — Item #2 (v3)
+// Two input sources:
+//   A. companies table — company names from extension scanner, probe all 5 ATS platforms
+//   B. board_discovery_queue — specific ATS URLs detected by extension, verify & add
 //
 // Called by pg_cron every 6 hours, or manually via POST.
 //
-// Flow:
-//   1. Query companies table for distinct company_names not yet checked
+// Flow A (companies):
+//   1. Query companies with discovery_status IS NULL
 //   2. For each, probe Greenhouse / Lever / Ashby / Workable / Recruitee APIs
-//   3. If a valid career page is found → insert into ats_companies
-//   4. Mark company as checked (discovery_status = 'found' | 'none' | 'skipped')
+//   3. If valid → insert into ats_companies
+//   4. Mark company as checked
+//
+// Flow B (board_discovery_queue):
+//   1. Query pending entries from board_discovery_queue
+//   2. Check if slug+platform already in ats_companies
+//   3. If not, probe the specific platform
+//   4. If valid → insert into ats_companies, mark as 'found'
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createLogger } from "../_shared/logger.ts";
@@ -20,6 +27,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const sb = createClient(SUPABASE_URL, SERVICE_KEY);
 
 const BATCH_SIZE = 50;
+const QUEUE_BATCH_SIZE = 25;
 const PROBE_TIMEOUT_MS = 8000;
 
 // ─── Junk filter ───────────────────────────────────────────────
@@ -124,12 +132,115 @@ const PLATFORM_URLS: Record<string, (slug: string) => string> = {
   recruitee: (s) => `https://${s}.recruitee.com/`,
 };
 
+// ─── Flow B: Process board_discovery_queue ─────────────────────
+async function processDiscoveryQueue(logger: ReturnType<typeof createLogger>): Promise<{
+  queueProcessed: number; queueFound: number; queueAlreadyTracked: number; queueNotFound: number; queueErrors: number;
+}> {
+  const stats = { queueProcessed: 0, queueFound: 0, queueAlreadyTracked: 0, queueNotFound: 0, queueErrors: 0 };
+
+  const { data: pending, error: fetchErr } = await sb
+    .from("board_discovery_queue")
+    .select("*")
+    .eq("status", "pending")
+    .order("created_at", { ascending: true })
+    .limit(QUEUE_BATCH_SIZE);
+
+  if (fetchErr || !pending || pending.length === 0) {
+    if (fetchErr) logger.error("Failed to fetch discovery queue", { error: fetchErr.message });
+    return stats;
+  }
+
+  logger.info(`Processing ${pending.length} board_discovery_queue entries`);
+
+  for (const entry of pending) {
+    stats.queueProcessed++;
+    const platform = entry.platform?.toLowerCase();
+    const slug = entry.board_slug;
+
+    if (!platform || !slug || !PROBERS[platform]) {
+      await sb.from("board_discovery_queue").update({
+        status: "error", error_message: `Invalid platform: ${platform}`, processed_at: new Date().toISOString()
+      }).eq("id", entry.id);
+      stats.queueErrors++;
+      continue;
+    }
+
+    // Check if already tracked in ats_companies
+    const { count } = await sb
+      .from("ats_companies")
+      .select("slug", { count: "exact", head: true })
+      .eq("slug", slug)
+      .eq("source", platform);
+
+    if ((count || 0) > 0) {
+      await sb.from("board_discovery_queue").update({
+        status: "already_tracked", result_slug: slug, result_source: platform, processed_at: new Date().toISOString()
+      }).eq("id", entry.id);
+      stats.queueAlreadyTracked++;
+      continue;
+    }
+
+    // Probe the platform
+    try {
+      const result = await PROBERS[platform](slug);
+
+      if (result.ok) {
+        const { error: insertErr } = await sb.from("ats_companies").insert({
+          slug, source: platform, name: slug,
+          is_active: true, last_http_status: 200,
+          job_count: result.jobCount,
+          created_at: new Date().toISOString(),
+          last_checked: new Date().toISOString(),
+        });
+
+        if (insertErr) {
+          if (insertErr.message.includes("duplicate") || insertErr.message.includes("unique")) {
+            await sb.from("board_discovery_queue").update({
+              status: "already_tracked", result_slug: slug, result_source: platform, processed_at: new Date().toISOString()
+            }).eq("id", entry.id);
+            stats.queueAlreadyTracked++;
+          } else {
+            await sb.from("board_discovery_queue").update({
+              status: "error", error_message: insertErr.message, processed_at: new Date().toISOString()
+            }).eq("id", entry.id);
+            stats.queueErrors++;
+          }
+        } else {
+          await sb.from("board_discovery_queue").update({
+            status: "found", result_slug: slug, result_source: platform, processed_at: new Date().toISOString()
+          }).eq("id", entry.id);
+          stats.queueFound++;
+          logger.info(`Queue: discovered ${platform}/${slug} (${result.jobCount} jobs)`);
+        }
+      } else {
+        await sb.from("board_discovery_queue").update({
+          status: "not_found", processed_at: new Date().toISOString()
+        }).eq("id", entry.id);
+        stats.queueNotFound++;
+      }
+    } catch (e) {
+      await sb.from("board_discovery_queue").update({
+        status: "error", error_message: (e as Error).message, processed_at: new Date().toISOString()
+      }).eq("id", entry.id);
+      stats.queueErrors++;
+    }
+
+    await new Promise((r) => setTimeout(r, 300));
+  }
+
+  return stats;
+}
+
 // ─── Main handler ─────────────────────────────────────────────
 Deno.serve(async (_req) => {
   const logger = createLogger("discover-boards", crypto.randomUUID());
   const start = Date.now();
 
   try {
+    // ═══ Flow B: Process board_discovery_queue first (faster, targeted) ═══
+    const queueStats = await processDiscoveryQueue(logger);
+
+    // ═══ Flow A: Process companies table (broader, exploratory) ═══
     const { data: companies, error: fetchErr } = await sb
       .from("companies")
       .select("company_name, company_id, company_url")
@@ -141,11 +252,12 @@ Deno.serve(async (_req) => {
 
     if (fetchErr) {
       logger.error("Failed to fetch companies", { error: fetchErr.message });
-      return jsonResp({ error: fetchErr.message }, 500);
+      return jsonResp({ error: fetchErr.message, queueStats }, 500);
     }
 
     if (!companies || companies.length === 0) {
-      return jsonResp({ message: "No unchecked companies", discovered: 0 });
+      const elapsed = Date.now() - start;
+      return jsonResp({ message: "No unchecked companies", discovered: 0, queueStats, elapsed_ms: elapsed });
     }
 
     // Deduplicate & filter junk
@@ -225,7 +337,11 @@ Deno.serve(async (_req) => {
     }
 
     const elapsed = Date.now() - start;
-    const summary = { checked, discovered, alreadyExists, errors: errors.length, errorDetails: errors.slice(0, 10), newBoards, elapsed_ms: elapsed };
+    const summary = {
+      companies: { checked, discovered, alreadyExists, errors: errors.length, errorDetails: errors.slice(0, 10), newBoards },
+      queue: queueStats,
+      elapsed_ms: elapsed,
+    };
     logger.info("Discovery complete", summary);
     return jsonResp(summary);
   } catch (e) {
