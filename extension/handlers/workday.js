@@ -25,6 +25,7 @@ import { fillSearchableDropdown } from '../fields/dropdownSearchable.js';
 import { uploadFile, base64ToFile } from '../utils/fileUpload.js';
 import { FieldFillerQueue } from '../utils/fieldFillerQueue.js';
 import { matchMultilingualLabel } from '../utils/multilingualLabels.js';
+import { fillMyExperience } from './workday-experience.js';
 
 // ============================================================
 // WORKDAY AUTOMATION-ID FIELD MAP
@@ -141,8 +142,14 @@ async function fill({ profile, resume, preferences }) {
     const pageTitle = getWorkdayPageTitle();
     console.log(`[BJ] Workday step ${currentStep}: "${pageTitle}"`);
 
-    // Fill current page
-    const stepResult = await fillWorkdayPage(profile, preferences, queue);
+    // Fill current page — route to specialized handler if on My Experience
+    let stepResult;
+    if (/my\s*experience|work\s*experience|employment|education/i.test(pageTitle)) {
+      console.log('[BJ] Workday: detected My Experience page — using specialized handler');
+      stepResult = await fillMyExperience(profile, preferences, queue);
+    } else {
+      stepResult = await fillWorkdayPage(profile, preferences, queue);
+    }
     filledCount += stepResult.filledCount;
     totalFields += stepResult.totalFields;
     errors.push(...stepResult.errors);
