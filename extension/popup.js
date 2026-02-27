@@ -163,9 +163,10 @@ function showApp(email, role) {
   $('#auth-user-bar').classList.add('active');
   $('#auth-user-email').textContent = email;
 
-  // Role-based tab visibility
+  // Role-based tab visibility (v5.50: expanded RBAC)
   const isAdmin = (role === 'admin');
-  applyTabGating(isAdmin);
+  const isPro = (role === 'pro' || isAdmin);
+  applyTabGating(isAdmin, isPro);
 
   // Show admin badge if admin
   const adminBadge = $('#admin-badge');
@@ -173,19 +174,35 @@ function showApp(email, role) {
     adminBadge.style.display = isAdmin ? 'inline-flex' : 'none';
   }
 
+  // Show role tag for non-admin users (v5.50)
+  const roleTag = $('#role-tag');
+  if (roleTag && !isAdmin) {
+    roleTag.textContent = isPro ? 'Pro' : 'Starter';
+    roleTag.style.display = 'inline-flex';
+  }
+
   // Initialize app features
   initApp();
 }
 
 /**
- * RBAC Tab Gating — Phase 5
- * Admins see all tabs (Harvest, Scan, Jobs, Data).
- * Regular users see only Harvest, Jobs, Data.
+ * RBAC Tab Gating — Phase 5 + v5.50 Expansion (Item #14)
+ * Admins see all tabs and exports.
+ * Pro users see Harvest, Jobs, Data (no exports).
+ * Starter users see Jobs and Data (no exports, no harvest).
  */
-function applyTabGating(isAdmin) {
+function applyTabGating(isAdmin, isPro) {
   const scanTab = document.querySelector('.tab[data-tab="scan"]');
   const scanContent = $('#tab-scan');
   const scannerIndicator = $('#scanner-indicator');
+
+  // v5.50: Data export buttons — admin-only
+  const exportConns = $('#d-export-connections');
+  const exportComps = $('#d-export-companies');
+
+  // v5.50: Harvest controls — pro+ only
+  const harvestStart = $('#h-start');
+  const harvestUpgrade = $('#h-upgrade-msg');
 
   if (!isAdmin) {
     // Hide Scan tab for non-admins
@@ -202,11 +219,26 @@ function applyTabGating(isAdmin) {
       if (harvestTab) harvestTab.classList.add('active');
       if (harvestContent) harvestContent.classList.add('active');
     }
+
+    // Hide export buttons for non-admins (v5.50)
+    if (exportConns) exportConns.style.display = 'none';
+    if (exportComps) exportComps.style.display = 'none';
   } else {
     // Admin — show everything
     if (scanTab) scanTab.style.display = '';
     if (scanContent) scanContent.style.display = '';
     if (scannerIndicator) scannerIndicator.style.display = '';
+    if (exportConns) exportConns.style.display = '';
+    if (exportComps) exportComps.style.display = '';
+  }
+
+  // v5.50: Harvest tab — pro+ only
+  if (!isPro) {
+    if (harvestStart) harvestStart.style.display = 'none';
+    if (harvestUpgrade) harvestUpgrade.style.display = 'block';
+  } else {
+    if (harvestStart) harvestStart.style.display = '';
+    if (harvestUpgrade) harvestUpgrade.style.display = 'none';
   }
 }
 

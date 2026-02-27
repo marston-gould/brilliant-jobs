@@ -50,6 +50,9 @@
     }
     .header .help-link:hover { color: var(--accent); border-color: var(--accent); }
     .admin-badge { display: none; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(245,158,11,0.12); color: #b47a08; padding: 2px 7px; border-radius: 4px; }
+    .role-tag { display: none; align-items: center; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(99,102,241,0.10); color: #6366f1; padding: 2px 7px; border-radius: 4px; }
+    .upgrade-msg { display: none; text-align: center; padding: 12px 16px; color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+    .upgrade-msg a { color: var(--accent); text-decoration: none; font-weight: 600; }
     .about-panel { display: none; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: 11px; }
     .about-panel.active { display: block; }
     .about-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px; border-bottom: 1px solid var(--border); }
@@ -170,6 +173,7 @@
 <body>
   <div class="header">
     <span class="admin-badge" id="admin-badge">Admin</span>
+    <span class="role-tag" id="role-tag"></span>
     <a href="help.html" target="_blank" class="help-link" title="Help" id="help-link">?</a>
     <span class="ver" id="ver-label">v—</span>
   </div>
@@ -209,6 +213,7 @@
       <div class="stats"><div class="stat"><div class="stat-value" id="h-count">0</div><div class="stat-label">Connections Found</div></div><div class="stat"><div class="stat-value" id="h-companies">0</div><div class="stat-label">Parsed Companies</div></div></div>
       <div class="source-list"><div class="source-item"><span class="source-dot dot-active"></span><span>Connections</span><span class="source-badge badge-ready">Ready</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Followers</span><span class="source-badge badge-soon">Coming Soon</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Following</span><span class="source-badge badge-soon">Coming Soon</span></div></div>
       <button class="btn btn-primary" id="h-start">Harvest Connections</button>
+      <div class="upgrade-msg" id="h-upgrade-msg">Harvesting requires a Pro plan. <a href="https://brilliantjobs.app/pricing.html" target="_blank">Upgrade →</a></div>
       <button class="btn btn-danger hidden" id="h-stop">Stop</button>
       <div class="status-bar hidden" id="h-last-harvest"><span class="label">Last Harvest: </span><span class="value" id="h-last-date">—</span></div>
     </div>

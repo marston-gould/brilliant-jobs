@@ -456,6 +456,24 @@ async function loadDiscoveryPipelineStats() {
       .select('*', { count: 'exact', head: true });
     setAdminText('dp-connections', fmtAdminNum(connCount || 0));
 
+    // Board Discovery Queue stats
+    var { count: queuePending } = await sb
+      .from('board_discovery_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    setAdminText('dp-queue-pending', fmtAdminNum(queuePending || 0));
+
+    var { count: queueFound } = await sb
+      .from('board_discovery_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'found');
+    setAdminText('dp-queue-found', fmtAdminNum(queueFound || 0));
+
+    var { count: queueTotal } = await sb
+      .from('board_discovery_queue')
+      .select('*', { count: 'exact', head: true });
+    setAdminText('dp-queue-total', fmtAdminNum(queueTotal || 0));
+
   } catch (err) {
     console.error('[Admin] Discovery pipeline stats error:', err);
   }
