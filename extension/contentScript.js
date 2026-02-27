@@ -4,6 +4,7 @@
 // v3.8.0: Phase 10 (P9) — Enhanced JD selectors, ApplicationTracker
 // integration for auto-tracking, JD match data sent to background.
 // v3.9.0: Item #1 — Generic fallback handler for unrecognized ATS sites.
+// v3.10.0: Item #3 — On-page status overlay during fill. Item #5 — Fill metrics wiring.
 //
 // This script is injected on all ATS domains (manifest content_scripts)
 // and dynamically by background.js on unknown ATS domains.
@@ -590,6 +591,26 @@
       return { success: false, error: 'Fill requires explicit user initiation' };
     }
 
+    // ── Item #3: Inject and show overlay ──
+    let overlayReady = false;
+    try {
+      const overlayUrl = chrome.runtime.getURL('inject-overlay.js');
+      await import(overlayUrl);
+      if (window.__bjOverlay) {
+        window.__bjOverlay.show();
+        overlayReady = true;
+      }
+    } catch (overlayErr) {
+      console.warn('[BJ] Overlay injection failed (non-fatal):', overlayErr.message);
+    }
+
+    const fillStartMs = Date.now();
+    const fields = scanFormFields();
+
+    if (overlayReady) {
+      window.__bjOverlay.progress({ filled: 0, total: fields.length, currentField: 'Loading handler…', pct: 5 });
+    }
+
     // Load handler if not already loaded
     if (!loadedHandler || loadedHandler.id !== ats.id) {
       try {
@@ -606,12 +627,18 @@
             loadedHandler = { id: 'generic', handler: genericModule.default || genericModule };
             console.warn(`[BJ] Named handler ${ats.id} failed, falling back to generic: ${err.message}`);
           } catch (genericErr) {
+            if (overlayReady) window.__bjOverlay.error({ message: `Failed to load handler for ${ats.id}` });
             return { success: false, error: `Failed to load handler for ${ats.id}: ${err.message}` };
           }
         } else {
+          if (overlayReady) window.__bjOverlay.error({ message: 'Failed to load generic handler' });
           return { success: false, error: `Failed to load generic handler: ${err.message}` };
         }
       }
+    }
+
+    if (overlayReady) {
+      window.__bjOverlay.progress({ filled: 0, total: fields.length, currentField: 'Filling fields…', pct: 15 });
     }
 
     // Execute the fill
@@ -619,8 +646,57 @@
       profile: msg.profile,
       resume: msg.resume,
       preferences: msg.preferences,
-      fields: scanFormFields()
+      fields: fields,
+      // Pass overlay callbacks so handlers can report per-field progress
+      onFieldFilled: (fieldName, status, detail) => {
+        if (overlayReady) {
+          window.__bjOverlay.fieldResult({ name: fieldName, status: status || 'filled', detail });
+        }
+      },
+      onProgress: (filled, total) => {
+        if (overlayReady) {
+          const pct = 15 + Math.round((filled / Math.max(total, 1)) * 80);
+          window.__bjOverlay.progress({ filled, total, pct });
+        }
+      }
     });
+
+    const fillTimeMs = Date.now() - fillStartMs;
+
+    // ── Item #3: Show final overlay state ──
+    if (overlayReady) {
+      if (result.success !== false) {
+        window.__bjOverlay.success({
+          filled: result.filledCount || fields.length,
+          total: fields.length,
+          timeMs: fillTimeMs,
+        });
+      } else {
+        window.__bjOverlay.error({ message: result.error || 'Fill encountered errors' });
+      }
+    }
+
+    // ── Item #5: Report fill metrics ──
+    try {
+      const metricsUrl = chrome.runtime.getURL('utils/fillMetrics.js');
+      const metricsModule = await import(metricsUrl);
+      const fm = metricsModule.fillMetrics || metricsModule.default;
+      if (fm && fm.trackFill) {
+        fm.trackFill({
+          ats: loadedHandler.id,
+          url: window.location.href,
+          fields: fields.length,
+          filled: result.filledCount || 0,
+          skipped: result.skippedCount || 0,
+          errors: result.errorCount || 0,
+          timeMs: fillTimeMs,
+          usedGeneric: loadedHandler.id === 'generic' && ats.id !== 'generic',
+          errorDetails: result.errors || [],
+        });
+      }
+    } catch (metricsErr) {
+      console.warn('[BJ] Fill metrics failed (non-fatal):', metricsErr.message);
+    }
 
     return result;
   }
