@@ -15,6 +15,7 @@ import { fillCheckbox } from '../fields/checkbox.js';
 import { fillRadioGroup } from '../fields/radioGroup.js';
 import { FieldFillerQueue } from '../utils/fieldFillerQueue.js';
 import { uploadFile, base64ToFile } from '../utils/fileUpload.js';
+import { matchMultilingualLabel } from '../utils/multilingualLabels.js';
 
 // ============================================================
 // FIELD MAP: Greenhouse Legacy CSS/name selectors → profile keys
@@ -387,6 +388,10 @@ function mapLabelToValue(label, profile, prefs) {
   if (/github/i.test(label)) return profile?.github;
   // Website / portfolio
   if (/website|portfolio/i.test(label)) return profile?.portfolio || profile?.website;
+
+  // v5.40: Multilingual fallback — FR/ES/DE/IT label detection
+  const multiMatch = matchMultilingualLabel(label, profile, prefs);
+  if (multiMatch) return multiMatch.value;
 
   return undefined;
 }
