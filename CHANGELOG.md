@@ -4,6 +4,24 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+## v5.53 — 2026-02-27
+- **Workday My Experience Auto-Fill (Item #5)**: Full multi-section employment + education history filling on Workday's "My Experience" page
+  - New module `extension/handlers/workday-experience.js`: specialized handler for the My Experience wizard step
+  - Work experience: fills job title, company, location, description for each entry from `profile.experience[]`
+  - Education: fills school, degree, field of study, GPA for each entry from `profile.education[]`
+  - Skills: tag-style skill input with autocomplete detection, adds up to 10 skills
+  - "Add Another" button detection: dynamically adds entry containers when profile has more entries than visible on page
+  - "I currently work here" checkbox: auto-checked when entry has no end date or end date is "Present"
+  - 4-strategy Workday date picker:
+    1. Direct month/year display field filling via data-automation-id
+    2. Date section widget detection (combined month/year containers)
+    3. Calendar popup navigation (arrow-based, up to 60 months in either direction)
+    4. Fallback to standard date/month/text inputs
+  - Searchable dropdown handling: character-by-character typing triggers autocomplete for company, school, degree fields
+  - Date parsing from LinkedIn profile format ("Jan 2020", "January 2020", "2020", "Jan 2020 - Present")
+  - Integrated into main `workday.js` fill loop — routes to specialized handler when page title matches "My Experience"
+  - Extension version: 2.13.0 (unchanged — extension-side module, no manifest change needed)
+
 ## v5.52 — 2026-02-27
 - **Recruiter Email Discovery (Item #19)**: Hunter.io integration for finding recruiter contacts
   - New Edge Function `recruiter-lookup`: domain search via Hunter.io API, stores results in `recruiter_contacts`
