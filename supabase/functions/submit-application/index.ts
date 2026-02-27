@@ -1,12 +1,12 @@
 // supabase/functions/submit-application/index.ts
-// Phase 2: Real ATS submission — Recruitee zero-auth + mock fallback
-// v5.18 — February 26, 2026
+// Phase 3: Real ATS submission — Recruitee + Greenhouse + mock fallback
+// v5.21 — February 26, 2026
 //
 // Routes by ats_source:
-//   recruitee → POST {slug}.recruitee.com/api/offers/{offer_slug}/candidates (zero-auth)
-//   greenhouse → Phase 3 (falls back to mock)
-//   lever     → Phase 4 (falls back to mock)
-//   others    → mock (80/10/10)
+//   recruitee  → POST {slug}.recruitee.com/api/offers/{offer_slug}/candidates (zero-auth)
+//   greenhouse → POST boards-api.greenhouse.io/v1/boards/{slug}/jobs/{jobId} (token from ats_companies)
+//   lever      → Phase 4 (falls back to mock)
+//   others     → mock (80/10/10)
 //
 // Deploy: supabase functions deploy submit-application --project-ref qojhagupdnbtomfoxnsf
 
@@ -216,6 +216,151 @@ async function submitToRecruitee(
 }
 
 // ═══════════════════════════════════════════════════════════
+// GREENHOUSE SUBMISSION (Phase 3B — API token required)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Parse Greenhouse slug and job ID from the job URL.
+ * Pattern: boards.greenhouse.io/{slug}/jobs/{jobId}
+ * Also handles: {slug}.greenhouse.io/jobs/{jobId}
+ */
+function parseGreenhouseUrl(url: string): { slug: string | null; jobId: string | null } {
+  // Standard: boards.greenhouse.io/{slug}/jobs/{jobId}
+  const stdMatch = url.match(/boards\.greenhouse\.io\/([^/]+)\/jobs\/(\d+)/);
+  if (stdMatch) return { slug: stdMatch[1], jobId: stdMatch[2] };
+
+  // Alt: {slug}.greenhouse.io/...jobs/{jobId}
+  const altMatch = url.match(/([^./]+)\.greenhouse\.io\/.*jobs\/(\d+)/);
+  if (altMatch) return { slug: altMatch[1], jobId: altMatch[2] };
+
+  return { slug: null, jobId: null };
+}
+
+/**
+ * Split a full name into first and last name.
+ * Handles "First Last", "First Middle Last", and single names.
+ */
+function splitName(fullName: string): { firstName: string; lastName: string } {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length === 1) return { firstName: parts[0], lastName: "" };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+async function submitToGreenhouse(
+  body: SubmitRequest,
+  resumeBlob: Blob,
+  ghToken: string,
+  logger: ReturnType<typeof createLogger>
+): Promise<SubmitResult> {
+  const { slug, jobId } = parseGreenhouseUrl(body.ats_job_url);
+
+  if (!slug || !jobId) {
+    return {
+      status: "error",
+      ats_source: "greenhouse",
+      error: "parse_failed",
+      detail: `Could not extract slug/jobId from URL: ${body.ats_job_url}`,
+      submission_method: "api",
+    };
+  }
+
+  // Greenhouse Job Board API endpoint
+  const apiUrl = `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs/${jobId}`;
+  logger.info("Submitting to Greenhouse", { apiUrl, slug, jobId, hasToken: !!ghToken });
+
+  const { firstName, lastName } = splitName(body.applicant.name);
+
+  // Build multipart form data per Greenhouse Job Board API spec
+  const formData = new FormData();
+  formData.append("first_name", firstName);
+  formData.append("last_name", lastName);
+  formData.append("email", body.applicant.email);
+  if (body.applicant.phone) formData.append("phone", body.applicant.phone);
+  if (body.applicant.linkedin) formData.append("urls[LinkedIn]", body.applicant.linkedin);
+  formData.append("resume", resumeBlob, body.resume_filename);
+  formData.append("mapped_url_token", ghToken);
+
+  try {
+    const resp = await fetch(apiUrl, {
+      method: "POST",
+      body: formData,
+      signal: AbortSignal.timeout(25000), // 25s server-side (client has 30s)
+    });
+
+    const respText = await resp.text();
+    let respData: any = {};
+    try { respData = JSON.parse(respText); } catch { /* not JSON */ }
+
+    if (resp.ok) {
+      // Greenhouse returns { id, status, ... } on success
+      const candidateId = respData?.id || null;
+      return {
+        status: "submitted",
+        confirmation_id: candidateId ? `gh-${candidateId}` : `gh-${crypto.randomUUID().slice(0, 12)}`,
+        ats_source: "greenhouse",
+        submitted_at: new Date().toISOString(),
+        submission_method: "api",
+      };
+    }
+
+    // 422: validation error (missing required fields, etc.)
+    if (resp.status === 422) {
+      const errors = respData?.errors || respData?.message;
+      const detail = typeof errors === "string"
+        ? errors
+        : Array.isArray(errors)
+          ? errors.map((e: any) => typeof e === "string" ? e : e.message || JSON.stringify(e)).join("; ")
+          : JSON.stringify(errors || "Unknown validation error");
+      return {
+        status: "rejected",
+        ats_source: "greenhouse",
+        error: "validation_error",
+        detail,
+        submission_method: "api",
+      };
+    }
+
+    // 403: invalid/expired token
+    if (resp.status === 403) {
+      logger.warn("Greenhouse token rejected (403)", { slug, jobId });
+      return {
+        status: "error",
+        ats_source: "greenhouse",
+        error: "invalid_token",
+        detail: "Greenhouse API returned 403 — token may be invalid or expired",
+        submission_method: "api",
+      };
+    }
+
+    return {
+      status: "error",
+      ats_source: "greenhouse",
+      error: `http_${resp.status}`,
+      detail: respText.slice(0, 200),
+      submission_method: "api",
+    };
+
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      return {
+        status: "timeout",
+        ats_source: "greenhouse",
+        error: "timeout",
+        detail: "Greenhouse API did not respond within 25s",
+        submission_method: "api",
+      };
+    }
+    return {
+      status: "error",
+      ats_source: "greenhouse",
+      error: "network_error",
+      detail: err instanceof Error ? err.message : String(err),
+      submission_method: "api",
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // MOCK FALLBACK (for platforms without real API support yet)
 // ═══════════════════════════════════════════════════════════
 
@@ -329,10 +474,12 @@ serve(async (req) => {
     }
 
     // ── Route by ATS source ──
-    let result: SubmitResult;
+    let result: SubmitResult | undefined;
 
-    if (body.ats_source === "recruitee") {
-      // Fetch resume from Supabase Storage
+    // ── Shared: Fetch resume from Supabase Storage (needed for all API submissions) ──
+    let resumeBlob: Blob | null = null;
+
+    if (body.ats_source === "recruitee" || body.ats_source === "greenhouse") {
       const resumePath = `${userId}/${body.resume_filename}`;
       logger.info("Fetching resume", { resumePath, fileId: body.resume_file_id });
 
@@ -347,7 +494,6 @@ serve(async (req) => {
           error: resumeError?.message, resumePath
         });
 
-        // List user's files and find the matching one
         const { data: files } = await sb.storage.from("resumes").list(userId);
         const match = files?.find(f =>
           f.name === body.resume_filename ||
@@ -361,70 +507,100 @@ serve(async (req) => {
           if (retryError || !retryData) {
             logger.error("Resume download failed on retry", { error: retryError?.message });
             result = {
-              status: "error", ats_source: "recruitee",
+              status: "error", ats_source: body.ats_source,
               error: "resume_not_found", detail: "Could not download resume from storage",
               submission_method: "api",
             };
           } else {
-            // Look up company_slug for custom domain fallback
-            const { data: jobRow } = await sb
-              .from("ats_jobs")
-              .select("company_slug")
-              .eq("greenhouse_id", body.job_id)
-              .eq("ats_source", "recruitee")
-              .maybeSingle();
-
-            result = await submitToRecruitee(body, retryData, jobRow?.company_slug || "", logger);
+            resumeBlob = retryData;
           }
         } else {
           result = {
-            status: "error", ats_source: "recruitee",
+            status: "error", ats_source: body.ats_source,
             error: "resume_not_found", detail: "Resume file not found in storage",
             submission_method: "api",
           };
         }
       } else {
-        // Look up company_slug
-        const { data: jobRow } = await sb
-          .from("ats_jobs")
-          .select("company_slug")
-          .eq("greenhouse_id", body.job_id)
-          .eq("ats_source", "recruitee")
+        resumeBlob = resumeData;
+      }
+    }
+
+    // ── Route: Recruitee (zero-auth) ──
+    if (!result && body.ats_source === "recruitee" && resumeBlob) {
+      const { data: jobRow } = await sb
+        .from("ats_jobs")
+        .select("company_slug")
+        .eq("greenhouse_id", body.job_id)
+        .eq("ats_source", "recruitee")
+        .maybeSingle();
+
+      result = await submitToRecruitee(body, resumeBlob, jobRow?.company_slug || "", logger);
+
+    // ── Route: Greenhouse (Phase 3B — API token required) ──
+    } else if (!result && body.ats_source === "greenhouse" && resumeBlob) {
+      // Look up the company's API token from ats_companies
+      const { slug: ghSlug } = parseGreenhouseUrl(body.ats_job_url);
+      let ghToken: string | null = null;
+
+      if (ghSlug) {
+        const { data: companyRow } = await sb
+          .from("ats_companies")
+          .select("api_key_encrypted")
+          .eq("slug", ghSlug)
+          .eq("source", "greenhouse")
           .maybeSingle();
 
-        result = await submitToRecruitee(body, resumeData, jobRow?.company_slug || "", logger);
+        ghToken = companyRow?.api_key_encrypted || null;
       }
-    } else {
-      // ── All other platforms: mock for now ──
-      // Phase 3: greenhouse (API key)
+
+      if (ghToken) {
+        logger.info("Greenhouse token found, using API submission", { slug: ghSlug });
+        result = await submitToGreenhouse(body, resumeBlob, ghToken, logger);
+      } else {
+        // No API token available — fall back to mock
+        logger.info("No Greenhouse token found, falling back to mock", { slug: ghSlug, jobId: body.job_id });
+        result = mockSubmit(body.ats_source);
+        result.detail = "no_api_token";
+      }
+
+    // ── Route: All other platforms → mock ──
+    } else if (!result) {
       // Phase 4: lever (API key)
       // Phase 8: ashby/workable (partnership)
       logger.info("Using mock submission", { atsSource: body.ats_source, jobId: body.job_id });
 
-      if (body.ats_source !== "recruitee") {
-        // Simulate timeout delay for mock timeouts
-        const mockResult = mockSubmit(body.ats_source);
-        if (mockResult.status === "timeout") {
-          // Insert record first, then sleep (client will timeout at 30s)
-          await sb.from("mock_ats_submissions").insert({
-            user_id: userId, job_id: body.job_id, ats_source: body.ats_source,
-            payload: body, response_type: "timeout",
-            response_body: mockResult, idempotency_key: body.idempotency_key,
-          });
-          await sb.from("pending_applications")
-            .update({ status: "failed", submitted_at: new Date().toISOString() })
-            .eq("id", body.pending_application_id);
+      const mockResult = mockSubmit(body.ats_source);
+      if (mockResult.status === "timeout") {
+        // Insert record first, then sleep (client will timeout at 30s)
+        await sb.from("mock_ats_submissions").insert({
+          user_id: userId, job_id: body.job_id, ats_source: body.ats_source,
+          payload: body, response_type: "timeout",
+          response_body: mockResult, idempotency_key: body.idempotency_key,
+        });
+        await sb.from("pending_applications")
+          .update({ status: "failed", submitted_at: new Date().toISOString() })
+          .eq("id", body.pending_application_id);
 
-          await new Promise((r) => setTimeout(r, 35000));
-          return new Response(
-            JSON.stringify(mockResult),
-            { status: 504, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
-          );
-        }
-        result = mockResult;
-      } else {
-        result = mockSubmit(body.ats_source);
+        await new Promise((r) => setTimeout(r, 35000));
+        return new Response(
+          JSON.stringify(mockResult),
+          { status: 504, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } }
+        );
       }
+      result = mockResult;
+    }
+
+    // ── Safety: ensure result is always defined ──
+    if (!result) {
+      logger.error("No submission result — should not happen", { atsSource: body.ats_source });
+      result = {
+        status: "error",
+        ats_source: body.ats_source,
+        error: "routing_error",
+        detail: "No submission handler matched for this ATS source",
+        submission_method: "mock",
+      };
     }
 
     // ── Store submission record ──
