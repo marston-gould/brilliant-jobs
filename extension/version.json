@@ -1,9 +1,9 @@
 {
-  "version": "3.0.0",
-  "build": "2026-02-27b",
+  "version": "3.1.0",
+  "build": "2026-02-26a",
   "files": {
     "manifest.json": "3.0.0",
-    "background.js": "2.8.0",
+    "background.js": "3.1.0",
     "contentScript.js": "3.0.0",
     "popup.html": "2.8.0",
     "popup.js": "2.8.0",
@@ -25,9 +25,14 @@
     "utils/applicationTracker.js": "3.0.0",
     "utils/fileUpload.js": "3.0.0",
     "fields/textInput.js": "3.0.0",
-    "fields/dropdown.js": "3.0.0"
+    "fields/dropdown.js": "3.0.0",
+    "fields/dateFields.js": "3.1.0",
+    "fields/checkbox.js": "3.1.0",
+    "fields/radioGroup.js": "3.1.0",
+    "fields/dropdownSearchable.js": "3.1.0"
   },
   "changelog": {
+    "3.1.0": "P0 Architecture Complete: ATS message bridge in background.js (ats:fill, ats:openAndFill, ats:pageDetected, ats:fieldsChanged), date fields filler, checkbox/toggle filler, radio group filler with smart question mapping, searchable dropdown filler (react-select, select2, custom listbox)",
     "3.0.0": "P0 Architecture Rebuild: multi-ATS manifest, handler routing, contentScript.js, shared utils (reactProps, fieldFillerQueue, mutationWatcher, applicationTracker, fileUpload), field fillers (textInput, dropdown), Lever handler (complete), stub handlers for Greenhouse/Ashby/Workable/Recruitee/LinkedIn",
     "2.8.0": "Phase 5 RBAC: role-based tab gating, admin badge, scanner admin-only gate",
     "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo",
