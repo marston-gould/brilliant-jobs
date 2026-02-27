@@ -460,6 +460,8 @@ function _guessAtsSource(url) {
   if (url.indexOf('recruitee') >= 0) return 'recruitee';
   if (url.indexOf('usajobs') >= 0) return 'usajobs';
   if (url.indexOf('linkedin.com') >= 0) return 'linkedin-easy-apply';
+  if (url.indexOf('indeed.com') >= 0) return 'indeed';
+  if (url.indexOf('myworkdayjobs.com') >= 0) return 'workday';
   return 'greenhouse';
 }
 

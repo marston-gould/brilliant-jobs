@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "3.8.0",
+  "version": "3.9.0",
   "description": "Discover jobs through your professional network — with smart autofill",
   "permissions": [
     "activeTab",
@@ -22,7 +22,9 @@
     "https://jobs.lever.co/*",
     "https://jobs.ashbyhq.com/*",
     "https://apply.workable.com/*",
-    "https://*.recruitee.com/*"
+    "https://*.recruitee.com/*",
+    "https://*.indeed.com/*",
+    "https://*.myworkdayjobs.com/*"
   ],
   "externally_connectable": {
     "matches": [
@@ -74,7 +76,12 @@
         "https://jobs.lever.co/*",
         "https://jobs.ashbyhq.com/*",
         "https://apply.workable.com/*",
-        "https://*.recruitee.com/*"
+        "https://*.recruitee.com/*",
+        "https://*.indeed.com/viewjob*",
+        "https://*.indeed.com/applystart*",
+        "https://smartapply.indeed.com/*",
+        "https://apply.indeed.com/*",
+        "https://*.myworkdayjobs.com/*/apply*"
       ],
       "js": [
         "contentScript.js"
