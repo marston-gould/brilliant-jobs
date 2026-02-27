@@ -1,6 +1,6 @@
 // ============================================================
 // REFERRALS — Referral Hub page logic
-// v5.19: Phase 1 — Copy + hero banner + design system alignment
+// v5.22: Phase 3 — Leaderboard rewards frontend
 // Spec: referral-hub-redesign-spec v3 (Feb 26, 2026)
 // ============================================================
 
@@ -217,26 +217,46 @@
         }
       </div>
 
-      <!-- Leaderboard — spec: opt-in toggle uses .toggle-switch standard -->
+      <!-- Leaderboard — Phase 3: period toggle, reward grid, countdown, 20-user threshold -->
       <div class="card" style="padding:16px 20px;margin-bottom:20px;">
-        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
-          Leaderboard
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">
-            <div class="toggle-switch" onclick="var cb=this.querySelector('input');cb.checked=!cb.checked;window._refToggleLeaderboard(cb.checked);this.classList.toggle('active',cb.checked);" ${s.sharing_enabled ? 'class="toggle-switch active"' : ''}>
-              <input type="checkbox" id="ref-optin-toggle" ${s.sharing_enabled ? 'checked' : ''} style="display:none;" />
-              <div class="toggle-slider"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <div class="card-title" style="margin:0;">Leaderboard</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div id="ref-countdown" style="font-size:11px;color:var(--text-faint);font-family:var(--mono);display:flex;align-items:center;gap:4px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span id="ref-countdown-text"></span>
             </div>
-            <span style="font-weight:500;">Show my ranking</span>
-          </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);cursor:pointer;">
+              <div class="toggle-switch${s.sharing_enabled ? ' active' : ''}">
+                <input type="checkbox" id="ref-optin-toggle" ${s.sharing_enabled ? 'checked' : ''} onchange="window._refToggleLeaderboard(this.checked);this.closest('.toggle-switch').classList.toggle('active',this.checked);" />
+                <div class="toggle-slider"></div>
+              </div>
+              <span style="font-weight:500;">Show my ranking</span>
+            </label>
+          </div>
         </div>
+
+        <!-- Period toggle: Weekly | Monthly — uses admin-period-btn pattern -->
+        <div style="display:flex;gap:4px;margin-bottom:14px;" id="ref-period-toggle">
+          <button class="admin-period-btn active" data-lb-period="weekly" onclick="window._refSwitchPeriod('weekly')">Weekly</button>
+          <button class="admin-period-btn" data-lb-period="monthly" onclick="window._refSwitchPeriod('monthly')">Monthly</button>
+        </div>
+
+        <!-- Reward tier merchandising grid — spec 3.5 -->
+        <div id="ref-reward-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
+
         <div id="ref-leaderboard-body">
           ${s.sharing_enabled ? '<div style="padding:12px;color:var(--text-dim);font-size:13px;">Loading leaderboard...</div>' : '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>'}
         </div>
       </div>
     `;
 
+    // Render reward grid and countdown for initial period
+    renderRewardGrid('weekly');
+    startCountdown();
+
     // Load leaderboard if opted in
-    if (s.sharing_enabled) loadLeaderboard();
+    if (s.sharing_enabled) loadLeaderboard('weekly');
   }
 
   // ---- Share Actions — spec Section 4: rewritten share messages ----
@@ -292,12 +312,86 @@
     trackInvite('sms');
   };
 
+  // ---- Leaderboard state ----
+  let _lbPeriod = 'weekly';
+  let _countdownInterval = null;
+
+  // ---- Reward tier definitions (spec 3.5) ----
+  const REWARD_TIERS = {
+    weekly: [
+      { rank: '#1', credits: 50, proDays: 14, color: '#f59e0b', gold: true },
+      { rank: '#2–3', credits: 25, proDays: 7, color: '#3b82f6', gold: false },
+      { rank: '#4–10', credits: 10, proDays: 0, color: '#8b5cf6', gold: false },
+      { rank: 'Top 10%', credits: 5, proDays: 0, color: '#64748b', gold: false },
+    ],
+    monthly: [
+      { rank: '#1', credits: 100, proDays: 30, color: '#f59e0b', gold: true },
+      { rank: '#2–3', credits: 50, proDays: 14, color: '#3b82f6', gold: false },
+      { rank: '#4–10', credits: 25, proDays: 7, color: '#8b5cf6', gold: false },
+      { rank: 'Top 25%', credits: 10, proDays: 0, color: '#64748b', gold: false },
+    ]
+  };
+
+  function renderRewardGrid(period) {
+    const grid = document.getElementById('ref-reward-grid');
+    if (!grid) return;
+    const tiers = REWARD_TIERS[period] || REWARD_TIERS.weekly;
+    grid.innerHTML = tiers.map(t => `
+      <div style="text-align:center;padding:12px 8px;border:1px solid var(--border);border-radius:10px;background:var(--bg-card);position:relative;${t.gold ? 'border-top:3px solid #f59e0b;' : ''}">
+        <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:${t.color};margin-bottom:4px;">${t.rank}</div>
+        <div style="font-family:var(--mono);font-size:20px;font-weight:800;color:var(--text);line-height:1;">${t.credits}</div>
+        <div style="font-size:9px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px;">credits</div>
+        ${t.proDays ? `<div style="display:inline-block;margin-top:6px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:${t.color}20;color:${t.color};">${t.proDays}d Pro</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function startCountdown() {
+    if (_countdownInterval) clearInterval(_countdownInterval);
+    function update() {
+      const el = document.getElementById('ref-countdown-text');
+      if (!el) return;
+      const now = new Date();
+      let target;
+      if (_lbPeriod === 'weekly') {
+        // Next Monday 00:00 UTC
+        target = new Date(now);
+        target.setUTCHours(0, 0, 0, 0);
+        const day = target.getUTCDay();
+        const daysUntilMon = day === 0 ? 1 : day === 1 ? 7 : 8 - day;
+        target.setUTCDate(target.getUTCDate() + daysUntilMon);
+      } else {
+        // Next 1st of month 00:00 UTC
+        target = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+      }
+      const diff = target - now;
+      if (diff <= 0) { el.textContent = 'Resetting...'; return; }
+      const days = Math.floor(diff / 86400000);
+      const hrs = Math.floor((diff % 86400000) / 3600000);
+      el.textContent = `Resets in ${days}d ${hrs}h`;
+    }
+    update();
+    _countdownInterval = setInterval(update, 60000);
+  }
+
+  window._refSwitchPeriod = function (period) {
+    _lbPeriod = period;
+    // Toggle active button
+    document.querySelectorAll('#ref-period-toggle .admin-period-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lbPeriod === period);
+    });
+    renderRewardGrid(period);
+    startCountdown();
+    const toggle = document.getElementById('ref-optin-toggle');
+    if (toggle && toggle.checked) loadLeaderboard(period);
+  };
+
   window._refToggleLeaderboard = async function (enabled) {
     try {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
       const { data: { user } } = await sb.auth.getUser();
       await sb.from('profiles').update({ sharing_enabled: enabled }).eq('id', user.id);
-      if (enabled) loadLeaderboard();
+      if (enabled) loadLeaderboard(_lbPeriod);
       else {
         const body = document.getElementById('ref-leaderboard-body');
         if (body) body.innerHTML = '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>';
@@ -307,31 +401,67 @@
     }
   };
 
-  async function loadLeaderboard() {
+  async function loadLeaderboard(period) {
     const body = document.getElementById('ref-leaderboard-body');
     if (!body) return;
+    body.innerHTML = '<div style="padding:12px;color:var(--text-dim);font-size:13px;">Loading leaderboard...</div>';
     try {
       const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-      const { data } = await sb.from('referral_leaderboard').select('*').order('rank', { ascending: true }).limit(20);
+      const { data: { user } } = await sb.auth.getUser();
+
+      // Use get_leaderboard RPC (Phase 2)
+      const { data, error } = await sb.rpc('get_leaderboard', {
+        p_period_type: period || 'weekly',
+        p_user_id: user?.id || null
+      });
+
+      if (error) throw error;
+
       if (!data || data.length === 0) {
-        body.innerHTML = '<div class="ref-empty">No qualifying referrals this period. Each activated referral earns you a spot.</div>';
+        // Check 20-user threshold — count opted-in users
+        const { count } = await sb.from('profiles').select('*', { count: 'exact', head: true }).eq('sharing_enabled', true);
+        const optedIn = count || 0;
+        if (optedIn < 20) {
+          body.innerHTML = `
+            <div style="padding:20px;text-align:center;">
+              <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">${optedIn} of 20 users opted in</div>
+              <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;max-width:200px;margin:0 auto;">
+                <div style="height:100%;width:${Math.min((optedIn / 20) * 100, 100)}%;background:linear-gradient(90deg,#3b82f6,#8b5cf6);border-radius:3px;transition:width .4s;"></div>
+              </div>
+              <div style="font-size:11px;color:var(--text-faint);margin-top:8px;">Leaderboard activates at 20 opted-in users</div>
+            </div>
+          `;
+        } else {
+          body.innerHTML = '<div class="ref-empty">No qualifying referrals this period. Each activated referral earns you a spot.</div>';
+        }
         return;
       }
+
+      // Render leaderboard table with "Earning" column
       body.innerHTML = `
-        <table class="admin-table" style="margin-top:12px;">
-          <thead><tr><th>#</th><th>Referrer</th><th>Referrals</th></tr></thead>
+        <table class="admin-table" style="margin-top:4px;">
+          <thead><tr><th>#</th><th>Referrer</th><th>Referrals</th><th>Earning</th></tr></thead>
           <tbody>
-            ${data.map(r => `
-              <tr>
-                <td style="font-family:var(--mono);font-weight:600;">${r.rank}</td>
-                <td>${r.display_name || 'Anonymous'}</td>
-                <td style="font-family:var(--mono);">${r.referral_count}</td>
-              </tr>
-            `).join('')}
+            ${data.map(r => {
+              const earningParts = [];
+              if (r.earning_credits > 0) earningParts.push(`${r.earning_credits} cr`);
+              if (r.earning_pro_days > 0) earningParts.push(`${r.earning_pro_days}d Pro`);
+              const earning = earningParts.length ? earningParts.join(' + ') : '\u2014';
+              const isMe = r.is_me;
+              return `
+                <tr style="${isMe ? 'background:rgba(59,130,246,0.06);' : ''}">
+                  <td style="font-family:var(--mono);font-weight:700;${r.rank === 1 ? 'color:#f59e0b;' : ''}">${r.rank}</td>
+                  <td>${r.display_name || 'Anonymous'}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:600;">(you)</span>' : ''}</td>
+                  <td style="font-family:var(--mono);">${r.referral_count}</td>
+                  <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">${earning}</td>
+                </tr>
+              `;
+            }).join('')}
           </tbody>
         </table>
       `;
     } catch (err) {
+      console.error('[Referrals] Leaderboard error:', err);
       body.innerHTML = '<div class="ref-empty">Unable to load leaderboard. Refresh to retry.</div>';
     }
   }
