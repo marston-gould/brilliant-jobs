@@ -1,23 +1,17 @@
 /**
- * Brilliant Jobs — Apply Workflow
+ * Brilliant Jobs — Apply Workflow v5.18
  * Score Gate Modal, Pending Applications, and Apply State Machine
  * 
- * Phase 4: Real Apply Pathway (Pod 2)
+ * Phase 2: Real ATS Submission (Pod 2)
  * - Score Gate Modal: intercepts Apply when score is low/unscored
  * - Pending Applications: Supabase-backed with real ATS submission
  * - Apply Settings: per-filter configuration
  * - Rewrite Review Modal: shows AI rewrite diff
  * - scoreAndRecheck: calls score-resume EF (1 credit)
  * - triggerRewrite: opens existing rewrite panel (3 credits)
- * - proceedToApply: creates pending_applications row + dual-path submission
+ * - proceedToApply: creates pending_applications row + calls submit-application
  * - approvePendingApp: calls submit-application on approval
- * - DUAL PATH: API (Recruitee/Greenhouse) via submit-application EF
- *              Browser fill (Lever/Ashby/Workable/others) via Chrome extension
- * - Extension detection: dashboard:ping checks if extension is installed
- * - Extension dispatch: dashboard:apply opens ATS URL and fills via extension
- * - Channel map: resolveChannel() translates hardcoded names to fingerprinted versions
- * - Resume sync: pushes resume text to extension for jdMatcher scoring
- * - Auto-status: listens for extension status updates → pending_applications
+ * - submit-application EF: Recruitee (real API), others (mock fallback)
  */
 
 // ═══════════════════════════════════════════════════════════
@@ -60,296 +54,6 @@ var DEFAULT_APPLY_SETTINGS = {
 var pendingApplications = [];
 var userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS);
 var _applySubmitting = false; // Prevent double-submit
-
-// ── Extension state ──
-var _extensionState = {
-  installed: false,
-  version: null,
-  capabilities: [],
-  extensionId: null,
-  lastChecked: 0,
-};
-
-
-// ═══════════════════════════════════════════════════════════
-// EXTENSION EVENT LOGGING (Tier 3 — B9/D7)
-// Centralized logging for all extension interactions.
-// Writes to extension_events table via Supabase PostgREST.
-// ═══════════════════════════════════════════════════════════
-
-/**
- * Log an extension event to Supabase.
- * @param {string} eventType - e.g. 'ext_detected', 'ext_fill_success', 'ext_fill_failed', 'ext_ats_detected', 'ext_status_update'
- * @param {object} [eventData={}] - arbitrary JSON payload
- * @param {object} [opts={}] - optional: ats_platform, job_url, extension_version
- */
-async function logExtensionEvent(eventType, eventData, opts) {
-  try {
-    if (!eventData) eventData = {};
-    if (!opts) opts = {};
-    var userId = null;
-    try { userId = (await sb.auth.getUser()).data.user.id; } catch(e) {}
-    if (!userId) return; // not logged in, skip silently
-
-    await sb.from('extension_events').insert({
-      user_id: userId,
-      event_type: eventType,
-      event_data: eventData,
-      ats_platform: opts.ats_platform || null,
-      job_url: opts.job_url || null,
-      extension_version: opts.extension_version || (_extensionState.version || null)
-    });
-  } catch (e) {
-    console.warn('[BJ] Extension event log failed:', e.message);
-    // Non-fatal — never block the workflow for logging
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// EXTENSION DETECTION
-// Uses chrome.runtime.sendMessage to the extension via
-// externally_connectable (manifest.json)
-// ═══════════════════════════════════════════════════════════
-
-/**
- * Detect if the Brilliant Jobs Chrome extension is installed.
- * Sends a dashboard:ping message; extension responds with version + capabilities.
- * Caches result for 5 minutes.
- */
-async function detectExtension() {
-  // Return cached result if fresh (< 5 min)
-  if (_extensionState.lastChecked && (Date.now() - _extensionState.lastChecked < 300000)) {
-    return _extensionState.installed;
-  }
-
-  // Try known extension IDs (Chrome Web Store + dev)
-  // The extension ID will be set after first successful ping
-  var extensionIds = _extensionState.extensionId
-    ? [_extensionState.extensionId]
-    : _getKnownExtensionIds();
-
-  for (var i = 0; i < extensionIds.length; i++) {
-    try {
-      var response = await _pingExtension(extensionIds[i]);
-      if (response && response.success && response.installed) {
-        _extensionState.installed = true;
-        _extensionState.version = response.version || null;
-        _extensionState.capabilities = response.capabilities || [];
-        _extensionState.extensionId = extensionIds[i];
-        _extensionState.tier = response.tier || 'free';
-        _extensionState.tierStatus = response.tierStatus || null;
-        _extensionState.lastChecked = Date.now();
-        console.log('[apply-workflow] Extension detected: v' + response.version +
-          ' — capabilities: ' + (response.capabilities || []).join(', ') +
-          ' — tier: ' + (response.tier || 'free'));
-        // Push current user tier to extension so it stays in sync
-        _syncTierToExtension(extensionIds[i]);
-        return true;
-      }
-    } catch (e) {
-      // Extension not found at this ID, try next
-    }
-  }
-
-  _extensionState.installed = false;
-  _extensionState.version = null;
-  _extensionState.capabilities = [];
-  _extensionState.lastChecked = Date.now();
-  return false;
-}
-
-function _getKnownExtensionIds() {
-  // Try reading from localStorage (set during extension installation)
-  try {
-    var stored = localStorage.getItem('bj_extension_id');
-    if (stored) return [stored];
-  } catch (e) {}
-  // Fallback: user can set via settings page or extension popup sets it
-  return [];
-}
-
-function _pingExtension(extensionId) {
-  return new Promise(function(resolve, reject) {
-    if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
-      reject(new Error('Chrome runtime not available'));
-      return;
-    }
-    try {
-      chrome.runtime.sendMessage(extensionId, { type: (window._bjExtensionDownload ? window._bjExtensionDownload.resolveChannel('dashboard:ping') : 'dashboard:ping') }, function(response) {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(response);
-        }
-      });
-    } catch (e) {
-      reject(e);
-    }
-    // Timeout after 3 seconds
-    setTimeout(function() { reject(new Error('ping timeout')); }, 3000);
-  });
-}
-
-/**
- * Sync the user's current subscription tier from dashboard to extension.
- * Called on extension detect and after plan changes.
- */
-function _syncTierToExtension(extensionId) {
-  var tier = window._bjUserPlan || 'free';
-  try {
-    chrome.runtime.sendMessage(extensionId || _extensionState.extensionId, {
-      type: (window._bjExtensionDownload ? window._bjExtensionDownload.resolveChannel('dashboard:setTier') : 'dashboard:setTier'),
-      tier: tier
-    }, function(response) {
-      if (chrome.runtime.lastError) return; // silently ignore
-      if (response && response.success) {
-        console.log('[apply-workflow] Tier synced to extension: ' + tier);
-      }
-    });
-  } catch (e) {
-    // Silent — tier sync is best-effort
-  }
-}
-
-/**
- * Check if the extension supports browser fill for a given ATS source.
- */
-function extensionSupportsAts(atsSource) {
-  if (!_extensionState.installed) return false;
-  // Map ATS source to capability name
-  var capMap = {
-    'lever': 'lever',
-    'greenhouse': 'greenhouse-legacy',
-    'ashby': 'ashby',
-    'workable': 'workable',
-    'recruitee': 'recruitee',
-  };
-  var cap = capMap[atsSource] || atsSource;
-  return _extensionState.capabilities.indexOf(cap) >= 0;
-}
-
-/**
- * Determine submission path for a job URL:
- * - 'api': Server-side submission (Recruitee zero-auth, Greenhouse with token)
- * - 'browser_fill': Extension fills form in user's browser
- * - 'manual': No automation available, open URL for user
- */
-function getSubmissionPath(jobUrl) {
-  var ats = _guessAtsSource(jobUrl);
-
-  // Recruitee always uses API (zero-auth server-side)
-  if (ats === 'recruitee') return 'api';
-
-  // Greenhouse: try API first (if token exists), fallback to browser fill
-  // API path is attempted by submit-application EF — it returns 'no_api_support' if no token
-  if (ats === 'greenhouse') return 'api_then_browser';
-
-  // All others: browser fill if extension installed, else manual
-  if (_extensionState.installed && extensionSupportsAts(ats)) return 'browser_fill';
-
-  return 'manual';
-}
-
-/**
- * Dispatch a browser-fill request to the extension.
- * Opens the job URL in a new tab, extension fills the form.
- * Returns: { success, filledFields, totalFields, needsIntervention, error }
- */
-async function dispatchBrowserFill(jobUrl, pendingAppId) {
-  if (!_extensionState.installed || !_extensionState.extensionId) {
-    return { success: false, error: 'extension_not_installed' };
-  }
-
-  // ── P7 Tier Gate: Check auto_apply entitlement before dispatching ──
-  if (typeof checkEntitlement === 'function') {
-    try {
-      var ent = await checkEntitlement('auto_apply', 0);
-      if (!ent.allowed) {
-        if (typeof showUpgradePrompt === 'function') showUpgradePrompt('Auto-Apply', ent);
-        return { success: false, error: 'tier_blocked', reason: ent.behavior === 'off' ? 'free_tier' : 'limit_reached', message: 'Upgrade to Pro to use autofill.' };
-      }
-    } catch (e) {
-      console.warn('[apply-workflow] Entitlement check failed, allowing:', e.message);
-    }
-  }
-
-  // Build profile from user data
-  var profile = _buildProfileForFill();
-  if (!profile) {
-    return { success: false, error: 'no_profile_data' };
-  }
-
-  // Get resume data URL if available
-  var resume = _getActiveResume();
-
-  return new Promise(function(resolve) {
-    try {
-      chrome.runtime.sendMessage(_extensionState.extensionId, {
-        type: (window._bjExtensionDownload ? window._bjExtensionDownload.resolveChannel('dashboard:apply') : 'dashboard:apply'),
-        jobUrl: jobUrl,
-        profile: profile,
-        resume: resume ? { filename: resume.filename, id: resume.id } : null,
-        preferences: {},
-        pendingAppId: pendingAppId || null,
-      }, function(response) {
-        if (chrome.runtime.lastError) {
-          logExtensionEvent('ext_fill_failed', { error: chrome.runtime.lastError.message, job_url: jobUrl }, { job_url: jobUrl });
-          resolve({ success: false, error: chrome.runtime.lastError.message || 'extension_error' });
-        } else {
-          // Handle tier_blocked from extension side
-          if (response && response.error === 'tier_blocked') {
-            if (typeof showUpgradePrompt === 'function') {
-              showUpgradePrompt('Auto-Apply', { behavior: response.reason === 'free_tier' ? 'off' : 'fixed', effective_limit: response.dailyLimit });
-            }
-          }
-          if (response && response.success) {
-            logExtensionEvent('ext_fill_success', {
-              filled_fields: response.filledFields, total_fields: response.totalFields,
-              ats: response.ats, job_url: jobUrl
-            }, { ats_platform: response.ats, job_url: jobUrl });
-          } else if (response && !response.success && response.error !== 'tier_blocked') {
-            logExtensionEvent('ext_fill_failed', { error: response.error, job_url: jobUrl, ats: response.ats }, { ats_platform: response.ats, job_url: jobUrl });
-          }
-          resolve(response || { success: false, error: 'no_response' });
-        }
-      });
-    } catch (e) {
-      logExtensionEvent('ext_fill_failed', { error: e.message, job_url: jobUrl }, { job_url: jobUrl });
-      resolve({ success: false, error: e.message || 'dispatch_error' });
-    }
-    // 60 second timeout for the fill operation
-    setTimeout(function() {
-      resolve({ success: false, error: 'fill_timeout', needsIntervention: true,
-        interventionReason: 'Form fill timed out. Please check the tab and complete manually.' });
-    }, 60000);
-  });
-}
-
-/**
- * Build the profile object the extension expects for form filling.
- */
-function _buildProfileForFill() {
-  if (!currentUser) return null;
-  var meta = currentUser.user_metadata || {};
-  var profile = typeof window.getUserProfile === 'function' ? window.getUserProfile() : null;
-
-  return {
-    firstName: meta.first_name || meta.full_name?.split(' ')[0] || '',
-    lastName: meta.last_name || meta.full_name?.split(' ').slice(1).join(' ') || '',
-    fullName: meta.full_name || ((meta.first_name || '') + ' ' + (meta.last_name || '')).trim(),
-    email: currentUser.email || '',
-    phone: meta.phone || profile?.phone || '',
-    linkedin: meta.linkedin_url || profile?.linkedin || '',
-    github: meta.github_url || profile?.github || '',
-    portfolio: meta.portfolio_url || profile?.portfolio || '',
-    currentCompany: meta.current_company || profile?.currentCompany || '',
-    currentTitle: meta.current_title || profile?.currentTitle || '',
-    location: meta.location || profile?.location || '',
-    visaSponsorship: profile?.visaSponsorship || 'no',
-    legallyAuthorized: profile?.legallyAuthorized || 'yes',
-    willingToRelocate: profile?.willingToRelocate || 'yes',
-  };
-}
 
 function loadApplySettings() {
   try {
@@ -438,8 +142,7 @@ async function _getAuthToken() {
 
 // ═══════════════════════════════════════════════════════════
 // HELPER: Call submit-application Edge Function
-// Routes: Recruitee (real API), Greenhouse (API if token), others (mock fallback)
-// For non-API platforms, dashboard uses browser fill via extension instead
+// Routes: Recruitee (real API), others (mock fallback)
 // ═══════════════════════════════════════════════════════════
 
 async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
@@ -507,9 +210,6 @@ function _guessAtsSource(url) {
   if (url.indexOf('workable') >= 0) return 'workable';
   if (url.indexOf('recruitee') >= 0) return 'recruitee';
   if (url.indexOf('usajobs') >= 0) return 'usajobs';
-  if (url.indexOf('linkedin.com') >= 0) return 'linkedin-easy-apply';
-  if (url.indexOf('indeed.com') >= 0) return 'indeed';
-  if (url.indexOf('myworkdayjobs.com') >= 0) return 'workday';
   return 'greenhouse';
 }
 
@@ -831,7 +531,7 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     return;
   }
 
-  // ── Modes 2-6: Create pending_application + submit via dual path ──
+  // ── Modes 2-6: Create pending_application + submit via mock ATS ──
   if (!currentUser) {
     if (typeof showToast === 'function') showToast('Please log in to apply.', { type: 'error' });
     _applySubmitting = false;
@@ -881,76 +581,13 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
     return;
   }
 
-  // ── DUAL PATH: Determine submission route ──
-  var submissionPath = getSubmissionPath(jobUrl);
-  var result;
+  // Submit to mock ATS
+  var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
 
-  if (submissionPath === 'api') {
-    // Path A: Server-side API submission (Recruitee zero-auth, Greenhouse with token)
-    console.log('[apply-workflow] Using API path for ' + _guessAtsSource(jobUrl));
-    result = await callSubmitApplication(savedApp, resume.id, resume.filename);
-
-  } else if (submissionPath === 'api_then_browser') {
-    // Path B: Try API first (Greenhouse), fall back to browser fill
-    console.log('[apply-workflow] Trying API path first for Greenhouse...');
-    result = await callSubmitApplication(savedApp, resume.id, resume.filename);
-
-    // If API returned no_api_support/no_api_token, try browser fill
-    if (!result.ok && result.data && result.data.detail === 'no_api_token') {
-      console.log('[apply-workflow] No API token — falling back to browser fill');
-      var hasExtension = await detectExtension();
-      if (hasExtension && extensionSupportsAts('greenhouse')) {
-        if (typeof showToast === 'function') showToast('Opening form for auto-fill...', { duration: 5000 });
-        var browserResult = await dispatchBrowserFill(jobUrl, savedApp.id);
-        result = {
-          ok: browserResult.success,
-          data: browserResult,
-          error: browserResult.error,
-          method: 'browser_fill',
-        };
-      }
-      // If no extension, result stays as the API failure — user gets toast about it
-    }
-
-  } else if (submissionPath === 'browser_fill') {
-    // Path C: Browser-based form fill via extension
-    console.log('[apply-workflow] Using browser fill path for ' + _guessAtsSource(jobUrl));
-    if (typeof showToast === 'function') showToast('Opening form for auto-fill...', { duration: 5000 });
-    var browserResult = await dispatchBrowserFill(jobUrl, savedApp.id);
-    result = {
-      ok: browserResult.success,
-      data: browserResult,
-      error: browserResult.error,
-      method: 'browser_fill',
-    };
-
-  } else {
-    // Path D: Manual — open URL, let user fill manually
-    console.log('[apply-workflow] Manual path — opening URL for user');
-    if (jobUrl) window.open(jobUrl, '_blank');
-    result = { ok: true, method: 'manual' };
-  }
-
-  // ── Handle result ──
   if (result.ok) {
     _updatePipelineApplied(jobId);
-    var method = result.method || 'api';
-    var successMsg = method === 'browser_fill'
-      ? 'Form filled for ' + (companyName || 'this job') + '! Please review and submit.'
-      : method === 'manual'
-        ? 'Opened application page for ' + (companyName || 'this job')
-        : 'Applied to ' + (companyName || 'this job') + '!';
-    if (typeof showToast === 'function') showToast(successMsg, { type: 'success' });
-
-    // Check if extension reported needs-intervention
-    if (result.data && result.data.needsIntervention) {
-      if (typeof showToast === 'function') showToast(
-        result.data.interventionReason || 'Some fields may need manual attention.',
-        { type: 'warning', duration: 8000 }
-      );
-    }
-
-    // Fire notification
+    if (typeof showToast === 'function') showToast('Applied to ' + (companyName || 'this job') + '!', { type: 'success' });
+    // D6: Fire notification
     _fireApplyNotification('apply_auto_submitted', {
       subject: 'Applied: ' + (jobTitle || 'Job') + ' at ' + (companyName || 'Company'),
       html: '<p>Your resume was submitted for <strong>' + escapeHtml(jobTitle || '') + '</strong> at <strong>' + escapeHtml(companyName || '') + '</strong>.</p>',
@@ -958,17 +595,9 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
       job_title: jobTitle,
       company_name: companyName,
     });
-  } else if (result.error === 'rejected' || (result.data && result.data.status === 'rejected')) {
-    var detail = (result.data && result.data.detail) || result.detail || 'Unknown reason';
-    if (typeof showToast === 'function') showToast('Application rejected: ' + detail + '. You can retry.', { type: 'error', duration: 6000 });
-  } else if (result.error === 'extension_not_installed') {
-    // Extension not available — fallback to opening URL
-    if (jobUrl) window.open(jobUrl, '_blank');
-    if (typeof showToast === 'function') showToast(
-      'Install the Brilliant Jobs extension for auto-fill! Opened the form for manual application.',
-      { type: 'warning', duration: 8000 }
-    );
-  } else if (result.error === 'timeout' || result.error === 'fill_timeout') {
+  } else if (result.error === 'rejected') {
+    if (typeof showToast === 'function') showToast('Application rejected: ' + (result.detail || 'Unknown reason') + '. You can retry.', { type: 'error', duration: 6000 });
+  } else if (result.error === 'timeout') {
     if (typeof showToast === 'function') showToast('ATS timed out. Your application was saved — you can retry.', { type: 'error', duration: 6000 });
   } else {
     if (typeof showToast === 'function') showToast('Submission failed: ' + (result.error || 'Unknown error') + '. Retry from Pending Applications.', { type: 'error', duration: 6000 });
@@ -1345,148 +974,10 @@ function closeRewriteReviewModal() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// RESUME TEXT SYNC: DASHBOARD → EXTENSION
-// Sends current resume text to extension for jdMatcher scoring
-// ═══════════════════════════════════════════════════════════
-
-async function syncResumeToExtension() {
-  if (!_extensionState.installed || !_extensionState.extensionId) return;
-
-  var resume = _getActiveResume();
-  if (!resume) return;
-
-  var resumeText = '';
-  try {
-    var sb = window._bjSupabase;
-    if (sb) {
-      var { data: archiveData } = await sb
-        .from('resume_archive')
-        .select('parsed_text')
-        .eq('id', resume.id)
-        .single();
-      resumeText = archiveData?.parsed_text || '';
-    }
-  } catch (e) {}
-
-  if (!resumeText) {
-    try {
-      var raw = localStorage.getItem('bj_resumes');
-      if (raw && !raw.startsWith('enc:')) {
-        var resumes = JSON.parse(raw);
-        if (resumes.length > 0) resumeText = resumes[0].text || '';
-      }
-    } catch (e) {}
-  }
-
-  if (!resumeText) {
-    console.warn('[apply-workflow] No resume text available for extension sync');
-    return;
-  }
-
-  var channelName = window._bjExtensionDownload
-    ? window._bjExtensionDownload.resolveChannel('dashboard:fillCurrent')
-    : 'dashboard:fillCurrent';
-
-  try {
-    chrome.runtime.sendMessage(_extensionState.extensionId, {
-      type: channelName,
-      action: 'resumeSync',
-      resumeText: resumeText,
-      resumeId: resume.id,
-      resumeName: resume.filename || resume.name || 'resume',
-    }, function(response) {
-      if (chrome.runtime.lastError) return;
-      if (response && response.success) {
-        console.log('[apply-workflow] Resume text synced to extension (' + resumeText.length + ' chars)');
-      }
-    });
-  } catch (e) {
-    console.warn('[apply-workflow] Resume sync to extension failed:', e.message);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
-// AUTO-STATUS UPDATE: EXTENSION → DASHBOARD
-// Listens for application status updates from extension and
-// updates pending_applications accordingly
-// ═══════════════════════════════════════════════════════════
-
-function initExtensionStatusListener() {
-  // Listen for messages from the extension via window.postMessage
-  // The extension sends status updates after form submission
-  window.addEventListener('message', async function(event) {
-    if (event.origin !== window.location.origin) return;
-    if (!event.data || event.data.source !== 'bj-extension') return;
-
-    var msg = event.data;
-
-    if (msg.type === 'applicationStatus') {
-      logExtensionEvent('ext_status_update', {
-        status: msg.status, submission_method: msg.submission_method,
-        confirmation: msg.confirmation_detected, pending_app_id: msg.pendingAppId
-      }, { ats_platform: msg.ats, job_url: msg.jobUrl });
-      console.log('[apply-workflow] Extension status update:', msg.status, 'for', msg.pendingAppId);
-
-      if (!msg.pendingAppId) return;
-
-      var sb = window._bjSupabase;
-      if (!sb) return;
-
-      try {
-        var updateData = {
-          status: msg.status || 'submitted',
-          updated_at: new Date().toISOString(),
-        };
-
-        if (msg.status === 'submitted') {
-          updateData.submitted_at = new Date().toISOString();
-          updateData.submission_method = 'browser_fill';
-        }
-
-        if (msg.confirmationDetected) {
-          updateData.confirmation_detected = true;
-          updateData.confirmation_url = msg.confirmationUrl || null;
-        }
-
-        if (msg.error) {
-          updateData.status = 'failed';
-          updateData.error_detail = msg.error;
-        }
-
-        await sb
-          .from('pending_applications')
-          .update(updateData)
-          .eq('id', msg.pendingAppId);
-
-        console.log('[apply-workflow] Updated pending_application', msg.pendingAppId, 'to', updateData.status);
-
-        // Refresh local state
-        await loadPendingApplications();
-        renderPendingApplications();
-
-        // Show toast
-        if (typeof showToast === 'function') {
-          if (updateData.status === 'submitted') {
-            showToast('Application submitted via extension!', { type: 'success', duration: 4000 });
-          } else if (updateData.status === 'failed') {
-            showToast('Application failed: ' + (msg.error || 'Unknown error'), { type: 'error', duration: 6000 });
-          }
-        }
-      } catch (e) {
-        console.error('[apply-workflow] Failed to update pending_application:', e);
-      }
-    }
-  });
-}
-
-// ═══════════════════════════════════════════════════════════
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════
 
 loadApplySettings();
-
-// Initialize extension status listener for auto-status updates
-initExtensionStatusListener();
 
 // Load pending applications from Supabase after auth is ready
 (async function() {
@@ -1499,12 +990,6 @@ initExtensionStatusListener();
   if (window.currentUser) {
     await loadPendingApplications();
     renderPendingApplications();
-
-    // Detect extension, then sync resume text
-    var extDetected = await detectExtension();
-    if (extDetected) {
-      syncResumeToExtension();
-    }
   }
 })();
 
