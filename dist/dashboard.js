@@ -21674,7 +21674,7 @@ window.requiredTierFor = requiredTier;
 
 // === js/extension-download.js ===
 // js/extension-download.js — Phase 12: Fingerprinted Extension Download
-// Dashboard v5.36 | Extension 4.0.0
+// Extension 4.0.0
 //
 // Handles:
 // 1. Requesting a unique build from the build-extension Edge Function
@@ -21939,7 +21939,7 @@ window.requiredTierFor = requiredTier;
 
 // === js/apply-workflow.js ===
 /**
- * Brilliant Jobs — Apply Workflow v5.36
+ * Brilliant Jobs — Apply Workflow
  * Score Gate Modal, Pending Applications, and Apply State Machine
  * 
  * Phase 4: Real Apply Pathway (Pod 2)
