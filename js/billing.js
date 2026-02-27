@@ -615,4 +615,45 @@ function initBilling() {
   checkPaymentReturn();
   initAutoRefillUI();
   loadHireFeeStatus();
+  _initTierChangeListener();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Item #11: Tier Change Push Notification
+// Listens for realtime changes to user_subscriptions and
+// fires a toast when plan changes mid-session.
+// ═══════════════════════════════════════════════════════════
+var _tierChangeChannel = null;
+
+function _initTierChangeListener() {
+  if (!currentUser?.id || _tierChangeChannel) return;
+  try {
+    _tierChangeChannel = sb.channel('tier-change-' + currentUser.id)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'user_subscriptions',
+        filter: 'user_id=eq.' + currentUser.id
+      }, function(payload) {
+        var newTier = payload.new?.tier;
+        var oldTier = payload.old?.tier;
+        if (newTier && oldTier && newTier !== oldTier) {
+          var tierNames = { free: 'Free', starter: 'Starter', pro: 'Pro' };
+          var isUpgrade = (newTier === 'pro') || (newTier === 'starter' && oldTier === 'free');
+          if (typeof showToast === 'function') {
+            showToast(
+              (isUpgrade ? '🎉 ' : '') + 'Plan changed: ' + (tierNames[oldTier] || oldTier) + ' → ' + (tierNames[newTier] || newTier),
+              { type: isUpgrade ? 'success' : 'info', duration: 8000 }
+            );
+          }
+          // Reload pricing and credit balance to reflect new tier
+          loadUserPricing();
+          loadCreditBalance();
+          loadUserSubscription();
+        }
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn('[billing] Tier change listener setup failed:', e);
+  }
 }
