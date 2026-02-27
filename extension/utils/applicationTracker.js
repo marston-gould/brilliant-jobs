@@ -19,11 +19,36 @@ export class ApplicationTracker {
 
     this._cleanupFns = [];
     this._pendingSubmit = null;
+    // v5.48: Expanded confirmation patterns (Item #16 — 4 original + 18 new)
     this._confirmationPatterns = [
+      // ── Original patterns ──
       /application\s+(received|submitted|sent|confirmed)/i,
       /thank\s+you\s+for\s+(applying|your\s+application)/i,
       /successfully\s+(submitted|applied)/i,
-      /we('ve|\s+have)\s+received\s+your/i
+      /we('ve|\s+have)\s+received\s+your/i,
+      // ── Workday-specific ──
+      /your\s+application\s+has\s+been\s+(submitted|received|saved)/i,
+      /you\s+have\s+(successfully\s+)?applied\s+for/i,
+      /submission\s+(is\s+)?complete/i,
+      // ── Indeed-specific ──
+      /your\s+application\s+was\s+sent\s+to/i,
+      /application\s+submitted\s+to/i,
+      /you('ve|\s+have)\s+applied\s+to\s+this\s+job/i,
+      // ── LinkedIn Easy Apply ──
+      /your\s+application\s+was\s+sent/i,
+      /application\s+sent\s+to/i,
+      // ── Generic success / ATS patterns ──
+      /congratulations!?\s+your\s+(application|submission)/i,
+      /application\s+(has\s+been\s+)?submitted\s+successfully/i,
+      /you('re|\s+are)\s+all\s+set/i,
+      /thanks\s+for\s+your\s+interest/i,
+      /we'll\s+(be\s+in\s+touch|review\s+your|get\s+back)/i,
+      /application\s+confirmation/i,
+      // ── URL-based confirmation (path patterns) ──
+      /\/application[_-]?confirm/i,
+      /\/thank[_-]?you/i,
+      /\/success\/?$/i,
+      /status=submitted/i,
     ];
   }
 
@@ -113,7 +138,8 @@ export class ApplicationTracker {
   _checkForConfirmation() {
     const bodyText = document.body?.textContent || '';
     const titleText = document.title || '';
-    const combinedText = bodyText + ' ' + titleText;
+    const currentUrl = window.location.href || '';
+    const combinedText = bodyText + ' ' + titleText + ' ' + currentUrl;
 
     for (const pattern of this._confirmationPatterns) {
       if (pattern.test(combinedText)) {
