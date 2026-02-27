@@ -1,0 +1,243 @@
+// supabase/functions/discover-boards/index.ts
+//
+// Background Discovery Pipeline — Item #2 (v2)
+// Takes companies discovered by the extension scanner and probes known ATS
+// platforms for career pages. New boards get added to ats_companies for crawling.
+//
+// Called by pg_cron every 6 hours, or manually via POST.
+//
+// Flow:
+//   1. Query companies table for distinct company_names not yet checked
+//   2. For each, probe Greenhouse / Lever / Ashby / Workable / Recruitee APIs
+//   3. If a valid career page is found → insert into ats_companies
+//   4. Mark company as checked (discovery_status = 'found' | 'none' | 'skipped')
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createLogger } from "../_shared/logger.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const sb = createClient(SUPABASE_URL, SERVICE_KEY);
+
+const BATCH_SIZE = 50;
+const PROBE_TIMEOUT_MS = 8000;
+
+// ─── Junk filter ───────────────────────────────────────────────
+function isJunkCompanyName(name: string): boolean {
+  const s = name.trim();
+  if (s.length < 2 || s.length > 100) return true;
+  if (/^[A-Z][a-z]+,\s*(([A-Z]{2})|([A-Z][a-z]+))/.test(s)) return true;
+  if (/^Greater\s/.test(s)) return true;
+  if (/,\s*(United States|Canada|UK|India|Spain|Germany|France|Australia)/i.test(s)) return true;
+  if (/^\d[\d,]+\s*followers?$/i.test(s)) return true;
+  if (s.length > 60 && s.split(" ").length > 10) return true;
+  if (/^\d+$/.test(s)) return true;
+  if (/^(full-time|part-time|contract|freelance|self-employed|internship|seasonal|temporary)$/i.test(s)) return true;
+  if (/^[A-Z][a-z]{2,8}\s+\d{4}/.test(s)) return true;
+  if (/^\d+\s+(yr|mo|day|week)/i.test(s)) return true;
+  return false;
+}
+
+function toSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").replace(/-+/g, "-");
+}
+
+function toSlugStripped(name: string): string {
+  return toSlug(name).replace(/-(inc|llc|ltd|co|corp|corporation|group|international|intl|company)$/, "");
+}
+
+// ─── Platform-specific API probers ────────────────────────────
+
+async function probeGreenhouse(slug: string): Promise<{ ok: boolean; jobCount: number }> {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), PROBE_TIMEOUT_MS);
+    const r = await fetch(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=false`, { signal: c.signal });
+    clearTimeout(t);
+    if (r.status !== 200) return { ok: false, jobCount: 0 };
+    const d = await r.json();
+    return { ok: true, jobCount: d?.jobs?.length || 0 };
+  } catch { return { ok: false, jobCount: 0 }; }
+}
+
+async function probeLever(slug: string): Promise<{ ok: boolean; jobCount: number }> {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), PROBE_TIMEOUT_MS);
+    const r = await fetch(`https://jobs.lever.co/${slug}`, { signal: c.signal, headers: { "User-Agent": "BrilliantJobs-Discovery/1.0" } });
+    clearTimeout(t);
+    if (r.status === 404) return { ok: false, jobCount: 0 };
+    if (r.url === "https://www.lever.co/" || !r.url.includes("jobs.lever.co")) return { ok: false, jobCount: 0 };
+    const body = await r.text();
+    const jobCount = (body.match(/class="posting-title"/g) || []).length;
+    const hasNoJobs = body.toLowerCase().includes("no open positions");
+    return { ok: !hasNoJobs || jobCount > 0, jobCount };
+  } catch { return { ok: false, jobCount: 0 }; }
+}
+
+async function probeAshby(slug: string): Promise<{ ok: boolean; jobCount: number }> {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), PROBE_TIMEOUT_MS);
+    const r = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${slug}`, { signal: c.signal });
+    clearTimeout(t);
+    if (r.status !== 200) return { ok: false, jobCount: 0 };
+    const d = await r.json();
+    return { ok: true, jobCount: d?.jobs?.length || 0 };
+  } catch { return { ok: false, jobCount: 0 }; }
+}
+
+async function probeWorkable(slug: string): Promise<{ ok: boolean; jobCount: number }> {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), PROBE_TIMEOUT_MS);
+    const r = await fetch(`https://apply.workable.com/api/v1/widget/accounts/${slug}?details=true`, { signal: c.signal });
+    clearTimeout(t);
+    if (r.status !== 200) return { ok: false, jobCount: 0 };
+    const d = await r.json();
+    return { ok: true, jobCount: d?.jobs?.length || 0 };
+  } catch { return { ok: false, jobCount: 0 }; }
+}
+
+async function probeRecruitee(slug: string): Promise<{ ok: boolean; jobCount: number }> {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), PROBE_TIMEOUT_MS);
+    const r = await fetch(`https://${slug}.recruitee.com/api/offers/`, { signal: c.signal });
+    clearTimeout(t);
+    if (r.status !== 200) return { ok: false, jobCount: 0 };
+    const d = await r.json();
+    return { ok: true, jobCount: d?.offers?.length || 0 };
+  } catch { return { ok: false, jobCount: 0 }; }
+}
+
+const PROBERS: Record<string, (slug: string) => Promise<{ ok: boolean; jobCount: number }>> = {
+  greenhouse: probeGreenhouse, lever: probeLever, ashby: probeAshby,
+  workable: probeWorkable, recruitee: probeRecruitee,
+};
+
+const PLATFORM_URLS: Record<string, (slug: string) => string> = {
+  greenhouse: (s) => `https://boards.greenhouse.io/${s}`,
+  lever: (s) => `https://jobs.lever.co/${s}`,
+  ashby: (s) => `https://jobs.ashbyhq.com/${s}`,
+  workable: (s) => `https://apply.workable.com/${s}/`,
+  recruitee: (s) => `https://${s}.recruitee.com/`,
+};
+
+// ─── Main handler ─────────────────────────────────────────────
+Deno.serve(async (_req) => {
+  const logger = createLogger("discover-boards", crypto.randomUUID());
+  const start = Date.now();
+
+  try {
+    const { data: companies, error: fetchErr } = await sb
+      .from("companies")
+      .select("company_name, company_id, company_url")
+      .is("discovery_status", null)
+      .not("company_name", "is", null)
+      .not("company_name", "eq", "")
+      .order("id", { ascending: false })
+      .limit(BATCH_SIZE * 3);
+
+    if (fetchErr) {
+      logger.error("Failed to fetch companies", { error: fetchErr.message });
+      return jsonResp({ error: fetchErr.message }, 500);
+    }
+
+    if (!companies || companies.length === 0) {
+      return jsonResp({ message: "No unchecked companies", discovered: 0 });
+    }
+
+    // Deduplicate & filter junk
+    const seen = new Set<string>();
+    const unique: typeof companies = [];
+    for (const c of companies) {
+      const key = c.company_name.toLowerCase().trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (isJunkCompanyName(c.company_name)) {
+        await markDiscoveryStatus(c.company_name, "skipped");
+        continue;
+      }
+      unique.push(c);
+      if (unique.length >= BATCH_SIZE) break;
+    }
+
+    logger.info(`Checking ${unique.length} companies for ATS boards`);
+
+    let discovered = 0, checked = 0, alreadyExists = 0;
+    const errors: string[] = [];
+    const newBoards: { name: string; source: string; slug: string; url: string; jobs: number }[] = [];
+
+    for (const company of unique) {
+      const name = company.company_name.trim();
+      const slugs = [toSlug(name)];
+      const stripped = toSlugStripped(name);
+      if (stripped !== slugs[0]) slugs.push(stripped);
+
+      let found = false;
+
+      for (const slug of slugs) {
+        if (!slug || slug.length < 2) continue;
+
+        for (const [platform, prober] of Object.entries(PROBERS)) {
+          // Check if already tracked
+          const { count } = await sb
+            .from("ats_companies")
+            .select("slug", { count: "exact", head: true })
+            .eq("slug", slug)
+            .eq("source", platform);
+
+          if ((count || 0) > 0) { alreadyExists++; found = true; break; }
+
+          const result = await prober(slug);
+
+          if (result.ok) {
+            const boardUrl = PLATFORM_URLS[platform](slug);
+            const { error: insertErr } = await sb.from("ats_companies").insert({
+              slug, source: platform, name: name.toLowerCase(),
+              is_active: true, last_http_status: 200,
+              job_count: result.jobCount,
+              created_at: new Date().toISOString(),
+              last_checked: new Date().toISOString(),
+            });
+
+            if (insertErr) {
+              if (insertErr.message.includes("duplicate") || insertErr.message.includes("unique")) {
+                alreadyExists++;
+              } else {
+                errors.push(`Insert ${slug}@${platform}: ${insertErr.message}`);
+              }
+            } else {
+              discovered++;
+              newBoards.push({ name, source: platform, slug, url: boardUrl, jobs: result.jobCount });
+              logger.info(`Discovered: ${name} → ${platform}/${slug} (${result.jobCount} jobs)`);
+            }
+            found = true; break;
+          }
+        }
+        if (found) break;
+      }
+
+      await markDiscoveryStatus(name, found ? "found" : "none");
+      checked++;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    const elapsed = Date.now() - start;
+    const summary = { checked, discovered, alreadyExists, errors: errors.length, errorDetails: errors.slice(0, 10), newBoards, elapsed_ms: elapsed };
+    logger.info("Discovery complete", summary);
+    return jsonResp(summary);
+  } catch (e) {
+    logger.error("Unhandled error", { error: (e as Error).message });
+    return jsonResp({ error: (e as Error).message }, 500);
+  }
+});
+
+async function markDiscoveryStatus(companyName: string, status: string): Promise<void> {
+  await sb.from("companies").update({ discovery_status: status }).ilike("company_name", companyName);
+}
+
+function jsonResp(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
