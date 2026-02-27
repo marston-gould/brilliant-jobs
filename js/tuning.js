@@ -10,7 +10,7 @@ function showResumePicker(jobId, callback) {
   _rpCallback = callback;
   _rpSelected = null;
 
-  const resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  const resumes = safeReadLS('bj_resumes', []);
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   const optionsEl = $('#rp-options');
 

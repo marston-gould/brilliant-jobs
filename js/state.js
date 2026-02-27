@@ -60,7 +60,7 @@ export function setSavedJobIds(s) { savedJobIds = s; }
 export function setAppliedJobIds(a) { appliedJobIds = a; }
 export function setSearchTimeout(t) { searchTimeout = t; }
 export function setCurrentJobPage(p) { currentJobPage = p; }
-export let resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+export let resumes = (() => { try { var r = localStorage.getItem('bj_resumes'); return (!r || r.startsWith('enc:')) ? [] : JSON.parse(r); } catch(e) { return []; } })();
 export function setResumes(r) { resumes = r; }
 export const filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
 
@@ -132,5 +132,5 @@ export function rehydrateState() {
   hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
   savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
   appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
-  resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  resumes = (() => { try { var r = localStorage.getItem('bj_resumes'); return (!r || r.startsWith('enc:')) ? [] : JSON.parse(r); } catch(e) { return []; } })();
 }
