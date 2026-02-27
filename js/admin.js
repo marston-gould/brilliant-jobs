@@ -207,6 +207,9 @@ async function loadBoardHealth() {
 
     // Load feed health charts
     loadFeedHealthCharts();
+    // Load discovery pipeline + auto-apply stats
+    loadDiscoveryPipelineStats();
+    loadAutoApplyStats();
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
   }
@@ -395,6 +398,105 @@ async function loadFeedHealthCharts() {
     });
   } catch (err) {
     console.error('[Admin] Feed health charts error:', err); toastWarning('Feed health charts failed to load');
+  }
+}
+
+// ─── Discovery Pipeline Stats (Item #3) ───
+async function loadDiscoveryPipelineStats() {
+  try {
+    // Companies with discovery_status
+    var { data: discovered, count: discoveredCount } = await sb
+      .from('companies')
+      .select('*', { count: 'exact', head: true })
+      .eq('discovery_status', 'found');
+    setAdminText('dp-companies', fmtAdminNum(discoveredCount || 0));
+
+    var { count: noneCount } = await sb
+      .from('companies')
+      .select('*', { count: 'exact', head: true })
+      .eq('discovery_status', 'none');
+    setAdminText('dp-boards-none', fmtAdminNum(noneCount || 0));
+
+    // Boards found by source
+    var { data: boardsBySource } = await sb
+      .from('ats_companies')
+      .select('source')
+      .not('source', 'is', null);
+
+    if (boardsBySource) {
+      var sourceCounts = {};
+      var totalBoardsFound = 0;
+      boardsBySource.forEach(function(b) {
+        var src = b.source || 'unknown';
+        sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+        totalBoardsFound++;
+      });
+      setAdminText('dp-boards-found', fmtAdminNum(totalBoardsFound));
+
+      var tbody = document.getElementById('dp-source-body');
+      if (tbody) {
+        tbody.innerHTML = Object.entries(sourceCounts)
+          .sort(function(a, b) { return b[1] - a[1]; })
+          .map(function(entry) {
+            return '<tr><td>' + escapeHtml(entry[0]) + '</td><td style="text-align:right">' + fmtAdminNum(entry[1]) + '</td><td style="text-align:right">—</td><td style="text-align:right">—</td></tr>';
+          }).join('');
+      }
+    }
+
+    // Extension installs (profiles with extension_version set)
+    var { count: extCount } = await sb
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .not('extension_version', 'is', null);
+    setAdminText('dp-ext-installs', fmtAdminNum(extCount || 0));
+
+    // Connections scanned
+    var { count: connCount } = await sb
+      .from('connections')
+      .select('*', { count: 'exact', head: true });
+    setAdminText('dp-connections', fmtAdminNum(connCount || 0));
+
+  } catch (err) {
+    console.error('[Admin] Discovery pipeline stats error:', err);
+  }
+}
+
+// ─── Auto-Apply Engine Stats (Item #1) ───
+async function loadAutoApplyStats() {
+  try {
+    // Get latest trigger run from audit_log
+    var { data: lastRun } = await sb
+      .from('audit_log')
+      .select('details, created_at')
+      .eq('action', 'auto_apply_trigger')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (lastRun && lastRun.length > 0) {
+      var details = typeof lastRun[0].details === 'string' ? JSON.parse(lastRun[0].details) : lastRun[0].details;
+      setAdminText('aa-eligible', fmtAdminNum(details.eligible_users || 0));
+      setAdminText('aa-matched', fmtAdminNum(details.matches_found || 0));
+      setAdminText('aa-scored', fmtAdminNum(details.scored || 0));
+      setAdminText('aa-queued', fmtAdminNum(details.queued || 0));
+
+      var ago = Math.round((Date.now() - new Date(lastRun[0].created_at).getTime()) / 60000);
+      setAdminText('aa-last-run', ago < 60 ? ago + 'm ago' : Math.round(ago / 60) + 'h ago');
+    } else {
+      setAdminText('aa-last-run', 'Never');
+    }
+
+    // Also show total pending applications
+    var { count: pendingCount } = await sb
+      .from('pending_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    if (pendingCount != null) {
+      var queuedEl = document.getElementById('aa-queued');
+      if (queuedEl) queuedEl.title = pendingCount + ' total pending';
+    }
+  } catch (err) {
+    console.error('[Admin] Auto-apply stats error:', err);
   }
 }
 
