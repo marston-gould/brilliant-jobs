@@ -193,7 +193,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // savedJobIds and appliedJobIds are populated by initPipeline()
   savedJobIds = [];
   appliedJobIds = [];
-  resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  resumes = safeReadLS('bj_resumes', []);
   // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
   if (resumes.length === 0 && userId) {
     try {

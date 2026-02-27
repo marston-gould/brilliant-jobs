@@ -1,7 +1,7 @@
 // ============================================================
 // RESUMES
 // ============================================================
-resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+resumes = safeReadLS('bj_resumes', []);
 
 function saveResumes() {
   saveUserData('bj_resumes', JSON.stringify(resumes));

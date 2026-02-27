@@ -227,12 +227,32 @@ function isPiiKey(lsKey) {
 async function readPiiData(lsKey) {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
-  if (raw.startsWith('enc:') && currentUser) {
+  if (raw.startsWith('enc:')) {
+    if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
     var decrypted = await decryptFromStorage(raw, currentUser.id);
-    return decrypted ? JSON.parse(decrypted) : JSON.parse(raw);
+    if (decrypted) {
+      try { return JSON.parse(decrypted); } catch(e) { return null; }
+    }
+    return null; // Decryption failed — return null, never parse enc: as JSON
   }
-  return JSON.parse(raw);
+  try { return JSON.parse(raw); } catch(e) { return null; }
 }
+
+/**
+ * Safe synchronous localStorage read. (v5.22 hotfix)
+ * Returns fallback if the value starts with 'enc:' (encrypted, can't parse as JSON)
+ * or if JSON.parse fails for any reason. Use this everywhere instead of raw
+ * JSON.parse(localStorage.getItem(...)).
+ */
+function safeReadLS(key, fallback) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
+    return JSON.parse(raw);
+  } catch(e) { return fallback; }
+}
+window._safeReadLS = safeReadLS; // Expose for modules
 
 // ============================================================
 // SESSION MANAGEMENT HARDENING (v3.90)
@@ -613,7 +633,7 @@ var currentJobPage = 0;
 var JOBS_PER_PAGE = 20;
 
 // Resume state (populated fully in resumes.js)
-var resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+var resumes = safeReadLS('bj_resumes', []);
 
 // Shared filter color palette (10 colors for numbered filter badges)
 var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
