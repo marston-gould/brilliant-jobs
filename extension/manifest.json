@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "3.0.0",
-  "description": "Discover jobs through your professional network — with smart autofill",
+  "version": "3.3.0",
+  "description": "Discover jobs through your professional network \u2014 with smart autofill",
   "permissions": [
     "activeTab",
     "scripting",
