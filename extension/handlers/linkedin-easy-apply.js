@@ -15,6 +15,7 @@
 
 import { fillTextInput } from '../fields/textInput.js';
 import { FieldFillerQueue } from '../utils/fieldFillerQueue.js';
+import { matchMultilingualLabel } from '../utils/multilingualLabels.js';
 
 // ============================================================
 // CONSTANTS
@@ -288,6 +289,11 @@ function mapLabelToValue(label, profile, preferences) {
       }
     }
   }
+
+  // v5.40: Multilingual fallback — FR/ES/DE/IT label detection
+  const multiMatch = matchMultilingualLabel(label, profile, preferences);
+  if (multiMatch) return multiMatch.value;
+
   return undefined;
 }
 
@@ -357,7 +363,7 @@ async function fillTextFields(profile, preferences, errors) {
 
     total++;
     try {
-      const result = await fillTextInput(input, String(value));
+      const result = await fillTextInput(input, String(value), { humanLike: true });
       if (result.success) filled++;
       else errors.push(`Text field "${label}": ${result.error}`);
     } catch (e) {

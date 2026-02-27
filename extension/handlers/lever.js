@@ -17,6 +17,7 @@ import { fillSelect, fillCheckboxRadio } from '../fields/dropdown.js';
 import { uploadFile, base64ToFile } from '../utils/fileUpload.js';
 import { FieldFillerQueue } from '../utils/fieldFillerQueue.js';
 import { answerCustomQuestions, collectUnmatchedQuestions } from '../utils/aiAnswerer.js';
+import { matchMultilingualLabel } from '../utils/multilingualLabels.js';
 
 // Lever field name → profile property mapping
 const LEVER_FIELD_MAP = {
@@ -215,6 +216,10 @@ function mapLabelToValue(label, profile, prefs) {
   if (/city|location|where.*based/i.test(label)) {
     return profile?.location || profile?.city;
   }
+
+  // v5.40: Multilingual fallback — FR/ES/DE/IT label detection
+  const multiMatch = matchMultilingualLabel(label, profile, prefs);
+  if (multiMatch) return multiMatch.value;
 
   return undefined;
 }
