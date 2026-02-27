@@ -146,7 +146,7 @@ async function loadPipelineFromSupabase() {
   } catch (e) {
     console.error('[BJ] Pipeline load error:', e); toastError('Failed to load your pipeline');
     // Fallback: try localStorage if Supabase fails
-    _pipelineCache = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+    _pipelineCache = safeReadLS('bj_pipeline_meta', {});
   }
 }
 
@@ -223,10 +223,10 @@ async function migratePipelineToSupabase() {
   }
 
   // Read localStorage data
-  const localMeta = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
-  const localApplied = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
-  const localSaved = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-  const localDates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+  const localMeta = safeReadLS('bj_pipeline_meta', {});
+  const localApplied = safeReadLS('bj_applied_jobs', []);
+  const localSaved = safeReadLS('bj_saved_jobs', []);
+  const localDates = safeReadLS('bj_applied_dates', {});
 
   const allIds = new Set([...Object.keys(localMeta), ...localApplied, ...localSaved]);
   if (allIds.size === 0) {
@@ -379,7 +379,7 @@ function _completeMarkApplied(jobId, btn, resumeName) {
   if (resumeName) meta.resumeUsed = resumeName;
 
   // Detect filter tags
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
   meta.filterTags = checkedFilters;
 
@@ -426,7 +426,7 @@ async function unsaveFromPipeline(jobId) {
 function togglePipelineStage(headerEl) {
   const section = headerEl.closest('.pl-stage-section');
   section.classList.toggle('collapsed');
-  const states = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
+  const states = safeReadLS('bj_pl_collapse', {});
   states[section.dataset.stage] = section.classList.contains('collapsed');
   localStorage.setItem('bj_pl_collapse', JSON.stringify(states));
 }
@@ -439,7 +439,7 @@ function filterPipeline(tag) {
 }
 
 function buildPipelineFilterTags() {
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const select = $('#pl-filter-select');
   if (!select) return;
   const currentVal = select.value;
@@ -492,8 +492,8 @@ async function renderPipeline() {
   });
 
   const now = new Date();
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  const collapseStates = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
+  const sf = safeReadLS('bj_saved_filters', []);
+  const collapseStates = safeReadLS('bj_pl_collapse', {});
 
   // Group by stage
   const stageJobs = {};

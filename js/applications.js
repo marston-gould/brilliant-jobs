@@ -1,8 +1,8 @@
 // ============================================================
 // APPLICATIONS — Flow Management
 // ============================================================
-let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
-let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+let appQueue = safeReadLS('bj_app_queue', []);
+let appHistory = safeReadLS('bj_app_history', []);
 let appMode = localStorage.getItem('bj_app_mode') || 'manual';
 
 // ============================================================

@@ -448,12 +448,12 @@ async function _flushUserData() {
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify({ user_data: Object.assign(
-        JSON.parse(localStorage.getItem('_bj_ud_cache') || '{}'),
+        safeReadLS('_bj_ud_cache', {}),
         patch
       )})
     });
     // Update local cache of full user_data
-    const cached = JSON.parse(localStorage.getItem('_bj_ud_cache') || '{}');
+    const cached = safeReadLS('_bj_ud_cache', {});
     Object.assign(cached, patch);
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
@@ -592,10 +592,10 @@ function showUpgradePrompt(featureName, ent) {
 }
 
 // Saved filters
-var savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+var savedFilters = safeReadLS('bj_saved_filters', []);
 
 // Tuning state (refined by tuning.js when it loads)
-var tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+var tuningSettings = safeReadLS('bj_tuning', {});
 var tuningLocExclPills = tuningSettings.locationExcludes || [];
 var tuningTitleExclPills = tuningSettings.titleExcludes || [];
 var tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -625,9 +625,9 @@ var DEFAULT_RADIUS = 30;
 var allJobs = [];
 var currentJobs = [];
 var jobSortStack = [{ field: 'first_seen_at', asc: false }];
-var hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
-var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+var hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
+var savedJobIds = safeReadLS('bj_saved_jobs', []);
+var appliedJobIds = safeReadLS('bj_applied_jobs', []);
 var searchTimeout = null;
 var currentJobPage = 0;
 var JOBS_PER_PAGE = 20;
@@ -712,7 +712,7 @@ function _handleStorageFull(failedKey) {
   // Trim hidden_jobs and applied_jobs to last 500
   ['bj_hidden_jobs', 'bj_applied_jobs', 'bj_saved_jobs'].forEach(function(key) {
     try {
-      var arr = JSON.parse(localStorage.getItem(key) || '[]');
+      var arr = safeReadLS(key, []);
       if (arr.length > 500) {
         arr = arr.slice(-500);
         localStorage.setItem(key, JSON.stringify(arr));
@@ -722,7 +722,7 @@ function _handleStorageFull(failedKey) {
   });
   // Trim app_history to last 200
   try {
-    var hist = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+    var hist = safeReadLS('bj_app_history', []);
     if (hist.length > 200) {
       hist = hist.slice(-200);
       saveUserData('bj_app_history', JSON.stringify(hist));
