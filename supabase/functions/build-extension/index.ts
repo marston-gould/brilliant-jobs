@@ -169,6 +169,137 @@ function generateManifestVariation(): ManifestVariation {
 
 // ─── Source Transformation ──────────────────────────────────
 
+// ─── Code Obfuscation Utilities ─────────────────────────────
+
+// Encode string literals to hex escape sequences to defeat grep/search
+function encodeStringLiteral(str: string): string {
+  return str
+    .split("")
+    .map((c) => "\\x" + c.charCodeAt(0).toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// Generate a random short variable name (a-z + _prefix) that won't collide
+function randomVarName(len = 4): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz";
+  let name = "_";
+  for (let i = 0; i < len; i++) {
+    name += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return name;
+}
+
+// Wrap a string in a decode call so it's not plaintext in source
+function wrapStringDecode(str: string): string {
+  // Use atob(base64) for obfuscated string storage
+  const b64 = btoa(str);
+  return `atob("${b64}")`;
+}
+
+// Generate dead-code decoy functions that look like real logic
+function generateDecoyFunction(): string {
+  const names = [
+    "validateConfig",
+    "initBridge",
+    "syncState",
+    "checkPermissions",
+    "loadModule",
+    "verifyOrigin",
+    "parseResponse",
+    "handleCallback",
+    "resolveEndpoint",
+    "buildPayload",
+    "processQueue",
+    "normalizeInput",
+    "sanitizeOutput",
+    "throttleRequest",
+    "debounceEvent",
+  ];
+  const name = pickRandom(names) + "_" + randomHex(4);
+  const body = pickRandom([
+    `var ${randomVarName()}=${randomInt(100,9999)};return ${randomVarName(3)}||null;`,
+    `if(!arguments.length)return false;var ${randomVarName()}=Date.now();return ${randomVarName()}>${randomInt(1000,9999)};`,
+    `try{return JSON.parse(JSON.stringify(arguments[0]))}catch(e){return null}`,
+    `var ${randomVarName()}=[];for(var i=0;i<${randomInt(1,5)};i++)${randomVarName()}.push(i);return ${randomVarName()};`,
+    `return typeof arguments[0]==='string'?arguments[0].length:0;`,
+  ]);
+  return `function ${name}(){${body}}`;
+}
+
+// Obfuscate string literals in source — encode known sensitive strings
+function obfuscateStrings(source: string): string {
+  let result = source;
+  
+  // Encode identifiable string patterns that could reveal extension purpose
+  const sensitivePatterns = [
+    "brilliant",
+    "bj-extension",
+    "applicationStatus",
+    "autofill",
+    "fieldFiller",
+    "jdMatcher",
+    "resumeData",
+    "tierGate",
+    "originGuard",
+  ];
+
+  for (const pattern of sensitivePatterns) {
+    // Only encode in string contexts (single/double quotes), not as identifiers
+    const regex = new RegExp(`'${escapeRegex(pattern)}'`, "gi");
+    result = result.replace(regex, () => wrapStringDecode(pattern));
+    const regexDbl = new RegExp(`"${escapeRegex(pattern)}"`, "gi");
+    result = result.replace(regexDbl, () => wrapStringDecode(pattern));
+  }
+
+  return result;
+}
+
+// Insert decoy functions and dead-code paths
+function insertDecoys(source: string): string {
+  const lines = source.split("\n");
+  const newLines: string[] = [];
+  let decoysInserted = 0;
+  const maxDecoys = randomInt(5, 12);
+
+  for (const line of lines) {
+    newLines.push(line);
+    // Insert decoy after top-level closing braces
+    if (/^}\s*$/.test(line) && decoysInserted < maxDecoys && Math.random() < 0.25) {
+      newLines.push("");
+      newLines.push(generateDecoyFunction());
+      decoysInserted++;
+    }
+  }
+
+  // Also add a few decoys at the top of the file
+  const topDecoys = randomInt(1, 3);
+  const prefix: string[] = [];
+  for (let i = 0; i < topDecoys; i++) {
+    prefix.push(generateDecoyFunction());
+  }
+
+  return prefix.join("\n") + "\n" + newLines.join("\n");
+}
+
+// Rename internal variable names in non-import lines (conservative approach)
+function mangleLocalVars(source: string): string {
+  let result = source;
+
+  // Only mangle specific known internal variable patterns that are safe to rename
+  // These are internal naming conventions in our codebase
+  const safeRenames = [
+    { pattern: /\b__BJ_INTERNAL_/g, replacement: `_${randomHex(4)}_` },
+    { pattern: /\bBJ_DEBUG\b/g, replacement: `_d${randomHex(3)}` },
+    { pattern: /\b_bjState\b/g, replacement: `_${randomHex(5)}` },
+  ];
+
+  for (const { pattern, replacement } of safeRenames) {
+    result = result.replace(pattern, replacement);
+  }
+
+  return result;
+}
+
 function transformSource(
   source: string,
   channelMap: ChannelMap,
@@ -230,7 +361,18 @@ function transformSource(
     }
   }
 
-  return newLines.join("\n");
+  result = newLines.join("\n");
+
+  // 6. Obfuscate sensitive string literals → atob() encoded
+  result = obfuscateStrings(result);
+
+  // 7. Insert dead-code decoy functions
+  result = insertDecoys(result);
+
+  // 8. Mangle known internal variable names
+  result = mangleLocalVars(result);
+
+  return result;
 }
 
 function transformCSS(source: string, cssClassMap: CSSClassMap): string {
@@ -328,6 +470,15 @@ async function buildFingerprintedExtension(
       manifest.description = manifestVariation.description;
       // Inject build metadata (invisible to user)
       manifest._build = buildId;
+      // Ensure Indeed content_scripts have all_frames: true for iframe apply forms
+      if (manifest.content_scripts) {
+        for (const cs of manifest.content_scripts) {
+          const hasIndeed = cs.matches?.some((m: string) => m.includes("indeed.com"));
+          if (hasIndeed) {
+            cs.all_frames = true;
+          }
+        }
+      }
       zip.file(file, JSON.stringify(manifest, null, 2));
     } else if (file === "inject.css") {
       // Transform CSS classes

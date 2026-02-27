@@ -24,6 +24,7 @@
     "https://apply.workable.com/*",
     "https://*.recruitee.com/*",
     "https://*.indeed.com/*",
+    "https://m5.apply.indeed.com/*",
     "https://*.myworkdayjobs.com/*"
   ],
   "externally_connectable": {
@@ -77,16 +78,26 @@
         "https://jobs.ashbyhq.com/*",
         "https://apply.workable.com/*",
         "https://*.recruitee.com/*",
-        "https://*.indeed.com/viewjob*",
-        "https://*.indeed.com/applystart*",
-        "https://smartapply.indeed.com/*",
-        "https://apply.indeed.com/*",
         "https://*.myworkdayjobs.com/*/apply*"
       ],
       "js": [
         "contentScript.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.indeed.com/viewjob*",
+        "https://*.indeed.com/applystart*",
+        "https://smartapply.indeed.com/*",
+        "https://apply.indeed.com/*",
+        "https://m5.apply.indeed.com/*"
+      ],
+      "js": [
+        "contentScript.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
     }
   ],
   "side_panel": {
