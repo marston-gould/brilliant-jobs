@@ -1,7 +1,8 @@
 // background.js — Service worker for Brilliant Jobs
 // v3.0.0: Merged extension with daily reset fix, keepalive, notifications
 // v3.1.0: ATS message bridge — handles ats:pageDetected, ats:fill, ats:openAndFill
-// v3.4.0: External message bridge — dashboard:apply, dashboard:ping, dashboard:getState
+// v3.4.0: External message bridge
+// v3.5.0: Added linkedin-easy-apply to capabilities — dashboard:apply, dashboard:ping, dashboard:getState
 
 importScripts('supabase.js');
 
@@ -1246,7 +1247,7 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
       success: true,
       installed: true,
       version: chrome.runtime.getManifest().version,
-      capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee'],
+      capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
       atsPageState: atsPageState || null,
     });
     return;
