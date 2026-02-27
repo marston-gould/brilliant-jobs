@@ -294,6 +294,7 @@ function initApp() {
   refreshScannerState();
   refreshDataCounts();
   initCounts();
+  initDailyLimitBadge(); // v5.48: Item #10
 
   // Start scanner state refresh interval
   setInterval(refreshScannerState, 3000);
@@ -1394,3 +1395,60 @@ async function initCounts() {
 
 // Note: initApp() is called from checkAuth() after successful authentication
 
+
+// ============================================================
+// DAILY LIMIT BADGE (Item #10, v5.48)
+// Shows Starter tier users their remaining daily applications
+// ============================================================
+
+async function initDailyLimitBadge() {
+  try {
+    const tierData = await chrome.storage.local.get('bj_tier_data');
+    const data = tierData.bj_tier_data;
+    if (!data || !data.tier) return;
+
+    // Only show for starter tier (Pro = unlimited, Free = no autofill)
+    if (data.tier !== 'starter') return;
+
+    const bar = $('#daily-limit-bar');
+    const countEl = $('#dl-count');
+    const fillEl = $('#dl-progress-fill');
+    if (!bar || !countEl || !fillEl) return;
+
+    const limit = 5;
+    const used = data.dailyUsed || 0;
+    const remaining = Math.max(0, limit - used);
+    const pct = ((limit - remaining) / limit) * 100;
+
+    countEl.textContent = `${remaining}/${limit} left`;
+    fillEl.style.width = `${100 - pct}%`;
+
+    // Color states
+    if (remaining === 0) {
+      countEl.classList.add('exhausted');
+      fillEl.classList.add('exhausted');
+    } else if (remaining <= 2) {
+      countEl.classList.add('warning');
+      fillEl.classList.add('warning');
+    }
+
+    bar.classList.add('visible');
+
+    // Refresh every 30s in case usage changes
+    setInterval(async () => {
+      try {
+        const fresh = await chrome.storage.local.get('bj_tier_data');
+        const d = fresh.bj_tier_data;
+        if (!d || d.tier !== 'starter') { bar.classList.remove('visible'); return; }
+        const r = Math.max(0, limit - (d.dailyUsed || 0));
+        const p = ((limit - r) / limit) * 100;
+        countEl.textContent = `${r}/${limit} left`;
+        fillEl.style.width = `${100 - p}%`;
+        countEl.className = 'dl-count' + (r === 0 ? ' exhausted' : r <= 2 ? ' warning' : '');
+        fillEl.className = 'dl-progress-fill' + (r === 0 ? ' exhausted' : r <= 2 ? ' warning' : '');
+      } catch (e) { /* refresh is best-effort */ }
+    }, 30000);
+  } catch (e) {
+    console.warn('[BJ] Daily limit badge init error:', e.message);
+  }
+}
