@@ -4,6 +4,28 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+## v5.56 — 2026-02-27
+- **On-Page Status Overlay (Competitive Gap Item #3)**: Floating bottom-right widget showing real-time fill progress during autofill
+  - New module `extension/inject-overlay.js`: animated overlay with progress bar, per-field status, success/error states
+  - Auto-dismisses after completion (5s success, 8s error), click-to-dismiss
+  - Wired into `contentScript.js` `handleFillRequest()` — shows progress, field results, final state
+  - Matches FastApply/OwlApply floating overlay UX
+- **Cover Letter Generation (Competitive Gap Item #4)**: AI-powered cover letter pipeline via Edge Function
+  - New Edge Function `supabase/functions/generate-cover-letter/index.ts`
+  - Claude Haiku for cost efficiency (~$0.001 per letter), 350-word max
+  - Accepts JD + resume + profile, generates tailored cover letter
+  - Rate limited (20 AI calls/day shared with score-resume), telemetry to `cover_letter_generations` table
+  - Tone options: formal, conversational, default; emphasis keywords
+- **Fill Metrics & Feedback Loop (Competitive Gap Item #5)**: Per-platform fill tracking + PostHog events + AI answer ratings
+  - New module `extension/utils/fillMetrics.js`: tracks fill success/failure rates per ATS platform
+  - PostHog event capture from extension (`extension_fill_completed`, `extension_ai_feedback`, overlay events)
+  - Supabase persistence to `extension_fill_metrics` table with local buffer fallback
+  - Thumbs up/down on AI answers feeding quality table
+  - Wired into `contentScript.js` — auto-reports after every fill
+- Extension version: 2.16.0
+- Dashboard version: v5.56, bundle rebuilt, cache-bust updated
+- `manifest.json`: Added `web_accessible_resources` for dynamic handler/overlay/metrics imports
+
 ## v5.55 — 2026-02-27
 - **Generic/Universal Form Handler (Competitive Gap Item #1)**: DOM heuristic-based form filler that works on any ATS not covered by a dedicated handler
   - New module `extension/handlers/generic.js`: label/input association, name attribute pattern matching, placeholder text analysis, fuzzy-match approach
