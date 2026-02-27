@@ -141,3 +141,43 @@ const BJ_CRYPTO = (() => {
 
   return { encrypt, decrypt, secureSet, secureGet, secureRemove };
 })();
+
+// v5.48: Encrypted storage migration (Item #9)
+// Migrates plaintext PII keys to encrypted format on first run.
+// Idempotent — skips already-encrypted values (tag === 'bj-encrypted').
+const BJ_CRYPTO_MIGRATION = (() => {
+  'use strict';
+
+  const PII_KEYS = ['authSession', 'userProfile', 'resumeData', 'savedAnswers'];
+  const MIGRATION_FLAG = '_bj_crypto_migrated';
+
+  async function migrate() {
+    try {
+      const flagData = await chrome.storage.local.get(MIGRATION_FLAG);
+      if (flagData[MIGRATION_FLAG]) return { migrated: false, reason: 'already_done' };
+
+      let migratedCount = 0;
+      for (const key of PII_KEYS) {
+        const result = await chrome.storage.local.get(key);
+        const value = result[key];
+        if (!value) continue;
+
+        // Skip if already encrypted
+        if (value && value.tag === 'bj-encrypted') continue;
+
+        // Encrypt and re-store
+        await BJ_CRYPTO.secureSet(key, value);
+        migratedCount++;
+      }
+
+      await chrome.storage.local.set({ [MIGRATION_FLAG]: Date.now() });
+      console.log('[BJ] Crypto migration complete:', migratedCount, 'keys encrypted');
+      return { migrated: true, count: migratedCount };
+    } catch (e) {
+      console.warn('[BJ] Crypto migration error:', e.message);
+      return { migrated: false, error: e.message };
+    }
+  }
+
+  return { migrate, PII_KEYS };
+})();
