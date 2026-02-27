@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "description": "Discover jobs through your professional network",
   "permissions": [
     "activeTab",
@@ -90,5 +90,17 @@
     "16": "icon16.png",
     "48": "icon48.png",
     "128": "icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "handlers/*.js",
+        "utils/*.js",
+        "inject-overlay.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
 }
