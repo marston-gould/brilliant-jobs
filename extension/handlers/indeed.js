@@ -25,6 +25,7 @@ import { fillSelect, fillCheckboxRadio, fillCustomDropdown } from '../fields/dro
 import { fillSearchableDropdown } from '../fields/dropdownSearchable.js';
 import { uploadFile, base64ToFile } from '../utils/fileUpload.js';
 import { FieldFillerQueue } from '../utils/fieldFillerQueue.js';
+import { matchMultilingualLabel } from '../utils/multilingualLabels.js';
 
 // ============================================================
 // FUZZY LABEL MATCHING
@@ -161,7 +162,7 @@ async function fillCurrentStep(profile, resume, preferences, queue) {
 
     totalFields++;
     queue.enqueue(async () => {
-      const result = await fillTextInput(input, String(value));
+      const result = await fillTextInput(input, String(value), { humanLike: true });
       if (result.success) filledCount++;
       return result;
     }, label);
@@ -381,6 +382,10 @@ function matchLabelToValue(label, profile, preferences) {
       return answer(preferences);
     }
   }
+
+  // v5.40: Multilingual fallback — FR/ES/DE/IT label detection
+  const multiMatch = matchMultilingualLabel(label, profile, preferences);
+  if (multiMatch) return multiMatch.value;
 
   return null;
 }
