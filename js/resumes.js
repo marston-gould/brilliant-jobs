@@ -107,7 +107,7 @@ function renderResumes() {
   assignedEl.textContent = totalAssigned;
 
   // Coverage check
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const allAssignedFilterNames = new Set(activeResumes.flatMap(r => r.filterIds || []));
   const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
   const coverageEl = $('#r-coverage');
@@ -153,7 +153,7 @@ function renderResumes() {
     const isPlaceholder = r.needsUpload;
 
     // Level selector
-    const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
+    const levels = (safeReadLS('bj_tuning', {}).levelHierarchy || []).filter(l => l.label);
     const levelOpts = levels.map(l => {
       const sel = r.levelLabel === l.label ? ' selected' : '';
       return `<option value="${l.label}" data-color="${l.color || '#94a3b8'}"${sel}>${l.label}</option>`;
@@ -344,7 +344,7 @@ function renderResumeArchive(archivedResumes) {
   section.style.display = '';
   labelEl.textContent = archivedResumes.length + ' archived';
 
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
 
   listEl.innerHTML = archivedResumes.map(r => {
     const i = resumes.indexOf(r);
@@ -381,7 +381,7 @@ function renderResumeArchive(archivedResumes) {
 function updateResumeNavDot() {
   const dot = $('#resume-status-dot');
   if (!dot) return;
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const activeResumes = resumes.filter(r => !r.archived);
   const allAssignedFilterNames = new Set(activeResumes.flatMap(r => r.filterIds || []));
 
@@ -453,7 +453,7 @@ window.toggleResumeFilter = function(resumeIdx, filterName) {
 
 window.setResumeLevel = function(idx, selectEl) {
   const val = selectEl.value;
-  const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []);
+  const levels = (safeReadLS('bj_tuning', {}).levelHierarchy || []);
   const lvl = levels.find(l => l.label === val);
   resumes[idx].levelLabel = val || '';
   resumes[idx].levelColor = lvl?.color || '#94a3b8';
@@ -683,7 +683,7 @@ async function reExtractStuckResumes() {
   let changed = false;
 
   // Clean up stale filterIds that reference deleted/renamed filters
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const validFilterNames = new Set(sf.map(f => f.name));
   for (let i = 0; i < resumes.length; i++) {
     if (!resumes[i].filterIds) continue;
@@ -854,7 +854,7 @@ window.confirmDeleteResume = function(idx) {
 
   // Check if Google Drive is connected
   var gdrive;
-  try { gdrive = JSON.parse(localStorage.getItem('bj_gdrive') || '{}'); } catch(e) { gdrive = {}; }
+  try { gdrive = safeReadLS('bj_gdrive', {}); } catch(e) { gdrive = {}; }
   var gdriveConnected = gdrive && gdrive.connected;
 
   // Build modal
@@ -1118,7 +1118,7 @@ renderResumes();
 
 // Create by Level — scaffold resume placeholders for each level in the hierarchy
 $('#resume-from-level-btn')?.addEventListener('click', async () => {
-  const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
+  const levels = safeReadLS('bj_tuning', {}).levelHierarchy || [];
   if (levels.length === 0) {
     showToast('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.', { type: 'info' });
     return;

@@ -601,7 +601,7 @@ function selectCompanyNotFromDropdown(opt) {
 
 // Collapse toggle
 // Restore Jobs Feed collapse states from localStorage
-const collapseStates = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+const collapseStates = safeReadLS('bj_collapse', {});
 if (collapseStates.qb) {
   $('#qb-toggle').classList.add('collapsed');
   $('#qb-collapse-body').classList.add('collapsed');
@@ -612,7 +612,7 @@ if (collapseStates.sf) {
 }
 
 function saveCollapseStates() {
-  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  const states = safeReadLS('bj_collapse', {});
   states.qb = $('#qb-toggle').classList.contains('collapsed');
   states.sf = $('#sf-toggle').classList.contains('collapsed');
   localStorage.setItem('bj_collapse', JSON.stringify(states));
@@ -698,7 +698,7 @@ async function commitSaveFilter() {
   }
 
   // Warn if no WHERE filter set AND US-only tuning is off
-  const tuningCheck = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuningCheck = safeReadLS('bj_tuning', {});
   if (wherePills.length === 0 && !tuningCheck.usOnly) {
     alert(
       'Please add a location filter.\n\n' +
@@ -1139,7 +1139,7 @@ function renderSavedFilters() {
   });
 
   // Restore checkbox state from localStorage
-  const checkedState = JSON.parse(localStorage.getItem('bj_sf_checked') || '{}');
+  const checkedState = safeReadLS('bj_sf_checked', {});
   list.querySelectorAll('.sf-item-check').forEach(cb => {
     const sf = savedFilters[parseInt(cb.dataset.idx)];
     const name = sf?.name;
@@ -1218,7 +1218,7 @@ async function updateSavedFilterCounts() {
 
     try {
       // Pre-fetch location IDs for this filter
-      const tuningLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+      const tuningLoc = safeReadLS('bj_tuning', {});
       let locIds = null;
       if (wh.length > 0 || whnot.length > 0 || tuningLoc.usOnly) {
         locIds = await getLocationMatchIds(wh, whnot, tuningLoc, sf.includeRemote === true);

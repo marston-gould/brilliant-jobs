@@ -60,7 +60,7 @@
     // Track seen entries per element to avoid repeats
     var storageKey = 'bj_merch_seen_' + elementId;
     var seen = [];
-    try { seen = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e) {}
+    try { seen = safeReadLS(storageKey, []); } catch(e) {}
 
     // Filter out already-seen entries
     var unseen = entries.filter(function(e) { return seen.indexOf(e.id) === -1; });
@@ -131,7 +131,7 @@
   // This piggybacks on the existing stats system via a MutationObserver
   function hydrateMerchStats() {
     var cached = null;
-    try { cached = JSON.parse(localStorage.getItem('bj_lp_stats')); } catch(e) {}
+    try { cached = safeReadLS('bj_lp_stats', null); } catch(e) {}
     if (!cached || !cached.jobs) return;
 
     var jobSpans = document.querySelectorAll('[data-merch-stat="jobs"]');

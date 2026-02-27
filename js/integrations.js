@@ -1,7 +1,7 @@
 // ============================================================
 // GOOGLE DRIVE INTEGRATION
 // ============================================================
-let gdriveState = JSON.parse(localStorage.getItem('bj_gdrive') || '{"connected":false,"files":[]}');
+let gdriveState = safeReadLS('bj_gdrive', {connected: false, files: []});
 
 function renderGdriveState() {
   const dot = $('#gdrive-dot');
