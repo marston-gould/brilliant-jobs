@@ -4,6 +4,19 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+## v5.52 — 2026-02-27
+- **Recruiter Email Discovery (Item #19)**: Hunter.io integration for finding recruiter contacts
+  - New Edge Function `recruiter-lookup`: domain search via Hunter.io API, stores results in `recruiter_contacts`
+  - Filters results by recruiting-related titles (recruiter, talent acquisition, HR, etc.)
+  - Falls back to top 3 highest-confidence contacts when no title matches
+  - Rate limited: 10 lookups per user per day
+  - Caches results: subsequent lookups for same domain return stored contacts
+  - Pipeline UI: "Find Recruiters" menu item on every pipeline card (⋮ menu)
+  - Inline recruiter card shows name, title, email (mailto link), confidence score, LinkedIn link
+  - `loadRecruiterContacts()` utility for future pipeline enrichment features
+  - Requires `HUNTER_API_KEY` secret in Supabase Edge Function env
+  - Migration: uses existing `recruiter_contacts` table (011_recruiter_contacts.sql, shipped v5.50)
+
 ## v5.49 — 2026-02-27
 - **Background Discovery Pipeline (Item #2, P0)**: Full self-sustaining job discovery loop now operational
   - `board_discovery_queue` table: ATS URLs detected by extension, queued for processing (Item #20)

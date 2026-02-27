@@ -651,6 +651,7 @@ async function renderPipeline() {
       html += '<td style="position:relative;">';
       html += '<button class="job-action-btn hide-btn pl-menu-trigger" onclick="togglePlMenu(this,\'' + item.id + '\')" style="padding:2px 8px;font-size:12px;" title="Actions">⋮</button>';
       html += '<div class="pl-menu" id="plmenu-' + item.id + '">';
+      html += '<div class="pl-menu-item" onclick="findRecruiters(\'' + item.id + '\')" data-recruiter-btn="' + item.id + '">Find Recruiters</div>';
       html += '<div class="pl-menu-item" onclick="setTrackingMode(\'' + item.id + '\',\'' + (m.tracking_mode === 'muted' ? 'auto' : 'muted') + '\')">' + (m.tracking_mode === 'muted' ? 'Unmute prompts' : 'Mute prompts') + '</div>';
       html += '<div class="pl-menu-item" onclick="showCustomReminder(\'' + item.id + '\')">Set custom reminder</div>';
       html += '<div class="pl-menu-item" onclick="showStatusNote(\'' + item.id + '\')">Add status note</div>';
@@ -1035,5 +1036,135 @@ async function saveManualPipelineEntry() {
   } catch (e) {
     console.error('[BJ] Manual add error:', e); toastError('Failed to add pipeline entry');
     alert('Failed to add: ' + (e.message || 'Unknown error'));
+  }
+}
+
+// ── Recruiter Email Discovery (Item #19, v5.52) ─────────────
+// Calls recruiter-lookup Edge Function to find recruiter contacts via Hunter.io
+
+async function findRecruiters(jobId) {
+  if (!currentUser?.id) return;
+  const meta = _pipelineCache[jobId];
+  if (!meta) return;
+
+  const company = meta.companyName || meta.company || '';
+  const domain = meta.companyDomain || '';
+
+  if (!domain || domain === 'unknown.com') {
+    toastWarning('No company domain available for recruiter lookup');
+    return;
+  }
+
+  // Show loading state on the button
+  const btn = document.querySelector(`[data-recruiter-btn="${jobId}"]`);
+  if (btn) { btn.textContent = 'Searching…'; btn.disabled = true; }
+
+  try {
+    const session = await sb.auth.getSession();
+    const token = session?.data?.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+
+    const resp = await fetch(sb.supabaseUrl + '/functions/v1/recruiter-lookup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': sb.supabaseKey,
+      },
+      body: JSON.stringify({
+        company_name: company,
+        domain: domain,
+        company_id: null,
+      }),
+    });
+
+    const result = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(result.error || `HTTP ${resp.status}`);
+    }
+
+    if (result.contacts && result.contacts.length > 0) {
+      showRecruiterResults(jobId, company, result.contacts, result.source === 'cached');
+      console.log('[BJ] Recruiter lookup:', result.message);
+    } else {
+      toastWarning('No recruiter contacts found for ' + company);
+    }
+  } catch (e) {
+    console.error('[BJ] Recruiter lookup error:', e);
+    toastError('Recruiter lookup failed: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = 'Find Recruiters'; btn.disabled = false; }
+  }
+}
+
+function showRecruiterResults(jobId, company, contacts, cached) {
+  // Remove any existing recruiter card for this job
+  const existingCard = document.getElementById('rc-card-' + jobId);
+  if (existingCard) existingCard.remove();
+
+  const row = document.querySelector(`tr[data-jobid="${jobId}"]`);
+  if (!row) return;
+
+  const card = document.createElement('tr');
+  card.id = 'rc-card-' + jobId;
+  card.className = 'pl-recruiter-row';
+
+  let contactsHtml = contacts.map(c => {
+    const name = c.recruiter_name || 'Unknown';
+    const email = c.recruiter_email || '';
+    const title = c.recruiter_title || '';
+    const confidence = c.confidence_score || 0;
+    const confColor = confidence >= 80 ? '#22c55e' : confidence >= 60 ? '#f59e0b' : '#ef4444';
+    const linkedIn = c.linkedin_url ? `<a href="${c.linkedin_url}" target="_blank" style="font-size:10px;color:var(--accent);">LinkedIn</a>` : '';
+
+    return `<div class="rc-contact" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-faint);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:12px;">${name}</div>
+        <div style="font-size:11px;color:var(--text-dim);">${title}</div>
+      </div>
+      <div style="font-size:11px;">
+        <a href="mailto:${email}" style="color:var(--accent);">${email}</a>
+      </div>
+      <div style="font-size:10px;color:${confColor};white-space:nowrap;">${confidence}%</div>
+      ${linkedIn ? `<div>${linkedIn}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const sourceLabel = cached ? '(cached)' : '(via Hunter.io)';
+
+  card.innerHTML = `<td colspan="12" style="padding:0;">
+    <div style="background:var(--bg-card);border-left:3px solid var(--accent);padding:10px 14px;margin:2px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-weight:600;font-size:12px;">Recruiter Contacts for ${company} <span style="font-weight:400;color:var(--text-faint);font-size:10px;">${sourceLabel}</span></span>
+        <button onclick="this.closest('tr').remove()" style="background:none;border:none;color:var(--text-faint);cursor:pointer;font-size:14px;" title="Close">✕</button>
+      </div>
+      <div class="rc-contacts">${contactsHtml}</div>
+    </div>
+  </td>`;
+
+  row.after(card);
+}
+
+// Load all recruiter contacts for current user (for pipeline enrichment)
+async function loadRecruiterContacts() {
+  if (!currentUser?.id) return {};
+  try {
+    const { data } = await sb.from('recruiter_contacts')
+      .select('company_name, recruiter_email, recruiter_name, recruiter_title, confidence_score')
+      .eq('user_id', currentUser.id)
+      .order('confidence_score', { ascending: false })
+      .limit(200);
+    if (!data) return {};
+    const byCompany = {};
+    data.forEach(c => {
+      const key = (c.company_name || '').toLowerCase();
+      if (!byCompany[key]) byCompany[key] = [];
+      byCompany[key].push(c);
+    });
+    return byCompany;
+  } catch (e) {
+    console.error('[BJ] Load recruiter contacts error:', e);
+    return {};
   }
 }
