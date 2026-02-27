@@ -70,6 +70,41 @@ var _extensionState = {
   lastChecked: 0,
 };
 
+
+// ═══════════════════════════════════════════════════════════
+// EXTENSION EVENT LOGGING (Tier 3 — B9/D7)
+// Centralized logging for all extension interactions.
+// Writes to extension_events table via Supabase PostgREST.
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Log an extension event to Supabase.
+ * @param {string} eventType - e.g. 'ext_detected', 'ext_fill_success', 'ext_fill_failed', 'ext_ats_detected', 'ext_status_update'
+ * @param {object} [eventData={}] - arbitrary JSON payload
+ * @param {object} [opts={}] - optional: ats_platform, job_url, extension_version
+ */
+async function logExtensionEvent(eventType, eventData, opts) {
+  try {
+    if (!eventData) eventData = {};
+    if (!opts) opts = {};
+    var userId = null;
+    try { userId = (await sb.auth.getUser()).data.user.id; } catch(e) {}
+    if (!userId) return; // not logged in, skip silently
+
+    await sb.from('extension_events').insert({
+      user_id: userId,
+      event_type: eventType,
+      event_data: eventData,
+      ats_platform: opts.ats_platform || null,
+      job_url: opts.job_url || null,
+      extension_version: opts.extension_version || (_extensionState.version || null)
+    });
+  } catch (e) {
+    console.warn('[BJ] Extension event log failed:', e.message);
+    // Non-fatal — never block the workflow for logging
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // EXTENSION DETECTION
 // Uses chrome.runtime.sendMessage to the extension via
@@ -258,6 +293,7 @@ async function dispatchBrowserFill(jobUrl, pendingAppId) {
         pendingAppId: pendingAppId || null,
       }, function(response) {
         if (chrome.runtime.lastError) {
+          logExtensionEvent('ext_fill_failed', { error: chrome.runtime.lastError.message, job_url: jobUrl }, { job_url: jobUrl });
           resolve({ success: false, error: chrome.runtime.lastError.message || 'extension_error' });
         } else {
           // Handle tier_blocked from extension side
@@ -266,10 +302,19 @@ async function dispatchBrowserFill(jobUrl, pendingAppId) {
               showUpgradePrompt('Auto-Apply', { behavior: response.reason === 'free_tier' ? 'off' : 'fixed', effective_limit: response.dailyLimit });
             }
           }
+          if (response && response.success) {
+            logExtensionEvent('ext_fill_success', {
+              filled_fields: response.filledFields, total_fields: response.totalFields,
+              ats: response.ats, job_url: jobUrl
+            }, { ats_platform: response.ats, job_url: jobUrl });
+          } else if (response && !response.success && response.error !== 'tier_blocked') {
+            logExtensionEvent('ext_fill_failed', { error: response.error, job_url: jobUrl, ats: response.ats }, { ats_platform: response.ats, job_url: jobUrl });
+          }
           resolve(response || { success: false, error: 'no_response' });
         }
       });
     } catch (e) {
+      logExtensionEvent('ext_fill_failed', { error: e.message, job_url: jobUrl }, { job_url: jobUrl });
       resolve({ success: false, error: e.message || 'dispatch_error' });
     }
     // 60 second timeout for the fill operation
@@ -1376,6 +1421,10 @@ function initExtensionStatusListener() {
     var msg = event.data;
 
     if (msg.type === 'applicationStatus') {
+      logExtensionEvent('ext_status_update', {
+        status: msg.status, submission_method: msg.submission_method,
+        confirmation: msg.confirmation_detected, pending_app_id: msg.pendingAppId
+      }, { ats_platform: msg.ats, job_url: msg.jobUrl });
       console.log('[apply-workflow] Extension status update:', msg.status, 'for', msg.pendingAppId);
 
       if (!msg.pendingAppId) return;

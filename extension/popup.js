@@ -294,6 +294,7 @@ function initApp() {
   refreshScannerState();
   refreshDataCounts();
   initCounts();
+  initMatchOverlay();
 
   // Start scanner state refresh interval
   setInterval(refreshScannerState, 3000);
@@ -1354,6 +1355,132 @@ function downloadTSV(content, filename) {
   URL.revokeObjectURL(url);
 }
 
+
+// ============================================================
+// MATCH SCORE OVERLAY WIDGET (Tier 3 — A7)
+// Polls background for JD match score when on ATS pages.
+// Shows score, matched/missing tech, and confidence.
+// ============================================================
+
+let _matchOverlayActive = false;
+
+function initMatchOverlay() {
+  // Check for ATS page state from background
+  pollMatchScore();
+  // Re-check every 5 seconds (in case user navigates to an ATS page)
+  setInterval(pollMatchScore, 5000);
+
+  // Also listen for real-time match result messages
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'ats:jdMatchResult') {
+      renderMatchOverlay({
+        score: msg.score,
+        confidence: msg.confidence,
+        techMatched: msg.techMatched || [],
+        techMissing: msg.techMissing || [],
+        ats: null // will be set from atsPageState
+      });
+    }
+  });
+}
+
+async function pollMatchScore() {
+  try {
+    const state = await chrome.runtime.sendMessage({ type: 'getState' });
+    // Not using scanner state — need ATS page state
+    const atsState = await chrome.runtime.sendMessage({ type: 'ats:getPageState' });
+    if (atsState && atsState.jdMatch) {
+      renderMatchOverlay({
+        score: atsState.jdMatch.score,
+        confidence: atsState.jdMatch.confidence,
+        techMatched: atsState.jdMatch.techMatched || [],
+        techMissing: atsState.jdMatch.techMissing || [],
+        ats: atsState.ats || null
+      });
+    } else if (atsState && atsState.ats) {
+      // ATS detected but no match yet — show the widget with "Analyzing..." state
+      showMatchAnalyzing(atsState.ats);
+    } else {
+      hideMatchOverlay();
+    }
+  } catch (e) {
+    // Extension context may not be ready
+  }
+}
+
+function renderMatchOverlay(data) {
+  const overlay = $('#match-overlay');
+  const circle = $('#match-score-circle');
+  const barFill = $('#match-bar-fill');
+  const tags = $('#match-tags');
+  const conf = $('#match-confidence');
+  const badge = $('#match-ats-badge');
+  if (!overlay) return;
+
+  const score = data.score || 0;
+  const level = score >= 70 ? 'high' : score >= 40 ? 'med' : 'low';
+
+  circle.textContent = score + '%';
+  circle.className = 'match-score-circle ' + level;
+  barFill.style.width = score + '%';
+  barFill.className = 'match-bar-fill ' + level;
+
+  if (data.ats) {
+    badge.textContent = data.ats.charAt(0).toUpperCase() + data.ats.slice(1);
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+
+  // Render tech tags (max 4 matched + 3 missing to avoid overflow)
+  let tagHtml = '';
+  (data.techMatched || []).slice(0, 4).forEach(t => {
+    tagHtml += '<span class="match-tag hit">' + t + '</span>';
+  });
+  (data.techMissing || []).slice(0, 3).forEach(t => {
+    tagHtml += '<span class="match-tag miss">' + t + '</span>';
+  });
+  tags.innerHTML = tagHtml;
+
+  if (data.confidence) {
+    conf.textContent = 'Confidence: ' + data.confidence;
+  } else {
+    conf.textContent = '';
+  }
+
+  overlay.classList.add('active');
+  _matchOverlayActive = true;
+}
+
+function showMatchAnalyzing(ats) {
+  const overlay = $('#match-overlay');
+  const circle = $('#match-score-circle');
+  const barFill = $('#match-bar-fill');
+  const tags = $('#match-tags');
+  const conf = $('#match-confidence');
+  const badge = $('#match-ats-badge');
+  if (!overlay) return;
+
+  circle.textContent = '...';
+  circle.className = 'match-score-circle med';
+  barFill.style.width = '0%';
+  barFill.className = 'match-bar-fill med';
+  badge.textContent = ats.charAt(0).toUpperCase() + ats.slice(1);
+  badge.style.display = '';
+  tags.innerHTML = '';
+  conf.textContent = 'Analyzing job description...';
+
+  overlay.classList.add('active');
+}
+
+function hideMatchOverlay() {
+  const overlay = $('#match-overlay');
+  if (overlay && _matchOverlayActive) {
+    overlay.classList.remove('active');
+    _matchOverlayActive = false;
+  }
+}
+
 // ============================================================
 // INIT
 // ============================================================
@@ -1393,4 +1520,5 @@ async function initCounts() {
 }
 
 // Note: initApp() is called from checkAuth() after successful authentication
+
 
