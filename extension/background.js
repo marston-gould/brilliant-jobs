@@ -1330,6 +1330,24 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     platform: atsMatch.platform,
     boardSlug: atsMatch.boardSlug
   }).catch(() => {});
+
+  // Push to board_discovery_queue for discover-boards processing
+  (async () => {
+    try {
+      const { authSession } = await chrome.storage.local.get('authSession');
+      if (!authSession?.access_token) return;
+      await supabase.upsert('board_discovery_queue', [{
+        platform: atsMatch.platform,
+        board_slug: atsMatch.boardSlug,
+        source_url: changeInfo.url,
+        detected_by: 'extension',
+        user_id: authSession.user_id
+      }], 'platform,board_slug');
+      console.log(`[BJ] Queued board discovery: ${atsMatch.platform}/${atsMatch.boardSlug}`);
+    } catch (e) {
+      console.warn('[BJ] Failed to queue board discovery:', e.message);
+    }
+  })();
 });
 
 // ============================================================
