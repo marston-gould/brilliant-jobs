@@ -814,6 +814,9 @@
       .resume-hero > div:first-child { font-size: 16px !important; }
       .resume-hero > div:last-child { font-size: 12px !important; line-height: 1.5 !important; }
       .feed-hero { padding: 20px 18px; margin-bottom: 14px; }
+      .referral-hero { padding: 20px 18px; margin-bottom: 14px; }
+      .referral-hero > div:first-child { font-size: 16px !important; }
+      .referral-hero > div:nth-child(2) { font-size: 12px !important; line-height: 1.5 !important; }
       .app-hero, .ghost-hero { padding: 20px 18px; margin-bottom: 14px; }
       .app-hero > div:first-child, .ghost-hero > div:first-child { font-size: 16px !important; }
       .hero-stats { gap: 6px; }
@@ -1450,6 +1453,18 @@
                   radial-gradient(ellipse 50% 50% at 90% 0%, hsla(258,90%,66%,0.1), transparent);
     }
     .feed-hero > * { position: relative; }
+
+    .referral-hero {
+      background: hsl(215, 61%, 27%); color: #fff; border-radius: 14px;
+      padding: 32px 36px; margin-bottom: 20px; position: relative; overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .referral-hero::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 70% 60% at 10% 100%, hsla(217,100%,62%,0.15), transparent),
+                  radial-gradient(ellipse 50% 50% at 90% 0%, hsla(258,90%,66%,0.1), transparent);
+    }
+    .referral-hero > * { position: relative; }
 
     /* Hero stat chips (shared by feed-hero + resume-hero) */
     .hero-stats {
