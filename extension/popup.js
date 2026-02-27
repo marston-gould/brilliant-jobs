@@ -294,9 +294,11 @@ function initApp() {
   refreshScannerState();
   refreshDataCounts();
   initCounts();
+  initDailyLimitBadge(); // Item #10
 
   // Start scanner state refresh interval
   setInterval(refreshScannerState, 3000);
+  setInterval(refreshDailyLimitBadge, 15000); // Item #10: refresh every 15s
 }
 
 // Start auth check
@@ -1393,4 +1395,81 @@ async function initCounts() {
 }
 
 // Note: initApp() is called from checkAuth() after successful authentication
+
+// ============================================================
+// DAILY LIMIT BADGE (Item #10)
+// Shows Starter tier users their daily application limit usage
+// ============================================================
+
+let _dailyLimitData = { used: 0, limit: 0, tier: '' };
+
+async function initDailyLimitBadge() {
+  await refreshDailyLimitBadge();
+}
+
+async function refreshDailyLimitBadge() {
+  const bar = document.getElementById('daily-limit-bar');
+  const countEl = document.getElementById('dl-count');
+  const fillEl = document.getElementById('dl-bar-fill');
+  if (!bar || !countEl || !fillEl) return;
+
+  try {
+    const data = await chrome.storage.local.get(['authSession', 'bjTierCache']);
+    const session = data.authSession;
+    const tierCache = data.bjTierCache;
+
+    // Only show for Starter tier (not Pro, not Admin)
+    const tier = tierCache?.tier || '';
+    if (tier !== 'starter') {
+      bar.classList.remove('visible');
+      return;
+    }
+
+    // Get daily limit from tier config
+    const dailyLimit = tierCache?.daily_apply_limit || 5;
+
+    // Query today's application count
+    if (!session?.user_id || !session?.access_token) {
+      bar.classList.remove('visible');
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    const resp = await fetch(
+      `${SB_URL}/rest/v1/pending_applications?user_id=eq.${session.user_id}&created_at=gte.${today}T00:00:00Z&select=id`,
+      {
+        headers: {
+          'apikey': session.access_token,
+          'Authorization': `Bearer ${session.access_token}`,
+        }
+      }
+    );
+
+    let used = 0;
+    if (resp.ok) {
+      const rows = await resp.json();
+      used = Array.isArray(rows) ? rows.length : 0;
+    }
+
+    _dailyLimitData = { used, limit: dailyLimit, tier };
+
+    // Update UI
+    bar.classList.add('visible');
+    countEl.textContent = `${used} / ${dailyLimit}`;
+    const pct = Math.min((used / dailyLimit) * 100, 100);
+    fillEl.style.width = `${pct}%`;
+
+    // Color states
+    const nearLimit = pct >= 80;
+    const atLimit = pct >= 100;
+
+    countEl.className = 'dl-count' + (atLimit ? ' at-limit' : nearLimit ? ' near-limit' : '');
+    fillEl.className = 'dl-bar-fill' + (atLimit ? ' at-limit' : nearLimit ? ' near-limit' : '');
+
+  } catch (e) {
+    // Non-fatal — hide badge on error
+    bar.classList.remove('visible');
+  }
+}
 
