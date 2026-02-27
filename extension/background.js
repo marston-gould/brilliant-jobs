@@ -1,11 +1,14 @@
 // background.js — Service worker for Brilliant Jobs
-// v2.0: Merged extension with daily reset fix, keepalive, notifications
+// v3.0.0: Merged extension with daily reset fix, keepalive, notifications
+// v3.1.0: ATS message bridge — handles ats:pageDetected, ats:fill, ats:openAndFill
 
 importScripts('supabase.js');
 
 // ============================================================
 // STATE
 // ============================================================
+
+let atsPageState = null; // Tracks the current ATS page detected by contentScript.js
 
 let scannerState = {
   running: false,
@@ -1135,7 +1138,182 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     resumeScanner();
     sendResponse({ ok: true });
   }
+
+  // ============================================================
+  // ATS AUTOFILL MESSAGE BRIDGE (P0 Architecture)
+  // ============================================================
+
+  // Content script detected an ATS page — cache state
+  if (msg.type === 'ats:pageDetected') {
+    atsPageState = {
+      ats: msg.ats,
+      url: msg.url,
+      jd: msg.jd,
+      fieldCount: msg.fieldCount,
+      tabId: sender.tab?.id,
+      detectedAt: new Date().toISOString()
+    };
+    logMsg(`ATS detected: ${msg.ats} (${msg.fieldCount} fields)`, 'info');
+    chrome.runtime.sendMessage({
+      type: 'ats:pageState',
+      ...atsPageState
+    }).catch(() => {});
+    return;
+  }
+
+  // Content script detected new/changed form fields
+  if (msg.type === 'ats:fieldsChanged') {
+    if (atsPageState) {
+      atsPageState.fieldCount = msg.fieldCount;
+    }
+    chrome.runtime.sendMessage({
+      type: 'ats:fieldsUpdated',
+      fieldCount: msg.fieldCount,
+      url: msg.url
+    }).catch(() => {});
+    return;
+  }
+
+  // Popup or dashboard requesting current ATS page state
+  if (msg.type === 'ats:getPageState') {
+    sendResponse(atsPageState || null);
+    return true;
+  }
+
+  // Popup requesting field scan on active ATS tab
+  if (msg.type === 'ats:requestScan') {
+    const tabId = atsPageState?.tabId || msg.tabId;
+    if (!tabId) {
+      sendResponse({ error: 'No ATS tab detected' });
+      return true;
+    }
+    chrome.tabs.sendMessage(tabId, { type: 'ats:scanFields' })
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  // Dashboard or popup requesting JD extraction
+  if (msg.type === 'ats:requestJD') {
+    const tabId = atsPageState?.tabId || msg.tabId;
+    if (!tabId) {
+      sendResponse({ error: 'No ATS tab detected' });
+      return true;
+    }
+    chrome.tabs.sendMessage(tabId, { type: 'ats:extractJD' })
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ error: err.message }));
+    return true;
+  }
+
+  // Dashboard/popup requesting autofill on ATS tab
+  if (msg.type === 'ats:fill') {
+    handleAtsFill(msg)
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  // Dashboard requesting: open ATS URL in tab and fill
+  if (msg.type === 'ats:openAndFill') {
+    handleAtsOpenAndFill(msg)
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
 });
+
+// ============================================================
+// ATS FILL HANDLERS
+// ============================================================
+
+/**
+ * Send fill command to the content script on the ATS tab.
+ * The content script routes to the correct platform handler.
+ */
+async function handleAtsFill(msg) {
+  const tabId = atsPageState?.tabId || msg.tabId;
+  if (!tabId) {
+    return { success: false, error: 'No ATS tab detected. Navigate to a job application page first.' };
+  }
+
+  // Get profile data from storage if not provided
+  let profile = msg.profile;
+  if (!profile) {
+    const data = await chrome.storage.local.get(['userProfile']);
+    profile = data.userProfile;
+  }
+  if (!profile) {
+    return { success: false, error: 'No profile data. Set up your profile in the extension popup.' };
+  }
+
+  try {
+    const result = await chrome.tabs.sendMessage(tabId, {
+      type: 'ats:fill',
+      profile,
+      resume: msg.resume || null,
+      preferences: msg.preferences || {},
+      userInitiated: true
+    });
+
+    // Log result
+    if (result.success) {
+      logMsg(`Autofill complete on ${atsPageState?.ats || 'unknown'}: ${result.filledCount || 0} fields`, 'info');
+    } else {
+      logMsg(`Autofill failed on ${atsPageState?.ats || 'unknown'}: ${result.error}`, 'warn');
+    }
+
+    return result;
+  } catch (err) {
+    return { success: false, error: `Failed to communicate with ATS tab: ${err.message}` };
+  }
+}
+
+/**
+ * Open a job application URL in a new tab, wait for it to load,
+ * then fill the form. Used by the dashboard's apply workflow.
+ */
+async function handleAtsOpenAndFill(msg) {
+  if (!msg.url) {
+    return { success: false, error: 'No URL provided' };
+  }
+
+  // Open the tab
+  const tab = await chrome.tabs.create({ url: msg.url, active: true });
+
+  // Wait for tab to finish loading
+  await new Promise((resolve) => {
+    const listener = (tabId, info) => {
+      if (tabId === tab.id && info.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(listener);
+    // Timeout after 30s
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      resolve();
+    }, 30000);
+  });
+
+  // Wait a bit more for content script to initialize and detect ATS
+  await new Promise(r => setTimeout(r, 1500));
+
+  // Now send the fill command
+  try {
+    const result = await chrome.tabs.sendMessage(tab.id, {
+      type: 'ats:fill',
+      profile: msg.profile,
+      resume: msg.resume || null,
+      preferences: msg.preferences || {},
+      userInitiated: true
+    });
+    return { ...result, tabId: tab.id };
+  } catch (err) {
+    return { success: false, error: `Tab loaded but fill failed: ${err.message}`, tabId: tab.id };
+  }
+}
 
 // ============================================================
 // ALARM HANDLER
