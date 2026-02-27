@@ -1,9 +1,9 @@
 {
-  "version": "3.3.0",
-  "build": "2026-02-26c",
+  "version": "3.4.0",
+  "build": "2026-02-26d",
   "files": {
-    "manifest.json": "3.0.0",
-    "background.js": "3.1.0",
+    "manifest.json": "3.4.0",
+    "background.js": "3.4.0",
     "contentScript.js": "3.0.0",
     "popup.html": "2.8.0",
     "popup.js": "2.8.0",
@@ -32,6 +32,7 @@
     "fields/dropdownSearchable.js": "3.1.0"
   },
   "changelog": {
+    "3.4.0": "Phase 6 (P5) Apply Pathway Rework: externally_connectable in manifest for dashboard-extension communication. onMessageExternal handler in background.js (dashboard:ping, dashboard:apply, dashboard:getState, dashboard:fillCurrent). handleDashboardApply opens ATS URL in new tab + fills via content script. Dashboard apply-workflow.js v5.29: extension detection via dashboard:ping, dual-path submission (API for Recruitee/Greenhouse, browser fill for Lever/Ashby/Workable via extension, manual fallback), getSubmissionPath routing, dispatchBrowserFill dispatch, _buildProfileForFill profile builder.",
     "3.3.0": "Phase 5 (P10-D) Ashby/Workable/Recruitee: ashby.js (323 lines, Ashby field containers, custom combobox/listbox, EEO fields), workable.js (324 lines, Workable data-ui selectors, name-based + label-based mapping), recruitee.js (294 lines, candidate[] name mapping, GDPR checkbox skip, server-side submission metadata). All 5 ATS platforms now have complete handlers.",
     "3.2.0": "Phase 3 (P10-B) Greenhouse Dual-Board: greenhouse-legacy.js (select2 dropdowns, div.field containers, education repeating sections, EEO fields, resume+cover upload) + greenhouse-react.js (React props hacking, react-select 6-step dropdown, React version detection, serialized field filler queue, React radio groups)",
     "3.1.0": "P0 Architecture Complete: ATS message bridge in background.js (ats:fill, ats:openAndFill, ats:pageDetected, ats:fieldsChanged), date fields filler, checkbox/toggle filler, radio group filler with smart question mapping, searchable dropdown filler (react-select, select2, custom listbox)",
