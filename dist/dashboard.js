@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.23';
+var BJ_VERSION = 'v5.24';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -491,12 +491,12 @@ async function _flushUserData() {
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify({ user_data: Object.assign(
-        JSON.parse(localStorage.getItem('_bj_ud_cache') || '{}'),
+        safeReadLS('_bj_ud_cache', {}),
         patch
       )})
     });
     // Update local cache of full user_data
-    const cached = JSON.parse(localStorage.getItem('_bj_ud_cache') || '{}');
+    const cached = safeReadLS('_bj_ud_cache', {});
     Object.assign(cached, patch);
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
@@ -635,10 +635,10 @@ function showUpgradePrompt(featureName, ent) {
 }
 
 // Saved filters
-var savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+var savedFilters = safeReadLS('bj_saved_filters', []);
 
 // Tuning state (refined by tuning.js when it loads)
-var tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+var tuningSettings = safeReadLS('bj_tuning', {});
 var tuningLocExclPills = tuningSettings.locationExcludes || [];
 var tuningTitleExclPills = tuningSettings.titleExcludes || [];
 var tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -668,9 +668,9 @@ var DEFAULT_RADIUS = 30;
 var allJobs = [];
 var currentJobs = [];
 var jobSortStack = [{ field: 'first_seen_at', asc: false }];
-var hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
-var savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-var appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+var hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
+var savedJobIds = safeReadLS('bj_saved_jobs', []);
+var appliedJobIds = safeReadLS('bj_applied_jobs', []);
 var searchTimeout = null;
 var currentJobPage = 0;
 var JOBS_PER_PAGE = 20;
@@ -755,7 +755,7 @@ function _handleStorageFull(failedKey) {
   // Trim hidden_jobs and applied_jobs to last 500
   ['bj_hidden_jobs', 'bj_applied_jobs', 'bj_saved_jobs'].forEach(function(key) {
     try {
-      var arr = JSON.parse(localStorage.getItem(key) || '[]');
+      var arr = safeReadLS(key, []);
       if (arr.length > 500) {
         arr = arr.slice(-500);
         localStorage.setItem(key, JSON.stringify(arr));
@@ -765,7 +765,7 @@ function _handleStorageFull(failedKey) {
   });
   // Trim app_history to last 200
   try {
-    var hist = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+    var hist = safeReadLS('bj_app_history', []);
     if (hist.length > 200) {
       hist = hist.slice(-200);
       saveUserData('bj_app_history', JSON.stringify(hist));
@@ -1584,7 +1584,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   const wonot = sf.whoNotPills || [];
 
   // Load global tuning settings
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuning = safeReadLS('bj_tuning', {});
 
   // WHAT — title matching via ilike + full-text search (ilike uses trigram index)
   // All What pills are OR'd together (each pill is one keyword)
@@ -2048,7 +2048,7 @@ async function searchJobs(page = 0) {
     const seenIds = new Set();
 
     // Pre-fetch location IDs for all filters that have where pills
-    const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    const tuningForLoc = safeReadLS('bj_tuning', {});
     const locationIdCache = new Map();
     for (const sf of filtersToRun) {
       const wh = sf.wherePills || [];
@@ -2275,7 +2275,7 @@ async function updateJobStatsFromFilters(filters) {
     const effectiveFilters = (filters && filters.length > 0) ? filters : [{}];
 
     // Pre-fetch location IDs for each filter (same as searchJobs does)
-    const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    const tuningForLoc = safeReadLS('bj_tuning', {});
     const locationIdCache = new Map();
     for (const sf of effectiveFilters) {
       const wh = sf.wherePills || [];
@@ -2568,7 +2568,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
   // Collect active negative location terms for display
   const activeNegLocs = [];
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuning = safeReadLS('bj_tuning', {});
   // From whereNotPills in active filters
   if (filtersToRun) {
     for (const sf of filtersToRun) {
@@ -3839,7 +3839,7 @@ async function runReadinessAnalysis(opts) {
 
   if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring2026'; }
 
-  var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  var sf = safeReadLS('bj_saved_filters', []);
 
   var hasEligible = false;
   for (var i = 0; i < resumes.length; i++) {
@@ -5592,7 +5592,7 @@ function renderReadinessResults(scores) {
 function initReadinessPanel() {
   var panel = document.getElementById('readiness-panel');
   if (!panel) return;
-  var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  var sf = safeReadLS('bj_saved_filters', []);
   var hasAssigned = resumes.some(function(r, i){
     return !r.archived && r.keywords && r.keywords.length > 0 && (r.filterIds || []).length > 0;
   });
@@ -6499,7 +6499,7 @@ function markAppliedFromModal(jobId) {
       saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
     }
     // Store applied date
-    const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+    const dates = safeReadLS('bj_applied_dates', {});
     dates[jobId] = new Date().toISOString();
     saveUserData('bj_applied_dates', JSON.stringify(dates));
 
@@ -6509,7 +6509,7 @@ function markAppliedFromModal(jobId) {
     meta[jobId].stage = 'applied';
     if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
     if (resumeName) meta[jobId].resumeUsed = resumeName;
-    const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    const sf = safeReadLS('bj_saved_filters', []);
     const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
     meta[jobId].filterTags = checkedFilters;
     savePipelineMeta(meta);
@@ -6653,7 +6653,7 @@ function hideJob(jobId, btn) {
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
   if (typeof savedFilters !== 'undefined') {
-    var sel = JSON.parse(localStorage.getItem('bj_sf_selected') || '[]');
+    var sel = safeReadLS('bj_sf_selected', []);
     if (sel.length > 0) activeFilterIdxs = sel.map(Number).filter(function(n) { return !isNaN(n) && n >= 0; });
   }
   showHideReasonPopup(jobId, job.title || '', job.company_name || '', btn, () => {
@@ -8529,7 +8529,7 @@ function selectCompanyNotFromDropdown(opt) {
 
 // Collapse toggle
 // Restore Jobs Feed collapse states from localStorage
-const collapseStates = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+const collapseStates = safeReadLS('bj_collapse', {});
 if (collapseStates.qb) {
   $('#qb-toggle').classList.add('collapsed');
   $('#qb-collapse-body').classList.add('collapsed');
@@ -8540,7 +8540,7 @@ if (collapseStates.sf) {
 }
 
 function saveCollapseStates() {
-  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  const states = safeReadLS('bj_collapse', {});
   states.qb = $('#qb-toggle').classList.contains('collapsed');
   states.sf = $('#sf-toggle').classList.contains('collapsed');
   localStorage.setItem('bj_collapse', JSON.stringify(states));
@@ -8626,7 +8626,7 @@ async function commitSaveFilter() {
   }
 
   // Warn if no WHERE filter set AND US-only tuning is off
-  const tuningCheck = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuningCheck = safeReadLS('bj_tuning', {});
   if (wherePills.length === 0 && !tuningCheck.usOnly) {
     alert(
       'Please add a location filter.\n\n' +
@@ -9067,7 +9067,7 @@ function renderSavedFilters() {
   });
 
   // Restore checkbox state from localStorage
-  const checkedState = JSON.parse(localStorage.getItem('bj_sf_checked') || '{}');
+  const checkedState = safeReadLS('bj_sf_checked', {});
   list.querySelectorAll('.sf-item-check').forEach(cb => {
     const sf = savedFilters[parseInt(cb.dataset.idx)];
     const name = sf?.name;
@@ -9146,7 +9146,7 @@ async function updateSavedFilterCounts() {
 
     try {
       // Pre-fetch location IDs for this filter
-      const tuningLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+      const tuningLoc = safeReadLS('bj_tuning', {});
       let locIds = null;
       if (wh.length > 0 || whnot.length > 0 || tuningLoc.usOnly) {
         locIds = await getLocationMatchIds(wh, whnot, tuningLoc, sf.includeRemote === true);
@@ -9777,7 +9777,7 @@ async function loadPipelineFromSupabase() {
   } catch (e) {
     console.error('[BJ] Pipeline load error:', e); toastError('Failed to load your pipeline');
     // Fallback: try localStorage if Supabase fails
-    _pipelineCache = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
+    _pipelineCache = safeReadLS('bj_pipeline_meta', {});
   }
 }
 
@@ -9854,10 +9854,10 @@ async function migratePipelineToSupabase() {
   }
 
   // Read localStorage data
-  const localMeta = JSON.parse(localStorage.getItem('bj_pipeline_meta') || '{}');
-  const localApplied = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
-  const localSaved = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-  const localDates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+  const localMeta = safeReadLS('bj_pipeline_meta', {});
+  const localApplied = safeReadLS('bj_applied_jobs', []);
+  const localSaved = safeReadLS('bj_saved_jobs', []);
+  const localDates = safeReadLS('bj_applied_dates', {});
 
   const allIds = new Set([...Object.keys(localMeta), ...localApplied, ...localSaved]);
   if (allIds.size === 0) {
@@ -10010,7 +10010,7 @@ function _completeMarkApplied(jobId, btn, resumeName) {
   if (resumeName) meta.resumeUsed = resumeName;
 
   // Detect filter tags
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
   meta.filterTags = checkedFilters;
 
@@ -10057,7 +10057,7 @@ async function unsaveFromPipeline(jobId) {
 function togglePipelineStage(headerEl) {
   const section = headerEl.closest('.pl-stage-section');
   section.classList.toggle('collapsed');
-  const states = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
+  const states = safeReadLS('bj_pl_collapse', {});
   states[section.dataset.stage] = section.classList.contains('collapsed');
   localStorage.setItem('bj_pl_collapse', JSON.stringify(states));
 }
@@ -10070,7 +10070,7 @@ function filterPipeline(tag) {
 }
 
 function buildPipelineFilterTags() {
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const select = $('#pl-filter-select');
   if (!select) return;
   const currentVal = select.value;
@@ -10123,8 +10123,8 @@ async function renderPipeline() {
   });
 
   const now = new Date();
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  const collapseStates = JSON.parse(localStorage.getItem('bj_pl_collapse') || '{}');
+  const sf = safeReadLS('bj_saved_filters', []);
+  const collapseStates = safeReadLS('bj_pl_collapse', {});
 
   // Group by stage
   const stageJobs = {};
@@ -10684,7 +10684,7 @@ function showResumePicker(jobId, callback) {
   _rpSelected = null;
 
   const resumes = safeReadLS('bj_resumes', []);
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const optionsEl = $('#rp-options');
 
   if (resumes.length === 0) {
@@ -10757,7 +10757,7 @@ function toggleTuningCard(header) {
 }
 
 function saveTuningCollapseStates() {
-  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  const states = safeReadLS('bj_collapse', {});
   states.tuning = {};
   $$('.tuning-card').forEach(card => {
     if (card.id) states.tuning[card.id] = card.classList.contains('collapsed');
@@ -10767,7 +10767,7 @@ function saveTuningCollapseStates() {
 
 // Restore tuning card states
 (function() {
-  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  const states = safeReadLS('bj_collapse', {});
   const tuning = states.tuning || {};
   Object.entries(tuning).forEach(([id, collapsed]) => {
     const card = document.getElementById(id);
@@ -10775,7 +10775,7 @@ function saveTuningCollapseStates() {
   });
 })();
 
-tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+tuningSettings = safeReadLS('bj_tuning', {});
 tuningLocExclPills = tuningSettings.locationExcludes || [];
 tuningTitleExclPills = tuningSettings.titleExcludes || [];
 tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -11875,7 +11875,7 @@ async function updatePoorMatchSuggestions() {
   if (!sugContainer) return;
 
   // Get tuning exclusions to avoid suggesting already-excluded terms
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuning = safeReadLS('bj_tuning', {});
   const existingTitleExcl = new Set((tuning.titleExcludes || []).map(t => t.toLowerCase()));
   const existingCoExcl = new Set((tuning.companyExcludes || []).map(c => c.toLowerCase()));
 
@@ -12276,7 +12276,7 @@ function renderResumes() {
   assignedEl.textContent = totalAssigned;
 
   // Coverage check
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const allAssignedFilterNames = new Set(activeResumes.flatMap(r => r.filterIds || []));
   const unassignedFilters = sf.filter(f => !allAssignedFilterNames.has(f.name));
   const coverageEl = $('#r-coverage');
@@ -12322,7 +12322,7 @@ function renderResumes() {
     const isPlaceholder = r.needsUpload;
 
     // Level selector
-    const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []).filter(l => l.label);
+    const levels = (safeReadLS('bj_tuning', {}).levelHierarchy || []).filter(l => l.label);
     const levelOpts = levels.map(l => {
       const sel = r.levelLabel === l.label ? ' selected' : '';
       return `<option value="${l.label}" data-color="${l.color || '#94a3b8'}"${sel}>${l.label}</option>`;
@@ -12513,7 +12513,7 @@ function renderResumeArchive(archivedResumes) {
   section.style.display = '';
   labelEl.textContent = archivedResumes.length + ' archived';
 
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
 
   listEl.innerHTML = archivedResumes.map(r => {
     const i = resumes.indexOf(r);
@@ -12550,7 +12550,7 @@ function renderResumeArchive(archivedResumes) {
 function updateResumeNavDot() {
   const dot = $('#resume-status-dot');
   if (!dot) return;
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const activeResumes = resumes.filter(r => !r.archived);
   const allAssignedFilterNames = new Set(activeResumes.flatMap(r => r.filterIds || []));
 
@@ -12622,7 +12622,7 @@ window.toggleResumeFilter = function(resumeIdx, filterName) {
 
 window.setResumeLevel = function(idx, selectEl) {
   const val = selectEl.value;
-  const levels = (JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || []);
+  const levels = (safeReadLS('bj_tuning', {}).levelHierarchy || []);
   const lvl = levels.find(l => l.label === val);
   resumes[idx].levelLabel = val || '';
   resumes[idx].levelColor = lvl?.color || '#94a3b8';
@@ -12852,7 +12852,7 @@ async function reExtractStuckResumes() {
   let changed = false;
 
   // Clean up stale filterIds that reference deleted/renamed filters
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const validFilterNames = new Set(sf.map(f => f.name));
   for (let i = 0; i < resumes.length; i++) {
     if (!resumes[i].filterIds) continue;
@@ -13023,7 +13023,7 @@ window.confirmDeleteResume = function(idx) {
 
   // Check if Google Drive is connected
   var gdrive;
-  try { gdrive = JSON.parse(localStorage.getItem('bj_gdrive') || '{}'); } catch(e) { gdrive = {}; }
+  try { gdrive = safeReadLS('bj_gdrive', {}); } catch(e) { gdrive = {}; }
   var gdriveConnected = gdrive && gdrive.connected;
 
   // Build modal
@@ -13287,7 +13287,7 @@ renderResumes();
 
 // Create by Level — scaffold resume placeholders for each level in the hierarchy
 $('#resume-from-level-btn')?.addEventListener('click', async () => {
-  const levels = JSON.parse(localStorage.getItem('bj_tuning') || '{}').levelHierarchy || [];
+  const levels = safeReadLS('bj_tuning', {}).levelHierarchy || [];
   if (levels.length === 0) {
     showToast('No title levels configured. Go to Search Tuning → Title Level Hierarchy to set up your levels first.', { type: 'info' });
     return;
@@ -13462,7 +13462,7 @@ window.launchRewriteInterview = function(idx) {
 // ============================================================
 // GOOGLE DRIVE INTEGRATION
 // ============================================================
-let gdriveState = JSON.parse(localStorage.getItem('bj_gdrive') || '{"connected":false,"files":[]}');
+let gdriveState = safeReadLS('bj_gdrive', {connected: false, files: []});
 
 function renderGdriveState() {
   const dot = $('#gdrive-dot');
@@ -13574,8 +13574,8 @@ renderGdriveState();
 // ============================================================
 // APPLICATIONS — Flow Management
 // ============================================================
-let appQueue = JSON.parse(localStorage.getItem('bj_app_queue') || '[]');
-let appHistory = JSON.parse(localStorage.getItem('bj_app_history') || '[]');
+let appQueue = safeReadLS('bj_app_queue', []);
+let appHistory = safeReadLS('bj_app_history', []);
 let appMode = localStorage.getItem('bj_app_mode') || 'manual';
 
 // ============================================================
@@ -14732,7 +14732,7 @@ var statsCache = {};
 var STATS_CACHE_TTL = 10 * 60 * 1000;
 var STATS_ROW_CAP = 5000;
 var STATS_DEDUP_CAP = 10000;
-var statsSelectedFilters = JSON.parse(localStorage.getItem('bj_stats_filters') || '["__all__"]');
+var statsSelectedFilters = safeReadLS('bj_stats_filters', ["__all__"]);
 var _statsDebounce = null;
 
 // Light-theme ECharts (dark tooltips float over light cards)
@@ -14888,12 +14888,12 @@ function getSelectedFilterConfigs() {
 
 async function fetchFilterData(sf) {
   try {
-    var tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    var tuning = safeReadLS('bj_tuning', {});
     var locIds = await getLocationMatchIds(sf.wherePills || [], sf.whereNotPills || [], tuning, sf.includeRemote);
     var base = sb.from('ats_jobs').select(STATS_COLUMNS);
     var q = buildFilterQuery(sf, base, locIds);
     // Exclude user-hidden jobs to match feed counts
-    var hiddenIds = JSON.parse(localStorage.getItem('bj_hidden') || '[]');
+    var hiddenIds = safeReadLS('bj_hidden', []);
     if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
     q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
     var res = await q;
@@ -21898,7 +21898,7 @@ function _getActiveResume() {
   }
   // Fallback: check localStorage
   try {
-    var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null; if(raw && raw.startsWith('enc:')) raw = null;
+    var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null;
     if (raw) {
       var resumes = JSON.parse(raw);
       if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
@@ -22075,7 +22075,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
   if (!resumeText) {
     // Fallback: check localStorage
     try {
-      var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null; if(raw && raw.startsWith('enc:')) raw = null;
+      var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null;
       if (raw) {
         var resumes = JSON.parse(raw);
         if (resumes.length > 0) resumeText = resumes[0].text || '';
@@ -23476,7 +23476,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     }
   }
   if (!filtersFromCloud) {
-    savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    savedFilters = safeReadLS('bj_saved_filters', []);
     // Migrate localStorage filters to Supabase on first load
     if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
       for (let i = 0; i < savedFilters.length; i++) {
@@ -23495,7 +23495,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
 
   // Block 7: Check for pending pills from city page conversion
   try {
-    var pendingPills = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]');
+    var pendingPills = safeReadLS('bj_pending_pills', []);
     if (pendingPills.length > 0) {
       localStorage.removeItem('bj_pending_pills');
       // Apply to active filter (or first filter, or create new)
@@ -23556,7 +23556,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     }
   }
   if (!tuningFromCloud) {
-    tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    tuningSettings = safeReadLS('bj_tuning', {});
     // Migrate to Supabase
     if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
       await sb.from('user_tuning').upsert({
@@ -23572,7 +23572,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   tuningCoExclPills = tuningSettings.companyExcludes || [];
   tuningIndExclPills = tuningSettings.industryExcludes || [];
   levelHierarchy = tuningSettings.levelHierarchy || [];
-  hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
+  hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
   // Pipeline now loaded from Supabase (Ghost Build Phase 1)
   // savedJobIds and appliedJobIds are populated by initPipeline()
   savedJobIds = [];

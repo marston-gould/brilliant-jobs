@@ -92,7 +92,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     }
   }
   if (!filtersFromCloud) {
-    savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    savedFilters = safeReadLS('bj_saved_filters', []);
     // Migrate localStorage filters to Supabase on first load
     if (userId && savedFilters.length > 0 && !localStorage.getItem('bj_filters_migrated')) {
       for (let i = 0; i < savedFilters.length; i++) {
@@ -111,7 +111,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
 
   // Block 7: Check for pending pills from city page conversion
   try {
-    var pendingPills = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]');
+    var pendingPills = safeReadLS('bj_pending_pills', []);
     if (pendingPills.length > 0) {
       localStorage.removeItem('bj_pending_pills');
       // Apply to active filter (or first filter, or create new)
@@ -172,7 +172,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     }
   }
   if (!tuningFromCloud) {
-    tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    tuningSettings = safeReadLS('bj_tuning', {});
     // Migrate to Supabase
     if (userId && Object.keys(tuningSettings).length > 0 && !localStorage.getItem('bj_tuning_migrated')) {
       await sb.from('user_tuning').upsert({
@@ -188,7 +188,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   tuningCoExclPills = tuningSettings.companyExcludes || [];
   tuningIndExclPills = tuningSettings.industryExcludes || [];
   levelHierarchy = tuningSettings.levelHierarchy || [];
-  hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
+  hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
   // Pipeline now loaded from Supabase (Ghost Build Phase 1)
   // savedJobIds and appliedJobIds are populated by initPipeline()
   savedJobIds = [];
