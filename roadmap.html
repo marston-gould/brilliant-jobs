@@ -1556,9 +1556,8 @@ const filterLabels = {
 let activeFilter = 'all';
 
 function getFilterGroup(f) {
-  if (f.s === 'done' && !f.b) return 'done';
-  if (f.b && filterGroups[f.b]) return filterGroups[f.b];
   if (f.s === 'done') return 'done';
+  if (f.b && filterGroups[f.b]) return filterGroups[f.b];
   return null;
 }
 
