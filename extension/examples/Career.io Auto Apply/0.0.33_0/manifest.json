@@ -1,0 +1,124 @@
+{
+   "action": {
+      "default_popup": "app.html?popup=true",
+      "default_title": "Open Resume Tracker"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "js": [ "content.js" ],
+      "matches": [ "\u003Call_urls>" ]
+   }, {
+      "css": [ "job_board_common.css", "linkedin_cio_content.css" ],
+      "include_globs": [ "*://*.linkedin.*/*" ],
+      "js": [ "insertLinkedinContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "indeed_cio_content.css" ],
+      "include_globs": [ "*://*.indeed.*/*" ],
+      "js": [ "insertIndeedContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css" ],
+      "include_globs": [ "*://*.glassdoor.*/*" ],
+      "js": [ "insertGlassdoorContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_seek_content.css" ],
+      "include_globs": [ "*://*.seek.*/*" ],
+      "js": [ "insertSeekContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_zip_recruiter_content.css" ],
+      "include_globs": [ "*://*.ziprecruiter.com/*" ],
+      "js": [ "insertZipRecruiterContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_zip_recruiter_uk_content.css" ],
+      "include_globs": [ "*://*.ziprecruiter.co.uk/*" ],
+      "js": [ "insertZipRecruiterContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_naukri_content.css" ],
+      "include_globs": [ "*://*.naukri.*/*" ],
+      "js": [ "insertNaukriContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_simply_hired_content.css" ],
+      "include_globs": [ "*://*.simplyhired.*/*" ],
+      "js": [ "insertSimplyHiredContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_dice_content.css" ],
+      "include_globs": [ "*://*.dice.*/*" ],
+      "js": [ "insertDiceContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_euro_jobs_content.css" ],
+      "include_globs": [ "https://eurojobs.com/*" ],
+      "js": [ "insertEuroJobsContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css" ],
+      "include_globs": [ "https://jooble.*/*" ],
+      "js": [ "insertJoobleContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_reed_content.css" ],
+      "include_globs": [ "*://*.reed.co.*/*" ],
+      "js": [ "insertReedContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_stepstone_content.css" ],
+      "include_globs": [ "*://*.totaljobs.*/*", "*://*.stepstone.de/*", "*://*.irishjobs.ie/*", "*://*.nijobs.*/*", "*://*.caterer.*/*" ],
+      "js": [ "insertStepStoneContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css" ],
+      "include_globs": [ "*://*.monster.*/*" ],
+      "js": [ "insertMonsterContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_talent_content.css" ],
+      "include_globs": [ "*://*.talent.*/*" ],
+      "js": [ "insertTalentContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "job_board_common.css", "insert_career_builder_content.css" ],
+      "include_globs": [ "*://*.careerbuilder.com/*" ],
+      "js": [ "insertCareerBuilderContent.js" ],
+      "matches": [ "*://*/*" ],
+      "run_at": "document_end"
+   } ],
+   "description": "The easiest way to Auto Apply for job opportunities from anywhere on the web!",
+   "host_permissions": [ "*://*/" ],
+   "icons": {
+      "128": "icon128.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjnSJBcnMRTMhqIjbOnRlnqt2AGRyBKWlwBnlRVrbbAdSkfC55bj+pmDGHKb4SUziS+/NsxHJipR17+m2XJrZSUI9NpahOcXjutbddKCCcfHuJe+n69fuHkJr1iMOOui8y/7t2dtQaTNgtHeFgm13OdRAqQqAs5PvWSAVK2kilmc5e+ZYflRgqSp2DeROXmztmnoeXNKVfsXuvJWzuDo2JDNCg7F7Lp/G1Pf1SYZ9eUyokjo9IrPsFphqWL4O4D7qmZeL3RvbzX4sKcGk7LR36n6jySpZgCs77jk7Q9rdsYfr1YAv0rXtBeDZCu3NTl78gjB5DtuBB42uOlrCUjC3dQIDAQAB",
+   "manifest_version": 3,
+   "name": "Career.io Job Auto Apply",
+   "permissions": [ "activeTab", "tabs", "storage", "scripting" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "0.0.33",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "*.html", "*.css", "careerio.svg", "icon128.png" ]
+   } ]
+}

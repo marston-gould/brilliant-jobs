@@ -1,0 +1,44 @@
+{
+   "action": {
+      "default_popup": "popup.html",
+      "default_title": "Smart Applai"
+   },
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "js": [ "content.js" ],
+      "matches": [ "https://*.naukri.com/*" ]
+   }, {
+      "js": [ "token-sync.js", "content-linkedin.js" ],
+      "matches": [ "https://*.linkedin.com/*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "token-sync.js" ],
+      "matches": [ "http://localhost:3000/*", "http://localhost/*" ],
+      "run_at": "document_start"
+   }, {
+      "all_frames": true,
+      "js": [ "content-indeed.js" ],
+      "matches": [ "https://*.indeed.com/*" ]
+   }, {
+      "js": [ "content-foundit.js" ],
+      "matches": [ "https://*.foundit.in/*" ]
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'"
+   },
+   "description": "Auto-apply jobs on LinkedIn, Naukri, Indeed & Foundit. AI-powered automation with one-click apply & resume auto-fill.",
+   "host_permissions": [ "https://*.naukri.com/*", "https://*.linkedin.com/*", "https://*.indeed.com/*", "https://*.foundit.in/*", "https://www.smartapplai.com/*", "http://www.smartapplai.com/*", "http://localhost:3000/*", "http://localhost:8000/*", "http://localhost/*" ],
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzHhOMbk+DJjt8GKafdfSn8TmOYLc08JugEQJXQTKQVyDojsDln5jhVNi1nHWpzMG8gW+kGl0jKQSyRpc2VK4gpFInwc902i1/GFdrWnlLcaDkOILjKPgpXzwL8/RW0NL8cP1UxGexlhfygGnhUan72PEgddJGUbd++KWMR7FNUU0AwyRSLPTkFUt7/zSHWsKpWNDGGkqw7E+lpD/bDeGhFaBes96SyOW4tlgpgxvwyX8CZwWYbgs1LtrvaIyp/MvXIaH9KXIKH94DkeH+/foNhWlqqgO/R7GZ7kE97h9raLiOPH4e6lSMGucbVWHJ/kB1MBO8iVEIICj4UOExHbXgwIDAQAB",
+   "manifest_version": 3,
+   "name": "Smart Applai - Auto Apply Jobs on LinkedIn, Naukri, Indeed",
+   "permissions": [ "storage", "tabs", "activeTab", "scripting" ],
+   "short_name": "Smart Applai",
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.1.5",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "automation/*", "src/automation/*", "auth.html", "page-context.js" ]
+   } ]
+}

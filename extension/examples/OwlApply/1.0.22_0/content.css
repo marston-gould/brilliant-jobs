@@ -1,0 +1,57 @@
+.autofilled-by-owlapply {
+  animation: owlapply-gentle-pulse 2s ease-in-out;
+  border: 4px solid rgba(40, 167, 69, 0.5) !important;
+  box-shadow: 0 0 5px rgba(40, 167, 69, 0.3) !important;
+  transition: all 0.3s ease;
+}
+
+@keyframes owlapply-gentle-pulse {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(40, 167, 69, 0.1);
+  }
+}
+
+.not-filled-by-owlapply {
+  animation: owlapply-gentle-error-pulse 2s ease-in-out;
+  border: 2px solid rgba(220, 53, 69, 0.5) !important;
+  box-shadow: 0 0 5px rgba(220, 53, 69, 0.3) !important;
+  transition: all 0.3s ease;
+}
+
+@keyframes owlapply-gentle-error-pulse {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(220, 53, 69, 0.1);
+  }
+}
+
+.not-filled-by-owlapply:focus {
+  border-color: rgba(220, 53, 69, 0.8) !important;
+  box-shadow: 0 0 8px rgba(220, 53, 69, 0.5) !important;
+}
+
+.highlighted-by-owlapply {
+  border: 2px solid #00ffff !important;
+  box-shadow:
+    0 0 15px #00ffff,
+    0 0 25px #00ffff,
+    0 0 35px #00ffff !important;
+  transform: scale(1.05) !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  z-index: 9999 !important;
+  isolation: isolate !important;
+}
+
+form:has(.highlighted-by-owlapply),
+div:has(.highlighted-by-owlapply) {
+  overflow: visible !important;
+  position: relative !important;
+}

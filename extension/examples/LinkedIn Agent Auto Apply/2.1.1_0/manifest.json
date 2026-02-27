@@ -1,0 +1,38 @@
+{
+   "action": {
+      "default_icon": {
+         "128": "icons/icon128.png",
+         "16": "icons/icon16.png",
+         "32": "icons/icon32.png",
+         "48": "icons/icon48.png"
+      },
+      "default_popup": "popup.html"
+   },
+   "author": "CareerGPT",
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "js": [ "siteDetector.js", "jobSiteStrategy.js", "formAnalyzer.js", "database-api.js", "agent.js", "content.js" ],
+      "matches": [ "*://*.linkedin.com/jobs/*", "*://*.linkedin.com/jobs", "*://*.linkedin.com/my-items/saved-jobs/*" ],
+      "run_at": "document_end"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://careergpt.io/api/*"
+   },
+   "description": "Job application automation powered by CareerGPT - Apply to LinkedIn jobs efficiently",
+   "homepage_url": "https://careergpt.io",
+   "host_permissions": [ "*://*.linkedin.com/jobs/*", "*://*.linkedin.com/jobs", "*://*.linkedin.com/my-items/saved-jobs/*", "https://careergpt.io/api/*" ],
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyCb8w5PnKJFuMmG2GqxOOZLFrneU7nnO96XUk1XamNpg06JVRR6SsXtocZj4jL03te726IlAwlVWAyPfdA9fNFXYrZ6jIydzNrugArKaS25aXWRxUPcHWMgQ4/WIrSky3mNHWHhHcpvCQKNjZg2oNDH0udzdyrEOaWCopAkVb7L96dblU/Kylz9zCeUUEr4XzO+KflmImZTGWHVTdfR7V755qvvroY7etp+ckrplOJ7YQzgxLAPaQg+957lq99VutMmUx3Tww8Ve2mW0hVJ6vvlkfnv1yz4sUd1LPITJEPJqbHB8RHysliyw+TmAnaB7B65zt6b7vOUNz0F6784VkwIDAQAB",
+   "manifest_version": 3,
+   "name": "LinkedIn Agent Auto Apply",
+   "permissions": [ "activeTab", "storage" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "2.1.1"
+}

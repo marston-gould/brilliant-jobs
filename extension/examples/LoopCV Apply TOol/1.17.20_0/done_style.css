@@ -1,0 +1,271 @@
+:root {
+  --primary-color: #1867c0;
+  --primary-color-hover: #2a73c5;
+
+  --text-dark: #1a1a1a;
+  --text-gray: #424242;
+  --border-color: #e0e0e0;
+  --bg-light: #f8f9fa;
+  --white: #fff;
+
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  --border-radius: 8px;
+
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--bg-light);
+}
+
+.ext-report-wrapper {
+  padding: var(--spacing-lg);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.ext-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.ext-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.ext-body {
+  margin-bottom: var(--spacing-xl);
+}
+
+.ext-statistics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.ext-statistics>div {
+  min-width: calc(33.333% - var(--spacing-lg));
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  background-color: var(--white);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stats-item-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+
+.stats-item-card:hover {
+  transform: translateY(-2px);
+}
+
+.stats-content {
+  flex: 1;
+}
+
+.stats-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-sm);
+}
+
+.stats-label {
+  color: var(--text-gray);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.stats-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.ext-applications-wrapper,
+.ext-questions-wrapper {
+  background-color: var(--white);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ext-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-md);
+}
+
+.ext-info-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
+}
+
+.ext-btn-wrapper {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: var(--spacing-sm) 0;
+}
+
+.ext-jobs div {
+  padding: var(--spacing-sm);
+  color: var(--text-gray);
+  font-size: 14px;
+}
+
+.ext-jobs p:last-child {
+  border-bottom: none;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+  height: 40px;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 48px;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease,
+
+}
+
+.btn:hover {
+  background-color: var(--primary-color-hover);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+
+}
+
+
+@media (max-width: 600px) {
+  .ext-statistics>div {
+    min-width: 100%;
+  }
+
+  .ext-info-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}
+
+#viewAllApplications {
+  background-color: #f3f3f3;
+  color: #424242;
+}
+
+.error-list {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.error-item {
+  padding: 0.75rem 0;
+  border-right: 1px solid #d6dce1;
+  padding-right: 13px;
+
+}
+
+.error-item:last-child {
+  border-right: none;
+}
+
+.error-header {
+  font-weight: 500;
+  color: #111827;
+}
+
+.error-reason {
+  font-size: 0.875rem;
+  color: #DC2626;
+  margin-top: 0.25rem;
+}
+
+.error-meta {
+  font-size: 0.75rem;
+  color: #6B7280;
+  margin-top: 0.25rem;
+}
+
+.error-link {
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  margin-top: 0.25rem;
+  text-decoration: none;
+}
+
+.error-link:hover {
+  text-decoration: underline;
+}
+
+.errorLabelWrapper{
+  display: flex;
+  align-items: center;
+    gap: 10px;
+}
+
+.error-card{
+  display: flex;
+  gap:40px;
+}
+
+#errorList{
+       display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      padding: 20px;
+      box-shadow: rgba(100, 100, 111, 0.4) 3px 3px 7px 1px;
+      border-radius: 30px;
+      gap: 20px;
+      flex-wrap: wrap;
+}
+
+#errorListWrapper{
+  display: none;
+  margin-top:20px;
+
+}
+
+#errorsHeader{
+  display: flex;
+  margin-bottom:2px;
+}
+
+#moreErrorsCount{
+  display: none;
+}
