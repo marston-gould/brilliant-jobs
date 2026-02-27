@@ -1,5 +1,5 @@
 // js/extension-download.js — Phase 12: Fingerprinted Extension Download
-// Dashboard v5.35 | Extension 4.0.0
+// Dashboard v5.36 | Extension 4.0.0
 //
 // Handles:
 // 1. Requesting a unique build from the build-extension Edge Function
