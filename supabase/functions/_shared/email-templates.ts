@@ -835,3 +835,37 @@ export function applyBulkCompleteEmail(
     sms_text: `Brilliant Jobs: Bulk apply done — ${totalSubmitted} submitted, ${totalSkipped} skipped, ${totalFailed} failed.`,
   };
 }
+
+// ---- Leaderboard Reward Notification (Phase 2) ----
+interface LeaderboardRewardEmailParams {
+  displayName: string;
+  rank: number;
+  credits: number;
+  proDays: number;
+  periodType: string;
+  periodLabel: string;
+}
+
+export function leaderboardRewardEmail(params: LeaderboardRewardEmailParams): string {
+  const { displayName, rank, credits, proDays, periodType, periodLabel } = params;
+  const rankLabel = rank === 1 ? "#1" : rank <= 3 ? `#${rank}` : rank <= 10 ? `#${rank}` : `Top ${periodType === "weekly" ? "10" : "25"}%`;
+  const rewardParts: string[] = [];
+  if (credits > 0) rewardParts.push(`<span class="badge badge-blue">${credits} credits</span>`);
+  if (proDays > 0) rewardParts.push(`<span class="badge badge-green">${proDays} days Pro</span>`);
+
+  return baseLayout("Leaderboard Reward", `
+    <div class="card">
+      <div class="card-title">You earned leaderboard rewards</div>
+      <p class="card-sub">Hey ${displayName}, you ranked <strong>${rankLabel}</strong> on the ${periodType} referral leaderboard ${periodLabel}.</p>
+      ${detailRow("Rank", `<strong>${rankLabel}</strong>`)}
+      ${detailRow("Referral period", periodLabel)}
+      ${credits > 0 ? detailRow("Credits earned", `<span class="mono">${credits}</span>`) : ""}
+      ${proDays > 0 ? detailRow("Pro time earned", `<span class="mono">${proDays} days</span>`) : ""}
+      <hr class="divider" />
+      <p class="text">Your rewards are already applied to your account. Keep referring to climb the leaderboard next ${periodType === "weekly" ? "week" : "month"}.</p>
+      <div class="btn-row">
+        <a href="${DASHBOARD_URL}#referrals" class="btn btn-primary">View Leaderboard</a>
+      </div>
+    </div>
+  `);
+}

@@ -1,4 +1,4 @@
-// refresh-jobs Edge Function v13
+// refresh-jobs Edge Function v14
 // Multi-ATS job scraper with TIERED REFRESH.
 // Boards are prioritized by activity:
 //   HOT  (job_count > 0):              ~9K boards — refresh every 6h
@@ -10,6 +10,12 @@
 //
 // pg_cron fires every 3 minutes, batch=150 → full HOT cycle in ~6h,
 // WARM in ~3 days, COLD weekly. ~310 invocations/day.
+//
+// v14 changes:
+//   - Phase 3A: Greenhouse API token scraping during refresh
+//   - Scrapes gh_token from career page (iframe embed, JS variable)
+//   - Stores in ats_companies.api_key_encrypted for Phase 3B submission
+//   - Token scraping is non-blocking (fire-and-forget, bounded 10s timeout)
 //
 // v13 changes:
 //   - Tiered refresh (HOT/WARM/COLD) based on job_count + last_http_status
@@ -203,6 +209,97 @@ function parseRecruiteeJobs(data: any, slug: string, companyName: string): Parse
       is_remote: isRemote,
     };
   });
+}
+
+// ============ GREENHOUSE TOKEN SCRAPING (Phase 3A) ============
+
+/**
+ * Scrape the Greenhouse Job Board API token (gh_token / mapped_url_token)
+ * from the employer's career page. These tokens are public — embedded in
+ * the iframe src or JS variable on the career page.
+ *
+ * Two known patterns:
+ *   1. iframe: <iframe src="...?token=XXXX...">
+ *   2. JS var: Grnhse.Settings = { ... boardToken: "XXXX" ... }
+ *      or:     gh_token = "XXXX"
+ *
+ * Returns { token, source } or null if not found.
+ */
+async function scrapeGreenhouseToken(slug: string): Promise<{ token: string; source: string } | null> {
+  try {
+    // Fetch the Greenhouse-hosted career page (not the API)
+    const pageUrl = `https://boards.greenhouse.io/${slug}`;
+    const resp = await fetch(pageUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; BrilliantJobs/1.0)" },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!resp.ok) return null;
+    const html = await resp.text();
+
+    // Pattern 1: iframe embed with token param
+    // e.g. <iframe ... src="https://boards.greenhouse.io/embed/job_board?for=slug&token=ABCDEF123">
+    const iframeMatch = html.match(/[?&]token=([a-zA-Z0-9_-]{6,})/);
+    if (iframeMatch) {
+      return { token: iframeMatch[1], source: "scraped_iframe" };
+    }
+
+    // Pattern 2: JS variable — Grnhse.Settings boardToken
+    // e.g. Grnhse.Settings = { ... boardToken: "ABCDEF123" ... }
+    const boardTokenMatch = html.match(/boardToken\s*:\s*["']([a-zA-Z0-9_-]{6,})["']/);
+    if (boardTokenMatch) {
+      return { token: boardTokenMatch[1], source: "scraped_js" };
+    }
+
+    // Pattern 3: gh_token variable
+    // e.g. var gh_token = "ABCDEF123";
+    const ghTokenMatch = html.match(/gh_token\s*[=:]\s*["']([a-zA-Z0-9_-]{6,})["']/);
+    if (ghTokenMatch) {
+      return { token: ghTokenMatch[1], source: "scraped_js" };
+    }
+
+    // Pattern 4: mapped_url_token in any context
+    const mappedMatch = html.match(/mapped_url_token\s*[=:]\s*["']([a-zA-Z0-9_-]{6,})["']/);
+    if (mappedMatch) {
+      return { token: mappedMatch[1], source: "scraped_js" };
+    }
+
+    return null;
+  } catch {
+    // Timeout or network error — don't block refresh
+    return null;
+  }
+}
+
+/**
+ * Store a scraped token in ats_companies. Only overwrites if:
+ * - No existing token, OR
+ * - Existing token was scraped (not manual/partner) and is stale (> 7 days)
+ */
+async function storeGreenhouseToken(slug: string, token: string, source: string) {
+  const now = new Date().toISOString();
+
+  // Check existing token — don't overwrite manual/partner keys
+  const { data: existing } = await sb
+    .from("ats_companies")
+    .select("api_key_encrypted, api_key_source")
+    .eq("slug", slug)
+    .eq("source", "greenhouse")
+    .maybeSingle();
+
+  if (existing?.api_key_source === "manual" || existing?.api_key_source === "partner") {
+    return; // Don't overwrite manually set or partner keys
+  }
+
+  await sb
+    .from("ats_companies")
+    .update({
+      api_key_encrypted: token,
+      api_key_source: source,
+      api_key_scraped_at: now,
+    })
+    .eq("slug", slug)
+    .eq("source", "greenhouse");
 }
 
 // ============ ATS CONFIG ============
@@ -498,6 +595,7 @@ Deno.serve(async (req: Request) => {
   let totalClosed = 0;
   let errors = 0;
   let boardsProcessed = 0;
+  let tokensScraped = 0;
 
   for (let i = 0; i < boards.length; i += CONCURRENCY) {
     if (Date.now() - startTime > 120_000) {
@@ -507,6 +605,28 @@ Deno.serve(async (req: Request) => {
 
     const batch = boards.slice(i, i + CONCURRENCY);
     const results = await Promise.all(batch.map((b: Board) => scrapeBoard(b)));
+
+    // Phase 3A: Collect Greenhouse boards from this batch for token scraping
+    // Run token scraping in parallel with job processing (non-blocking)
+    const ghBoardsToScrape = batch.filter(
+      (b) => b.source === "greenhouse" && results.find(
+        (r) => r.slug === b.slug && r.source === "greenhouse" && !r.error
+      )
+    );
+
+    // Fire-and-forget token scraping for Greenhouse boards (don't block refresh)
+    const tokenPromises = ghBoardsToScrape.map(async (b) => {
+      try {
+        const tokenResult = await scrapeGreenhouseToken(b.slug);
+        if (tokenResult) {
+          await storeGreenhouseToken(b.slug, tokenResult.token, tokenResult.source);
+          tokensScraped++;
+          console.log(`[refresh-jobs] Token scraped: ${b.slug} (${tokenResult.source})`);
+        }
+      } catch {
+        // Token scraping failures must never block the refresh cycle
+      }
+    });
 
     for (const result of results) {
       boardsProcessed++;
@@ -532,6 +652,9 @@ Deno.serve(async (req: Request) => {
         await updateCompany(result.slug, result.source, 0, status);
       }
     }
+
+    // Wait for token scraping to finish before next batch (bounded by 10s timeout each)
+    await Promise.allSettled(tokenPromises);
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -540,6 +663,7 @@ Deno.serve(async (req: Request) => {
     boards_total: boards.length,
     jobs_upserted: totalJobs,
     jobs_closed: totalClosed,
+    tokens_scraped: tokensScraped,
     errors,
     elapsed_seconds: parseFloat(elapsed),
     source_filter: sourceFilter,
