@@ -1,6 +1,7 @@
 // background.js — Service worker for Brilliant Jobs
 // v3.0.0: Merged extension with daily reset fix, keepalive, notifications
 // v3.1.0: ATS message bridge — handles ats:pageDetected, ats:fill, ats:openAndFill
+// v3.4.0: External message bridge — dashboard:apply, dashboard:ping, dashboard:getState
 
 importScripts('supabase.js');
 
@@ -1222,6 +1223,133 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 });
+
+// ============================================================
+// EXTERNAL MESSAGE BRIDGE (dashboard ↔ extension)
+// Requires externally_connectable in manifest.json
+// Messages from https://brilliantjobs.app (and subdomains)
+// ============================================================
+
+chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+  // Validate origin — only accept from brilliantjobs.app
+  const origin = sender.url || sender.origin || '';
+  if (!origin.includes('brilliantjobs.app')) {
+    sendResponse({ success: false, error: 'unauthorized_origin' });
+    return;
+  }
+
+  logMsg(`External message: ${msg.type} from ${origin}`, 'info');
+
+  // ── Ping: Dashboard checks if extension is installed + version ──
+  if (msg.type === 'dashboard:ping') {
+    sendResponse({
+      success: true,
+      installed: true,
+      version: chrome.runtime.getManifest().version,
+      capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee'],
+      atsPageState: atsPageState || null,
+    });
+    return;
+  }
+
+  // ── Get ATS state: Dashboard checks current ATS tab state ──
+  if (msg.type === 'dashboard:getState') {
+    sendResponse({
+      success: true,
+      atsPageState: atsPageState || null,
+    });
+    return;
+  }
+
+  // ── Apply via browser fill: Dashboard requests extension to open URL and fill ──
+  if (msg.type === 'dashboard:apply') {
+    handleDashboardApply(msg)
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true; // async response
+  }
+
+  // ── Apply via fill on current ATS tab ──
+  if (msg.type === 'dashboard:fillCurrent') {
+    handleAtsFill(msg)
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  sendResponse({ success: false, error: 'unknown_message_type' });
+});
+
+/**
+ * Handle dashboard:apply — Open ATS URL in new tab, wait for load, fill form.
+ * This is the browser-fill path for non-API ATS platforms.
+ */
+async function handleDashboardApply(msg) {
+  const { jobUrl, profile, resume, preferences, pendingAppId } = msg;
+
+  if (!jobUrl) {
+    return { success: false, error: 'missing_job_url' };
+  }
+  if (!profile) {
+    return { success: false, error: 'missing_profile' };
+  }
+
+  logMsg(`Dashboard apply: opening ${jobUrl}`, 'info');
+
+  try {
+    // Open the ATS page in a new tab
+    const tab = await chrome.tabs.create({ url: jobUrl, active: true });
+
+    // Wait for tab to finish loading
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Tab load timeout (30s)')), 30000);
+      const listener = (tabId, changeInfo) => {
+        if (tabId === tab.id && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          clearTimeout(timeout);
+          // Extra 500ms for dynamic content to render
+          setTimeout(resolve, 500);
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+
+    // Wait for content script to detect ATS and scan fields
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Send fill command to the content script
+    const result = await chrome.tabs.sendMessage(tab.id, {
+      type: 'ats:fill',
+      profile,
+      resume: resume || null,
+      preferences: preferences || {},
+      userInitiated: true,
+      pendingAppId: pendingAppId || null,
+    });
+
+    logMsg(`Dashboard apply result: ${JSON.stringify(result)}`, result?.success ? 'info' : 'warn');
+
+    return {
+      success: result?.success || false,
+      filledFields: result?.filledFields || 0,
+      totalFields: result?.totalFields || 0,
+      ats: result?.ats || 'unknown',
+      tabId: tab.id,
+      needsIntervention: result?.needsIntervention || false,
+      interventionReason: result?.interventionReason || null,
+      error: result?.error || null,
+    };
+
+  } catch (err) {
+    logMsg(`Dashboard apply error: ${err.message}`, 'error');
+    return {
+      success: false,
+      error: err.message || 'fill_failed',
+      needsIntervention: true,
+      interventionReason: 'Extension could not fill the form. Please fill manually.',
+    };
+  }
+}
 
 // ============================================================
 // ATS FILL HANDLERS
