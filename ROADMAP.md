@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-27
 **Target launch:** March 2026
-**Current version:** v5.48
+**Current version:** v5.54
 
 ---
 
@@ -2071,3 +2071,69 @@ Source: referral-hub-redesign-spec v3 (Feb 26, 2026)
 | Console log | [BJ] Dashboard v5.48 loaded |
 
 **Phase 49 total: 16 items across v5.44–v5.48 | All complete ✅. Fully deployed to production.**
+
+---
+
+## Phase 50: Extension Completion Sprint (v5.49–v5.54) — 2026-02-27 ✅ COMPLETE
+
+**Source:** Extension & Platform Remaining Work document (22 items total, all now complete)
+
+### v5.49 — Background Discovery Pipeline + board_discovery_queue
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-17 | Background Discovery Pipeline (Item #2) | v5.49 | ✅ | Complete discovery loop: extension detects ATS boards during browsing → queues to `board_discovery_queue` → `discover-boards` Edge Function processes queue → new companies added to `ats_companies`. Self-sustaining job discovery. |
+| EXT-18 | board_discovery_queue table (Item #20) | v5.49 | ✅ | Schema + RLS + indexes. Stores discovered board URLs with dedup on `(url, ats_source)`. Processed flag + retry logic. |
+
+### v5.50 — Extension RBAC + recruiter_contacts
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-19 | Extension RBAC Expansion (Item #14) | v5.50 | ✅ | Pro/admin tier gating on harvest, data exports. Role tag in extension user bar. Free users see upgrade prompts on gated features. Extension 2.12.0. |
+| EXT-20 | recruiter_contacts table (Item #22) | v5.50 | ✅ | Schema for recruiter contact storage. FK to `ats_companies`. Columns: name, email, title, linkedin_url, source, confidence_score. RLS: user-scoped. |
+
+### v5.51 — Application Profiles + Workday Date Picker + File Upload Fallback
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-21 | Application Profiles CRUD (Item #7) | v5.51 | ✅ | Profiles tab in extension popup with full CRUD. Multiple fill personas (e.g., "Technical IC", "Leadership"). Profile selection before auto-fill. Extension 2.13.0. |
+| EXT-22 | Workday Date Picker Widget (Item #13) | v5.51 | ✅ | 4-strategy date filling for Workday's custom date picker: direct input → calendar popup navigation → dropdown month/year → fallback manual entry. Handles all Workday date formats. |
+| EXT-23 | Three-Tier File Upload Fallback (Item #17) | v5.51 | ✅ | Resume upload strategy: API file upload → form attach via input[type=file] → link paste as text fallback. Graceful degradation across ATS platforms. |
+
+### v5.52 — Recruiter Email Discovery
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-24 | Recruiter Email Discovery (Item #19) | v5.52 | ✅ | Hunter.io API integration for recruiter email lookup. Results stored in `recruiter_contacts` table. Confidence scoring. Rate-limited to respect Hunter.io quotas. |
+
+### v5.53 — Workday My Experience Auto-Fill
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-25 | Workday My Experience Auto-Fill (Item #5) | v5.53 | ✅ | Multi-section employment history filling for Workday's "My Experience" page. Handles dynamic dropdowns (company, title, industry), date pickers, add-another-entry flow. Maps application profile work history to Workday's form structure. |
+
+### v5.54 — Indeed Anti-Bot Hardening
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-26 | Indeed Anti-Bot Hardening (Item #6) | v5.54 | ✅ | Three-layer hardening: (1) Randomized delays with log-normal distribution — inter-field (~900ms median), pre-submit (~2.5s), inter-page (~1.8s), thinking pauses. (2) Fingerprint masking — canvas noise injection, WebGL renderer variation, navigator property shimming (hardwareConcurrency, deviceMemory, webdriver flag). (3) Request pattern variation — partial field order shuffling (~30% swaps), field revisit simulation, tab-away visibility events. `hardenedFill()` orchestrator wraps Indeed handler's fill flow. Extension 2.14.0. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.54 |
+| Extension version.json | 2.14.0 |
+| Console log | [BJ] Dashboard v5.54 loaded |
+
+### Extension Remaining Work — Final Status
+
+| Metric | Count |
+|--------|-------|
+| Total items (original handoff) | 22 |
+| Shipped | 22 |
+| Remaining | 0 |
+
+All 22 items from the Extension & Platform Remaining Work handoff document are now complete. The extension is feature-complete for launch.
+
+**Phase 50 total: 10 items across v5.49–v5.54 | All complete ✅. Fully deployed to production.**

@@ -1520,6 +1520,34 @@ const features = [
   { s: 'done', n: 'Profile flair system (Phase 4C)', d: 'v5.25: Leaderboard flair per tier. Signal+: tier icon. Radar+: accent-colored name. Clearance: gold name + shield icon + TOP REFERRER badge.', p: 48 },
   { s: 'done', n: 'Tab restore fix — referrals + ghost', d: 'v5.25: Added initReferralHub() + renderGhostMonitor() to tab restore block in app.js. Fixed Loading... stuck on page refresh when referrals/ghost was last active tab.', p: 48 },
   { s: 'done', n: 'LinkedIn-based referral codes', d: 'v5.25: Referral codes derived from LinkedIn slug (marston instead of BJ-972148). Links use /in/ format: brilliantjobs.app/in/marston. Updated get_referral_stats RPC, generate_referral_code trigger. Cleaned up obsolete .replace() calls.', p: 48 },
+
+  // Phase 49: Extension Infrastructure (v5.44–v5.48) — Feb 27, 2026 ✅ COMPLETE
+  { s: 'done', n: 'Fingerprint-randomized extension builds', d: 'v5.44: Each extension download gets unique fingerprint values. Prevents fleet detection.', p: 49 },
+  { s: 'done', n: 'Extension update notification (Item #4)', d: 'v5.45: Extension reports version via syncStateToSupabase. Dashboard detects mismatch → amber nav dot + update banner on Setup page.', p: 49 },
+  { s: 'done', n: 'Extension ID broadcast (Item #8)', d: 'v5.46: Simple message pass from extension to dashboard.', p: 49 },
+  { s: 'done', n: 'Tier change push notification (Item #11)', d: 'v5.46: Listener + toast when plan changes mid-session.', p: 49 },
+  { s: 'done', n: 'Dashboard JD match in apply modal (Item #12)', d: 'v5.46: Fetch + render existing score data in apply modal.', p: 49 },
+  { s: 'done', n: 'application_profiles table (Item #21)', d: 'v5.46: Schema + RLS for multiple fill personas.', p: 49 },
+  { s: 'done', n: 'discover-boards Edge Function (Item #2 partial)', d: 'v5.46: Background Discovery Pipeline server-side component.', p: 49 },
+  { s: 'done', n: 'Auto-Apply Trigger Engine (Item #1)', d: 'v5.47: Edge Function auto-apply-trigger on pg_cron (10 min). Score-gated matching of new jobs to saved filters → pending_applications.', p: 49 },
+  { s: 'done', n: 'Feed Health Admin Tab (Item #3)', d: 'v5.47: Admin dashboard: companies discovered, boards found by source, Easy Apply captured, ATS link-outs, extension fleet stats.', p: 49 },
+  { s: 'done', n: 'Submission confirmation detection (Item #16)', d: 'v5.48: 30+ patterns covering Greenhouse, Lever, Workday, Indeed, LinkedIn, Ashby, iCIMS, BambooHR, Jobvite, SmartRecruiters.', p: 49 },
+  { s: 'done', n: 'ATS redirect detection (Item #15)', d: 'v5.48: tabs.onUpdated listener pattern-matches external URLs to 11 ATS platforms. Logs to extension_events.', p: 49 },
+  { s: 'done', n: 'Custom question cached answers (Item #18)', d: 'v5.48: Answer cache in chrome.storage.local. TTL: 7 days, max 200 entries. Cache hit skips EF call.', p: 49 },
+  { s: 'done', n: 'Encrypted storage migration (Item #9)', d: 'v5.48: AES-GCM encryption for bjProfile, bjResumeRef, bjSavedFilters, _bj_answer_cache. Idempotent migration on install/update.', p: 49 },
+  { s: 'done', n: 'Starter tier daily limit badge (Item #10)', d: 'v5.48: Visual progress bar in extension popup. Shows used/limit with color states. Starter tier only.', p: 49 },
+
+  // Phase 50: Extension Completion Sprint (v5.49–v5.54) — Feb 27, 2026 ✅ COMPLETE
+  { s: 'done', n: 'Background Discovery Pipeline (Item #2)', d: 'v5.49: Complete discovery loop: extension detects ATS boards → board_discovery_queue → discover-boards EF → ats_companies. Self-sustaining.', p: 50 },
+  { s: 'done', n: 'board_discovery_queue table (Item #20)', d: 'v5.49: Schema + RLS + indexes. Dedup on (url, ats_source). Processed flag + retry logic.', p: 50 },
+  { s: 'done', n: 'Extension RBAC Expansion (Item #14)', d: 'v5.50: Pro/admin tier gating on harvest, data exports. Role tag in extension user bar. Extension 2.12.0.', p: 50 },
+  { s: 'done', n: 'recruiter_contacts table (Item #22)', d: 'v5.50: Schema for recruiter contact storage. FK to ats_companies. RLS user-scoped.', p: 50 },
+  { s: 'done', n: 'Application Profiles CRUD (Item #7)', d: 'v5.51: Profiles tab in extension popup with full CRUD. Multiple fill personas. Extension 2.13.0.', p: 50 },
+  { s: 'done', n: 'Workday Date Picker Widget (Item #13)', d: 'v5.51: 4-strategy date filling. Calendar popup navigation. Handles all Workday date formats.', p: 50 },
+  { s: 'done', n: 'Three-Tier File Upload Fallback (Item #17)', d: 'v5.51: API upload → form attach → link paste. Graceful degradation across ATS platforms.', p: 50 },
+  { s: 'done', n: 'Recruiter Email Discovery (Item #19)', d: 'v5.52: Hunter.io API integration. Results stored in recruiter_contacts. Confidence scoring. Rate-limited.', p: 50 },
+  { s: 'done', n: 'Workday My Experience Auto-Fill (Item #5)', d: 'v5.53: Multi-section employment history for Workday My Experience. Dynamic dropdowns, date pickers, add-another-entry flow.', p: 50 },
+  { s: 'done', n: 'Indeed Anti-Bot Hardening (Item #6)', d: 'v5.54: Three-layer hardening: (1) Randomized delays with log-normal distribution. (2) Fingerprint masking — canvas noise, WebGL variation, navigator shimming. (3) Request pattern variation — field order shuffling, revisit simulation, tab-away events. Extension 2.14.0.', p: 50 },
 ];
 
 
@@ -1654,7 +1682,9 @@ function render() {
     45: 'Visual Consistency Pass + UX Fixes ✅',
     46: 'Referral Program (v5.07-v5.10) ✅',
     47: 'Hotfixes & UX Polish (v5.06, v5.11-v5.17) ✅',
-    48: 'Referral Hub Redesign (v5.19-v5.25) ✅'
+    48: 'Referral Hub Redesign (v5.19-v5.25) ✅',
+    49: 'Extension Infrastructure (v5.44-v5.48) ✅',
+    50: 'Extension Completion Sprint (v5.49-v5.54) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
