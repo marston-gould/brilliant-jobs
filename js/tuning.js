@@ -11,7 +11,7 @@ function showResumePicker(jobId, callback) {
   _rpSelected = null;
 
   const resumes = safeReadLS('bj_resumes', []);
-  const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  const sf = safeReadLS('bj_saved_filters', []);
   const optionsEl = $('#rp-options');
 
   if (resumes.length === 0) {
@@ -84,7 +84,7 @@ function toggleTuningCard(header) {
 }
 
 function saveTuningCollapseStates() {
-  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  const states = safeReadLS('bj_collapse', {});
   states.tuning = {};
   $$('.tuning-card').forEach(card => {
     if (card.id) states.tuning[card.id] = card.classList.contains('collapsed');
@@ -94,7 +94,7 @@ function saveTuningCollapseStates() {
 
 // Restore tuning card states
 (function() {
-  const states = JSON.parse(localStorage.getItem('bj_collapse') || '{}');
+  const states = safeReadLS('bj_collapse', {});
   const tuning = states.tuning || {};
   Object.entries(tuning).forEach(([id, collapsed]) => {
     const card = document.getElementById(id);
@@ -102,7 +102,7 @@ function saveTuningCollapseStates() {
   });
 })();
 
-tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+tuningSettings = safeReadLS('bj_tuning', {});
 tuningLocExclPills = tuningSettings.locationExcludes || [];
 tuningTitleExclPills = tuningSettings.titleExcludes || [];
 tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -1202,7 +1202,7 @@ async function updatePoorMatchSuggestions() {
   if (!sugContainer) return;
 
   // Get tuning exclusions to avoid suggesting already-excluded terms
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuning = safeReadLS('bj_tuning', {});
   const existingTitleExcl = new Set((tuning.titleExcludes || []).map(t => t.toLowerCase()));
   const existingCoExcl = new Set((tuning.companyExcludes || []).map(c => c.toLowerCase()));
 
