@@ -1548,6 +1548,13 @@ const features = [
   { s: 'done', n: 'Recruiter Email Discovery (Item #19)', d: 'v5.52: Hunter.io API integration. Results stored in recruiter_contacts. Confidence scoring. Rate-limited.', p: 50 },
   { s: 'done', n: 'Workday My Experience Auto-Fill (Item #5)', d: 'v5.53: Multi-section employment history for Workday My Experience. Dynamic dropdowns, date pickers, add-another-entry flow.', p: 50 },
   { s: 'done', n: 'Indeed Anti-Bot Hardening (Item #6)', d: 'v5.54: Three-layer hardening: (1) Randomized delays with log-normal distribution. (2) Fingerprint masking — canvas noise, WebGL variation, navigator shimming. (3) Request pattern variation — field order shuffling, revisit simulation, tab-away events. Extension 2.14.0.', p: 50 },
+
+  // Phase 51: Competitive Gap Closure (v5.55) — Feb 27, 2026 ✅ COMPLETE
+  { s: 'done', n: 'Generic/Universal Form Handler (Competitive Gap #1)', d: 'v5.55: DOM heuristic-based form filler for any ATS not covered by dedicated handler. Label/input association, name attr matching, placeholder analysis, fuzzy-match. Falls back to aiAnswerer.js. Doubles ATS coverage to 8+ any unknown site.', p: 51 },
+  { s: 'done', n: 'Manifest Host Permissions Fix (Competitive Gap #2)', d: 'v5.55: Auto-inject content scripts on all ATS pages on load. host_permissions for known domains, optional_host_permissions for generic. Dynamic injection via chrome.scripting.executeScript. Matches FastApply/Huntr behavior. Extension 2.15.0.', p: 51 },
+  { s: 'todo', n: 'On-Page Status Overlay (Competitive Gap #3)', d: 'Floating bottom-right widget showing fill progress, success confirmation, error states. Inject via chrome.scripting. Post-launch S1.', p: 51 },
+  { s: 'todo', n: 'Cover Letter Generation (Competitive Gap #4)', d: 'Edge Function: JD + resume + profile → tailored cover letter via Claude Haiku. Surface in apply modal + extension popup. Post-launch S1.', p: 51 },
+  { s: 'todo', n: 'Fill Metrics & Feedback Loop (Competitive Gap #5)', d: 'extension_fill_metrics table, PostHog events from extension, thumbs up/down on cached AI answers. Post-launch S2.', p: 51 },
 ];
 
 
@@ -1684,7 +1691,8 @@ function render() {
     47: 'Hotfixes & UX Polish (v5.06, v5.11-v5.17) ✅',
     48: 'Referral Hub Redesign (v5.19-v5.25) ✅',
     49: 'Extension Infrastructure (v5.44-v5.48) ✅',
-    50: 'Extension Completion Sprint (v5.49-v5.54) ✅'
+    50: 'Extension Completion Sprint (v5.49-v5.54) ✅',
+    51: 'Competitive Gap Closure (v5.55) 🔄'
   };
 
   function buildSection(items, cls, label, startCollapsed) {

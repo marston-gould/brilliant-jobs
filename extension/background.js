@@ -2,6 +2,7 @@
 // v2.0: Merged extension with daily reset fix, keepalive, notifications
 // v2.1: Application success feedback loop (C4) — autoTracker wired in
 // v2.2: C4 complete — notification firing on confirmation detection (v5.42)
+// v2.15.0: Item #2 — Dynamic contentScript injection on ATS domains (v5.55)
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
@@ -1277,6 +1278,56 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 // ============================================================
+// DYNAMIC CONTENT SCRIPT INJECTION (v5.55 / Item #2)
+// For ATS domains not covered by static manifest content_scripts.
+// Uses chrome.scripting.executeScript to inject contentScript.js
+// on-demand when an ATS URL is detected via tab navigation.
+// ============================================================
+
+const INJECTED_TABS = new Set();
+
+/**
+ * Inject contentScript.js if needed on a tab showing an ATS page.
+ * Skips if already injected or if the domain is covered by the
+ * static manifest content_scripts entry.
+ */
+async function injectContentScriptIfNeeded(tabId, url) {
+  if (INJECTED_TABS.has(tabId)) return;
+
+  // Static manifest already covers these — skip
+  const STATIC_DOMAINS = [
+    'boards.greenhouse.io', 'boards.eu.greenhouse.io',
+    'job-boards.greenhouse.io', 'job-boards.eu.greenhouse.io',
+    'jobs.lever.co', 'jobs.ashbyhq.com', 'apply.workable.com',
+    'smartapply.indeed.com', 'apply.indeed.com', 'm5.apply.indeed.com',
+  ];
+  try {
+    const hostname = new URL(url).hostname;
+    if (STATIC_DOMAINS.includes(hostname)) return;
+    // Recruitee and Workday wildcards covered by manifest
+    if (hostname.endsWith('.recruitee.com')) return;
+    if (hostname.endsWith('.myworkdayjobs.com')) return;
+  } catch { return; }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['contentScript.js']
+    });
+    INJECTED_TABS.add(tabId);
+    console.log(`[BJ] Dynamically injected contentScript.js on tab ${tabId}: ${url}`);
+  } catch (err) {
+    // Expected to fail if we don't have host permission — that's fine
+    console.debug(`[BJ] Could not inject on tab ${tabId}: ${err.message}`);
+  }
+}
+
+// Clean up tracking when tabs close
+chrome.tabs.onRemoved.addListener((tabId) => {
+  INJECTED_TABS.delete(tabId);
+});
+
+// ============================================================
 // ATS REDIRECT DETECTION — URL CHANGE LISTENER (v5.48 / Item #15)
 // Watches for navigation from LinkedIn to known ATS platforms.
 // Pattern-matches external URLs to identify platform + board slug.
@@ -1322,6 +1373,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   // We detect this by the tab having navigated to an external ATS URL
   console.log(`[BJ] ATS URL detected on tab ${tabId}: ${atsMatch.platform}/${atsMatch.boardSlug}`);
 
+  // Dynamic injection for non-static-manifest ATS domains (v5.55 / Item #2)
+  injectContentScriptIfNeeded(tabId, changeInfo.url);
+
   // Fire the redirect event internally
   chrome.runtime.sendMessage({
     type: 'ats:redirectDetected',
@@ -1348,6 +1402,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       console.warn('[BJ] Failed to queue board discovery:', e.message);
     }
   })();
+});
+
+// SPA page-complete fallback (v5.55 / Item #2)
+// Some ATS sites use client-side routing — the URL changes but
+// tabs.onUpdated fires with status='complete' instead of changeInfo.url.
+// Re-check and inject if needed.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete' || !tab.url) return;
+  if (INJECTED_TABS.has(tabId)) return;
+
+  const atsMatch = matchAtsUrl(tab.url);
+  if (atsMatch) {
+    injectContentScriptIfNeeded(tabId, tab.url);
+  }
 });
 
 // ============================================================
