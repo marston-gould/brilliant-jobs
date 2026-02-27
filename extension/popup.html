@@ -49,6 +49,7 @@
       font-weight: 600; transition: all 0.15s;
     }
     .header .help-link:hover { color: var(--accent); border-color: var(--accent); }
+    .admin-badge { display: none; align-items: center; gap: 3px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: rgba(245,158,11,0.12); color: #b47a08; padding: 2px 7px; border-radius: 4px; }
     .about-panel { display: none; background: var(--bg-card); border-bottom: 1px solid var(--border); font-size: 11px; }
     .about-panel.active { display: block; }
     .about-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px; border-bottom: 1px solid var(--border); }
@@ -157,6 +158,7 @@
 </head>
 <body>
   <div class="header">
+    <span class="admin-badge" id="admin-badge">Admin</span>
     <a href="help.html" target="_blank" class="help-link" title="Help" id="help-link">?</a>
     <span class="ver" id="ver-label">v—</span>
   </div>
@@ -223,3 +225,4 @@
   <script src="popup-post.js"></script>
 </body>
 </html>
+
