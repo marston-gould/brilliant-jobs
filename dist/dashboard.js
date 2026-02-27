@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.29';
+var BJ_VERSION = 'v5.31';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -22088,6 +22088,7 @@ function _guessAtsSource(url) {
   if (url.indexOf('workable') >= 0) return 'workable';
   if (url.indexOf('recruitee') >= 0) return 'recruitee';
   if (url.indexOf('usajobs') >= 0) return 'usajobs';
+  if (url.indexOf('linkedin.com') >= 0) return 'linkedin-easy-apply';
   return 'greenhouse';
 }
 
