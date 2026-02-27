@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Discover jobs through your professional network \u2014 with smart autofill",
   "permissions": [
     "activeTab",
@@ -28,6 +28,14 @@
     "https://*.indeed.com/*",
     "https://*.myworkdayjobs.com/*"
   ],
+  "externally_connectable": {
+    "matches": [
+      "https://brilliantjobs.app/*",
+      "https://*.brilliantjobs.app/*",
+      "https://dev.brilliantjobs.app/*",
+      "https://staging.brilliantjobs.app/*"
+    ]
+  },
   "background": {
     "service_worker": "background.js"
   },
