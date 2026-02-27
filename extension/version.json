@@ -1,9 +1,9 @@
 {
-  "version": "3.4.0",
-  "build": "2026-02-26d",
+  "version": "3.5.0",
+  "build": "2026-02-26e",
   "files": {
-    "manifest.json": "3.4.0",
-    "background.js": "3.4.0",
+    "manifest.json": "3.5.0",
+    "background.js": "3.5.0",
     "contentScript.js": "3.0.0",
     "popup.html": "2.8.0",
     "popup.js": "2.8.0",
@@ -18,7 +18,7 @@
     "handlers/ashby.js": "3.3.0",
     "handlers/workable.js": "3.3.0",
     "handlers/recruitee.js": "3.3.0",
-    "handlers/linkedin-easy-apply.js": "3.0.0-stub",
+    "handlers/linkedin-easy-apply.js": "3.5.0",
     "utils/reactProps.js": "3.0.0",
     "utils/fieldFillerQueue.js": "3.0.0",
     "utils/mutationWatcher.js": "3.0.0",
@@ -39,6 +39,7 @@
     "3.0.0": "P0 Architecture Rebuild: multi-ATS manifest, handler routing, contentScript.js, shared utils (reactProps, fieldFillerQueue, mutationWatcher, applicationTracker, fileUpload), field fillers (textInput, dropdown), Lever handler (complete), stub handlers for Greenhouse/Ashby/Workable/Recruitee/LinkedIn",
     "2.8.0": "Phase 5 RBAC: role-based tab gating, admin badge, scanner admin-only gate",
     "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo",
-    "2.6.6": "Fix visited/queued counts: load from Supabase on popup open"
+    "2.6.6": "Fix visited/queued counts: load from Supabase on popup open",
+    "3.5.0": "Phase 7 (P10-C) LinkedIn Easy Apply: linkedin-easy-apply.js (full handler replacing stub). Multi-step modal navigation with MutationObserver step detection. Custom [role='listbox'] dropdown filling. City typeahead with 1000ms autocomplete delay + ArrowDown+Enter fallback. Resume radio card selection (not file upload). Smart question mapping (visa, authorization, relocation, salary, etc). 2-min stuck detection timeout. Daily limit detection. 20s loading screen timeout. Unfollow company before submit. Human-like delays (200-600ms). manifest.json: v3.5.0, added linkedin.com/jobs/* to content_scripts. background.js: added linkedin-easy-apply to capabilities. contentScript.js: added linkedin-easy-apply ATS_HANDLERS entry with pathPattern. apply-workflow.js: added linkedin to _guessAtsSource."
   }
 }
