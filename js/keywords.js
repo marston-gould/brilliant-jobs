@@ -157,7 +157,7 @@ function extractNgrams(jobs, maxPerGroup = 40) {
 // for each assigned filter. Runs at the resume level, not the feed.
 
 var jobMatchScores = {}; // greenhouse_id → score (0-100)
-var readinessCache = JSON.parse(localStorage.getItem('bj_readiness') || 'null');
+var readinessCache = safeReadLS('bj_readiness', null);
 var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigrams: [...] }
 var readinessRunning = false;
 
@@ -2664,7 +2664,7 @@ async function aiScoreJob(jobId) {
 
   // Find assigned resume for this job's filter
   var resume = null;
-  var storedResumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  var storedResumes = safeReadLS('bj_resumes', []);
   if (storedResumes.length > 0) resume = storedResumes[0]; // Use first resume as default
 
   if (!resume || !resume.extractedText) {
