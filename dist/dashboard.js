@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.45';
+var BJ_VERSION = 'v5.46';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -19685,6 +19685,47 @@ function initBilling() {
   checkPaymentReturn();
   initAutoRefillUI();
   loadHireFeeStatus();
+  _initTierChangeListener();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Item #11: Tier Change Push Notification
+// Listens for realtime changes to user_subscriptions and
+// fires a toast when plan changes mid-session.
+// ═══════════════════════════════════════════════════════════
+var _tierChangeChannel = null;
+
+function _initTierChangeListener() {
+  if (!currentUser?.id || _tierChangeChannel) return;
+  try {
+    _tierChangeChannel = sb.channel('tier-change-' + currentUser.id)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'user_subscriptions',
+        filter: 'user_id=eq.' + currentUser.id
+      }, function(payload) {
+        var newTier = payload.new?.tier;
+        var oldTier = payload.old?.tier;
+        if (newTier && oldTier && newTier !== oldTier) {
+          var tierNames = { free: 'Free', starter: 'Starter', pro: 'Pro' };
+          var isUpgrade = (newTier === 'pro') || (newTier === 'starter' && oldTier === 'free');
+          if (typeof showToast === 'function') {
+            showToast(
+              (isUpgrade ? '🎉 ' : '') + 'Plan changed: ' + (tierNames[oldTier] || oldTier) + ' → ' + (tierNames[newTier] || newTier),
+              { type: isUpgrade ? 'success' : 'info', duration: 8000 }
+            );
+          }
+          // Reload pricing and credit balance to reflect new tier
+          loadUserPricing();
+          loadCreditBalance();
+          loadUserSubscription();
+        }
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn('[billing] Tier change listener setup failed:', e);
+  }
 }
 
 
@@ -21961,9 +22002,15 @@ function showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult) {
   var breakdownHtml = '';
   if (scoreResult && scoreResult.recommendations) {
     var missing = scoreResult.recommendations.missing_skills || [];
+    var strong = scoreResult.recommendations.strong_matches || [];
     breakdownHtml = '<div class="sg-breakdown">';
     if (scoreResult.analysis_summary) {
       breakdownHtml += '<div class="sg-summary">' + escapeHtml(scoreResult.analysis_summary) + '</div>';
+    }
+    if (strong.length > 0) {
+      breakdownHtml += '<div class="sg-strong"><span class="sg-strong-label">✓ Matches:</span> ' +
+        strong.slice(0, 5).map(function(s) { return '<span class="sg-strong-chip">' + escapeHtml(s) + '</span>'; }).join(' ') +
+        '</div>';
     }
     if (missing.length > 0) {
       breakdownHtml += '<div class="sg-missing"><span class="sg-missing-label">Missing:</span> ' + 
@@ -22315,14 +22362,24 @@ function handleApplyClick(jobId, jobTitle, companyName, jobUrl, btn) {
     return;
   }
 
-  // Modes 2+: Check score
+  // Modes 2+: Check score — try cache first, then fetch from DB
   var scoreResult = getScoreForJob(jobId);
+  if (scoreResult) {
+    _handleApplyWithScore(mode, jobId, jobTitle, companyName, jobUrl, scoreResult);
+  } else {
+    // Item #12: Fetch existing JD match score from DB before showing modal
+    _fetchJdMatchScore(jobId).then(function(dbScore) {
+      _handleApplyWithScore(mode, jobId, jobTitle, companyName, jobUrl, dbScore);
+    });
+  }
+}
+
+function _handleApplyWithScore(mode, jobId, jobTitle, companyName, jobUrl, scoreResult) {
   var hasScore = scoreResult && typeof scoreResult.match_score === 'number';
   var score = hasScore ? scoreResult.match_score : null;
   var threshold = userApplySettings.default_score_threshold;
 
   if (mode === APPLY_MODES.SCORE_GATED) {
-    // Mode 2: Show gate if low/unscored
     if (!hasScore || score < threshold) {
       showScoreGateModal(jobId, jobTitle, companyName, jobUrl, scoreResult);
     } else {
@@ -22332,8 +22389,30 @@ function handleApplyClick(jobId, jobTitle, companyName, jobUrl, btn) {
   }
 
   // Modes 3-6: Auto modes (handled by auto-apply engine, not manual click)
-  // For manual clicks in auto mode, just apply directly
   proceedToApply(jobId, jobTitle, companyName, jobUrl);
+}
+
+// Item #12: Fetch JD match score from resume_scores table if available
+async function _fetchJdMatchScore(jobId) {
+  try {
+    if (!currentUser?.id) return null;
+    var { data, error } = await sb
+      .from('resume_scores')
+      .select('match_score, analysis_summary, recommendations, scored_at')
+      .eq('user_id', currentUser.id)
+      .eq('job_id', jobId)
+      .order('scored_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    // Cache it for future use
+    if (typeof jobMatchScores === 'undefined') window.jobMatchScores = {};
+    jobMatchScores[jobId] = data;
+    return data;
+  } catch (e) {
+    console.warn('[apply-workflow] JD match fetch failed:', e);
+    return null;
+  }
 }
 
 function getApplyModeForJob(jobId) {
