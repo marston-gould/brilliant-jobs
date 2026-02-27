@@ -1,10 +1,10 @@
 {
-  "version": "2.11.0",
-  "build": "2026-02-27d",
+  "version": "2.12.0",
+  "build": "2026-02-27e",
   "files": {
     "background.js": "2.11.0",
-    "popup.html": "2.8.0",
-    "popup.js": "2.8.0",
+    "popup.html": "2.12.0",
+    "popup.js": "2.12.0",
     "supabase.js": "2.5.0",
     "help.html": "2.6.0",
     "manifest.json": "2.8.0",
@@ -21,8 +21,9 @@
     "utils/autoTracker.js": "2.10.0"
   },
   "changelog": {
-    "2.11.0": "v5.42: C4 complete — Chrome notification fires on application confirmation detection",
-    "2.10.0": "v5.41: Application success feedback loop (C4) — autoTracker wired into background.js, confirmation tracking",
+    "2.12.0": "v5.50: Item #14 RBAC expansion \u2014 pro/admin tier gating on harvest, data exports; role tag in user bar",
+    "2.11.0": "v5.42: C4 complete \u2014 Chrome notification fires on application confirmation detection",
+    "2.10.0": "v5.41: Application success feedback loop (C4) \u2014 autoTracker wired into background.js, confirmation tracking",
     "2.9.0": "v5.40: Multilingual label detection (C1) + Human-sim typing wired into handlers (B7)",
     "2.8.0": "Phase 5 RBAC: role-based tab gating, admin badge, scanner admin-only gate",
     "2.7.0": "Fisher-Yates queue shuffle, CAPTCHA auto-stop, extension committed to repo"
