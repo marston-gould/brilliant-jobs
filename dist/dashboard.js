@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.24';
+var BJ_VERSION = 'v5.25';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -22852,7 +22852,7 @@ function updateApplySettingsVisibility(mode) {
 // === js/referrals.js ===
 // ============================================================
 // REFERRALS — Referral Hub page logic
-// v5.22: Phase 3 — Leaderboard rewards frontend
+// v5.25: Phase 4 — Milestone rewards, LinkedIn referral codes, flair system
 // Spec: referral-hub-redesign-spec v3 (Feb 26, 2026)
 // ============================================================
 
@@ -22923,6 +22923,22 @@ function updateApplySettingsVisibility(mode) {
       referralHistory = history || [];
 
       renderReferralHub(container);
+
+      // Phase 4A: Check and grant any pending tier bonuses
+      if (referralStats && referralStats.current_tier > 0) {
+        try {
+          const { data: bonusResult } = await sb.rpc('process_tier_bonus', { p_user_id: user.id });
+          if (bonusResult && bonusResult.granted && bonusResult.granted.length > 0) {
+            bonusResult.granted.forEach(g => {
+              const parts = [`${g.credits} credits`];
+              if (g.pro_days > 0) parts.push(`${g.pro_days} days Pro`);
+              showToast(`🎉 ${g.name} tier unlocked! You earned ${parts.join(' + ')}`, { type: 'success', duration: 6000 });
+            });
+          }
+        } catch (bonusErr) {
+          console.warn('[Referrals] Tier bonus check:', bonusErr.message);
+        }
+      }
     } catch (err) {
       console.error('[Referrals] Init error:', err);
       container.innerHTML = '<div class="ref-empty">Unable to load referral data. Refresh to retry.</div>';
@@ -22938,7 +22954,7 @@ function updateApplySettingsVisibility(mode) {
     const nextTierAt = s.next_tier_at;
     const remaining = nextTierAt ? nextTierAt - s.referral_count : 0;
     // Spec 3.3: /in/ format for referral links
-    const refLink = (s.referral_link || '').replace('/r/', '/in/');
+    const refLink = s.referral_link || '';
 
     container.innerHTML = `
       <!-- Hero Banner — spec 3.1: .referral-hero following .feed-hero/.setup-hero pattern -->
@@ -23114,7 +23130,7 @@ function updateApplySettingsVisibility(mode) {
   // ---- Share Actions — spec Section 4: rewritten share messages ----
   window._refCopyLink = function () {
     if (!referralStats) return;
-    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    const link = referralStats.referral_link || '';
     navigator.clipboard.writeText(link).then(() => {
       const btn = document.getElementById('ref-copy-link-btn');
       if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Your Link'; }, 2000); }
@@ -23134,7 +23150,7 @@ function updateApplySettingsVisibility(mode) {
   // Spec Section 4 — LinkedIn share
   window._refShareLinkedIn = function () {
     if (!referralStats) return;
-    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    const link = referralStats.referral_link || '';
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link + '&utm_medium=linkedin')}`, '_blank', 'width=600,height=500');
     trackInvite('linkedin');
   };
@@ -23142,7 +23158,7 @@ function updateApplySettingsVisibility(mode) {
   // Spec Section 4 — Email share
   window._refShareEmail = function () {
     if (!referralStats) return;
-    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    const link = referralStats.referral_link || '';
     const subject = encodeURIComponent('285K+ tracked jobs across 10K companies \u2014 free access');
     const body = encodeURIComponent(`Hey, I\u2019ve been using Brilliant Jobs \u2014 it aggregates real-time job data from 5 major ATS platforms (285K+ positions across 10K+ companies). The AI credits are useful: 25 credits is enough to score 8 resumes against live postings.\n\nSign up with my link and we both get 7 days of Pro + 25 credits: ${link}\n\nOr use my code: ${referralStats.referral_code}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
@@ -23152,7 +23168,7 @@ function updateApplySettingsVisibility(mode) {
   // Spec Section 4 — SMS share
   window._refShareSMS = function () {
     if (!referralStats) return;
-    const link = (referralStats.referral_link || '').replace('/r/', '/in/');
+    const link = referralStats.referral_link || '';
     const msg = encodeURIComponent(`285K+ jobs tracked from 10K+ companies. Not a job board \u2014 real ATS data. Free: ${link}`);
     const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
     if (isMobile) {
@@ -23289,7 +23305,7 @@ function updateApplySettingsVisibility(mode) {
         return;
       }
 
-      // Render leaderboard table with "Earning" column
+      // Render leaderboard table with "Earning" column + Phase 4C flair
       body.innerHTML = `
         <table class="admin-table" style="margin-top:4px;">
           <thead><tr><th>#</th><th>Referrer</th><th>Referrals</th><th>Earning</th></tr></thead>
@@ -23300,10 +23316,16 @@ function updateApplySettingsVisibility(mode) {
               if (r.earning_pro_days > 0) earningParts.push(`${r.earning_pro_days}d Pro`);
               const earning = earningParts.length ? earningParts.join(' + ') : '\u2014';
               const isMe = r.is_me;
+              const tier = r.tier || 0;
+              // Phase 4C: Flair based on tier
+              const flairIcon = tier >= 1 ? BADGE_LABELS[ALL_BADGES[Math.min(tier - 1, 4)]]?.icon || '' : '';
+              const nameStyle = tier >= 5 ? 'color:#f59e0b;font-weight:700;' : tier >= 3 ? 'color:var(--accent);font-weight:600;' : '';
+              const nameIcon = tier >= 1 ? `<span style="display:inline-flex;vertical-align:middle;margin-inline-end:4px;width:16px;height:16px;${tier >= 5 ? 'color:#f59e0b;' : tier >= 3 ? 'color:var(--accent);' : 'color:var(--text-faint);'}">${flairIcon.replace(/width="26"/g, 'width="14"').replace(/height="26"/g, 'height="14"')}</span>` : '';
+              const topBadge = tier >= 5 ? ' <span style="font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(245,158,11,0.12);color:#f59e0b;font-weight:700;letter-spacing:.3px;vertical-align:middle;">TOP REFERRER</span>' : '';
               return `
                 <tr style="${isMe ? 'background:rgba(59,130,246,0.06);' : ''}">
                   <td style="font-family:var(--mono);font-weight:700;${r.rank === 1 ? 'color:#f59e0b;' : ''}">${r.rank}</td>
-                  <td>${r.display_name || 'Anonymous'}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:600;">(you)</span>' : ''}</td>
+                  <td style="${nameStyle}">${nameIcon}${r.display_name || 'Anonymous'}${isMe ? ' <span style="font-size:10px;color:var(--accent);font-weight:600;">(you)</span>' : ''}${topBadge}</td>
                   <td style="font-family:var(--mono);">${r.referral_count}</td>
                   <td style="font-family:var(--mono);font-size:12px;color:var(--text-dim);">${earning}</td>
                 </tr>
@@ -23350,7 +23372,7 @@ function updateApplySettingsVisibility(mode) {
   window.showReferralShareModal = function (context) {
     const s = referralStats;
     if (!s) return;
-    const link = (s.referral_link || '').replace('/r/', '/in/');
+    const link = s.referral_link || '';
 
     const messages = {
       interview: `Just landed an interview. Brilliant Jobs flagged the role 3 days before it hit LinkedIn:`,
@@ -23751,6 +23773,8 @@ if (lastTab && $(`#page-${lastTab}`)) {
   if (lastTab === 'admin' && typeof initAdminPage === 'function') initAdminPage();
   if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
   if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
+  if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
+  if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
 }
 
 // Extension detection — check if extension has updated the profile recently
