@@ -10,7 +10,7 @@ var statsCache = {};
 var STATS_CACHE_TTL = 10 * 60 * 1000;
 var STATS_ROW_CAP = 5000;
 var STATS_DEDUP_CAP = 10000;
-var statsSelectedFilters = JSON.parse(localStorage.getItem('bj_stats_filters') || '["__all__"]');
+var statsSelectedFilters = safeReadLS('bj_stats_filters', ["__all__"]);
 var _statsDebounce = null;
 
 // Light-theme ECharts (dark tooltips float over light cards)
@@ -166,12 +166,12 @@ function getSelectedFilterConfigs() {
 
 async function fetchFilterData(sf) {
   try {
-    var tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    var tuning = safeReadLS('bj_tuning', {});
     var locIds = await getLocationMatchIds(sf.wherePills || [], sf.whereNotPills || [], tuning, sf.includeRemote);
     var base = sb.from('ats_jobs').select(STATS_COLUMNS);
     var q = buildFilterQuery(sf, base, locIds);
     // Exclude user-hidden jobs to match feed counts
-    var hiddenIds = JSON.parse(localStorage.getItem('bj_hidden') || '[]');
+    var hiddenIds = safeReadLS('bj_hidden', []);
     if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
     q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
     var res = await q;

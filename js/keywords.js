@@ -567,7 +567,7 @@ async function runReadinessAnalysis(opts) {
 
   if (!silent && btn) { btn.disabled = true; btn.textContent = 'Scoring2026'; }
 
-  var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  var sf = safeReadLS('bj_saved_filters', []);
 
   var hasEligible = false;
   for (var i = 0; i < resumes.length; i++) {
@@ -2320,7 +2320,7 @@ function renderReadinessResults(scores) {
 function initReadinessPanel() {
   var panel = document.getElementById('readiness-panel');
   if (!panel) return;
-  var sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+  var sf = safeReadLS('bj_saved_filters', []);
   var hasAssigned = resumes.some(function(r, i){
     return !r.archived && r.keywords && r.keywords.length > 0 && (r.filterIds || []).length > 0;
   });
@@ -3227,7 +3227,7 @@ function markAppliedFromModal(jobId) {
       saveUserData('bj_applied_jobs', JSON.stringify(appliedJobIds));
     }
     // Store applied date
-    const dates = JSON.parse(localStorage.getItem('bj_applied_dates') || '{}');
+    const dates = safeReadLS('bj_applied_dates', {});
     dates[jobId] = new Date().toISOString();
     saveUserData('bj_applied_dates', JSON.stringify(dates));
 
@@ -3237,7 +3237,7 @@ function markAppliedFromModal(jobId) {
     meta[jobId].stage = 'applied';
     if (!meta[jobId].appliedAt) meta[jobId].appliedAt = new Date().toISOString();
     if (resumeName) meta[jobId].resumeUsed = resumeName;
-    const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+    const sf = safeReadLS('bj_saved_filters', []);
     const checkedFilters = Array.from($$('.sf-check:checked')).map(cb => sf[parseInt(cb.dataset.idx)]?.name).filter(Boolean);
     meta[jobId].filterTags = checkedFilters;
     savePipelineMeta(meta);
@@ -3381,7 +3381,7 @@ function hideJob(jobId, btn) {
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
   if (typeof savedFilters !== 'undefined') {
-    var sel = JSON.parse(localStorage.getItem('bj_sf_selected') || '[]');
+    var sel = safeReadLS('bj_sf_selected', []);
     if (sel.length > 0) activeFilterIdxs = sel.map(Number).filter(function(n) { return !isNaN(n) && n >= 0; });
   }
   showHideReasonPopup(jobId, job.title || '', job.company_name || '', btn, () => {

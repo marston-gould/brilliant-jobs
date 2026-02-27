@@ -229,7 +229,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   const wonot = sf.whoNotPills || [];
 
   // Load global tuning settings
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuning = safeReadLS('bj_tuning', {});
 
   // WHAT — title matching via ilike + full-text search (ilike uses trigram index)
   // All What pills are OR'd together (each pill is one keyword)
@@ -693,7 +693,7 @@ async function searchJobs(page = 0) {
     const seenIds = new Set();
 
     // Pre-fetch location IDs for all filters that have where pills
-    const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    const tuningForLoc = safeReadLS('bj_tuning', {});
     const locationIdCache = new Map();
     for (const sf of filtersToRun) {
       const wh = sf.wherePills || [];
@@ -920,7 +920,7 @@ async function updateJobStatsFromFilters(filters) {
     const effectiveFilters = (filters && filters.length > 0) ? filters : [{}];
 
     // Pre-fetch location IDs for each filter (same as searchJobs does)
-    const tuningForLoc = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+    const tuningForLoc = safeReadLS('bj_tuning', {});
     const locationIdCache = new Map();
     for (const sf of effectiveFilters) {
       const wh = sf.wherePills || [];
@@ -1213,7 +1213,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
   // Collect active negative location terms for display
   const activeNegLocs = [];
-  const tuning = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  const tuning = safeReadLS('bj_tuning', {});
   // From whereNotPills in active filters
   if (filtersToRun) {
     for (const sf of filtersToRun) {

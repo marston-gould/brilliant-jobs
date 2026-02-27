@@ -10,9 +10,9 @@ export const $ = s => document.querySelector(s);
 export const $$ = s => document.querySelectorAll(s);
 export let currentUser = null;
 export function setCurrentUser(u) { currentUser = u; }
-export let savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
+export let savedFilters = safeReadLS('bj_saved_filters', []);
 export function setSavedFilters(f) { savedFilters = f; }
-export let tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+export let tuningSettings = safeReadLS('bj_tuning', {});
 export let tuningLocExclPills = tuningSettings.locationExcludes || [];
 export let tuningTitleExclPills = tuningSettings.titleExcludes || [];
 export let tuningCoExclPills = tuningSettings.companyExcludes || [];
@@ -46,9 +46,9 @@ export const DEFAULT_RADIUS = 30;
 export let allJobs = [];
 export let currentJobs = [];
 export let jobSortStack = [{ field: 'updated_at', asc: false }];
-export let hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
-export let savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-export let appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+export let hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
+export let savedJobIds = safeReadLS('bj_saved_jobs', []);
+export let appliedJobIds = safeReadLS('bj_applied_jobs', []);
 export let searchTimeout = null;
 export let currentJobPage = 0;
 export const JOBS_PER_PAGE = 50;
@@ -84,7 +84,7 @@ async function _flushUserData() {
   if (!currentUser || _udPendingKeys.size === 0) return;
   const patch = {};
   for (const key of _udPendingKeys) {
-    try { patch[key] = JSON.parse(localStorage.getItem(UD_KEYS[key]) || 'null'); } catch { patch[key] = null; }
+    try { patch[key] = safeReadLS(UD_KEYS[key], null); } catch { patch[key] = null; }
   }
   _udPendingKeys.clear();
   try {
@@ -93,9 +93,9 @@ async function _flushUserData() {
     await fetch(SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
       method: 'PATCH',
       headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'apikey':SUPABASE_KEY, 'Prefer':'return=minimal' },
-      body: JSON.stringify({ user_data: Object.assign(JSON.parse(localStorage.getItem('_bj_ud_cache')||'{}'), patch) })
+      body: JSON.stringify({ user_data: Object.assign(safeReadLS('_bj_ud_cache', {}), patch) })
     });
-    const cached = JSON.parse(localStorage.getItem('_bj_ud_cache')||'{}');
+    const cached = safeReadLS('_bj_ud_cache', {});
     Object.assign(cached, patch);
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
@@ -111,7 +111,7 @@ export async function loadUserData(userId) {
     let needsSync = false;
     for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
       const cloudVal = cloud[shortKey];
-      const localParsed = (() => { try { return JSON.parse(localStorage.getItem(lsKey)); } catch { return null; } })();
+      const localParsed = safeReadLS(lsKey, null);
       const isEmpty = v => v == null || (Array.isArray(v) && v.length === 0) || (typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0);
       if (!isEmpty(cloudVal) && isEmpty(localParsed)) { localStorage.setItem(lsKey, JSON.stringify(cloudVal)); }
       else if (isEmpty(cloudVal) && !isEmpty(localParsed)) { needsSync = true; _udPendingKeys.add(shortKey); }
@@ -122,15 +122,15 @@ export async function loadUserData(userId) {
 
 export 
 export function rehydrateState() {
-  savedFilters = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
-  tuningSettings = JSON.parse(localStorage.getItem('bj_tuning') || '{}');
+  savedFilters = safeReadLS('bj_saved_filters', []);
+  tuningSettings = safeReadLS('bj_tuning', {});
   tuningLocExclPills = tuningSettings.locationExcludes || [];
   tuningTitleExclPills = tuningSettings.titleExcludes || [];
   tuningCoExclPills = tuningSettings.companyExcludes || [];
   tuningIndExclPills = tuningSettings.industryExcludes || [];
   levelHierarchy = tuningSettings.levelHierarchy || (typeof DEFAULT_LEVELS !== 'undefined' ? JSON.parse(JSON.stringify(DEFAULT_LEVELS)) : levelHierarchy);
-  hiddenJobIds = JSON.parse(localStorage.getItem('bj_hidden_jobs') || '[]');
-  savedJobIds = JSON.parse(localStorage.getItem('bj_saved_jobs') || '[]');
-  appliedJobIds = JSON.parse(localStorage.getItem('bj_applied_jobs') || '[]');
+  hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
+  savedJobIds = safeReadLS('bj_saved_jobs', []);
+  appliedJobIds = safeReadLS('bj_applied_jobs', []);
   resumes = (() => { try { var r = localStorage.getItem('bj_resumes'); return (!r || r.startsWith('enc:')) ? [] : JSON.parse(r); } catch(e) { return []; } })();
 }
