@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.19';
+var BJ_VERSION = 'v5.20';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -21653,18 +21653,19 @@ window.requiredTierFor = requiredTier;
 
 // === js/apply-workflow.js ===
 /**
- * Brilliant Jobs — Apply Workflow v4.85
+ * Brilliant Jobs — Apply Workflow v5.18
  * Score Gate Modal, Pending Applications, and Apply State Machine
  * 
- * Phase 2: Backend Wired (Pod 2 — D4 + D5)
+ * Phase 2: Real ATS Submission (Pod 2)
  * - Score Gate Modal: intercepts Apply when score is low/unscored
  * - Pending Applications: Supabase-backed with real ATS submission
  * - Apply Settings: per-filter configuration
  * - Rewrite Review Modal: shows AI rewrite diff
  * - scoreAndRecheck: calls score-resume EF (1 credit)
  * - triggerRewrite: opens existing rewrite panel (3 credits)
- * - proceedToApply: creates pending_applications row + calls mock-ats-submit
- * - approvePendingApp: calls mock-ats-submit on approval
+ * - proceedToApply: creates pending_applications row + calls submit-application
+ * - approvePendingApp: calls submit-application on approval
+ * - submit-application EF: Recruitee (real API), others (mock fallback)
  */
 
 // ═══════════════════════════════════════════════════════════
@@ -21794,10 +21795,11 @@ async function _getAuthToken() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HELPER: Call mock-ats-submit Edge Function
+// HELPER: Call submit-application Edge Function
+// Routes: Recruitee (real API), others (mock fallback)
 // ═══════════════════════════════════════════════════════════
 
-async function callMockAtsSubmit(pendingApp, resumeFileId, resumeFilename) {
+async function callSubmitApplication(pendingApp, resumeFileId, resumeFilename) {
   var token = await _getAuthToken();
   if (!token) {
     if (typeof showToast === 'function') showToast('Session expired. Please log in again.', { type: 'error' });
@@ -21807,7 +21809,7 @@ async function callMockAtsSubmit(pendingApp, resumeFileId, resumeFilename) {
   var idempotencyKey = crypto.randomUUID();
 
   try {
-    var res = await fetch(SUPABASE_URL + '/functions/v1/mock-ats-submit', {
+    var res = await fetch(SUPABASE_URL + '/functions/v1/submit-application', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + token,
@@ -21849,7 +21851,7 @@ async function callMockAtsSubmit(pendingApp, resumeFileId, resumeFilename) {
     if (e.name === 'TimeoutError' || e.name === 'AbortError') {
       return { ok: false, error: 'timeout' };
     }
-    console.error('[apply-workflow] mock-ats-submit error:', e);
+    console.error('[apply-workflow] submit-application error:', e);
     return { ok: false, error: 'network_error' };
   }
 }
@@ -22234,7 +22236,7 @@ async function proceedToApply(jobId, jobTitle, companyName, jobUrl) {
   }
 
   // Submit to mock ATS
-  var result = await callMockAtsSubmit(savedApp, resume.id, resume.filename);
+  var result = await callSubmitApplication(savedApp, resume.id, resume.filename);
 
   if (result.ok) {
     _updatePipelineApplied(jobId);
@@ -22429,7 +22431,7 @@ async function approvePendingApp(appId) {
 
   // Submit to mock ATS
   var resume = _getActiveResume();
-  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+  var result = await callSubmitApplication(app, resume.id, resume.filename);
 
   if (result.ok) {
     _updatePipelineApplied(app.job_id);
@@ -22471,7 +22473,7 @@ async function approveRewrittenApp(appId) {
 
   if (typeof showToast === 'function') showToast('Submitting rewritten resume...', { duration: 10000 });
 
-  var result = await callMockAtsSubmit(app, resumeId, 'resume-rewritten.pdf');
+  var result = await callSubmitApplication(app, resumeId, 'resume-rewritten.pdf');
 
   if (result.ok) {
     _updatePipelineApplied(app.job_id);
@@ -22508,7 +22510,7 @@ async function approveOriginalApp(appId) {
   if (typeof showToast === 'function') showToast('Submitting original resume...', { duration: 10000 });
 
   var resume = _getActiveResume();
-  var result = await callMockAtsSubmit(app, resume.id, resume.filename);
+  var result = await callSubmitApplication(app, resume.id, resume.filename);
 
   if (result.ok) {
     _updatePipelineApplied(app.job_id);
