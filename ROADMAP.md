@@ -2015,3 +2015,58 @@ Source: referral-hub-redesign-spec v3 (Feb 26, 2026)
 | Console log | [BJ] Dashboard v5.25 loaded |
 
 **Phase 48 total: 12 items + 2 bug fixes + 1 hotfix | All complete ✅. Version: v5.19→v5.25. Fully deployed to production.**
+
+---
+
+## Extension & Platform Sprint (v5.44–v5.48)
+
+### v5.44: Fingerprint-Randomized Extension Builds
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| P8 | Per-download fingerprinted extension builds | v5.44 | ✅ | `build-extension.js` v2: randomizes content script delays, CSS class prefixes, and internal identifiers per download. Anti-fingerprint for bot detection evasion. |
+
+### v5.45: Extension Update Notification (Item #4)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-4 | Extension update notification | v5.45 | ✅ | DB: `extension_version` column on profiles. Extension `syncStateToSupabase` reports `chrome.runtime.getManifest().version`. Dashboard `REQUIRED_EXTENSION_VERSION` comparison → amber nav dot + update banner on Setup page. |
+
+### v5.46: Extension Tier 3 Batch + Background Discovery Pipeline (Items #2, #8, #11, #12, #21)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-8 | Extension ID broadcast | v5.46 | ✅ | Simple message pass from extension to dashboard. |
+| EXT-11 | Tier change push notification | v5.46 | ✅ | Listener + toast when plan changes mid-session. |
+| EXT-12 | Dashboard JD match in apply modal | v5.46 | ✅ | Fetch + render existing score data in score gate modal. |
+| EXT-21 | `application_profiles` table | v5.46 | ✅ | Schema + RLS for multiple fill personas (Item #7 dependency). |
+| EXT-2 | Background Discovery Pipeline | v5.46 | ✅ | `discover-boards` Edge Function: probes Greenhouse, Lever, Ashby, Workable, Recruitee APIs for career pages from scanner-discovered companies. pg_cron every 6h. `discovery_status` column on companies. Junk name filter. API-based validation. |
+
+### v5.47: Auto-Apply Trigger Engine + Feed Health Admin Tab (Items #1, #3)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-1 | Auto-Apply Trigger Engine | v5.47 | ✅ | `auto-apply-trigger` Edge Function on pg_cron (10 min). Queries new jobs → matches against all user saved filters (what/where/who/pay + NOT variants + includeRemote) → scores via Haiku → inserts above-threshold into `pending_applications`. Idempotency key. Rate limited 200ms, max 10 matches/user/run. |
+| EXT-3 | Feed Health Admin Tab | v5.47 | ✅ | Admin dashboard: Discovery Pipeline stats (companies discovered, boards found by source, installs, scans) + Auto-Apply Engine stats (eligible users, matched, scored, queued, last run). Live data from existing tables. |
+
+### v5.48: Extension Hardening Batch (Items #9, #10, #15, #16, #18)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| EXT-9 | Encrypted storage migration | v5.48 | ✅ | `BJ_CRYPTO_MIGRATION` module: auto-migrates plaintext PII keys (`authSession`, `userProfile`, `resumeData`, `savedAnswers`) to AES-GCM encrypted format on install/update. Idempotent — skips already-encrypted values. |
+| EXT-10 | Starter tier daily limit badge | v5.48 | ✅ | Popup UI: progress bar + counter showing remaining daily applications for Starter tier. Color states: normal → warning (≤2) → exhausted (0). Auto-refreshes every 30s. Hidden for Pro/Free. |
+| EXT-15 | ATS redirect detection | v5.48 | ✅ | `contentScript.js` URL change monitor: detects LinkedIn → ATS handoffs. Pattern-matches Greenhouse, Lever, Ashby, Workable, Recruitee, Workday URLs. Sends `ats:redirectDetected` to background.js → writes new board to `ats_companies` for server-side scraping. Deduplicates against existing boards. |
+| EXT-16 | Submission confirmation detection | v5.48 | ✅ | `applicationTracker.js` expanded from 4 to 22 confirmation patterns. Added Workday-specific, Indeed-specific, LinkedIn Easy Apply, and generic ATS/success patterns. URL path patterns (`/thank-you`, `/success`, `status=submitted`). URL now included in combined text check. |
+| EXT-18 | Custom question cached answers | v5.48 | ✅ | `aiAnswerer.js` answer cache: normalizes question labels → caches AI responses in `Map` + `chrome.storage.local`. Cache hit skips EF call entirely. Max 200 entries with LRU eviction. Persists across sessions. |
+
+### Version
+
+| Surface | Version |
+|---------|---------|
+| version.js (prod) | v5.48 |
+| Console log | [BJ] Dashboard v5.48 loaded |
+| dashboard.min.js | v5.48 (cache buster) |
+| styles.css | v5.48 (cache buster) |
+
+**Sprint total: v5.44–v5.48 | 12 items shipped across 5 versions. Extension hardening batch: 5 items in v5.48.**
+
