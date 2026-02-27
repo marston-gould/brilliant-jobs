@@ -1233,6 +1233,103 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse(result);
     return;
   }
+
+  // ── ATS Redirect Detection (v5.48 / Item #15) ──
+  // Detect when LinkedIn or other job pages redirect to external ATS
+  if (msg.type === 'ats:redirectDetected') {
+    const { fromUrl, toUrl, platform, boardSlug } = msg;
+    console.log(`[BJ] ATS redirect detected: ${platform} → ${boardSlug} (from ${fromUrl})`);
+
+    // Log to extension_events for telemetry + feed health
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) return;
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        await fetch(SB_URL + '/rest/v1/extension_events', {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: session.user_id,
+            event_type: 'ats_redirect_detected',
+            event_data: {
+              from_url: fromUrl,
+              to_url: toUrl,
+              platform: platform,
+              board_slug: boardSlug
+            },
+            ats_platform: platform,
+            job_url: toUrl,
+            extension_version: '2.11.0',
+          }),
+        });
+      } catch (e) { /* telemetry best-effort */ }
+    })();
+
+    sendResponse({ ok: true, platform, boardSlug });
+    return;
+  }
+});
+
+// ============================================================
+// ATS REDIRECT DETECTION — URL CHANGE LISTENER (v5.48 / Item #15)
+// Watches for navigation from LinkedIn to known ATS platforms.
+// Pattern-matches external URLs to identify platform + board slug.
+// ============================================================
+
+const ATS_REDIRECT_PATTERNS = [
+  { platform: 'greenhouse', pattern: /boards\.greenhouse\.io\/([^/?#]+)/i, slugGroup: 1 },
+  { platform: 'greenhouse', pattern: /job-boards\.greenhouse\.io\/([^/?#]+)/i, slugGroup: 1 },
+  { platform: 'lever',      pattern: /jobs\.lever\.co\/([^/?#]+)/i, slugGroup: 1 },
+  { platform: 'ashby',      pattern: /jobs\.ashbyhq\.com\/([^/?#]+)/i, slugGroup: 1 },
+  { platform: 'workable',   pattern: /apply\.workable\.com\/([^/?#]+)/i, slugGroup: 1 },
+  { platform: 'recruitee',  pattern: /([^.]+)\.recruitee\.com/i, slugGroup: 1 },
+  { platform: 'workday',    pattern: /([^.]+)\.wd[0-9]+\.myworkdayjobs\.com/i, slugGroup: 1 },
+  { platform: 'icims',      pattern: /careers-([^.]+)\.icims\.com/i, slugGroup: 1 },
+  { platform: 'smartrecruiters', pattern: /jobs\.smartrecruiters\.com\/([^/?#]+)/i, slugGroup: 1 },
+  { platform: 'bamboohr',   pattern: /([^.]+)\.bamboohr\.com\/careers/i, slugGroup: 1 },
+  { platform: 'jobvite',    pattern: /jobs\.jobvite\.com\/([^/?#]+)/i, slugGroup: 1 },
+];
+
+/**
+ * Check if a URL matches a known ATS platform.
+ * Returns { platform, boardSlug } or null.
+ */
+function matchAtsUrl(url) {
+  if (!url) return null;
+  for (const { platform, pattern, slugGroup } of ATS_REDIRECT_PATTERNS) {
+    const match = url.match(pattern);
+    if (match) {
+      return { platform, boardSlug: match[slugGroup] };
+    }
+  }
+  return null;
+}
+
+// Listen for tab URL changes — detect redirects from LinkedIn to ATS
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (!changeInfo.url) return;
+
+  const atsMatch = matchAtsUrl(changeInfo.url);
+  if (!atsMatch) return;
+
+  // Check if this tab was previously on LinkedIn or an apply page
+  // We detect this by the tab having navigated to an external ATS URL
+  console.log(`[BJ] ATS URL detected on tab ${tabId}: ${atsMatch.platform}/${atsMatch.boardSlug}`);
+
+  // Fire the redirect event internally
+  chrome.runtime.sendMessage({
+    type: 'ats:redirectDetected',
+    fromUrl: 'tab-navigation',
+    toUrl: changeInfo.url,
+    platform: atsMatch.platform,
+    boardSlug: atsMatch.boardSlug
+  }).catch(() => {});
 });
 
 // ============================================================
@@ -1369,6 +1466,10 @@ chrome.action.onClicked.addListener((tab) => {
 // On install or update
 chrome.runtime.onInstalled.addListener(() => {
   setupAlarms();
+  // Run encrypted storage migration (Item #9)
+  if (typeof BJ_CRYPTO_MIGRATION !== 'undefined') {
+    BJ_CRYPTO_MIGRATION.migrate().catch(e => console.warn('[BJ] Migration error:', e));
+  }
   loadState().then(async () => {
     await checkMissedResume();
     await ensureLoopRunning('onInstalled');

@@ -1,5 +1,6 @@
 // utils/applicationTracker.js — Auto-Application Tracking
-// v3.0.0: Detects form submissions and button clicks matching
+// v3.1.0: Expanded confirmation detection patterns (Item #16)
+// Detects form submissions and button clicks matching
 // apply/submit patterns. Automatically logs to pipeline.
 
 /**
@@ -20,10 +21,57 @@ export class ApplicationTracker {
     this._cleanupFns = [];
     this._pendingSubmit = null;
     this._confirmationPatterns = [
+      // ── Generic / cross-ATS ──
       /application\s+(received|submitted|sent|confirmed)/i,
-      /thank\s+you\s+for\s+(applying|your\s+application)/i,
-      /successfully\s+(submitted|applied)/i,
-      /we('ve|\s+have)\s+received\s+your/i
+      /thank\s+you\s+for\s+(applying|your\s+application|your\s+interest|your\s+submission)/i,
+      /successfully\s+(submitted|applied|sent|received)/i,
+      /we('ve|\s+have)\s+received\s+your/i,
+      /your\s+application\s+(has\s+been|was)\s+(submitted|received|sent)/i,
+      /application\s+(complete|completed|confirmation)/i,
+
+      // ── Greenhouse ──
+      /thanks\s+for\s+applying/i,
+      /your\s+application\s+has\s+been\s+submitted\s+to/i,
+      /application\s+submitted\s+for/i,
+
+      // ── Lever ──
+      /we('ve|\s+have)\s+received\s+your\s+application/i,
+      /thanks!\s+your\s+application\s+has\s+been\s+received/i,
+
+      // ── Workday ──
+      /you\s+have\s+successfully\s+submitted\s+your/i,
+      /application\s+submitted\s+successfully/i,
+      /thank\s+you,?\s+your\s+information\s+has\s+been\s+submitted/i,
+      /submission\s+successful/i,
+      /your\s+submission\s+has\s+been\s+completed/i,
+
+      // ── Indeed ──
+      /your\s+application\s+has\s+been\s+sent\s+to/i,
+      /application\s+sent/i,
+      /your\s+resume\s+has\s+been\s+sent/i,
+      /applied\s+successfully/i,
+
+      // ── LinkedIn Easy Apply ──
+      /your\s+application\s+was\s+sent\s+to/i,
+      /application\s+sent\s+to/i,
+
+      // ── Ashby / iCIMS / BambooHR / Jobvite / SmartRecruiters ──
+      /we\s+appreciate\s+your\s+interest/i,
+      /thanks\s+for\s+your\s+interest\s+in/i,
+      /your\s+application\s+is\s+in/i,
+      /application\s+received!/i,
+      /you('ve|\s+have)\s+applied\s+(for|to)/i,
+      /congratulations.*application/i,
+
+      // ── URL path patterns (confirmation pages) ──
+      /\/application[_-]?confirm(ation|ed)?/i,
+      /\/apply[_-]?(success|complete|done|confirm)/i,
+      /\/thank[_-]?you/i,
+      /\/submitted/i,
+
+      // ── Title-based confirmation ──
+      /^application\s+(confirmed?|submitted|received)/i,
+      /^thank\s+you/i,
     ];
   }
 
@@ -113,7 +161,8 @@ export class ApplicationTracker {
   _checkForConfirmation() {
     const bodyText = document.body?.textContent || '';
     const titleText = document.title || '';
-    const combinedText = bodyText + ' ' + titleText;
+    const urlPath = window.location.pathname + window.location.search;
+    const combinedText = bodyText + ' ' + titleText + ' ' + urlPath;
 
     for (const pattern of this._confirmationPatterns) {
       if (pattern.test(combinedText)) {
