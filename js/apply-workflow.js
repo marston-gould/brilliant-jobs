@@ -414,6 +414,7 @@ function _guessAtsSource(url) {
   if (url.indexOf('workable') >= 0) return 'workable';
   if (url.indexOf('recruitee') >= 0) return 'recruitee';
   if (url.indexOf('usajobs') >= 0) return 'usajobs';
+  if (url.indexOf('linkedin.com') >= 0) return 'linkedin-easy-apply';
   return 'greenhouse';
 }
 
