@@ -1272,7 +1272,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       saveBtn = isSaved
         ? `<button class="job-action-btn saved-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline ✓</button>`
         : `<button class="job-action-btn" onclick="toggleSaveJob('${job.greenhouse_id}', this)">Pipeline</button>`;
-      const jobUrl = job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#';
+      const jobUrl = job.apply_url || (job.url && job.url.startsWith('http') ? job.url : job.url ? 'https://boards.greenhouse.io' + job.url : '#');
       applyBtn = applyButton(['greenhouse'], { greenhouse: jobUrl }, job.greenhouse_id);
     }
 

@@ -54,6 +54,7 @@ interface ParsedJob {
   company_name: string;
   title: string;
   url: string;
+  apply_url: string;
   location: string | null;
   department: string | null;
   content: string | null;
@@ -86,6 +87,7 @@ function parseGreenhouseJobs(data: any, slug: string, companyName: string): Pars
       company_name: companyName || slug,
       title: j.title || "Untitled",
       url: `https://boards.greenhouse.io/${slug}/jobs/${j.id}`,
+      apply_url: `https://boards.greenhouse.io/${slug}/jobs/${j.id}#app`,
       location: loc,
       department: dept,
       content: null,
@@ -112,6 +114,7 @@ function parseLeverJobs(data: any, slug: string, companyName: string): ParsedJob
       company_name: companyName || slug,
       title: j.text || "Untitled",
       url: j.hostedUrl || `https://jobs.lever.co/${slug}/${j.id}`,
+      apply_url: (j.hostedUrl || `https://jobs.lever.co/${slug}/${j.id}`) + '/apply',
       location: loc,
       department: dept,
       content: j.descriptionPlain || j.description || null,
@@ -137,6 +140,7 @@ function parseAshbyJobs(data: any, slug: string, companyName: string): ParsedJob
       company_name: companyName || slug,
       title: j.title || "Untitled",
       url: j.jobUrl || `https://jobs.ashbyhq.com/${slug}/${j.id}`,
+      apply_url: j.jobUrl || `https://jobs.ashbyhq.com/${slug}/${j.id}`,
       location: loc,
       department: dept,
       content: j.descriptionHtml || j.descriptionPlain || null,
@@ -163,6 +167,7 @@ function parseWorkableJobs(data: any, slug: string, companyName: string): Parsed
       company_name: companyName || slug,
       title: j.title || "Untitled",
       url: j.url || `https://apply.workable.com/${slug}/j/${j.shortcode}/`,
+      apply_url: j.url || `https://apply.workable.com/${slug}/j/${j.shortcode}/`,
       location: loc,
       department: dept,
       content: j.description || null,
@@ -188,6 +193,7 @@ function parseRecruiteeJobs(data: any, slug: string, companyName: string): Parse
       company_name: companyName || slug,
       title: j.title || "Untitled",
       url: j.careers_url || j.url || `https://${slug}.recruitee.com/o/${j.slug || j.id}`,
+      apply_url: j.careers_url || j.url || `https://${slug}.recruitee.com/o/${j.slug || j.id}`,
       location: loc,
       department: dept,
       content: j.description || j.body || null,
@@ -279,6 +285,7 @@ async function upsertJobs(jobs: ParsedJob[]): Promise<number> {
       company_name: j.company_name,
       title: j.title,
       url: j.url,
+      apply_url: j.apply_url,
       location: j.location,
       department: j.department,
       content: j.content,
@@ -545,3 +552,4 @@ Deno.serve(async (req: Request) => {
     headers: { "Content-Type": "application/json" },
   });
 });
+
