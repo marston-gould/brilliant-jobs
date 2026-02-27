@@ -1,6 +1,6 @@
 {
-  "version": "3.2.0",
-  "build": "2026-02-26b",
+  "version": "3.3.0",
+  "build": "2026-02-26c",
   "files": {
     "manifest.json": "3.0.0",
     "background.js": "3.1.0",
@@ -15,9 +15,9 @@
     "handlers/lever.js": "3.0.0",
     "handlers/greenhouse-legacy.js": "3.2.0",
     "handlers/greenhouse-react.js": "3.2.0",
-    "handlers/ashby.js": "3.0.0-stub",
-    "handlers/workable.js": "3.0.0-stub",
-    "handlers/recruitee.js": "3.0.0-stub",
+    "handlers/ashby.js": "3.3.0",
+    "handlers/workable.js": "3.3.0",
+    "handlers/recruitee.js": "3.3.0",
     "handlers/linkedin-easy-apply.js": "3.0.0-stub",
     "utils/reactProps.js": "3.0.0",
     "utils/fieldFillerQueue.js": "3.0.0",
@@ -32,6 +32,7 @@
     "fields/dropdownSearchable.js": "3.1.0"
   },
   "changelog": {
+    "3.3.0": "Phase 5 (P10-D) Ashby/Workable/Recruitee: ashby.js (323 lines, Ashby field containers, custom combobox/listbox, EEO fields), workable.js (324 lines, Workable data-ui selectors, name-based + label-based mapping), recruitee.js (294 lines, candidate[] name mapping, GDPR checkbox skip, server-side submission metadata). All 5 ATS platforms now have complete handlers.",
     "3.2.0": "Phase 3 (P10-B) Greenhouse Dual-Board: greenhouse-legacy.js (select2 dropdowns, div.field containers, education repeating sections, EEO fields, resume+cover upload) + greenhouse-react.js (React props hacking, react-select 6-step dropdown, React version detection, serialized field filler queue, React radio groups)",
     "3.1.0": "P0 Architecture Complete: ATS message bridge in background.js (ats:fill, ats:openAndFill, ats:pageDetected, ats:fieldsChanged), date fields filler, checkbox/toggle filler, radio group filler with smart question mapping, searchable dropdown filler (react-select, select2, custom listbox)",
     "3.0.0": "P0 Architecture Rebuild: multi-ATS manifest, handler routing, contentScript.js, shared utils (reactProps, fieldFillerQueue, mutationWatcher, applicationTracker, fileUpload), field fillers (textInput, dropdown), Lever handler (complete), stub handlers for Greenhouse/Ashby/Workable/Recruitee/LinkedIn",
