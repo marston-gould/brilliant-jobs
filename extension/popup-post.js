@@ -55,6 +55,11 @@
       var verLabel = document.getElementById('ver-label');
       if (verLabel) {
         verLabel.textContent = 'v' + ver.version;
+        // Console log version and role
+        chrome.storage.local.get('userRole').then(data => {
+          var role = data.userRole || 'user';
+          console.log('[BJ Extension] v' + ver.version + ' loaded | role: ' + role);
+        });
         verLabel.addEventListener('click', function() {
           var panel = document.getElementById('about-panel');
           if (panel) panel.classList.toggle('active');
@@ -128,3 +133,4 @@
     }
   })();
 })();
+

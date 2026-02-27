@@ -369,7 +369,7 @@
   <div id="roadmap"></div>
 
   <div class="footer">
-    Brilliant Jobs · Internal Roadmap · Updated February 26, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 34 Edge Functions · 27 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules) · Feed Quality: Skills/Level/Dept/JD filters + relevance sort + feed signals + filter health
+    Brilliant Jobs · Internal Roadmap · Updated February 27, 2026 · <span id="rm-version">—</span> · ✅ Multi-ATS live: 37,700+ boards across 6 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, USAJOBS) · 350K+ jobs · 145K geocoded · Architecture hardening complete (35/35) · Infra hardening + data quality (13/13) · 34 Edge Functions · 27 pg_cron jobs · 5 external SEO pages · AI-powered resume scoring + JD-match rewrite · SEO analytics dashboard (6 sources) · Stripe monetization live · Communication Center v2 (email + SMS) · Daily JSONB backups · TRUNCATE protection · Security hardening (6/6) · P13 Tiers 1-2 complete (13/13) · Canny feedback integration · Intelligent Pipeline Tracking · Merchandising System · Resume Archive + Metrics Intelligence (3 tables, 7 functions, 3 JS modules) · Feed Quality: Skills/Level/Dept/JD filters + relevance sort + feed signals + filter health · Referral Hub Redesign complete (4 phases, leaderboard rewards, milestone bonuses, flair system)
   </div>
 
 </div>
@@ -1506,6 +1506,17 @@ const features = [
   { s: 'done', n: 'Version system hardening', d: 'v5.12: Eliminated all hardcoded version strings. version.js now sole source of truth with universal [id$="-version"] selector. Removed v4.91 from dashboard.html, v4.12 fallback from roadmap.html. Added version.js to 3 missing pages.', p: 47 },
   { s: 'done', n: 'Fix referral Supabase init error + bundle rebuild', d: 'v5.13: Fixed supabaseUrl is required error on Referrals tab. Root cause: referrals.js IIFE tried window.bjSupabase (undefined) then fell back to createClient(window.SUPABASE_URL) which was also undefined. Fix: expose sb as window.bjSupabase in globals.js. Fixes 4 call sites. Bundle rebuilt to v5.13.', p: 47 },
   { s: 'done', n: 'Resume Score Button UX redesign', d: 'v5.17: Single Score Resume button replaces dual Analyze/Deep buttons. Tier-routing: Free/Starter runs Quick Score + contextual upsell card; Pro with credits shows selection modal (remembers last choice via bj_score_mode); Pro without credits = Free flow. 7 PostHog events for full upsell funnel. getUserCredits() helper added to billing.js. Upsell dismissible for 7 days, resets on resume upload.', p: 47 },
+
+  // Phase 48: Referral Hub Redesign (v5.19–v5.25) — Feb 27, 2026 ✅ COMPLETE
+  { s: 'done', n: 'Referral Hub visual redesign — copy, hero, SVG badges', d: 'v5.19: "Share the signal. Earn together." hero banner with gradient. 5 SVG stroke-based tier badges (Signal/Source/Radar/Intel/Clearance). Intelligence-themed messaging. .referral-hero following .feed-hero pattern.', p: 48 },
+  { s: 'done', n: 'Leaderboard rewards backend', d: 'v5.20: leaderboard_rewards table + distribute_leaderboard_rewards RPC (SECURITY DEFINER). Reward tiers: 1st=100cr+30d Pro, 2nd=50cr+14d, 3rd=25cr+7d, top 10%=10cr. pg_cron weekly (Mon 00:00 UTC) + monthly (1st). get_leaderboard RPC with period param. Resend dark-theme email template.', p: 48 },
+  { s: 'done', n: 'Leaderboard rewards frontend', d: 'v5.22: Weekly/Monthly period toggle. 4 reward tier cards with visual hierarchy. Countdown timer ("Resets in Xd Xh"). User rank highlight with "(you)" tag. "Earning" column. 20-user minimum threshold with opt-in progress bar.', p: 48 },
+  { s: 'done', n: 'localStorage enc: crash hotfix', d: 'v5.23–v5.24: PII encryption layer (v5.16) prefixed values with enc:. 68 JSON.parse(localStorage.getItem()) calls across 13 JS files crashed. Global safeReadLS() helper. readPiiData() + decryptFromStorage() hardened.', p: 48 },
+  { s: 'done', n: 'Tier unlock bonuses (Phase 4A)', d: 'v5.25: referral_milestones table (idempotent per tier). process_tier_bonus RPC: Signal=10cr, Source=25cr, Radar=50cr, Intel=100cr+30d Pro, Clearance=200cr+90d Pro. Toast notification on tier unlock.', p: 48 },
+  { s: 'done', n: 'Clearance quarterly retention check (Phase 4B)', d: 'v5.25: check_clearance_retention RPC — downgrades inactive Clearance→Intel if no activated referral in 90 days. pg_cron quarterly (1st Jan/Apr/Jul/Oct). Auto-notification on downgrade.', p: 48 },
+  { s: 'done', n: 'Profile flair system (Phase 4C)', d: 'v5.25: Leaderboard flair per tier. Signal+: tier icon. Radar+: accent-colored name. Clearance: gold name + shield icon + TOP REFERRER badge.', p: 48 },
+  { s: 'done', n: 'Tab restore fix — referrals + ghost', d: 'v5.25: Added initReferralHub() + renderGhostMonitor() to tab restore block in app.js. Fixed Loading... stuck on page refresh when referrals/ghost was last active tab.', p: 48 },
+  { s: 'done', n: 'LinkedIn-based referral codes', d: 'v5.25: Referral codes derived from LinkedIn slug (marston instead of BJ-972148). Links use /in/ format: brilliantjobs.app/in/marston. Updated get_referral_stats RPC, generate_referral_code trigger. Cleaned up obsolete .replace() calls.', p: 48 },
 ];
 
 
@@ -1640,7 +1651,8 @@ function render() {
     44: 'Data Integrity & Sync Consolidation ✅',
     45: 'Visual Consistency Pass + UX Fixes ✅',
     46: 'Referral Program (v5.07-v5.10) ✅',
-    47: 'Hotfixes & UX Polish (v5.06, v5.11-v5.17) ✅'
+    47: 'Hotfixes & UX Polish (v5.06, v5.11-v5.17) ✅',
+    48: 'Referral Hub Redesign (v5.19-v5.25) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {

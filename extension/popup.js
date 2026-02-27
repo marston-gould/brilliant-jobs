@@ -8,6 +8,7 @@ const $$ = (sel) => document.querySelectorAll(sel);
 // ============================================================
 
 let currentUser = null;
+let currentUserRole = 'user';
 
 async function checkAuth() {
   try {
@@ -33,21 +34,26 @@ async function checkAuth() {
     // Set auth token for all Supabase requests
     supabase.setAuthToken(session.access_token);
 
-    // Check approval status
+    // Check approval status and fetch role
     try {
-      const profiles = await supabase.select('profiles', `select=approved&id=eq.${session.user_id}`);
+      const profiles = await supabase.select('profiles', `select=approved,role&id=eq.${session.user_id}`);
       if (!profiles || profiles.length === 0 || !profiles[0].approved) {
         showAuthGate();
         showAuthMsg('Your account is pending approval. You\'ll get access once reviewed.', 'warn');
         return;
       }
+      // Store role (default to 'user' if not set)
+      currentUserRole = (profiles[0].role || 'user');
+      await chrome.storage.local.set({ userRole: currentUserRole });
     } catch (e) {
       // Distinguish network/timeout errors from genuinely missing profiles
       const errMsg = (e.message || '').toLowerCase();
       if (errMsg.includes('timeout') || errMsg.includes('500') || errMsg.includes('fetch') || errMsg.includes('network')) {
         // Transient error — don't lock the user out, let them through
-        // (RLS will still protect data on subsequent calls)
-        console.warn('Profile check failed (transient), proceeding:', e.message);
+        // Try to use cached role
+        const cached = await chrome.storage.local.get('userRole');
+        currentUserRole = cached.userRole || 'user';
+        console.warn('Profile check failed (transient), proceeding with cached role:', currentUserRole);
       } else {
         showAuthGate();
         showAuthMsg('Account setup incomplete. Please sign up at brilliantjobs.app', 'warn');
@@ -57,7 +63,7 @@ async function checkAuth() {
 
     // Authenticated and approved — show the app
     currentUser = { id: session.user_id, email: session.email };
-    showApp(session.email);
+    showApp(session.email, currentUserRole);
 
   } catch (e) {
     showAuthGate();
@@ -151,14 +157,57 @@ function showAuthGate() {
   });
 }
 
-function showApp(email) {
+function showApp(email, role) {
   $('#auth-gate').style.display = 'none';
   $('#app-content').style.display = 'block';
   $('#auth-user-bar').classList.add('active');
   $('#auth-user-email').textContent = email;
 
+  // Role-based tab visibility
+  const isAdmin = (role === 'admin');
+  applyTabGating(isAdmin);
+
+  // Show admin badge if admin
+  const adminBadge = $('#admin-badge');
+  if (adminBadge) {
+    adminBadge.style.display = isAdmin ? 'inline-flex' : 'none';
+  }
+
   // Initialize app features
   initApp();
+}
+
+/**
+ * RBAC Tab Gating — Phase 5
+ * Admins see all tabs (Harvest, Scan, Jobs, Data).
+ * Regular users see only Harvest, Jobs, Data.
+ */
+function applyTabGating(isAdmin) {
+  const scanTab = document.querySelector('.tab[data-tab="scan"]');
+  const scanContent = $('#tab-scan');
+  const scannerIndicator = $('#scanner-indicator');
+
+  if (!isAdmin) {
+    // Hide Scan tab for non-admins
+    if (scanTab) scanTab.style.display = 'none';
+    if (scanContent) scanContent.style.display = 'none';
+    if (scannerIndicator) scannerIndicator.style.display = 'none';
+
+    // If Scan was the active tab, switch to Harvest
+    if (scanTab && scanTab.classList.contains('active')) {
+      scanTab.classList.remove('active');
+      if (scanContent) scanContent.classList.remove('active');
+      const harvestTab = document.querySelector('.tab[data-tab="harvest"]');
+      const harvestContent = $('#tab-harvest');
+      if (harvestTab) harvestTab.classList.add('active');
+      if (harvestContent) harvestContent.classList.add('active');
+    }
+  } else {
+    // Admin — show everything
+    if (scanTab) scanTab.style.display = '';
+    if (scanContent) scanContent.style.display = '';
+    if (scannerIndicator) scannerIndicator.style.display = '';
+  }
 }
 
 function showAuthMsg(text, type) {
@@ -211,6 +260,9 @@ $('#auth-pw-toggle').addEventListener('click', () => {
 $('#auth-logout-btn').addEventListener('click', async () => {
   const email = $('#auth-user-email').textContent; // save email before clearing
   await clearSession();
+  // Clear cached role
+  await chrome.storage.local.remove('userRole');
+  currentUserRole = 'user';
   // Store email so pre-fill works after logout
   await chrome.storage.local.set({ lastEmail: email });
   showAuthGate();
@@ -1341,3 +1393,4 @@ async function initCounts() {
 }
 
 // Note: initApp() is called from checkAuth() after successful authentication
+
