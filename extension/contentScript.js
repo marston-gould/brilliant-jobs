@@ -38,6 +38,11 @@
       // Recruitee uses custom subdomains: {company}.recruitee.com
       hostnamePattern: /\.recruitee\.com$/,
       module: 'handlers/recruitee.js'
+    },
+    'linkedin-easy-apply': {
+      hostnames: ['www.linkedin.com'],
+      pathPattern: /^\/jobs\//,
+      module: 'handlers/linkedin-easy-apply.js'
     }
   };
 
@@ -55,6 +60,9 @@
       if (config.hostnamePattern && config.hostnamePattern.test(hostname)) {
         return { id, config };
       }
+      if (config.hostnames && config.hostnames.includes(hostname) && config.pathPattern) {
+        if (config.pathPattern.test(window.location.pathname)) return { id, config };
+      }
     }
     return null;
   }
@@ -69,7 +77,8 @@
     'lever': '.posting-page .content .posting-categories + div, .posting .content-wrapper .posting-headline + div',
     'ashby': 'div[data-ui="job-description"], .ashby-job-posting-description',
     'workable': '.job-description, [data-ui="job-description"]',
-    'recruitee': '.job-description, .posting-description'
+    'recruitee': '.job-description, .posting-description',
+    'linkedin-easy-apply': '.jobs-description__content, .jobs-box__html-content, .jobs-description-content__text'
   };
 
   function extractJobDescription(atsId) {
