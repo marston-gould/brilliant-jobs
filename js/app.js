@@ -465,16 +465,32 @@ document.addEventListener('click', e => {
 });
 
 // Extension detection — check if extension has updated the profile recently
+// Required extension version — bump this when a new extension release ships
+var REQUIRED_EXTENSION_VERSION = '2.11.0';
+
+function compareVersions(installed, required) {
+  if (!installed || !required) return 0;
+  var a = installed.split('.').map(Number);
+  var b = required.split('.').map(Number);
+  for (var i = 0; i < Math.max(a.length, b.length); i++) {
+    var av = a[i] || 0, bv = b[i] || 0;
+    if (av < bv) return -1;
+    if (av > bv) return 1;
+  }
+  return 0;
+}
+
 async function checkExtensionStatus() {
   try {
     const { data: profile } = await sb.from('profiles')
-      .select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit')
+      .select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
       .eq('id', currentUser.id).single();
 
     const navDot = $('#ext-status-dot');
     const dot = $('#ext-dot');
     const text = $('#ext-status-text');
     const detail = $('#ext-status-detail');
+    const updateBanner = $('#ext-update-banner');
 
     if (profile?.last_scan_at) {
       const lastScan = new Date(profile.last_scan_at);
@@ -487,23 +503,48 @@ async function checkExtensionStatus() {
         else { navDot.classList.remove('connected'); navDot.title = 'Extension not detected'; }
       }
 
+      // Version mismatch detection
+      var needsUpdate = profile.extension_version && compareVersions(profile.extension_version, REQUIRED_EXTENSION_VERSION) < 0;
+
+      // Nav dot amber for version mismatch
+      if (navDot && isActive && needsUpdate) {
+        navDot.classList.remove('connected');
+        navDot.classList.add('warning');
+        navDot.title = 'Extension update available (v' + REQUIRED_EXTENSION_VERSION + ')';
+      }
+
       // Setup page status
       if (dot && text && detail) {
         if (isActive) {
-          dot.className = 'ext-dot on';
-          text.textContent = 'Extension connected';
+          dot.className = needsUpdate ? 'ext-dot warning' : 'ext-dot on';
+          text.textContent = needsUpdate ? 'Extension update available' : 'Extension connected';
           const timeStr = lastScan.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
           const todayStr = lastScan.toDateString() === new Date().toDateString() ? 'today' : lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' });
           detail.textContent = profile.scanner_running
             ? `Active now · last synced at ${timeStr}`
             : `Last active ${todayStr} at ${timeStr}`;
-          // Hide download button when connected
+          // Hide download button when connected (but not if update needed)
           var dlBox = $('#download-box');
-          if (dlBox) dlBox.style.display = 'none';
+          if (dlBox) dlBox.style.display = needsUpdate ? '' : 'none';
         } else {
           dot.className = 'ext-dot off';
           text.textContent = 'Extension inactive';
           detail.textContent = `Last seen ${lastScan.toLocaleDateString([], { month: 'short', day: 'numeric' })} — open Chrome to reconnect`;
+        }
+      }
+
+      // Update banner
+      if (updateBanner) {
+        if (needsUpdate && isActive) {
+          updateBanner.style.display = '';
+          var instVer = $('#ext-installed-ver');
+          var reqVer = $('#ext-required-ver');
+          var verLabel = $('#ext-update-ver-label');
+          if (instVer) instVer.textContent = 'v' + profile.extension_version;
+          if (reqVer) reqVer.textContent = 'v' + REQUIRED_EXTENSION_VERSION;
+          if (verLabel) verLabel.textContent = REQUIRED_EXTENSION_VERSION;
+        } else {
+          updateBanner.style.display = 'none';
         }
       }
     }
@@ -553,6 +594,15 @@ $('#download-btn').addEventListener('click', async () => {
   } catch (e) { status.textContent = 'Error: ' + e.message; }
   btn.disabled = false; btn.textContent = 'Download Extension';
 });
+
+// Update download button — triggers same download flow as main button
+var extUpdateDlBtn = $('#ext-update-dl-btn');
+if (extUpdateDlBtn) {
+  extUpdateDlBtn.addEventListener('click', function() {
+    var mainBtn = $('#download-btn');
+    if (mainBtn) mainBtn.click();
+  });
+}
 
 // ============================================================
 // GMAIL OAUTH — Connect / Disconnect / Status

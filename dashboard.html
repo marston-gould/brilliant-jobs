@@ -18,7 +18,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=5.44" defer></script>
+  <script src="dist/dashboard.min.js?v=5.45" defer></script>
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -637,6 +637,20 @@
                 <div id="download-box" style="margin-bottom:12px;">
                   <button class="btn btn-primary btn-sm" id="download-btn">Download Extension</button>
                   <div class="download-status" id="download-status"></div>
+                </div>
+                <!-- Extension update notification (hidden by default) -->
+                <div id="ext-update-banner" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <div style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></div>
+                    <div style="font-size:13px;font-weight:600;color:#f59e0b;">Update available</div>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">
+                    Your extension is <strong id="ext-installed-ver">—</strong> — latest is <strong id="ext-required-ver">—</strong>.
+                    Download the new version to get the latest features and fixes.
+                  </div>
+                  <button class="btn btn-sm" id="ext-update-dl-btn" style="background:#f59e0b;color:#000;font-weight:600;border:none;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">
+                    Download v<span id="ext-update-ver-label">—</span>
+                  </button>
                 </div>
                 <div class="card" id="instance-card" style="display:none;margin-top:12px;">
                   <div class="card-title">Your Extension Instance</div>
