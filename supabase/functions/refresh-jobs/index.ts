@@ -498,7 +498,7 @@ Deno.serve(async (req: Request) => {
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "150") || 150, 300);
   const forceTier = url.searchParams.get("tier") || null; // override: hot|warm|cold|all
 
-  console.log(`[refresh-jobs] v13 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
+  console.log(`[refresh-jobs] v14 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
 
   // ── Tiered board selection ──
   // Priority: HOT boards due for refresh > WARM boards due > COLD boards due
