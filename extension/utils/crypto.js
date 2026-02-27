@@ -141,3 +141,57 @@ const BJ_CRYPTO = (() => {
 
   return { encrypt, decrypt, secureSet, secureGet, secureRemove };
 })();
+
+// ── Encrypted Storage Migration (v5.48 / Item #9) ──
+// Migrates plaintext sensitive keys to encrypted storage.
+// Safe to run multiple times — skips already-encrypted values.
+const BJ_CRYPTO_MIGRATION = (() => {
+  'use strict';
+
+  // Keys that should be encrypted (contain PII or tokens)
+  const SENSITIVE_KEYS = [
+    'bjProfile',        // user profile data
+    'bjResumeRef',      // resume file references
+    'bjSavedFilters',   // saved search filters
+    '_bj_answer_cache', // AI answer cache (may contain profile data)
+  ];
+
+  /**
+   * Migrate plaintext storage values to encrypted format.
+   * Runs once on install/update. Idempotent — skips already-encrypted.
+   */
+  async function migrate() {
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const key of SENSITIVE_KEYS) {
+      try {
+        const result = await chrome.storage.local.get(key);
+        const value = result[key];
+
+        if (!value) {
+          skipped++;
+          continue;
+        }
+
+        // Already encrypted — skip
+        if (value && value.tag === 'bj-encrypted') {
+          skipped++;
+          continue;
+        }
+
+        // Encrypt and re-store
+        await BJ_CRYPTO.secureSet(key, value);
+        migrated++;
+        console.log(`[BJ] Crypto migration: encrypted ${key}`);
+      } catch (e) {
+        console.warn(`[BJ] Crypto migration failed for ${key}:`, e.message);
+      }
+    }
+
+    console.log(`[BJ] Crypto migration complete: ${migrated} migrated, ${skipped} skipped`);
+    return { migrated, skipped };
+  }
+
+  return { migrate, SENSITIVE_KEYS };
+})();
