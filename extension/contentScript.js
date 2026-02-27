@@ -3,8 +3,10 @@
 // and routes to the appropriate handler.
 // v3.8.0: Phase 10 (P9) — Enhanced JD selectors, ApplicationTracker
 // integration for auto-tracking, JD match data sent to background.
+// v3.9.0: Item #1 — Generic fallback handler for unrecognized ATS sites.
 //
-// This script is injected on all ATS domains (manifest content_scripts).
+// This script is injected on all ATS domains (manifest content_scripts)
+// and dynamically by background.js on unknown ATS domains.
 // It does NOT auto-fill. It waits for a message from background.js
 // (triggered by user clicking "Autofill" in the popup or dashboard).
 
@@ -61,6 +63,9 @@
   /**
    * Detect which ATS platform we're on based on hostname.
    * Returns { id, config } or null if unrecognized.
+   *
+   * v3.9.0: If no named handler matches, checks for the presence of
+   * an application form and falls back to the generic handler.
    */
   function detectATS() {
     const hostname = window.location.hostname;
@@ -78,7 +83,43 @@
         return { id, config };
       }
     }
+
+    // ── Generic fallback (v3.9.0 / Item #1) ──
+    // If we're not on a known ATS but this script was injected
+    // (either via manifest optional_host_permissions or dynamic injection),
+    // check if the page has an application form and route to generic handler.
+    if (_hasApplicationForm()) {
+      return {
+        id: 'generic',
+        config: { module: 'handlers/generic.js', generic: true }
+      };
+    }
+
     return null;
+  }
+
+  /**
+   * Heuristic check: does this page look like a job application form?
+   * Requires at least 2 fillable fields and a label matching common
+   * application keywords.
+   */
+  function _hasApplicationForm() {
+    const forms = document.querySelectorAll('form');
+    const inputs = document.querySelectorAll(
+      'input[type="text"], input[type="email"], input[type="tel"], textarea, select'
+    );
+    if (inputs.length < 2) return false;
+
+    // Check for application-like signals
+    const bodyText = (document.body?.textContent || '').substring(0, 10000).toLowerCase();
+    const signals = [
+      /apply/i, /application/i, /submit.*resume/i, /upload.*resume/i,
+      /cover\s*letter/i, /first\s*name/i, /email.*address/i,
+    ];
+    const matchCount = signals.filter(s => s.test(bodyText)).length;
+
+    // At least 2 signals = likely an application form
+    return matchCount >= 2 || forms.length > 0;
   }
 
   // ============================================================
@@ -150,6 +191,15 @@
       '.job-description',
       'div[class*="jobDescription"]',
     ],
+    'generic': [
+      '.job-description',
+      '.job-post-content',
+      '[class*="description"]',
+      '[data-testid*="description"]',
+      '[id*="description"]',
+      'article',
+      'main .content',
+    ],
   };
 
   /**
@@ -166,6 +216,7 @@
     'linkedin-easy-apply': '.jobs-unified-top-card__job-title, .job-details-jobs-unified-top-card__job-title, h1.t-24',
     'indeed': '.jobsearch-JobInfoHeader-title, h1.icl-u-xs-mb--xs, [data-testid="jobTitle"], h1[class*="JobTitle"]',
     'workday': '[data-automation-id="jobPostingHeader"] h2, h2[data-automation-id="jobTitle"], .css-1q2dra3 h2',
+    'generic': 'h1, h2.job-title, [class*="title"] h1, [class*="title"] h2, [data-testid*="title"]',
   };
 
   const COMPANY_SELECTORS = {
@@ -178,6 +229,7 @@
     'linkedin-easy-apply': '.jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name a',
     'indeed': '.jobsearch-InlineCompanyRating-companyHeader, [data-testid="companyName"], a[data-tn-element="companyName"]',
     'workday': '[data-automation-id="jobPostingHeader"] [data-automation-id="company"], .css-1q2dra3 a[href*="company"]',
+    'generic': '[class*="company"] a, [class*="company"], [class*="employer"], [data-testid*="company"]',
   };
 
   function extractJobDescription(atsId) {
@@ -530,7 +582,7 @@
   async function handleFillRequest(msg) {
     const ats = detectATS();
     if (!ats) {
-      return { success: false, error: 'Not on a recognized ATS page' };
+      return { success: false, error: 'Not on a recognized ATS page and no application form detected' };
     }
 
     // Security check: triple-layer gate
@@ -546,7 +598,19 @@
         const module = await import(handlerUrl);
         loadedHandler = { id: ats.id, handler: module.default || module };
       } catch (err) {
-        return { success: false, error: `Failed to load handler for ${ats.id}: ${err.message}` };
+        // If loading a named handler fails, try generic fallback
+        if (ats.id !== 'generic') {
+          try {
+            const genericUrl = chrome.runtime.getURL('handlers/generic.js');
+            const genericModule = await import(genericUrl);
+            loadedHandler = { id: 'generic', handler: genericModule.default || genericModule };
+            console.warn(`[BJ] Named handler ${ats.id} failed, falling back to generic: ${err.message}`);
+          } catch (genericErr) {
+            return { success: false, error: `Failed to load handler for ${ats.id}: ${err.message}` };
+          }
+        } else {
+          return { success: false, error: `Failed to load generic handler: ${err.message}` };
+        }
       }
     }
 

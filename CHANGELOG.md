@@ -4,6 +4,26 @@
 - **Resend domain verification**: `brilliantjobs.app` domain not verified in Resend. DNS records (SPF, DKIM, DMARC) are all present and resolving correctly in Cloudflare DNS. DKIM verified, SPF shows failed in Resend. Resend dashboard throwing server-side error (Next.js SSR crash) — cannot access /domains page. Google OAuth redirect loops to accounts.youtube.com/accounts/SetSID. API key is send-only (cannot manage domains via API). **Need**: Either fix Resend dashboard access (try incognito with only brilliantjobsapp@gmail.com signed in), create a full-access API key, or contact support@resend.com. Once verified, all notification emails unlock.
 - **SEO redirect (Item 3)**: `http://brilliantjobs.app` and `http://www.brilliantjobs.app` return 308 to `https://vercel.com/` instead of `https://brilliantjobs.app`. Requires manual fix in Vercel Dashboard (domain config) + Cloudflare DNS (ensure DNS-only mode). See Pod 2 Handoff doc for exact steps. Cloudflare API token lacks DNS edit permissions — needs manual dashboard access.
 
+## v5.55 — 2026-02-27
+- **Generic/Universal Form Handler (Competitive Gap Item #1)**: DOM heuristic-based form filler that works on any ATS not covered by a dedicated handler
+  - New module `extension/handlers/generic.js`: label/input association, name attribute pattern matching, placeholder text analysis, fuzzy-match approach
+  - Falls back to `aiAnswerer.js` for unrecognized custom questions
+  - Updated `extension/contentScript.js`: generic fallback routing when `detectATS()` finds no named handler but `_hasApplicationForm()` returns true
+  - Doubles effective ATS coverage from 8 named platforms to 8 + any unknown site
+- **Manifest Host Permissions Fix (Competitive Gap Item #2)**: Content scripts now auto-inject on all ATS pages on page load
+  - `manifest.json`: added all known ATS domains to `host_permissions` + `content_scripts` auto-inject entry + `optional_host_permissions` for unknown/generic sites
+  - `background.js`: `injectContentScriptIfNeeded()` via `chrome.scripting.executeScript` for dynamic injection, `INJECTED_TABS` tracking, SPA fallback, tab cleanup
+  - Matches FastApply/Huntr/OwlApply auto-inject behavior while preserving narrow-permission security model
+- Extension version: 2.15.0
+- Dashboard version: v5.55, bundle rebuilt, cache-bust updated
+
+## v5.54 — 2026-02-27
+- **Indeed Anti-Bot Hardening (Item #6)**: Three-layer hardening for Indeed form filling
+  - Randomized delays with log-normal distribution
+  - Fingerprint masking: canvas noise, WebGL variation, navigator shimming
+  - Request pattern variation: field order shuffling, revisit simulation, tab-away events
+  - Extension version: 2.14.0
+
 ## v5.53 — 2026-02-27
 - **Workday My Experience Auto-Fill (Item #5)**: Full multi-section employment + education history filling on Workday's "My Experience" page
   - New module `extension/handlers/workday-experience.js`: specialized handler for the My Experience wizard step
