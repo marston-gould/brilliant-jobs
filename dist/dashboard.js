@@ -270,12 +270,32 @@ function isPiiKey(lsKey) {
 async function readPiiData(lsKey) {
   var raw = localStorage.getItem(lsKey);
   if (!raw) return null;
-  if (raw.startsWith('enc:') && currentUser) {
+  if (raw.startsWith('enc:')) {
+    if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
     var decrypted = await decryptFromStorage(raw, currentUser.id);
-    return decrypted ? JSON.parse(decrypted) : JSON.parse(raw);
+    if (decrypted) {
+      try { return JSON.parse(decrypted); } catch(e) { return null; }
+    }
+    return null; // Decryption failed — return null, never parse enc: as JSON
   }
-  return JSON.parse(raw);
+  try { return JSON.parse(raw); } catch(e) { return null; }
 }
+
+/**
+ * Safe synchronous localStorage read. (v5.22 hotfix)
+ * Returns fallback if the value starts with 'enc:' (encrypted, can't parse as JSON)
+ * or if JSON.parse fails for any reason. Use this everywhere instead of raw
+ * JSON.parse(localStorage.getItem(...)).
+ */
+function safeReadLS(key, fallback) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
+    return JSON.parse(raw);
+  } catch(e) { return fallback; }
+}
+window._safeReadLS = safeReadLS; // Expose for modules
 
 // ============================================================
 // SESSION MANAGEMENT HARDENING (v3.90)
@@ -656,7 +676,7 @@ var currentJobPage = 0;
 var JOBS_PER_PAGE = 20;
 
 // Resume state (populated fully in resumes.js)
-var resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+var resumes = safeReadLS('bj_resumes', []);
 
 // Shared filter color palette (10 colors for numbered filter badges)
 var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
@@ -3409,7 +3429,7 @@ function extractNgrams(jobs, maxPerGroup = 40) {
 // for each assigned filter. Runs at the resume level, not the feed.
 
 var jobMatchScores = {}; // greenhouse_id → score (0-100)
-var readinessCache = JSON.parse(localStorage.getItem('bj_readiness') || 'null');
+var readinessCache = safeReadLS('bj_readiness', null);
 var filterCorpusCache = {}; // filterName → { skills: [[term,count],...], bigrams: [...] }
 var readinessRunning = false;
 
@@ -5916,7 +5936,7 @@ async function aiScoreJob(jobId) {
 
   // Find assigned resume for this job's filter
   var resume = null;
-  var storedResumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  var storedResumes = safeReadLS('bj_resumes', []);
   if (storedResumes.length > 0) resume = storedResumes[0]; // Use first resume as default
 
   if (!resume || !resume.extractedText) {
@@ -10663,7 +10683,7 @@ function showResumePicker(jobId, callback) {
   _rpCallback = callback;
   _rpSelected = null;
 
-  const resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  const resumes = safeReadLS('bj_resumes', []);
   const sf = JSON.parse(localStorage.getItem('bj_saved_filters') || '[]');
   const optionsEl = $('#rp-options');
 
@@ -12150,7 +12170,7 @@ function acceptAnalyzeHidden() {
 // ============================================================
 // RESUMES
 // ============================================================
-resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+resumes = safeReadLS('bj_resumes', []);
 
 function saveResumes() {
   saveUserData('bj_resumes', JSON.stringify(resumes));
@@ -21878,7 +21898,7 @@ function _getActiveResume() {
   }
   // Fallback: check localStorage
   try {
-    var raw = localStorage.getItem('bj_resumes');
+    var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null; if(raw && raw.startsWith('enc:')) raw = null;
     if (raw) {
       var resumes = JSON.parse(raw);
       if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
@@ -22055,7 +22075,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
   if (!resumeText) {
     // Fallback: check localStorage
     try {
-      var raw = localStorage.getItem('bj_resumes');
+      var raw = localStorage.getItem('bj_resumes'); if (raw && raw.startsWith('enc:')) raw = null; if(raw && raw.startsWith('enc:')) raw = null;
       if (raw) {
         var resumes = JSON.parse(raw);
         if (resumes.length > 0) resumeText = resumes[0].text || '';
@@ -23557,7 +23577,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // savedJobIds and appliedJobIds are populated by initPipeline()
   savedJobIds = [];
   appliedJobIds = [];
-  resumes = JSON.parse(localStorage.getItem('bj_resumes') || '[]');
+  resumes = safeReadLS('bj_resumes', []);
   // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
   if (resumes.length === 0 && userId) {
     try {
