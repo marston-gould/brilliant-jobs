@@ -74,6 +74,17 @@
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     .scanner-indicator-text { color: var(--text-dim); }
     .scanner-indicator-count { color: var(--accent); font-weight: 600; font-family: var(--mono); font-size: 11px; }
+    /* Daily limit badge (Item #10) */
+    .daily-limit-bar { display: none; align-items: center; gap: 8px; padding: 6px 12px; margin: 0 12px 4px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; }
+    .daily-limit-bar.visible { display: flex; }
+    .daily-limit-bar .dl-label { color: var(--text-faint); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .daily-limit-bar .dl-count { font-family: var(--mono); font-weight: 600; color: var(--text); }
+    .daily-limit-bar .dl-count.near-limit { color: #f59e0b; }
+    .daily-limit-bar .dl-count.at-limit { color: #ef4444; }
+    .daily-limit-bar .dl-bar-track { flex: 1; height: 4px; background: var(--bg-main); border-radius: 2px; overflow: hidden; }
+    .daily-limit-bar .dl-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+    .daily-limit-bar .dl-bar-fill.near-limit { background: #f59e0b; }
+    .daily-limit-bar .dl-bar-fill.at-limit { background: #ef4444; }
     .tab-content { display: none; padding: 14px 16px; }
     .tab-content.active { display: block; }
     .stats { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -188,6 +199,12 @@
       <div class="tab" data-tab="data">Data</div>
     </div>
     <div class="scanner-indicator" id="scanner-indicator"><div class="scanner-dot idle" id="scanner-dot"></div><span class="scanner-indicator-text" id="scanner-indicator-text">Scanner idle</span><span class="scanner-indicator-count" id="scanner-indicator-count"></span></div>
+    <!-- Daily Limit Badge (Item #10) — shown for Starter tier only -->
+    <div class="daily-limit-bar" id="daily-limit-bar">
+      <span class="dl-label">Today</span>
+      <span class="dl-count" id="dl-count">0 / 5</span>
+      <div class="dl-bar-track"><div class="dl-bar-fill" id="dl-bar-fill" style="width: 0%"></div></div>
+    </div>
     <div id="tab-harvest" class="tab-content active">
       <div class="stats"><div class="stat"><div class="stat-value" id="h-count">0</div><div class="stat-label">Connections Found</div></div><div class="stat"><div class="stat-value" id="h-companies">0</div><div class="stat-label">Parsed Companies</div></div></div>
       <div class="source-list"><div class="source-item"><span class="source-dot dot-active"></span><span>Connections</span><span class="source-badge badge-ready">Ready</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Followers</span><span class="source-badge badge-soon">Coming Soon</span></div><div class="source-item disabled"><span class="source-dot dot-disabled"></span><span>Following</span><span class="source-badge badge-soon">Coming Soon</span></div></div>
