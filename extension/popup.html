@@ -90,6 +90,17 @@
     .btn-danger:hover { background: #dc3636; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
     .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    /* v5.48: Daily limit badge (Item #10) */
+    .daily-limit-bar { display: none; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin: 6px 0 4px; font-size: 11px; align-items: center; gap: 8px; }
+    .daily-limit-bar.visible { display: flex; }
+    .daily-limit-bar .dl-label { color: var(--text-faint); font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .daily-limit-bar .dl-count { font-weight: 600; color: var(--text); font-family: var(--mono); }
+    .daily-limit-bar .dl-count.warning { color: var(--warm); }
+    .daily-limit-bar .dl-count.exhausted { color: var(--red, #ef4444); }
+    .dl-progress { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .dl-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+    .dl-progress-fill.warning { background: var(--warm); }
+    .dl-progress-fill.exhausted { background: var(--red, #ef4444); }
     .badge-soon { font-size: 9px; font-weight: 700; text-transform: uppercase; background: var(--warm-dim); color: var(--warm); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
     .btn-sm { padding: 7px 12px; font-size: 11px; width: auto; }
     .hidden { display: none !important; }
