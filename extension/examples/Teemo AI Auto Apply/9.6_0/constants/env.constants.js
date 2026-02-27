@@ -1,0 +1,1 @@
+const PUBLIC_API_URL="https://api.teemo.ai/api",PUBLIC_FRONTEND_URL="https://portal.teemo.ai/";

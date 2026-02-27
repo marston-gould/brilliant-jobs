@@ -1,0 +1,46 @@
+{
+   "action": {
+      "default_icon": {
+         "16": "icons/icon16.png",
+         "24": "icons/icon16.png",
+         "32": "icons/icon48.png"
+      },
+      "default_title": "Open FastApply"
+   },
+   "background": {
+      "service_worker": "background/background-new.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "all_frames": false,
+      "js": [ "content/content-bridge.js", "content/content-status-overlay.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_end"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://fastapply.co https://*.fastapply.co https://*.herokuapp.com http://localhost:3000 http://localhost:3001 https://*.lever.co https://*.workable.com https://*.breezy.hr https://*.ashbyhq.com https://*.greenhouse.io https://*.wellfound.com https://*.indeed.com https://*.dice.com https://*.simplyhired.com https://*.glassdoor.com https://*.ziprecruiter.com https://*.recruitee.com https://*.smartrecruiters.com https://*.jobvite.com https://*.rippling.com https://*.icims.com https://firebasestorage.googleapis.com https://*.supabase.co"
+   },
+   "description": "Apply to 100+ Jobs Across Top Jobs Platforms in Minutes.",
+   "externally_connectable": {
+      "matches": [ "https://fastapply.co/*", "https://*.fastapply.co/*", "https://app.fastapply.co/*", "https://staging.fastapply.co/*", "http://localhost:*/*", "http://127.0.0.1:*/*", "https://firebasestorage.googleapis.com/*" ]
+   },
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "24": "icons/icon16.png",
+      "32": "icons/icon48.png",
+      "48": "icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4AorWvC7H5vBL5oXq1qTVX3Nco0PYdwk4q3A+Mi35pPZzO5bgQbmuudxOWggNUiJfLSNORljArTTzgL4gB5lc3zB2Js6Tzhe6zVw/MTKnKzzicuuzObRhFhty1yxTgQUAw7Qb/VmP0xMidXJ9xkCI2JKQ4X35JgNDT05cD9+Ke2OWKrl2Ih5zDvTfscYqTedTeKWkJBsnP5zzkLd5eh81zkDQZKh1mtIpbEycMWkL/Er8Ig+g90mWg3Qkung9WtTDE+MDmfpe7FZcf9iZjpnbuuq7bDRHlRzIFjuVC5QOSDcrczwWPcCyRv4dLAAwZQkGm6HSoH9c5SxmwyGfOtowQIDAQAB",
+   "manifest_version": 3,
+   "minimum_chrome_version": "88",
+   "name": "FastApply - Free AI Automated Job Application Copilot",
+   "permissions": [ "activeTab", "storage", "scripting", "tabs", "power" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "6.7",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "core/*.js", "core/**/*.js", "platforms/**/*.js", "services/*.js", "shared/**/*.js", "utils/*.js" ]
+   } ]
+}

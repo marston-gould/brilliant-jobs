@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Auto Apply</title>
+  <style>
+    body {
+      width: 400px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #333;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 20px 0;
+      color: #333;
+    }
+
+    .enable-toggle {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .toggle-switch {
+      width: 44px;
+      height: 24px;
+      position: relative;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: #4A90E2;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .tab-container {
+      margin-bottom: 20px;
+    }
+
+    .tabs {
+      display: flex;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 12px 8px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      background-color: #f8f9fa;
+      border: none;
+      transition: background-color 0.2s;
+    }
+
+    .tab.active {
+      background-color: #4A90E2;
+      color: white;
+    }
+
+    .tab:not(.active):hover {
+      background-color: #e9ecef;
+    }
+
+    .tab-content {
+      display: none;
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #4A90E2;
+      box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+    }
+
+    .form-group.toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .form-group.toggle label:first-child {
+      margin-bottom: 0;
+      flex: 1;
+      padding-right: 16px;
+    }
+
+    .save-button {
+      width: 100%;
+      padding: 12px;
+      background-color: #4A90E2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .save-button:hover {
+      background-color: #357ABD;
+    }
+
+    .save-button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .stats-section {
+      margin-top: 20px;
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .stats-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat-item {
+      text-align: left;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .intervention-stats {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+
+    .intervention-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .intervention-stat {
+      text-align: center;
+      background-color: #fff8dc;
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    .intervention-stat-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ff8c00;
+    }
+
+    .intervention-stat-label {
+      font-size: 11px;
+      color: #b8860b;
+    }
+
+    .notification {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .notification.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .notification.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .notification.info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .small-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>LinkedIn Auto Apply</h1>
+    <div class="enable-toggle">
+      <span>Enable Auto Apply</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="enable-auto-apply">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <div class="tab-container">
+    <div class="tabs">
+      <button class="tab active" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="user-profile">User Profile</button>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings" class="tab-content active">
+      <div class="form-group">
+        <label for="delay-input">Delay between applications (seconds)</label>
+        <input type="number" id="delay-input" value="5" min="1" max="60">
+      </div>
+
+      <div class="form-group">
+        <label for="max-questions">Max additional questions to auto-fill</label>
+        <select id="max-questions">
+          <option value="0">Don't auto-fill additional questions</option>
+          <option value="1">Up to 1 question</option>
+          <option value="3">Up to 3 questions</option>
+          <option value="5" selected>Up to 5 questions</option>
+          <option value="10">Up to 10 questions</option>
+          <option value="-1">Auto-fill all questions</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="keyword-filter">Only apply to jobs containing keywords (comma separated)</label>
+        <input type="text" id="keyword-filter" placeholder="e.g., remote, senior, javascript">
+      </div>
+
+      <div class="form-group toggle">
+        <label>Enable Manual Intervention</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="manual-intervention-enabled" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="small-text">When enabled, the agent will ask for your help when it encounters unknown fields</div>
+
+      <h4>External Applications</h4>
+      <div class="form-group toggle">
+        <label>Auto-fill external application forms</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="auto-fill-external" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="small-text">Automatically fill forms on company websites after clicking Apply</div>
+
+      <div class="form-group toggle">
+        <label>Save external links for manual review</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="save-external-links" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="small-text">Save external application links that couldn't be auto-filled</div>
+
+      <div class="form-group toggle hidden">
+        <label>Debug Mode</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="debug-mode">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <button class="save-button" id="save-settings">Save Settings</button>
+      <div id="settings-notification" class="notification"></div>
+    </div>
+
+    <!-- User Profile Tab -->
+    <div id="user-profile" class="tab-content">
+      <div class="form-group">
+        <label for="full-name">Full Name</label>
+        <input type="text" id="full-name" placeholder="Your full name">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="your.email@example.com">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" placeholder="(555) 123-4567">
+      </div>
+
+      <div class="form-group">
+        <label for="location">Location</label>
+        <input type="text" id="location" placeholder="City, State">
+      </div>
+
+      <div class="form-group">
+        <label for="experience-years">Years of Experience</label>
+        <input type="number" id="experience-years" min="0" max="50">
+      </div>
+
+      <div class="form-group">
+        <label for="education">Education Level</label>
+        <select id="education">
+          <option value="">Select education level</option>
+          <option value="high-school">High School</option>
+          <option value="associate">Associate Degree</option>
+          <option value="bachelor">Bachelor's Degree</option>
+          <option value="master">Master's Degree</option>
+          <option value="phd">PhD</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="skills">Skills (comma-separated)</label>
+        <textarea id="skills" rows="3" placeholder="JavaScript, Python, React, Node.js..."></textarea>
+      </div>
+      
+      <!-- Resume Upload Section -->
+      <div class="form-group">
+        <label for="resume-upload">Upload Resume</label>
+        <input type="file" id="resume-upload" accept=".pdf,.doc,.docx" style="margin-bottom: 10px;">
+        <div id="resume-status" style="font-size: 12px; color: #666; margin-bottom: 10px;"></div>
+        <button type="button" id="extract-resume-data" class="extract-button" style="width: 100%; padding: 8px; background: #28a745; color: white; border: none; border-radius: 4px; font-size: 14px; margin-bottom: 10px;">Extract Data from Resume</button>
+        <div id="resume-data-preview" style="display: none; background: #f8f9fa; padding: 10px; border-radius: 4px; font-size: 12px; margin-bottom: 10px;">
+          <strong>Extracted Data Preview:</strong>
+          <div id="preview-content"></div>
+        </div>
+      </div>
+
+      <button id="save-profile" class="save-button">Save Profile</button>
+      <div id="profile-notification" class="notification"></div>
+    </div>
+  </div>
+
+  <!-- Application Stats Section -->
+  <div class="stats-section">
+    <div class="stats-title">Application Stats</div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-label">Applied today:</div>
+        <div class="stat-value" id="stat-today">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Total applied:</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">Easy Apply:</div>
+        <div class="stat-value" id="stat-easy-apply">0</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">External:</div>
+        <div class="stat-value" id="stat-external">0</div>
+      </div>
+    </div>
+    
+    <div class="intervention-stats">
+      <div class="stat-label">Manual Intervention Stats</div>
+      <div class="intervention-grid">
+        <div class="intervention-stat">
+          <div class="intervention-stat-value" id="stat-interventions">0</div>
+          <div class="intervention-stat-label">Interventions</div>
+        </div>
+        <div class="intervention-stat">
+          <div class="intervention-stat-value" id="stat-success-rate">0%</div>
+          <div class="intervention-stat-label">Success Rate</div>
+        </div>
+        <div class="intervention-stat">
+          <div class="intervention-stat-value" id="stat-automation-rate">0%</div>
+          <div class="intervention-stat-label">Automation</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js Library for proper PDF text extraction (local files) -->
+  <script src="pdf.min.js"></script>
+  <script src="pdf-config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

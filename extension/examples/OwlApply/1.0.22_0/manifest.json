@@ -1,0 +1,52 @@
+{
+   "action": {
+      "default_icon": "icon-64.png",
+      "default_title": "Open Window"
+   },
+   "author": "support@owlapply.com",
+   "background": {
+      "service_worker": "background.iife.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "all_frames": true,
+      "js": [ "content/index.iife.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_end"
+   }, {
+      "all_frames": true,
+      "js": [ "content-ui/index.iife.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_end"
+   }, {
+      "all_frames": false,
+      "js": [ "main-script/index.iife.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_start",
+      "world": "MAIN"
+   }, {
+      "css": [ "content.css" ],
+      "matches": [ "\u003Call_urls>" ]
+   } ],
+   "default_locale": "en",
+   "description": "OwlApply compares job listings with your resume, auto-fills forms, and creates custom cover letter PDF for each application.",
+   "externally_connectable": {
+      "matches": [ "https://*.owlapply.com/" ]
+   },
+   "host_permissions": [ "https://*.owlapply.com/" ],
+   "icons": {
+      "128": "icon-128.png",
+      "34": "icon-34.png",
+      "64": "icon-64.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAquyEJXYYgHOO2Mo+D0rS9AiypQPSol3+HC/uDS/1KsbXioZkpwPoT35iRUhzPw5CFeBVZwjXRBKy73siwsCSazq0fB1fm00TEiKel2tln0wDMy3m6UproWyuXCebq+n1LO/VZNtXUYl9L5IgyH+qgBH7rgpplLNteZeAhpL8IygD23fyGwu8mcOmFPYgh9JHZEIcMn441KD23mv+uAv+2GAd5Bv1hdVcQkurKX/NimlYDO/cgUr1fLCNGMdIr1G0i0/egQYlvECilL7LEHcKVSx0SPvJHmxJbuN91eliMxvG6a4PJ98eVqWM632Ms7xtCmLNutYX0Cmh+LZx6JQDZwIDAQAB",
+   "manifest_version": 3,
+   "name": "OwlApply - Autofill & Automate Your Job Applications",
+   "permissions": [ "storage", "cookies" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.0.22",
+   "web_accessible_resources": [ {
+      "matches": [ "*://*/*" ],
+      "resources": [ "*.js", "*.css", "*.svg", "*.png", "icon-34.png", "icon-64.png", "icon-128.png", "logo.png", "icons/*" ]
+   } ]
+}

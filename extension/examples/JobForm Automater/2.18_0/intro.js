@@ -1,0 +1,1 @@
+document.getElementById("videoBtn").addEventListener("click",(function(){window.open("https://www.youtube.com/watch?v=wH5qO0f-kKA","_blank")}));
