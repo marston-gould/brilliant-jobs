@@ -1,5 +1,5 @@
 /**
- * Brilliant Jobs — Apply Workflow v5.36
+ * Brilliant Jobs — Apply Workflow
  * Score Gate Modal, Pending Applications, and Apply State Machine
  * 
  * Phase 4: Real Apply Pathway (Pod 2)

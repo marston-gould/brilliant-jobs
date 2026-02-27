@@ -1518,6 +1518,20 @@ const features = [
   { s: 'done', n: 'Profile flair system (Phase 4C)', d: 'v5.25: Leaderboard flair per tier. Signal+: tier icon. Radar+: accent-colored name. Clearance: gold name + shield icon + TOP REFERRER badge.', p: 48 },
   { s: 'done', n: 'Tab restore fix — referrals + ghost', d: 'v5.25: Added initReferralHub() + renderGhostMonitor() to tab restore block in app.js. Fixed Loading... stuck on page refresh when referrals/ghost was last active tab.', p: 48 },
   { s: 'done', n: 'LinkedIn-based referral codes', d: 'v5.25: Referral codes derived from LinkedIn slug (marston instead of BJ-972148). Links use /in/ format: brilliantjobs.app/in/marston. Updated get_referral_stats RPC, generate_referral_code trigger. Cleaned up obsolete .replace() calls.', p: 48 },
+
+  // Phase 49: Extension Rework (v5.26–v5.35) — Feb 27, 2026 ✅ COMPLETE
+  { s: 'done', n: 'Extension Rework Phases 1–11: ATS handlers, security, tier gating', d: 'v5.26–v5.34: 8 ATS handlers (Lever, Greenhouse Legacy/React, LinkedIn, Ashby, Workable, Recruitee, Indeed, Workday). 3 security layers (Chrome-enforced, originGuard, tab URL verify). Tier gating with daily limits. Human simulation engine. JD matcher. Auto-tracker. Field filler queue. File upload fallback. Mutation watcher for SPAs.', p: 49 },
+  { s: 'done', n: 'Phase 12: Build fingerprint obfuscation', d: 'v5.35: Per-user unique extension builds via build-extension Edge Function. Randomized channel names (13), CSS classes (9), manifest metadata, variable whitespace + dead-code comments. extension_builds table with build tracking. extension-download.js dashboard module. upload-extension-source.sh script. Extension v3.9.0 → v4.0.0.', p: 49 },
+
+  // Phase 50: Extension Tier 1 Sprint (v5.36) — Feb 27, 2026 ✅ COMPLETE
+  { s: 'done', n: 'apply_url backfill — 100% coverage', d: 'v5.36: Backfilled 747 null apply_url rows across all ATS sources (Greenhouse, Lever, Ashby, Workable, Recruitee). 360,410/360,410 jobs now have apply URLs. Pattern-based generation by source.', p: 50 },
+  { s: 'done', n: 'Canonical extension source uploaded to storage', d: 'v5.36: 43 files uploaded to extension-source bucket under v4/ prefix (36 JS, 5 config, 3 icons). build-extension EF can now generate fingerprinted builds.', p: 50 },
+  { s: 'done', n: 'Setup page download UI fix', d: 'v5.36: Fixed button ID (download-btn → extension-download-btn) and status ID (download-status → extension-download-status) to match extension-download.js bindings. Added extension-build-history container.', p: 50 },
+  { s: 'done', n: 'Channel map integration in apply-workflow.js', d: 'v5.36: All 3 chrome.runtime.sendMessage calls now use resolveChannel() for fingerprinted channel names: dashboard:ping, dashboard:setTier, dashboard:apply. Graceful fallback to hardcoded names.', p: 50 },
+  { s: 'done', n: 'Resume text sync: dashboard → extension', d: 'v5.36: New syncResumeToExtension() pushes parsed resume text to extension via dashboard:fillCurrent channel. Auto-runs after extension detection on page load. jdMatcher now receives resume data.', p: 50 },
+  { s: 'done', n: 'Auto-status update: extension → dashboard', d: 'v5.36: New initExtensionStatusListener() receives postMessage from extension (source: bj-extension, type: applicationStatus). Updates pending_applications with status, submission_method, confirmation. Toast on success/failure.', p: 50 },
+  { s: 'done', n: 'Recruitee API submission verified', d: 'v5.36: submit-application EF confirmed functional with full Recruitee path: POST {slug}.recruitee.com/api/offers/{offer_slug}/candidates (zero-auth). Timeout, error handling, 422 field-error parsing all in place.', p: 50 },
+  { s: 'done', n: 'Hardcoded version strings removed from JS modules', d: 'v5.36: Removed version strings from apply-workflow.js and extension-download.js headers per VERSION_METHODOLOGY.docx. version.js remains sole source of truth.', p: 50 },
 ];
 
 
@@ -1652,7 +1666,9 @@ function render() {
     45: 'Visual Consistency Pass + UX Fixes ✅',
     46: 'Referral Program (v5.07-v5.10) ✅',
     47: 'Hotfixes & UX Polish (v5.06, v5.11-v5.17) ✅',
-    48: 'Referral Hub Redesign (v5.19-v5.25) ✅'
+    48: 'Referral Hub Redesign (v5.19-v5.25) ✅',
+    49: 'Extension Rework (v5.26-v5.35) ✅',
+    50: 'Extension Tier 1 Sprint (v5.36) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
