@@ -1326,7 +1326,7 @@
           </div>
 
           <!-- Resume Tab Toggle -->
-          <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
+          <div class="app-view-toggle-bar" style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
             <button class="btn btn-sm resume-tab-toggle active" id="resume-tab-active" onclick="switchResumeTab('active')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
               Active Resumes
             </button>
@@ -1462,18 +1462,18 @@
         <div class="page-body">
           <!-- List / Board toggle -->
           <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--bg-hover);border-radius:8px;padding:3px;width:fit-content;">
-            <button class="btn btn-sm app-view-toggle active" id="app-view-list" onclick="switchAppView('list')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+            <button class="btn btn-sm app-view-toggle active" id="app-view-list" data-view="list" onclick="switchAppView('list')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
               List
             </button>
-            <button class="btn btn-sm app-view-toggle" id="app-view-board" onclick="switchAppView('board')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
+            <button class="btn btn-sm app-view-toggle" id="app-view-board" data-view="board" onclick="switchAppView('board')" style="padding:4px 14px;font-size:11px;border-radius:6px;">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               Board
             </button>
           </div>
 
           <!-- LIST VIEW (existing application queue) -->
-          <div id="app-view-list-panel">
+          <div id="app-view-list-panel" class="app-view-panel active">
           <div class="stat-grid">
             <div class="stat-card"><div class="stat-val" id="a-queued">0</div><div class="stat-label">Queued</div></div>
             <div class="stat-card"><div class="stat-val" id="a-pending">0</div><div class="stat-label">Pending Approval</div></div>
@@ -2251,7 +2251,7 @@
           </div><!-- end app-view-list-panel -->
 
           <!-- BOARD VIEW (pipeline stages) -->
-          <div id="app-view-board-panel" style="display:none;">
+          <div id="app-view-board-panel" class="app-view-panel">
             <div class="stat-grid">
               <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
               <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
@@ -2775,8 +2775,8 @@
       <!-- ============ REFERRAL HUB ============ -->
       <div class="page" id="page-referrals">
         <div class="page-header">
-          <h2>Referral Hub</h2>
-          <p>Share Brilliant Jobs, earn Pro time and credits <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('referrals')">How this works &rarr;</a></p>
+          <h2>Referrals</h2>
+          <p>Share your link and earn Pro time and credits <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('referrals')">How this works &rarr;</a></p>
         </div>
         <div class="page-body" id="ref-hub-content">
           <div style="text-align:center;padding:40px;color:var(--text-dim);">Loading...</div>
@@ -3744,7 +3744,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .ref-share-modal-msg{font-size:13px;color:var(--text-dim);margin-bottom:12px}
 .ref-share-modal-link{font-family:var(--mono);font-size:12px;padding:8px 12px;background:var(--bg-input);border-radius:6px;color:var(--accent);margin-bottom:16px;word-break:break-all}
 .ref-share-modal-actions{display:flex;gap:8px}
-@media(max-width:768px){.ref-share-banner{flex-direction:column;text-align:center}.ref-stats-grid{grid-template-columns:repeat(2,1fr)}.ref-badges-grid{flex-direction:column}.ref-share-channels{flex-wrap:wrap}}
+@media(max-width:600px){.ref-share-banner{flex-direction:column;text-align:center}.ref-stats-grid{grid-template-columns:repeat(2,1fr)}.ref-badges-grid{flex-direction:column}.ref-share-channels{flex-wrap:wrap}}
 </style>
 
 <!-- AI Resume Rewrite Panel (v4.32) -->
