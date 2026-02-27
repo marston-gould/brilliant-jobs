@@ -2889,6 +2889,13 @@
                 <div class="stat-card"><div class="stat-val" id="dp-ext-installs">&mdash;</div><div class="stat-label">Ext Installs</div></div>
                 <div class="stat-card"><div class="stat-val" id="dp-connections">&mdash;</div><div class="stat-label">Connections Scanned</div></div>
               </div>
+              <!-- Board Discovery Queue -->
+              <div style="font-size:12px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 10px">Board Discovery Queue</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px">
+                <div class="stat-card"><div class="stat-val" id="dp-queue-total">&mdash;</div><div class="stat-label">Total Queued</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-queue-pending">&mdash;</div><div class="stat-label">Pending</div></div>
+                <div class="stat-card"><div class="stat-val" id="dp-queue-found">&mdash;</div><div class="stat-label">Boards Found</div></div>
+              </div>
               <table class="admin-table" style="width:100%">
                 <thead><tr><th>Source</th><th style="text-align:right">Boards</th><th style="text-align:right">Jobs</th><th style="text-align:right">Conversion</th></tr></thead>
                 <tbody id="dp-source-body"></tbody>
