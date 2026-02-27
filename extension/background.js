@@ -5,6 +5,7 @@
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
+importScripts('utils/crypto.js'); // v5.48: encrypted storage
 
 // ============================================================
 // STATE
@@ -1233,6 +1234,59 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse(result);
     return;
   }
+
+  // ── ATS Redirect Detection (Item #15, v5.48) ──
+  // When contentScript detects a LinkedIn → ATS redirect, write to
+  // board_discovery_queue so the server-side scraper picks it up.
+  if (msg.type === 'ats:redirectDetected') {
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) return;
+
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+
+        // Only write boards we can scrape (skip indeed/workday — no API)
+        const scrapable = ['greenhouse', 'lever', 'ashby', 'workable', 'recruitee'];
+        if (!msg.boardSlug || !scrapable.includes(msg.platform)) return;
+
+        // Deduplicate: check if this board slug already exists
+        const checkResp = await fetch(
+          `${SB_URL}/rest/v1/ats_companies?board_slug=eq.${encodeURIComponent(msg.boardSlug)}&ats_platform=eq.${msg.platform}&select=id&limit=1`,
+          { headers: { 'apikey': session.access_token, 'Authorization': 'Bearer ' + session.access_token } }
+        );
+        if (checkResp.ok) {
+          const existing = await checkResp.json();
+          if (existing && existing.length > 0) return; // Already known
+        }
+
+        // Insert as new discovered board
+        await fetch(`${SB_URL}/rest/v1/ats_companies`, {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            board_slug: msg.boardSlug,
+            ats_platform: msg.platform,
+            company_name: msg.boardSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            source: 'extension_redirect',
+            discovered_by: session.user_id,
+          }),
+        });
+
+        console.log('[BJ] ATS redirect → new board discovered:', msg.platform, msg.boardSlug);
+      } catch (e) {
+        console.warn('[BJ] ATS redirect write error:', e.message);
+      }
+    })();
+    sendResponse({ tracked: true });
+    return;
+  }
 });
 
 // ============================================================
@@ -1369,6 +1423,10 @@ chrome.action.onClicked.addListener((tab) => {
 // On install or update
 chrome.runtime.onInstalled.addListener(() => {
   setupAlarms();
+  // v5.48: Run encrypted storage migration (Item #9)
+  if (typeof BJ_CRYPTO_MIGRATION !== 'undefined') {
+    BJ_CRYPTO_MIGRATION.migrate().catch(() => {});
+  }
   loadState().then(async () => {
     await checkMissedResume();
     await ensureLoopRunning('onInstalled');
