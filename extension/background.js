@@ -3,8 +3,11 @@
 // v3.1.0: ATS message bridge — handles ats:pageDetected, ats:fill, ats:openAndFill
 // v3.4.0: External message bridge
 // v3.5.0: Added linkedin-easy-apply to capabilities — dashboard:apply, dashboard:ping, dashboard:getState
+// v3.6.0: P6 Security hardening — triple-layer origin guard, PII encryption, rate limiting
 
 importScripts('supabase.js');
+importScripts('utils/originGuard.js');
+importScripts('utils/crypto.js');
 
 // ============================================================
 // STATE
@@ -208,7 +211,7 @@ async function ensureValidToken(session) {
       email: session.email
     };
 
-    await chrome.storage.local.set({ authSession: newSession });
+    await saveAuthSession(newSession);
     supabase.setAuthToken(data.access_token);
     logMsg('Auth token refreshed', 'info');
     return true;
@@ -217,6 +220,87 @@ async function ensureValidToken(session) {
     return false;
   } finally {
     refreshInProgress = false;
+  }
+}
+
+// ============================================================
+// ENCRYPTED PII STORAGE (v3.6.0)
+// Wraps chrome.storage.local with AES-GCM encryption for
+// sensitive data: authSession, userProfile, resume refs.
+// ============================================================
+
+const PII_KEYS = ['authSession', 'userProfile'];
+
+/**
+ * Save auth session with encryption.
+ * Falls back to plaintext if crypto fails (shouldn't happen).
+ */
+async function saveAuthSession(session) {
+  try {
+    await BJ_CRYPTO.secureSet('authSession', session);
+  } catch (e) {
+    console.error('[BJ] Encrypted save failed, falling back to plaintext:', e.message);
+    await chrome.storage.local.set({ authSession: session });
+  }
+}
+
+/**
+ * Load auth session, handling both encrypted and plaintext (migration).
+ */
+async function loadAuthSession() {
+  try {
+    const result = await chrome.storage.local.get('authSession');
+    if (!result.authSession) return null;
+
+    // Check if already encrypted
+    if (result.authSession.tag === 'bj-encrypted') {
+      return await BJ_CRYPTO.decrypt(result.authSession);
+    }
+
+    // Plaintext — migrate to encrypted storage
+    const session = result.authSession;
+    await BJ_CRYPTO.secureSet('authSession', session);
+    logMsg('Migrated authSession to encrypted storage', 'info');
+    return session;
+  } catch (e) {
+    console.error('[BJ] loadAuthSession error:', e.message);
+    // Last resort: try raw read
+    const raw = await chrome.storage.local.get('authSession');
+    return raw.authSession || null;
+  }
+}
+
+/**
+ * Save user profile with encryption.
+ */
+async function saveUserProfile(profile) {
+  try {
+    await BJ_CRYPTO.secureSet('userProfile', profile);
+  } catch (e) {
+    await chrome.storage.local.set({ userProfile: profile });
+  }
+}
+
+/**
+ * Load user profile, handling migration from plaintext.
+ */
+async function loadUserProfile() {
+  try {
+    const result = await chrome.storage.local.get('userProfile');
+    if (!result.userProfile) return null;
+
+    if (result.userProfile.tag === 'bj-encrypted') {
+      return await BJ_CRYPTO.decrypt(result.userProfile);
+    }
+
+    // Migrate plaintext → encrypted
+    const profile = result.userProfile;
+    await BJ_CRYPTO.secureSet('userProfile', profile);
+    logMsg('Migrated userProfile to encrypted storage', 'info');
+    return profile;
+  } catch (e) {
+    const raw = await chrome.storage.local.get('userProfile');
+    return raw.userProfile || null;
   }
 }
 
@@ -1229,56 +1313,67 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // EXTERNAL MESSAGE BRIDGE (dashboard ↔ extension)
 // Requires externally_connectable in manifest.json
 // Messages from https://brilliantjobs.app (and subdomains)
+// v3.6.0: Triple-layer origin verification via BJ_ORIGIN_GUARD
+//   Layer 1: Chrome externally_connectable allowlist (manifest)
+//   Layer 2: sender URL/origin regex validation
+//   Layer 3: sender tab URL verification + rate limiting
 // ============================================================
 
 chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
-  // Validate origin — only accept from brilliantjobs.app
-  const origin = sender.url || sender.origin || '';
-  if (!origin.includes('brilliantjobs.app')) {
-    sendResponse({ success: false, error: 'unauthorized_origin' });
-    return;
-  }
+  // Triple-layer origin guard (async — Layers 2+3 + rate limiting)
+  BJ_ORIGIN_GUARD.guard(sender).then(guardResult => {
+    if (!guardResult.valid) {
+      logMsg(`External message BLOCKED: ${guardResult.reason} from ${guardResult.origin || 'unknown'}`, 'warn');
+      sendResponse({ success: false, error: 'unauthorized', reason: guardResult.reason });
+      return;
+    }
 
-  logMsg(`External message: ${msg.type} from ${origin}`, 'info');
+    logMsg(`External message: ${msg.type} from ${guardResult.origin}`, 'info');
 
-  // ── Ping: Dashboard checks if extension is installed + version ──
-  if (msg.type === 'dashboard:ping') {
-    sendResponse({
-      success: true,
-      installed: true,
-      version: chrome.runtime.getManifest().version,
-      capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
-      atsPageState: atsPageState || null,
-    });
-    return;
-  }
+    // ── Ping: Dashboard checks if extension is installed + version ──
+    if (msg.type === 'dashboard:ping') {
+      sendResponse({
+        success: true,
+        installed: true,
+        version: chrome.runtime.getManifest().version,
+        capabilities: ['lever', 'greenhouse-legacy', 'greenhouse-react', 'ashby', 'workable', 'recruitee', 'linkedin-easy-apply'],
+        atsPageState: atsPageState || null,
+      });
+      return;
+    }
 
-  // ── Get ATS state: Dashboard checks current ATS tab state ──
-  if (msg.type === 'dashboard:getState') {
-    sendResponse({
-      success: true,
-      atsPageState: atsPageState || null,
-    });
-    return;
-  }
+    // ── Get ATS state: Dashboard checks current ATS tab state ──
+    if (msg.type === 'dashboard:getState') {
+      sendResponse({
+        success: true,
+        atsPageState: atsPageState || null,
+      });
+      return;
+    }
 
-  // ── Apply via browser fill: Dashboard requests extension to open URL and fill ──
-  if (msg.type === 'dashboard:apply') {
-    handleDashboardApply(msg)
-      .then(result => sendResponse(result))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true; // async response
-  }
+    // ── Apply via browser fill: Dashboard requests extension to open URL and fill ──
+    if (msg.type === 'dashboard:apply') {
+      handleDashboardApply(msg)
+        .then(result => sendResponse(result))
+        .catch(err => sendResponse({ success: false, error: err.message }));
+      return;
+    }
 
-  // ── Apply via fill on current ATS tab ──
-  if (msg.type === 'dashboard:fillCurrent') {
-    handleAtsFill(msg)
-      .then(result => sendResponse(result))
-      .catch(err => sendResponse({ success: false, error: err.message }));
-    return true;
-  }
+    // ── Apply via fill on current ATS tab ──
+    if (msg.type === 'dashboard:fillCurrent') {
+      handleAtsFill(msg)
+        .then(result => sendResponse(result))
+        .catch(err => sendResponse({ success: false, error: err.message }));
+      return;
+    }
 
-  sendResponse({ success: false, error: 'unknown_message_type' });
+    sendResponse({ success: false, error: 'unknown_message_type' });
+  }).catch(err => {
+    logMsg(`Origin guard error: ${err.message}`, 'error');
+    sendResponse({ success: false, error: 'guard_error' });
+  });
+
+  return true; // Always async — guard() is a Promise
 });
 
 /**
