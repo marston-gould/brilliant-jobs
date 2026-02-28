@@ -1562,6 +1562,9 @@ const features = [
   { s: 'done', n: 'Location Normalization (Lever/Ashby/Workable)', d: 'v5.60: Two RPCs — normalize_locations_multiplatform + normalize_locations_pass2. 23,284 jobs normalized. Lever 69→92%, Ashby 53→87%, Workable 95→100%. Cache lookup + pattern matching.', p: 52 },
   { s: 'done', n: 'Salary Extraction (Lever & Recruitee)', d: 'v5.61: refresh-jobs EF v15. Lever salaryRange {min,max,currency,interval} and Recruitee salary {min,max,period,currency}. Conditional upsert — never overwrites existing. Organic backfill via refresh cycle (~2,387 boards).', p: 52 },
   { s: 'done', n: 'Version Discipline Fix', d: 'v5.62: Fixed stale HTML comments (v5.59→v5.62), cache-bust params (v5.56→v5.62) in dashboard.html and index.html. Rebuilt dist bundle. Closed 6-version roadmap documentation gap (v5.57–v5.62).', p: 52 },
+
+  // Phase 53: SEO Data Consistency (v5.63) — Feb 27, 2026 ✅
+  { s: 'done', n: 'SEO meta + data consistency sweep', d: 'v5.63: Fixed mangled title/og:title on data-lab.html (duplicated text + broken &amp; encoding). Updated stale listing counts across all 5 SEO pages (hiring-trends, career-level-data, jobs-by-industry, salary-data, market-dynamics) from 280K/285K→350K+ and 10K→38K+ companies. Added USAJOBS to ATS platform lists. Updated dateModified structured data. Version bump across all surfaces (version.js, dashboard.html, index.html, cache-bust params). Dist bundle rebuilt.', p: 53 },
 ];
 
 
@@ -1700,7 +1703,8 @@ function render() {
     49: 'Extension Infrastructure (v5.44-v5.48) ✅',
     50: 'Extension Completion Sprint (v5.49-v5.54) ✅',
     51: 'Competitive Gap Closure (v5.55–v5.56) ✅',
-    52: 'Data Quality & Pipeline Hardening (v5.57–v5.62) ✅'
+    52: 'Data Quality & Pipeline Hardening (v5.57–v5.62) ✅',
+    53: 'SEO Data Consistency (v5.63) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
