@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-27
 **Target launch:** March 2026
-**Current version:** v5.54
+**Current version:** v5.65
 
 ---
 
@@ -2256,3 +2256,40 @@ All 22 items from the Extension & Platform Remaining Work handoff document are n
 | Console log | [BJ] Dashboard v5.63 loaded |
 
 **Phase 53 total: 1 version (v5.63) | SEO data consistency ✅**
+
+---
+
+## Phase 54: PDL Enrichment (v5.64) — Feb 27, 2026 ✅
+
+### v5.64 — PDL Industry Enrichment for Non-GH Boards
+- Matched ats_companies against ref_companies by normalized name, slug, linkedin_url, and website.
+- 485 of 1,000 boards now have industry data (48.5% coverage).
+- Enrichment also backfilled website, locality, region, country, employee_size, and founded where available.
+- Remaining 515 boards need new PDL lookups (no matching ref_companies entry).
+- Version bump across all surfaces, dist bundle rebuilt.
+
+**Phase 54 total: 1 version (v5.64) | PDL industry enrichment ✅**
+
+---
+
+## Phase 55: Workday Discovery + Data Quality (v5.65) — Feb 27, 2026 ✅
+
+### v5.65 — Workday Server-Side Discovery + PDL Enrichment Completion
+- **Workday prober** added to `discover-boards` Edge Function as 6th platform. Probes `{slug}.wd{N}.myworkdayjobs.com` for N ∈ {1,2,3,5} via Workday's CXS API. Returns total job count. Board URL template uses correct wdNum.
+- **PDL enrichment pass completed** — ran name, slug, linkedin, and website matching passes via Supabase management API. 485/1,000 boards enriched (48.5%). Remaining 515 require new PDL API lookups.
+- **discover-boards EF redeployed** with Workday support.
+- Version bump across all surfaces, dist bundle rebuilt.
+
+### Version Surfaces (v5.65)
+
+| Surface | Value |
+|---------|-------|
+| js/version.js | v5.65 |
+| dashboard.html comment | v5.65 |
+| dashboard.html JS cache-bust | ?v=5.65 |
+| dashboard.html CSS cache-bust | ?v=5.65 |
+| index.html comment | v5.65 |
+| dist/dashboard.min.js | v5.65 |
+| Console log | [BJ] Dashboard v5.65 loaded |
+
+**Phase 55 total: 1 version (v5.65) | Workday discovery + data quality ✅**

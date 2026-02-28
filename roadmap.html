@@ -1565,6 +1565,9 @@ const features = [
 
   // Phase 53: SEO Data Consistency (v5.63) — Feb 27, 2026 ✅
   { s: 'done', n: 'SEO meta + data consistency sweep', d: 'v5.63: Fixed mangled title/og:title on data-lab.html (duplicated text + broken &amp; encoding). Updated stale listing counts across all 5 SEO pages (hiring-trends, career-level-data, jobs-by-industry, salary-data, market-dynamics) from 280K/285K→350K+ and 10K→38K+ companies. Added USAJOBS to ATS platform lists. Updated dateModified structured data. Version bump across all surfaces (version.js, dashboard.html, index.html, cache-bust params). Dist bundle rebuilt.', p: 53 },
+
+  // Phase 54: PDL Industry Enrichment for Non-GH Boards (v5.64) — Feb 27, 2026 ✅
+  { s: 'done', n: 'PDL industry enrichment for non-GH boards', d: 'v5.64: Created enrich_non_gh_boards() RPC — 3-strategy matching (LinkedIn URL, website domain, normalized name) against 13,629 ref_companies. 632 non-GH boards enriched across Lever (201), Ashby (183), Recruitee (168), Workable (80). Industry backfilled on 610 boards. Function reusable via cron for ongoing enrichment of new boards.', p: 54 },
 ];
 
 
@@ -1704,7 +1707,8 @@ function render() {
     50: 'Extension Completion Sprint (v5.49-v5.54) ✅',
     51: 'Competitive Gap Closure (v5.55–v5.56) ✅',
     52: 'Data Quality & Pipeline Hardening (v5.57–v5.62) ✅',
-    53: 'SEO Data Consistency (v5.63) ✅'
+    53: 'SEO Data Consistency (v5.63) ✅',
+    54: 'PDL Enrichment Non-GH (v5.64) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
