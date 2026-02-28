@@ -409,6 +409,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     query = query.not('salary_rate', 'eq', 'hr');
   }
 
+  // Exclude staffing agency jobs if tuning says so
+  if (tuning.excludeStaffing) {
+    query = query.neq('is_staffing_agency', true);
+  }
+
   // Remote job handling
   // Determine if Remote is explicitly in WHERE or NOT WHERE
   const hasExplicitRemote = wh.some(p => p.locType === 'remote' || (p.values && p.values[0]?.toLowerCase() === 'remote'));
