@@ -155,6 +155,9 @@
     .status-todo {
       background: rgba(92,98,120,0.15); color: var(--text-faint);
     }
+    .status-wontdo {
+      background: rgba(239,68,68,0.12); color: #ef4444; text-decoration: line-through;
+    }
 
     /* Feature content */
     .feature-name {
@@ -259,6 +262,7 @@
     .section-wrap.sec-done { border-left: 3px solid var(--green); }
     .section-wrap.sec-progress { border-left: 3px solid var(--amber); }
     .section-wrap.sec-todo { border-left: 3px solid var(--text-faint); }
+    .section-wrap.sec-wontdo { border-left: 3px solid #ef4444; }
 
     /* Section dividers / headers */
     .section-divider {
@@ -275,6 +279,7 @@
     .section-divider.sec-done h3 { color: var(--green); }
     .section-divider.sec-progress h3 { color: var(--amber); }
     .section-divider.sec-todo h3 { color: var(--text-faint); }
+    .section-divider.sec-wontdo h3 { color: #ef4444; }
     .section-divider::after {
       content: ''; flex: 1; height: 1px; background: var(--border);
     }
@@ -358,6 +363,7 @@
       <div class="header-stat"><span class="val" id="count-done">0</span><span class="lbl">Done</span></div>
       <div class="header-stat"><span class="val" id="count-progress">0</span><span class="lbl">In Progress</span></div>
       <div class="header-stat"><span class="val" id="count-todo">0</span><span class="lbl">Planned</span></div>
+      <div class="header-stat"><span class="val" id="count-wontdo">0</span><span class="lbl">Won't Do</span></div>
     </div>
     <div class="progress-bar-outer">
       <div class="progress-bar-fill" id="progress-fill"></div>
@@ -1690,12 +1696,14 @@ function render() {
   const done = visible.filter(f => f.s === 'done');
   const progress = visible.filter(f => f.s === 'progress');
   const todo = visible.filter(f => f.s === 'todo');
+  const wontdo = visible.filter(f => f.s === 'wontdo');
 
   document.getElementById('count-done').textContent = done.length;
   document.getElementById('count-progress').textContent = progress.length;
   document.getElementById('count-todo').textContent = todo.length;
+  document.getElementById('count-wontdo').textContent = wontdo.length;
 
-  const total = features.length;
+  const total = features.filter(f => f.s !== 'wontdo').length;
   const allDone = features.filter(f => f.s === 'done').length;
   const pct = Math.round((allDone / total) * 100);
   setTimeout(() => {
@@ -1792,9 +1800,9 @@ function render() {
       </div>`;
       html += '<div class="phase-group-body"><ul class="feature-list">';
       phaseItems.forEach((f, i) => {
-        const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : 'status-todo');
-        const statusIcon = f.s === 'done' ? '\u2713' : (f.s === 'progress' ? '\u25D0' : '\u25CB');
-        const nameCls = f.s === 'done' ? 'feature-name is-done' : 'feature-name';
+        const statusCls = f.s === 'done' ? 'status-done' : (f.s === 'progress' ? 'status-progress' : (f.s === 'wontdo' ? 'status-wontdo' : 'status-todo'));
+        const statusIcon = f.s === 'done' ? '\u2713' : (f.s === 'progress' ? '\u25D0' : (f.s === 'wontdo' ? '\u2717' : '\u25CB'));
+        const nameCls = f.s === 'done' ? 'feature-name is-done' : (f.s === 'wontdo' ? 'feature-name is-done' : 'feature-name');
         const blockedMap = {
           'post-launch': ['bt-postlaunch', 'POST-LAUNCH'],
           'needs-users': ['bt-postlaunch', 'NEEDS USERS'],
@@ -1832,6 +1840,9 @@ function render() {
     html += buildSection(progress, 'sec-progress', 'In Progress', false);
   }
   html += buildSection(todo, 'sec-todo', 'Planned', false);
+  if (wontdo.length > 0) {
+    html += buildSection(wontdo, 'sec-wontdo', "Won't Do", true);
+  }
 
   el.innerHTML = html;
 
