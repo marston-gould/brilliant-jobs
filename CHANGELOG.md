@@ -1,3 +1,9 @@
+## v5.73 — 2026-02-28
+- **Dynamic SEO counts**: Created `get_seo_stats()` Supabase RPC (SECURITY DEFINER) returning live open_jobs, companies, active_boards, with_salary, salary_pct counts. Created `js/seo-stats.js` — shared hydrator that calls the RPC on page load, replaces hardcoded count text with live data via `.seo-jobs-k`, `.seo-jobs-full`, `.seo-companies-k`, `.seo-salary-count`, `.seo-salary-pct` class selectors. Results cached in sessionStorage (30 min TTL). Hardcoded values remain as SSR/SEO fallback for crawlers that do not execute JS.
+- **FCD rename**: Renamed all "PDL" references across roadmap, methodology text, and phase names to "Free Company Dataset" (FCD). The data source is the free_company_dataset.json file (10 GB, company name/industry/size/location structure — no ATS URLs). Matching uses company name fuzzy logic against ats_companies.
+- **6 SEO pages updated**: data-lab, career-level-data, hiring-trends, jobs-by-industry, market-dynamics, salary-data — all now include `seo-stats.js` and use dynamic count spans.
+- **Version surfaces**: version.js v5.73, dashboard.html v5.73, index.html v5.73, CHANGELOG.md, roadmap.html Phase 62.
+
 ## v5.72 — 2026-02-28
 - **SEO count accuracy sweep #2**: Updated job counts from 320K+→315K+ across 7 SEO pages — data-lab, career-level-data, hiring-trends, jobs-by-industry, market-dynamics, salary-data, and index.html structured data. Actual open jobs: 317,834 (down from 320,053 in v5.66 due to normal job closures).
 - **Salary data count update**: Updated from 40K→49K salary-listed jobs (actual 49,876, 16% of total — up from 13% in v5.66). Updated salary-data.html methodology text.
