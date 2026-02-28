@@ -128,6 +128,31 @@ else
   echo -e "   ${YELLOW}⚠ SKIP:${NC} dist/dashboard.min.js not found"
 fi
 
+# ── Surface 7: All HTML pages with version.js must have .bj-version span ──
+echo ""
+echo "   Checking version.js + bj-version span consistency..."
+for html_file in *.html; do
+  # Skip redirect-only files (< 20 lines)
+  line_count=$(wc -l < "$html_file")
+  if [ "$line_count" -lt 20 ]; then
+    continue
+  fi
+  # Skip pages that don't need a footer version display
+  case "$html_file" in
+    roadmap.html|dashboard.html|404.html|503.html|parkinglot.html|survey.html)
+      continue
+      ;;
+  esac
+  has_vjs=$(grep -c "version.js" "$html_file")
+  has_bjv=$(grep -c "bj-version" "$html_file")
+  if [ "$has_vjs" -gt 0 ] && [ "$has_bjv" -eq 0 ]; then
+    echo -e "   ${RED}✗ FAIL:${NC} $html_file — loads version.js but has no .bj-version span"
+    ERRORS=$((ERRORS + 1))
+  elif [ "$has_vjs" -eq 0 ] && [ "$line_count" -gt 50 ]; then
+    echo -e "   ${YELLOW}⚠ WARN:${NC} $html_file — does NOT load version.js (${line_count} lines)"
+  fi
+done
+
 echo ""
 
 # ── Result ──
