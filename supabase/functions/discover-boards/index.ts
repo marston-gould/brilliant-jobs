@@ -9,7 +9,7 @@
 //
 // Flow A (companies):
 //   1. Query companies with discovery_status IS NULL
-//   2. For each, probe Greenhouse / Lever / Ashby / Workable / Recruitee APIs
+//   2. For each, probe Greenhouse / Lever / Ashby / Workable / Recruitee / Workday APIs
 //   3. If valid → insert into ats_companies
 //   4. Mark company as checked
 //
@@ -119,17 +119,42 @@ async function probeRecruitee(slug: string): Promise<{ ok: boolean; jobCount: nu
   } catch { return { ok: false, jobCount: 0 }; }
 }
 
-const PROBERS: Record<string, (slug: string) => Promise<{ ok: boolean; jobCount: number }>> = {
+async function probeWorkday(slug: string): Promise<{ ok: boolean; jobCount: number; wdNum?: number }> {
+  // Workday career sites use {company}.wd{N}.myworkdayjobs.com where N is 1-5.
+  // We probe each variant until we find one that returns jobs.
+  for (const n of [1, 2, 3, 5]) {
+    try {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), PROBE_TIMEOUT_MS);
+      const url = `https://${slug}.wd${n}.myworkdayjobs.com/wday/cxs/${slug}/External/jobs`;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appliedFacets: {}, limit: 1, offset: 0 }),
+        signal: c.signal,
+      });
+      clearTimeout(t);
+      if (r.status !== 200) continue;
+      const d = await r.json();
+      const total = d?.total || 0;
+      if (total > 0) return { ok: true, jobCount: total, wdNum: n };
+    } catch { /* try next variant */ }
+  }
+  return { ok: false, jobCount: 0 };
+}
+
+const PROBERS: Record<string, (slug: string) => Promise<{ ok: boolean; jobCount: number; wdNum?: number }>> = {
   greenhouse: probeGreenhouse, lever: probeLever, ashby: probeAshby,
-  workable: probeWorkable, recruitee: probeRecruitee,
+  workable: probeWorkable, recruitee: probeRecruitee, workday: probeWorkday,
 };
 
-const PLATFORM_URLS: Record<string, (slug: string) => string> = {
+const PLATFORM_URLS: Record<string, (slug: string, wdNum?: number) => string> = {
   greenhouse: (s) => `https://boards.greenhouse.io/${s}`,
   lever: (s) => `https://jobs.lever.co/${s}`,
   ashby: (s) => `https://jobs.ashbyhq.com/${s}`,
   workable: (s) => `https://apply.workable.com/${s}/`,
   recruitee: (s) => `https://${s}.recruitee.com/`,
+  workday: (s, n = 1) => `https://${s}.wd${n}.myworkdayjobs.com/en-US/External`,
 };
 
 // ─── Flow B: Process board_discovery_queue ─────────────────────
@@ -312,7 +337,7 @@ Deno.serve(async (_req) => {
           const result = await prober(slug);
 
           if (result.ok) {
-            const boardUrl = PLATFORM_URLS[platform](slug);
+            const boardUrl = PLATFORM_URLS[platform](slug, result.wdNum);
             const { error: insertErr } = await sb.from("ats_companies").insert({
               slug, source: platform, name: name.toLowerCase(),
               is_active: true, last_http_status: 200,
