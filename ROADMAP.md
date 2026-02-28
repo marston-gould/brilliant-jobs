@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-27
 **Target launch:** March 2026
-**Current version:** v5.65
+**Current version:** v5.66
 
 ---
 
@@ -2293,3 +2293,30 @@ All 22 items from the Extension & Platform Remaining Work handoff document are n
 | Console log | [BJ] Dashboard v5.65 loaded |
 
 **Phase 55 total: 1 version (v5.65) | Workday discovery + data quality ✅**
+
+---
+
+## Phase 56: SEO Count Accuracy (v5.66) — Feb 27, 2026 ✅
+
+### v5.66 — SEO & Landing Page Count Accuracy Sweep
+- Fixed overstated job counts across all SEO pages and landing page: 350K+ → 320K+ (actual DB: 320,035 open jobs).
+- Updated company/board counts: 38K+ → 39K+ (actual DB: 39,123 companies).
+- Updated salary data coverage: 21K+ → 40K+ (actual DB: 40,609 jobs with salary). Percentage corrected from 6% to 13%.
+- Updated "Last updated" dates from Feb 18 → Feb 27 on 4 SEO pages.
+- Updated dateModified structured data to 2026-02-27 on all 6 SEO pages.
+- Updated roadmap.html status bar (39,100+ boards, 320K+ jobs).
+- Version bump across all surfaces, dist bundle rebuilt.
+
+### Version Surfaces (v5.66)
+
+| Surface | Value |
+|---------|-------|
+| js/version.js | v5.66 |
+| dashboard.html comment | v5.66 |
+| dashboard.html JS cache-bust | ?v=5.66 |
+| dashboard.html CSS cache-bust | ?v=5.66 |
+| index.html comment | v5.66 |
+| dist/dashboard.min.js | v5.66 |
+| Console log | [BJ] Dashboard v5.66 loaded |
+
+**Phase 56 total: 1 version (v5.66) | SEO count accuracy ✅**
