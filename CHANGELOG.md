@@ -1,3 +1,11 @@
+## v5.74 — Location Normalization v2 (2026-02-28)
+
+- **normalize_locations_v2 RPC** — New PostgreSQL function that composes `location_normalized` from structured fields (`loc_city`, `loc_state`, `loc_country`, `is_remote`)
+- **+162,067 jobs normalized** — Coverage jumped from 41.4% → 92.2% (132K → 294K of 319K open jobs)
+- **Per-ATS results:** Workable 100%, Recruitee 100%, USAJobs 100% (was 0%), Lever 92.8%, Ashby 90.2%, Greenhouse 89.1%
+- **8-pass normalization strategy:** Remote (no city), Remote (with city/state), US structured, Non-US structured, US state-only, Country-only, USAJobs direct, Pattern matching
+- **Remaining gaps (~25K):** Company-specific labels, multi-location strings without structured data, ambiguous city-only entries — requires geocoding API or AI extraction for future pass
+
 ## v5.73 — 2026-02-28
 - **Dynamic SEO counts**: Created `get_seo_stats()` Supabase RPC (SECURITY DEFINER) returning live open_jobs, companies, active_boards, with_salary, salary_pct counts. Created `js/seo-stats.js` — shared hydrator that calls the RPC on page load, replaces hardcoded count text with live data via `.seo-jobs-k`, `.seo-jobs-full`, `.seo-companies-k`, `.seo-salary-count`, `.seo-salary-pct` class selectors. Results cached in sessionStorage (30 min TTL). Hardcoded values remain as SSR/SEO fallback for crawlers that do not execute JS.
 - **FCD rename**: Renamed all "PDL" references across roadmap, methodology text, and phase names to "Free Company Dataset" (FCD). The data source is the free_company_dataset.json file (10 GB, company name/industry/size/location structure — no ATS URLs). Matching uses company name fuzzy logic against ats_companies.
