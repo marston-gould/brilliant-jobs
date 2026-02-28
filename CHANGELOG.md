@@ -1,3 +1,12 @@
+## v5.75 — Expand ATS Handler Coverage (2026-02-28)
+
+- **4 new ATS fill handlers**: iCIMS (`*.icims.com`), Taleo/Oracle (`*.taleo.net`), SmartRecruiters (`jobs.smartrecruiters.com`), Avature (`*.avature.net`) — ~200-280 lines each following established handler pattern
+- **contentScript.js router**: Added detection entries for all 4 platforms (hostname matching), JD extraction selectors, title selectors, company name selectors
+- **manifest.json**: Added 5 new host_permissions + content_scripts matches for the 4 ATS domains. Extension version bumped to 2.17.0
+- **Handler capabilities**: Text input fill, select/custom dropdown fill, radio/checkbox fill, resume upload, cover letter upload, smart question mapping (authorization, visa, salary, etc.)
+- **Supported ATS platforms now: 13** — Greenhouse (legacy + React), Lever, Ashby, Workable, Recruitee, LinkedIn Easy Apply, Indeed, Workday, iCIMS, Taleo, SmartRecruiters, Avature, plus Generic fallback
+- **Version surfaces**: version.js v5.75, dashboard.html v5.75, index.html v5.75, cache-bust params v5.75, CHANGELOG.md
+
 ## v5.74 — Location Normalization v2 (2026-02-28)
 
 - **normalize_locations_v2 RPC** — New PostgreSQL function that composes `location_normalized` from structured fields (`loc_city`, `loc_state`, `loc_country`, `is_remote`)
