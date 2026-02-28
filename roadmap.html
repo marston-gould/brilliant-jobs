@@ -668,7 +668,7 @@ const features = [
 
   // Phase 10 — Multi-ATS: Per-Source Roadmaps
   { s: 'done', n: 'Community stats counter', d: 'Landing page (index.html) displays live Supabase stats: total jobs, companies, boards across all ATS platforms. Dashboard stat cards show per-filter matching jobs, median salary, level breakdown, remote percentage, companies hiring. Stats page has 8 chart types. Community-wide counters live since v2.64+.', p: 10 },
-  { s: 'todo', n: 'Workday ATS — 6th platform parser', d: 'BuiltWith shows 7,832 US companies using Workday. Enterprise-heavy (Salesforce, Goldman, Walmart). Requires new parser, discovery pipeline, and API pattern research. Largest untapped ATS platform.', b: 'post-launch', p: 10, b: 'deferred' },
+  { s: 'wontdo', n: 'Workday ATS — 6th platform parser', d: 'Won\'t do. Workday uses custom tenant URLs, no public API, heavily JS-rendered pages. Scraping complexity far exceeds value for launch. 13 ATS platforms already supported via extension form-fill. Revisit only if user demand warrants it.', p: 10 },
 
   // ── Multi-ATS Infrastructure (DONE) ──
   { s: 'done', n: 'Composite PK migration', d: 'Migrated ats_companies from slug-only PK to composite (slug, source). Allows same company name on different ATS platforms without collision. ats_jobs already had company_slug + ats_source columns.', p: 10 },
