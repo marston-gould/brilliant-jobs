@@ -718,8 +718,8 @@ const features = [
   { s: 'done', n: 'Dead board purge', d: 'Added is_active boolean column to ats_companies (default true). Set 1,016 boards with job_count=0 to is_active=false. Breakdown: Workable 586, Lever 177, Ashby 99, Greenhouse 92, Recruitee 60. 8,850 active boards remain. refresh-jobs needs update to filter by is_active.', p: 10 },
   { s: 'done', n: 'Unknown board retry', d: '130 boards timed out during validation. Queue for retry on next monthly discovery cycle.', p: 10 },
   { s: 'done', n: 'Migrate discovery scripts to GitHub Actions', d: 'Move dfs_scheduled_discovery.js and dfs_validate_boards.js from local laptop to GitHub Actions cron. Monthly schedule, secrets in repo settings.', p: 10 },
-  { s: 'todo', n: 'Location normalization for non-GH platforms', d: 'Batch normalize_job_locations() for all Lever, Ashby, Workable, Recruitee jobs after initial full-cycle scrape completes.', b: 'post-launch', p: 10, b: 'deferred' },
-  { s: 'todo', n: 'Salary parsing for non-GH platforms', d: 'Extend salary extraction to non-Greenhouse job content. Some platforms include structured salary in API responses.', b: 'post-launch', p: 10, b: 'deferred' },
+  { s: 'done', n: 'Location normalization for non-GH platforms', d: 'v5.60+v5.67+v5.68: Multi-ATS normalization across Lever/Ashby/Workable. Coverage 78.6%→90.1% (+47,647 jobs). 288,407 jobs with loc_country.', p: 10 },
+  { s: 'done', n: 'Salary parsing for non-GH platforms', d: 'v5.61: Lever salaryRange + Recruitee salary object in refresh-jobs EF v15. Workable not feasible (widget API has no salary fields). 40,927 jobs with salary (12.8%%).', p: 10 },
   { s: 'done', n: 'Source attribution in feed', d: 'Feed rows display ats_source badge (GH/LV/WK/ASH/REC). Source column in job feed table, sort-by-source option in sort bar. ATS source pills with platform-specific colors in job detail view. Live since multi-ATS expansion.', p: 10 },
 
   // ── Future Sources ──
@@ -775,7 +775,7 @@ const features = [
 
   // Phase 12 — Beta
   { s: 'todo', n: 'AI-powered filter onboarding', d: 'New user provides LinkedIn profile (prepopulated from registration), LinkedIn data export, and/or resume → sent to Haiku API → analyzes experience/skills/interests → recommends and prepopulates saved filters (What/Where/Who pills, salary range, level). Three-tier input depth: (1) LinkedIn URL from registration = basic filters, (2) extension installed = richer profile + connection data = better filters, (3) resume uploaded = highest precision. Extension install pitched as upgrade during onboarding: "Install the extension to unlock deeper profile analysis." Reduces cold-start friction and creates compelling reason to install extension early.', b: 'post-launch', p: 12, b: 'pre-launch' },
-  { s: 'todo', n: 'Install instructions page', d: 'Step-by-step guide for Chrome extension installation', b: 'pre-launch', p: 12, b: 'pre-launch' },
+  { s: 'done', n: 'Install instructions page', d: 'v5.69: /install page with 7-step guide covering download, Chrome setup, updating, and troubleshooting.', p: 12 },
   { s: 'todo', n: 'Beta user onboarding (5-10 users)', d: 'Guided setup, feedback collection, bug reporting workflow', b: 'pre-launch', p: 12, b: 'ceo' },
   { s: 'todo', n: 'UX feedback and bug triage', d: 'Prioritize fixes based on real usage patterns', b: 'pre-launch', p: 12, b: 'post-launch' },
   { s: 'todo', n: 'Performance testing at scale', d: 'Verify dashboard and queries handle 100K+ jobs with multiple concurrent users', b: 'pre-launch', p: 12, b: 'pre-launch' },
