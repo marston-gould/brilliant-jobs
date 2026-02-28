@@ -1021,7 +1021,7 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
 
   <footer class="seo-footer">
     <p>Data sourced directly from Greenhouse, Lever, Ashby, Workable, Recruitee & USAJobs.</p>
-    <p><span class="bj-version"></span> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a></p>
+    <p><span class="bj-version"></span> · &copy; <span class="bj-year"></span> Brilliant Jobs · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a></p>
   </footer>
 
   <script src="/js/version.js"></script>
@@ -1250,7 +1250,7 @@ function renderCompanyPage(profile) {
     // Footer
     '<footer class="seo-footer"><div class="seo-footer-inner">' +
     '<div class="seo-footer-links"><a href="/">Home</a><a href="/job-market-data">Market Data</a><a href="/blog">Insights</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></div>' +
-    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · <span class="bj-version"></span></p>' +
+    '<p>© <span class="bj-year"></span> Brilliant Jobs · <span class="bj-version"></span></p>' +
     '</div></footer>' +
     '<script src="/js/version.js"><\/script>' +
 
@@ -1451,7 +1451,7 @@ function renderCollegePage(bjMajors) {
 
     '<footer class="seo-footer"><div class="seo-footer-inner">' +
     '<div class="seo-footer-links"><a href="/">Home</a><a href="/job-market-data">Market Data</a><a href="/blog">Insights</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></div>' +
-    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · <span class="bj-version"></span></p>' +
+    '<p>© <span class="bj-year"></span> Brilliant Jobs · <span class="bj-version"></span></p>' +
     '</div></footer>' +
     '<script src="/js/version.js"><\/script>' +
 
