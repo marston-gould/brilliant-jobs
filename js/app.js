@@ -466,7 +466,7 @@ document.addEventListener('click', e => {
 
 // Extension detection — check if extension has updated the profile recently
 // Required extension version — bump this when a new extension release ships
-var REQUIRED_EXTENSION_VERSION = '2.11.0';
+var REQUIRED_EXTENSION_VERSION = '2.17.0';
 
 function compareVersions(installed, required) {
   if (!installed || !required) return 0;
