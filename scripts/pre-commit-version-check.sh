@@ -151,6 +151,16 @@ for html_file in *.html; do
   elif [ "$has_vjs" -eq 0 ] && [ "$line_count" -gt 50 ]; then
     echo -e "   ${YELLOW}⚠ WARN:${NC} $html_file — does NOT load version.js (${line_count} lines)"
   fi
+  # Check for copyright + bj-year
+  has_copy=$(grep -c "©\|&copy;" "$html_file")
+  has_bjyear=$(grep -c "bj-year" "$html_file")
+  if [ "$has_copy" -eq 0 ] && [ "$line_count" -gt 50 ]; then
+    echo -e "   ${RED}✗ FAIL:${NC} $html_file — no copyright symbol (© or &copy;)"
+    ERRORS=$((ERRORS + 1))
+  elif [ "$has_copy" -gt 0 ] && [ "$has_bjyear" -eq 0 ]; then
+    echo -e "   ${RED}✗ FAIL:${NC} $html_file — has copyright but no .bj-year span (hardcoded year)"
+    ERRORS=$((ERRORS + 1))
+  fi
 done
 
 # ── Surface 8: api/seo-page.js — no hardcoded version strings ──
