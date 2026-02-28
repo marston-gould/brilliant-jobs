@@ -74,10 +74,9 @@ interface PdlCompany {
 }
 
 interface UnmatchedBoard {
-  id: string;
   slug: string;
-  company_name: string;
-  platform: string;
+  name: string;
+  source: string;
   website?: string;
   linkedin_url?: string;
   ref_company_id?: string;
@@ -85,7 +84,8 @@ interface UnmatchedBoard {
 }
 
 interface MatchResult {
-  board_id: string;
+  board_slug: string;
+  board_source: string;
   board_name: string;
   pdl_name: string;
   match_signals: string[];
@@ -114,9 +114,9 @@ Deno.serve(async (req: Request) => {
 
     const { data: boards, error: boardErr } = await sb
       .from("ats_companies")
-      .select("id, slug, company_name, platform, website, linkedin_url, ref_company_id, industry")
+      .select("slug, name, source, website, linkedin_url, ref_company_id, industry")
       .is("industry", null)
-      .order("id")
+      .order("slug")
       .limit(MAX_BOARDS_PER_RUN);
 
     if (boardErr) {
@@ -242,7 +242,7 @@ Deno.serve(async (req: Request) => {
       }
 
       // Strategy 3: Normalized name (requires corroboration)
-      const boardName = normalizeName(board.company_name || board.slug || "");
+      const boardName = normalizeName(board.name || board.slug || "");
       if (boardName) {
         const candidates = byName.get(boardName);
         if (candidates) {
@@ -270,8 +270,9 @@ Deno.serve(async (req: Request) => {
       // Require at least 1 signal to proceed (LinkedIn or domain alone is high confidence)
       if (bestMatch && signals.length >= 1 && bestMatch.industry) {
         matches.push({
-          board_id: board.id,
-          board_name: board.company_name || board.slug,
+          board_slug: board.slug,
+          board_source: board.source,
+          board_name: board.name || board.slug,
           pdl_name: bestMatch.name || "",
           match_signals: signals,
           industry: bestMatch.industry,
@@ -345,11 +346,12 @@ Deno.serve(async (req: Request) => {
         const { error: atsErr } = await sb
           .from("ats_companies")
           .update({ industry: match.industry })
-          .eq("id", match.board_id)
+          .eq("slug", match.board_slug)
+          .eq("source", match.board_source)
           .is("industry", null); // Only fill NULLs
 
         if (atsErr) {
-          errors.push(`ats_companies update for ${match.board_id}: ${atsErr.message}`);
+          errors.push(`ats_companies update for ${match.board_slug}: ${atsErr.message}`);
         } else {
           atsUpdated++;
         }
