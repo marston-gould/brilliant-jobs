@@ -685,19 +685,19 @@ const features = [
   // ── Lever (ACTIVE — 1,154 boards, scraping live) ──
   { s: 'done', n: '[LV] Board discovery', d: 'DataForSEO alphabet crawl: 1,154 Lever boards discovered. All imported to ats_companies with source=lever.', p: 10 },
   { s: 'done', n: '[LV] Job scraper + refresh + closed detection', d: 'Lever parser in refresh-jobs v10: fetches api.lever.co/v0/postings/{slug}?mode=json. Extracts title, location, department, workplace type, description. Included in 10-min cron cycle. Marks disappeared jobs closed.', p: 10 },
-  { s: 'done', n: '[LV] Location normalization', d: 'Completed in v5.60 (Phase 52). normalize_locations_multiplatform RPC. Lever 69→92% coverage.', p: 10 },
+  { s: 'todo', n: '[LV] Location normalization', d: 'Run normalize_job_locations() on Lever jobs — extend for categories.location field format.', b: 'post-launch', p: 10, b: 'deferred' },
   { s: 'done', n: '[LV] API key scraping + resume submission', d: 'API route BLOCKED (requires Lever partnership). Submission path fulfilled via browser-fill chain (v5.36-v5.42): Lever DOM handler fills name/email/phone/resume/cover letter fields directly. AI question answering for custom fields. Human-sim typing active. API submission remains a future enhancement if partnership is secured.', b: 'external', p: 10, b: 'external' },
 
   // ── Ashby (ACTIVE — 1,294 boards, scraping live) ──
   { s: 'done', n: '[ASH] Board discovery', d: 'DataForSEO alphabet crawl: 1,294 Ashby boards discovered. All imported to ats_companies with source=ashby.', p: 10 },
   { s: 'done', n: '[ASH] Job scraper + refresh + closed detection', d: 'Ashby parser in refresh-jobs v10: fetches api.ashbyhq.com/posting-api/job-board/{slug}. Extracts title, location, department, isRemote, jobUrl. Nested address field handling. In 10-min cron cycle.', p: 10 },
-  { s: 'done', n: '[ASH] Location normalization', d: 'Completed in v5.60 (Phase 52). normalize_locations_multiplatform RPC. Ashby 53→87% coverage.', p: 10 },
+  { s: 'todo', n: '[ASH] Location normalization', d: 'Run normalize_job_locations() on Ashby jobs — has addressRegion/addressLocality in nested address object.', b: 'post-launch', p: 10, b: 'deferred' },
   { s: 'done', n: '[ASH] API resume submission', d: 'API route requires partnership (candidatesWrite permission not public). Submission path fulfilled via browser-fill chain (v5.36-v5.42): Ashby React-aware handler with widget detection fills all standard fields. AI question answering for custom fields. API submission remains a future enhancement if partnership is secured.', b: 'external', p: 10, b: 'external' },
 
   // ── Workable (ACTIVE — 2,255 boards, scraping live) ──
   { s: 'done', n: '[WK] Board discovery', d: 'DataForSEO alphabet crawl: 2,255 Workable boards discovered. All imported to ats_companies with source=workable.', p: 10 },
   { s: 'done', n: '[WK] Job scraper + refresh + closed detection', d: 'Workable parser in refresh-jobs v10: fetches apply.workable.com/api/v1/widget/accounts/{slug}. Extracts title, city/state/country, department, telecommuting flag. In 10-min cron cycle.', p: 10 },
-  { s: 'done', n: '[WK] Location normalization', d: 'Completed in v5.60 (Phase 52). normalize_locations_multiplatform RPC. Workable 95→100% coverage.', p: 10 },
+  { s: 'todo', n: '[WK] Location normalization', d: 'Workable provides structured city/state/country — may normalize cleaner than other platforms.', b: 'post-launch', p: 10, b: 'deferred' },
   { s: 'done', n: '[WK] API resume submission (Phase 2+)', d: 'API route requires per-employer Bearer token (partnership-dependent). Submission path fulfilled via browser-fill chain (v5.36-v5.42): Workable widget detection handler fills all standard fields including file upload. AI question answering for custom fields. API submission remains a future enhancement if partnership is secured.', b: 'external', p: 10, b: 'external' },
 
   // ── Recruitee (ACTIVE — 1,333 boards, scraping live) ──
@@ -711,12 +711,10 @@ const features = [
   { s: 'done', n: 'Greenhouse Seekers Portal discovery', d: 'Scraped my.greenhouse.io/jobs seeker portal. 2,668 total slugs extracted, 1,856 net-new boards imported. Discovered EU domain (job-boards.eu.greenhouse.io, 496 boards) and 67 custom domain companies (Duolingo, Asana, HubSpot, Klaviyo). CSV staging table + SQL regex parsing pipeline. Total Greenhouse boards: 3,830.', p: 10 },
   { s: 'done', n: 'refresh-jobs v11-v14 (OOM fix + dedup + country + tiered refresh)', d: 'v11: Removed ?content=true from Greenhouse (OOM fix), batch 200→50. v12: Dedup before upsert. v13: Country parsing. v14: Tiered refresh — HOT (9K boards with jobs, 6h) / WARM (29K empty+active, 3d) / COLD (1.3K dead, 7d). Batch 50→150, concurrency 5→10, cron 6h→3min. 3 partial indexes. Full HOT cycle ~6h (was 194 days). PR #72.', p: 10 },
   { s: 'done', n: 'Parking lot page', d: 'Built parkinglot.html tracking discovery channels, enrichment tasks, infrastructure debt, and product ideas. Status dots: tested (green), viable (blue), parked (amber), dead (red), idea (purple). Tags for cost, yield, channel, platform. Matches roadmap visual style.', p: 10 },
-  { s: 'todo', n: 'PDL pipeline Step 1: Build filter script + Edge Function', d: 'Python script (filter-pdl.py) streams 10 GB PDL JSON, extracts ATS-matching companies (~50-200 MB output). Edge Function (enrich-pdl-batch) matches unmatched boards against filtered file in Supabase Storage. pg_cron job added but DISABLED.', b: 'pre-launch', p: 10 },
-  { s: 'todo', n: 'PDL pipeline Step 2: Run filter + upload data', d: 'Marston runs filter-pdl.py locally against 10.21 GB free_company_dataset.json. Upload filtered output to Supabase Storage bucket pdl-enrichment/filtered-companies.json. Invoke EF manually to verify enrichment.', b: 'pre-launch', p: 10 },
-  { s: 'todo', n: 'PDL pipeline Step 3: Enable cron (post-launch)', d: 'Enable pg_cron job for enrich-pdl-batch (suggested: weekly). Runs automatically after bulk board imports (Gemini slugs, DataForSEO crawls). Re-run filter-pdl.py only when PDL dataset is updated.', b: 'post-launch', p: 10 },
+  { s: 'todo', n: 'PDL industry enrichment for new ATS boards', d: 'Match 5,668 non-Greenhouse ats_companies against PDL dataset for industry, size, locality, region, country, founded, website, linkedin_url.', b: 'post-launch', p: 10, b: 'deferred' },
 
   // ── Maintenance & Cleanup ──
-  { s: 'done', n: 'Staffing agency detection and flagging', d: 'Completed in v5.58–v5.59 (Phase 52). is_staffing_agency on ats_companies (72 boards flagged) and ats_jobs (5,790 jobs backfilled). User-facing staffing toggle in Tuning panel.', p: 10 },
+  { s: 'todo', n: 'Staffing agency detection and flagging', d: 'Top boards by volume include staffing agencies (Jobgether 4,606, Mercier Consultancy 3,276, EramTalent). Flag or exclude to prevent feed flooding.', b: 'post-launch', p: 10, b: 'deferred' },
   { s: 'done', n: 'Dead board purge', d: 'Added is_active boolean column to ats_companies (default true). Set 1,016 boards with job_count=0 to is_active=false. Breakdown: Workable 586, Lever 177, Ashby 99, Greenhouse 92, Recruitee 60. 8,850 active boards remain. refresh-jobs needs update to filter by is_active.', p: 10 },
   { s: 'done', n: 'Unknown board retry', d: '130 boards timed out during validation. Queue for retry on next monthly discovery cycle.', p: 10 },
   { s: 'done', n: 'Migrate discovery scripts to GitHub Actions', d: 'Move dfs_scheduled_discovery.js and dfs_validate_boards.js from local laptop to GitHub Actions cron. Monthly schedule, secrets in repo settings.', p: 10 },
@@ -1170,7 +1168,7 @@ const features = [
   { s: 'done', n: 'Toast notifications for remaining error paths', d: 'v5.14: Completed. Added toastWarning/toastError to 16 remaining untoasted error handlers across pipeline.js (2), stats.js (1), admin.js (13). All 5 target files now fully covered.', p: 23 },
   { s: 'done', n: 'innerHTML audit: admin.js + keywords.js', d: 'v5.15: Completed. admin.js: 10 new escapeHtml() calls (user emails, feedback text, referral names, company slugs) + DOMPurify on body_html content stories. Total: 21 escapeHtml + 1 DOMPurify. keywords.js: 12 new escapeHtml() calls (AI score results, cover letter content, filter names, missing skill terms). Total: 17 escapeHtml + 3 DOMPurify. Safe patterns kept: decodeJobContent() already sanitizes all ATS job HTML via DOMPurify.', p: 23 },
 
-  { s: 'todo', n: 'Enrich remaining unmatched boards via PDL pipeline', d: 'Superseded by 3-step PDL pipeline (Phase 10). 515 boards unmatched after v5.64 pass. Pipeline: filter-pdl.py → Supabase Storage → enrich-pdl-batch EF. See pdl-enrichment-pipeline-handoff.docx.', b: 'pre-launch', p: 22 },
+  { s: 'todo', n: 'Enrich ~555 unmatched companies', d: 'Companies not in PDL free dataset. Options: Greenhouse API board metadata (March 3 partner deadline), LinkedIn scrape, or paid PDL API. External dependency.', b: 'external', p: 22, b: 'external' },
 
   // Phase L: Roadmap & Baseline Fixes — Feb 23 2026 (v3.91)
   { s: 'done', n: 'v3.91: Roadmap cleanup + ATS spike removed', d: 'Cleaned stale roadmap entries. Removed ATS feasibility spike from active backlog (decision made — pursuing partnerships instead).', p: 25 },
@@ -1374,7 +1372,7 @@ const features = [
   { s: 'todo', n: 'Claude story generation — multi-platform variants', d: 'Claude API generates platform-native content from each detected insight: blog (journalistic, inline charts, schema markup), LinkedIn (authoritative conversational, stat hook, engagement question), X (punchy one-liner + chart), Reddit (data-first zero brand voice), video script (voiceover pacing). Each variant stored independently.', b: 'post-launch', p: 39, b: 'post-launch' },
   { s: 'done', n: 'content_stories table + schema', d: 'Story queue table: id, insight_type, anomaly_score, platform_variants JSONB (blog/linkedin/x/reddit/youtube), social_metrics JSONB, status (draft/approved/published/rejected), publication_timestamps per platform, created_at, updated_at.', b: 'post-launch', p: 39, b: 'post-launch' },
   { s: 'done', n: 'Admin Content tab + approval queue', d: 'New admin tab for editorial queue. Preview each platform variant independently. Approve/reject per-platform (approve blog + LinkedIn, reject Reddit). Calendar view for scheduling. Story scoring and priority display.', b: 'post-launch', p: 39, b: 'post-launch' },
-  { s: 'in-progress', n: 'Create LinkedIn company page', d: 'Create "Brilliant Jobs" LinkedIn company page. Marston as admin. Verify domain. Bio and branding aligned with product. Required before social publishing pipeline.', b: 'ceo', p: 39, b: 'ceo' },
+  { s: 'progress', n: 'Create LinkedIn company page', d: 'Create "Brilliant Jobs" LinkedIn company page. Marston as admin. Verify domain. Bio and branding aligned with product. Required before social publishing pipeline.', b: 'ceo', p: 39, b: 'ceo' },
   { s: 'todo', n: 'Create X (Twitter) account', d: '@brilliantjobs or similar handle. Bio links to brilliantjobs.app. Branding consistent with LinkedIn. Required for press/journalist pickup channel.', b: 'ceo', p: 39, b: 'ceo' },
 
   // Phase 3: Blog + Social Distribution (Month 1-2, 4-5 days)
@@ -1570,12 +1568,6 @@ const features = [
 
   // Phase 54: PDL Industry Enrichment for Non-GH Boards (v5.64) — Feb 27, 2026 ✅
   { s: 'done', n: 'PDL industry enrichment for non-GH boards', d: 'v5.64: Created enrich_non_gh_boards() RPC — 3-strategy matching (LinkedIn URL, website domain, normalized name) against 13,629 ref_companies. 632 non-GH boards enriched across Lever (201), Ashby (183), Recruitee (168), Workable (80). Industry backfilled on 610 boards. Function reusable via cron for ongoing enrichment of new boards.', p: 54 },
-
-  // Phase 55: Workday Discovery + PDL Enrichment (v5.65) — Feb 27, 2026 ✅
-  { s: 'done', n: 'Workday server-side discovery + PDL enrichment', d: 'v5.65: Workday board probing added to discover-boards Edge Function. PDL enrichment pass for newly discovered boards. Deployed via PRs #138-140.', p: 55 },
-
-  // Phase 56: SEO Count Accuracy (v5.66) — Feb 27, 2026 ✅
-  { s: 'done', n: 'SEO count accuracy sweep', d: 'v5.66: Fixed overstated job counts (350K+→320K+, actual 320,035). Updated company counts (38K+→39K+, actual 39,123). Updated salary coverage (21K+→40K+, actual 40,609, 13%). Updated Last Updated dates and dateModified structured data on 6 SEO pages. Updated roadmap.html status bar.', p: 56 },
 ];
 
 
@@ -1716,9 +1708,7 @@ function render() {
     51: 'Competitive Gap Closure (v5.55–v5.56) ✅',
     52: 'Data Quality & Pipeline Hardening (v5.57–v5.62) ✅',
     53: 'SEO Data Consistency (v5.63) ✅',
-    54: 'PDL Enrichment Non-GH (v5.64) ✅',
-    55: 'Workday Discovery + PDL (v5.65) ✅',
-    56: 'SEO Count Accuracy (v5.66) ✅'
+    54: 'PDL Enrichment Non-GH (v5.64) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
@@ -1805,8 +1795,6 @@ render();
 // Version is now set automatically by /js/version.js (loaded via <script> tag).
 // DO NOT add fallback version values here. If version.js fails to load, that's a bug to fix.
 </script>
-
-<footer style="text-align:center;padding:16px;font-size:11px;color:var(--text-faint,#64748b);font-family:'JetBrains Mono',monospace;">&copy; <span class="bj-year"></span> Brilliant Jobs &middot; <span class="bj-version"></span></footer>
 
 </body>
 </html>
