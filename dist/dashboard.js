@@ -10,7 +10,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v5.57';
+var BJ_VERSION = 'v5.62';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -38,7 +38,6 @@ var BJ_VERSION = 'v5.57';
   var page = document.title || location.pathname;
   console.log('[BJ] ' + page + ' ' + BJ_VERSION + ' loaded');
 })();
-
 
 // === js/globals.js ===
 // ============================================================
@@ -1762,6 +1761,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // Exclude hourly-rate jobs if tuning says so
   if (tuning.excludeHourly) {
     query = query.not('salary_rate', 'eq', 'hr');
+  }
+
+  // Exclude staffing agency jobs if tuning says so
+  if (tuning.excludeStaffing) {
+    query = query.neq('is_staffing_agency', true);
   }
 
   // Remote job handling
@@ -10915,6 +10919,7 @@ tuningIndExclPills = tuningSettings.industryExcludes || [];
 function saveTuning() {
   tuningSettings.usOnly = $('#tuning-us-only').checked;
   tuningSettings.excludeHourly = $('#tuning-exclude-hourly').checked;
+  tuningSettings.excludeStaffing = $('#tuning-exclude-staffing')?.checked || false;
   tuningSettings.locationExcludes = tuningLocExclPills;
   tuningSettings.titleExcludes = tuningTitleExclPills;
   tuningSettings.companyExcludes = tuningCoExclPills;
@@ -10929,6 +10934,7 @@ function updateTuningStatusDot() {
   const hasCustom =
     tuningSettings.usOnly ||
     tuningSettings.excludeHourly ||
+    tuningSettings.excludeStaffing ||
     (tuningLocExclPills && tuningLocExclPills.length > 0) ||
     (tuningTitleExclPills && tuningTitleExclPills.length > 0) ||
     (tuningCoExclPills && tuningCoExclPills.length > 0) ||
@@ -11062,6 +11068,7 @@ function getJobLevel(title, hierarchy) {
 // Restore state
 if (tuningSettings.usOnly) $('#tuning-us-only').checked = true;
 if (tuningSettings.excludeHourly) $('#tuning-exclude-hourly').checked = true;
+if (tuningSettings.excludeStaffing && $('#tuning-exclude-staffing')) $('#tuning-exclude-staffing').checked = true;
 
 // Per-filter level hierarchy editor — uses a modal-style overlay
 window.editFilterLevelHierarchy = function(filterIdx) {
@@ -11906,6 +11913,8 @@ tuningInputs.forEach(t => {
 
 // Checkboxes
 $('#tuning-us-only').addEventListener('change', () => { saveTuning(); updateTuningBadges(); });
+if ($('#tuning-exclude-hourly')) $('#tuning-exclude-hourly').addEventListener('change', () => { saveTuning(); updateTuningBadges(); });
+if ($('#tuning-exclude-staffing')) $('#tuning-exclude-staffing').addEventListener('change', () => { saveTuning(); updateTuningBadges(); });
 
 // Analyze hidden jobs for poor match suggestions
 async function updatePoorMatchSuggestions() {
