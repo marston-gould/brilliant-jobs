@@ -287,6 +287,13 @@ Deno.serve(async (_req) => {
       const stripped = toSlugStripped(name);
       if (stripped !== slugs[0]) slugs.push(stripped);
 
+      // v5.57: Add corporate suffix variants (catches 243+ GH boards like "cogstateinc")
+      const base = stripped || slugs[0];
+      for (const sfx of ["inc", "-inc", "llc", "co", "corp"]) {
+        const variant = base + sfx;
+        if (!slugs.includes(variant)) slugs.push(variant);
+      }
+
       let found = false;
 
       for (const slug of slugs) {
