@@ -1,4 +1,4 @@
-// refresh-jobs Edge Function v14
+// refresh-jobs Edge Function v15
 // Multi-ATS job scraper with TIERED REFRESH.
 // Boards are prioritized by activity:
 //   HOT  (job_count > 0):              ~9K boards — refresh every 6h
@@ -10,6 +10,12 @@
 //
 // pg_cron fires every 3 minutes, batch=150 → full HOT cycle in ~6h,
 // WARM in ~3 days, COLD weekly. ~310 invocations/day.
+//
+// v15 changes:
+//   - Salary extraction for Lever (salaryRange: min/max/currency/interval)
+//   - Salary extraction for Recruitee (salary: min/max/period/currency)
+//   - Salary fields conditionally included in upsert (don't null-out existing)
+//   - Workable widget API confirmed: no salary data available
 //
 // v14 changes:
 //   - Phase 3A: Greenhouse API token scraping during refresh
@@ -68,6 +74,10 @@ interface ParsedJob {
   loc_state: string | null;
   loc_country: string | null;
   is_remote: boolean;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_currency: string | null;
+  salary_rate: string | null;
 }
 
 // ============ ATS SCRAPERS ============
@@ -101,6 +111,10 @@ function parseGreenhouseJobs(data: any, slug: string, companyName: string): Pars
       loc_state: null,
       loc_country: null,
       is_remote: isRemote,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      salary_rate: null,
     };
   });
 }
@@ -113,6 +127,24 @@ function parseLeverJobs(data: any, slug: string, companyName: string): ParsedJob
     const dept = j.categories?.team || j.categories?.department || null;
     const isRemote = !!(loc && /remote/i.test(loc)) ||
       !!(j.workplaceType && /remote/i.test(j.workplaceType));
+    // Lever salary: { min, max, currency, interval }
+    const sr = j.salaryRange || null;
+    let salaryMin: number | null = null;
+    let salaryMax: number | null = null;
+    let salaryCurrency: string | null = null;
+    let salaryRate: string | null = null;
+    if (sr && (sr.min || sr.max)) {
+      salaryMin = typeof sr.min === "number" ? sr.min : null;
+      salaryMax = typeof sr.max === "number" ? sr.max : null;
+      salaryCurrency = sr.currency || "USD";
+      // Normalize Lever interval to our rate format
+      const interval = (sr.interval || "").toLowerCase();
+      if (interval.includes("year") || interval.includes("salary")) salaryRate = "yr";
+      else if (interval.includes("hour")) salaryRate = "hr";
+      else if (interval.includes("month")) salaryRate = "mo";
+      else if (interval.includes("week")) salaryRate = "wk";
+      else salaryRate = "yr"; // default assumption for Lever
+    }
     return {
       greenhouse_id: String(j.id),
       ats_source: "lever",
@@ -128,6 +160,10 @@ function parseLeverJobs(data: any, slug: string, companyName: string): ParsedJob
       loc_state: null,
       loc_country: null,
       is_remote: isRemote,
+      salary_min: salaryMin,
+      salary_max: salaryMax,
+      salary_currency: salaryCurrency,
+      salary_rate: salaryRate,
     };
   });
 }
@@ -154,6 +190,10 @@ function parseAshbyJobs(data: any, slug: string, companyName: string): ParsedJob
       loc_state: null,
       loc_country: null,
       is_remote: isRemote,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      salary_rate: null,
     };
   });
 }
@@ -181,6 +221,10 @@ function parseWorkableJobs(data: any, slug: string, companyName: string): Parsed
       loc_state: j.state || null,
       loc_country: j.country || null,
       is_remote: isRemote,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      salary_rate: null,
     };
   });
 }
@@ -192,6 +236,26 @@ function parseRecruiteeJobs(data: any, slug: string, companyName: string): Parse
     const loc = j.location || j.city || null;
     const dept = j.department || null;
     const isRemote = j.remote === true || !!(loc && /remote/i.test(loc));
+    // Recruitee salary: { min, max, period, currency }
+    const sal = j.salary || null;
+    let salaryMin: number | null = null;
+    let salaryMax: number | null = null;
+    let salaryCurrency: string | null = null;
+    let salaryRate: string | null = null;
+    if (sal && (sal.min || sal.max)) {
+      salaryMin = sal.min ? Number(sal.min) : null;
+      salaryMax = sal.max ? Number(sal.max) : null;
+      if (salaryMin !== null && isNaN(salaryMin)) salaryMin = null;
+      if (salaryMax !== null && isNaN(salaryMax)) salaryMax = null;
+      salaryCurrency = sal.currency || "USD";
+      // Normalize Recruitee period to our rate format
+      const period = (sal.period || "").toLowerCase();
+      if (period.includes("year") || period === "annual") salaryRate = "yr";
+      else if (period.includes("hour")) salaryRate = "hr";
+      else if (period.includes("month")) salaryRate = "mo";
+      else if (period.includes("week")) salaryRate = "wk";
+      else salaryRate = "yr"; // default
+    }
     return {
       greenhouse_id: String(j.id),
       ats_source: "recruitee",
@@ -207,6 +271,10 @@ function parseRecruiteeJobs(data: any, slug: string, companyName: string): Parse
       loc_state: j.state_code || null,
       loc_country: j.country_code || null,
       is_remote: isRemote,
+      salary_min: salaryMin,
+      salary_max: salaryMax,
+      salary_currency: salaryCurrency,
+      salary_rate: salaryRate,
     };
   });
 }
@@ -390,6 +458,13 @@ async function upsertJobs(jobs: ParsedJob[]): Promise<number> {
       loc_state: j.loc_state,
       loc_country: j.loc_country,
       is_remote: j.is_remote,
+      // Salary: only set if parser found salary data (don't overwrite existing with null)
+      ...(j.salary_min !== null || j.salary_max !== null ? {
+        salary_min: j.salary_min,
+        salary_max: j.salary_max,
+        salary_currency: j.salary_currency,
+        salary_rate: j.salary_rate,
+      } : {}),
       // NOTE: status intentionally omitted — defaults to 'open' on INSERT,
       // but not overwritten on UPDATE. This prevents re-opening jobs that
       // users have confirmed as dead/closed via the UI (404/410 detection).
@@ -498,7 +573,7 @@ Deno.serve(async (req: Request) => {
   const limit = Math.min(parseInt(url.searchParams.get("limit") || "150") || 150, 300);
   const forceTier = url.searchParams.get("tier") || null; // override: hot|warm|cold|all
 
-  console.log(`[refresh-jobs] v14 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
+  console.log(`[refresh-jobs] v15 Starting: source=${sourceFilter || "all"}, limit=${limit}, tier=${forceTier || "auto"}`);
 
   // ── Tiered board selection ──
   // Priority: HOT boards due for refresh > WARM boards due > COLD boards due
