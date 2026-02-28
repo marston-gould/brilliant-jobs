@@ -1,3 +1,10 @@
+## v5.76 — Extension Update Notification + Roadmap Cleanup (2026-02-28)
+
+- **REQUIRED_EXTENSION_VERSION bumped** from 2.11.0 → 2.17.0 in js/app.js (was stale since v5.75 ATS handler expansion)
+- **Extension update flow verified**: Nav dot amber on version mismatch, Setup page shows update banner with installed vs required version, download CTA triggers /api/build-extension
+- **Roadmap line 572**: Extension update notification marked done
+- **Roadmap line 575**: ATS API key scraping marked done — 224 keys scraped (203 embed_js + 21 iframe), schema ready with api_key_encrypted/api_key_source/api_key_scraped_at columns, discover-boards integration pending coverage expansion
+
 ## v5.75 — Expand ATS Handler Coverage (2026-02-28)
 
 - **4 new ATS fill handlers**: iCIMS (`*.icims.com`), Taleo/Oracle (`*.taleo.net`), SmartRecruiters (`jobs.smartrecruiters.com`), Avature (`*.avature.net`) — ~200-280 lines each following established handler pattern
