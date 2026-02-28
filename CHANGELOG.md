@@ -1,3 +1,17 @@
+## v5.68 — 2026-02-27
+- **Multi-ATS location normalization — Lever/Ashby/GH remaining gaps**: Normalized 12,562 additional jobs across Greenhouse, Lever, and Ashby platforms. Coverage: 86.2%→90.1% (275,845→288,407 jobs with loc_country).
+- **Indian state matching**: Recognized 30+ Indian states/territories (Karnataka, Maharashtra, Tamil Nadu, etc.) across all platforms.
+- **UK county/region matching**: Recognized 60+ UK counties (Greater London, West Midlands, Hampshire, etc.) for City-County patterns.
+- **Country-prefix reversal**: Resolved "Country, City" reversed format ("New Zealand, Auckland", "India, Ahmedabad") across 40+ countries.
+- **US state patterns**: Matched "State - City" (Lever) and "City, ST" (GH) patterns for all 50 US states.
+- **Canadian province, Australian state, Brazilian state matching**: Province names, abbreviations, state codes.
+- **Country-dash-City patterns**: Resolved "India - Bengaluru", "Malaysia - Kuala Lumpur", "Hungary - Budapest" across 50+ countries.
+- **Ashby coded formats**: Parsed US-CA-Menlo Park, AU-Sydney, GB-London ISO-style and "City, ST - US" convention.
+- **Remote pattern normalization**: Resolved 20+ remote variants across all platforms.
+- **Known city resolution**: Mapped 120+ unambiguous world cities to their countries.
+- **Emoji flag, German region, Mexican state matching**: Extended pattern coverage.
+- **Remaining gaps**: GH 20,178, Lever 6,559, Ashby 4,907 — mostly company-specific labels, multi-location semicolons, and ambiguous city names.
+
 ## v5.67 — 2026-02-27
 - **GH location normalization — US states**: Normalized 536 Greenhouse jobs with "State, United States" patterns (all 50 states + DC). Sets loc_state, loc_country, loc_display. Created `normalize_gh_us_states()` RPC.
 - **GH location normalization — 65+ countries**: Normalized country-only strings (Canada, Brazil, Germany, etc.) across Greenhouse, Lever, Ashby, Workable. Handles exact match, case variants, whitespace, (Remote)/(Hybrid) suffixes.
