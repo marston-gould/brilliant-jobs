@@ -1021,9 +1021,10 @@ function renderShell({ title, metaDesc, canonical, bodyClass, content, chartData
 
   <footer class="seo-footer">
     <p>Data sourced directly from Greenhouse, Lever, Ashby, Workable, Recruitee & USAJobs.</p>
-    <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a></p>
+    <p><span class="bj-version"></span> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/">brilliantjobs.app</a></p>
   </footer>
 
+  <script src="/js/version.js"></script>
   <script id="seo-chart-data" type="application/json">${chartData}</script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script src="/seo-charts.js"></script>
@@ -1249,8 +1250,9 @@ function renderCompanyPage(profile) {
     // Footer
     '<footer class="seo-footer"><div class="seo-footer-inner">' +
     '<div class="seo-footer-links"><a href="/">Home</a><a href="/job-market-data">Market Data</a><a href="/blog">Insights</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></div>' +
-    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · v4.75</p>' +
+    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · <span class="bj-version"></span></p>' +
     '</div></footer>' +
+    '<script src="/js/version.js"><\/script>' +
 
     // ECharts
     '<script src="/js/vendor/echarts.custom.min.js"></script>' +
@@ -1449,8 +1451,9 @@ function renderCollegePage(bjMajors) {
 
     '<footer class="seo-footer"><div class="seo-footer-inner">' +
     '<div class="seo-footer-links"><a href="/">Home</a><a href="/job-market-data">Market Data</a><a href="/blog">Insights</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></div>' +
-    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · v4.77</p>' +
+    '<p>© ' + new Date().getFullYear() + ' Brilliant Jobs · <span class="bj-version"></span></p>' +
     '</div></footer>' +
+    '<script src="/js/version.js"><\/script>' +
 
     '<script src="/js/vendor/echarts.custom.min.js"></script>' +
     '<script>' +
