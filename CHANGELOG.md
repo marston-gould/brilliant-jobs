@@ -1,3 +1,8 @@
+## v5.69 — 2026-02-28
+- **Install instructions page**: Created /install with 7-step guide for Chrome extension installation — download, unzip, Developer mode, Load unpacked, pin, troubleshooting, and update workflow. Consistent with help.html styling (light theme, step-based layout, Outfit + JetBrains Mono fonts).
+- **Roadmap hygiene: 3 completed cards marked done**: "Location normalization for non-GH platforms" (v5.60+v5.67+v5.68, 78.6%→90.1%), "Salary parsing for non-GH platforms" (v5.61, Lever+Recruitee), "Install instructions page" (this version).
+- **Roadmap status**: 828 done, 124 todo, 5 in progress.
+
 ## v5.68 — 2026-02-27
 - **Multi-ATS location normalization — Lever/Ashby/GH remaining gaps**: Normalized 12,562 additional jobs across Greenhouse, Lever, and Ashby platforms. Coverage: 86.2%→90.1% (275,845→288,407 jobs with loc_country).
 - **Indian state matching**: Recognized 30+ Indian states/territories (Karnataka, Maharashtra, Tamil Nadu, etc.) across all platforms.
