@@ -5,6 +5,7 @@
 // integration for auto-tracking, JD match data sent to background.
 // v3.9.0: Item #1 — Generic fallback handler for unrecognized ATS sites.
 // v3.10.0: Item #3 — On-page status overlay during fill. Item #5 — Fill metrics wiring.
+// v5.75: Added iCIMS, Taleo, SmartRecruiters, Avature handlers + detection + JD selectors.
 //
 // This script is injected on all ATS domains (manifest content_scripts)
 // and dynamically by background.js on unknown ATS domains.
@@ -58,6 +59,22 @@
     'workday': {
       hostnamePattern: /\.myworkdayjobs\.com$/,
       module: 'handlers/workday.js'
+    },
+    'icims': {
+      hostnamePattern: /\.icims\.com$/,
+      module: 'handlers/icims.js'
+    },
+    'taleo': {
+      hostnamePattern: /\.taleo\.net$/,
+      module: 'handlers/taleo.js'
+    },
+    'smartrecruiters': {
+      hostnames: ['jobs.smartrecruiters.com', 'careers.smartrecruiters.com'],
+      module: 'handlers/smartrecruiters.js'
+    },
+    'avature': {
+      hostnamePattern: /\.avature\.net$/,
+      module: 'handlers/avature.js'
     }
   };
 
@@ -192,6 +209,34 @@
       '.job-description',
       'div[class*="jobDescription"]',
     ],
+    'icims': [
+      '.iCIMS_InfoMsg_Job .iCIMS_InfoField_Job',
+      '.iCIMS_JobContent',
+      '.iCIMS_MainWrapper .job-description',
+      '[class*="jobDescription"]',
+      '.description',
+    ],
+    'taleo': [
+      '.jobdescription',
+      '.jobDetail .contentlinepanel',
+      '.applicationsection .contentlinepanel',
+      '#requisitionDescriptionInterface',
+      '.job-description',
+    ],
+    'smartrecruiters': [
+      '.job-sections',
+      '[data-test="job-description"]',
+      '.job-description',
+      '.sectionBody',
+      '[class*="jobDescription"]',
+    ],
+    'avature': [
+      '.job-description',
+      '.avature-content',
+      '.career-job-description',
+      '[class*="description"]',
+      '.content-area',
+    ],
     'generic': [
       '.job-description',
       '.job-post-content',
@@ -217,6 +262,10 @@
     'linkedin-easy-apply': '.jobs-unified-top-card__job-title, .job-details-jobs-unified-top-card__job-title, h1.t-24',
     'indeed': '.jobsearch-JobInfoHeader-title, h1.icl-u-xs-mb--xs, [data-testid="jobTitle"], h1[class*="JobTitle"]',
     'workday': '[data-automation-id="jobPostingHeader"] h2, h2[data-automation-id="jobTitle"], .css-1q2dra3 h2',
+    'icims': '.iCIMS_Header h1, .header-job-title, h1.iCIMS_Title, h1',
+    'taleo': '.pagecontainer h1, .requisitioncontenttitle, h1.title, #requisitionTitle',
+    'smartrecruiters': 'h1.job-title, h1[class*="title"], [data-test="job-title"]',
+    'avature': 'h1.job-title, h1[class*="title"], .career-title h1',
     'generic': 'h1, h2.job-title, [class*="title"] h1, [class*="title"] h2, [data-testid*="title"]',
   };
 
@@ -230,6 +279,10 @@
     'linkedin-easy-apply': '.jobs-unified-top-card__company-name a, .job-details-jobs-unified-top-card__company-name a',
     'indeed': '.jobsearch-InlineCompanyRating-companyHeader, [data-testid="companyName"], a[data-tn-element="companyName"]',
     'workday': '[data-automation-id="jobPostingHeader"] [data-automation-id="company"], .css-1q2dra3 a[href*="company"]',
+    'icims': '.iCIMS_CompanyName, .header-company-name, .company-name',
+    'taleo': '.company-name, .companyname, .requisitioncompany',
+    'smartrecruiters': '.company-name, [data-test="company-name"], a[class*="company"]',
+    'avature': '.company-name, [class*="company"], .career-company',
     'generic': '[class*="company"] a, [class*="company"], [class*="employer"], [data-testid*="company"]',
   };
 

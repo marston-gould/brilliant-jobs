@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Brilliant Jobs",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "description": "Discover jobs through your professional network",
   "permissions": [
     "activeTab",
@@ -27,7 +27,12 @@
     "https://smartapply.indeed.com/*",
     "https://apply.indeed.com/*",
     "https://m5.apply.indeed.com/*",
-    "https://*.indeed.com/*"
+    "https://*.indeed.com/*",
+    "https://*.icims.com/*",
+    "https://*.taleo.net/*",
+    "https://jobs.smartrecruiters.com/*",
+    "https://careers.smartrecruiters.com/*",
+    "https://*.avature.net/*"
   ],
   "optional_host_permissions": [
     "https://*/*"
@@ -68,7 +73,12 @@
         "https://*.myworkdayjobs.com/*",
         "https://smartapply.indeed.com/*",
         "https://apply.indeed.com/*",
-        "https://m5.apply.indeed.com/*"
+        "https://m5.apply.indeed.com/*",
+        "https://*.icims.com/*",
+        "https://*.taleo.net/*",
+        "https://jobs.smartrecruiters.com/*",
+        "https://careers.smartrecruiters.com/*",
+        "https://*.avature.net/*"
       ],
       "js": [
         "contentScript.js"
