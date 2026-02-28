@@ -1,3 +1,9 @@
+## v5.72 — 2026-02-28
+- **SEO count accuracy sweep #2**: Updated job counts from 320K+→315K+ across 7 SEO pages — data-lab, career-level-data, hiring-trends, jobs-by-industry, market-dynamics, salary-data, and index.html structured data. Actual open jobs: 317,834 (down from 320,053 in v5.66 due to normal job closures).
+- **Salary data count update**: Updated from 40K→49K salary-listed jobs (actual 49,876, 16% of total — up from 13% in v5.66). Updated salary-data.html methodology text.
+- **Roadmap backfill**: Added missing roadmap entries for v5.67–v5.72 (Phases 57–61). Six versions of documentation gap closed. Phase names added.
+- **Version surfaces**: version.js v5.72, dashboard.html comment + cache-bust v5.72, index.html comment v5.72, CHANGELOG.md updated.
+
 ## v5.71 — 2026-02-28
 - **Version discipline fix**: Corrected stale v5.68 references in dashboard.html (HTML comment, JS cache-bust, CSS cache-bust) and index.html (HTML comment) to v5.71. Added missing v5.70 CHANGELOG entry. All version surfaces now aligned: js/version.js, dashboard.html comment, dashboard.html cache-busts, index.html comment, CHANGELOG.md.
 
