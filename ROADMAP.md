@@ -2196,3 +2196,38 @@ All 22 items from the Extension & Platform Remaining Work handoff document are n
 | 6 | Admin fill metrics dashboard | Aggregation view per platform |
 
 **Phase 51 total: 5 items across v5.55–v5.56 | All code complete ✅. Deployed to production.**
+
+---
+
+## Phase 52: Data Quality & Pipeline Hardening (v5.57–v5.62) — Feb 27, 2026
+
+### v5.57 — Auto-Apply Trigger Engine
+- Auto-apply trigger Edge Function deployed. Slug suffix variants added to discover-boards.
+
+### v5.58 — pg_cron + Staffing Agency Detection
+- pg_cron for auto-apply-trigger (Job ID 60, every 10 min). Staffing agency detection: `is_staffing_agency` on `ats_companies`, 72 boards flagged. match-companies cron (Job 57), resolve-boards cron (Job 59).
+
+### v5.59 — Staffing Agency User-Facing Toggle
+- `is_staffing_agency` column on `ats_jobs`, 5,790 jobs backfilled. User-facing staffing toggle in Tuning panel.
+
+### v5.60 — Location Normalization (Lever/Ashby/Workable)
+- Two RPCs deployed: `normalize_locations_multiplatform` and `normalize_locations_pass2`. 23,284 jobs normalized. Coverage: Lever 69.1% → 92.3%, Ashby 53.4% → 87.2%, Workable 94.8% → 100%.
+
+### v5.61 — Salary Extraction (Lever & Recruitee)
+- refresh-jobs Edge Function v15: Lever `salaryRange` and Recruitee `salary` object extraction. Conditional upsert preserves existing data. Backfill organic via normal refresh cycle (~2,387 boards).
+
+### v5.62 — Version Discipline Fix
+- Fixed stale HTML comments in `dashboard.html` (v5.59 → v5.62) and `index.html` (v5.59 → v5.62). Updated cache-bust params: `dashboard.min.js?v=5.62`, `styles.css?v=5.62`. Rebuilt dist bundle. Closed 6-version roadmap documentation gap (v5.57–v5.62).
+
+### Version Surfaces (v5.62)
+
+| Surface | Value |
+|---------|-------|
+| js/version.js | v5.62 |
+| dashboard.html comment | v5.62 |
+| dashboard.html cache-bust | ?v=5.62 |
+| index.html comment | v5.62 |
+| dist/dashboard.min.js | v5.62 |
+| Console log | [BJ] Dashboard v5.62 loaded |
+
+**Phase 52 total: 6 versions across v5.57–v5.62 | Data quality + version discipline ✅**
