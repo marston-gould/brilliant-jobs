@@ -1576,6 +1576,23 @@ const features = [
 
   // Phase 56: SEO Count Accuracy (v5.66) — Feb 27, 2026 ✅
   { s: 'done', n: 'SEO count accuracy sweep', d: 'v5.66: Fixed overstated job counts (350K+→320K+, actual 320,035). Updated company counts (38K+→39K+, actual 39,123). Updated salary coverage (21K+→40K+, actual 40,609, 13%). Updated Last Updated dates and dateModified structured data on 6 SEO pages. Updated roadmap.html status bar.', p: 56 },
+
+  // Phase 57: Multi-ATS Location Normalization (v5.67–v5.68) — Feb 27–28, 2026 ✅
+  { s: 'done', n: 'GH + multi-ATS location normalization', d: 'v5.67: US state patterns, 65+ country maps, remote matching. +35,085 jobs normalized. Coverage 78.6%→89.5%.', p: 57 },
+  { s: 'done', n: 'Multi-ATS location normalization Phase 2', d: 'v5.68: Indian states, UK counties, 120+ cities, emoji flags. +12,562 jobs. Coverage 86.2%→90.1%.', p: 57 },
+
+  // Phase 58: Install Page + Roadmap Hygiene (v5.69) — Feb 28, 2026 ✅
+  { s: 'done', n: 'Install instructions page', d: 'v5.69: Created /install with 7-step Chrome extension guide. Download, enable dev mode, load unpacked, pin to toolbar.', p: 58 },
+  { s: 'done', n: 'Roadmap hygiene — 3 stale cards closed', d: 'v5.69: Closed 3 stale/duplicate roadmap cards. Totals: 828 done, 124 todo, 5 in progress.', p: 58 },
+
+  // Phase 59: PDL Pipeline Step 1 (v5.70) — Feb 28, 2026 ✅
+  { s: 'done', n: 'PDL pipeline Step 1: Build filter script + Edge Function', d: 'v5.70: filter-pdl.py (local 10 GB streamer, ~100 MB RAM). enrich-pdl-batch EF (3-strategy matching: LinkedIn/domain/corroborated name, 200 boards/run, conditional upsert). pg_cron Job 62 (weekly Sun 3 AM UTC, DISABLED). Schema-validated against live ats_companies.', p: 59 },
+
+  // Phase 60: Version Discipline + CHANGELOG (v5.71) — Feb 28, 2026 ✅
+  { s: 'done', n: 'Version discipline fix + CHANGELOG', d: 'v5.71: Fixed stale v5.68 refs in dashboard.html and index.html (comments, cache-busts). Added v5.70 + v5.71 CHANGELOG entries.', p: 60 },
+
+  // Phase 61: SEO Count Accuracy Sweep #2 (v5.72) — Feb 28, 2026 ✅
+  { s: 'done', n: 'SEO count accuracy sweep #2', d: 'v5.72: Updated job counts 320K+→315K+ across 7 SEO pages (actual 317,834). Updated salary data count 40K→49K (actual 49,876, 16%). Added roadmap entries for v5.67–v5.72 (6 missing versions). Version bump across all surfaces.', p: 61 },
 ];
 
 
@@ -1718,7 +1735,12 @@ function render() {
     53: 'SEO Data Consistency (v5.63) ✅',
     54: 'PDL Enrichment Non-GH (v5.64) ✅',
     55: 'Workday Discovery + PDL (v5.65) ✅',
-    56: 'SEO Count Accuracy (v5.66) ✅'
+    56: 'SEO Count Accuracy (v5.66) ✅',
+    57: 'Multi-ATS Location (v5.67–v5.68) ✅',
+    58: 'Install Page + Hygiene (v5.69) ✅',
+    59: 'PDL Pipeline Step 1 (v5.70) ✅',
+    60: 'Version Discipline (v5.71) ✅',
+    61: 'SEO Count Accuracy #2 (v5.72) ✅'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
