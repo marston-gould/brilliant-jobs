@@ -1,3 +1,15 @@
+## v5.78 — FCD Pipeline Cleanup (2026-02-28)
+
+- **Deleted superseded PDL scripts**: Removed `scripts/filter-pdl.py`, `scripts/upload-pdl-filtered.sh`, and `supabase/functions/enrich-pdl-batch/` directory — all replaced by FCD equivalents in v5.76/v5.77.
+- **Roadmap PDL→FCD rename**: Updated 6 remaining PDL references in roadmap.html (Steps 1-3 descriptions, Phase 22 card, Phase 59 card) to reference filter-fcd.py, enrich-fcd-batch, and fcd-enrichment bucket.
+- **Version surfaces**: version.js v5.78, dashboard.html v5.78, index.html v5.78, CHANGELOG.md.
+
+## v5.77 — FCD Enrichment Pipeline Production Deploy (2026-02-28)
+
+- **FCD pipeline merged to dev**: filter-fcd.py (streams 10 GB FCD, filters by non-null industry, extracts linkedin_slug + domain), upload-fcd-filtered.sh (targets fcd-enrichment bucket), enrich-fcd-batch Edge Function (5 matching strategies: exact name, LinkedIn slug, domain, unsquished slug, Jaccard overlap). Writes 8 fields to NULL columns only.
+- **Edge Function live**: Deployed enrich-fcd-batch with --no-verify-jwt. Processes max 200 boards/run within 140s wall time. Logs strategy breakdown to audit_log.
+- **pg_cron job**: Old job #62 to be unscheduled. New enrich-fcd-batch job configured for weekly Sunday 3 AM UTC (DISABLED pending manual testing).
+
 ## v5.76 — Extension Update Notification + Roadmap Cleanup (2026-02-28)
 
 - **REQUIRED_EXTENSION_VERSION bumped** from 2.11.0 → 2.17.0 in js/app.js (was stale since v5.75 ATS handler expansion)
