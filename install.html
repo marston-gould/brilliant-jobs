@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="canonical" href="https://brilliantjobs.app/install">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Install — Brilliant Jobs</title>
+  <meta name="description" content="Install the Brilliant Jobs Chrome extension. Step-by-step guide for setting up your personalized job intelligence extension.">
+  <meta property="og:title" content="Install — Brilliant Jobs">
+  <meta property="og:description" content="Step-by-step guide for installing the Brilliant Jobs Chrome extension.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://brilliantjobs.app/install">
+  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    @font-face {
+      font-family: 'Outfit';
+      src: url('/fonts/outfit-latin-var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+    }
+  </style>
+  <style>
+    :root {
+      --bg-main: #f5f6fa;
+      --bg-card: #ffffff;
+      --border: #e2e4ed;
+      --text: #1a1d2e;
+      --text-dim: #5c6277;
+      --text-faint: #9298ae;
+      --accent: #3d7eff;
+      --accent-hover: #2b6aeb;
+      --warm: #f59e0b;
+      --green: #22c55e;
+      --green-bg: #f0fdf4;
+      --green-border: #bbf7d0;
+      --red: #ef4444;
+      --red-bg: #fef2f2;
+      --red-border: #fecaca;
+      --sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg-main);
+      color: var(--text);
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 {
+      font-size: 16px; font-weight: 700; color: var(--text);
+      margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    }
+    h1 .mark {
+      width: 32px; height: 32px; background: #fff; border-radius: 8px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 800; color: #1a3a6e; flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    h2 {
+      font-size: 11px; color: var(--accent); margin: 22px 0 10px;
+      text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700;
+    }
+    p { margin-bottom: 8px; color: var(--text-dim); }
+    .prereq {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; margin-bottom: 16px; font-size: 13px; color: var(--text-dim); line-height: 1.6;
+    }
+    .prereq strong { color: var(--text); }
+    .step { display: flex; gap: 12px; margin-bottom: 14px; }
+    .step-num {
+      flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+      background: var(--accent); color: #fff; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono); margin-top: 1px;
+    }
+    .step-body { flex: 1; }
+    .step-body h3 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .step-body p { margin-bottom: 4px; }
+    .step-body code {
+      background: #edf0f7; padding: 2px 6px; border-radius: 4px;
+      font-family: var(--mono); font-size: 11.5px; color: #4a5073;
+      user-select: all;
+    }
+    .tip {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+      padding: 8px 10px; margin: 10px 0; font-size: 12px; color: var(--text-dim);
+    }
+    .tip strong { color: #b47a08; }
+    .warn {
+      background: var(--red-bg); border: 1px solid var(--red-border); border-radius: 6px;
+      padding: 8px 10px; margin: 10px 0; font-size: 12px; color: #991b1b;
+    }
+    .warn strong { color: #7f1d1d; }
+    .success {
+      background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 6px;
+      padding: 8px 10px; margin: 10px 0; font-size: 12px; color: #166534;
+    }
+    .success strong { color: #14532d; }
+    .bj-topbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; margin-block-end: 8px; }
+    .bj-topbar .bj-home { font-weight: 700; font-size: 14px; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .bj-topbar .bj-home:hover { color: var(--accent); }
+    .bj-topbar .bj-login { padding: 6px 16px; background: var(--accent); color: #fff; border-radius: 6px; font-weight: 700; font-size: 12px; text-decoration: none; transition: all 0.15s; }
+    .bj-topbar .bj-login:hover { background: var(--accent-hover); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; color: var(--accent-hover); }
+    .section-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px 16px; margin-bottom: 14px;
+    }
+    .checklist { list-style: none; padding: 0; margin: 8px 0 0; }
+    .checklist li {
+      display: flex; align-items: flex-start; gap: 8px; padding: 4px 0;
+      font-size: 12px; color: var(--text-dim);
+    }
+    .checklist li::before {
+      content: ''; flex-shrink: 0; width: 16px; height: 16px;
+      border: 1.5px solid var(--border); border-radius: 4px; margin-top: 1px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+<nav class="bj-topbar">
+  <a href="/" class="bj-home">&#x2726; Brilliant Jobs</a>
+  <a href="/dashboard" class="bj-login">Log In</a>
+</nav>
+<main>
+  <h1><span class="mark">B</span> Install the Chrome Extension</h1>
+
+  <div class="prereq">
+    <strong>Before you start:</strong> You need a Brilliant Jobs account and Google Chrome (or a Chromium-based browser like Edge, Brave, or Arc). If you don't have an account yet, <a href="/dashboard">sign up here</a> — it takes 30 seconds.
+  </div>
+
+  <h2>Download Your Extension</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <h3>Log in to your dashboard</h3>
+      <p>Go to <a href="/dashboard">brilliantjobs.app/dashboard</a> and sign in with your account.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <h3>Navigate to Setup</h3>
+      <p>Click <strong>Setup</strong> in the left sidebar. The Chrome Extension card is at the top of the page.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <h3>Download your extension</h3>
+      <p>Click the <strong>Download Extension</strong> button. This downloads a <code>.zip</code> file that is unique to your account — it contains your personalized security parameters.</p>
+    </div>
+  </div>
+
+  <div class="warn">
+    <strong>Do not share your extension file.</strong> It is tied to your account and contains credentials specific to you.
+  </div>
+
+  <h2>Install in Chrome</h2>
+
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-body">
+      <h3>Unzip the download</h3>
+      <p>Find the downloaded <code>.zip</code> file and extract it to a folder you'll keep (e.g., <code>Documents/brilliant-jobs-ext</code>). Don't delete this folder after installing — Chrome needs it to stay.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-body">
+      <h3>Open Chrome Extensions</h3>
+      <p>Type <code>chrome://extensions</code> in your address bar and press Enter. Toggle <strong>Developer mode</strong> on in the top-right corner.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">6</div>
+    <div class="step-body">
+      <h3>Load the extension</h3>
+      <p>Click <strong>Load unpacked</strong> in the top-left corner. Select the folder you unzipped in Step 4.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">7</div>
+    <div class="step-body">
+      <h3>Pin and open</h3>
+      <p>Click the puzzle icon in Chrome's toolbar and pin Brilliant Jobs. You should see the <strong>B</strong> icon appear in your toolbar.</p>
+    </div>
+  </div>
+
+  <div class="success">
+    <strong>You're all set.</strong> Click the extension icon to open the side panel. Your dashboard and extension will sync automatically.
+  </div>
+
+  <h2>Updating the Extension</h2>
+
+  <div class="section-card">
+    <p>When a new version is available, your dashboard's Setup page will show an update banner with a version comparison. To update:</p>
+    <ul class="checklist">
+      <li>Download the new extension from Setup</li>
+      <li>Unzip it to the same folder (overwrite the old files)</li>
+      <li>Go to <code>chrome://extensions</code> and click the refresh icon on the Brilliant Jobs card</li>
+    </ul>
+  </div>
+
+  <h2>Troubleshooting</h2>
+
+  <div class="section-card">
+    <p><strong>Extension not loading?</strong> Make sure Developer mode is on, and that you selected the folder that contains <code>manifest.json</code> (not a parent folder).</p>
+    <p><strong>Side panel not opening?</strong> Click the Brilliant Jobs icon in the toolbar. If you don't see it, click the puzzle icon and make sure the extension is enabled and pinned.</p>
+    <p><strong>Not syncing with dashboard?</strong> Refresh both the extension side panel and your dashboard tab. Check that you're signed into the same account in both.</p>
+    <p style="margin-bottom:0;"><strong>Need more help?</strong> Visit the <a href="/help">Chrome Extension Guide</a> or reach out via the feedback form in your dashboard.</p>
+  </div>
+
+<footer style="text-align:center;padding:16px 0;color:var(--text-faint);font-size:10px;border-top:1px solid var(--border);margin-top:24px">
+  &copy; <span class="bj-year"></span> Brilliant Jobs &middot; <span class="bj-version"></span>
+</footer>
+</main>
+</div>
+<script src="/js/version.js"></script>
+</body>
+</html>
