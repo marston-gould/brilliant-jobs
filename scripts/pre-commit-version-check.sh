@@ -153,6 +153,20 @@ for html_file in *.html; do
   fi
 done
 
+# ── Surface 8: api/seo-page.js — no hardcoded version strings ──
+if [ -f "api/seo-page.js" ]; then
+  stale_versions=$(grep -n "· v[0-9]\.[0-9]*" "api/seo-page.js" | grep -v "bj-version\|version\.js\|//")
+  if [ -n "$stale_versions" ]; then
+    echo -e "   ${RED}✗ FAIL:${NC} api/seo-page.js — hardcoded version found:"
+    echo "$stale_versions" | while read -r line; do
+      echo -e "          ${RED}${line}${NC}"
+    done
+    ERRORS=$((ERRORS + 1))
+  else
+    echo -e "   ${GREEN}✓${NC} api/seo-page.js — no hardcoded versions"
+  fi
+fi
+
 echo ""
 
 # ── Result ──
