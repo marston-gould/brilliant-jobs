@@ -28,7 +28,7 @@ const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const RUN_INTERVAL_MS = 10 * 60 * 1000; // 10 min lookback
 const MAX_JOBS_PER_RUN = 200;
 const MAX_MATCHES_PER_USER = 10;
-const DEFAULT_THRESHOLD = 70;
+const DEFAULT_THRESHOLD = 40; // E2E test: lowered from 70
 const MATCH_EXPIRES_HOURS = 72;
 
 const log = createLogger("auto-apply-trigger");
@@ -332,6 +332,7 @@ Deno.serve(async (req) => {
               job.company_name || ""
             );
             stats.scored++;
+            log.info(`Score result for ${job.title}`, { score: scoreResult.score, fit: scoreResult.fit_status, summary: scoreResult.summary });
 
             if (!scoreResult) continue;
 
