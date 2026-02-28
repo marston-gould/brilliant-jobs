@@ -187,7 +187,7 @@
 
   <div class="summary">
     <div class="label">Summary</div>
-    Analysis of <strong>49,000+ job listings with salary data</strong> (16% of 315K+ total). Remote positions pay <strong>35% more</strong> than on-site ($128K vs $95K median). <strong>Engineering</strong> has the highest department median at <strong>$142K</strong>. <strong>Sales</strong> has the widest variance ($42K-$210K at &plusmn;2 SD) due to commission structures. The $75K-$150K range contains <strong>53% of all salary-listed jobs</strong>. Last updated: February 27, 2026.
+    Analysis of <strong><span class="seo-salary-count">49,000+</span> job listings with salary data</strong> (<!-- dynamic --><span class="seo-salary-pct">16%</span> of <span class="seo-jobs-k">315K+</span> total). Remote positions pay <strong>35% more</strong> than on-site ($128K vs $95K median). <strong>Engineering</strong> has the highest department median at <strong>$142K</strong>. <strong>Sales</strong> has the widest variance ($42K-$210K at &plusmn;2 SD) due to commission structures. The $75K-$150K range contains <strong>53% of all salary-listed jobs</strong>. Last updated: February 27, 2026.
   </div>
 
   <div class="stats">
@@ -248,7 +248,7 @@
 
   <div class="method-foot">
     <h3>Methodology</h3>
-    <p>Salary data is drawn from <strong>40,000+</strong> job listings with disclosed compensation ranges across <strong>39,000+</strong> company career pages. Median salary represents the midpoint of posted min-max ranges. The ±1σ and ±2σ bands are calculated using actual salary range distributions within each category. Department and level classifications use the same title-based pattern matching applied across all Brilliant Jobs analytics. Work arrangement (Remote, Hybrid, On-site) is extracted from job descriptions and location metadata. Salary by industry uses the industry classification from company profiles. All figures reflect currently open positions and refresh daily.</p>
+    <p>Salary data is drawn from <strong><span class="seo-salary-count">49,000+</span></strong> job listings with disclosed compensation ranges across <strong><span class="seo-companies-k">39,000+</span></strong> company career pages. Median salary represents the midpoint of posted min-max ranges. The ±1σ and ±2σ bands are calculated using actual salary range distributions within each category. Department and level classifications use the same title-based pattern matching applied across all Brilliant Jobs analytics. Work arrangement (Remote, Hybrid, On-site) is extracted from job descriptions and location metadata. Salary by industry uses the industry classification from company profiles. All figures reflect currently open positions and refresh daily.</p>
   </div>
 
   <!-- Block 6e: City + Role cross-linking -->
@@ -263,7 +263,7 @@
     <div id="role-cross-links" class="related-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
   </div>
 
-  <div class="foot">Data from 39,000+ career pages<br><span class="bj-version"></span> · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a> · &copy; <span class="bj-year"></span> Brilliant Jobs</div>
+  <div class="foot">Data from <span class="seo-companies-k">39,000+</span> career pages<br><span class="bj-version"></span> · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a> · &copy; <span class="bj-year"></span> Brilliant Jobs</div>
 </div>
 <script>
 document.addEventListener('DOMContentLoaded',async function(){
@@ -318,6 +318,7 @@ document.addEventListener('DOMContentLoaded',async function(){
 </main>
 <a href="/dashboard" class="dash-link" id="dash-link">&larr; Dashboard</a>
 <script src="/js/version.js"></script>
+<script src="/js/seo-stats.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
 <script>
 window.addEventListener('DOMContentLoaded',function(){
