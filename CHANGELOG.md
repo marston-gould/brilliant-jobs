@@ -1,3 +1,9 @@
+## v5.71 — 2026-02-28
+- **Version discipline fix**: Corrected stale v5.68 references in dashboard.html (HTML comment, JS cache-bust, CSS cache-bust) and index.html (HTML comment) to v5.71. Added missing v5.70 CHANGELOG entry. All version surfaces now aligned: js/version.js, dashboard.html comment, dashboard.html cache-busts, index.html comment, CHANGELOG.md.
+
+## v5.70 — 2026-02-28
+- **PDL pipeline Step 1: filter script + Edge Function**: Built filter-pdl.py (Python local streamer for 10 GB PDL dataset, ~100 MB RAM, extracts ATS-matching companies). Built enrich-pdl-batch Edge Function (3-strategy matching: LinkedIn URL, website domain, corroborated name; 200 boards/run; conditional upsert — only fills NULLs). Added pg_cron Job 62 (weekly Sun 3AM UTC, DISABLED awaiting Step 2 data upload). Schema-validated against live ats_companies (slug/source PK). Disabled legacy manual enrichment cron.
+
 ## v5.69 — 2026-02-28
 - **Install instructions page**: Created /install with 7-step guide for Chrome extension installation — download, unzip, Developer mode, Load unpacked, pin, troubleshooting, and update workflow. Consistent with help.html styling (light theme, step-based layout, Outfit + JetBrains Mono fonts).
 - **Roadmap hygiene: 3 completed cards marked done**: "Location normalization for non-GH platforms" (v5.60+v5.67+v5.68, 78.6%→90.1%), "Salary parsing for non-GH platforms" (v5.61, Lever+Recruitee), "Install instructions page" (this version).
