@@ -1,3 +1,10 @@
+## v5.67 — 2026-02-27
+- **GH location normalization — US states**: Normalized 536 Greenhouse jobs with "State, United States" patterns (all 50 states + DC). Sets loc_state, loc_country, loc_display. Created `normalize_gh_us_states()` RPC.
+- **GH location normalization — 65+ countries**: Normalized country-only strings (Canada, Brazil, Germany, etc.) across Greenhouse, Lever, Ashby, Workable. Handles exact match, case variants, whitespace, (Remote)/(Hybrid) suffixes.
+- **Multi-ATS remote pattern normalization**: Resolved US-remote variants ("Remote", "US - Remote", "Remote (US)", "USA - Remote", etc.) and international remote patterns across all platforms.
+- **City-level pattern matching**: Normalized São Paulo/SP, Belo Horizonte/MG, Mexico City, Hong Kong, Sofia, Budapest, Dublin/IE, Auckland/NZ, Washington D.C., Bay Area patterns.
+- **Coverage improvement**: Location coverage 251,444→286,529 (78.6%→89.5%). 35,085 jobs gained location data. Remaining 33,519 jobs need geocoding API or are multi-location strings.
+
 # Changelog
 
 ## BLOCKERS
