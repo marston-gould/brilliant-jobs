@@ -1,3 +1,13 @@
+## v5.83 — Pod 2 Content Strategy Sprint (2026-02-28)
+
+- **Item #1 complete**: Added tier-aligned CTAs (Free/Starter $20/Pro $40) to all 6 Data Lab pages with "Start Free" + "See Plans" buttons linking to dashboard signup and pricing page.
+- **Item #2 complete**: Fixed market-dynamics anon key exposure — migrated from direct REST API calls (`/rest/v1/table`) to RPC-based pattern (`/rest/v1/rpc/get_*`). Created 3 new Supabase RPC wrappers: `get_mv_industry_dept_week()`, `get_mv_dept_level_week()`, `get_mv_state_week()`. Reduces API surface area to defined function signatures.
+- **Item #3 complete**: Added methodology footer to data-lab.html hub page (was the only Data Lab page missing it). Describes data sources, ATS platforms, refresh cycles, and classification methodology.
+- **Item #6 complete**: Added FAQPage schema to market-dynamics.html (was the only Data Lab page missing it). 4 questions aligned to entity extraction cluster 5 recommendations: geographic shifts, labor market data, state-level openings, regional industry shifts.
+- **Item #17 complete**: Added mobile chart responsiveness CSS to all 6 Data Lab pages. Charts now use `min-height` with auto sizing below 640px, stat grids switch to 2-column layout, and chart cards gain horizontal scroll for overflow.
+- **Version surfaces**: version.js v5.83, CHANGELOG.md updated.
+- **Database**: 3 new RPC functions created (get_mv_industry_dept_week, get_mv_dept_level_week, get_mv_state_week) with anon EXECUTE grants.
+
 ## v5.82 — DataForSEO Entity Extraction for Data Lab (2026-02-28)
 
 - **Item #5 complete**: Ran DataForSEO Keywords Data API (Search Volume + Keywords for Keywords) across 6 Data Lab keyword clusters.
