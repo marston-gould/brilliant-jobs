@@ -1,3 +1,13 @@
+## v5.90 — Industry Detail Pages (#16) (2026-03-01)
+
+- **Item #16 complete (Pod 2)**: Created 15 industry detail pages with live data from per-industry Supabase RPCs. Each page features: salary distribution chart, top 15 employers, department distribution donut, seniority breakdown, remote/on-site/hybrid donut, 5 stat cards, FAQ schema, AI-friendly content blocks, cross-linking to all other industry pages, and tier-aligned CTAs.
+- **Industries covered**: Technology, Healthcare, Finance, Consulting and Services, Retail and Consumer, Media and Marketing, Manufacturing, Real Estate and Construction, Energy, Education, Logistics and Transport, Telecom, Government, Legal, Non-Profit.
+- **New RPCs (5)**: get_industry_detail(text), get_industry_top_companies(text), get_industry_departments(text), get_industry_salary_distribution(text), get_industry_seniority(text) — all parameterized by industry sector name, anon-accessible.
+- **SEO**: Per-page Article + FAQPage structured data, canonical URLs, breadcrumb navigation, methodology footer, unique meta descriptions.
+- **Data**: Client-side caching (24h TTL), ECharts 5 for all charts, responsive at 640px/900px breakpoints, dark theme consistent with Data Lab pages.
+- **Version surfaces**: version.js v5.90, index.html v5.90, dashboard.html v5.90 (comment + cache-bust ?v=5.90), CHANGELOG.md updated.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
 ## v5.89 — Approval Gates for Editorial Pipeline (2026-02-28)
 
 - **Item #15 complete (Pod 2)**: Implemented approval gates for the Content Engine editorial pipeline. Content no longer goes straight to `published` — all generated stories must pass validation then editorial review.
