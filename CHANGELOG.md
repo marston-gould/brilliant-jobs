@@ -1,3 +1,10 @@
+## v5.80 — FCD Roadmap Update (2026-02-28)
+
+- **Phase 66 added**: FCD Pipeline Cleanup (v5.78) — 2 done cards (cleanup deploy + Supabase infra).
+- **Phase 67 added**: FCD Data Loading — 3 todo cards (run filter, upload data, activate cron).
+- **Card flipped**: FCD pipeline Step 3 cron → done (job 63 created, disabled).
+- **Version surfaces**: version.js v5.80, dashboard.html v5.80, index.html v5.80.
+
 ## v5.79 — FCD Enrichment Complete + Roadmap Update (2026-02-28)
 - **FCD backfill complete**: 28,898/39,123 companies enriched with industry (73.9%), 24,956 with locality (63.8%)
 - **US companies with jobs**: 78.8% industry coverage, 76.1% locality coverage
