@@ -1,7 +1,8 @@
-// confirm-email Edge Function
+// confirm-email Edge Function — v2 (Session 2+)
 // Validates double opt-in token from confirmation link,
 // sets email_verified=true, redirects to dashboard.
-// Session 2, Deliverable 2
+// v2 adds: IP-based rate limiting (5 attempts per 15 min per IP)
+// Session 2, Deliverable 2 + Session 2 unblocked item (rate limiting)
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -11,6 +12,44 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const DASHBOARD_URL = "https://brilliantjobs.app/dashboard.html";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// ═══════════════════════════════════════════════════════════
+// RATE LIMITING — in-memory sliding window (5 per 15 min per IP)
+// Resets on function cold start, which is acceptable for
+// brute-force prevention. Persistent rate limiting via DB
+// would be overkill for this endpoint's traffic volume.
+// ═══════════════════════════════════════════════════════════
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX = 5;
+const rateLimitStore: Map<string, number[]> = new Map();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitStore.get(ip) || [];
+  // Remove expired entries
+  const valid = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  rateLimitStore.set(ip, valid);
+
+  if (valid.length >= RATE_LIMIT_MAX) {
+    return true;
+  }
+  valid.push(now);
+  rateLimitStore.set(ip, valid);
+  return false;
+}
+
+// Periodic cleanup to prevent memory leaks (every 10 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of rateLimitStore.entries()) {
+    const valid = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+    if (valid.length === 0) {
+      rateLimitStore.delete(ip);
+    } else {
+      rateLimitStore.set(ip, valid);
+    }
+  }
+}, 10 * 60 * 1000);
 
 serve(async (req: Request) => {
   // CORS preflight
@@ -25,11 +64,39 @@ serve(async (req: Request) => {
   }
 
   try {
+    // Extract client IP for rate limiting
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      "unknown";
+
+    // Rate limit check
+    if (isRateLimited(clientIp)) {
+      console.warn(`[confirm-email] Rate limited: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ error: "Too many attempts. Please try again in 15 minutes." }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": "900",
+          },
+        }
+      );
+    }
+
     const url = new URL(req.url);
     const token = url.searchParams.get("token");
 
     if (!token) {
       return redirectWithError("missing_token");
+    }
+
+    // Validate token format (UUID v4 expected)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(token)) {
+      console.warn(`[confirm-email] Malformed token from ${clientIp}`);
+      return redirectWithError("invalid_token");
     }
 
     // 1. Look up token in user_notification_state
@@ -59,7 +126,7 @@ serve(async (req: Request) => {
       }
     }
 
-    // 4. Set email_verified = true, clear token
+    // 4. Set email_verified = true, clear token (single-use)
     const { error: updateError } = await sb
       .from("user_notification_state")
       .update({
