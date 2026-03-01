@@ -1,3 +1,29 @@
+## v6.07 — Session 6 (cont'd): Interview Cron Jobs + Rewrite Callback (2026-03-01)
+
+### pg_cron: Interview Reminder Schedules
+- **interview-reminder-24h**: pg_cron every 15 minutes. Queries `user_pipeline` for entries where stage='interview' and interview_date within 24h window (but >1h away). Calls `interview-sequence` Edge Function with type `interview_reminder_24h`. Dedup via `notification_log` metadata dedup_key matching pipeline_entry_id. Respects quiet hours (10pm-7am user timezone).
+- **interview-reminder-1h**: pg_cron every 10 minutes. Queries `user_pipeline` for entries where stage='interview' and interview_date within 1h window. Calls `interview-sequence` Edge Function with type `interview_reminder_1h`. Dedup via `notification_log`. **Overrides quiet hours by design** — users always get the 1h reminder.
+- Both crons use `net.http_post` to invoke the Edge Function server-side with service role auth.
+- Rollback SQL included in migration file.
+
+### Rewrite-Resume-Execute → Interview-Sequence Callback
+- **`rewrite-resume-execute` wired to `interview-sequence`**: After persisting completed rewrite results, fires a non-blocking POST to `interview-sequence` with type `resume_rewrite_ready`. Passes companyName, jobTitle, originalScore, newScore, keywordsAdded count, sectionsChanged count, rewriteJobId (for dedup).
+- Fire-and-forget pattern: notification failure does not block the rewrite response. Errors logged with `[execute]` prefix.
+
+### Version Bump
+- `js/version.js`: v6.06 → v6.07
+- `dashboard.html`: version comment v6.07
+- `index.html`: version comment v6.07
+- Browser console: `[BJ] Dashboard v6.07 loaded`
+
+### Changed
+- `js/version.js`: v6.06 → v6.07
+- `dashboard.html`: version comment v6.07
+- `index.html`: version comment v6.07
+- `supabase/functions/rewrite-resume-execute/index.ts`: +30 lines — resume_rewrite_ready notification callback
+- `sql/v6.07-interview-reminder-crons.sql`: NEW — pg_cron migration for 24h + 1h interview reminders
+
+
 ## v6.06 — Session 6: Interview Reminders + Resume Rewrite Templates (2026-03-01)
 
 ### Pod 1 Batch 4 Copy — Delivered & Consumed
