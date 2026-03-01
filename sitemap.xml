@@ -11,6 +11,7 @@
   <url><loc>https://brilliantjobs.app/privacy</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://brilliantjobs.app/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://brilliantjobs.app/pricing</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/compare</loc><lastmod>2026-03-01</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://brilliantjobs.app/ghost-report</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
 
   <!-- SEO Data Pages (auto-generated) -->
