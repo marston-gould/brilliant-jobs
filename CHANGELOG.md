@@ -1,3 +1,18 @@
+## v5.98 — Marketing DNS + Required Transactional Lock Icons (2026-03-01)
+
+### Added
+- **Marketing subdomain DNS**: Created `marketing.brilliantjobs.app` DNS records in Cloudflare — MX (SES bounce handling), SPF (amazonses.com), DMARC (monitoring mode), DKIM (Resend domain key). Separates marketing email reputation from transactional. Ready for Resend domain configuration in Pod 1.
+- **Required transactional lock icons**: 5 required_transactional notification types (payment confirmations, payment failed, plan changes, invoices/receipts, refund confirmations) now appear in the notification preference matrix with lock icons, disabled toggles, and "Always" frequency label. Users can see these notifications exist but cannot disable them.
+- **Lock enforcement in notification-center.js**: `ncEnforceLockIcons()` function runs on init, forces required_transactional rows to checked+disabled state regardless of DOM state. Prevents any client-side bypass of required notification toggles.
+- **CSS for locked notification rows**: `.notif-locked` and `.notif-lock-icon` styles — dimmed opacity, disabled pointer-events, visual lock SVG inline icon.
+
+### Changed
+- notification-center.js version header updated to v5.98
+- Cache-bust params updated to ?v=5.98 on dashboard.html
+
+### Infrastructure
+- Cloudflare DNS records created (4 records for marketing.brilliantjobs.app)
+
 ## v5.97 — Notification Session 2 Unblocked Items (2026-03-01)
 
 ### Added
