@@ -1,3 +1,22 @@
+## v5.96 — Notification Session 2 Completion + Backfill (2026-03-01)
+
+- **initNotificationCenter() wired into app.js**: Notification Center now initializes after auth resolves — loads user_notification_state, user_notification_preferences, checks opt-in modal trigger, and detects email confirmation. This was the last integration step to activate Session 2 features in the dashboard.
+- **Existing user backfill**: All 3 existing users seeded into user_notification_state (with email_verified status inferred from account age) and user_notification_preferences (79 types per user, 235 rows total). Verified users marked preferences_completed.
+- **Cache-bust fix**: dashboard.html CSS/JS cache-bust params corrected from ?v=5.92 → ?v=5.96 (were stale since v5.92).
+- **Version surfaces**: version.js v5.96, index.html v5.96, dashboard.html v5.96 (comment + cache-bust), CHANGELOG.md updated.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
+## v5.95 — Notification System Session 2: Double Opt-In + Preferences + Classification (2026-03-01)
+
+- **Session 2 of 15 complete (Pod 2)**: Built compliance layer, user preference system, and message classification enforcement for the notification system.
+- **Database migration** (v5.95-notification-session2.sql): user_notification_state table (email/SMS verification, double opt-in tokens, quiet hours, timezone, daily caps), user_notification_preferences table (per-type email/SMS/in-app toggles + frequency), notification_log expansion. RLS policies, indexes, and update triggers on both tables.
+- **confirm-email Edge Function**: Double opt-in token validation with 24h expiry, single-use enforcement, redirect to dashboard with toast confirmation. Code committed to repo.
+- **send-notification v2**: Full rewrite with 9-step canSendNotification() gate — classification check, opt-in verification, preference lookup, frequency cap enforcement, quiet hours, SMS restriction (7 allowed types only), template resolution. Code committed to repo.
+- **notification-center.js** (18.4KB): Bridges Session 2 tables with existing panel-notifications UI. Opt-in modal (6 category toggles, geo-aware marketing default), dual-write sync, toast system, email confirmation detection.
+- **Message classification enforcement**: 79 notification types mapped to 4 classifications (required_transactional, configurable_transactional, product, marketing). SMS restricted to 7 application-related types only.
+- **Version surfaces**: version.js v5.95, index.html v5.95, dashboard.html v5.95 (comment), CHANGELOG.md updated.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
 ## v5.90 — Industry Detail Pages (#16) (2026-03-01)
 
 - **Item #16 complete (Pod 2)**: Created 15 industry detail pages with live data from per-industry Supabase RPCs. Each page features: salary distribution chart, top 15 employers, department distribution donut, seniority breakdown, remote/on-site/hybrid donut, 5 stat cards, FAQ schema, AI-friendly content blocks, cross-linking to all other industry pages, and tier-aligned CTAs.
