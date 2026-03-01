@@ -1,0 +1,325 @@
+/* ───────────────────────────────────────────────────────────
+   notification-center.js — Notification Center + Opt-In Modal
+   Session 2 of Notification System (Pod 2)
+   v5.95
+   
+   Bridges user_notification_preferences + user_notification_state
+   (Session 2 tables) with existing UI in panel-notifications.
+   Adds opt-in modal for first-login-after-verification flow.
+   ─────────────────────────────────────────────────────────── */
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION TYPE CATALOG (79 types, 13 categories)
+// Mirrors admin-notifications.js classification
+// ═══════════════════════════════════════════════════════════
+var NC_CATEGORIES = {
+  onboarding:   { label: 'Onboarding', types: ['welcome','onboard_resume','onboard_filter','onboard_extension'] },
+  integration:  { label: 'Integration Adoption', types: ['adopt_extension_reminder','adopt_gmail','adopt_calendar','adopt_drive','adopt_integration_combo','adopt_post_value_moment'] },
+  extension:    { label: 'Extension', types: ['extension_update','extension_disconnected'] },
+  application:  { label: 'Application Process', types: ['auto_apply_confirm','apply_alert','cv_score_approval','auth_pending_reminder','auth_expired','auth_pre_rewrite','pipeline_response','pipeline_interview','interview_reminder','pipeline_stale'] },
+  resume:       { label: 'Resume Intelligence', types: ['rewrite_started','rewrite_complete','rewrite_failed','rewrite_review_reminder','rewrite_batch_summary'] },
+  stats:        { label: 'Stats & Trends', types: ['weekly_summary','monthly_pipeline_report','pipeline_benchmark','filter_trend_weekly','market_pulse','trend_anomaly'] },
+  ghost:        { label: 'Ghost Intelligence', types: ['ghost_alert','ghost_report_weekly'] },
+  discovery:    { label: 'Job Discovery', types: ['new_jobs_daily','new_jobs_realtime'] },
+  verification: { label: 'Pipeline Verification', types: ['pipeline_status_check','pipeline_bulk_review','pipeline_detected_update','pipeline_auto_updated','pipeline_ambiguous_signal','pipeline_outcome_unknown'] },
+  referral:     { label: 'Referral', types: ['referral_invite','referral_sent_confirmation','referral_status_update','referral_nudge_referee','referral_conversion','referral_reward_earned','referral_expiring_reward','referral_milestone','referral_periodic_summary'] },
+  upgrade:      { label: 'Upgrade & Credits', types: ['usage_upgrade_prompt','credit_cost_comparison','credit_burn_rate_alert','credit_low_balance','credit_exhausted','upgrade_roi_summary','price_lock_warning','promo_trial','promo_feature_preview'] },
+  community:    { label: 'Community & Feedback', types: ['bug_report_thankyou','bug_resolved','feature_request_thankyou','feature_request_accepted','feature_request_shipped','monthly_product_update'] },
+  account:      { label: 'Account & Billing', types: ['double_opt_in','notification_opt_in','subscription_expiring','subscription_confirm','credit_purchase_receipt','payment_failed','payment_recovered','plan_change_confirm','subscription_cancelled','invoice_generated','refund_processed','inactive_reengagement'] }
+};
+
+var NC_CLASSIFICATION = {
+  required_transactional: ['subscription_confirm','credit_purchase_receipt','payment_failed','payment_recovered','plan_change_confirm','subscription_cancelled','invoice_generated','refund_processed','double_opt_in'],
+  configurable_transactional: ['subscription_expiring','notification_opt_in'],
+  marketing: ['usage_upgrade_prompt','credit_cost_comparison','credit_burn_rate_alert','credit_low_balance','credit_exhausted','upgrade_roi_summary','price_lock_warning','promo_trial','promo_feature_preview','referral_invite','referral_sent_confirmation','referral_status_update','referral_nudge_referee','referral_conversion','referral_reward_earned','referral_expiring_reward','referral_milestone','referral_periodic_summary','inactive_reengagement']
+};
+
+function ncGetClassification(type) {
+  for (var cls in NC_CLASSIFICATION) {
+    if (NC_CLASSIFICATION[cls].indexOf(type) !== -1) return cls;
+  }
+  return 'product';
+}
+
+function ncGetCategory(type) {
+  for (var cat in NC_CATEGORIES) {
+    if (NC_CATEGORIES[cat].types.indexOf(type) !== -1) return cat;
+  }
+  return 'unknown';
+}
+
+function ncGetUserLabel(type) {
+  // Convert snake_case to readable label
+  return type.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION STATE MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+var ncState = null;  // user_notification_state row
+var ncPrefs = {};    // user_notification_preferences keyed by type
+
+async function ncLoadState() {
+  if (!currentUser) return;
+  try {
+    var { data, error } = await sb.from('user_notification_state')
+      .select('*').eq('user_id', currentUser.id).single();
+    if (error && error.code === 'PGRST116') {
+      // No row yet — create one
+      var { data: newRow } = await sb.from('user_notification_state')
+        .insert({ user_id: currentUser.id })
+        .select().single();
+      ncState = newRow;
+    } else {
+      ncState = data;
+    }
+  } catch (e) {
+    console.warn('[NC] Failed to load notification state:', e);
+  }
+}
+
+async function ncLoadPrefs() {
+  if (!currentUser) return;
+  try {
+    var { data } = await sb.from('user_notification_preferences')
+      .select('*').eq('user_id', currentUser.id);
+    ncPrefs = {};
+    (data || []).forEach(function(p) { ncPrefs[p.notification_type] = p; });
+  } catch (e) {
+    console.warn('[NC] Failed to load preferences:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DOUBLE OPT-IN: Check on dashboard load
+// ═══════════════════════════════════════════════════════════
+async function ncCheckEmailConfirmation() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('email_confirmed') === 'true') {
+    ncShowToast('Email confirmed! Your account is now active.', 'success');
+    // Clean URL
+    history.replaceState(null, '', window.location.pathname);
+  } else if (params.get('email_confirmed') === 'already') {
+    ncShowToast('Your email was already confirmed.', 'info');
+    history.replaceState(null, '', window.location.pathname);
+  } else if (params.get('email_error')) {
+    var reason = params.get('email_error');
+    var msg = reason === 'token_expired' ? 'Confirmation link has expired. Please request a new one.'
+      : reason === 'invalid_token' ? 'Invalid confirmation link.'
+      : 'Email confirmation failed. Please try again.';
+    ncShowToast(msg, 'error');
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPT-IN MODAL (Deliverable 5)
+// Shown on first dashboard login after email verification
+// ═══════════════════════════════════════════════════════════
+async function ncCheckOptInModal() {
+  if (!currentUser || !ncState) return;
+
+  // Only show if email verified but preferences not yet completed
+  if (ncState.email_verified && !ncState.preferences_completed) {
+    ncShowOptInModal();
+  }
+}
+
+function ncShowOptInModal() {
+  // Don't show if already present
+  if (document.getElementById('nc-optin-modal')) return;
+
+  var categoryToggles = [
+    { key: 'application', label: 'Application Updates', desc: 'Auto-apply confirmations, pipeline changes, interview alerts', default: true },
+    { key: 'discovery',   label: 'Job Matches', desc: 'New jobs matching your saved filters, real-time alerts', default: true },
+    { key: 'stats',       label: 'Pipeline Intelligence', desc: 'Weekly summaries, market trends, pipeline benchmarks', default: true },
+    { key: 'resume',      label: 'Resume Intelligence', desc: 'Rewrite status, readiness changes, scoring updates', default: true },
+    { key: 'ghost',       label: 'Ghost Alerts', desc: 'Possible ghost job detection and reports', default: false },
+    { key: 'verification', label: 'Pipeline Verification', desc: 'Application status checks and auto-updates', default: true }
+  ];
+
+  var togglesHtml = categoryToggles.map(function(cat) {
+    return '<label class="nc-optin-toggle" style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;">' +
+      '<input type="checkbox" class="nc-cat-toggle" data-cat="' + cat.key + '"' + (cat.default ? ' checked' : '') + ' style="margin-top:3px;accent-color:var(--accent);">' +
+      '<div><div style="font-size:13px;font-weight:600;color:var(--text);">' + cat.label + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">' + cat.desc + '</div></div></label>';
+  }).join('');
+
+  // Detect locale for marketing default (GDPR vs CAN-SPAM)
+  var isEU = false;
+  try {
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    isEU = tz.indexOf('Europe') === 0;
+  } catch(e) {}
+
+  var modal = document.createElement('div');
+  modal.id = 'nc-optin-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+  modal.innerHTML =
+    '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;">' +
+      '<div style="text-align:center;margin-bottom:20px;">' +
+        '<div style="width:48px;height:48px;border-radius:50%;background:rgba(59,130,246,0.15);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">' +
+          '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/></svg>' +
+        '</div>' +
+        '<h3 style="margin:0 0 6px;font-size:18px;color:var(--text);">Set Up Your Notifications</h3>' +
+        '<p style="margin:0;font-size:13px;color:var(--text-dim);">Choose what you want to hear about. You can change these anytime in Settings.</p>' +
+      '</div>' +
+      '<div style="margin-bottom:20px;">' + togglesHtml + '</div>' +
+      '<div style="padding:12px 0;border-top:1px solid var(--border);margin-bottom:16px;">' +
+        '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">' +
+          '<input type="checkbox" id="nc-marketing-optin"' + (isEU ? '' : ' checked') + ' style="margin-top:3px;accent-color:var(--accent);">' +
+          '<div><div style="font-size:13px;font-weight:600;color:var(--text);">Product updates & promotions</div>' +
+          '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Upgrade offers, new features, referral rewards, and tips.</div></div>' +
+        '</label>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button id="nc-optin-save" class="btn btn-primary" style="flex:1;padding:12px;font-size:14px;">Save Preferences</button>' +
+      '</div>' +
+      '<p style="margin:10px 0 0;font-size:11px;color:var(--text-faint);text-align:center;">You can also set up phone for SMS alerts later in the Notifications tab.</p>' +
+    '</div>';
+
+  document.body.appendChild(modal);
+
+  document.getElementById('nc-optin-save').addEventListener('click', ncSaveOptInPreferences);
+}
+
+async function ncSaveOptInPreferences() {
+  var btn = document.getElementById('nc-optin-save');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    // Gather category selections
+    var enabledCategories = {};
+    document.querySelectorAll('.nc-cat-toggle').forEach(function(cb) {
+      enabledCategories[cb.dataset.cat] = cb.checked;
+    });
+    var marketingOptIn = document.getElementById('nc-marketing-optin')?.checked || false;
+
+    // Build preference rows for all 79 types
+    var rows = [];
+    Object.keys(NC_CATEGORIES).forEach(function(cat) {
+      var catEnabled = enabledCategories[cat] !== undefined ? enabledCategories[cat] : true;
+      NC_CATEGORIES[cat].types.forEach(function(type) {
+        var cls = ncGetClassification(type);
+        // Required transactional: always email_enabled regardless of toggle
+        var emailOn = cls === 'required_transactional' ? true : catEnabled;
+        // Marketing types: respect marketing opt-in
+        if (cls === 'marketing' && !marketingOptIn) emailOn = false;
+
+        rows.push({
+          user_id: currentUser.id,
+          notification_type: type,
+          email_enabled: emailOn,
+          sms_enabled: false,  // SMS off by default, set up later
+          in_app_enabled: true, // In-app always on for discoverability
+          frequency: 'realtime'
+        });
+      });
+    });
+
+    // Upsert all preference rows
+    await sb.from('user_notification_preferences')
+      .upsert(rows, { onConflict: 'user_id,notification_type' });
+
+    // Update notification state: preferences completed + marketing opt-in
+    var stateUpdate = {
+      preferences_completed: true,
+      preferences_completed_at: new Date().toISOString()
+    };
+    if (marketingOptIn) {
+      stateUpdate.marketing_opt_in = true;
+      stateUpdate.marketing_opt_in_at = new Date().toISOString();
+    }
+    await sb.from('user_notification_state')
+      .update(stateUpdate)
+      .eq('user_id', currentUser.id);
+
+    // Refresh local state
+    ncState = Object.assign(ncState || {}, stateUpdate);
+    await ncLoadPrefs();
+
+    // Close modal
+    var modal = document.getElementById('nc-optin-modal');
+    if (modal) modal.remove();
+
+    ncShowToast('Notification preferences saved!', 'success');
+    console.log('[NC] Opt-in complete: ' + rows.length + ' preferences seeded, marketing=' + marketingOptIn);
+
+  } catch (e) {
+    console.error('[NC] Opt-in save failed:', e);
+    btn.textContent = 'Error — retry';
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SYNC PREFERENCES: Bridge old UI → new tables
+// Called by existing Save Preferences button in applications.js
+// ═══════════════════════════════════════════════════════════
+async function ncSyncFromUI() {
+  if (!currentUser) return;
+  try {
+    var rows = [];
+    document.querySelectorAll('#notif-pref-matrix tr[data-notif]').forEach(function(row) {
+      var type = row.dataset.notif;
+      var emailOn = row.querySelector('.nch-email')?.checked ?? true;
+      var smsOn = row.querySelector('.nch-sms')?.checked ?? false;
+      var freqEl = row.querySelector('.nch-freq');
+      var freq = freqEl ? freqEl.value : 'realtime';
+
+      rows.push({
+        user_id: currentUser.id,
+        notification_type: type,
+        email_enabled: emailOn,
+        sms_enabled: smsOn,
+        in_app_enabled: true,
+        frequency: freq
+      });
+    });
+
+    if (rows.length > 0) {
+      await sb.from('user_notification_preferences')
+        .upsert(rows, { onConflict: 'user_id,notification_type' });
+      console.log('[NC] Synced ' + rows.length + ' preferences to user_notification_preferences');
+    }
+  } catch (e) {
+    console.warn('[NC] Sync to new table failed:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST HELPER
+// ═══════════════════════════════════════════════════════════
+function ncShowToast(msg, type) {
+  var toast = document.createElement('div');
+  var colors = { success: '#22c55e', error: '#ef4444', info: '#3b82f6' };
+  toast.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--bg-card);border:1px solid ' + (colors[type] || colors.info) + ';color:var(--text);padding:14px 20px;border-radius:10px;font-size:13px;z-index:10000;max-width:400px;box-shadow:0 8px 24px rgba(0,0,0,0.3);';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(function() { toast.remove(); }, 5000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INITIALIZE
+// ═══════════════════════════════════════════════════════════
+async function initNotificationCenter() {
+  await ncLoadState();
+  await ncLoadPrefs();
+  ncCheckEmailConfirmation();
+
+  // Delay opt-in check to let dashboard render first
+  setTimeout(function() { ncCheckOptInModal(); }, 1500);
+  console.log('[NC] Notification Center initialized (Session 2)');
+}
+
+// Hook into existing save button to also sync to new tables
+document.addEventListener('DOMContentLoaded', function() {
+  var saveBtn = document.getElementById('notif-save-prefs');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      // Small delay to let the existing save complete first
+      setTimeout(ncSyncFromUI, 500);
+    });
+  }
+});
