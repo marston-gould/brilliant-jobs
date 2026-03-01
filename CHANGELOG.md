@@ -1,3 +1,63 @@
+## v6.11 — Pod 1 Session: Billing + Referral Copy Delivery (2026-03-01)
+
+### Email Templates — New (17 functions)
+
+**Batch 8: Referral (9 templates — White theme, Product classification)**
+- `referralInviteEmail`: Shareable link with dual-reward presentation (referrer + referee)
+- `referralSentConfirmationEmail`: Invite sent confirmation with tracking stats
+- `referralStatusUpdateEmail`: Status badges (clicked → signed up → activated) with progress
+- `referralNudgeRefereeEmail`: Marketing email to referee with value prop + reward offer
+- `referralConversionEmail`: Reward earned notification with lifetime earnings
+- `referralRewardEarnedEmail`: Credit/trial applied confirmation with balance update
+- `referralExpiringRewardEmail`: Expiry countdown with usage summary
+- `referralMilestoneEmail`: Milestone celebration (3/5/10/25) with leaderboard position
+- `referralPeriodicSummaryEmail`: Monthly funnel recap (sent → clicked → signed up → activated)
+
+**Batch 9: Billing (8 templates — White theme, Required Transactional)**
+- `subscriptionConfirmEmail`: New sub + renewal variants, receipt detail, quickstart CTA
+- `creditPurchaseReceiptEmail`: Credit purchase receipt with balance and per-credit cost
+- `paymentFailedEmail`: 4-stage dunning escalation (friendly → concerned → urgent → final)
+- `paymentRecoveredEmail`: Payment recovered confirmation with account status
+- `planChangeConfirmEmail`: Upgrade/downgrade with features gained/lost breakdown
+- `subscriptionCancelledEmail`: Cancellation with win-back discount offer + exit survey
+- `invoiceGeneratedEmail`: Itemized invoice with line items and PDF download
+- `refundProcessedEmail`: Refund confirmation with timeline and amount
+
+### SQL Seed (sql/v6.11-billing-referral-templates.sql)
+- 17 notification_templates rows (9 referral + 8 billing)
+- 17 admin_notification_config rows with frequency caps and classification
+- 54 notification_preference_defaults rows (9 referral types × 3 tiers × 2 regions)
+- Billing templates: required_transactional (bypass user preferences, ALWAYS ON)
+- Referral nudge_referee: marketing classification (EU defaults OFF per GDPR)
+
+### Pod 1 Product Decisions Delivered
+- **Referral reward structure**: Referrer gets 50 credits on conversion, referee gets 7-day Pro trial
+- **Milestone thresholds**: 3/5/10/25 referrals with escalating bonus rewards
+- **Reward expiry**: Time-limited rewards with 7-day and 1-day expiry warnings
+- **Dunning sequence**: 4-attempt escalation (Day 1 friendly → Day 3 warning → Day 7 urgent → Day 14 final)
+- **Win-back discount**: Offered post-cancellation with 14-day reactivation window
+- **Notification preference defaults**: Full tier × region matrix for all 17 new types
+
+### Version Bump
+- `js/version.js`: v6.10 → v6.11
+- `dashboard.html`: version comment v6.11
+- `index.html`: version comment v6.11
+- Browser console: `[BJ] Dashboard v6.11 loaded`
+
+### Changed
+- `js/version.js`: v6.10 → v6.11
+- `dashboard.html`: version comment v6.11
+- `index.html`: version comment v6.11
+- `supabase/functions/_shared/email-templates.ts`: +709 lines — 17 new template functions
+- `sql/v6.11-billing-referral-templates.sql`: NEW — template seeds, admin config, preference defaults
+
+### Notification System Progress
+- Sessions 1-10: ✅ Complete (v6.01–v6.10)
+- Pod 1 Batch 8 (Referral copy): ✅ Complete — unblocks Pod 2 Session 11
+- Pod 1 Batch 9 (Billing copy): ✅ Complete — unblocks Pod 2 Session 14
+- Sessions 11-15: Partially unblocked (11 + 14 ready, 12/13/15 pending Pod 1 batches)
+
+
 ## v6.10 — Session 10: Data Aggregation Edge Functions + Pipeline Verification (2026-03-01)
 
 ### Edge Functions — Extended
