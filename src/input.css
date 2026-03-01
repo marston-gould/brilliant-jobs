@@ -2193,6 +2193,10 @@
       text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 8px 6px;
       border-block-end: 1px solid var(--border); background: none !important;
     }
+    .notif-locked td:first-child { color: var(--text-dim); }
+    .notif-locked td { opacity: 0.6; }
+    .notif-locked .toggle-switch { opacity: 0.25; pointer-events: none; }
+    .notif-lock-icon { color: var(--text-dim); flex-shrink: 0; }
 
     /* ======================== PHONE SETUP ======================== */
     .phone-setup-row {
