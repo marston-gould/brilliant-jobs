@@ -9,7 +9,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v6.04';
+var BJ_VERSION = 'v6.05';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -97,5 +97,35 @@ window.markIntegrationConnected = async function(integration) {
     }
   } catch(e) {
     console.warn('[adoption] Error:', e.message);
+  }
+};
+
+// ─── CV Score Notification Trigger (v6.05) ───
+// Call after resume scoring completes to fire score-tier email.
+// Handles suppression server-side (daily limit, dedup, prefs).
+window.triggerScoreNotification = async function(userId, jobId, score, analysisSummary, jobTitle, companyName) {
+  if (!userId || !jobId || typeof score !== 'number') return;
+  try {
+    var res = await fetch((window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/score-sequence', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (window._bjAnonKey || '')
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        job_id: jobId,
+        score: score,
+        analysis_summary: analysisSummary || null,
+        job_title: jobTitle || null,
+        company_name: companyName || null
+      })
+    });
+    if (res.ok) {
+      var result = await res.json();
+      console.log('[score-notif] ' + (result.sent ? 'Sent' : 'Suppressed') + ': tier=' + result.tier + ', reason=' + (result.reason || 'ok'));
+    }
+  } catch(e) {
+    console.warn('[score-notif] Error:', e.message);
   }
 };

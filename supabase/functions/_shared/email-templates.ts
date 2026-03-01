@@ -1205,3 +1205,155 @@ export function adoptIntegrationComboEmail(
     `),
   };
 }
+
+// ================================================================
+// CV SCORE NOTIFICATION TEMPLATES (Session 5, v6.05)
+// Batch 3 copy — score_high_match, score_medium_match, score_low_match
+// Triggered by score-sequence Edge Function after resume scoring
+// ================================================================
+
+export function scoreHighMatchEmail(
+  firstName?: string,
+  score?: number,
+  jobTitle?: string,
+  companyName?: string,
+  jobId?: string,
+  strengths: string[] = []
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const s = score || 0;
+  const title = jobTitle || "this role";
+  const company = companyName || "the company";
+  const jid = jobId || "";
+
+  const strengthsHtml = strengths.length > 0
+    ? strengths.map(st => `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;">
+          <span style="color:#22c55e;font-weight:700;font-size:14px;">✓</span>
+          <span style="font-size:13px;color:#94a3b8;line-height:1.4;">${st}</span>
+        </div>
+      `).join("")
+    : "";
+
+  return {
+    subject: `Strong match: ${title} at ${company} (${s}% fit)`,
+    html: whiteBaseLayout("Strong Match", `
+      <div class="card">
+        <div class="card-title">You're a strong match, ${name}.</div>
+        <p class="card-sub">Your resume scored <strong style="color:#22c55e;font-size:16px;">${s}%</strong> against ${title} at ${company}. That puts you in the top tier of candidates for this role. Here's what stood out:</p>
+
+        ${strengthsHtml ? `<div style="margin:16px 0;padding:16px;background:rgba(34,197,94,0.08);border-radius:10px;border:1px solid rgba(34,197,94,0.15);">${strengthsHtml}</div>` : ""}
+
+        <div class="btn-row">
+          <a href="${DASHBOARD_URL}#resume-score?job=${jid}" class="btn btn-primary">View Full Analysis</a>
+          <a href="${DASHBOARD_URL}#apply?job=${jid}" class="btn btn-green">Apply Now</a>
+        </div>
+
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;text-align:center;margin:0;">Pro tip: Jobs with 80%+ match scores have 3x higher callback rates.</p>
+      </div>
+    `),
+  };
+}
+
+export function scoreMediumMatchEmail(
+  firstName?: string,
+  score?: number,
+  jobTitle?: string,
+  companyName?: string,
+  jobId?: string,
+  gaps: Array<{ skill: string; recommendation: string }> = []
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const s = score || 0;
+  const title = jobTitle || "this role";
+  const company = companyName || "the company";
+  const jid = jobId || "";
+
+  const gapsHtml = gaps.length > 0
+    ? gaps.map(g => `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(245,158,11,0.1);">
+          <span style="color:#f59e0b;font-weight:700;font-size:14px;">⚠</span>
+          <div>
+            <div style="font-size:13px;color:#f0f1f3;font-weight:600;">${g.skill}</div>
+            <div style="font-size:12px;color:#94a3b8;line-height:1.4;margin-top:2px;">${g.recommendation}</div>
+          </div>
+        </div>
+      `).join("")
+    : "";
+
+  return {
+    subject: `Good potential: ${title} at ${company} (${s}% fit)`,
+    html: whiteBaseLayout("Good Potential", `
+      <div class="card">
+        <div class="card-title">You're close, ${name}. Let's close the gap.</div>
+        <p class="card-sub">Your resume scored <strong style="color:#f59e0b;font-size:16px;">${s}%</strong> against ${title} at ${company}. You have solid alignment on the fundamentals, but there are specific areas where a targeted update could move you into the top tier:</p>
+
+        ${gapsHtml ? `<div style="margin:16px 0;padding:16px;background:rgba(245,158,11,0.06);border-radius:10px;border:1px solid rgba(245,158,11,0.12);">${gapsHtml}</div>` : ""}
+
+        <div class="btn-row">
+          <a href="${DASHBOARD_URL}#resume-score?job=${jid}" class="btn btn-primary">See Improvement Plan</a>
+          <a href="${DASHBOARD_URL}#resume-rewrite?job=${jid}" class="btn btn-gray">Optimize Resume</a>
+        </div>
+
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;text-align:center;margin:0;">Users who optimize based on score recommendations see an average 18-point score increase.</p>
+      </div>
+    `),
+  };
+}
+
+export function scoreLowMatchEmail(
+  firstName?: string,
+  score?: number,
+  jobTitle?: string,
+  companyName?: string,
+  jobId?: string,
+  missingSkills: string[] = [],
+  betterMatchCount?: number
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const s = score || 0;
+  const title = jobTitle || "this role";
+  const company = companyName || "the company";
+  const jid = jobId || "";
+  const bmc = betterMatchCount || 0;
+
+  const missingHtml = missingSkills.length > 0
+    ? missingSkills.map(sk => `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;">
+          <span style="color:#ef4444;font-weight:700;font-size:14px;">✗</span>
+          <span style="font-size:13px;color:#94a3b8;line-height:1.4;">${sk}</span>
+        </div>
+      `).join("")
+    : "";
+
+  const betterMatchesHtml = bmc > 0
+    ? `<div style="margin:16px 0;padding:16px;background:rgba(59,130,246,0.08);border-radius:10px;border:1px solid rgba(59,130,246,0.15);text-align:center;">
+        <div style="font-size:14px;color:#f0f1f3;font-weight:600;">We found <strong style="color:#3b82f6;">${bmc}</strong> jobs where you score 70%+.</div>
+        <a href="${DASHBOARD_URL}#feed?minScore=70" style="color:#3b82f6;font-size:13px;text-decoration:underline;margin-top:8px;display:inline-block;">See Better Matches →</a>
+      </div>`
+    : "";
+
+  return {
+    subject: `Resume insights: ${title} at ${company} (${s}% fit)`,
+    html: whiteBaseLayout("Resume Insights", `
+      <div class="card">
+        <div class="card-title">Here's the honest read, ${name}.</div>
+        <p class="card-sub">Your resume scored <strong style="color:#ef4444;font-size:16px;">${s}%</strong> against ${title} at ${company}. The core requirements for this role don't closely align with your current experience. That doesn't mean you can't get there — it means focusing your effort on roles where you'll be more competitive:</p>
+
+        ${missingHtml ? `<div style="margin:16px 0;padding:16px;background:rgba(239,68,68,0.06);border-radius:10px;border:1px solid rgba(239,68,68,0.1);">${missingHtml}</div>` : ""}
+
+        ${betterMatchesHtml}
+
+        <div class="btn-row">
+          <a href="${DASHBOARD_URL}#feed?minScore=70" class="btn btn-primary">View Higher-Match Jobs</a>
+          <a href="${DASHBOARD_URL}#resume-score?job=${jid}" class="btn btn-gray">See Full Analysis</a>
+        </div>
+
+        <hr class="divider">
+        <p style="font-size:12px;color:#64748b;text-align:center;margin:0;">Brilliant Jobs found you better matches. Focus where you'll win.</p>
+      </div>
+    `),
+  };
+}

@@ -1,3 +1,35 @@
+## v6.05 — Session 5: CV Score Notification Flow (2026-03-01)
+
+### Pod 1 Batch 3 Copy — Delivered & Consumed
+- **3 CV score email templates delivered**: score_high_match (≥80%), score_medium_match (50-79%), score_low_match (<50%). Each template personalizes on user first name, score value, job title, company name, and tier-specific recommendations.
+- Templates use white theme (`whiteBaseLayout`) matching onboarding/adoption email design system.
+
+### Edge Functions
+- **`score-sequence` Edge Function (NEW)**: Event-driven CV score notification flow. Receives userId, jobId, score, and analysisSummary from the client-side scoring pipeline. Determines tier (high/medium/low), renders the appropriate email template, and routes through send-notification. Server-side suppression: max 3 score emails per user per 24 hours, dedup on job+user combo via notification_log, respects email preference toggles and quiet hours.
+- **`email-templates.ts` updated**: Added `scoreHighMatchEmail()`, `scoreMediumMatchEmail()`, `scoreLowMatchEmail()` — 3 exported functions following existing Batch 1-2 pattern. Strengths list for high matches, gap analysis for medium, missing skills + better match count for low.
+
+### Frontend — Score Notification Integration
+- **`js/version.js`**: v6.04 → v6.05. Added `window.triggerScoreNotification()` global function — fires POST to score-sequence Edge Function with userId, jobId, score, analysisSummary, jobTitle, companyName. Silent failure with console logging.
+- **`js/keywords.js`**: After `runReadinessAnalysis()` completes and caches results, fires `triggerScoreNotification()` for each scored resume. Extracts job context from jdCache and analysis data from filter scores. Async/non-blocking — does not delay scoring UI.
+
+### Database
+- **notification_channels seed**: Default rows for score_high_match, score_medium_match, score_low_match (email=true, sms=false, frequency=realtime). No new tables required — existing notification_log handles dedup and daily count queries.
+
+### Suppression Rules (Server-Side)
+- Max 3 score emails per user per 24-hour window
+- Skip if user has email disabled for score_* types in notification_channels
+- Skip if same job+user combination already received a score email (dedup via notification_log)
+- Quiet hours respected via send-notification passthrough
+
+### Changed
+- `js/version.js`: v6.04 → v6.05, +triggerScoreNotification() global function
+- `js/keywords.js`: +score notification trigger after readiness analysis
+- `supabase/functions/_shared/email-templates.ts`: +scoreHighMatchEmail, +scoreMediumMatchEmail, +scoreLowMatchEmail
+- `supabase/functions/score-sequence/index.ts`: NEW — CV score notification Edge Function
+- `dashboard.html`: version comment v6.05
+- `index.html`: version comment v6.05
+- `CHANGELOG.md`: +v6.05 entry
+
 ## v6.04 — Milestone Detection Hooks + Sessions 3-4 Live Activation (2026-03-01)
 
 ### Frontend — Milestone Hooks
