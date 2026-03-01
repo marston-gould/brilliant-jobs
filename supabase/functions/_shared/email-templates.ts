@@ -871,7 +871,7 @@ export function leaderboardRewardEmail(params: LeaderboardRewardEmailParams): st
 }
 // White theme email templates — Session 3+ (onboarding, integration adoption)
 // Appended to _shared/email-templates.ts
-// Pod 1 copy injection pending — placeholder content marked with [POD1_COPY]
+// Pod 1 copy: PRODUCTION — Batch 1-2 delivered 2026-03-01, white theme APPROVED
 
 // ---- White Theme Base Layout ----
 function whiteBaseLayout(title: string, bodyHtml: string, footerExtra?: string): string {
@@ -928,51 +928,55 @@ function whiteBaseLayout(title: string, bodyHtml: string, footerExtra?: string):
 
 // ═══════════════════════════════════════════════════════════
 // SESSION 3: ONBOARDING SEQUENCE EMAILS (White Theme)
-// [POD1_COPY] markers indicate where Pod 1 copy will be injected
+// Pod 1 copy: PRODUCTION — Batch 1 delivered 2026-03-01
+// White theme design: APPROVED — v6.02
 // ═══════════════════════════════════════════════════════════
 
 export function onboardWelcomeEmail(userName?: string): { subject: string; html: string } {
-  const greeting = userName ? `Welcome, ${userName}!` : "Welcome to Brilliant Jobs!";
-  // [POD1_COPY] — Subject line, hero copy, value prop, 3-step quickstart, social proof stat
+  const greeting = userName ? `${userName}, welcome aboard` : "Welcome to Brilliant Jobs";
+  const name = userName || "there";
   return {
-    subject: `${greeting} Your job search just got smarter`,
+    subject: userName ? `${userName}, your job search just got an unfair advantage` : "Your job search just got an unfair advantage",
     html: whiteBaseLayout("Welcome to Brilliant Jobs", `
       <div class="card">
         <div class="card-title">${greeting}</div>
-        <p class="card-sub">You now have access to the most transparent job search platform on the market. Here's how to get the most out of it.</p>
+        <p class="card-sub">You just joined the only job search platform that pulls data directly from company hiring systems — not scraped listings, not crowd-sourced guesses. Real jobs, real salaries, real-time status.</p>
+
+        <p class="text">Three steps to get the most out of your account:</p>
 
         <div class="step-row">
           <div class="step-num">1</div>
           <div class="step-text">
             <strong>Upload your resume</strong>
-            <small>Get match scores for every job and unlock AI-powered suggestions.</small>
+            <small>Every job in your feed gets a match score — see exactly where you're a strong fit and where there are gaps.</small>
           </div>
         </div>
 
         <div class="step-row">
           <div class="step-num">2</div>
           <div class="step-text">
-            <strong>Create your first filter</strong>
-            <small>Tell us what you're looking for — role, location, salary, remote preference.</small>
+            <strong>Create a saved filter</strong>
+            <small>Set your criteria once. We monitor 7,500+ company boards and surface matches as they appear.</small>
           </div>
         </div>
 
         <div class="step-row">
           <div class="step-num">3</div>
           <div class="step-text">
-            <strong>Install the Chrome extension</strong>
-            <small>See which connections work at companies in your feed.</small>
+            <strong>Connect the Chrome extension</strong>
+            <small>See which of your LinkedIn connections already work at companies in your feed — referrals are still the #1 path to interviews.</small>
           </div>
         </div>
 
         <div class="btn-row">
-          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-primary">Get Started</a>
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-primary">Open Your Dashboard</a>
         </div>
       </div>
 
       <div class="highlight">
         <p class="text" style="margin:0; text-align:center;">
-          <strong>320,000+</strong> jobs tracked across <strong>7,500+</strong> company boards — updated daily.
+          <strong>320,000+</strong> jobs tracked across <strong>7,500+</strong> company boards.<br>
+          Updated every 10 minutes. Ghost jobs flagged automatically.
         </p>
       </div>
     `),
@@ -981,20 +985,23 @@ export function onboardWelcomeEmail(userName?: string): { subject: string; html:
 
 export function onboardResumeNudgeEmail(userName?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Subject line, benefit copy, sample match comparison, CTA
   return {
-    subject: "Your resume unlocks match scores for every job",
+    subject: "Quick win: upload your resume and see what matches",
     html: whiteBaseLayout("Upload Your Resume", `
       <div class="card">
-        <div class="card-title">Hey ${name}, one quick step</div>
-        <p class="card-sub">Upload your resume and every job in your feed gets a match score — so you know exactly where to focus.</p>
+        <div class="card-title">Hey ${name}, one step changes everything</div>
+        <p class="card-sub">Right now, you're browsing jobs without context. Upload your resume and every listing in your feed gets a match score — so you can stop guessing and start focusing on the roles where you're genuinely competitive.</p>
 
         <div class="highlight">
           <p class="text" style="margin:0;">
-            <strong>With a resume:</strong> See match percentages, skills gaps, and AI scoring (Pro).<br>
-            <strong>Without:</strong> You're browsing blind.
+            <strong>What changes with a resume on file:</strong><br>
+            ✓ Match percentage on every job listing<br>
+            ✓ Skills gap analysis showing what's missing<br>
+            ✓ AI-powered resume scoring against specific roles (Pro)
           </p>
         </div>
+
+        <p class="text">It takes about 30 seconds. PDF or Word — we handle both.</p>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#resumes" class="btn btn-primary">Upload Resume</a>
@@ -1006,22 +1013,23 @@ export function onboardResumeNudgeEmail(userName?: string): { subject: string; h
 
 export function onboardFilterNudgeEmail(userName?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Subject line, filter power explanation, example filter with results count, CTA
   return {
-    subject: "Create a filter — jobs come to you",
+    subject: "Stop refreshing job boards — let matches come to you",
     html: whiteBaseLayout("Create Your First Filter", `
       <div class="card">
-        <div class="card-title">Hey ${name}, stop scrolling — let jobs find you</div>
-        <p class="card-sub">Set up a filter with your criteria and we'll deliver matching jobs straight to your feed and inbox. No more manual searching.</p>
+        <div class="card-title">Hey ${name}, set it once and we do the rest</div>
+        <p class="card-sub">A saved filter monitors 7,500+ company boards around the clock. When something matches your criteria — role, location, salary, remote preference — it shows up in your feed and can trigger instant alerts.</p>
 
         <div class="highlight">
           <p class="text" style="margin:0;">
-            <strong>Example:</strong> "Product Manager" + "Remote" + "$120K+" = <strong>47 live matches right now</strong>
+            <strong>Example:</strong> "Product Manager" + "Remote" + "$120K+" pulls <strong>47 live matches</strong> right now from companies like Stripe, Notion, and Figma — sourced directly from their ATS systems.
           </p>
         </div>
 
+        <p class="text">Most users create their first filter in under a minute.</p>
+
         <div class="btn-row">
-          <a href="https://brilliantjobs.app/dashboard.html#jobs" class="btn btn-primary">Create Your Filter</a>
+          <a href="https://brilliantjobs.app/dashboard.html#jobs" class="btn btn-primary">Create a Filter</a>
         </div>
       </div>
     `),
@@ -1030,19 +1038,20 @@ export function onboardFilterNudgeEmail(userName?: string): { subject: string; h
 
 export function onboardExtensionNudgeEmail(userName?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Subject line, network intelligence pitch, connections example, privacy, CTA
   return {
-    subject: "See who you know at every company hiring",
+    subject: "Your LinkedIn network is a hidden advantage — use it",
     html: whiteBaseLayout("Install the Chrome Extension", `
       <div class="card">
-        <div class="card-title">Hey ${name}, unlock your network advantage</div>
-        <p class="card-sub">Our Chrome extension shows which of your LinkedIn connections work at companies in your job feed. Referrals are the #1 way to get hired.</p>
+        <div class="card-title">Hey ${name}, see who you know at every company hiring</div>
+        <p class="card-sub">Employee referrals are still the single most effective way to land interviews. Our Chrome extension maps your LinkedIn connections to companies in your job feed — so you always know when you have an inside track.</p>
 
         <div class="highlight">
           <p class="text" style="margin:0;">
-            Your connections data stays on your device. We never store or share your LinkedIn network.
+            <strong>How it works:</strong> The extension scans your LinkedIn connections locally on your device. We never store, upload, or share your network data. Your connections stay yours.
           </p>
         </div>
+
+        <p class="text">Once installed, every company in your feed shows a connection count. Tap it to see names and roles — then reach out directly.</p>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#extension" class="btn btn-primary">Install Extension</a>
@@ -1055,21 +1064,28 @@ export function onboardExtensionNudgeEmail(userName?: string): { subject: string
 
 // ═══════════════════════════════════════════════════════════
 // SESSION 4: INTEGRATION ADOPTION EMAILS (White Theme)
-// [POD1_COPY] markers indicate where Pod 1 copy will be injected
+// Pod 1 copy: PRODUCTION — Batch 2 delivered 2026-03-01
 // ═══════════════════════════════════════════════════════════
 
 export function adoptExtensionReminderEmail(userName?: string, context?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Context-specific copy based on milestone trigger
+  const contextCopy = context || "You've been exploring roles and building your pipeline — but without the Chrome extension, you can't see which of your LinkedIn connections work at those companies. That's a blind spot.";
   return {
-    subject: "You're missing connections at companies in your feed",
+    subject: "You're applying without your network — here's the fix",
     html: whiteBaseLayout("Connect Your Network", `
       <div class="card">
-        <div class="card-title">Hey ${name}, you're searching without your network</div>
-        <p class="card-sub">${context || "You've been active on the platform — but without the Chrome extension, you can't see which connections work at companies you're interested in."}</p>
+        <div class="card-title">Hey ${name}, you're missing connection data</div>
+        <p class="card-sub">${contextCopy}</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            <strong>Why it matters:</strong> Referred candidates are 4x more likely to be hired. The extension takes 30 seconds to install and works quietly in the background.
+          </p>
+        </div>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#extension" class="btn btn-primary">Install Extension</a>
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-gray">Not Interested</a>
         </div>
       </div>
     `),
@@ -1078,19 +1094,20 @@ export function adoptExtensionReminderEmail(userName?: string, context?: string)
 
 export function adoptGmailEmail(userName?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Pipeline-triggered, privacy-first
   return {
-    subject: "Auto-detect interview invites and responses",
+    subject: "You have active applications — let us track responses automatically",
     html: whiteBaseLayout("Connect Gmail", `
       <div class="card">
-        <div class="card-title">Hey ${name}, let us track responses for you</div>
-        <p class="card-sub">You have applications in your pipeline. Connect Gmail and we'll automatically detect when companies respond — no more manual status updates.</p>
+        <div class="card-title">Hey ${name}, stop checking your inbox manually</div>
+        <p class="card-sub">You have applications in your pipeline. Connect Gmail and we'll automatically detect interview invites, rejection notices, and next-step emails — then update your pipeline in real time.</p>
 
         <div class="highlight">
           <p class="text" style="margin:0;">
-            <strong>Privacy first:</strong> We only scan sender domains and subject lines. We never read email bodies.
+            <strong>Privacy by design:</strong> We only read sender domains and subject lines to detect signals. We never access email bodies, attachments, or non-hiring-related messages. You can disconnect at any time.
           </p>
         </div>
+
+        <p class="text">No more manual pipeline updates. No more missed responses sitting in your inbox.</p>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Connect Gmail</a>
@@ -1103,16 +1120,22 @@ export function adoptGmailEmail(userName?: string): { subject: string; html: str
 
 export function adoptCalendarEmail(userName?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Interview-triggered
   return {
-    subject: "Never miss an interview — connect your calendar",
+    subject: "Interview coming up? Get prep reminders automatically",
     html: whiteBaseLayout("Connect Calendar", `
       <div class="card">
-        <div class="card-title">Hey ${name}, interviews ahead?</div>
-        <p class="card-sub">Connect Google Calendar and we'll send you interview prep reminders with company insights, talking points from the job description, and countdown alerts.</p>
+        <div class="card-title">Hey ${name}, never walk into an interview cold</div>
+        <p class="card-sub">It looks like you may have interviews on the horizon. Connect Google Calendar and we'll send you prep reminders — 24 hours and 1 hour before each interview — loaded with company context, talking points from the job description, and your match analysis.</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            <strong>What you get:</strong> Company overview, your application history, key skills from the JD to emphasize, and a confidence check on how your resume stacks up.
+          </p>
+        </div>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Connect Calendar</a>
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-gray">Skip for Now</a>
         </div>
       </div>
     `),
@@ -1121,13 +1144,18 @@ export function adoptCalendarEmail(userName?: string): { subject: string; html: 
 
 export function adoptDriveEmail(userName?: string): { subject: string; html: string } {
   const name = userName || "there";
-  // [POD1_COPY] — Resume-triggered
   return {
-    subject: "Keep your resumes synced with Google Drive",
+    subject: "Edit your resume in Docs, apply with the latest version — automatically",
     html: whiteBaseLayout("Connect Google Drive", `
       <div class="card">
-        <div class="card-title">Hey ${name}, auto-sync your resumes</div>
-        <p class="card-sub">You've uploaded a resume. Connect Google Drive to keep your latest versions automatically synced — edit in Docs, apply with the latest version.</p>
+        <div class="card-title">Hey ${name}, keep your resumes in sync</div>
+        <p class="card-sub">You've already uploaded a resume — nice. Connect Google Drive and any edits you make in Google Docs will automatically sync here. No more re-uploading after every tweak.</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            <strong>How it works:</strong> Link your Drive folder. When you update a resume in Docs, the latest version is available for your next application. Match scores recalculate automatically.
+          </p>
+        </div>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Connect Drive</a>
@@ -1144,28 +1172,31 @@ export function adoptIntegrationComboEmail(
   missing: string[] = []
 ): { subject: string; html: string } {
   const name = userName || "there";
-  const pct = Math.round((connected.length / (connected.length + missing.length)) * 100);
-  // [POD1_COPY] — 30-day comprehensive setup recap
+  const total = connected.length + missing.length;
+  const pct = total > 0 ? Math.round((connected.length / total) * 100) : 0;
   return {
-    subject: `You're ${pct}% set up — here's what you're missing`,
+    subject: `Your account is ${pct}% set up — finish in 2 minutes`,
     html: whiteBaseLayout("Complete Your Setup", `
       <div class="card">
-        <div class="card-title">Hey ${name}, your setup is ${pct}% complete</div>
-        <p class="card-sub">Here's a quick look at what's connected and what's still available.</p>
+        <div class="card-title">Hey ${name}, you're ${pct}% there</div>
+        <p class="card-sub">You've been on the platform for a month now. Here's a quick snapshot of what's connected and what's still available — each integration adds a layer of intelligence to your search.</p>
 
         ${connected.map(c => `
           <div class="step-row">
             <div class="step-num step-done">✓</div>
-            <div class="step-text"><strong>${c}</strong> <small>Connected</small></div>
+            <div class="step-text"><strong>${c}</strong> <small>Connected — working for you</small></div>
           </div>
         `).join("")}
 
         ${missing.map(m => `
           <div class="step-row">
-            <div class="step-num" style="background:#e2e8f0;color:#64748b;">—</div>
-            <div class="step-text"><strong>${m}</strong> <small>Not connected</small></div>
+            <div class="step-num" style="background:#fef3c7;color:#92400e;">!</div>
+            <div class="step-text"><strong>${m}</strong> <small>Not connected — you're missing data here</small></div>
           </div>
         `).join("")}
+
+        <hr class="divider">
+        <p class="text">Each integration takes under a minute. The more you connect, the less manual work you have to do — and the smarter your job search becomes.</p>
 
         <div class="btn-row">
           <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Complete Setup</a>
