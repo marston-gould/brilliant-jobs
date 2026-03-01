@@ -1,7 +1,7 @@
 /* ───────────────────────────────────────────────────────────
    notification-center.js — Notification Center + Opt-In Modal
    Session 2+ of Notification System (Pod 2)
-   v5.99
+   v6.00
    
    Bridges user_notification_preferences + user_notification_state
    (Session 2 tables) with existing UI in panel-notifications
@@ -9,6 +9,7 @@
    Adds opt-in modal for first-login-after-verification flow.
    v5.98: Required transactional lock icons + enforcement
    v5.99: Standalone Notification Center page support
+   v6.00: Notification log wiring — load, filter, paginate, CSV export
    ─────────────────────────────────────────────────────────── */
 
 // ═══════════════════════════════════════════════════════════
@@ -479,7 +480,7 @@ async function initNotificationCenter() {
       if (ncBanner) ncBanner.style.display = 'none';
     }
   }, 1500);
-  console.log('[NC] Notification Center initialized (Session 2+, v5.99)');
+  console.log('[NC] Notification Center initialized (Session 2+, v6.00)');
 }
 
 // Hook into save buttons on both Applications panel and standalone Notification Center
@@ -505,18 +506,148 @@ document.addEventListener('DOMContentLoaded', function() {
   ['nc-nlog-filter-type','nc-nlog-filter-channel','nc-nlog-filter-status'].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener('change', function() {
-      // Placeholder: future notification log filtering will hook here
-      console.log('[NC] Standalone log filter changed:', id, el.value);
+      ncLoadNotificationLog(1);
     });
   });
 
   // Wire standalone CSV export
   var ncExportBtn = document.getElementById('nc-notif-export-csv');
   if (ncExportBtn) {
-    ncExportBtn.addEventListener('click', function() {
-      console.log('[NC] Standalone CSV export triggered');
-      ncShowToast('Notification log export will be available once the system is active.', 'info');
-    });
+    ncExportBtn.addEventListener('click', ncExportLogCSV);
+  }
+
+  // Initial log load on standalone page
+  if (document.getElementById('nc-notif-log-body')) {
+    ncLoadNotificationLog(1);
   }
 });
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION LOG — Load, Filter, Paginate, Export
+// Reads from notification_log table (RLS: users see own rows)
+// ═══════════════════════════════════════════════════════════
+var NC_LOG_PAGE_SIZE = 20;
+var ncLogCache = [];
+
+async function ncLoadNotificationLog(page) {
+  var tbody = document.getElementById('nc-notif-log-body');
+  if (!tbody) return;
+
+  // Read filter values
+  var typeFilter = (document.getElementById('nc-nlog-filter-type') || {}).value || '';
+  var channelFilter = (document.getElementById('nc-nlog-filter-channel') || {}).value || '';
+  var statusFilter = (document.getElementById('nc-nlog-filter-status') || {}).value || '';
+
+  // Show loading state
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:32px;">Loading notifications…</td></tr>';
+
+  try {
+    var query = sb.from('notification_log')
+      .select('id,notification_type,channel,status,subject,company_name,created_at,payload,classification,send_decision', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (typeFilter) query = query.eq('notification_type', typeFilter);
+    if (channelFilter) query = query.eq('channel', channelFilter);
+    if (statusFilter) query = query.eq('status', statusFilter);
+
+    var offset = (page - 1) * NC_LOG_PAGE_SIZE;
+    query = query.range(offset, offset + NC_LOG_PAGE_SIZE - 1);
+
+    var result = await query;
+    if (result.error) throw result.error;
+
+    var rows = result.data || [];
+    var total = result.count || 0;
+    ncLogCache = rows;
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">' +
+        '<div style="margin-bottom:12px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>' +
+        '<div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications found</div>' +
+        '<div style="font-size:12px;">' + (typeFilter || channelFilter || statusFilter ? 'Try adjusting your filters.' : 'Notification history will appear here once the system is active.') + '</div>' +
+        '</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(function(row) {
+        var ts = new Date(row.created_at);
+        var timeStr = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        var typeLabel = (row.notification_type || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+        var channelIcon = row.channel === 'sms' ? '💬' : row.channel === 'in_app' ? '🔔' : '✉️';
+        var statusClass = row.status === 'sent' || row.status === 'delivered' ? 'color:var(--green)' :
+          row.status === 'failed' ? 'color:var(--red)' :
+          row.status === 'held' ? 'color:var(--yellow)' : 'color:var(--text-dim)';
+        var jobInfo = row.company_name || (row.payload && row.payload.job_title) || '—';
+
+        return '<tr>' +
+          '<td style="font-size:12px;white-space:nowrap;color:var(--text-dim);">' + timeStr + '</td>' +
+          '<td style="font-size:12px;">' + typeLabel + '</td>' +
+          '<td style="font-size:12px;text-align:center;" title="' + row.channel + '">' + channelIcon + '</td>' +
+          '<td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + jobInfo + '</td>' +
+          '<td style="font-size:12px;font-weight:500;' + statusClass + '">' + (row.status || '—') + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    // Render pagination
+    ncRenderLogPagination(page, total);
+    console.log('[NC] Notification log loaded: ' + rows.length + ' rows, page ' + page + '/' + Math.ceil(total / NC_LOG_PAGE_SIZE));
+
+  } catch (err) {
+    console.error('[NC] Failed to load notification log:', err);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);padding:32px;">Failed to load notification log. Please try again.</td></tr>';
+  }
+}
+
+function ncRenderLogPagination(currentPage, total) {
+  var container = document.getElementById('nc-notif-log-pagination');
+  if (!container) return;
+
+  var totalPages = Math.ceil(total / NC_LOG_PAGE_SIZE);
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+  var html = '';
+  if (currentPage > 1) {
+    html += '<button class="btn btn-secondary btn-sm" onclick="ncLoadNotificationLog(' + (currentPage - 1) + ')" style="font-size:11px;">← Prev</button>';
+  }
+  html += '<span style="font-size:12px;color:var(--text-dim);padding:4px 8px;">Page ' + currentPage + ' of ' + totalPages + ' (' + total + ' total)</span>';
+  if (currentPage < totalPages) {
+    html += '<button class="btn btn-secondary btn-sm" onclick="ncLoadNotificationLog(' + (currentPage + 1) + ')" style="font-size:11px;">Next →</button>';
+  }
+  container.innerHTML = html;
+}
+
+function ncExportLogCSV() {
+  if (!ncLogCache || ncLogCache.length === 0) {
+    ncShowToast('No notification log data to export. Load the log first.', 'info');
+    return;
+  }
+
+  var headers = ['Timestamp', 'Type', 'Channel', 'Status', 'Company/Job', 'Subject', 'Classification', 'Decision'];
+  var csvRows = [headers.join(',')];
+
+  ncLogCache.forEach(function(row) {
+    var ts = new Date(row.created_at).toISOString();
+    var jobInfo = row.company_name || (row.payload && row.payload.job_title) || '';
+    var subject = (row.subject || '').replace(/"/g, '""');
+    csvRows.push([
+      ts,
+      row.notification_type || '',
+      row.channel || '',
+      row.status || '',
+      '"' + jobInfo + '"',
+      '"' + subject + '"',
+      row.classification || '',
+      row.send_decision || ''
+    ].join(','));
+  });
+
+  var blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'notification-log-' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  ncShowToast('Notification log exported (' + ncLogCache.length + ' rows).', 'success');
+}
+
 

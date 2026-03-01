@@ -1,3 +1,23 @@
+## v6.00 — Notification Log Wiring + Branch Sync (2026-03-01)
+
+### Added
+- **Notification log loading**: `ncLoadNotificationLog()` queries `notification_log` table via Supabase client with RLS (users see own rows). Renders timestamped entries with type labels, channel icons (✉️/💬/🔔), status colors (green=sent/delivered, red=failed, yellow=held), and company/job context.
+- **Notification log filtering**: Type, channel, and status dropdowns on standalone Notification Center page now filter live queries. Filters compose (AND logic) and reset pagination to page 1 on change.
+- **Notification log pagination**: 20 rows per page with Prev/Next controls and "Page X of Y (N total)" display. Uses Supabase `.range()` for efficient server-side pagination.
+- **CSV export**: Export button downloads current filtered log page as `notification-log-YYYY-MM-DD.csv` with headers: Timestamp, Type, Channel, Status, Company/Job, Subject, Classification, Decision. Client-side Blob generation.
+
+### Changed
+- notification-center.js version header updated to v6.00.
+- Console log version updated to v6.00.
+- Standalone page log filters wired to `ncLoadNotificationLog()` instead of placeholder console.log stubs.
+- CSV export button wired to `ncExportLogCSV()` instead of placeholder toast.
+- Initial log load triggered on DOMContentLoaded when standalone page detected.
+
+### Infrastructure
+- **Branch sync**: dev and staging branches fast-forwarded to main HEAD (v5.99 → v6.00). All three branches now in sync.
+- Version bump to v6.00 across version.js, dashboard.html (comment + cache-bust), index.html (comment), notification-center.js, CHANGELOG.md.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
 ## v5.99 — Standalone Notification Center Page (2026-03-01)
 
 ### Added
@@ -457,3 +477,4 @@ See roadmap.html for full feature history across P0–P18.
 - 8-question FAQ with FAQPage JSON-LD structured data
 - 5 PostHog tracking events
 - `/compare` added to landing page nav and footer, sitemap.xml
+
