@@ -1,3 +1,11 @@
+## v5.79 — FCD Roadmap Update + Supabase Infrastructure (2026-02-28)
+
+- **Phase 66 added**: FCD Pipeline Cleanup (v5.78) — 2 cards (cleanup deploy + Supabase infra setup) marked done.
+- **Phase 67 added**: FCD Data Loading (v5.79) — 3 todo cards for remaining manual steps (run filter, upload data, activate cron).
+- **Cards flipped to done**: Industry enrichment pass (line 667), FCD pipeline Step 3 cron setup (line 722), Enrich remaining unmatched boards (line 1179).
+- **Supabase infrastructure** (completed in prior session): fcd-enrichment bucket created, pg_cron job 63 created (disabled), old enrich-pdl-batch EF deleted, old cron job 62 unscheduled.
+- **Version surfaces**: version.js v5.79, dashboard.html v5.79, index.html v5.79.
+
 ## v5.78 — FCD Pipeline Cleanup (2026-02-28)
 
 - **Deleted superseded PDL scripts**: Removed `scripts/filter-pdl.py`, `scripts/upload-pdl-filtered.sh`, and `supabase/functions/enrich-pdl-batch/` directory — all replaced by FCD equivalents in v5.76/v5.77.
