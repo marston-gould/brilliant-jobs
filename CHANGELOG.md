@@ -1,3 +1,43 @@
+## v6.10 — Session 10: Data Aggregation Edge Functions + Pipeline Verification (2026-03-01)
+
+### Edge Functions — Extended
+- **`weekly-summary` (EXTENDED)**: Now sends 4 emails per user on Monday mornings: weekly summary (existing), market pulse (new jobs, remote %, board count, top hiring companies), filter trends (per-filter job counts, median salary, WoW delta), and ghost report weekly (ghosted apps, worst wait, resolved count, market benchmark). Wall-time safety at 110s. Dedup via notification_channels.
+  
+### Edge Functions — New
+- **`monthly-report` (NEW)**: Runs 1st of month via pg_cron. Sends 5 emails per user: monthly pipeline report (MoM comparison, response rate, interview conversion, ghost rate, top responders), pipeline benchmark (user vs community percentiles), upgrade ROI summary (free=missed opportunities, pro=value delivered), credit cost comparison (usage breakdown, plan comparison, projections), rewrite batch summary (per-batch score results).
+- **`trend-anomaly-detector` (NEW)**: Runs daily at 6am UTC via pg_cron. Compares current week job volume per saved filter against 4-week rolling average. Fires trend_anomaly notification if deviation >25%. Dedup: max 1 anomaly per filter per week. Minimum baseline of 5 jobs to avoid noise.
+
+### Database Migration (sql/v6.10-data-aggregation-crons.sql)
+- **saved_filters table**: user_id, name, config (jsonb). RLS: users manage own. Used by filter trends + anomaly detector.
+- **credit_transactions table**: user_id, feature, credits_used, metadata. RLS: users read own. Used by credit cost comparison.
+- **resume_rewrites table**: user_id, batch_id, filter_name, scores, status. RLS: users read own. Used by rewrite batch summary.
+- **profiles.credits_remaining**: New column (int, default 0). Used by credit report.
+- **pg_cron: monthly-report**: `0 13 1 * *` (1st of month, 8am ET / 1pm UTC).
+- **pg_cron: trend-anomaly-detector**: `0 6 * * *` (daily 6am UTC).
+- **notification_templates**: 9 new types seeded (monthly_pipeline_report, pipeline_benchmark, market_stats, trend_anomaly, filter_trend, ghost_report, upgrade_roi_summary, credit_cost_comparison, rewrite_batch_summary).
+- **admin_notification_config**: 9 new types with 50/50 A/B weights.
+
+### Version Bump
+- `js/version.js`: v6.09 → v6.10
+- `dashboard.html`: version comment v6.10
+- `index.html`: version comment v6.10
+- Browser console: `[BJ] Dashboard v6.10 loaded`
+
+### Changed
+- `js/version.js`: v6.09 → v6.10
+- `dashboard.html`: version comment v6.10
+- `index.html`: version comment v6.10
+- `supabase/functions/weekly-summary/index.ts`: +250 lines — market pulse, filter trends, ghost report aggregation
+- `supabase/functions/monthly-report/index.ts`: NEW — 450 lines — pipeline report, benchmark, ROI, credits, rewrites
+- `supabase/functions/trend-anomaly-detector/index.ts`: NEW — 230 lines — 4-week rolling avg anomaly detection
+- `sql/v6.10-data-aggregation-crons.sql`: NEW — tables, pg_cron, template seeds
+
+### Notification System Progress
+- Sessions 1-9: ✅ Complete (v6.01–v6.09+)
+- Session 10 (Data Aggregation EFs): ✅ Complete — all 10 Batch 6 templates now have data feeds
+- Sessions 11-15: Pending Pod 1 Batches 7-10
+
+
 ## v6.09 — Stats Charts: Compare Mode + ATS Source Breakdown (2026-03-01)
 
 ### Stats Page — Compare Mode
