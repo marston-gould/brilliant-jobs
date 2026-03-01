@@ -255,6 +255,8 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   loadStats();
   checkExtensionStatus();
   loadCollections();
+  // Initialize Notification Center (Session 2 — loads state, prefs, opt-in check)
+  if (typeof initNotificationCenter === 'function') initNotificationCenter();
   // Start session heartbeat
   if (bjSessionId) {
     setInterval(() => {
