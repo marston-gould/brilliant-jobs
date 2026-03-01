@@ -396,6 +396,37 @@ Rewrite again, fixing all truthfulness issues. Return ONLY JSON.`;
       completed_at: new Date().toISOString(),
     }).eq('id', session_id);
 
+
+    // ─── Notify: resume rewrite ready (v6.07) ───
+    // Fire-and-forget POST to interview-sequence for resume_rewrite_ready notification
+    try {
+      const notifyUrl = `${SB_URL}/functions/v1/interview-sequence`;
+      fetch(notifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SB_KEY}`,
+        },
+        body: JSON.stringify({
+          type: 'resume_rewrite_ready',
+          userId: user.id,
+          companyName: jobRow.company_name || undefined,
+          jobTitle: jobRow.title || undefined,
+          originalResumeName: session.resume_name || undefined,
+          originalScore: session.original_score || undefined,
+          newScore: newScore || undefined,
+          keywordsAdded: (rewriteData.keywords_added || []).length,
+          sectionsChanged: (rewriteData.sections || []).length,
+          newResumeId: session.resume_id || undefined,
+          rewriteJobId: session_id,
+        }),
+      }).catch(e => console.warn('[execute] Rewrite notification failed (non-blocking):', e.message));
+      console.log(`[execute] Fired resume_rewrite_ready notification for session ${session_id}`);
+    } catch (notifyErr) {
+      // Non-blocking — don't fail the rewrite if notification fails
+      console.warn('[execute] Rewrite notification error (non-blocking):', notifyErr);
+    }
+
     // ─── Response ───
     return json({
       success: true,
