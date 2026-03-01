@@ -35,16 +35,19 @@ CREATE INDEX idx_extension_builds_build_id ON extension_builds(build_id);
 ALTER TABLE extension_builds ENABLE ROW LEVEL SECURITY;
 
 -- Users can see their own builds
+DROP POLICY IF EXISTS "Users can view own builds" ON extension_builds;
 CREATE POLICY "Users can view own builds"
   ON extension_builds FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Only service role can insert (Edge Function handles creation)
+DROP POLICY IF EXISTS "Service role inserts builds" ON extension_builds;
 CREATE POLICY "Service role inserts builds"
   ON extension_builds FOR INSERT
   WITH CHECK (true);
 
 -- Users can update their own builds (for downloaded_at, installed_at tracking)
+DROP POLICY IF EXISTS "Users can update own builds" ON extension_builds;
 CREATE POLICY "Users can update own builds"
   ON extension_builds FOR UPDATE
   USING (auth.uid() = user_id);
@@ -62,6 +65,7 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- Only service role can access (admin upload, EF reads)
+DROP POLICY IF EXISTS "Service role full access on extension-source" ON storage.objects;
 CREATE POLICY "Service role full access on extension-source"
   ON storage.objects FOR ALL
   USING (bucket_id = 'extension-source')

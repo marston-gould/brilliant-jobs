@@ -20,10 +20,12 @@ CREATE TABLE IF NOT EXISTS onboarding_milestones (
 -- RLS
 ALTER TABLE onboarding_milestones ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own milestones" ON onboarding_milestones;
 CREATE POLICY "Users can view own milestones"
   ON onboarding_milestones FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Service role manages milestones" ON onboarding_milestones;
 CREATE POLICY "Service role manages milestones"
   ON onboarding_milestones FOR ALL
   USING (auth.role() = 'service_role');
@@ -49,6 +51,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_onboarding_milestones_updated ON onboarding_milestones;
 CREATE TRIGGER trg_onboarding_milestones_updated
   BEFORE UPDATE ON onboarding_milestones
   FOR EACH ROW

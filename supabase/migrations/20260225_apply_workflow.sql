@@ -55,19 +55,24 @@ ALTER TABLE public.pending_applications
 ALTER TABLE public.pending_applications ENABLE ROW LEVEL SECURITY;
 
 -- Users CRUD own rows
+DROP POLICY IF EXISTS "pending_select" ON public.pending_applications;
 CREATE POLICY pending_select ON public.pending_applications
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "pending_insert" ON public.pending_applications;
 CREATE POLICY pending_insert ON public.pending_applications
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "pending_update" ON public.pending_applications;
 CREATE POLICY pending_update ON public.pending_applications
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "pending_delete" ON public.pending_applications;
 CREATE POLICY pending_delete ON public.pending_applications
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Admin reads all
+DROP POLICY IF EXISTS "pending_admin_select" ON public.pending_applications;
 CREATE POLICY pending_admin_select ON public.pending_applications
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
@@ -101,13 +106,16 @@ ALTER TABLE public.mock_ats_submissions
 ALTER TABLE public.mock_ats_submissions ENABLE ROW LEVEL SECURITY;
 
 -- Users read own rows
+DROP POLICY IF EXISTS "mock_ats_select" ON public.mock_ats_submissions;
 CREATE POLICY mock_ats_select ON public.mock_ats_submissions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "mock_ats_insert" ON public.mock_ats_submissions;
 CREATE POLICY mock_ats_insert ON public.mock_ats_submissions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Admin reads all
+DROP POLICY IF EXISTS "mock_ats_admin_select" ON public.mock_ats_submissions;
 CREATE POLICY mock_ats_admin_select ON public.mock_ats_submissions
   FOR SELECT USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')

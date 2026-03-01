@@ -24,19 +24,23 @@ CREATE INDEX IF NOT EXISTS idx_extension_heartbeats_last_heartbeat ON extension_
 ALTER TABLE extension_heartbeats ENABLE ROW LEVEL SECURITY;
 
 -- Users can read/update their own row
+DROP POLICY IF EXISTS "Users can view own heartbeat" ON extension_heartbeats;
 CREATE POLICY "Users can view own heartbeat"
   ON extension_heartbeats FOR SELECT
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can upsert own heartbeat" ON extension_heartbeats;
 CREATE POLICY "Users can upsert own heartbeat"
   ON extension_heartbeats FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own heartbeat" ON extension_heartbeats;
 CREATE POLICY "Users can update own heartbeat"
   ON extension_heartbeats FOR UPDATE
   USING (auth.uid() = user_id);
 
 -- Service role bypasses RLS for cron operations
+DROP POLICY IF EXISTS "Service role full access" ON extension_heartbeats;
 CREATE POLICY "Service role full access"
   ON extension_heartbeats FOR ALL
   USING (auth.role() = 'service_role');
