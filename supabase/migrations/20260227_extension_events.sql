@@ -19,8 +19,10 @@ CREATE INDEX IF NOT EXISTS idx_ext_events_created ON public.extension_events(cre
 
 ALTER TABLE public.extension_events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "extension_events_insert" ON public.extension_events;
 CREATE POLICY extension_events_insert ON public.extension_events
   FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "extension_events_select" ON public.extension_events;
 CREATE POLICY extension_events_select ON public.extension_events
   FOR SELECT TO authenticated USING (auth.uid() = user_id);
 

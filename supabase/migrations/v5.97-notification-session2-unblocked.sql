@@ -29,11 +29,13 @@ CREATE INDEX IF NOT EXISTS idx_held_notifications_user
 -- RLS: users can see their own held notifications
 ALTER TABLE held_notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own held notifications" ON held_notifications;
 CREATE POLICY "Users can view their own held notifications"
   ON held_notifications FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Service role has full access (Edge Functions use service role)
+DROP POLICY IF EXISTS "Service role full access on held_notifications" ON held_notifications;
 CREATE POLICY "Service role full access on held_notifications"
   ON held_notifications FOR ALL
   USING (auth.role() = 'service_role');
