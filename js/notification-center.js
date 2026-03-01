@@ -1,11 +1,12 @@
 /* ───────────────────────────────────────────────────────────
    notification-center.js — Notification Center + Opt-In Modal
-   Session 2 of Notification System (Pod 2)
-   v5.95
+   Session 2+ of Notification System (Pod 2)
+   v5.97
    
    Bridges user_notification_preferences + user_notification_state
    (Session 2 tables) with existing UI in panel-notifications.
    Adds opt-in modal for first-login-after-verification flow.
+   v5.97: Per-type SMS toggle enforcement, resend confirmation
    ─────────────────────────────────────────────────────────── */
 
 // ═══════════════════════════════════════════════════════════
@@ -301,6 +302,103 @@ function ncShowToast(msg, type) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// PER-TYPE SMS OPT-IN ENFORCEMENT
+// Wires individual SMS toggles to user_notification_preferences.sms_enabled
+// Only the 7 SMS-allowed types show SMS toggles
+// ═══════════════════════════════════════════════════════════
+var NC_SMS_ALLOWED = ['apply_alert','cv_score_approval','auth_pending_reminder','auth_pre_rewrite','pipeline_interview','interview_reminder','new_jobs_realtime'];
+
+async function ncToggleSmsForType(type, enabled) {
+  if (!currentUser) return;
+  if (NC_SMS_ALLOWED.indexOf(type) === -1) {
+    console.warn('[NC] SMS not allowed for type:', type);
+    return;
+  }
+  try {
+    await sb.from('user_notification_preferences')
+      .update({ sms_enabled: enabled })
+      .eq('user_id', currentUser.id)
+      .eq('notification_type', type);
+    if (ncPrefs[type]) ncPrefs[type].sms_enabled = enabled;
+    console.log('[NC] SMS ' + (enabled ? 'enabled' : 'disabled') + ' for ' + type);
+  } catch (e) {
+    console.warn('[NC] SMS toggle failed for ' + type + ':', e);
+  }
+}
+
+// Render per-type SMS toggles in the notification preference matrix
+function ncRenderSmsToggles() {
+  var rows = document.querySelectorAll('#notif-pref-matrix tr[data-notif]');
+  rows.forEach(function(row) {
+    var type = row.dataset.notif;
+    var smsCell = row.querySelector('.nch-sms');
+    if (!smsCell) return;
+
+    // Only SMS-allowed types get an interactive toggle
+    if (NC_SMS_ALLOWED.indexOf(type) === -1) {
+      smsCell.disabled = true;
+      smsCell.checked = false;
+      smsCell.title = 'SMS is only available for time-sensitive application alerts';
+      return;
+    }
+
+    // Check if phone is verified
+    if (!ncState || !ncState.sms_verified) {
+      smsCell.disabled = true;
+      smsCell.title = 'Verify your phone number first to enable SMS';
+      return;
+    }
+
+    // Wire the toggle
+    var pref = ncPrefs[type];
+    smsCell.checked = pref ? pref.sms_enabled : false;
+    smsCell.disabled = false;
+    smsCell.addEventListener('change', function() {
+      ncToggleSmsForType(type, this.checked);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// RESEND CONFIRMATION EMAIL
+// Called from UI when user's token has expired
+// ═══════════════════════════════════════════════════════════
+async function ncResendConfirmation() {
+  if (!currentUser) return;
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) {
+      ncShowToast('Please log in again to resend confirmation.', 'error');
+      return;
+    }
+
+    var res = await fetch(sb.supabaseUrl + '/functions/v1/resend-confirmation', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      }
+    });
+
+    var data = await res.json();
+    if (res.status === 429) {
+      ncShowToast('Too many resend attempts. Please wait an hour.', 'error');
+    } else if (data.already_verified) {
+      ncShowToast('Your email is already verified!', 'info');
+      ncState.email_verified = true;
+    } else if (data.ok) {
+      ncShowToast('Confirmation email sent! Check your inbox.', 'success');
+    } else {
+      ncShowToast(data.error || 'Failed to resend. Please try again.', 'error');
+    }
+  } catch (e) {
+    console.error('[NC] Resend confirmation failed:', e);
+    ncShowToast('Failed to resend confirmation email.', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // INITIALIZE
 // ═══════════════════════════════════════════════════════════
 async function initNotificationCenter() {
@@ -308,9 +406,26 @@ async function initNotificationCenter() {
   await ncLoadPrefs();
   ncCheckEmailConfirmation();
 
-  // Delay opt-in check to let dashboard render first
-  setTimeout(function() { ncCheckOptInModal(); }, 1500);
-  console.log('[NC] Notification Center initialized (Session 2)');
+  // Render per-type SMS toggles once preferences panel is available
+  setTimeout(function() {
+    ncRenderSmsToggles();
+    ncCheckOptInModal();
+
+    // Add resend confirmation button if not yet verified
+    if (ncState && !ncState.email_verified) {
+      var resendTarget = document.getElementById('nc-resend-target') || document.querySelector('.notif-verify-section');
+      if (resendTarget && !document.getElementById('nc-resend-btn')) {
+        var btn = document.createElement('button');
+        btn.id = 'nc-resend-btn';
+        btn.className = 'btn btn-secondary';
+        btn.style.cssText = 'margin-top:8px;font-size:12px;padding:6px 14px;';
+        btn.textContent = 'Resend confirmation email';
+        btn.addEventListener('click', ncResendConfirmation);
+        resendTarget.appendChild(btn);
+      }
+    }
+  }, 1500);
+  console.log('[NC] Notification Center initialized (Session 2+, v5.97)');
 }
 
 // Hook into existing save button to also sync to new tables
