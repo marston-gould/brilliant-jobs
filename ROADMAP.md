@@ -2427,3 +2427,51 @@ All 19 action items from the Content Strategy Audit (Phase 11) are now DONE:
 | **Total** | **19** | **0** | **0** |
 
 **Phase 57 total: 1 version (v5.90) | 15 industry detail pages + 5 RPCs | Content Strategy Audit complete ✅**
+
+---
+
+## Phase 58: Competitor Comparison Page (v5.94)
+
+**Date:** 2026-03-01
+**Pod:** Pod 1 (Growth) spec / Pod 2 (Architecture) build
+**Version:** v5.94
+
+### What shipped
+
+SEO competitor comparison hub page at `/compare` — single public-facing page positioning Brilliant Jobs against LinkedIn, Indeed, ZipRecruiter, and Glassdoor.
+
+**Page architecture:**
+- Dark theme (external page, matches landing page)
+- Hero with anchor-linked competitor pills
+- 12-row responsive feature comparison table across 5 platforms (desktop 6-col / mobile card stack)
+- Features include: ghost detection, no promoted jobs, boolean filtering, resume grading, AI match scoring, salary transparency, pipeline tracking, automated cover letters, one-click apply, repost tracking, company exclusions, free to search
+- 4 anchor-linked competitor sections (#vs-linkedin, #vs-indeed, #vs-ziprecruiter, #vs-glassdoor)
+- Pain points vs. advantages two-column layout per competitor
+- CTA blocks between each section
+- 8-question FAQ accordion with JSON-LD FAQPage structured data
+- Bottom conversion CTA with live stats
+- All copy uses consumer-friendly language (no ATS jargon)
+
+**SEO:**
+- Title: "Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter & Glassdoor | Best Job Search 2026"
+- FAQPage JSON-LD (8 questions)
+- Added to sitemap.xml (priority 0.7)
+- /compare added to landing page nav + footer
+
+**PostHog events (5):**
+- compare_page_viewed, compare_section_scrolled, compare_anchor_clicked, compare_cta_clicked, compare_faq_expanded
+
+**Files:** compare.html (new), js/version.js, index.html, dashboard.html, sitemap.xml, ROADMAP.md, CHANGELOG.md
+
+### Version Surfaces (v5.94)
+
+| Surface | Value |
+|---------|-------|
+| js/version.js | v5.94 |
+| dashboard.html | v5.94 |
+| index.html | v5.94 |
+| compare.html | v5.94 |
+| sitemap.xml | /compare added |
+| Console | v5.94 (auto via version.js) |
+
+**Phase 58 total: 1 version (v5.94) | 1 new SEO page | competitor comparison hub live**
