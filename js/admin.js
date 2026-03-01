@@ -98,6 +98,8 @@ function switchAdminTab(tabId) {
       case 'content': loadContentTab(); break;
       case 'enrichment': loadEnrichmentTab(); break;
       case 'mock-ats': loadMockAtsTab(); break;
+      case 'notifications': loadNotificationsTab(); break;
+      case 'templates': loadTemplatesTab(); break;
     }
   }
 }
