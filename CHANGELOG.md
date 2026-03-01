@@ -1,3 +1,41 @@
+## v6.08 — Session 7: Extension Notifications + Heartbeat Monitoring (2026-03-01)
+
+### Database Migration
+- **extension_heartbeats table**: New table tracking Chrome extension connectivity per user. Columns: user_id (PK), extension_id, extension_version, last_heartbeat_at, status (active/silent/disconnected), silent_since, disconnect_notified_at. RLS: users read/update own row, service role for cron operations.
+- **Indexes**: status + last_heartbeat_at for efficient cron scans.
+- **pg_cron**: `extension-heartbeat-check` runs every 6 hours — scans for silent extensions past configurable threshold (default 7 days), sends disconnect notification via send-notification.
+
+### Edge Functions
+- **`extension-heartbeat` (NEW)**: Dual-mode endpoint. Mode 1 (user JWT): Chrome extension pings every 4 hours with version info, upserts heartbeat row, resets status to active. Mode 2 (cron): Scans for overdue heartbeats, marks active→silent→disconnected, dispatches extension_disconnected notifications through send-notification.
+
+### Email Templates
+- **extension_update**: White theme. Changelog summary with breaking changes conditional block. Subject A/B: "Brilliant Jobs Extension — New Update Available" / "🔧 Your Extension Just Got Better". Admin-triggered per release.
+- **extension_disconnected**: White theme. Troubleshooting steps (enable, reconnect, reinstall). Subject A/B: "Your Brilliant Jobs Extension Needs Attention" / "We Haven't Heard from Your Extension in {{days_silent}} Days". Auto-triggered by heartbeat cron, once per disconnect event.
+
+### Chrome Extension
+- **Heartbeat alarm**: New `heartbeat` alarm fires every 4 hours in background.js. Calls extension-heartbeat Edge Function with extension_id and version from manifest. Fire-and-forget (non-blocking).
+- **Startup/install ping**: Immediate heartbeat sent on chrome.runtime.onInstalled and onStartup events.
+
+### Version Bump
+- `js/version.js`: v6.07 → v6.08
+- `dashboard.html`: version comment v6.08
+- `index.html`: version comment v6.08
+- Browser console: `[BJ] Dashboard v6.08 loaded`
+- Git tag: v6.08
+
+### Changed
+- `js/version.js`: v6.07 → v6.08
+- `dashboard.html`: version comment v6.08
+- `index.html`: version comment v6.08
+- `extension/background.js`: +50 lines — heartbeat function, alarm setup, startup/install triggers
+- `sql/v6.08-extension-heartbeats.sql`: NEW — table + RLS + templates + admin config + pg_cron
+- `supabase/functions/extension-heartbeat/index.ts`: NEW — heartbeat endpoint + cron check logic
+
+### Notification System Progress
+- Sessions 1-7: ✅ Complete (v6.01–v6.08)
+- Session 8 (Stats, Trends + Market Intel): Pending Pod 1 Batch 6 copy
+
+
 ## v6.07 — Session 6 (cont'd): Interview Cron Jobs + Rewrite Callback (2026-03-01)
 
 ### pg_cron: Interview Reminder Schedules
