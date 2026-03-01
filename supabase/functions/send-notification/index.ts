@@ -1,7 +1,7 @@
-// send-notification Edge Function
-// Core notification sender: checks preferences, quiet hours, channel routing,
-// calls Resend (email) or Vonage REST API (SMS), logs to notification_log.
-// Called by other Edge Functions — not directly by the dashboard.
+// send-notification Edge Function — v2 (Session 2)
+// Core notification sender with classification-based send gates.
+// Checks: admin config → classification → double opt-in → preferences → frequency cap → quiet hours
+// Then routes to Resend (email) or Vonage REST API (SMS), logs to notification_log with decision.
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -17,28 +17,71 @@ const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "notifications@brilliantjobs.ap
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// ---- Types ----
+// ═══════════════════════════════════════════════════════════
+// MESSAGE CLASSIFICATION MAP (79 types → 4 classifications)
+// Authoritative reference — mirrors js/admin-notifications.js
+// ═══════════════════════════════════════════════════════════
+const CLASSIFICATION_MAP: Record<string, string> = {};
+
+// Required transactional: always send, user cannot disable
+const REQUIRED_TRANSACTIONAL = [
+  "subscription_confirm", "credit_purchase_receipt", "payment_failed",
+  "payment_recovered", "plan_change_confirm", "subscription_cancelled",
+  "invoice_generated", "refund_processed", "double_opt_in"
+];
+REQUIRED_TRANSACTIONAL.forEach(t => CLASSIFICATION_MAP[t] = "required_transactional");
+
+// Configurable transactional: default ON, user can adjust cadence
+const CONFIGURABLE_TRANSACTIONAL = ["subscription_expiring", "notification_opt_in"];
+CONFIGURABLE_TRANSACTIONAL.forEach(t => CLASSIFICATION_MAP[t] = "configurable_transactional");
+
+// Marketing: requires explicit marketing opt-in
+const MARKETING = [
+  "usage_upgrade_prompt", "credit_cost_comparison", "credit_burn_rate_alert",
+  "credit_low_balance", "credit_exhausted", "upgrade_roi_summary",
+  "price_lock_warning", "promo_trial", "promo_feature_preview",
+  "referral_invite", "referral_sent_confirmation", "referral_status_update",
+  "referral_nudge_referee", "referral_conversion", "referral_reward_earned",
+  "referral_expiring_reward", "referral_milestone", "referral_periodic_summary",
+  "inactive_reengagement"
+];
+MARKETING.forEach(t => CLASSIFICATION_MAP[t] = "marketing");
+
+// Everything else is "product"
+function getClassification(notificationType: string): string {
+  return CLASSIFICATION_MAP[notificationType] || "product";
+}
+
+// SMS-allowed types (time-sensitive application process only)
+const SMS_ALLOWED_TYPES = new Set([
+  "apply_alert", "cv_score_approval", "auth_pending_reminder", "auth_pre_rewrite",
+  "pipeline_interview", "interview_reminder", "new_jobs_realtime"
+]);
+
+// ═══════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════
 interface NotificationRequest {
   user_id: string;
   notification_type: string;
-  // Email fields
   subject?: string;
   html?: string;
   text?: string;
-  // SMS fields
   sms_text?: string;
-  // Metadata for logging
   job_id?: string;
   company_name?: string;
   job_title?: string;
   payload?: Record<string, unknown>;
-  // Override channel (skip preference check)
   force_channel?: "email" | "sms" | "both";
-  // v2: Cohort/plan tracking
   idempotency_key?: string;
   user_plan?: string;
   user_cohort?: string;
   template_version?: string;
+}
+
+interface SendDecision {
+  send: boolean;
+  reason?: string;
 }
 
 interface NotificationResult {
@@ -47,17 +90,160 @@ interface NotificationResult {
   email_error?: string;
   sms_error?: string;
   held_for_quiet_hours: boolean;
+  classification: string;
+  decision?: string;
+  decision_reason?: string;
 }
 
-// ---- Quiet Hours Check ----
-function isQuietHours(
-  quietStart: string,   // "22:00:00"
-  quietEnd: string,     // "07:00:00"
-  timezone: string
-): boolean {
+// ═══════════════════════════════════════════════════════════
+// CLASSIFICATION-BASED SEND GATE (Deliverable 3)
+// ═══════════════════════════════════════════════════════════
+async function canSendNotification(
+  userId: string,
+  notificationType: string,
+  channel: "email" | "sms"
+): Promise<SendDecision> {
+  const classification = getClassification(notificationType);
+
+  // 1. Admin kill switch
+  const { data: adminConfig } = await sb
+    .from("admin_notification_config")
+    .select("enabled")
+    .eq("notification_type", notificationType)
+    .in("cohort_id", ["all"])
+    .limit(1)
+    .single();
+
+  if (adminConfig && !adminConfig.enabled) {
+    return { send: false, reason: "admin_disabled" };
+  }
+
+  // 2. Required transactional always sends
+  if (classification === "required_transactional") {
+    return { send: true };
+  }
+
+  // 3. Get user notification state
+  const { data: state } = await sb
+    .from("user_notification_state")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  // 4. All non-required types require email verification
+  if (!state?.email_verified) {
+    return { send: false, reason: "not_verified" };
+  }
+
+  // 5. Product + marketing require preferences completed
+  if (
+    ["product", "marketing"].includes(classification) &&
+    !state?.preferences_completed
+  ) {
+    return { send: false, reason: "preferences_incomplete" };
+  }
+
+  // 6. Marketing requires explicit marketing opt-in
+  if (classification === "marketing" && !state?.marketing_opt_in) {
+    return { send: false, reason: "no_marketing_consent" };
+  }
+
+  // 7. Check user preference for this type + channel
+  const { data: pref } = await sb
+    .from("user_notification_preferences")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("notification_type", notificationType)
+    .single();
+
+  if (channel === "email" && pref && !pref.email_enabled) {
+    return { send: false, reason: "user_disabled_email" };
+  }
+
+  if (channel === "sms") {
+    // SMS restricted to allowed types only
+    if (!SMS_ALLOWED_TYPES.has(notificationType)) {
+      return { send: false, reason: "sms_not_allowed_for_type" };
+    }
+    if (!pref?.sms_enabled || !state?.sms_verified) {
+      return { send: false, reason: "sms_not_enabled_or_verified" };
+    }
+  }
+
+  // 8. Frequency cap check (daily email cap)
+  if (channel === "email" && state?.daily_email_cap) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const { count } = await sb
+      .from("notification_log")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("channel", "email")
+      .eq("send_decision", "sent")
+      .gte("created_at", todayStart.toISOString());
+
+    if ((count || 0) >= state.daily_email_cap) {
+      return { send: false, reason: "frequency_capped" };
+    }
+  }
+
+  // 9. Quiet hours check (SMS only)
+  if (channel === "sms" && state) {
+    const quietStart = state.quiet_hours_start || "22:00";
+    const quietEnd = state.quiet_hours_end || "07:00";
+    const tz = state.timezone || "America/New_York";
+    if (isQuietHours(quietStart, quietEnd, tz)) {
+      return { send: false, reason: "quiet_hours" };
+    }
+  }
+
+  return { send: true };
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATE RESOLUTION (Deliverable 6)
+// ═══════════════════════════════════════════════════════════
+async function resolveTemplate(
+  notificationType: string,
+  channel: string,
+  cohortId?: string
+): Promise<{ subject?: string; html?: string; sms_body?: string; version?: string } | null> {
+  // 1. Try cohort-specific production template
+  if (cohortId) {
+    const { data: tmpl } = await sb
+      .from("notification_templates")
+      .select("*")
+      .eq("notification_type", notificationType)
+      .eq("channel", channel)
+      .eq("cohort_id", cohortId)
+      .eq("is_production", true)
+      .limit(1)
+      .single();
+    if (tmpl) return { subject: tmpl.subject_line, html: tmpl.html_body, sms_body: tmpl.sms_body, version: tmpl.version };
+  }
+
+  // 2. Fall back to default cohort
+  const { data: fallback } = await sb
+    .from("notification_templates")
+    .select("*")
+    .eq("notification_type", notificationType)
+    .eq("channel", channel)
+    .eq("cohort_id", "default")
+    .eq("is_production", true)
+    .limit(1)
+    .single();
+  if (fallback) return { subject: fallback.subject_line, html: fallback.html_body, sms_body: fallback.sms_body, version: fallback.version };
+
+  // 3. No template found
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// QUIET HOURS CHECK
+// ═══════════════════════════════════════════════════════════
+function isQuietHours(quietStart: string, quietEnd: string, timezone: string): boolean {
   try {
     const now = new Date();
-    // Get current time in user's timezone
     const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       hour: "2-digit",
@@ -71,21 +257,21 @@ function isQuietHours(
 
     const [startH, startM] = quietStart.split(":").map(Number);
     const [endH, endM] = quietEnd.split(":").map(Number);
-    const startMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
+    const startMinutes = startH * 60 + (startM || 0);
+    const endMinutes = endH * 60 + (endM || 0);
 
-    // Handle overnight quiet hours (e.g. 22:00 - 07:00)
     if (startMinutes > endMinutes) {
       return currentMinutes >= startMinutes || currentMinutes < endMinutes;
     }
-    // Same-day quiet hours (e.g. 01:00 - 06:00)
     return currentMinutes >= startMinutes && currentMinutes < endMinutes;
   } catch {
-    return false; // If timezone parsing fails, don't block
+    return false;
   }
 }
 
-// ---- Send Email via Resend ----
+// ═══════════════════════════════════════════════════════════
+// SEND EMAIL VIA RESEND
+// ═══════════════════════════════════════════════════════════
 async function sendEmail(
   to: string,
   subject: string,
@@ -120,7 +306,9 @@ async function sendEmail(
   }
 }
 
-// ---- Send SMS via Vonage ----
+// ═══════════════════════════════════════════════════════════
+// SEND SMS VIA VONAGE
+// ═══════════════════════════════════════════════════════════
 async function sendSMS(
   to: string,
   text: string
@@ -136,13 +324,12 @@ async function sendSMS(
         api_key: VONAGE_API_KEY,
         api_secret: VONAGE_API_SECRET,
         from: VONAGE_FROM,
-        to: to.replace(/\D/g, ""), // digits only
+        to: to.replace(/\D/g, ""),
         text,
       }),
     }, TIMEOUT_CONFIGS.vonage);
 
     const data = await res.json();
-    // Vonage returns messages array; check first message status
     const msg = data?.messages?.[0];
     if (msg?.status !== "0") {
       const errText = msg?.["error-text"] || "Unknown Vonage error";
@@ -156,17 +343,21 @@ async function sendSMS(
   }
 }
 
-// ---- Log notification to notification_log ----
+// ═══════════════════════════════════════════════════════════
+// LOG NOTIFICATION WITH DECISION
+// ═══════════════════════════════════════════════════════════
 async function logNotification(
   userId: string,
   notificationType: string,
   channel: "email" | "sms",
-  status: "sent" | "failed",
+  status: "sent" | "failed" | "blocked",
   req: NotificationRequest,
+  classification: string,
+  sendDecision: string,
+  sendReason?: string,
   error?: string
 ) {
   try {
-    // v2: Check idempotency key to prevent duplicate sends
     if (req.idempotency_key) {
       const { data: existing } = await sb
         .from("notification_log")
@@ -192,20 +383,24 @@ async function logNotification(
         ...(error ? { error } : {}),
         job_title: req.job_title || null,
       },
-      // v2 fields
       idempotency_key: req.idempotency_key || null,
       user_plan: req.user_plan || null,
       user_cohort: req.user_cohort || null,
       template_version: req.template_version || null,
+      // Session 2 fields
+      classification,
+      send_decision: sendDecision,
+      send_reason: sendReason || null,
     });
   } catch (e) {
     console.error("[send-notification] Failed to log notification:", e);
   }
 }
 
-// ---- Main Handler ----
+// ═══════════════════════════════════════════════════════════
+// MAIN HANDLER
+// ═══════════════════════════════════════════════════════════
 serve(async (req: Request) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: {
@@ -234,6 +429,14 @@ serve(async (req: Request) => {
       );
     }
 
+    const classification = getClassification(notification_type);
+    const result: NotificationResult = {
+      email_sent: false,
+      sms_sent: false,
+      held_for_quiet_hours: false,
+      classification,
+    };
+
     // 1. Get user's email from auth.users
     const { data: userData, error: userError } = await sb.auth.admin.getUserById(user_id);
     if (userError || !userData?.user?.email) {
@@ -244,92 +447,106 @@ serve(async (req: Request) => {
     }
     const userEmail = userData.user.email;
 
-    // 2. Get notification preferences
-    const { data: prefs } = await sb
-      .from("notification_preferences")
-      .select("*")
-      .eq("user_id", user_id)
-      .single();
+    // 2. Resolve template (if caller didn't provide content)
+    let subject = body.subject;
+    let html = body.html;
+    let smsText = body.sms_text;
 
-    // 3. Get channel preferences for this notification type
-    const { data: channelPref } = await sb
-      .from("notification_channels")
-      .select("*")
-      .eq("user_id", user_id)
-      .eq("notification_type", notification_type)
-      .single();
-
-    // Determine which channels to send on
-    let sendEmail = body.force_channel === "email" || body.force_channel === "both";
-    let sendSms = body.force_channel === "sms" || body.force_channel === "both";
-
-    if (!body.force_channel) {
-      // Use preferences (default: email on, sms off)
-      sendEmail = channelPref?.email !== false && prefs?.email_enabled !== false;
-      sendSms =
-        channelPref?.sms === true &&
-        prefs?.sms_enabled === true &&
-        prefs?.phone_verified === true;
+    if (!subject || !html) {
+      const tmpl = await resolveTemplate(notification_type, "email", body.user_cohort);
+      if (tmpl) {
+        subject = subject || tmpl.subject;
+        html = html || tmpl.html;
+        body.template_version = tmpl.version;
+      }
+    }
+    if (!smsText) {
+      const smsTmpl = await resolveTemplate(notification_type, "sms", body.user_cohort);
+      if (smsTmpl) smsText = smsTmpl.sms_body;
     }
 
-    // 4. Check quiet hours
-    const quietStart = prefs?.quiet_start || "22:00:00";
-    const quietEnd = prefs?.quiet_end || "07:00:00";
-    const timezone = prefs?.timezone || "America/New_York";
-
-    const result: NotificationResult = {
-      email_sent: false,
-      sms_sent: false,
-      held_for_quiet_hours: false,
-    };
-
-    if (isQuietHours(quietStart, quietEnd, timezone)) {
-      // During quiet hours: hold the notification
-      // Caller (e.g. escalation-checker) handles retry at quiet_end
-      result.held_for_quiet_hours = true;
-      console.log(
-        `[send-notification] Held for quiet hours: ${notification_type} for user ${user_id}`
-      );
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+    // 3. Check email send gate
+    const emailDecision = await canSendNotification(user_id, notification_type, "email");
+    if (body.force_channel === "email" || body.force_channel === "both") {
+      // Force channel bypasses classification for required transactional sends from other functions
+      if (classification === "required_transactional") {
+        // Always allow forced required transactional
+      } else {
+        // Still enforce gates even with force_channel (except for required_transactional)
+        if (!emailDecision.send) {
+          result.decision = "blocked";
+          result.decision_reason = emailDecision.reason;
+        }
+      }
     }
 
-    // 5. Send email
-    if (sendEmail && body.subject && body.html) {
-      const emailResult = await sendEmailFn(userEmail, body.subject, body.html, body.text);
+    // Email send path
+    const shouldSendEmail = body.force_channel === "email" || body.force_channel === "both"
+      ? classification === "required_transactional" || emailDecision.send
+      : emailDecision.send;
+
+    if (shouldSendEmail && subject && html) {
+      const emailResult = await sendEmail(userEmail, subject, html, body.text);
       result.email_sent = emailResult.ok;
       result.email_error = emailResult.error;
 
       await logNotification(
-        user_id,
-        notification_type,
-        "email",
+        user_id, notification_type, "email",
         emailResult.ok ? "sent" : "failed",
-        body,
-        emailResult.error
+        body, classification, emailResult.ok ? "sent" : "send_failed",
+        undefined, emailResult.error
       );
+    } else if (!shouldSendEmail) {
+      await logNotification(
+        user_id, notification_type, "email",
+        "blocked", body, classification,
+        "blocked", emailDecision.reason
+      );
+      result.decision = "blocked";
+      result.decision_reason = emailDecision.reason;
     }
 
-    // 6. Send SMS
-    if (sendSms && body.sms_text && prefs?.phone_number) {
-      const smsResult = await sendSMSFn(prefs.phone_number, body.sms_text);
-      result.sms_sent = smsResult.ok;
-      result.sms_error = smsResult.error;
+    // 4. Check SMS send gate
+    if (smsText) {
+      const smsDecision = await canSendNotification(user_id, notification_type, "sms");
+      const shouldSendSms = body.force_channel === "sms" || body.force_channel === "both"
+        ? classification === "required_transactional" || smsDecision.send
+        : smsDecision.send;
 
-      await logNotification(
-        user_id,
-        notification_type,
-        "sms",
-        smsResult.ok ? "sent" : "failed",
-        body,
-        smsResult.error
-      );
+      if (shouldSendSms) {
+        // Get phone number from user_notification_state
+        const { data: state } = await sb
+          .from("user_notification_state")
+          .select("phone_number")
+          .eq("user_id", user_id)
+          .single();
+
+        if (state?.phone_number) {
+          const smsResult = await sendSMS(state.phone_number, smsText);
+          result.sms_sent = smsResult.ok;
+          result.sms_error = smsResult.error;
+
+          await logNotification(
+            user_id, notification_type, "sms",
+            smsResult.ok ? "sent" : "failed",
+            body, classification, smsResult.ok ? "sent" : "send_failed",
+            undefined, smsResult.error
+          );
+        }
+      } else {
+        if (smsDecision.reason === "quiet_hours") {
+          result.held_for_quiet_hours = true;
+        }
+        await logNotification(
+          user_id, notification_type, "sms",
+          "blocked", body, classification,
+          "blocked", smsDecision.reason
+        );
+      }
     }
 
     console.log(
-      `[send-notification] ${notification_type} for ${user_id}: email=${result.email_sent} sms=${result.sms_sent}`
+      `[send-notification] ${notification_type} (${classification}) for ${user_id}: email=${result.email_sent} sms=${result.sms_sent} decision=${result.decision || "sent"}`
     );
 
     return new Response(JSON.stringify(result), {
@@ -344,7 +561,3 @@ serve(async (req: Request) => {
     );
   }
 });
-
-// Aliases to avoid name collision with the boolean flags
-const sendEmailFn = sendEmail;
-const sendSMSFn = sendSMS;
