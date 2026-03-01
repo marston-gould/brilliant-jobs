@@ -1,0 +1,2123 @@
+<!DOCTYPE html>
+<!-- Brilliant Jobs Landing Page v5.88 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+    <link rel="canonical" href="https://brilliantjobs.app/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brilliant Jobs — The Job Search for People Who Hate Job Boards</title>
+  <meta name="description" content="Jobs from 39,000+ company career pages with extracted salary data and employer ghost rates. Built for job seekers, not employers. Free to start.">
+  <meta property="og:title" content="Brilliant Jobs — The Job Search for People Who Hate Job Boards">
+  <meta property="og:description" content="Jobs from 39,000+ company career pages. Salary extraction. Ghost rate tracking. Built for you, not employers.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://brilliantjobs.app">
+  <meta property="og:image" content="https://brilliantjobs.app/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Brilliant Jobs — The Job Search for People Who Hate Job Boards">
+  <meta name="twitter:description" content="Jobs from 39,000+ company career pages. Salary extraction. Ghost rate tracking.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2032%2032'%3E%3Crect%20width%3D'32'%20height%3D'32'%20rx%3D'8'%20fill%3D'%231a3a6e'%2F%3E%3Ctext%20x%3D'50%25'%20y%3D'55%25'%20dominant-baseline%3D'central'%20text-anchor%3D'middle'%20font-family%3D'system-ui'%20font-weight%3D'800'%20font-size%3D'18'%20fill%3D'white'%3EB%3C%2Ftext%3E%3C%2Fsvg%3E">
+  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preconnect" href="https://qojhagupdnbtomfoxnsf.supabase.co">
+  <script src="/js/version.js"></script>
+  <script src="https://analytics.ahrefs.com/analytics.js" data-key="epmlewecGa7zjdRysfTLMg" async></script>
+  <style>
+    @font-face {
+      font-family: 'Outfit';
+      src: url('/fonts/outfit-latin-var.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      src: url('/fonts/jetbrains-mono-latin-var.woff2') format('woff2');
+      font-weight: 100 800;
+      font-style: normal;
+      font-display: swap;
+      unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F, U+20AC, U+2212, U+FEFF, U+FFFD;
+    }
+    :root {
+      --bg-main: #f5f6fa;
+      --bg-card: #ffffff;
+      --bg-input: #f0f1f5;
+      --bg-hover: #eef0f6;
+      --border: #e2e4ed;
+      --border-hover: #cdd0de;
+      --text: #1a1d2e;
+      --text-dim: #5c6277;
+      --text-faint: #64748b;
+      --accent: #3d7eff;
+      --accent-hover: #2b6aeb;
+      --accent-glow: rgba(61,126,255,0.10);
+      --green: #22c55e;
+      --green-dim: rgba(34,197,94,0.10);
+      --warm: #f59e0b;
+      --warm-dim: rgba(245,158,11,0.10);
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.08);
+      --purple: #8b5cf6;
+      --purple-dim: rgba(139,92,246,0.10);
+      --nav-bg: #1a3a6e;
+      --sans: 'Outfit', -apple-system, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg-main);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+
+    /* ======================== NAV ======================== */
+    .site-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 0 32px; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--nav-bg);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .nav-logo {
+      font-weight: 700; font-size: 17px; color: #fff;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-logo .mark {
+      width: 30px; height: 30px; background: #fff; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: var(--nav-bg);
+    }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.65); transition: color 0.15s; }
+    .nav-links a:hover { color: #fff; }
+    .nav-cta {
+      padding: 8px 20px; background: #fff; color: var(--nav-bg) !important;
+      border-radius: 8px; font-weight: 700; font-size: 13px; transition: all 0.15s;
+    }
+    .nav-cta:hover { background: rgba(255,255,255,0.9); }
+
+    /* ======================== HERO ======================== */
+    .hero {
+      padding: 140px 32px 88px; text-align: center; position: relative; overflow: hidden;
+      background: var(--nav-bg); color: #fff;
+    }
+    .hero::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        radial-gradient(circle at 20% 50%, rgba(61,126,255,0.12) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(139,92,246,0.08) 0%, transparent 40%);
+      pointer-events: none;
+    }
+    .hero::before {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
+      background: linear-gradient(to bottom, transparent, var(--bg-main));
+      pointer-events: none; z-index: 2;
+    }
+    .hero-label {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
+      font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); margin-bottom: 28px;
+      position: relative; z-index: 1;
+    }
+    .hero-label .dot {
+      width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .hero h1 {
+      font-size: clamp(36px, 5.5vw, 62px);
+      font-weight: 800; line-height: 1.08; margin-bottom: 24px;
+      max-width: 800px; margin-left: auto; margin-right: auto;
+      letter-spacing: -0.025em; position: relative; z-index: 1;
+    }
+    .hero h1 .accent { color: #f59e0b; }
+    .hero-sub {
+      font-size: 18px; color: rgba(255,255,255,0.6); max-width: 580px;
+      margin: 0 auto 40px; line-height: 1.65; font-weight: 300;
+      position: relative; z-index: 1;
+    }
+    .hero-ctas {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+      position: relative; z-index: 1;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border: none; border-radius: 10px;
+      font-family: var(--sans); font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-primary {
+      background: #fff; color: var(--nav-bg);
+      box-shadow: 0 2px 16px rgba(0,0,0,0.15);
+    }
+    .btn-primary:hover { background: rgba(255,255,255,0.92); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .btn-ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+    .btn-ghost:hover { border-color: rgba(255,255,255,0.7); color: #fff; }
+
+    /* ======================== LIVE STATS BAR ======================== */
+    .stats-bar { padding: 48px 32px 0; text-align: center; position: relative; z-index: 1; }
+    .stats-row { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; }
+    .stat-item { text-align: center; }
+    .stat-num {
+      font-family: var(--mono); font-size: 32px; font-weight: 600;
+      color: var(--text); line-height: 1;
+      transition: opacity 0.4s ease;
+    }
+    .stat-num.loading { opacity: 0.3; }
+    .stat-num.loaded { opacity: 1; }
+    .stat-label {
+      font-size: 13px; color: #7884a8; margin-top: 6px;
+      text-transform: uppercase; letter-spacing: 1px; font-weight: 600;
+    }
+
+    /* ======================== SOCIAL PROOF BAR (P13-11) ======================== */
+    .social-proof-bar { padding: 32px 32px 0; text-align: center; }
+    .social-proof-bar.hidden { display: none; }
+    .social-proof-inner {
+      display: inline-flex; align-items: center; gap: 24px;
+      background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);
+      border-radius: 12px; padding: 14px 28px; flex-wrap: wrap; justify-content: center;
+    }
+    .sp-stars { color: #f59e0b; font-size: 18px; letter-spacing: 2px; }
+    .sp-rating { font-size: 22px; font-weight: 700; color: var(--heading); font-family: var(--mono); }
+    .sp-divider { width: 1px; height: 28px; background: rgba(59,130,246,0.2); }
+    .sp-text { font-size: 14px; color: #7884a8; }
+    .sp-text strong { color: var(--heading); font-weight: 600; }
+    .sp-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #22c55e; font-weight: 600;
+    }
+
+    /* ======================== SECTIONS ======================== */
+    .section { padding: 80px 32px; max-width: 1080px; margin: 0 auto; }
+    .section-label {
+      font-family: var(--mono); font-size: 12px; color: var(--accent);
+      text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;
+    }
+    .section h2 {
+      font-size: clamp(26px, 3.5vw, 40px);
+      font-weight: 700; line-height: 1.2; margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+    .section-desc {
+      font-size: 16px; color: var(--text-dim); max-width: 580px;
+      line-height: 1.6; margin-bottom: 48px; font-weight: 300;
+    }
+
+    /* ======================== RIGGED GAME ======================== */
+    .rigged-section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 40px 32px; margin-bottom: 32px;
+      position: relative; overflow: hidden;
+    }
+    .rigged-section::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--red), var(--warm), var(--red));
+      background-size: 200% 100%;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .rigged-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 24px;
+    }
+    .rigged-item { text-align: center; padding: 20px 16px; }
+    .rigged-icon { font-size: 28px; margin-bottom: 12px; opacity: 0.7; }
+    .rigged-item h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .rigged-item p { font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+
+    /* ======================== COMPARISON TABLE ======================== */
+    .compare-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .compare-table th {
+      padding: 16px 20px; text-align: left;
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-faint);
+      background: var(--bg-input);
+    }
+    .compare-table th:nth-child(3) { color: var(--accent); }
+    .compare-table td {
+      padding: 14px 20px; font-size: 14px; color: var(--text-dim);
+      border-top: 1px solid var(--border); line-height: 1.5;
+    }
+    .compare-table td:first-child {
+      font-weight: 600; color: var(--text); font-size: 13px; width: 140px;
+    }
+    .compare-table td:nth-child(3) { color: var(--text); font-weight: 500; }
+
+    /* ======================== BENEFITS ======================== */
+    .benefit-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;
+    }
+    .benefit-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 28px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      border-top: 2px solid transparent;
+    }
+    .benefit-card:hover {
+      border-color: var(--border-hover); transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06); border-top-color: var(--accent);
+    }
+    .benefit-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 16px;
+    }
+    .benefit-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .benefit-card p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ======================== FILTER PREVIEW ======================== */
+    /* ─── Ghost Button (outside hero) ─── */
+    .preview-section .btn-ghost {
+      background: transparent; border: 1.5px solid var(--border);
+      color: var(--text-dim); padding: 12px 28px; border-radius: 10px;
+      font-weight: 600; font-size: 15px; cursor: pointer;
+      transition: all 0.15s; font-family: var(--sans);
+    }
+    .preview-section .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ─── Interactive Preview ─── */
+    .preview-section {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 32px; margin-top: 48px; overflow: hidden;
+    }
+    .preview-section h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .preview-section .sub { font-size: 13px; color: var(--text-faint); margin-bottom: 24px; }
+    .preview-input-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .preview-input {
+      flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--bg-input);
+      color: var(--text); font-family: var(--sans); font-size: 14px;
+    }
+    .preview-input:focus { border-color: var(--accent); outline: none; }
+    .preview-input::placeholder { color: var(--text-faint); }
+    .preview-toggle {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text-dim); cursor: pointer; white-space: nowrap;
+    }
+    .preview-go { width: 100%; margin-top: 4px; font-size: 14px; padding: 12px; }
+    .preview-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+      margin: 24px 0 20px;
+    }
+    .preview-stat {
+      background: var(--bg-input); border-radius: 10px; padding: 16px; text-align: center;
+    }
+    .preview-stat-val {
+      display: block; font-size: 22px; font-weight: 700;
+      font-family: var(--mono); color: var(--text); letter-spacing: -0.5px;
+    }
+    .preview-stat-label {
+      font-size: 11px; color: var(--text-faint); text-transform: uppercase;
+      letter-spacing: 0.5px; font-weight: 600; margin-top: 4px; display: block;
+    }
+    .preview-titles { margin-bottom: 20px; }
+    .preview-title-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .preview-title-row:last-child { border-bottom: none; }
+    .preview-title { color: var(--text); font-weight: 500; }
+    .preview-company { color: var(--text-faint); font-size: 11px; font-style: italic; opacity: 0.5; }
+    .preview-cta {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; padding: 16px; background: var(--bg-input); border-radius: 10px; margin-top: 16px;
+    }
+    .preview-cta span { font-size: 14px; color: var(--text-dim); font-weight: 500; }
+    .preview-locked { text-align: center; padding: 24px 0; }
+    .preview-locked p { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.6; }
+
+    /* ─── Walkthrough Carousel ─── */
+    .carousel { position: relative; overflow: hidden; border-radius: 14px; }
+    .carousel-track {
+      display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .carousel-track::-webkit-scrollbar { display: none; }
+    .carousel-slide { flex: 0 0 100%; scroll-snap-align: start; position: relative; }
+    .carousel-slide img {
+      width: 100%; border-radius: 12px; display: block; border: 1px solid var(--border);
+    }
+    .carousel-caption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      padding: 40px 24px 20px; border-radius: 0 0 12px 12px;
+    }
+    .carousel-caption h4 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .carousel-caption p { font-size: 13px; color: rgba(255,255,255,0.7); }
+    .carousel-slide-cta {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 300px; text-align: center;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 40px;
+    }
+    .carousel-slide-cta h4 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .carousel-slide-cta p { font-size: 14px; color: var(--text-dim); margin-bottom: 24px; }
+    .carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+    .carousel-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border); cursor: pointer; transition: all 0.2s;
+    }
+    .carousel-dot.active { background: var(--accent); transform: scale(1.3); }
+
+    /* ======================== GHOST SECTION ======================== */
+    .ghost-section {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 48px 32px; position: relative; overflow: hidden;
+    }
+    .ghost-section::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--green), var(--accent));
+      background-size: 200% 100%;
+      animation: shimmer 3s linear infinite;
+    }
+    .ghost-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 32px; align-items: start;
+    }
+    .ghost-stat-card {
+      background: var(--bg-input); border-radius: 10px; padding: 20px 24px;
+    }
+    .ghost-stat-card h3 {
+      font-size: 13px; color: var(--text-faint); font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
+    }
+    .ghost-stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    .ghost-stat-row:last-child { border-bottom: none; }
+    .ghost-stat-row .val { font-family: var(--mono); font-weight: 600; }
+    .ghost-stat-row .val.good { color: var(--green); }
+    .ghost-stat-row .val.bad { color: var(--red); }
+    .ghost-stat-row .val.mid { color: var(--warm); }
+
+
+    /* ======================== STEPS ======================== */
+    .steps {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 32px;
+    }
+    .step-num {
+      font-family: var(--mono); font-size: 48px; font-weight: 600;
+      color: var(--border-hover); line-height: 1; margin-bottom: 12px;
+    }
+    .step h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .step p { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    /* ======================== PRICING ======================== */
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+    }
+    .price-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 14px; padding: 32px; position: relative;
+      transition: border-color 0.2s;
+      display: flex; flex-direction: column;
+    }
+    .price-card:hover { border-color: var(--border-hover); }
+    .price-card.featured {
+      border-color: var(--accent);
+      box-shadow: 0 4px 24px rgba(61,126,255,0.12);
+    }
+    .price-card.featured::before {
+      content: 'Most Popular';
+      position: absolute; top: -12px; left: 24px;
+      background: var(--accent); color: #fff; font-size: 11px; font-weight: 600;
+      padding: 4px 12px; border-radius: 6px;
+    }
+    .price-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .price-desc { font-size: 13px; color: var(--text-faint); margin-bottom: 20px; }
+    .price-amount { font-family: var(--mono); font-size: 36px; font-weight: 600; margin-bottom: 4px; }
+    .price-period { font-size: 13px; color: var(--text-faint); margin-bottom: 24px; }
+    .price-features { list-style: none; margin-bottom: 24px; flex: 1; }
+    .price-features li {
+      font-size: 14px; color: var(--text-dim); padding: 6px 0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .price-features li::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 13px; }
+    .price-btn {
+      width: 100%; padding: 12px; border: none; border-radius: 8px;
+      font-family: var(--sans); font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .price-btn-primary { background: var(--accent); color: #fff; }
+    .price-btn-primary:hover { background: var(--accent-hover); }
+    .price-btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dim); }
+    .price-btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ======================== FOOTER ======================== */
+    .site-footer {
+      text-align: center; padding: 40px 32px;
+      border-top: 1px solid var(--border);
+    }
+    .footer-links { display: flex; justify-content: center; gap: 24px; margin-bottom: 12px; }
+    .footer-links a { font-size: 13px; color: var(--text-dim); }
+    .footer-links a:hover { color: var(--accent); }
+    .footer-copy { font-size: 12px; color: var(--text-dim); }
+
+    /* ======================== AUTH MODAL ======================== */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(26,29,46,0.5); backdrop-filter: blur(4px);
+      z-index: 300; display: none; align-items: center; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 32px; width: 400px; max-width: 90vw;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 12px; right: 16px; background: none;
+      border: none; font-size: 24px; color: var(--text-faint); cursor: pointer; line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+    .auth-tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+    .auth-tab {
+      padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--text-faint);
+      cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
+    }
+    .auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .auth-tab:hover { color: var(--text-dim); }
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 12px; font-weight: 600; color: var(--text-dim);
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .field input[type="email"], .field input[type="password"],
+    .field input[type="url"], .field input[type="text"] {
+      width: 100%; padding: 11px 14px; background: var(--bg-input);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: var(--sans); font-size: 14px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--text-faint); }
+    .field .hint { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 52px; }
+    .pw-toggle {
+      position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--text-faint);
+      cursor: pointer; font-size: 12px; font-family: var(--sans); padding: 4px 8px;
+    }
+    .pw-toggle:hover { color: var(--accent); }
+    .btn-auth {
+      width: 100%; padding: 12px; background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; font-family: var(--sans);
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; margin-top: 8px;
+    }
+    .btn-auth:hover { background: var(--accent-hover); }
+    .btn-auth:disabled { background: var(--bg-input); color: var(--text-faint); cursor: not-allowed; }
+    .msg {
+      padding: 10px 12px; border-radius: 8px; font-size: 13px;
+      margin-top: 12px; display: none; line-height: 1.5;
+    }
+    .msg.error { display: block; background: var(--red-dim); border: 1px solid rgba(239,68,68,0.2); color: var(--red); }
+    .msg.success { display: block; background: var(--green-dim); border: 1px solid rgba(52,211,153,0.2); color: var(--green); }
+    .msg.info { display: block; background: var(--accent-glow); border: 1px solid rgba(61,126,255,0.2); color: var(--accent); }
+    .forgot-link {
+      display: block; text-align: right; font-size: 12px;
+      color: var(--text-faint); margin-top: 6px; cursor: pointer;
+    }
+    .forgot-link:hover { color: var(--accent); }
+
+    .insights-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
+    .insight-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: border-color .2s, transform .2s; }
+    .insight-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+    .insight-cat { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .insight-headline { font-size: 15px; font-weight: 600; line-height: 1.35; margin: 10px 0 6px; color: var(--text); }
+    .insight-lede { font-size: 13px; color: var(--text-dim); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 12px; }
+    .insight-link { font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .insight-link:hover { text-decoration: underline; }
+    .insight-stat { font-size: 18px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+    @media (max-width: 768px) { .insights-grid { grid-template-columns: 1fr; } }
+
+    .forgot-section { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+    .forgot-section.active { display: block; }
+    .optin-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
+    .optin-row input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); }
+    .optin-row label {
+      font-size: 12px; color: var(--text-dim); cursor: pointer;
+      text-transform: none; letter-spacing: 0; font-weight: 400; line-height: 1.5;
+    }
+    .logged-in-view { display: none; }
+    .logged-in-view.active { display: block; text-align: center; }
+    .logged-in-view .user-badge { font-size: 16px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+    .status-pill {
+      display: inline-block; padding: 4px 14px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; margin-bottom: 16px;
+    }
+    .pill-pending { background: var(--warm-dim); border: 1px solid rgba(245,158,11,0.25); color: var(--warm); }
+    .pill-approved { background: var(--green-dim); border: 1px solid rgba(52,211,153,0.25); color: var(--green); }
+    .btn-logout {
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+      padding: 8px 20px; border-radius: 8px; cursor: pointer;
+      font-family: var(--sans); font-size: 13px; margin-top: 16px;
+    }
+    .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+    .fade-up { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .fade-up.visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 768px) {
+      .site-nav { padding: 0 16px; }
+      .nav-links a:not(.nav-cta) { display: none; }
+      .hero { padding: 120px 20px 60px; }
+      .hero h1 { font-size: 32px; }
+      .hero-sub { font-size: 16px; }
+      .section { padding: 48px 20px; }
+      .data-stats-grid { grid-template-columns: 1fr 1fr !important; }
+      .benefit-grid, .pricing-grid { grid-template-columns: 1fr; }
+      .modal { margin: 16px; }
+      .stats-row { gap: 20px; }
+      .stat-num { font-size: 24px; }
+      .stat-label { font-size: 11px; letter-spacing: 0.5px; }
+      .preview-stats { grid-template-columns: repeat(2, 1fr); }
+      .preview-input-row { flex-direction: column; }
+      .preview-cta { flex-direction: column; text-align: center; }
+      .rigged-grid { grid-template-columns: 1fr; gap: 12px; }
+      .ghost-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; gap: 20px; }
+      .hero-ctas { flex-direction: column; align-items: center; gap: 12px; }
+      .hero-ctas .btn { width: 100%; max-width: 280px; justify-content: center; }
+      .compare-table th, .compare-table td { padding: 10px 12px; font-size: 12px; }
+      .compare-table td:first-child { width: 100px; }
+    }
+    @media (max-width: 480px) {
+      .steps { grid-template-columns: 1fr; }
+      .stats-row { flex-direction: column; gap: 16px; }
+      .pricing-grid { gap: 16px; }
+    }
+
+    /* ==================== SEGMENT VISIBILITY (v3.59 fix) ==================== */
+    .segment-new,
+    .segment-returning,
+    .segment-lapsed,
+    .segment-active { display: none; }
+
+    /* Show the correct hero + nav elements per segment */
+    [data-segment="new"] .segment-new { display: block; }
+    [data-segment="new"] section.segment-new { display: block; }
+    [data-segment="new"] nav.segment-new { display: flex; }
+    [data-segment="new"] footer.segment-new { display: block; }
+
+    [data-segment="returning"] .segment-returning { display: block; }
+    [data-segment="returning"] section.segment-returning { display: block; }
+    [data-segment="returning"] nav.segment-returning { display: flex; }
+    [data-segment="returning"] footer.segment-returning { display: block; }
+
+    [data-segment="lapsed"] .segment-lapsed { display: block; }
+    [data-segment="lapsed"] section.segment-lapsed { display: block; }
+    [data-segment="lapsed"] nav.segment-lapsed { display: flex; }
+    [data-segment="lapsed"] footer.segment-lapsed { display: block; }
+
+    [data-segment="active"] .segment-active { display: block; }
+    [data-segment="active"] section.segment-active { display: flex; }
+
+    /* CRITICAL: Hide ALL marketing content for active users (redirect-only) */
+    [data-segment="active"] .stats-bar,
+    [data-segment="active"] #why,
+    [data-segment="active"] #benefits,
+    [data-segment="active"] #how-it-works,
+    [data-segment="active"] #pricing,
+    [data-segment="active"] .section,
+    [data-segment="active"] .pricing-section,
+    [data-segment="active"] .faq-section,
+    [data-segment="active"] .final-cta,
+    [data-segment="active"] .site-footer,
+    [data-segment="active"] .auth-modal-overlay { display: none !important; }
+
+    /* Fallback: if no segment set yet (script hasn't run), show new variant */
+    html:not([data-segment]) .segment-new { display: block; }
+    html:not([data-segment]) nav.segment-new { display: flex; }
+    html:not([data-segment]) footer.segment-new { display: block; }
+  </style>
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://brilliantjobs.app/#organization",
+        "name": "Brilliant Jobs",
+        "url": "https://brilliantjobs.app",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://brilliantjobs.app/og-image.png"
+        },
+        "description": "Job search intelligence platform that scans 39,000+ company career pages directly, bypassing job boards to surface real-time openings with salary data and employer accountability metrics.",
+        "foundingDate": "2026",
+        "sameAs": []
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://brilliantjobs.app/#product",
+        "name": "Brilliant Jobs",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web, Chrome",
+        "url": "https://brilliantjobs.app",
+        "description": "Aggregates 315,000+ jobs from 39,000+ company ATS systems. Provides salary extraction, keyword-to-resume matching, ghost rate tracking, and automated application management.",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Basic job search with limited filters"
+          },
+          {
+            "@type": "Offer",
+            "name": "Starter",
+            "price": "20",
+            "priceCurrency": "USD",
+            "billingDuration": "P1M",
+            "description": "Enhanced filtering, 100 monthly credits"
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "price": "40",
+            "priceCurrency": "USD",
+            "billingDuration": "P1M",
+            "description": "Full access with AI resume scoring, 300 monthly credits"
+          }
+        ],
+        "featureList": [
+          "Real-time job aggregation from 39,000+ company career pages",
+          "Salary range extraction and display",
+          "Resume-to-job keyword matching and readiness scoring",
+          "Employer ghost rate tracking",
+          "Application pipeline management",
+          "Chrome extension for LinkedIn network intelligence",
+          "Multi-keyword saved filter system",
+          "Auto-apply and notification-based apply modes"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://brilliantjobs.app/#website",
+        "url": "https://brilliantjobs.app",
+        "name": "Brilliant Jobs",
+        "publisher": { "@id": "https://brilliantjobs.app/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://brilliantjobs.app/dashboard",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://brilliantjobs.app/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How is Brilliant Jobs different from job boards like LinkedIn or Indeed?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Brilliant Jobs scans company career pages (ATS systems) directly rather than relying on employer-submitted listings. This means you see jobs that were never posted to job boards, salary data companies don't advertise, and real metrics on which employers actually respond to applicants."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How many jobs does Brilliant Jobs aggregate?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Brilliant Jobs currently aggregates 315,000+ open jobs from 39,000+ company career pages and government portals across Greenhouse, Lever, Ashby, Workable, Recruitee, and USAJOBS (federal government). The database refreshes daily."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Brilliant Jobs free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Brilliant Jobs is free during the private beta period. No credit card required to sign up."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is ghost rate tracking?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ghost rate tracking measures how often employers post jobs but never respond to applicants. Brilliant Jobs tracks average response times per company and flags applications that have exceeded the expected response window, so you know when to follow up or move on."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <!-- Segment detection — runs before body paint to prevent FOUC (v3.59) -->
+  <script>
+  (function() {
+    // Version logging handled by js/version.js
+    var visits = parseInt(localStorage.getItem('bj_visits') || '0', 10);
+    localStorage.setItem('bj_visits', String(visits + 1));
+    var hasAccount = localStorage.getItem('bj_has_account') === 'true';
+    var sbKey = Object.keys(localStorage).find(function(k) {
+      return k.startsWith('sb-') && k.endsWith('-auth-token');
+    });
+    var hasSession = sbKey && localStorage.getItem(sbKey);
+    var segment = 'new';
+    if (hasSession) {
+      segment = 'active';
+    } else if (hasAccount) {
+      segment = 'lapsed';
+    } else if (visits >= 1) {
+      segment = 'returning';
+    }
+    document.documentElement.setAttribute('data-segment', segment);
+    if (segment === 'returning' && visits >= 3) {
+      document.documentElement.setAttribute('data-visit-depth', 'deep');
+    }
+    if (segment === 'active') {
+      window.location.replace('/dashboard');
+    }
+  })();
+  </script>
+  <script src="/js/merch-client.js" defer></script>
+  <script src="/js/fingerprint.js" defer></script>
+  <script src="/js/referral-capture.js" defer></script>
+<!-- Semantic Schema generated by InLinks -->
+<script type="application/ld+json"> {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "headline": "Brilliant Jobs: AI-Powered Job Search with Market Data, Salary Insights & Resume Scoring",
+  "about": [
+    {"@type": "Thing","name": "Job search","sameAs": "https://en.wikipedia.org/wiki/Job_hunting"}, 
+    {"@type": "Thing","name": "Artificial intelligence","sameAs": "https://en.wikipedia.org/wiki/Artificial_intelligence"}, 
+    {"@type": "Thing","name": "Resume","sameAs": "https://en.wikipedia.org/wiki/R%C3%A9sum%C3%A9"}, 
+    {"@type": "Thing","name": "Salary","sameAs": "https://en.wikipedia.org/wiki/Salary"}, 
+    {"@type": "Thing","name": "Employment","sameAs": "https://en.wikipedia.org/wiki/Employment"}
+  ],
+  "mentions": [
+    {"@type": "Thing","name": "job market","sameAs": "https://en.wikipedia.org/wiki/Labour_economics"}, 
+    {"@type": "Thing","name": "data analytics","sameAs": "https://en.wikipedia.org/wiki/Analytics"}, 
+    {"@type": "Thing","name": "career","sameAs": "https://en.wikipedia.org/wiki/Career"}, 
+    {"@type": "Thing","name": "recruitment","sameAs": "https://en.wikipedia.org/wiki/Recruitment"}, 
+    {"@type": "Thing","name": "filtering","sameAs": "https://en.wikipedia.org/wiki/Filter_(software)"}, 
+    {"@type": "Thing","name": "machine learning","sameAs": "https://en.wikipedia.org/wiki/Machine_learning"}, 
+    {"@type": "Thing","name": "job board","sameAs": "https://en.wikipedia.org/wiki/Employment_website"}
+  ]
+}
+</script>
+</head>
+<body>
+
+  <nav class="site-nav segment-new segment-returning">
+    <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
+    <div class="nav-links">
+      <a href="#why">Why</a>
+      <a href="#benefits">Benefits</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/data-lab">Data Lab</a>
+      <a href="/dashboard" class="nav-cta" id="nav-login-btn" role="button">Log In</a>
+    </div>
+  </nav>
+
+  <!-- Lapsed nav: simplified -->
+  <nav class="site-nav segment-lapsed">
+    <div class="nav-logo"><div class="mark">B</div> Brilliant Jobs</div>
+    <div class="nav-links">
+      <a href="#why">Why</a>
+      <a href="#benefits">Benefits</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/data-lab">Data Lab</a>
+      <a href="/dashboard" class="nav-cta" id="nav-login-btn-lapsed" role="button">Log In</a>
+    </div>
+  </nav>
+
+  <main>
+
+  <!-- ==================== HERO: NEW VISITOR (full pitch) ==================== -->
+  <section class="hero segment-new">
+    <div class="hero-label"><span class="dot"></span> Now in private beta</div>
+    <h1>The job search<br>for people who are<br><span class="accent">done with job boards.</span></h1>
+    <p class="hero-sub"><span id="lp-hero-jobs">320,000+</span> real jobs from <span id="lp-hero-companies">39,000+</span> company career pages. Salary data they don't want you to see. And the first public record of which companies actually respond.</p>
+    <div class="hero-ctas">
+      <button class="btn btn-primary" id="hero-signup-btn">Start Free</button>
+      <button class="btn btn-ghost" id="hero-preview-btn">See Jobs in Your Field ↓</button>
+    </div>
+  </section>
+
+  <!-- ==================== HERO: RETURNING VISITOR (shorter) ==================== -->
+  <section class="hero segment-returning">
+    <div class="hero-label"><span class="dot"></span> Welcome back</div>
+    <h1 data-merch-field="h1">See what's new<br><span class="accent">since your last visit.</span></h1>
+    <p class="hero-sub" data-merch-field="sub">Jump right into exploring <span id="lp-hero-jobs-ret">320,000+</span> jobs from real company career pages — with salary data and ghost rate tracking.</p>
+    <div class="hero-ctas">
+      <button class="btn btn-primary" id="hero-signup-ret" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'signup'})">Start Free</button>
+      <button class="btn btn-ghost" id="hero-preview-ret">Search Jobs ↓</button>
+    </div>
+  </section>
+
+  <!-- ==================== HERO: LAPSED REGISTERED ==================== -->
+  <section class="hero segment-lapsed">
+    <h1 data-merch-field="h1">Welcome back.<br><span class="accent">Your search continues.</span></h1>
+    <p class="hero-sub" data-merch-field="sub">New jobs have been added since your last visit. Log in to pick up where you left off.</p>
+    <div class="hero-ctas">
+      <button class="btn btn-primary" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'login'});openModal('login')">Log in</button>
+      <a href="#" class="btn btn-ghost" onclick="event.preventDefault();openModal('forgot');">Forgot Password?</a>
+    </div>
+  </section>
+
+  <!-- ==================== HERO: ACTIVE (redirect fallback) ==================== -->
+  <section class="hero segment-active" style="min-height:60vh;align-items:center;justify-content:center;">
+    <div style="text-align:center;">
+      <div class="hero-label"><span class="dot"></span> Redirecting...</div>
+      <h2>Taking you to your dashboard...</h2>
+      <p class="hero-sub" style="margin-top:12px;">If you're not redirected automatically, <a href="/dashboard" style="color:var(--accent);text-decoration:underline;">click here</a>.</p>
+    </div>
+  </section>
+
+  <!-- ==================== STATS BAR ==================== -->
+  <div class="stats-bar fade-up">
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-num" id="lp-active-jobs">—</div>
+        <div class="stat-label">Active Jobs</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="lp-companies">—</div>
+        <div class="stat-label">Company Career Pages</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="lp-metros">—</div>
+        <div class="stat-label">Metro Areas</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">Daily</div>
+        <div class="stat-label">Refresh Cycle</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SOCIAL PROOF (P13-11) ==================== -->
+  <div class="social-proof-bar hidden fade-up" id="social-proof-bar">
+    <div class="social-proof-inner">
+      <div class="sp-stars" id="sp-stars">★★★★★</div>
+      <div class="sp-rating" id="sp-rating">—</div>
+      <div class="sp-divider"></div>
+      <div class="sp-text"><strong id="sp-count">—</strong> job seekers rated their experience</div>
+      <div class="sp-divider"></div>
+      <div class="sp-text">Data from <strong>5 ATS platforms</strong> · <a href="/data-lab" style="color:var(--accent)">See market intelligence</a></div>
+      <div class="sp-divider"></div>
+      <div class="sp-badge" id="sp-nps-badge">
+        <span>↑</span> <span id="sp-nps-pct">—</span> would recommend
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== THE RIGGED GAME ==================== -->
+  <section class="section fade-up" id="why">
+    <div class="section-label">The Problem</div>
+    <h2>The job search is rigged.<br>Just not in your favor.</h2>
+    <p class="section-desc">The biggest job sites are designed to maximize your time on their platform, not minimize your time searching. You already know this. You feel it every time you see "Easy Apply" on a role that was filled six weeks ago.</p>
+
+    <!-- COMPARISON TABLE -->
+    <table class="compare-table fade-up">
+      <thead>
+        <tr><th></th><th>Job Boards</th><th>Brilliant Jobs</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>What you see</td>
+          <td>What employers pay to promote</td>
+          <td>Every opening from 39,000+ career pages — no boosted listings</td>
+        </tr>
+        <tr>
+          <td>Salary info</td>
+          <td>"Competitive compensation"</td>
+          <td>Extracted salary ranges, including multi-city breakdowns</td>
+        </tr>
+        <tr>
+          <td>Stale listings</td>
+          <td>"Actively hiring" badges on 90-day-old posts</td>
+          <td>Closed jobs removed daily. Ghost listings flagged.</td>
+        </tr>
+        <tr>
+          <td>Ghosting</td>
+          <td>A black hole</td>
+          <td>Published ghost rates and average response times</td>
+        </tr>
+        <tr>
+          <td>Your resume</td>
+          <td>One file for every application</td>
+          <td>Multiple versions, each mapped to specific searches</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td>None</td>
+          <td>Match scoring before you apply — see what's missing</td>
+        </tr>
+        <tr>
+          <td>Who pays</td>
+          <td>Employers. You're the product.</td>
+          <td>You — or nobody. We win when you get hired.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ==================== BENEFITS (full - new visitors) ==================== -->
+  <section class="section fade-up" id="benefits">
+    <div class="section-label">What You Get</div>
+    <h2>Built for the person applying,<br>not the company posting.</h2>
+    <p class="section-desc">Every feature exists to save you time, show you the truth, or help you land the right job — not to sell your attention to recruiters.</p>
+
+    <div class="benefit-grid">
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--warm-dim);color:var(--warm);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4m10-10h-4M6 12H2m15.07-7.07l-2.83 2.83M9.76 14.24l-2.83 2.83m12.14 0l-2.83-2.83M9.76 9.76L6.93 6.93"/></svg></div>
+        <h3>See what they're actually paying</h3>
+        <p>We extract salary ranges buried in job descriptions — including companies that list different pay for different cities. Set a floor. Never waste time on a role that's $40K below your range.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--accent-glow);color:var(--accent);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div>
+        <h3>Stop seeing jobs you'd never take</h3>
+        <p>Title, location radius, salary, company size, remote, industry — combined in one search. Exclude companies and keywords permanently. Your feed gets cleaner every session.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--red-dim);color:var(--red);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg></div>
+        <h3>Know who ghosts and who doesn't</h3>
+        <p>Community-powered data on which companies respond and how long it takes. Ghost rates published publicly. For the first time, employers have a reason to actually get back to you.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--green-dim);color:var(--green);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Your search runs while you sleep</h3>
+        <p>Save your filters once. We check for new matches every day and show you what's new in the last 1, 7, or 30 days. Email and SMS alerts when something hits. Stop refreshing.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:var(--purple-dim);color:var(--purple);"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+        <h3>Send the right resume every time</h3>
+        <p>Upload different versions for different types of roles. Your leadership resume goes with director searches. Your technical resume goes with IC roles. Automatically matched.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(251,146,60,0.12);color:#fb923c;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5-3a9 9 0 11-6.22-2.18"/></svg></div>
+        <h3>See what's missing before you apply</h3>
+        <p>We compare your resume against the actual language in the job posting. Real keyword frequency from real postings. You see exactly what to add and what's already strong.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(99,102,241,0.12);color:#6366f1;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></div>
+        <h3>Search by skills, not just titles</h3>
+        <p>We read every job description and extract the actual skills, experience levels, and requirements. Search for "Python + 3 years" and find roles that ask for it — even if the title says something different.</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(244,114,182,0.12);color:#f472b6;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg></div>
+        <h3>Track everything without a spreadsheet</h3>
+        <p>A visual pipeline from "interested" through "applied" to "heard back." Aging badges tell you when silence crosses from "they're busy" into "you got ghosted."</p>
+      </div>
+      <div class="benefit-card">
+        <div class="benefit-icon" style="background:rgba(6,182,212,0.12);color:#06b6d4;"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+        <h3>Search by where you actually live</h3>
+        <p>Location radius search — not text matching. "Portland, OR (12.6 mi)" finds jobs in the metro without pulling every Portland on Earth. Multiple cities and remote in one search.</p>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE PREVIEW — Try Before You Buy (shared: new + returning) -->
+    <div class="preview-section fade-up" id="preview-section">
+      <h3>See jobs in your field</h3>
+      <div class="sub">Try a search — no account needed.</div>
+
+      <div class="preview-filters" id="preview-filters">
+        <div class="preview-input-row">
+          <input type="text" id="preview-keyword" placeholder="Job title or keywords (e.g. SEO, growth marketing)"
+                 class="preview-input" maxlength="100">
+          <input type="text" id="preview-location" placeholder="City or state (e.g. Portland, OR)"
+                 class="preview-input" maxlength="100">
+          <label class="preview-toggle">
+            <input type="checkbox" id="preview-remote"> Remote only
+          </label>
+        </div>
+        <button class="btn btn-primary preview-go" id="preview-go">Search</button>
+      </div>
+
+      <div class="preview-results" id="preview-results" style="display:none">
+        <div class="preview-stats">
+          <div class="preview-stat"><span class="preview-stat-val" id="pv-total">—</span><span class="preview-stat-label">Jobs Found</span></div>
+          <div class="preview-stat"><span class="preview-stat-val" id="pv-salary">—</span><span class="preview-stat-label">Median Salary</span></div>
+          <div class="preview-stat"><span class="preview-stat-val" id="pv-remote">—</span><span class="preview-stat-label">Remote</span></div>
+          <div class="preview-stat"><span class="preview-stat-val" id="pv-companies">—</span><span class="preview-stat-label">Companies</span></div>
+        </div>
+        <div class="preview-titles" id="pv-titles"></div>
+        <div class="preview-cta">
+          <span id="pv-cta-text">Create your free account to see all jobs</span>
+          <button class="btn btn-primary" id="pv-signup-btn">Start Free</button>
+        </div>
+      </div>
+
+      <div class="preview-locked" id="preview-locked" style="display:none">
+        <p>You've previewed the data — sign up free to explore unlimited filters, salary data, and more.</p>
+        <button class="btn btn-primary" id="pv-locked-signup">Start Free</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== BENEFITS (compressed - returning visitors) ==================== -->
+  <section class="section fade-up" id="benefits-short">
+    <div class="section-label">Quick Recap</div>
+    <h2>Why Brilliant Jobs</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:24px;max-width:860px;margin-inline:auto;">
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:var(--accent);">39,000+ sources</strong><br><span style="font-size:13px;color:var(--text-dim);">Direct from career pages, not recycled posts</span>
+      </div>
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:var(--green);">Hidden salary data</strong><br><span style="font-size:13px;color:var(--text-dim);">Extracted from descriptions they thought you wouldn't read</span>
+      </div>
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:var(--warm);">Employer accountability</strong><br><span style="font-size:13px;color:var(--text-dim);">Track who ghosts, who responds, and how long it takes</span>
+      </div>
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:var(--red);">AI resume scoring</strong><br><span style="font-size:13px;color:var(--text-dim);">Grade, rewrite, and version your resume for every job type</span>
+      </div>
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:#6366f1;">Smart search</strong><br><span style="font-size:13px;color:var(--text-dim);">Filter by skills, experience, and what's actually in the JD</span>
+      </div>
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:#06b6d4;">Pipeline autopilot</strong><br><span style="font-size:13px;color:var(--text-dim);">Gmail and calendar sync detects interviews and responses for you</span>
+      </div>
+      <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;text-align:center;">
+        <strong style="color:#a855f7;">Apply automation</strong><br><span style="font-size:13px;color:var(--text-dim);">Score, rewrite, and submit — manually or on autopilot</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== OBJECTION FAQ (returning visitors, visit 3+) ==================== -->
+  <section class="section fade-up faq-objections" id="objection-faq">
+    <div class="section-label">Common Questions</div>
+    <h2>You might be wondering...</h2>
+    <div style="max-width:640px;margin:24px auto 0;display:flex;flex-direction:column;gap:16px;">
+      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:15px;">Is my data safe?</summary>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">We never sell your data. Your search filters, resumes, and application history are encrypted and visible only to you. We make money from paid plans and credit packs, not from selling your information to recruiters.</p>
+      </details>
+      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:15px;">Why not just use LinkedIn?</summary>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">LinkedIn shows you the jobs that employers pay to promote. We show you every job posted on 39,000+ company career pages — including the ones that never make it to LinkedIn. Plus salary data and ghost rate tracking that LinkedIn will never offer.</p>
+      </details>
+      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:15px;">What does the free plan include?</summary>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">One saved search, full job feed access, salary data, and ghost rates. Paid plans unlock AI resume scoring, more saved searches, credits for AI features, and priority notifications.</p>
+      </details>
+      <details class="faq-item" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:15px;">How current are the job listings?</summary>
+        <p style="margin-top:10px;font-size:14px;color:var(--text-dim);line-height:1.6;">Jobs are refreshed on a rolling schedule — most boards are checked every 24-48 hours. Stale listings are flagged automatically so you're not wasting time on ghost jobs.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ==================== GHOST TRANSPARENCY ==================== -->
+  <section class="section fade-up">
+    <div class="ghost-section">
+      <div class="section-label" style="color:var(--green);">Employer Accountability</div>
+      <h2 style="margin-bottom:8px;">Finally know what happens<br>after you click Apply.</h2>
+      <p style="font-size:15px;color:var(--text-dim);max-width:560px;line-height:1.6;">Job boards don't track outcomes because employers are their customers. We track outcomes because <em>you</em> are ours.</p>
+
+      <div class="ghost-grid">
+        <div class="ghost-stat-card">
+          <h3>What we track per company</h3>
+          <div class="ghost-stat-row"><span>Response detected</span><span class="val good">yes / no</span></div>
+          <div class="ghost-stat-row"><span>Time to first response</span><span class="val mid">days</span></div>
+          <div class="ghost-stat-row"><span>Role closed without reply</span><span class="val bad">flagged</span></div>
+          <div class="ghost-stat-row"><span>Interview signals</span><span class="val good">via Gmail &amp; Calendar</span></div>
+        </div>
+        <div class="ghost-stat-card">
+          <h3>How it works</h3>
+          <div style="font-size:14px;color:var(--text-dim);line-height:1.7;padding:4px 0;">
+            <p style="margin-bottom:12px;">Connect your Gmail and Calendar and we detect what happens after you apply — confirmations, interview invites, rejections, and silence. Your pipeline updates automatically.</p>
+            <p style="margin-bottom:12px;">When a company closes a role you applied to without ever responding, we tag them. When they respond quickly, we note that too. Over time, every company builds a public track record based on real applicant experiences.</p>
+            <p>You see this data <em>before</em> you apply. Companies that ghost get a visible record. <strong>That changes the incentive.</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+
+  <!-- ==================== HOW IT WORKS ==================== -->
+  <section class="section fade-up" id="how-it-works">
+    <div class="section-label">How It Works</div>
+    <h2>Set up once. It gets smarter<br>every time you use it.</h2>
+    <p class="section-desc">Three minutes to launch. Then the system learns from everything you do.</p>
+    <div class="steps">
+      <div class="step"><div class="step-num">01</div><h3>Upload a resume</h3><p>Drop in your PDF or DOCX. We read it and auto-generate search filters from your skills, titles, and locations — no manual entry.</p></div>
+      <div class="step"><div class="step-num">02</div><h3>Connect Gmail &amp; Calendar</h3><p>We detect interview invites, application confirmations, and recruiter replies automatically. Your pipeline stays current without you touching it.</p></div>
+      <div class="step"><div class="step-num">03</div><h3>Review your feed</h3><p>Jobs matched to your filters, scored against your resume, with salary data extracted. Hide what doesn't fit — we learn from that too.</p></div>
+      <div class="step"><div class="step-num">04</div><h3>The system learns</h3><p>Every job you hide trains your exclusion filters. Every application you track builds employer accountability data. Your feed gets cleaner and your intelligence gets sharper.</p></div>
+    </div>
+  </section>
+
+
+  <!-- ==================== MARKET DATA ==================== -->
+  <section class="section fade-up" id="data">
+    <div class="section-label">Market Intelligence</div>
+    <h2>Real data from real career pages.<br>Not job board guesswork.</h2>
+    <p class="section-desc">We scan 39,000+ company career pages every day and publish what we find. Salary trends, hiring volume, seniority distribution &mdash; all from the source.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0;" class="data-stats-grid">
+      <a href="/salary-data" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(59,130,246,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;">$128K</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Remote median salary</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">+35% vs on-site</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Salary Data &rarr;</div>
+      </a>
+      <a href="/hiring-trends" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(34,197,94,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;" id="lp-mi-jobs">280K+</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Active job listings</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">Across <span id="lp-mi-companies">39,000+</span> companies</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Hiring Trends &rarr;</div>
+      </a>
+      <a href="/jobs-by-industry" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(168,85,247,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--purple);font-family:'JetBrains Mono',monospace;">68.4K</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Tech industry jobs</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">24% of all listings</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Industry Data &rarr;</div>
+      </a>
+      <a href="/career-level-data" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;text-decoration:none;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(245,158,11,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:26px;font-weight:700;color:var(--warm);font-family:'JetBrains Mono',monospace;">42%</div>
+        <div style="font-size:12px;color:var(--text);margin-top:4px;font-weight:600;">Mid&rarr;Senior salary jump</div>
+        <div style="font-size:11px;color:var(--green);margin-top:2px;">Highest-leverage move</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:8px;">Career Levels &rarr;</div>
+      </a>
+    </div>
+
+    <p style="text-align:center;margin-top:20px;">
+      <a href="/job-market-data" style="color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">View all market intelligence reports &rarr;</a>
+    </p>
+  </section>
+
+
+  <!-- ==================== MARKET INSIGHTS ==================== -->
+  <section class="section fade-up segment-new segment-returning segment-lapsed" id="market-insights" style="display:none">
+    <div class="section-label">Market Intelligence</div>
+    <h2>Real-time job market insights,<br>powered by data.</h2>
+    <p class="section-desc">Our content engine analyzes hundreds of thousands of live job listings to surface trends, spikes, and opportunities you won't find anywhere else.</p>
+    <div class="insights-grid" id="insights-grid"></div>
+    <p style="text-align:center;margin-top:20px">
+      <a href="/blog" style="color:var(--accent);font-size:14px;font-weight:600;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Browse all market insights &rarr;</a>
+    </p>
+  </section>
+
+  <!-- ==================== PRICING ==================== -->
+  <section class="section fade-up" id="pricing">
+    <div class="section-label">Pricing</div>
+    <h2>We make money when you get hired.<br>That's it.</h2>
+    <p class="section-desc">No ads. No sponsored listings. No selling your data to recruiters. Full access during beta — early adopters keep upgraded access.</p>
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-name">Free</div>
+        <div class="price-desc">Core search and filtering</div>
+        <div class="price-amount">$0</div>
+        <div class="price-period">forever</div>
+        <ul class="price-features">
+          <li>Jobs from all company career pages</li>
+          <li>Basic filters (title, location, remote)</li>
+          <li>1 saved search</li>
+          <li>Community ghost rate data</li>
+        </ul>
+        <button class="price-btn price-btn-outline" onclick="openModal('signup')">Start Free</button>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-name">Starter</div>
+        <div class="price-desc">AI-powered tools to stand out</div>
+        <div class="price-amount">$20</div>
+        <div class="price-period">per month</div>
+        <ul class="price-features">
+          <li>Everything in Free</li>
+          <li>3 saved searches</li>
+          <li>AI resume scoring &amp; rewrites</li>
+          <li>100 credits/month for AI features</li>
+          <li>SMS job alerts</li>
+        </ul>
+        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
+      </div>
+
+      <div class="price-card">
+        <div class="price-name">Pro</div>
+        <div class="price-desc">Full power for serious searchers</div>
+        <div class="price-amount">$40</div>
+        <div class="price-period">per month</div>
+        <ul class="price-features">
+          <li>Everything in Starter</li>
+          <li>10 saved searches</li>
+          <li>300 credits/month for AI features</li>
+          <li>Auto-apply &amp; network intelligence</li>
+          <li>Priority job refresh</li>
+        </ul>
+        <button class="price-btn price-btn-primary" onclick="openModal('signup')">Start Free</button>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:20px;font-size:14px;color:var(--text-dim);">Credits power AI features like resume scoring and smart matching. <a href="/pricing">See full pricing &amp; credit details →</a></p>
+  </section>
+
+  <!-- ==================== SOCIAL PROOF ==================== -->
+  <div class="section fade-up" style="padding-bottom:0;">
+    <div style="text-align:center;padding:32px 24px;background:var(--bg-card);border:1px solid var(--border);border-radius:14px;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-faint);font-weight:600;margin-bottom:16px;">Built for job seekers by a job seeker</div>
+      <div style="font-size:14px;color:var(--text-dim);line-height:1.6;">We're in private beta. Early numbers are real and published — we don't fake metrics.</div>
+    </div>
+  </div>
+
+  <!-- ==================== WALKTHROUGH CAROUSEL ==================== -->
+  <section class="section fade-up" id="walkthrough">
+    <div class="section-label">See the Full Product</div>
+    <h2>What you get after signing up</h2>
+    <p class="section-desc">A 30-second tour of the dashboard experience.</p>
+
+    <div class="carousel" id="walkthrough-carousel">
+      <div class="carousel-track">
+        <div class="carousel-slide">
+          <img src="/img/walkthrough/feed.svg" alt="Personalized job feed" loading="lazy">
+          <div class="carousel-caption">
+            <h4>Your personalized job feed</h4>
+            <p>Filter by keyword, location, salary, seniority — see only what matters to you.</p>
+          </div>
+        </div>
+        <div class="carousel-slide">
+          <img src="/img/walkthrough/match.svg" alt="Resume match scoring" loading="lazy">
+          <div class="carousel-caption">
+            <h4>Know your match before you apply</h4>
+            <p>Every job scored against your resume. Know your odds before you invest time.</p>
+          </div>
+        </div>
+        <div class="carousel-slide">
+          <img src="/img/walkthrough/stats.svg" alt="Market analytics" loading="lazy">
+          <div class="carousel-caption">
+            <h4>See your market clearly</h4>
+            <p>Salary distribution, hiring velocity, top companies — filtered to your search.</p>
+          </div>
+        </div>
+        <div class="carousel-slide">
+          <img src="/img/walkthrough/pipeline.svg" alt="Application pipeline" loading="lazy">
+          <div class="carousel-caption">
+            <h4>Track every application</h4>
+            <p>From saved to offer. Never lose track of where you stand.</p>
+          </div>
+        </div>
+        <div class="carousel-slide">
+          <img src="/img/walkthrough/notifications.svg" alt="Job notifications" loading="lazy">
+          <div class="carousel-caption">
+            <h4>Get notified instantly</h4>
+            <p>New jobs matching your filters, delivered daily.</p>
+          </div>
+        </div>
+        <div class="carousel-slide carousel-slide-cta">
+          <h4>Ready to start?</h4>
+          <p>Create your free account — takes 30 seconds.</p>
+          <button class="btn btn-primary" id="walkthrough-signup-btn">Start Free</button>
+        </div>
+      </div>
+      <div class="carousel-dots" id="carousel-dots"></div>
+    </div>
+  </section>
+
+  <!-- ==================== BOTTOM CTA ==================== -->
+  <section class="section fade-up" style="text-align:center;padding-bottom:120px;">
+    <h2 style="margin-bottom:16px;">You've been searching their way.<br>Try yours.</h2>
+    <p class="section-desc" style="margin:0 auto 32px;">Free to start. No credit card. No employer-subsidized nonsense. Just a better way to find work.</p>
+    <button class="btn btn-primary" id="bottom-signup-btn" style="font-size:16px;padding:16px 36px;background:var(--accent);color:#fff;box-shadow:0 4px 20px rgba(61,126,255,0.25);">Start Free</button>
+  </section>
+
+  </main>
+
+  <footer class="site-footer segment-new segment-returning segment-lapsed">
+    <div class="footer-links">
+      <a href="/job-market-data">Market Data</a>
+      <a href="/salary-data">Salaries</a>
+      <a href="/hiring-trends">Hiring</a>
+      <a href="/help">Help</a>
+      <a href="/blog">Market Insights</a>
+      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/help">Contact</a>
+    </div>
+    <p class="footer-copy">&copy; <span class="bj-year"></span> Brilliant Jobs. All rights reserved. · <span class="bj-version"></span></p>
+  </footer>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-overlay" id="auth-modal">
+    <div class="modal">
+      <button class="modal-close" id="modal-close-btn">&times;</button>
+      <div id="auth-forms">
+        <div class="modal-title" id="modal-title">Welcome back</div>
+        <div class="modal-sub" id="modal-sub">Log in to your account</div>
+        <div class="auth-tabs">
+          <div class="auth-tab active" data-form="login">Log In</div>
+          <div class="auth-tab" data-form="signup">Sign Up</div>
+        </div>
+        <div class="auth-form active" id="form-login"><form onsubmit="return false;" autocomplete="on">
+          <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"></div>
+          <div class="field">
+            <label>Password</label>
+            <div class="password-wrap">
+              <input type="password" id="login-password" placeholder="Your password" autocomplete="current-password">
+              <button type="button" class="pw-toggle" data-target="login-password">Show</button>
+            </div>
+            <span class="forgot-link" id="forgot-trigger">Forgot password?</span>
+          </div>
+          <button class="btn-auth" id="login-btn">Log In</button>
+          <div class="msg" id="login-msg"></div></form>
+          <div class="forgot-section" id="forgot-section">
+            <div style="font-size:12px;color:var(--text-faint);margin-bottom:8px;">Enter your email above and click below.</div>
+            <button class="btn-auth" id="forgot-btn" style="background:var(--bg-input);color:var(--text-dim);font-size:13px;padding:10px;">Send Password Reset Email</button>
+            <div class="msg" id="forgot-msg"></div>
+          </div>
+        </div>
+        <div class="auth-form" id="form-signup"><form onsubmit="return false;" autocomplete="on">
+          <div class="field"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your full name (as it appears on LinkedIn)"></div>
+          <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com"></div>
+          <div class="field">
+            <label>Password</label>
+            <div class="password-wrap">
+              <input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password">
+              <button type="button" class="pw-toggle" data-target="signup-password">Show</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>LinkedIn Profile URL</label>
+            <input type="url" id="signup-linkedin" placeholder="https://www.linkedin.com/in/your-profile" value="https://www.linkedin.com/in/">
+            <div class="hint">Used for account verification only.</div>
+          </div>
+          <script>
+            document.getElementById('signup-linkedin').addEventListener('focus', function() {
+              var v = this.value;
+              if (v === 'https://www.linkedin.com/in/') {
+                setTimeout(function() {
+                  var el = document.getElementById('signup-linkedin');
+                  el.setSelectionRange(v.length, v.length);
+                }, 0);
+              }
+            });
+          </script>
+          <div class="optin-row">
+            <input type="checkbox" id="signup-optin">
+            <label for="signup-optin">Send me product updates and job search tips.</label>
+          </div>
+          <button class="btn-auth" id="signup-btn">Create Account</button>
+          <div class="msg" id="signup-msg"></div></form>
+        </div>
+        <div class="auth-form" id="form-forgot"><form onsubmit="return false;">
+          <div class="field"><label>Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
+          <button class="btn-auth" id="forgot-send-btn" style="background:var(--bg-input);color:var(--text-dim);">Send Password Reset Email</button>
+          <div class="msg" id="forgot-send-msg"></div>
+          <div style="text-align:center;margin-top:12px;"><span class="forgot-link" onclick="switchTab('login')">Back to Log In</span></div>
+        </form></div>
+      </div>
+      <div class="logged-in-view" id="logged-in-view">
+        <div class="user-badge" id="li-email"></div>
+        <div id="li-pending">
+          <div class="status-pill pill-pending">Verifying</div>
+          <p style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">We're verifying your account. This usually takes a few seconds — refresh to check.</p>
+        </div>
+        <div id="li-approved" style="display:none;">
+          <div class="status-pill pill-approved">✓ Active</div>
+          <p style="font-size:14px;color:var(--text-dim);margin:12px 0;">You're all set!</p>
+          <a href="/dashboard" class="btn-auth" style="display:block;text-align:center;text-decoration:none;margin-top:8px;">Go to Dashboard →</a>
+        </div>
+        <button class="btn-logout" id="logout-btn" style="margin-top:12px;">Log Out</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============================================================
+    // SUPABASE — LAZY LOADED
+    // ============================================================
+    const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+    let sb = null;
+    let _sbLoading = null;
+    function loadSupabase() {
+      if (sb) return Promise.resolve(sb);
+      if (_sbLoading) return _sbLoading;
+      _sbLoading = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = '/js/vendor/supabase.min.js';
+        s.onload = () => {
+          sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          resolve(sb);
+        };
+        s.onerror = () => reject(new Error('Failed to load Supabase'));
+        document.head.appendChild(s);
+      });
+      return _sbLoading;
+    }
+
+    const $ = s => document.querySelector(s);
+    const $$ = s => document.querySelectorAll(s);
+
+    // ============================================================
+    // RETURNING USER DETECTION
+    // ============================================================
+    const isReturning = document.cookie.includes('bj_returning');
+    if (isReturning) {
+      $('#nav-login-btn').textContent = 'Log In';
+      $('#hero-signup-btn').textContent = 'Go to Dashboard';
+      $('#bottom-signup-btn').textContent = 'Go to Dashboard';
+    } else {
+      $('#nav-login-btn').textContent = 'Sign Up';
+      $('#hero-signup-btn').textContent = 'Start Free';
+      $('#bottom-signup-btn').textContent = 'Start Free';
+    }
+
+    // ============================================================
+    // MODAL
+    // ============================================================
+    window.openModal = function openModal(tab) {
+      $('#auth-modal').classList.add('active');
+      switchTab(tab || 'login');
+    }
+    window.closeModal = function closeModal() {
+      $('#auth-modal').classList.remove('active');
+    }
+
+    // ============================================================
+    // SIGNUP TIMING
+    // ============================================================
+    let signupStartedAt = null;
+
+    function switchTab(form) {
+      $$('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.form === form));
+      $$('.auth-form').forEach(f => f.classList.remove('active'));
+      if (form === 'forgot') { $$('.auth-tabs')[0].style.display = 'none'; }
+      else { $$('.auth-tabs')[0].style.display = ''; }
+      $(`#form-${form}`).classList.add('active');
+      if (form === 'login') {
+        $('#modal-title').textContent = 'Welcome back';
+        $('#modal-sub').textContent = 'Log in to your account';
+      } else if (form === 'forgot') {
+        $('#modal-title').textContent = 'Reset your password';
+        $('#modal-sub').textContent = 'We\'ll send you a reset link';
+      } else {
+        $('#modal-title').textContent = 'Get early access';
+        $('#modal-sub').textContent = 'Create your free account';
+        if (!signupStartedAt) signupStartedAt = Date.now();
+      }
+    }
+
+    $$('.auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => switchTab(tab.dataset.form));
+    });
+
+    $('#modal-close-btn').addEventListener('click', closeModal);
+    $('#auth-modal').addEventListener('click', e => { if (e.target === $('#auth-modal')) closeModal(); });
+    $('#nav-login-btn').addEventListener('click', (e) => { e.preventDefault(); openModal(isReturning ? 'login' : 'signup'); });
+    $('#hero-signup-btn').addEventListener('click', () => openModal(isReturning ? 'login' : 'signup'));
+    $('#bottom-signup-btn').addEventListener('click', () => openModal(isReturning ? 'login' : 'signup'));
+
+    // Returning variant CTAs
+    var retSignup = document.getElementById('hero-signup-ret');
+    if (retSignup) retSignup.addEventListener('click', () => openModal('signup'));
+    var retPreview = document.getElementById('hero-preview-ret');
+    if (retPreview) retPreview.addEventListener('click', () => {
+      document.getElementById('preview-section').scrollIntoView({ behavior: 'smooth' });
+    });
+    // Lapsed nav login
+    var lapsedLogin = document.getElementById('nav-login-btn-lapsed');
+    if (lapsedLogin) lapsedLogin.addEventListener('click', (e) => { e.preventDefault(); openModal('login'); });
+
+    $$('.price-btn').forEach(btn => {
+      btn.addEventListener('click', () => openModal('signup'));
+    });
+
+    $$('.pw-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = $(`#${btn.dataset.target}`);
+        const isPass = input.type === 'password';
+        input.type = isPass ? 'text' : 'password';
+        btn.textContent = isPass ? 'Hide' : 'Show';
+      });
+    });
+
+    // ============================================================
+    // FORGOT PASSWORD
+    // ============================================================
+    $('#forgot-trigger').addEventListener('click', () => {
+      switchTab('forgot');
+    });
+
+    $('#forgot-send-btn').addEventListener('click', async () => {
+      await loadSupabase();
+      const email = $('#forgot-email').value.trim();
+      const msgEl = $('#forgot-send-msg');
+      msgEl.className = 'msg'; msgEl.style.display = 'none';
+      if (!email) {
+        msgEl.className = 'msg error'; msgEl.textContent = 'Enter your email above first.'; return;
+      }
+      $('#forgot-send-btn').disabled = true;
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/dashboard'
+      });
+      $('#forgot-send-btn').disabled = false;
+      if (error) { msgEl.className = 'msg error'; msgEl.textContent = error.message; }
+      else { msgEl.className = 'msg success'; msgEl.textContent = 'Password reset email sent. Check your inbox.'; }
+    });
+
+    // ============================================================
+    // SHOW MESSAGE
+    // ============================================================
+    function showMsg(id, text, type) {
+      const el = $(`#${id}`);
+      el.className = `msg ${type}`;
+      el.style.display = '';
+      el.textContent = text;
+    }
+
+    // ============================================================
+    // LOGIN
+    // ============================================================
+    $('#login-btn').addEventListener('click', async () => {
+      await loadSupabase();
+      const email = $('#login-email').value.trim();
+      const password = $('#login-password').value;
+      const msgEl = $('#login-msg');
+      msgEl.className = 'msg'; msgEl.style.display = 'none';
+
+      if (!email || !password) { showMsg('login-msg', 'Fill in all fields.', 'error'); return; }
+
+      $('#login-btn').disabled = true;
+      $('#login-btn').textContent = 'Logging in...';
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      $('#login-btn').disabled = false;
+      $('#login-btn').textContent = 'Log In';
+
+      if (error) { showMsg('login-msg', error.message, 'error'); return; }
+
+      showLoggedIn(data.user);
+    });
+
+    // ============================================================
+    // SIGNUP
+    // ============================================================
+    $('#signup-btn').addEventListener('click', async () => {
+      await loadSupabase();
+      var msgEl = $('#signup-msg');
+      msgEl.className = 'msg'; msgEl.style.display = 'none';
+
+      try {
+        var fullName = $('#signup-name').value.trim();
+        var email = $('#signup-email').value.trim();
+        var password = $('#signup-password').value;
+        var linkedin = $('#signup-linkedin').value.trim();
+        var optin = $('#signup-optin').checked;
+
+        if (!fullName) { showMsg('signup-msg', 'Please enter your full name.', 'error'); return; }
+        if (!email || !password) { showMsg('signup-msg', 'Fill in all fields.', 'error'); return; }
+        if (password.length < 6) { showMsg('signup-msg', 'Password must be at least 6 characters.', 'error'); return; }
+
+        var elapsedSeconds = signupStartedAt ? Math.round((Date.now() - signupStartedAt) / 1000) : 0;
+
+        $('#signup-btn').disabled = true;
+        $('#signup-btn').textContent = 'Creating account...';
+
+        var result = await sb.auth.signUp({
+          email: email, password: password,
+          options: {
+            data: {
+              full_name: fullName,
+              linkedin_url: linkedin,
+              marketing_optin: optin,
+              signup_elapsed_seconds: elapsedSeconds
+            }
+          }
+        });
+
+        var data = result.data;
+        var error = result.error;
+
+        if (error) {
+          $('#signup-btn').disabled = false;
+          $('#signup-btn').textContent = 'Create Account';
+          showMsg('signup-msg', error.message, 'error');
+          return;
+        }
+
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          $('#signup-btn').disabled = false;
+          $('#signup-btn').textContent = 'Create Account';
+          showMsg('signup-msg', 'An account with this email already exists. Try logging in.', 'error');
+          return;
+        }
+
+        if (data.user && data.user.id) {
+          triggerValidation(data.user.id);
+        }
+
+        var sessionCheck = await sb.auth.getSession();
+        if (sessionCheck.data && sessionCheck.data.session) {
+          showLoggedIn(data.user);
+          return;
+        }
+
+        $('#signup-btn').disabled = false;
+        $('#signup-btn').textContent = 'Create Account';
+        showMsg('signup-msg', 'Account created! Check your email to confirm, then log in.', 'success');
+        signupStartedAt = null;
+
+      } catch (e) {
+        console.error('[BJ] Signup error:', e);
+        $('#signup-btn').disabled = false;
+        $('#signup-btn').textContent = 'Create Account';
+        showMsg('signup-msg', 'Something went wrong: ' + e.message, 'error');
+      }
+    });
+
+    // ============================================================
+    // VALIDATION
+    // ============================================================
+    async function triggerValidation(profileId) {
+      try {
+        const res = await fetch(SUPABASE_URL + '/functions/v1/validate-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+          body: JSON.stringify({ profile_id: profileId }),
+        });
+        const result = await res.json();
+        console.log('[BJ] Signup validation:', result.approved ? 'approved' : 'provisional', result.reason);
+      } catch (e) {
+        console.log('[BJ] Validation call failed (will default to manual review):', e.message);
+      }
+    }
+
+    // ============================================================
+    // LOGGED IN VIEW
+    // ============================================================
+    async function showLoggedIn(user) {
+      document.cookie = 'bj_returning=1; max-age=31536000; path=/; SameSite=Lax';
+      await loadSupabase();
+      $('#auth-forms').style.display = 'none';
+      const loggedView = $('#logged-in-view');
+      loggedView.classList.add('active');
+      $('#li-email').textContent = user.email;
+
+      try {
+        var profileResult = await sb.from('profiles').select('approved').eq('id', user.id).single();
+        if (profileResult.data && profileResult.data.approved === true) {
+          window.location.href = '/dashboard';
+          return;
+        }
+      } catch (e) {
+        console.error('Profile check error:', e);
+      }
+
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+          window.postMessage({
+            type: 'LINKEDIN_TOOL_AUTH',
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+            userId: user.id,
+            email: user.email
+          }, '*');
+        }
+      } catch (e) {}
+    }
+
+    // ============================================================
+    // LOGOUT
+    // ============================================================
+    $('#logout-btn').addEventListener('click', async () => {
+      await loadSupabase();
+      await sb.auth.signOut();
+      $('#logged-in-view').classList.remove('active');
+      $('#auth-forms').style.display = 'block';
+      switchTab('login');
+    });
+
+    // ============================================================
+    // CHECK SESSION ON LOAD
+    // ============================================================
+    (async () => {
+      await loadSupabase();
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) {
+        openModal('login');
+        showLoggedIn(session.user);
+      }
+      if (new URLSearchParams(window.location.search).get('pending') === '1') {
+        openModal('login');
+      }
+      if (window.location.hash === '#signup') {
+        openModal('signup');
+      }
+    })();
+
+    // ============================================================
+    // SCROLL ANIMATIONS
+    // ============================================================
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+      });
+    }, { threshold: 0.1 });
+
+    $$('.fade-up').forEach(el => observer.observe(el));
+
+
+        // ============================================================
+    // LIVE STATS — cached in localStorage (1hr TTL)
+    // ============================================================
+    (async function loadLiveStats() {
+      const CACHE_KEY = 'bj_lp_stats';
+      const CACHE_TTL = 60 * 60 * 1000;
+      function applyStats(stats) {
+        if (stats.jobs != null) {
+          document.getElementById('lp-active-jobs').textContent = stats.jobs.toLocaleString();
+          const heroJobs = document.getElementById('lp-hero-jobs');
+          if (heroJobs) heroJobs.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+        }
+        if (stats.companies != null) {
+          document.getElementById('lp-companies').textContent = stats.companies.toLocaleString();
+          const heroComp = document.getElementById('lp-hero-companies');
+          if (heroComp) heroComp.textContent = stats.companies.toLocaleString() + '+';
+          const stepComp = document.getElementById('lp-step-companies');
+          if (stepComp) stepComp.textContent = stats.companies.toLocaleString() + '+';
+        }
+        // Hydrate merchandising placeholders
+        document.querySelectorAll('[data-merch-stat="jobs"]').forEach(function(el) {
+          el.textContent = (Math.floor(stats.jobs / 1000) * 1000).toLocaleString() + '+';
+        });
+        document.querySelectorAll('[data-merch-stat="companies"]').forEach(function(el) {
+          el.textContent = stats.companies.toLocaleString() + '+';
+        });
+        // Market Intelligence cards
+        var miJobs = document.getElementById('lp-mi-jobs');
+        if (miJobs) miJobs.textContent = (Math.floor(stats.jobs / 1000)).toLocaleString() + 'K+';
+        var miComp = document.getElementById('lp-mi-companies');
+        if (miComp) miComp.textContent = stats.companies.toLocaleString() + '+';
+        if (stats.metros != null) {
+          document.getElementById('lp-metros').textContent = stats.metros.toLocaleString();
+        }
+        document.querySelectorAll('.stat-num').forEach(el => {
+          el.classList.remove('loading'); el.classList.add('loaded');
+        });
+      }
+      document.querySelectorAll('.stat-num').forEach(el => el.classList.add('loading'));
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+        if (cached && cached.jobs != null && Date.now() - cached.ts < CACHE_TTL) { applyStats(cached); return; }
+      } catch (e) {}
+      try {
+        await loadSupabase();
+        const { data, error } = await sb.rpc('get_landing_stats');
+        if (error) throw new Error('stats fetch failed');
+        const stats = { jobs: data.jobs, companies: data.companies, metros: data.metros, ts: Date.now() };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(stats));
+        applyStats(stats);
+      } catch (e) {
+        console.log('[BJ] Stats fetch error:', e.message);
+        document.getElementById('lp-active-jobs').textContent = '280,000+';
+        document.getElementById('lp-companies').textContent = '39,000+';
+        document.getElementById('lp-metros').textContent = '199';
+        document.querySelectorAll('.stat-num').forEach(el => {
+          el.classList.remove('loading'); el.classList.add('loaded');
+        });
+      }
+    })();
+
+    // ============================================================
+    // SOCIAL PROOF — Survey results (P13-11)
+    // ============================================================
+    (async () => {
+      const MIN_RESPONSES = 20;
+      try {
+        await loadSupabase();
+        const { data, error } = await sb.from('survey_social_proof').select('*').single();
+        if (error || !data || data.total_respondents < MIN_RESPONSES) return;
+
+        const bar = document.getElementById('social-proof-bar');
+        if (!bar) return;
+
+        const rating = parseFloat(data.avg_rating);
+        if (rating > 0) {
+          const full = Math.floor(rating);
+          const half = rating - full >= 0.3;
+          let stars = '\u2605'.repeat(full) + (half ? '\u2605' : '') + '\u2606'.repeat(5 - full - (half ? 1 : 0));
+          document.getElementById('sp-stars').textContent = stars;
+          document.getElementById('sp-rating').textContent = rating.toFixed(1) + ' / 5';
+        }
+
+        document.getElementById('sp-count').textContent = data.total_respondents.toLocaleString();
+
+        const totalNps = (data.promoters || 0) + (data.passives || 0) + (data.detractors || 0);
+        if (totalNps > 0) {
+          const recommendPct = Math.round(((data.promoters + data.passives) / totalNps) * 100);
+          document.getElementById('sp-nps-pct').textContent = recommendPct + '%';
+        } else {
+          document.getElementById('sp-nps-badge').style.display = 'none';
+        }
+
+        bar.classList.remove('hidden');
+      } catch (e) {
+        console.log('[BJ] Social proof skipped:', e.message);
+      }
+    })();
+
+    // ============================================================
+    // PREVIEW — Try Before You Buy
+    // ============================================================
+    let previewToken = null;
+
+    const previewGoBtn = document.getElementById('preview-go');
+    if (previewGoBtn) {
+      previewGoBtn.addEventListener('click', async () => {
+        const keyword = $('#preview-keyword').value.trim();
+        const location = $('#preview-location').value.trim();
+        const remote = document.getElementById('preview-remote').checked;
+
+        if (!keyword && !location) return;
+
+        previewGoBtn.disabled = true;
+        previewGoBtn.textContent = 'Searching...';
+
+        if (window.posthog) posthog.capture('preview_filter_submitted', {
+          has_keyword: !!keyword, has_location: !!location, remote_only: remote
+        });
+
+        try {
+          const res = await fetch(SUPABASE_URL + '/functions/v1/preview-jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keyword, location, remote, session_token: previewToken })
+          });
+          const data = await res.json();
+
+          if (data.error === 'rate_limited') {
+            document.getElementById('preview-filters').style.display = 'none';
+            document.getElementById('preview-results').style.display = 'none';
+            document.getElementById('preview-locked').style.display = '';
+            if (window.posthog) posthog.capture('preview_rate_limited', { queries_used: 2 });
+            return;
+          }
+
+          previewToken = data.session_token;
+
+          // Populate stat cards
+          document.getElementById('pv-total').textContent = data.total.toLocaleString();
+          document.getElementById('pv-salary').textContent = data.median_salary ? '$' + Math.round(data.median_salary / 1000) + 'K' : 'N/A';
+          document.getElementById('pv-remote').textContent = data.remote_pct + '%';
+          document.getElementById('pv-companies').textContent = data.companies.toLocaleString();
+
+          // Populate teaser titles
+          const titlesEl = document.getElementById('pv-titles');
+          titlesEl.innerHTML = data.titles.map(t =>
+            '<div class="preview-title-row"><span class="preview-title">' + t + '</span><span class="preview-company">Sign up to reveal</span></div>'
+          ).join('');
+
+          document.getElementById('pv-cta-text').textContent = 'Create your free account to see all ' + data.total.toLocaleString() + ' jobs';
+          document.getElementById('preview-results').style.display = '';
+
+          if (window.posthog) posthog.capture('preview_results_shown', {
+            total_jobs: data.total, has_salary_data: !!data.median_salary,
+            queries_remaining: data.queries_remaining
+          });
+
+          if (data.queries_remaining === 0) {
+            previewGoBtn.textContent = 'No queries remaining';
+            previewGoBtn.disabled = true;
+          } else {
+            previewGoBtn.disabled = false;
+            previewGoBtn.textContent = 'Search (' + data.queries_remaining + ' left)';
+          }
+        } catch (e) {
+          console.error('[BJ] Preview error:', e);
+          previewGoBtn.disabled = false;
+          previewGoBtn.textContent = 'Search';
+          // Show error state
+          document.getElementById('preview-results').style.display = '';
+          document.getElementById('pv-total').textContent = '—';
+          document.getElementById('pv-titles').innerHTML = '<div class="preview-title-row"><span class="preview-title" style="color:var(--text-faint)">Preview temporarily unavailable. Try again shortly.</span></div>';
+        }
+      });
+    }
+
+    // Preview signup buttons
+    ['pv-signup-btn', 'pv-locked-signup'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('click', () => {
+        openModal('signup');
+        if (window.posthog) posthog.capture('preview_signup_clicked');
+      });
+    });
+
+    // Enter key triggers search
+    ['preview-keyword', 'preview-location'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') previewGoBtn.click(); });
+    });
+
+    // ============================================================
+    // HERO PREVIEW BUTTON — scroll to preview
+    // ============================================================
+    const heroPreviewBtn = document.getElementById('hero-preview-btn');
+    if (heroPreviewBtn) {
+      heroPreviewBtn.addEventListener('click', () => {
+        document.getElementById('preview-section').scrollIntoView({ behavior: 'smooth' });
+        if (window.posthog) posthog.capture('preview_cta_clicked');
+      });
+    }
+
+    // ============================================================
+    // WALKTHROUGH CAROUSEL
+    // ============================================================
+    const track = document.querySelector('.carousel-track');
+    const dotsContainer = document.getElementById('carousel-dots');
+    if (track && dotsContainer) {
+      const slides = track.querySelectorAll('.carousel-slide');
+      slides.forEach((_, i) => {
+        const dot = document.createElement('span');
+        dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+        dot.addEventListener('click', () => {
+          slides[i].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+        });
+        dotsContainer.appendChild(dot);
+      });
+      const carouselObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            const idx = [...slides].indexOf(e.target);
+            dotsContainer.querySelectorAll('.carousel-dot').forEach((d, i) => {
+              d.classList.toggle('active', i === idx);
+            });
+          }
+        });
+      }, { root: track, threshold: 0.5 });
+      slides.forEach(s => carouselObs.observe(s));
+
+      // PostHog: track walkthrough swipes
+      let lastSwipeTime = 0;
+      track.addEventListener('scroll', () => {
+        if (Date.now() - lastSwipeTime > 2000) {
+          lastSwipeTime = Date.now();
+          if (window.posthog) posthog.capture('walkthrough_swiped');
+        }
+      });
+    }
+
+    // Walkthrough signup + CTA
+    const wBtn = document.getElementById('walkthrough-signup-btn');
+    if (wBtn) wBtn.addEventListener('click', () => {
+      openModal('signup');
+      if (window.posthog) posthog.capture('walkthrough_cta_clicked');
+    });
+
+    // PostHog: walkthrough viewed
+    const wtSection = document.getElementById('walkthrough');
+    if (wtSection) {
+      const wtObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            if (window.posthog) posthog.capture('walkthrough_viewed');
+            wtObs.disconnect();
+          }
+        });
+      }, { threshold: 0.3 });
+      wtObs.observe(wtSection);
+    }
+
+    // ============================================================
+    // SMOOTH SCROLL
+    // ============================================================
+    document.querySelectorAll('a[href^="#"]').forEach(link => {
+      link.addEventListener('click', e => {
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+});
+  </script>
+
+<script>
+// C3: Landing Page Merchandising — fetch from content-api/merch-index
+(function(){
+  var grid = document.getElementById('insights-grid');
+  var section = document.getElementById('market-insights');
+  if (!grid || !section) return;
+
+  var catColors = {
+    salary: { bg:'#dcfce7', fg:'#166534' },
+    location: { bg:'#dbeafe', fg:'#1e40af' },
+    remote: { bg:'#f3e8ff', fg:'#6b21a8' },
+    company: { bg:'#ffedd5', fg:'#9a3412' },
+    trend: { bg:'#ccfbf1', fg:'#115e59' },
+    milestone: { bg:'#fef9c3', fg:'#854d0e' }
+  };
+
+  fetch('/content-api/merch-index')
+    .then(function(r) { return r.json(); })
+    .then(function(cards) {
+      if (!cards || !cards.length) return;
+      section.style.display = 'block';
+      grid.innerHTML = cards.slice(0, 3).map(function(c) {
+        var col = catColors[c.category] || { bg:'#f3f4f6', fg:'#374151' };
+        return '<div class="insight-card">'
+          + '<span class="insight-cat" style="background:' + col.bg + ';color:' + col.fg + '">' + (c.category || 'insight') + '</span>'
+          + (c.key_stat ? '<div class="insight-stat">' + c.key_stat + '</div>' : '')
+          + '<div class="insight-headline">' + c.headline + '</div>'
+          + '<p class="insight-lede">' + (c.lede || '') + '</p>'
+          + '<a href="/blog/' + c.slug + '" class="insight-link">Read more &rarr;</a>'
+          + '</div>';
+      }).join('');
+
+      if (window.posthog) posthog.capture('merch_insights_shown', { count: cards.length });
+    })
+    .catch(function(e) { console.log('[Merch] Load error:', e); });
+})();
+</script>
+
+<!-- Referral Attribution: capture ref code from URL params and store as cookie -->
+<script>
+(function() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var ref = params.get('ref') || params.get('referral') || params.get('r');
+    if (ref) {
+      // Store referral code in cookie (30-day expiry)
+      var d = new Date(); d.setTime(d.getTime() + 30*24*60*60*1000);
+      document.cookie = 'bj_ref=' + encodeURIComponent(ref) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+      // Also store in localStorage for backup
+      try { localStorage.setItem('bj_ref', ref); } catch(e) {}
+      // Track the referral click
+      if (window.posthog) posthog.capture('referral_link_clicked', { ref_code: ref, source: params.get('utm_source') || 'direct' });
+      console.log('[BJ] Referral code captured:', ref);
+    }
+
+    // Capture referral channel from UTM
+    var channel = params.get('utm_source') || params.get('channel');
+    if (channel) {
+      try { localStorage.setItem('bj_ref_channel', channel); } catch(e) {}
+    }
+  } catch(e) { /* silent */ }
+})();
+</script>
+
+</body>
+</html>
