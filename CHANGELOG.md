@@ -1,3 +1,15 @@
+## v5.88 — Multi-Model Template Validation (2026-02-28)
+
+- **Item #14 complete (Pod 1)**: Created multi-model template validation specification for the Content Engine. Defines 6 validation layers: structure, data fidelity, voice, volumetrics, entity density, and deduplication.
+- **Validation architecture**: Model-agnostic, deterministic checks (regex + math) that run in Edge Function runtime. No LLM-in-the-loop for validation.
+- **Data fidelity rules (DF-1 through DF-6)**: Cross-references every number in generated content against source `story_data` context. Catches hallucinated statistics, reversed comparisons, and false superlatives.
+- **Voice validation**: Programmatic enforcement of Brand Voice Brief — detects meta-commentary, excessive hedging, banned vocabulary, and missing number-first ledes.
+- **Retry logic**: Failed content gets up to 2 retries with rejection reasons appended to generation prompt. Hard-fail (data fidelity) vs soft-fail (voice) severity levels.
+- **Database additions**: `validation_score`, `validation_result` (jsonb), `retry_count`, `model_used`, `generation_latency_ms` columns for `content_stories` table.
+- **Deliverable**: `docs/CONTENT_ENGINE_MULTI_MODEL_VALIDATION.md` committed to repo.
+- **Version surfaces**: version.js v5.88, index.html v5.88, dashboard.html v5.88 (comment + cache-bust ?v=5.88), CHANGELOG.md updated.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
 ## v5.87 — Version Discipline Sync (2026-02-28)
 
 - **Pod 1 version discipline pass**: Synchronized all version surfaces per DEPLOYMENT_PROCESS.md requirements.
