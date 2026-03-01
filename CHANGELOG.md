@@ -1,3 +1,14 @@
+## v5.82 — DataForSEO Entity Extraction for Data Lab (2026-02-28)
+
+- **Item #5 complete**: Ran DataForSEO Keywords Data API (Search Volume + Keywords for Keywords) across 6 Data Lab keyword clusters.
+- **50 keywords analyzed**: Search volume, competition, CPC data for salary-data, hiring-trends, career-level-data, jobs-by-industry, market-dynamics, and data-lab hub pages.
+- **Key findings**: career-level-data has highest volume cluster (2,400/mo for "[role] salary entry level" patterns). "Salary transparency" (1,600/mo) is the anchor for salary-data page. "Hiring velocity" (480/mo) validates hiring-trends H1. "Labor market data" (480/mo) is the real anchor for market-dynamics, not "market dynamics."
+- **FAQ schema recommendations**: 4 questions per page, prioritized by volume. Feeds directly into Item #6 (Pod 2).
+- **Entity overlap map**: Cross-linking strategy between salary-data ↔ career-level-data, salary-data ↔ jobs-by-industry, hiring-trends ↔ market-dynamics.
+- **Zero-volume keywords flagged**: 8 target keywords return zero volume — reframe recommendations included.
+- **Deliverable**: docs/entity-extraction-results.md committed to repo.
+- **Version surfaces**: version.js v5.82.
+
 ## v5.81 — Content Strategy Persona Alignment (2026-02-28)
 
 - **Fiorelli AI Content Framework audit**: Applied persona-driven copy, direct-answer H2s, and entity strategy across all Data Lab pages.
