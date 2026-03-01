@@ -1,3 +1,16 @@
+## v5.81 — Content Strategy Persona Alignment (2026-02-28)
+
+- **Fiorelli AI Content Framework audit**: Applied persona-driven copy, direct-answer H2s, and entity strategy across all Data Lab pages.
+- **salary-data.html**: Title → "Job Market Salary Data 2026", H1 → "What Companies Are Actually Paying in 2026", persona-aligned intro, direct-answer H2s.
+- **hiring-trends.html**: Title updated, H1 → "How Fast Is the Market Moving Right Now?", persona-aligned intro, 3 direct-answer H2s.
+- **career-level-data.html**: Title → "Where You Fit in the Market", H1 updated, persona-aligned intro, direct-answer H2.
+- **jobs-by-industry.html**: Title → "Which Sectors Are Hiring & What They Pay", H1 updated, persona-aligned intro, 2 direct-answer H2s.
+- **market-dynamics.html**: H1 → "Where the Jobs Are Moving", persona-aligned intro, 5 direct-answer H2s.
+- **data-lab.html**: H1 → "Market Intelligence Lab", persona-aligned intro.
+- **index.html**: Schema offers updated from "free during beta" to Free/Starter($20)/Pro($40) tiers. Social proof bar gains Data Lab methodology link.
+- **Pod 1 deliverables**: Brand Voice Brief, Agent Definition, Volumetric Specs created for Content Engine handoff.
+- **Version surfaces**: version.js v5.81, index.html v5.81.
+
 ## v5.80 — FCD Roadmap Update (2026-02-28)
 
 - **Phase 66 added**: FCD Pipeline Cleanup (v5.78) — 2 done cards (cleanup deploy + Supabase infra).
