@@ -1,3 +1,37 @@
+## v5.83 — Pod 2 Content Strategy Sprint (2026-02-28)
+
+- **Item #1 complete**: Added tier-aligned CTAs (Free/Starter $20/Pro $40) to all 6 Data Lab pages with "Start Free" + "See Plans" buttons linking to dashboard signup and pricing page.
+- **Item #2 complete**: Fixed market-dynamics anon key exposure — migrated from direct REST API calls (`/rest/v1/table`) to RPC-based pattern (`/rest/v1/rpc/get_*`). Created 3 new Supabase RPC wrappers: `get_mv_industry_dept_week()`, `get_mv_dept_level_week()`, `get_mv_state_week()`. Reduces API surface area to defined function signatures.
+- **Item #3 complete**: Added methodology footer to data-lab.html hub page (was the only Data Lab page missing it). Describes data sources, ATS platforms, refresh cycles, and classification methodology.
+- **Item #6 complete**: Added FAQPage schema to market-dynamics.html (was the only Data Lab page missing it). 4 questions aligned to entity extraction cluster 5 recommendations: geographic shifts, labor market data, state-level openings, regional industry shifts.
+- **Item #17 complete**: Added mobile chart responsiveness CSS to all 6 Data Lab pages. Charts now use `min-height` with auto sizing below 640px, stat grids switch to 2-column layout, and chart cards gain horizontal scroll for overflow.
+- **Version surfaces**: version.js v5.83, CHANGELOG.md updated.
+- **Database**: 3 new RPC functions created (get_mv_industry_dept_week, get_mv_dept_level_week, get_mv_state_week) with anon EXECUTE grants.
+
+## v5.82 — DataForSEO Entity Extraction for Data Lab (2026-02-28)
+
+- **Item #5 complete**: Ran DataForSEO Keywords Data API (Search Volume + Keywords for Keywords) across 6 Data Lab keyword clusters.
+- **50 keywords analyzed**: Search volume, competition, CPC data for salary-data, hiring-trends, career-level-data, jobs-by-industry, market-dynamics, and data-lab hub pages.
+- **Key findings**: career-level-data has highest volume cluster (2,400/mo for "[role] salary entry level" patterns). "Salary transparency" (1,600/mo) is the anchor for salary-data page. "Hiring velocity" (480/mo) validates hiring-trends H1. "Labor market data" (480/mo) is the real anchor for market-dynamics, not "market dynamics."
+- **FAQ schema recommendations**: 4 questions per page, prioritized by volume. Feeds directly into Item #6 (Pod 2).
+- **Entity overlap map**: Cross-linking strategy between salary-data ↔ career-level-data, salary-data ↔ jobs-by-industry, hiring-trends ↔ market-dynamics.
+- **Zero-volume keywords flagged**: 8 target keywords return zero volume — reframe recommendations included.
+- **Deliverable**: docs/entity-extraction-results.md committed to repo.
+- **Version surfaces**: version.js v5.82.
+
+## v5.81 — Content Strategy Persona Alignment (2026-02-28)
+
+- **Fiorelli AI Content Framework audit**: Applied persona-driven copy, direct-answer H2s, and entity strategy across all Data Lab pages.
+- **salary-data.html**: Title → "Job Market Salary Data 2026", H1 → "What Companies Are Actually Paying in 2026", persona-aligned intro, direct-answer H2s.
+- **hiring-trends.html**: Title updated, H1 → "How Fast Is the Market Moving Right Now?", persona-aligned intro, 3 direct-answer H2s.
+- **career-level-data.html**: Title → "Where You Fit in the Market", H1 updated, persona-aligned intro, direct-answer H2.
+- **jobs-by-industry.html**: Title → "Which Sectors Are Hiring & What They Pay", H1 updated, persona-aligned intro, 2 direct-answer H2s.
+- **market-dynamics.html**: H1 → "Where the Jobs Are Moving", persona-aligned intro, 5 direct-answer H2s.
+- **data-lab.html**: H1 → "Market Intelligence Lab", persona-aligned intro.
+- **index.html**: Schema offers updated from "free during beta" to Free/Starter($20)/Pro($40) tiers. Social proof bar gains Data Lab methodology link.
+- **Pod 1 deliverables**: Brand Voice Brief, Agent Definition, Volumetric Specs created for Content Engine handoff.
+- **Version surfaces**: version.js v5.81, index.html v5.81.
+
 ## v5.80 — FCD Roadmap Update (2026-02-28)
 
 - **Phase 66 added**: FCD Pipeline Cleanup (v5.78) — 2 done cards (cleanup deploy + Supabase infra).
