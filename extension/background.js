@@ -3,6 +3,7 @@
 // v2.1: Application success feedback loop (C4) — autoTracker wired in
 // v2.2: C4 complete — notification firing on confirmation detection (v5.42)
 // v2.15.0: Item #2 — Dynamic contentScript injection on ATS domains (v5.55)
+// v2.17.0: Extension heartbeat for disconnect detection (v6.08)
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
@@ -1496,7 +1497,49 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await loadState();
     keepAlive();
   }
+
+  // Extension heartbeat ping (v6.08)
+  if (alarm.name === 'heartbeat') {
+    sendHeartbeat();
+  }
 });
+
+
+// ============================================================
+// EXTENSION HEARTBEAT — v6.08
+// Pings server every 4 hours so disconnect detection works.
+// Fire-and-forget: failures are silently logged, never block.
+// ============================================================
+
+async function sendHeartbeat() {
+  try {
+    const token = SUPABASE_AUTH_TOKEN;
+    if (!token) {
+      console.log('[heartbeat] No auth token — skipping');
+      return;
+    }
+    const manifest = chrome.runtime.getManifest();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/extension-heartbeat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        extension_id: chrome.runtime.id,
+        extension_version: manifest.version
+      })
+    });
+    if (res.ok) {
+      console.log('[heartbeat] Ping sent — v' + manifest.version);
+    } else {
+      console.warn('[heartbeat] Server returned', res.status);
+    }
+  } catch (e) {
+    console.warn('[heartbeat] Error:', e.message);
+  }
+}
 
 // ============================================================
 // ALARMS SETUP
@@ -1508,6 +1551,9 @@ function setupAlarms() {
 
   // keepAlive: fires every 4 minutes to keep service worker + tab alive
   chrome.alarms.create('keepAlive', { periodInMinutes: 4 });
+
+  // heartbeat: fires every 4 hours for disconnect detection (v6.08)
+  chrome.alarms.create('heartbeat', { periodInMinutes: 240 });
 }
 
 // ============================================================
@@ -1552,6 +1598,7 @@ chrome.action.onClicked.addListener((tab) => {
 // On install or update
 chrome.runtime.onInstalled.addListener(() => {
   setupAlarms();
+  sendHeartbeat(); // Initial heartbeat on install/update (v6.08)
   // Run encrypted storage migration (Item #9)
   if (typeof BJ_CRYPTO_MIGRATION !== 'undefined') {
     BJ_CRYPTO_MIGRATION.migrate().catch(e => console.warn('[BJ] Migration error:', e));
@@ -1565,6 +1612,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // On Chrome startup
 chrome.runtime.onStartup.addListener(() => {
   setupAlarms();
+  sendHeartbeat(); // Heartbeat on browser startup (v6.08)
   loadState().then(async () => {
     checkDailyReset();
     await ensureLoopRunning('onStartup');
