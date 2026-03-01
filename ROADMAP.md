@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-01
 **Target launch:** Monday, March 23, 2026
-**Current version:** v5.89
+**Current version:** v5.90
 
 ---
 
@@ -1017,9 +1017,9 @@
 | **54** PDL Enrichment | 2/2 | v5.64 | ✅ Complete |
 | **55** Workday Discovery + Data Quality | 4/4 | v5.65 | ✅ Complete |
 | **56** SEO Count Accuracy | 4/4 | v5.66 | ✅ Complete |
-| **57** Industry Detail Pages | 0/1 | v5.90 (target) | 🔄 In Progress — Pod 2 active |
+| **57** Industry Detail Pages | 1/1 | v5.90 | ✅ Complete |
 | | | | |
-| **Total** | **~860 done** | **v2.68–v5.89** | **8 in progress, 114 todo, ~15 🚫 blocked** |
+| **Total** | **~870 done** | **v2.68–v5.90** | **7 in progress, 113 todo, ~15 🚫 blocked** |
 
 ### 🚫 Blocked Items Quick Reference (Updated 2026-03-01)
 
@@ -1064,7 +1064,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
-| 2026-03-01 | 57 | #15 | **v5.89: Approval gates for editorial pipeline (Content Strategy Audit #15).** 6-layer validation gate in generate-editorial-content EF. New approve-content EF. DB migration: 8 columns + 2 indexes. Roadmap cards updated. Registration locked. Phase 57 (#16 industry detail pages) started — in progress. |
+| 2026-03-01 | 57 | #15-#16 | **v5.89: Approval gates for editorial pipeline (#15). v5.90: Industry Detail Pages (#16).** 15 industry detail pages, 5 RPCs, 6-layer validation gate, approve-content EF. Content Strategy Audit 19/19 complete. Phase 11 closed. |
 | 2026-02-27 | 51 | CG1–CG5 | **Phase 51: Competitive Gap Closure (v5.55–v5.56).** 5 items from competitive analysis vs FastApply/Huntr/OwlApply. v5.55: Generic/Universal Form Handler (DOM heuristic for any ATS, doubles coverage to 8+) + Manifest Host Permissions Fix (auto-inject on all ATS domains). v5.56: On-Page Status Overlay (floating fill progress widget, `inject-overlay.js`), Cover Letter Generation (`generate-cover-letter` Edge Function, Claude Haiku ~$0.001/letter), Fill Metrics & Feedback Loop (`fillMetrics.js` — PostHog events, Supabase persistence, AI answer ratings). Extension 2.15.0→2.16.0. All 5 items code-complete and deployed. |
 | 2026-02-27 | 49 | EXT1–EXT8 | **Phase 49: Extension Rework & Auto-Apply Infrastructure (v5.26–v5.42).** Complete Chrome extension overhaul adding multi-ATS auto-apply on top of existing LinkedIn scanner. Browser-fill submission chain for 9 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, LinkedIn Easy Apply, Indeed, Workday, generic). AI question answering via Claude Haiku (50/day). Multilingual label detection (FR/ES/DE/IT). Human-simulation typing with bezier cursor paths. autoTracker.js for application success detection + Chrome notification on confirmation (v5.42). 3-layer code obfuscation. Extension RBAC (admin-gated scanner). Greenhouse API token scraping (205/4,204 boards). submit-application EF with Recruitee zero-auth + Greenhouse token-based API submission. Score-gated decision engine: 6 modes, score gate modal, score-resume EF (833 lines), pending_applications state machine, pg_cron expiry. Extension v2.11.0. Roadmap flips: Application auto-detect (done), Auto-apply form-fill (done), Decision engine (done). New items added: auto-apply trigger engine, extension update notification. 20 remaining items documented in EXTENSION_COMPLETION_HANDOFF.docx. |
 | 2026-02-27 | 48 | RH1–RH12 | **Phase 48: Referral Hub Redesign (v5.19–v5.25).** Full 4-phase redesign per spec v3. Phase 1: copy rewrite, hero banner, SVG badge icons, tier names (Signal/Source/Radar/Intel/Clearance), design system alignment (v5.19). Phase 2: leaderboard rewards backend — `leaderboard_rewards` table, `distribute_leaderboard_rewards` RPC (SECURITY DEFINER), pg_cron weekly+monthly, `get_leaderboard` RPC, Resend email template (v5.20). Phase 3: leaderboard frontend — period toggle, reward tier grid, countdown timer, user rank highlight, Earning column, 20-user threshold with progress bar (v5.22). Phase 4: milestone rewards — `referral_milestones` table, `process_tier_bonus` RPC (idempotent credit+Pro grants per tier), `check_clearance_retention` quarterly cron, profile flair system (icons, colored names, TOP REFERRER badge) (v5.25). Bug fixes: tab restore for referrals+ghost tabs, LinkedIn-based referral codes (`marston` instead of `BJ-972148`), `/in/` format links, updated `get_referral_stats` + `generate_referral_code` RPCs. |
@@ -2348,9 +2348,9 @@ All 22 items from the Extension & Platform Remaining Work handoff document are n
 
 ---
 
-## Phase 57: Industry Detail Pages (v5.90) — Mar 1, 2026 🔄 IN PROGRESS
+## Phase 57: Industry Detail Pages (v5.90) — Mar 1, 2026 ✅
 
-**Goal:** Create 15 industry-specific detail pages with live per-industry analytics. Completes Content Strategy Audit Item #16 and closes out Phase 11 (Content & SEO). Pod 2 active.
+**Goal:** Create 15 industry-specific detail pages with live per-industry analytics. Completes Content Strategy Audit Item #16 and closes out Phase 11 (Content & SEO) — all 19/19 items done.
 
 ### v5.90 — Industry Detail Pages (#16)
 
@@ -2416,14 +2416,14 @@ All RPCs use the same CASE-based industry mapping as `get_jobs_by_industry`, par
 | CHANGELOG.md | v5.90 entry |
 | Git tag | v5.90 |
 
-### Content Strategy Audit — Current Status
+### Content Strategy Audit — Final Status
 
-18 of 19 action items from the Content Strategy Audit (Phase 11) are DONE. #16 (Industry Detail Pages) in progress.
+All 19 action items from the Content Strategy Audit (Phase 11) are now DONE:
 
-| Pod | Done | In Progress | Not Started |
-|-----|------|-------------|-------------|
+| Pod | Done | Started | Not Started |
+|-----|------|---------|-------------|
 | Pod 1 (Growth) | 10 | 0 | 0 |
-| Pod 2 (Engineering) | 9 | 1 | 0 |
-| **Total** | **18** | **1** | **0** |
+| Pod 2 (Engineering) | 10 | 0 | 0 |
+| **Total** | **19** | **0** | **0** |
 
-**Phase 57 status: 🔄 IN PROGRESS — Pod 2 building industry detail pages. Target: v5.90.**
+**Phase 57 total: 1 version (v5.90) | 15 industry detail pages + 5 RPCs | Content Strategy Audit complete ✅**
