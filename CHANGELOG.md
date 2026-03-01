@@ -1,3 +1,10 @@
+## v5.84 — Version Sync + Content Sprint Close-Out (2026-02-28)
+
+- **Version sync**: Fixed version drift across surfaces. index.html (v5.81→v5.84), dashboard.html (v5.80→v5.84), version.js (v5.83→v5.84).
+- **Item #10 closed**: Client-side aggregation confirmed complete — all 6 Data Lab pages already wired to Supabase RPCs (get_salary_distribution, get_weekly_job_counts, get_top_companies, etc.) + seo-stats.js hydrates live counts via get_seo_stats() RPC. No additional work needed.
+- **Pod 2 content sprint status**: 6 of 10 items DONE (#1, #2, #3, #6, #10, #17). 4 items NOT STARTED (#11, #13, #15, #16) — all blocked on dependencies.
+- **Version surfaces**: version.js v5.84, index.html v5.84, dashboard.html v5.84, CHANGELOG.md updated.
+
 ## v5.83 — Pod 2 Content Strategy Sprint (2026-02-28)
 
 - **Item #1 complete**: Added tier-aligned CTAs (Free/Starter $20/Pro $40) to all 6 Data Lab pages with "Start Free" + "See Plans" buttons linking to dashboard signup and pricing page.
