@@ -1,12 +1,14 @@
 /* ───────────────────────────────────────────────────────────
    notification-center.js — Notification Center + Opt-In Modal
    Session 2+ of Notification System (Pod 2)
-   v5.98
+   v5.99
    
    Bridges user_notification_preferences + user_notification_state
-   (Session 2 tables) with existing UI in panel-notifications.
+   (Session 2 tables) with existing UI in panel-notifications
+   AND standalone page-notifications.
    Adds opt-in modal for first-login-after-verification flow.
    v5.98: Required transactional lock icons + enforcement
+   v5.99: Standalone Notification Center page support
    ─────────────────────────────────────────────────────────── */
 
 // ═══════════════════════════════════════════════════════════
@@ -262,7 +264,8 @@ async function ncSyncFromUI() {
   if (!currentUser) return;
   try {
     var rows = [];
-    document.querySelectorAll('#notif-pref-matrix tr[data-notif]').forEach(function(row) {
+    // Collect from all notification preference matrices (Applications panel + standalone page)
+    document.querySelectorAll('tr[data-notif]').forEach(function(row) {
       var type = row.dataset.notif;
       var emailOn = row.querySelector('.nch-email')?.checked ?? true;
       var smsOn = row.querySelector('.nch-sms')?.checked ?? false;
@@ -326,9 +329,9 @@ async function ncToggleSmsForType(type, enabled) {
   }
 }
 
-// Render per-type SMS toggles in the notification preference matrix
+// Render per-type SMS toggles in all notification preference matrices (panel + standalone)
 function ncRenderSmsToggles() {
-  var rows = document.querySelectorAll('#notif-pref-matrix tr[data-notif]');
+  var rows = document.querySelectorAll('tr[data-notif]');
   rows.forEach(function(row) {
     var type = row.dataset.notif;
     var smsCell = row.querySelector('.nch-sms');
@@ -367,28 +370,30 @@ function ncRenderSmsToggles() {
 function ncEnforceLockIcons() {
   var locked = NC_CLASSIFICATION.required_transactional || [];
   locked.forEach(function(type) {
-    var row = document.querySelector('tr[data-notif="' + type + '"]');
-    if (!row) return;
-    // Ensure class is present
-    if (!row.classList.contains('notif-locked')) row.classList.add('notif-locked');
-    // Force email toggle checked + disabled
-    var emailToggle = row.querySelector('.nch-email');
-    if (emailToggle) {
-      emailToggle.checked = true;
-      emailToggle.disabled = true;
-      var label = emailToggle.closest('.toggle-switch');
-      if (label) {
-        label.classList.add('disabled');
-        label.title = 'Required — this notification cannot be disabled';
+    // Query both the Applications panel and the standalone Notification Center page
+    var rows = document.querySelectorAll('tr[data-notif="' + type + '"]');
+    rows.forEach(function(row) {
+      // Ensure class is present
+      if (!row.classList.contains('notif-locked')) row.classList.add('notif-locked');
+      // Force email toggle checked + disabled
+      var emailToggle = row.querySelector('.nch-email');
+      if (emailToggle) {
+        emailToggle.checked = true;
+        emailToggle.disabled = true;
+        var label = emailToggle.closest('.toggle-switch');
+        if (label) {
+          label.classList.add('disabled');
+          label.title = 'Required — this notification cannot be disabled';
+        }
       }
-    }
-    // Force SMS toggle disabled
-    var smsToggle = row.querySelector('.nch-sms');
-    if (smsToggle) {
-      smsToggle.disabled = true;
-      var smsLabel = smsToggle.closest('.toggle-switch');
-      if (smsLabel) smsLabel.classList.add('disabled');
-    }
+      // Force SMS toggle disabled
+      var smsToggle = row.querySelector('.nch-sms');
+      if (smsToggle) {
+        smsToggle.disabled = true;
+        var smsLabel = smsToggle.closest('.toggle-switch');
+        if (smsLabel) smsLabel.classList.add('disabled');
+      }
+    });
   });
   console.log('[NC] Required transactional lock icons enforced (' + locked.length + ' types)');
 }
@@ -446,8 +451,18 @@ async function initNotificationCenter() {
     ncEnforceLockIcons();
     ncCheckOptInModal();
 
-    // Add resend confirmation button if not yet verified
+    // Show email confirmation banner on standalone page if not verified
     if (ncState && !ncState.email_verified) {
+      var ncBanner = document.getElementById('nc-email-banner');
+      if (ncBanner) ncBanner.style.display = 'flex';
+
+      // Wire resend button on standalone page
+      var ncResendBtn = document.getElementById('nc-resend-confirm-btn');
+      if (ncResendBtn) {
+        ncResendBtn.addEventListener('click', ncResendConfirmation);
+      }
+
+      // Add resend button to Applications panel (legacy)
       var resendTarget = document.getElementById('nc-resend-target') || document.querySelector('.notif-verify-section');
       if (resendTarget && !document.getElementById('nc-resend-btn')) {
         var btn = document.createElement('button');
@@ -458,18 +473,49 @@ async function initNotificationCenter() {
         btn.addEventListener('click', ncResendConfirmation);
         resendTarget.appendChild(btn);
       }
+    } else if (ncState && ncState.email_verified) {
+      // Hide banner if verified
+      var ncBanner = document.getElementById('nc-email-banner');
+      if (ncBanner) ncBanner.style.display = 'none';
     }
   }, 1500);
-  console.log('[NC] Notification Center initialized (Session 2+, v5.98)');
+  console.log('[NC] Notification Center initialized (Session 2+, v5.99)');
 }
 
-// Hook into existing save button to also sync to new tables
+// Hook into save buttons on both Applications panel and standalone Notification Center
 document.addEventListener('DOMContentLoaded', function() {
+  // Applications panel save button
   var saveBtn = document.getElementById('notif-save-prefs');
   if (saveBtn) {
     saveBtn.addEventListener('click', function() {
       // Small delay to let the existing save complete first
       setTimeout(ncSyncFromUI, 500);
+    });
+  }
+
+  // Standalone Notification Center save button (if present)
+  var ncSaveBtn = document.getElementById('nc-notif-save-prefs');
+  if (ncSaveBtn) {
+    ncSaveBtn.addEventListener('click', function() {
+      setTimeout(ncSyncFromUI, 500);
+    });
+  }
+
+  // Wire standalone notification log filter changes
+  ['nc-nlog-filter-type','nc-nlog-filter-channel','nc-nlog-filter-status'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('change', function() {
+      // Placeholder: future notification log filtering will hook here
+      console.log('[NC] Standalone log filter changed:', id, el.value);
+    });
+  });
+
+  // Wire standalone CSV export
+  var ncExportBtn = document.getElementById('nc-notif-export-csv');
+  if (ncExportBtn) {
+    ncExportBtn.addEventListener('click', function() {
+      console.log('[NC] Standalone CSV export triggered');
+      ncShowToast('Notification log export will be available once the system is active.', 'info');
     });
   }
 });
