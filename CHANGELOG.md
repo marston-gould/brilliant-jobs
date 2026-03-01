@@ -376,3 +376,15 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
+
+## v5.94 — 2026-03-01
+
+### Added
+- **Competitor Comparison Page** (`/compare`) — SEO hub comparing Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter, Glassdoor
+- 12-row feature comparison table (desktop 6-col / mobile card stack)
+- Automated cover letter generation and one-click application submission highlighted as key differentiators
+- 4 competitor deep-dive sections with pain points vs. advantages
+- 8-question FAQ with FAQPage JSON-LD structured data
+- 5 PostHog tracking events
+- `/compare` added to landing page nav and footer, sitemap.xml
+
