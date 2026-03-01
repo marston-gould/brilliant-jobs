@@ -577,6 +577,8 @@ async function reconcileResumeArchive() {
         r.archiveId = inserted.resume_id;
         dirty = true;
         console.log('[resume-sync] Inserted into archive:', r.name);
+        // v6.04: Mark onboarding milestone
+        if (typeof markOnboardingMilestone === 'function') markOnboardingMilestone('resume');
       }
     }
 

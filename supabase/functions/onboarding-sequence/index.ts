@@ -10,6 +10,12 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { fetchWithRetry, TIMEOUT_CONFIGS } from "../_shared/resilience.ts";
+import {
+  onboardWelcomeEmail,
+  onboardResumeNudgeEmail,
+  onboardFilterNudgeEmail,
+  onboardExtensionNudgeEmail,
+} from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -28,6 +34,7 @@ interface OnboardingStep {
   sentField: string;
   completedField: string;
   checkFn: (userId: string) => Promise<boolean>;
+  templateFn: (userName?: string) => { subject: string; html: string };
 }
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -37,6 +44,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     sentField: "welcome_sent_at",
     completedField: "welcome_sent_at", // Welcome is always "completed" once sent
     checkFn: async () => true, // Always eligible
+    templateFn: (name) => onboardWelcomeEmail(name),
   },
   {
     type: "onboard_resume",
@@ -51,6 +59,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
         .eq("user_id", userId);
       return (count ?? 0) === 0; // Eligible if NO resume uploaded
     },
+    templateFn: (name) => onboardResumeNudgeEmail(name),
   },
   {
     type: "onboard_filter",
@@ -65,6 +74,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
         .eq("user_id", userId);
       return (count ?? 0) === 0; // Eligible if NO filter created
     },
+    templateFn: (name) => onboardFilterNudgeEmail(name),
   },
   {
     type: "onboard_extension",
@@ -80,6 +90,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
         .single();
       return !profile?.extension_id; // Eligible if NO extension connected
     },
+    templateFn: (name) => onboardExtensionNudgeEmail(name),
   },
 ];
 
@@ -178,10 +189,10 @@ async function processUserOnboarding(userId: string): Promise<{
     return result;
   }
 
-  // Get user signup time and cohort
+  // Get user signup time, cohort, and name
   const { data: profile } = await sb
     .from("profiles")
-    .select("created_at, cohort_id")
+    .select("created_at, cohort_id, full_name")
     .eq("id", userId)
     .single();
 
@@ -248,8 +259,10 @@ async function processUserOnboarding(userId: string): Promise<{
       }
     }
 
-    // Send the notification via send-notification
+    // Send the notification via send-notification with rendered template
     try {
+      const userName = profile.full_name?.split(" ")[0] || undefined;
+      const template = step.templateFn(userName);
       const sendResult = await fetch(
         `${SUPABASE_URL}/functions/v1/send-notification`,
         {
@@ -262,8 +275,8 @@ async function processUserOnboarding(userId: string): Promise<{
             user_id: userId,
             notification_type: step.type,
             force_channel: "email",
-            // Template will be resolved by send-notification from notification_templates
-            // If no production template exists, send-notification will use fallback from email-templates.ts
+            subject: template.subject,
+            html: template.html,
           }),
         }
       );
