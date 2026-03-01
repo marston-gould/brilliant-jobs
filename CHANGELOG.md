@@ -1,3 +1,14 @@
+## v5.79 — FCD Enrichment Complete + Roadmap Update (2026-02-28)
+- **FCD backfill complete**: 28,898/39,123 companies enriched with industry (73.9%), 24,956 with locality (63.8%)
+- **US companies with jobs**: 78.8% industry coverage, 76.1% locality coverage
+- **5-strategy matching**: exact name, LinkedIn slug→ATS slug, domain, unsquished slug (v1+v3 local scripts)
+- **145 false-match records cleaned**: bananeiras/quadra locality clusters NULLed
+- **Roadmap cards flipped**: Industry enrichment pass (done), FCD Step 2 (progress), Enrich unmatched boards (done), AI pilot (done), AI backfill (progress)
+- **Blockers removed**: Jobs by Location page, Multi-dimensional insight stories now unblocked
+- **JD AI enrichment**: 82.4% complete (93,289/113,179 jobs), cron running autonomously
+- Handoff doc: fcd-enrichment-pipeline-handoff.docx for ongoing automated pipeline
+
+
 ## v5.78 — FCD Pipeline Cleanup (2026-02-28)
 
 - **Deleted superseded PDL scripts**: Removed `scripts/filter-pdl.py`, `scripts/upload-pdl-filtered.sh`, and `supabase/functions/enrich-pdl-batch/` directory — all replaced by FCD equivalents in v5.76/v5.77.
