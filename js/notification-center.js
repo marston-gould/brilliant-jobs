@@ -1,12 +1,12 @@
 /* ───────────────────────────────────────────────────────────
    notification-center.js — Notification Center + Opt-In Modal
    Session 2+ of Notification System (Pod 2)
-   v5.97
+   v5.98
    
    Bridges user_notification_preferences + user_notification_state
    (Session 2 tables) with existing UI in panel-notifications.
    Adds opt-in modal for first-login-after-verification flow.
-   v5.97: Per-type SMS toggle enforcement, resend confirmation
+   v5.98: Required transactional lock icons + enforcement
    ─────────────────────────────────────────────────────────── */
 
 // ═══════════════════════════════════════════════════════════
@@ -360,6 +360,40 @@ function ncRenderSmsToggles() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// REQUIRED TRANSACTIONAL LOCK ENFORCEMENT
+// Ensures required_transactional rows stay locked (checked + disabled)
+// Adds tooltip explaining why these can't be toggled
+// ═══════════════════════════════════════════════════════════
+function ncEnforceLockIcons() {
+  var locked = NC_CLASSIFICATION.required_transactional || [];
+  locked.forEach(function(type) {
+    var row = document.querySelector('tr[data-notif="' + type + '"]');
+    if (!row) return;
+    // Ensure class is present
+    if (!row.classList.contains('notif-locked')) row.classList.add('notif-locked');
+    // Force email toggle checked + disabled
+    var emailToggle = row.querySelector('.nch-email');
+    if (emailToggle) {
+      emailToggle.checked = true;
+      emailToggle.disabled = true;
+      var label = emailToggle.closest('.toggle-switch');
+      if (label) {
+        label.classList.add('disabled');
+        label.title = 'Required — this notification cannot be disabled';
+      }
+    }
+    // Force SMS toggle disabled
+    var smsToggle = row.querySelector('.nch-sms');
+    if (smsToggle) {
+      smsToggle.disabled = true;
+      var smsLabel = smsToggle.closest('.toggle-switch');
+      if (smsLabel) smsLabel.classList.add('disabled');
+    }
+  });
+  console.log('[NC] Required transactional lock icons enforced (' + locked.length + ' types)');
+}
+
+// ═══════════════════════════════════════════════════════════
 // RESEND CONFIRMATION EMAIL
 // Called from UI when user's token has expired
 // ═══════════════════════════════════════════════════════════
@@ -409,6 +443,7 @@ async function initNotificationCenter() {
   // Render per-type SMS toggles once preferences panel is available
   setTimeout(function() {
     ncRenderSmsToggles();
+    ncEnforceLockIcons();
     ncCheckOptInModal();
 
     // Add resend confirmation button if not yet verified
@@ -425,7 +460,7 @@ async function initNotificationCenter() {
       }
     }
   }, 1500);
-  console.log('[NC] Notification Center initialized (Session 2+, v5.97)');
+  console.log('[NC] Notification Center initialized (Session 2+, v5.98)');
 }
 
 // Hook into existing save button to also sync to new tables
@@ -438,3 +473,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
