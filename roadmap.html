@@ -719,7 +719,7 @@ const features = [
   { s: 'done', n: 'Parking lot page', d: 'Built parkinglot.html tracking discovery channels, enrichment tasks, infrastructure debt, and product ideas. Status dots: tested (green), viable (blue), parked (amber), dead (red), idea (purple). Tags for cost, yield, channel, platform. Matches roadmap visual style.', p: 10 },
   { s: 'done', n: 'FCD pipeline Step 1: Build filter script + Edge Function', d: 'Python script (filter-fcd.py) streams 10 GB Free Company Dataset JSON, extracts ATS-matching companies (~50-200 MB output). Edge Function (enrich-fcd-batch) matches unmatched boards against filtered file in Supabase Storage. pg_cron job added but DISABLED.', b: 'pre-launch', p: 10 },
   { s: 'progress', n: 'FCD pipeline Step 2: Run filter + upload data', d: 'Filter ran locally (enrich-fcd-local v1+v3, Feb 28). Backfill complete. Upload filtered output to Supabase Storage still pending for ongoing automated enrichment. See fcd-enrichment-pipeline-handoff.docx. Bucket fcd-enrichment must be created, filter-fcd.py needs rewrite (current version filters on ATS URLs, FCD has none).', b: 'pre-launch', p: 10 },
-  { s: 'todo', n: 'FCD pipeline Step 3: Enable cron (post-launch)', d: 'Enable pg_cron job for enrich-fcd-batch (suggested: weekly). Runs automatically after bulk board imports (Gemini slugs, DataForSEO crawls). Re-run filter-fcd.py only when Free Company Dataset is updated.', b: 'post-launch', p: 10 },
+  { s: 'done', n: 'FCD pipeline Step 3: Cron job created (post-launch activation)', d: 'v5.80: pg_cron job 63 created (enrich-fcd-batch, weekly Sunday 3 AM UTC). DISABLED until data upload. Activate: SELECT cron.alter_job(63, active := true). Old enrich-pdl-batch EF deleted. Old cron job 62 unscheduled.', b: 'post-launch', p: 10 },
 
   // ── Maintenance & Cleanup ──
   { s: 'done', n: 'Staffing agency detection and flagging', d: 'Completed in v5.58–v5.59 (Phase 52). is_staffing_agency on ats_companies (72 boards flagged) and ats_jobs (5,790 jobs backfilled). User-facing staffing toggle in Tuning panel.', p: 10 },
@@ -1611,6 +1611,15 @@ const features = [
 
   // Phase 65: E2E Auto-Apply Verification — Feb 28, 2026 ✅
   { s: 'done', n: 'E2E auto-apply-trigger verification', d: 'Full pipeline verified end-to-end: cron Job 60 (10 min) → new job detection → eligible user resolution (pro plan + subscription + filter + resume) → filter matching (whatPills + wherePills + includeRemote) → idempotency dedup → resume text fetch (7,807 chars from resume_archive) → Anthropic Haiku scoring (85/100, strong fit) → pending_applications insert. Production-ready. Anthropic API credits topped up ($50).', p: 65 },
+
+  // Phase 66: FCD Pipeline Cleanup + Deploy (v5.78) — Feb 28, 2026 ✅
+  { s: 'done', n: 'FCD pipeline cleanup + production deploy', d: 'v5.78: Deleted old PDL artifacts (filter-pdl.py, upload-pdl-filtered.sh, enrich-pdl-batch EF). Updated roadmap PDL→FCD (6 refs). CHANGELOG updated. Version bump v5.78 on all surfaces. Full deploy pipeline: PR #176 (feat→dev), #177 (dev→staging), #178 (staging→main). Tagged v5.78.', p: 66 },
+  { s: 'done', n: 'FCD Supabase infrastructure setup', d: 'v5.78: Created fcd-enrichment Storage bucket (private, 50 MB, JSON only). Unscheduled old pg_cron job 62 (enrich-pdl-batch). Created new pg_cron job 63 (enrich-fcd-batch, weekly Sun 3 AM UTC, DISABLED). Deleted old enrich-pdl-batch Edge Function via CLI (returns 404). Verified enrich-fcd-batch EF responds correctly.', p: 66 },
+
+  // Phase 67: FCD Data Loading (v5.80) — Marston manual
+  { s: 'todo', n: 'Run filter-fcd.py locally against FCD dataset', d: 'Run python3 scripts/filter-fcd.py /path/to/free_company_dataset.json on local machine. Streams 10 GB JSON, filters by non-null industry, extracts linkedin_slug + domain. Output: filtered-companies.json.', b: 'pre-launch', p: 67 },
+  { s: 'todo', n: 'Check output size + upload to Storage', d: 'ls -lh filtered-companies.json — if >50 MB, create ref_fcd_companies table instead (EF reads via LIMIT/OFFSET). If ≤50 MB, upload with: bash scripts/upload-fcd-filtered.sh filtered-companies.json', b: 'pre-launch', p: 67 },
+  { s: 'todo', n: 'Test enrich-fcd-batch + activate cron', d: 'POST to /functions/v1/enrich-fcd-batch with service role key. Verify matches are written correctly. Then activate: SELECT cron.alter_job(63, active := true). Pipeline goes live on next Sunday 3 AM UTC run.', b: 'pre-launch', p: 67 },
 ];
 
 
@@ -1764,7 +1773,9 @@ function render() {
     62: 'Dynamic SEO + FCD Rename (v5.73) ✅',
     63: 'Location Normalization v2 (v5.74) ✅',
     64: 'ATS Handler Expansion (v5.75) ✅',
-    65: 'E2E Auto-Apply Verified ✅'
+    65: 'E2E Auto-Apply Verified ✅',
+    66: 'FCD Pipeline Cleanup (v5.78) ✅',
+    67: 'FCD Data Loading (v5.80)'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
