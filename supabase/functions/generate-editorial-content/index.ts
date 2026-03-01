@@ -119,7 +119,7 @@ Link to: /college-major-outcomes`,
 Data provided: ${JSON.stringify(data)}
 
 Write a 200-300 word article spotlighting this college major's employment outcomes.
-Headline formula: "{Major} Grads: {X} Open Positions Paying ${Y}K"
+Headline formula: "{Major} Grads: {X} Open Positions Paying {Y}K"
 Include: NY Fed metrics (underemployment, median wage) alongside BJ live data (open positions, median posted salary, remote %).
 Chart: Split view — NY Fed metrics left, BJ live metrics right.
 Link to: /college-major-outcomes`,
@@ -139,7 +139,7 @@ Link to: /college-major-outcomes`,
 Data provided: ${JSON.stringify(data)}
 
 Write a 200-300 word article about the wage premium of a bachelor's degree vs high school diploma.
-Headline formula: "College Premium Holds: BA Median ${X}K vs HS $40K — {Y}% Gap"
+Headline formula: "College Premium Holds: BA Median {X}K vs HS $40K — {Y}% Gap"
 Include: the dollar amounts, the percentage gap, how this has trended over time.
 Note this data is from the Federal Reserve Bank of New York.
 Chart: 35-year line chart of BA median vs HS median.
@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
             "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: "claude-haiku-4-5-20241022",
+            model: "claude-haiku-4-5-20251001",
             max_tokens: 2000,
             system: SYSTEM_PROMPT,
             messages: [
@@ -278,11 +278,13 @@ Deno.serve(async (req) => {
           results.push({ id: story.id, story_type: story.story_type, status: "published" });
         }
       } catch (storyErr) {
-        console.error(`Error processing story ${story.id}:`, storyErr);
+        const errMsg = storyErr instanceof Error ? storyErr.message : String(storyErr);
+        console.error(`Error processing story ${story.id}:`, errMsg, storyErr);
         results.push({
           id: story.id,
           story_type: story.story_type,
           status: "error",
+          error: errMsg,
         });
       }
     }
