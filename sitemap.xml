@@ -143,4 +143,21 @@
   <url><loc>https://brilliantjobs.app/trends/ux-designer</loc><lastmod>2026-02-23</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
   <!-- City pages sitemap: see sitemap-cities.xml for 2,178 city landing pages -->
   <url><loc>https://brilliantjobs.app/sitemap-cities.xml</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
+
+  <!-- Industry Detail Pages (v5.90) -->
+  <url><loc>https://brilliantjobs.app/industry/technology</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/healthcare</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/finance</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/consulting-services</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/retail-consumer</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/media-marketing</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/manufacturing</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/real-estate-construction</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/energy</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/education</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/logistics-transport</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/telecom</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/government</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/legal</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+  <url><loc>https://brilliantjobs.app/industry/non-profit</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
 </urlset>
