@@ -2191,3 +2191,712 @@ export function rewriteBatchSummaryEmail(stats: {
     `),
   };
 }
+
+// ═══════════════════════════════════════════════════
+// BATCH 8: REFERRAL NOTIFICATION TEMPLATES (v6.11)
+// 9 templates — White theme. Pod 1 copy delivery.
+// ═══════════════════════════════════════════════════
+
+export function referralInviteEmail(
+  firstName?: string,
+  referralLink?: string,
+  referrerReward?: string,
+  refereeReward?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const link = referralLink || "#";
+  const rReward = referrerReward || "50 credits";
+  const eReward = refereeReward || "7-day Pro trial";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Share Brilliant Jobs, earn ${rReward}`,
+    html: whiteBaseLayout("Invite a Friend", `
+      <div class="card">
+        <div class="card-title">Know someone in the job market, ${name}?</div>
+        <p class="text">Share your personal referral link and you both win. When your friend signs up and creates their first filter, you earn <strong>${rReward}</strong> and they get a <strong>${eReward}</strong>.</p>
+
+        <div style="margin:20px 0;padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;text-align:center;">
+          <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Your referral link</div>
+          <div style="font-size:14px;font-weight:600;color:#1e293b;word-break:break-all;">${link}</div>
+        </div>
+
+        <div style="display:flex;justify-content:space-around;text-align:center;margin:20px 0;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#3b82f6;">You get</div>
+            <div style="font-size:13px;color:#64748b;margin-top:4px;">${rReward}</div>
+          </div>
+          <div style="color:#e2e8f0;font-size:20px;">|</div>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:#22c55e;">They get</div>
+            <div style="font-size:13px;color:#64748b;margin-top:4px;">${eReward}</div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#referrals" class="btn btn-primary">Share Your Link →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralSentConfirmationEmail(
+  firstName?: string,
+  refereeName?: string,
+  referralsSent?: number,
+  activeReferrals?: number,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const friend = refereeName || "your friend";
+  const sent = referralsSent || 1;
+  const active = activeReferrals || 1;
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Referral sent to ${friend}`,
+    html: whiteBaseLayout("Referral Sent", `
+      <div class="card">
+        <div class="card-title">Nice one, ${name}. Your invite is on its way.</div>
+        <p class="text">We just sent your referral to <strong>${friend}</strong>. You'll get a notification when they sign up and again when your reward unlocks.</p>
+
+        <div style="display:flex;justify-content:space-around;text-align:center;margin:20px 0;">
+          <div>
+            <div style="font-size:20px;font-weight:700;color:#3b82f6;">${sent}</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Total sent</div>
+          </div>
+          <div>
+            <div style="font-size:20px;font-weight:700;color:#f59e0b;">${active}</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Pending</div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#referrals" class="btn btn-primary">Track Your Referrals →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralStatusUpdateEmail(
+  firstName?: string,
+  refereeName?: string,
+  status?: string,
+  statusDescription?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const friend = refereeName || "Your friend";
+  const stat = status || "signed_up";
+  const desc = statusDescription || "signed up for Brilliant Jobs";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const statusBadge = stat === "signed_up"
+    ? '<span class="badge badge-blue">Signed Up</span>'
+    : stat === "activated"
+    ? '<span class="badge badge-green">Activated</span>'
+    : '<span class="badge badge-amber">Link Clicked</span>';
+
+  return {
+    subject: `${friend} ${stat === "signed_up" ? "just signed up" : stat === "activated" ? "just activated" : "clicked your link"}`,
+    html: whiteBaseLayout("Referral Update", `
+      <div class="card">
+        <div class="card-title">Progress on your referral, ${name}.</div>
+        <p class="text"><strong>${friend}</strong> ${desc}.</p>
+
+        <div style="text-align:center;margin:16px 0;">
+          ${statusBadge}
+        </div>
+
+        <div style="margin:16px 0;padding:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+          <p style="font-size:13px;color:#166534;margin:0;line-height:1.5;">Once they create their first filter, your reward unlocks automatically.</p>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#referrals" class="btn btn-primary">View Referral Status →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralNudgeRefereeEmail(
+  referrerName?: string,
+  refereeName?: string,
+  refereeReward?: string,
+  referralLink?: string
+): { subject: string; html: string } {
+  const referrer = referrerName || "A friend";
+  const name = refereeName || "there";
+  const reward = refereeReward || "7-day Pro trial";
+  const link = referralLink || "https://brilliantjobs.app";
+
+  return {
+    subject: `${referrer} invited you to Brilliant Jobs — your ${reward} is waiting`,
+    html: whiteBaseLayout("You're Invited", `
+      <div class="card">
+        <div class="card-title">${referrer} thinks you'd love this, ${name}.</div>
+        <p class="text">Brilliant Jobs tracks jobs directly from employer systems — not job boards. That means you see real openings, detect ghost jobs, and apply with AI-optimized resumes.</p>
+        <p class="text">Sign up now and you'll get a <strong>${reward}</strong> to unlock premium features like resume scoring and market intelligence.</p>
+
+        <div class="btn-row">
+          <a href="${link}" class="btn btn-primary">Claim Your ${reward} →</a>
+        </div>
+
+        <p class="text" style="font-size:12px;text-align:center;color:#94a3b8;">Sent because ${referrer} shared their referral link with you.</p>
+      </div>
+    `),
+  };
+}
+
+export function referralConversionEmail(
+  firstName?: string,
+  refereeName?: string,
+  rewardType?: string,
+  rewardAmount?: string,
+  totalEarned?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const friend = refereeName || "Your friend";
+  const rType = rewardType || "credits";
+  const amount = rewardAmount || "50 credits";
+  const total = totalEarned || amount;
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `You earned ${amount} — ${friend} just activated`,
+    html: whiteBaseLayout("Reward Earned", `
+      <div class="card">
+        <div class="card-title">Your referral paid off, ${name}.</div>
+        <p class="text"><strong>${friend}</strong> activated their account and your reward has been applied automatically.</p>
+
+        <div style="text-align:center;margin:24px 0;padding:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+          <div style="font-size:11px;color:#166534;text-transform:uppercase;letter-spacing:0.5px;">Reward earned</div>
+          <div style="font-size:28px;font-weight:700;color:#16a34a;margin-top:4px;">${amount}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">Lifetime earned: ${total}</div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#referrals" class="btn btn-primary">View Your Rewards →</a>
+          <a href="${base}#referrals?action=invite" class="btn btn-gray">Invite More Friends</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralRewardEarnedEmail(
+  firstName?: string,
+  rewardDescription?: string,
+  rewardExpiry?: string,
+  newBalance?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const desc = rewardDescription || "50 credits added to your account";
+  const expiry = rewardExpiry || "";
+  const balance = newBalance || "";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const expiryHtml = expiry ? `<p class="text" style="font-size:12px;color:#f59e0b;">Expires: ${expiry}</p>` : "";
+  const balanceHtml = balance ? `<div style="font-size:13px;color:#64748b;margin-top:8px;">Updated balance: <strong style="color:#1e293b;">${balance}</strong></div>` : "";
+
+  return {
+    subject: `Your referral reward is live`,
+    html: whiteBaseLayout("Reward Applied", `
+      <div class="card">
+        <div class="card-title">Your reward is active, ${name}.</div>
+        <p class="text">${desc}.</p>
+        ${balanceHtml}
+        ${expiryHtml}
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Go to Dashboard →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralExpiringRewardEmail(
+  firstName?: string,
+  rewardDescription?: string,
+  daysLeft?: number,
+  usageSummary?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const desc = rewardDescription || "Your referral credits";
+  const days = daysLeft || 7;
+  const usage = usageSummary || "";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `${desc} expire${days === 1 ? "s" : ""} in ${days} day${days === 1 ? "" : "s"}`,
+    html: whiteBaseLayout("Reward Expiring", `
+      <div class="card">
+        <div class="card-title">Don't let your reward go to waste, ${name}.</div>
+        <p class="text">${desc} will expire in <strong>${days} day${days === 1 ? "" : "s"}</strong>. Use them for resume rewrites, priority scoring, or any premium feature.</p>
+        ${usage ? `<p class="text" style="font-size:13px;">${usage}</p>` : ""}
+
+        <div style="margin:16px 0;padding:14px;background:#fefce8;border:1px solid #fef08a;border-radius:10px;">
+          <p style="font-size:13px;color:#854d0e;margin:0;">After expiry, unused credits are forfeited and cannot be restored.</p>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Use Your Credits Now →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralMilestoneEmail(
+  firstName?: string,
+  milestone?: number,
+  bonusReward?: string,
+  nextMilestone?: number,
+  leaderboardPosition?: number,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const ms = milestone || 5;
+  const bonus = bonusReward || "bonus credits";
+  const next = nextMilestone || ms + 5;
+  const pos = leaderboardPosition || 0;
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const posHtml = pos > 0 ? `<div style="font-size:13px;color:#64748b;margin-top:8px;">You're #${pos} on the referral leaderboard.</div>` : "";
+
+  return {
+    subject: `Milestone reached: ${ms} referrals`,
+    html: whiteBaseLayout("Referral Milestone", `
+      <div class="card">
+        <div class="card-title">You just hit ${ms} referrals, ${name}.</div>
+        <p class="text">That's a real milestone. As a thank you, we've added <strong>${bonus}</strong> to your account.</p>
+        ${posHtml}
+
+        <div style="margin:20px 0;text-align:center;">
+          <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Next milestone</div>
+          <div style="font-size:24px;font-weight:700;color:#3b82f6;margin-top:4px;">${next} referrals</div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#referrals" class="btn btn-primary">Keep Going →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function referralPeriodicSummaryEmail(
+  firstName?: string,
+  totalSent?: number,
+  totalClicked?: number,
+  totalSignedUp?: number,
+  totalActivated?: number,
+  lifetimeEarnings?: string,
+  referralLink?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const sent = totalSent || 0;
+  const clicked = totalClicked || 0;
+  const signedUp = totalSignedUp || 0;
+  const activated = totalActivated || 0;
+  const earnings = lifetimeEarnings || "0 credits";
+  const link = referralLink || "#";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Your referral recap — ${activated} converted this month`,
+    html: whiteBaseLayout("Referral Summary", `
+      <div class="card">
+        <div class="card-title">Monthly referral recap, ${name}.</div>
+
+        <div style="display:flex;justify-content:space-around;text-align:center;margin:20px 0;">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#3b82f6;">${sent}</div>
+            <div style="font-size:11px;color:#94a3b8;">Sent</div>
+          </div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#8b5cf6;">${clicked}</div>
+            <div style="font-size:11px;color:#94a3b8;">Clicked</div>
+          </div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#f59e0b;">${signedUp}</div>
+            <div style="font-size:11px;color:#94a3b8;">Signed up</div>
+          </div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:#22c55e;">${activated}</div>
+            <div style="font-size:11px;color:#94a3b8;">Activated</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin:16px 0;padding:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+          <div style="font-size:11px;color:#166534;text-transform:uppercase;">Lifetime earnings</div>
+          <div style="font-size:22px;font-weight:700;color:#16a34a;margin-top:4px;">${earnings}</div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#referrals" class="btn btn-primary">View Details →</a>
+          <a href="${base}#referrals?action=invite" class="btn btn-gray">Invite More →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+// ═══════════════════════════════════════════════════
+// BATCH 9: BILLING NOTIFICATION TEMPLATES (v6.11)
+// 8 templates — White theme. Required transactional.
+// All ALWAYS ON — user cannot disable.
+// ═══════════════════════════════════════════════════
+
+export function subscriptionConfirmEmail(
+  firstName?: string,
+  planName?: string,
+  amount?: string,
+  billingPeriod?: string,
+  nextRenewal?: string,
+  paymentMethod?: string,
+  receiptUrl?: string,
+  isNewSubscription?: boolean,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const plan = planName || "Pro";
+  const amt = amount || "$24.99";
+  const period = billingPeriod || "monthly";
+  const renewal = nextRenewal || "";
+  const method = paymentMethod || "Card ending ****";
+  const receipt = receiptUrl || "";
+  const isNew = isNewSubscription !== false;
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: isNew ? `Welcome to ${plan} — subscription confirmed` : `${plan} renewal confirmed — ${amt}`,
+    html: whiteBaseLayout("Subscription Confirmed", `
+      <div class="card">
+        <div class="card-title">${isNew ? `You're on ${plan}, ${name}.` : `Renewal confirmed, ${name}.`}</div>
+        ${isNew
+          ? `<p class="text">Your ${plan} subscription is active. You now have access to resume rewrites, priority scoring, market intelligence, and unlimited filters.</p>`
+          : `<p class="text">Your ${plan} subscription renewed successfully.</p>`
+        }
+
+        <div style="margin:16px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Plan</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${plan} (${period})</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Amount</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${amt}</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Payment</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${method}</td></tr>
+            ${renewal ? `<tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;">Next renewal</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;">${renewal}</td></tr>` : ""}
+          </table>
+        </div>
+
+        <div class="btn-row">
+          ${receipt ? `<a href="${receipt}" class="btn btn-gray">View Receipt</a>` : ""}
+          <a href="${base}" class="btn btn-primary">${isNew ? "Get Started →" : "Open Dashboard →"}</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function creditPurchaseReceiptEmail(
+  firstName?: string,
+  creditsAdded?: number,
+  amount?: string,
+  newBalance?: number,
+  perCreditCost?: string,
+  paymentMethod?: string,
+  receiptUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const credits = creditsAdded || 0;
+  const amt = amount || "$0.00";
+  const balance = newBalance || credits;
+  const perCredit = perCreditCost || "";
+  const method = paymentMethod || "Card ending ****";
+  const receipt = receiptUrl || "";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `${credits} credits added to your account`,
+    html: whiteBaseLayout("Credit Purchase Receipt", `
+      <div class="card">
+        <div class="card-title">${credits} credits added, ${name}.</div>
+
+        <div style="margin:16px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Credits</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${credits}</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Amount</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${amt}</td></tr>
+            ${perCredit ? `<tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Per credit</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${perCredit}</td></tr>` : ""}
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Payment</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${method}</td></tr>
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;">New balance</td><td style="padding:8px 0;font-size:13px;color:#22c55e;font-weight:700;text-align:right;">${balance} credits</td></tr>
+          </table>
+        </div>
+
+        <div class="btn-row">
+          ${receipt ? `<a href="${receipt}" class="btn btn-gray">View Receipt</a>` : ""}
+          <a href="${base}" class="btn btn-primary">Open Dashboard →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function paymentFailedEmail(
+  firstName?: string,
+  amount?: string,
+  planName?: string,
+  attemptNumber?: number,
+  gracePeriodEnd?: string,
+  updatePaymentUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const amt = amount || "";
+  const plan = planName || "Pro";
+  const attempt = attemptNumber || 1;
+  const graceEnd = gracePeriodEnd || "";
+  const updateUrl = updatePaymentUrl || "#";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const urgency = attempt <= 1
+    ? { title: "Payment didn't go through", tone: "We couldn't process your payment. This is usually a temporary issue — an expired card or insufficient funds.", bg: "#eff6ff", border: "#bfdbfe", color: "#1e40af" }
+    : attempt <= 2
+    ? { title: "Second payment attempt failed", tone: `We've tried twice to process your ${plan} payment. Please update your payment method to avoid losing access.`, bg: "#fefce8", border: "#fef08a", color: "#854d0e" }
+    : attempt <= 3
+    ? { title: "Action needed — access at risk", tone: `This is our third attempt to process your payment. Your ${plan} features will be suspended${graceEnd ? ` on ${graceEnd}` : " soon"} unless you update your payment method.`, bg: "#fff7ed", border: "#fed7aa", color: "#9a3412" }
+    : { title: "Final notice — account downgraded tomorrow", tone: `We've been unable to process your payment after multiple attempts. Your account will be downgraded to Free${graceEnd ? ` on ${graceEnd}` : " tomorrow"}, and you'll lose access to ${plan} features.`, bg: "#fef2f2", border: "#fecaca", color: "#991b1b" };
+
+  return {
+    subject: attempt <= 1 ? `Payment failed for your ${plan} subscription` : attempt <= 3 ? `Action needed: update your payment method` : `Final notice: ${plan} access ends tomorrow`,
+    html: whiteBaseLayout(urgency.title, `
+      <div class="card">
+        <div class="card-title">${urgency.title}, ${name}.</div>
+
+        <div style="margin:16px 0;padding:14px;background:${urgency.bg};border:1px solid ${urgency.border};border-radius:10px;">
+          <p style="font-size:13px;color:${urgency.color};margin:0;line-height:1.5;">${urgency.tone}</p>
+        </div>
+
+        ${amt ? `<p class="text" style="font-size:13px;">Amount due: <strong>${amt}</strong></p>` : ""}
+
+        <div class="btn-row">
+          <a href="${updateUrl}" class="btn btn-primary">Update Payment Method →</a>
+        </div>
+
+        <p class="text" style="font-size:12px;text-align:center;color:#94a3b8;">If you've already updated your payment, you can safely ignore this. We'll retry automatically.</p>
+      </div>
+    `),
+  };
+}
+
+export function paymentRecoveredEmail(
+  firstName?: string,
+  amount?: string,
+  planName?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const amt = amount || "";
+  const plan = planName || "Pro";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Payment successful — ${plan} access restored`,
+    html: whiteBaseLayout("Payment Recovered", `
+      <div class="card">
+        <div class="card-title">All good, ${name}. Payment went through.</div>
+        <p class="text">Your ${plan} subscription is active again${amt ? ` and we've processed ${amt}` : ""}. All features are fully restored.</p>
+
+        <div style="text-align:center;margin:20px 0;">
+          <span class="badge badge-green">Account Active</span>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Open Dashboard →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function planChangeConfirmEmail(
+  firstName?: string,
+  oldPlan?: string,
+  newPlan?: string,
+  effectiveDate?: string,
+  proratedCredit?: string,
+  featuresGained?: string[],
+  featuresLost?: string[],
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const old = oldPlan || "Free";
+  const newP = newPlan || "Pro";
+  const date = effectiveDate || "immediately";
+  const credit = proratedCredit || "";
+  const gained = featuresGained || [];
+  const lost = featuresLost || [];
+  const base = dashboardUrl || DASHBOARD_URL;
+  const isUpgrade = newP !== "Free" && (old === "Free" || old === "Starter");
+
+  const gainedHtml = gained.length > 0
+    ? `<div style="margin:12px 0;"><div style="font-size:12px;color:#16a34a;font-weight:600;margin-bottom:6px;">What you're gaining:</div>${gained.map(f => `<div style="font-size:13px;color:#1e293b;padding:4px 0;">+ ${f}</div>`).join("")}</div>`
+    : "";
+  const lostHtml = lost.length > 0
+    ? `<div style="margin:12px 0;"><div style="font-size:12px;color:#dc2626;font-weight:600;margin-bottom:6px;">What changes:</div>${lost.map(f => `<div style="font-size:13px;color:#64748b;padding:4px 0;">- ${f}</div>`).join("")}</div>`
+    : "";
+
+  return {
+    subject: isUpgrade ? `Upgraded to ${newP} — welcome aboard` : `Plan changed: ${old} → ${newP}`,
+    html: whiteBaseLayout("Plan Changed", `
+      <div class="card">
+        <div class="card-title">${isUpgrade ? `Welcome to ${newP}, ${name}.` : `Plan change confirmed, ${name}.`}</div>
+        <p class="text">Your plan has been changed from <strong>${old}</strong> to <strong>${newP}</strong>, effective ${date}.</p>
+        ${credit ? `<p class="text" style="font-size:13px;">Prorated credit applied: <strong>${credit}</strong></p>` : ""}
+        ${gainedHtml}
+        ${lostHtml}
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Open Dashboard →</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function subscriptionCancelledEmail(
+  firstName?: string,
+  planName?: string,
+  accessUntil?: string,
+  winBackDiscount?: string,
+  reactivateUrl?: string,
+  surveyUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const plan = planName || "Pro";
+  const until = accessUntil || "end of billing period";
+  const discount = winBackDiscount || "";
+  const reactivate = reactivateUrl || "#";
+  const survey = surveyUrl || "";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const discountHtml = discount
+    ? `<div style="margin:16px 0;padding:14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+        <p style="font-size:13px;color:#1e40af;margin:0;line-height:1.5;"><strong>Changed your mind?</strong> Reactivate within 14 days and get <strong>${discount} off</strong> your next billing cycle.</p>
+        <div style="text-align:center;margin-top:12px;"><a href="${reactivate}" class="btn btn-primary" style="font-size:13px;padding:10px 20px;">Reactivate with ${discount} Off →</a></div>
+      </div>`
+    : "";
+
+  return {
+    subject: `${plan} cancelled — access until ${until}`,
+    html: whiteBaseLayout("Subscription Cancelled", `
+      <div class="card">
+        <div class="card-title">We've cancelled your ${plan} plan, ${name}.</div>
+        <p class="text">You'll keep ${plan} access through <strong>${until}</strong>. After that, your account reverts to Free. Your data, filters, and pipeline history are all preserved — nothing gets deleted.</p>
+
+        <div style="margin:12px 0;">
+          <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px;">On Free, you keep:</div>
+          <div style="font-size:13px;color:#1e293b;padding:3px 0;">1 active filter</div>
+          <div style="font-size:13px;color:#1e293b;padding:3px 0;">Job browsing and pipeline tracking</div>
+          <div style="font-size:13px;color:#1e293b;padding:3px 0;">Basic ghost detection</div>
+        </div>
+
+        ${discountHtml}
+
+        ${survey ? `<p class="text" style="font-size:12px;text-align:center;"><a href="${survey}" style="color:#3b82f6;">Tell us why you're leaving</a> — it takes 30 seconds and helps us improve.</p>` : ""}
+      </div>
+    `),
+  };
+}
+
+export function invoiceGeneratedEmail(
+  firstName?: string,
+  invoiceNumber?: string,
+  amount?: string,
+  period?: string,
+  lineItems?: Array<{ description: string; amount: string }>,
+  pdfUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const inv = invoiceNumber || "";
+  const amt = amount || "$0.00";
+  const per = period || "";
+  const items = lineItems || [];
+  const pdf = pdfUrl || "";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const itemsHtml = items.length > 0
+    ? `<div style="margin:16px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${items.map(i => `<tr><td style="padding:6px 0;font-size:13px;color:#64748b;border-bottom:1px solid #e2e8f0;">${i.description}</td><td style="padding:6px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${i.amount}</td></tr>`).join("")}
+          <tr><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:700;">Total</td><td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:700;text-align:right;">${amt}</td></tr>
+        </table>
+      </div>`
+    : "";
+
+  return {
+    subject: `Invoice ${inv ? inv + " " : ""}for ${per || "your subscription"} — ${amt}`,
+    html: whiteBaseLayout("Invoice", `
+      <div class="card">
+        <div class="card-title">Your invoice is ready, ${name}.</div>
+        ${inv ? `<p class="text" style="font-size:13px;">Invoice #${inv}${per ? ` for ${per}` : ""}</p>` : ""}
+        ${itemsHtml}
+
+        <div class="btn-row">
+          ${pdf ? `<a href="${pdf}" class="btn btn-primary">Download PDF →</a>` : ""}
+          <a href="${base}" class="btn btn-gray">Open Dashboard</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function refundProcessedEmail(
+  firstName?: string,
+  refundAmount?: string,
+  reason?: string,
+  originalTransaction?: string,
+  timelineNote?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const amt = refundAmount || "$0.00";
+  const rsn = reason || "";
+  const orig = originalTransaction || "";
+  const timeline = timelineNote || "5–10 business days";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Refund of ${amt} processed`,
+    html: whiteBaseLayout("Refund Processed", `
+      <div class="card">
+        <div class="card-title">Your refund has been processed, ${name}.</div>
+
+        <div style="margin:16px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Refund amount</td><td style="padding:8px 0;font-size:13px;color:#22c55e;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;">${amt}</td></tr>
+            ${rsn ? `<tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Reason</td><td style="padding:8px 0;font-size:13px;color:#1e293b;text-align:right;border-bottom:1px solid #e2e8f0;">${rsn}</td></tr>` : ""}
+            ${orig ? `<tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Original charge</td><td style="padding:8px 0;font-size:13px;color:#1e293b;text-align:right;border-bottom:1px solid #e2e8f0;">${orig}</td></tr>` : ""}
+            <tr><td style="padding:8px 0;font-size:13px;color:#94a3b8;">Timeline</td><td style="padding:8px 0;font-size:13px;color:#1e293b;text-align:right;">${timeline}</td></tr>
+          </table>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;">The refund will appear on your original payment method within ${timeline}. Your account status has been adjusted accordingly.</p>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Open Dashboard →</a>
+        </div>
+      </div>
+    `),
+  };
+}
