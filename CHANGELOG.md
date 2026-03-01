@@ -1,5 +1,9 @@
 ## v5.84 — Version Sync + Content Sprint Close-Out (2026-02-28)
 
+- **Content Engine unblocked**: Fixed 2 bugs in `generate-editorial-content` Edge Function that had been silently failing since Feb 25.
+  - Bug 1: Stale Claude API model string (`claude-haiku-4-5-20241022` → `claude-haiku-4-5-20251001`). Old model ID no longer exists, causing all API calls to 404.
+  - Bug 2: Unescaped `${Y}` and `${X}` in template literal strings (lines 122, 142) evaluated as JavaScript variables instead of AI prompt placeholders. Crashed `getTemplatePrompt()` for ALL story types.
+  - Result: 10 pending stories successfully published. Content Engine pipeline now fully operational — cron jobs producing daily snapshots, detecting insights, and generating stories.
 - **Version sync**: Fixed version drift across surfaces. index.html (v5.81→v5.84), dashboard.html (v5.80→v5.84), version.js (v5.83→v5.84).
 - **Item #10 closed**: Client-side aggregation confirmed complete — all 6 Data Lab pages already wired to Supabase RPCs (get_salary_distribution, get_weekly_job_counts, get_top_companies, etc.) + seo-stats.js hydrates live counts via get_seo_stats() RPC. No additional work needed.
 - **Pod 2 content sprint status**: 6 of 10 items DONE (#1, #2, #3, #6, #10, #17). 4 items NOT STARTED (#11, #13, #15, #16) — all blocked on dependencies.
