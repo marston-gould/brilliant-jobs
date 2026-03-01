@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v5.98 -->
+<!-- Brilliant Jobs Dashboard v5.99 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -19,11 +19,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=5.98" defer></script>
+  <script src="dist/dashboard.min.js?v=5.99" defer></script>
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=5.98">
+  <link rel="stylesheet" href="styles.css?v=5.99">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -187,6 +187,10 @@
           <span>My Applications</span>
           <div class="nav-badge" id="nav-app-count" style="display:none;">0</div>
           <div class="ext-status-dot" id="app-status-dot" title="Application status" aria-label="Application status" role="status"></div>
+        </div>
+        <div class="nav-item" data-page="notifications">
+          <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          <span>Notifications</span>
         </div>
 
         <div class="nav-section-label">Intelligence</div>
@@ -1504,7 +1508,7 @@
           <div class="app-flow-tabs">
             <div class="app-flow-tab active" data-panel="queue">Queue</div>
             <div class="app-flow-tab" data-panel="rules">Rules &amp; Settings</div>
-            <div class="app-flow-tab" data-panel="notifications">Notifications</div>
+            <div class="app-flow-tab" data-panel="notifications" onclick="event.preventDefault();document.querySelector('[data-page=notifications]').click();">Notifications ↗</div>
             <div class="app-flow-tab" data-panel="history">History</div>
           </div>
 
@@ -1842,6 +1846,145 @@
 
           <!-- NOTIFICATIONS PANEL -->
           <div class="app-flow-panel" id="panel-notifications">
+            <div style="text-align:center;padding:48px 20px;">
+              <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+              <div style="font-size:15px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Notification Center has moved</div>
+              <div style="font-size:13px;color:var(--text-faint);margin-bottom:16px;">Manage all notification preferences from the dedicated Notifications page.</div>
+              <button class="btn btn-primary btn-sm" onclick="document.querySelector('[data-page=notifications]').click();">Open Notification Center →</button>
+            </div>
+          </div>
+          <!-- HISTORY PANEL -->
+          <div class="app-flow-panel" id="panel-history">
+            <div style="overflow-x:auto;">
+              <table class="app-queue-table">
+                <thead>
+                  <tr>
+                    <th>Job</th>
+                    <th>Company</th>
+                    <th>Resume Used</th>
+                    <th>Mode</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="app-history-body">
+                  <tr>
+                    <td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No application history yet</div>
+                      <div style="font-size:12px;">Completed applications will appear here with full audit trail.</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Notification Log -->
+            <div style="margin-top:28px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <div>
+                  <div class="card-title" style="margin:0;">Notification Log</div>
+                  <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status and actions taken</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" id="notif-export-csv" style="font-size:11px;">Export CSV</button>
+              </div>
+              <div class="notif-log-filters">
+                <select id="nlog-filter-type">
+                  <option value="">All types</option>
+                  <option value="auto_apply_confirm">Auto-apply confirm</option>
+                  <option value="apply_alert">Apply alert</option>
+                  <option value="pipeline_response">Pipeline change</option>
+                  <option value="pipeline_interview">Interview/Offer</option>
+                  <option value="new_jobs_daily">New job matches</option>
+                  <option value="ghost_alert">Ghost alert</option>
+                  <option value="weekly_summary">Weekly summary</option>
+                  <option value="credit_low">Credit balance low</option>
+                  <option value="autorefill_success">Auto-refill success</option>
+                  <option value="autorefill_failed">Auto-refill failed</option>
+                  <option value="resume_decay">Resume readiness drop</option>
+                  <option value="company_new_roles">Company new roles</option>
+                </select>
+                <select id="nlog-filter-channel">
+                  <option value="">All channels</option>
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                </select>
+                <select id="nlog-filter-status">
+                  <option value="">All statuses</option>
+                  <option value="sent">Sent</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="opened">Opened</option>
+                  <option value="applied">Applied</option>
+                  <option value="passed">Passed</option>
+                  <option value="missed">Missed</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <div style="overflow-x:auto;">
+                <table class="notif-log-table" id="notif-log-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Type</th>
+                      <th style="width:50px;">Channel</th>
+                      <th>Job / Company</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="notif-log-body">
+                    <tr>
+                      <td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
+                        <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+                        <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No notifications sent yet</div>
+                        <div style="font-size:12px;">Notification history will appear here once the system is active.</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div id="notif-log-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
+            </div>
+          </div>
+          </div><!-- end app-view-list-panel -->
+
+          <!-- BOARD VIEW (pipeline stages) -->
+          <div id="app-view-board-panel" class="app-view-panel">
+            <div class="stat-grid">
+              <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
+              <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
+              <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
+              <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
+            </div>
+            <div class="pl-filter-bar">
+              <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</label>
+              <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
+                <option value="all">All Searches</option>
+              </select>
+            </div>
+            <div id="pl-stages-container-board"></div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ============ NOTIFICATIONS ============ -->
+      <div class="page" id="page-notifications">
+        <div class="page-header">
+          <h2>Notification Center</h2>
+          <p>Manage how and when you receive alerts, digests, and intelligence updates <a class="page-how-link" href="#" onclick="event.preventDefault();togglePageHelp('notifications')">How this works →</a></p>
+        </div>
+        <div class="page-body">
+
+          <!-- Email confirmation status banner (shown for unverified users) -->
+          <div id="nc-email-banner" style="display:none;margin-bottom:16px;padding:12px 16px;background:hsla(var(--warm-hsl),0.08);border:1px solid hsla(var(--warm-hsl),0.2);border-radius:10px;align-items:center;gap:12px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);">Confirm your email to activate notifications</div>
+              <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Check your inbox for the confirmation link. <button id="nc-resend-confirm-btn" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--sans);padding:0;">Resend confirmation</button></div>
+            </div>
+          </div>
+
 
             <!-- Section 2: Notification Preferences Matrix -->
             <div class="card">
@@ -2208,43 +2351,19 @@
             </div>
           </div>
 
-          <!-- HISTORY PANEL -->
-          <div class="app-flow-panel" id="panel-history">
-            <div style="overflow-x:auto;">
-              <table class="app-queue-table">
-                <thead>
-                  <tr>
-                    <th>Job</th>
-                    <th>Company</th>
-                    <th>Resume Used</th>
-                    <th>Mode</th>
-                    <th>Status</th>
-                    <th>Submitted</th>
-                    <th>Source</th>
-                  </tr>
-                </thead>
-                <tbody id="app-history-body">
-                  <tr>
-                    <td colspan="7" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
-                      <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">No application history yet</div>
-                      <div style="font-size:12px;">Completed applications will appear here with full audit trail.</div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
 
-            <!-- Notification Log -->
-            <div style="margin-top:28px;">
+          <!-- Notification Log (standalone) -->
+          <div style="margin-top:8px;">
+            <div class="card">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                 <div>
                   <div class="card-title" style="margin:0;">Notification Log</div>
                   <div class="card-sub" style="margin-top:2px;">All sent notifications with delivery status and actions taken</div>
                 </div>
-                <button class="btn btn-secondary btn-sm" id="notif-export-csv" style="font-size:11px;">Export CSV</button>
+                <button class="btn btn-secondary btn-sm" id="nc-notif-export-csv" style="font-size:11px;">Export CSV</button>
               </div>
               <div class="notif-log-filters">
-                <select id="nlog-filter-type">
+                <select id="nc-nlog-filter-type">
                   <option value="">All types</option>
                   <option value="auto_apply_confirm">Auto-apply confirm</option>
                   <option value="apply_alert">Apply alert</option>
@@ -2259,12 +2378,12 @@
                   <option value="resume_decay">Resume readiness drop</option>
                   <option value="company_new_roles">Company new roles</option>
                 </select>
-                <select id="nlog-filter-channel">
+                <select id="nc-nlog-filter-channel">
                   <option value="">All channels</option>
                   <option value="email">Email</option>
                   <option value="sms">SMS</option>
                 </select>
-                <select id="nlog-filter-status">
+                <select id="nc-nlog-filter-status">
                   <option value="">All statuses</option>
                   <option value="sent">Sent</option>
                   <option value="delivered">Delivered</option>
@@ -2276,7 +2395,7 @@
                 </select>
               </div>
               <div style="overflow-x:auto;">
-                <table class="notif-log-table" id="notif-log-table">
+                <table class="notif-log-table" id="nc-notif-log-table">
                   <thead>
                     <tr>
                       <th>Timestamp</th>
@@ -2286,7 +2405,7 @@
                       <th>Status</th>
                     </tr>
                   </thead>
-                  <tbody id="notif-log-body">
+                  <tbody id="nc-notif-log-body">
                     <tr>
                       <td colspan="5" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
                         <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
@@ -2297,26 +2416,8 @@
                   </tbody>
                 </table>
               </div>
-              <div id="notif-log-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
+              <div id="nc-notif-log-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
             </div>
-          </div>
-          </div><!-- end app-view-list-panel -->
-
-          <!-- BOARD VIEW (pipeline stages) -->
-          <div id="app-view-board-panel" class="app-view-panel">
-            <div class="stat-grid">
-              <div class="stat-card"><div class="stat-val" id="p-total">0</div><div class="stat-label">Total Tracked</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-active">0</div><div class="stat-label">Active</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-response">—</div><div class="stat-label">Response Rate</div></div>
-              <div class="stat-card"><div class="stat-val" id="p-avg-days">—</div><div class="stat-label">Avg Days to Response</div></div>
-            </div>
-            <div class="pl-filter-bar">
-              <label style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Filter:</label>
-              <select class="pl-filter-select" id="pl-filter-select" onchange="filterPipeline(this.value)">
-                <option value="all">All Searches</option>
-              </select>
-            </div>
-            <div id="pl-stages-container-board"></div>
           </div>
 
         </div>

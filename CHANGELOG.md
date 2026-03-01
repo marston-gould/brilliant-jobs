@@ -1,3 +1,21 @@
+## v5.99 — Standalone Notification Center Page (2026-03-01)
+
+### Added
+- **Standalone Notification Center page**: Moved notification preferences from Applications tab to dedicated page at `/notifications` nav route. Full-page layout with all notification management sections (preferences matrix, phone verification, escalation rules, filter overrides, notification log).
+- **New nav item**: "Notifications" bell icon added to Tracking section in sidebar navigation, positioned after Applications and before Intelligence.
+- **Email confirmation banner**: Conditional banner on standalone page for unverified users with resend confirmation button.
+- **Applications tab redirect**: "Notifications ↗" tab in Applications now redirects to standalone Notification Center page with visual redirect prompt (bell icon, "Notification Center has moved" message, redirect button).
+
+### Changed
+- notification-center.js updated for standalone page: `initNotificationCenter()` now wires email banner (`nc-email-banner`), resend button (`nc-resend-confirm-btn`), standalone save button, log filters, and CSV export on the new page.
+- All Notification Log IDs prefixed with `nc-` on standalone page to avoid conflicts (e.g., `nc-notif-log-body`, `nc-nlog-filter-type`).
+- DOMContentLoaded hook now binds event listeners for both Applications panel and standalone page elements.
+- Version bump to v5.99 across version.js, dashboard.html, index.html, notification-center.js.
+- Cache-bust params updated to `?v=5.99`.
+
+### Removed
+- 367 lines of notification panel content removed from Applications tab (replaced with redirect message).
+
 ## v5.98 — Marketing DNS + Required Transactional Lock Icons (2026-03-01)
 
 ### Added
