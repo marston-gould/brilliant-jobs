@@ -12,6 +12,7 @@ var STATS_ROW_CAP = 5000;
 var STATS_DEDUP_CAP = 10000;
 var statsSelectedFilters = safeReadLS('bj_stats_filters', ["__all__"]);
 var _statsDebounce = null;
+var statsCompareMode = false;
 
 // Light-theme ECharts (dark tooltips float over light cards)
 // Color tokens — single source of truth, no hardcoded hsl() in chart functions
@@ -55,6 +56,7 @@ function initStatsPage() {
   if (statsInitialized) { refreshStatsCharts(); return; }
   statsInitialized = true;
   renderFilterPills();
+  initCompareToggle();
   fetchAndRenderStats();
   window.addEventListener('resize', statsResizeAll);
 
@@ -109,6 +111,28 @@ function renderFilterPills() {
 
 function persistFilterSelection() { localStorage.setItem('bj_stats_filters', JSON.stringify(statsSelectedFilters)); }
 
+function initCompareToggle() {
+  var sel = document.getElementById('stats-compare-toggle');
+  if (!sel) return;
+  sel.disabled = false;
+  sel.addEventListener('change', function() {
+    statsCompareMode = sel.value === 'compare';
+    debouncedFetchAndRender();
+  });
+}
+
+async function fetchAndRenderCompare(filterA, filterB) {
+  var rowsA = await fetchFilterData(filterA.sf);
+  var rowsB = await fetchFilterData(filterB.sf);
+  var statsA = aggregateStats(rowsA);
+  var statsB = aggregateStats(rowsB);
+  var colorA = filterColors[filterA.idx % filterColors.length];
+  var colorB = filterColors[filterB.idx % filterColors.length];
+  var nameA = filterA.sf.name || ('Filter ' + (filterA.idx + 1));
+  var nameB = filterB.sf.name || ('Filter ' + (filterB.idx + 1));
+  return { a: { stats: statsA, color: colorA, name: nameA }, b: { stats: statsB, color: colorB, name: nameB } };
+}
+
 // ─── Data ───
 function debouncedFetchAndRender() { clearTimeout(_statsDebounce); _statsDebounce = setTimeout(fetchAndRenderStats, 300); }
 
@@ -117,6 +141,43 @@ async function fetchAndRenderStats() {
   try {
     var configs = getSelectedFilterConfigs();
     if (configs.length === 0) { showEmptyState('no-filters'); return; }
+
+    // Compare mode: exactly 2 filters selected
+    if (statsCompareMode) {
+      var selected = configs.filter(function(c) { return statsSelectedFilters.includes(String(c.idx)); });
+      if (selected.length !== 2 && !statsSelectedFilters.includes('__all__')) {
+        showStatsLoading(false);
+        var warn = document.getElementById('stats-compare-warn');
+        if (warn) { warn.textContent = 'Select exactly 2 filters to compare'; warn.style.display = ''; }
+        return;
+      }
+      if (statsSelectedFilters.includes('__all__') || selected.length !== 2) {
+        showStatsLoading(false);
+        var warn = document.getElementById('stats-compare-warn');
+        if (warn) { warn.textContent = 'Select exactly 2 individual filters to compare (not "All")'; warn.style.display = ''; }
+        return;
+      }
+      var cmp = await fetchAndRenderCompare(selected[0], selected[1]);
+      showStatsLoading(false);
+      var warnEl = document.getElementById('stats-compare-warn');
+      if (warnEl) warnEl.style.display = 'none';
+      renderCompareTimeline(cmp);
+      renderCompareSalary(cmp);
+      renderCompareWorkType(cmp);
+      renderCompareTopCompanies(cmp);
+      renderCompareStatCards(cmp);
+      renderSeniorityBars(cmp.a.stats); // Single series fallback for complex charts
+      renderSalaryByLevel(cmp.a.stats);
+      renderPostingAge(cmp.a.stats);
+      renderGeoMap(cmp.a.stats, configs);
+      renderIndustryBars(cmp.a.stats);
+      renderSourceBreakdown(cmp.a.stats);
+      return;
+    }
+
+    // Hide compare warning
+    var warnEl = document.getElementById('stats-compare-warn');
+    if (warnEl) warnEl.style.display = 'none';
     var allRows = [], anyCapped = false;
     for (var i = 0; i < configs.length; i++) {
       var sf = configs[i].sf, idx = configs[i].idx;
@@ -150,6 +211,8 @@ async function fetchAndRenderStats() {
     renderPostingAge(stats);
     renderGeoMap(stats, configs);
     renderSalaryByLevel(stats);
+    renderIndustryBars(stats);
+    renderSourceBreakdown(stats);
     var notice = document.getElementById('stats-cap-notice');
     if (notice) {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
@@ -184,7 +247,7 @@ async function fetchFilterData(sf) {
 function aggregateStats(rows) {
   var s = { total: rows.length, medianSalary: null, seniorPct: 0, remotePct: 0, companyCount: 0,
     levelCounts: {}, salaryBuckets: {}, topCompanies: [], workTypeCounts: {}, timelineBuckets: {},
-    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0 };
+    salaryByLevel: {}, industryCounts: {}, salaryJobCount: 0, industryNonNull: 0, sourceCounts: {} };
 
   var cos = {}; rows.forEach(function(r) { var ck = r.company_slug || r.company_name; if (ck) cos[ck] = true; });
   s.companyCount = Object.keys(cos).length;
@@ -288,6 +351,12 @@ function aggregateStats(rows) {
       s.industryNonNull++;
       s.industryCounts[r.industry.trim()] = (s.industryCounts[r.industry.trim()]||0) + 1;
     }
+  });
+
+  // ATS Source
+  rows.forEach(function(r) {
+    var src = r.ats_source || 'Unknown';
+    s.sourceCounts[src] = (s.sourceCounts[src]||0) + 1;
   });
 
   // Posting age distribution (days since first_seen_at)
@@ -630,6 +699,29 @@ function renderIndustryBars(stats) {
   }, true);
 }
 
+// ─── C9: ATS Source Breakdown — donut ───
+function renderSourceBreakdown(stats) {
+  var chart = getOrCreateChart('#chart-source'); if (!chart) return;
+  var src = stats.sourceCounts;
+  var sorted = Object.entries(src).sort(function(a,b){return b[1]-a[1];});
+  if (sorted.length === 0) { emptyChart(chart, 'No source data'); return; }
+  var sourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6', 'Unknown':'#475569' };
+  var total = sorted.reduce(function(a,e){return a+e[1];},0);
+  chart.setOption({
+    graphic:[],
+    tooltip: Object.assign({ trigger:'item',
+      formatter:function(p){return '<b>'+p.name+'</b><br/>'+p.value.toLocaleString()+' jobs ('+((p.value/total)*100).toFixed(1)+'%)';}}, ttip()),
+    series: [{ type:'pie', radius:['45%','72%'], center:['50%','55%'],
+      data:sorted.map(function(e){
+        var name = e[0].charAt(0).toUpperCase() + e[0].slice(1);
+        return {name:name, value:e[1], itemStyle:{color:sourceColors[e[0]]||STATS_COLORS[sorted.indexOf(e)%STATS_COLORS.length]}};
+      }),
+      label:{fontSize:11,fontFamily:_T.sans,color:_T.dim,formatter:function(p){return p.name+' '+((p.value/total)*100).toFixed(0)+'%';}},
+      emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,0.2)'}},
+      animationType:'scale', animationDuration:600 }],
+  }, true);
+}
+
 // ─── Posting Age Distribution — bar chart ───
 function renderPostingAge(stats) {
   var chart = getOrCreateChart('#chart-posting-age'); if (!chart) return;
@@ -753,6 +845,108 @@ function renderGeoMap(stats, configs) {
     listEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:'+_T.dark+'">Top 10 Metro Areas</div>' +
       listData.map(function(e,i){return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid '+_T.border+'"><span>'+(i+1)+'. '+e[0]+'</span><span style="font-weight:600">'+e[1].toLocaleString()+'</span></div>';}).join('');
   }
+}
+
+// ─── Compare Mode Renderers (v6.09) ───
+function renderCompareStatCards(cmp) {
+  var a = cmp.a.stats, b = cmp.b.stats;
+  setText('#sc-total', a.total.toLocaleString() + ' vs ' + b.total.toLocaleString());
+  var salA = a.medianSalary ? '$' + Math.round(a.medianSalary/1000) + 'K' : '\u2014';
+  var salB = b.medianSalary ? '$' + Math.round(b.medianSalary/1000) + 'K' : '\u2014';
+  setText('#sc-salary', salA + ' vs ' + salB);
+  setText('#sc-senior', a.seniorPct + '% vs ' + b.seniorPct + '%');
+  setText('#sc-remote', a.remotePct + '% vs ' + b.remotePct + '%');
+  setText('#sc-companies', a.companyCount.toLocaleString() + ' vs ' + b.companyCount.toLocaleString());
+}
+
+function renderCompareTimeline(cmp) {
+  var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
+  var keysA = Object.keys(cmp.a.stats.timelineBuckets).sort();
+  var keysB = Object.keys(cmp.b.stats.timelineBuckets).sort();
+  var allKeys = Array.from(new Set(keysA.concat(keysB))).sort();
+  var labels = allKeys.map(function(k) { var d = new Date(k + 'T00:00:00Z'); return (d.getUTCMonth()+1) + '/' + d.getUTCDate(); });
+  chart.setOption({
+    graphic:[], tooltip: Object.assign({ trigger:'axis' }, ttip()),
+    legend: { data:[cmp.a.name, cmp.b.name], textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:11}, top:0 },
+    grid: { top:30, right:20, bottom:24, left:50 },
+    xAxis: { type:'category', data:labels, axisLabel:STATS_THEME.axisLabel },
+    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    series: [
+      { name:cmp.a.name, type:'bar', data:allKeys.map(function(k){return cmp.a.stats.timelineBuckets[k]||0;}),
+        itemStyle:{color:cmp.a.color}, barGap:'20%' },
+      { name:cmp.b.name, type:'bar', data:allKeys.map(function(k){return cmp.b.stats.timelineBuckets[k]||0;}),
+        itemStyle:{color:cmp.b.color} }
+    ],
+    animation:true, animationDuration:600,
+  }, true);
+}
+
+function renderCompareSalary(cmp) {
+  var chart = getOrCreateChart('#chart-salary'); if (!chart) return;
+  var allBuckets = Object.assign({}, cmp.a.stats.salaryBuckets, cmp.b.stats.salaryBuckets);
+  var labels = Object.keys(allBuckets).sort(function(a,b) {
+    return parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,''));
+  });
+  if (labels.length === 0) { emptyChart(chart, 'No salary data'); return; }
+  chart.setOption({
+    graphic:[], tooltip: Object.assign({ trigger:'axis' }, ttip()),
+    legend: { data:[cmp.a.name, cmp.b.name], textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:11}, top:0 },
+    grid: { top:30, right:20, bottom:30, left:50 },
+    xAxis: { type:'category', data:labels, axisLabel:Object.assign({},STATS_THEME.axisLabel,{rotate:45}) },
+    yAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine, minInterval:1 },
+    series: [
+      { name:cmp.a.name, type:'bar', data:labels.map(function(l){return cmp.a.stats.salaryBuckets[l]||0;}),
+        itemStyle:{color:cmp.a.color}, barGap:'20%' },
+      { name:cmp.b.name, type:'bar', data:labels.map(function(l){return cmp.b.stats.salaryBuckets[l]||0;}),
+        itemStyle:{color:cmp.b.color} }
+    ],
+    animation:true, animationDuration:600,
+  }, true);
+}
+
+function renderCompareWorkType(cmp) {
+  var chart = getOrCreateChart('#chart-location'); if (!chart) return;
+  var cats = ['Remote','On-site','Hybrid','Unspecified'];
+  chart.setOption({
+    graphic:[], tooltip: Object.assign({ trigger:'axis' }, ttip()),
+    legend: { data:[cmp.a.name, cmp.b.name], textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:11}, top:0 },
+    grid: { top:30, right:20, bottom:24, left:80 },
+    xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine },
+    yAxis: { type:'category', data:cats, axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11 } },
+    series: [
+      { name:cmp.a.name, type:'bar', data:cats.map(function(c){return cmp.a.stats.workTypeCounts[c]||0;}),
+        itemStyle:{color:cmp.a.color}, barGap:'20%' },
+      { name:cmp.b.name, type:'bar', data:cats.map(function(c){return cmp.b.stats.workTypeCounts[c]||0;}),
+        itemStyle:{color:cmp.b.color} }
+    ],
+    animation:true, animationDuration:600,
+  }, true);
+}
+
+function renderCompareTopCompanies(cmp) {
+  var chart = getOrCreateChart('#chart-companies'); if (!chart) return;
+  // Merge top companies from both
+  var merged = {};
+  cmp.a.stats.topCompanies.forEach(function(e) { if (!merged[e[0]]) merged[e[0]] = {a:0,b:0}; merged[e[0]].a = e[1]; });
+  cmp.b.stats.topCompanies.forEach(function(e) { if (!merged[e[0]]) merged[e[0]] = {a:0,b:0}; merged[e[0]].b = e[1]; });
+  var sorted = Object.entries(merged).sort(function(x,y){return (y[1].a+y[1].b)-(x[1].a+x[1].b);}).slice(0,10);
+  if (sorted.length === 0) { emptyChart(chart, 'No industry data'); return; }
+  var rev = sorted.slice().reverse();
+  chart.setOption({
+    graphic:[], tooltip: Object.assign({ trigger:'axis', axisPointer:{type:'shadow'} }, ttip()),
+    legend: { data:[cmp.a.name, cmp.b.name], textStyle:{color:_T.dim,fontFamily:_T.sans,fontSize:11}, top:0 },
+    grid: { top:30, right:30, bottom:10, left:120 },
+    xAxis: { type:'value', axisLabel:STATS_THEME.axisLabel, splitLine:STATS_THEME.splitLine },
+    yAxis: { type:'category', data:rev.map(function(e){return truncName(e[0],20);}),
+      axisLabel:{ color:_T.dim, fontFamily:_T.sans, fontSize:11 } },
+    series: [
+      { name:cmp.a.name, type:'bar', data:rev.map(function(e){return e[1].a;}),
+        itemStyle:{color:cmp.a.color}, barGap:'20%' },
+      { name:cmp.b.name, type:'bar', data:rev.map(function(e){return e[1].b;}),
+        itemStyle:{color:cmp.b.color} }
+    ],
+    animation:true, animationDuration:600,
+  }, true);
 }
 
 // ─── Loading / Empty (no inline styles) ───

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v6.08 -->
+<!-- Brilliant Jobs Dashboard v6.09 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -2499,12 +2499,13 @@
           <div id="stats-filter-bar" class="stats-filter-bar">
             <div id="stats-filter-pills"></div>
             <div class="stats-mode-dropdown">
-              <select disabled title="Compare mode coming soon — compare two filters side by side">
-                <option selected>Aggregate</option>
-                <option disabled>Compare (coming soon)</option>
+              <select id="stats-compare-toggle" title="Compare two filters side by side">
+                <option value="aggregate" selected>Aggregate</option>
+                <option value="compare">Compare</option>
               </select>
             </div>
           </div>
+          <div id="stats-compare-warn" class="stats-cap-notice" style="display:none;color:var(--warning);"></div>
 
           <!-- Stat cards -->
           <div class="stat-grid" id="stats-cards">
@@ -2555,6 +2556,14 @@
                 <div id="chart-geo-map" style="flex:1;min-width:0;height:400px"></div>
                 <div id="chart-geo-list" style="width:260px;max-height:400px;overflow-y:auto;font-size:12px;font-family:'JetBrains Mono',monospace"></div>
               </div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">ATS Source Breakdown</div>
+              <div class="ec" id="chart-source" style="width:100%;height:300px"></div>
+            </div>
+            <div class="stats-chart-card">
+              <div class="stats-chart-title">Industry Detail</div>
+              <div class="ec" id="chart-industry" style="width:100%;height:300px"></div>
             </div>
 
           </div><!-- /stats-tab-content-market -->
