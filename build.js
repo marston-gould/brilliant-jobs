@@ -19,6 +19,7 @@ const jsFiles = [
   'js/settings.js',
   'js/stats.js',
   'js/admin.js',
+  'js/admin-notifications.js',
   'js/billing.js',
   'js/micro-surveys.js',
   'js/rewrite.js',
