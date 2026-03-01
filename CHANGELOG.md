@@ -1,3 +1,38 @@
+## v6.09 — Stats Charts: Compare Mode + ATS Source Breakdown (2026-03-01)
+
+### Stats Page — Compare Mode
+- **Compare toggle enabled**: Select dropdown switches between Aggregate (union of all selected filters) and Compare (dual-series side-by-side). Previously disabled with "coming soon" label.
+- **Dual-series charts**: When Compare mode is active with exactly 2 filters selected, Timeline, Salary Distribution, Work Arrangement, and Top Companies charts render two color-coded series with legend. Filter colors match the saved filter palette.
+- **Compare stat cards**: Summary cards show "X vs Y" format (e.g., "1,234 vs 567" for job counts).
+- **Validation**: Shows warning if fewer or more than 2 individual filters are selected, or if "All" is selected in compare mode.
+
+### Stats Page — New Charts
+- **ATS Source Breakdown (donut)**: New chart showing job distribution across Greenhouse, Lever, Ashby, Workable, Recruitee, USAJobs. Color-coded per platform.
+- **Industry Detail (horizontal bars)**: Dedicated industry breakdown chart (`#chart-industry`). Renders top 10 industries with coverage threshold check. Previously existed as function but was not wired to a container.
+- **Industry Treemap relabeled**: Existing treemap chart on `#chart-companies` now properly labeled as "Jobs by Industry" (was already rendering industry data).
+
+### Data Layer
+- **sourceCounts aggregation**: Added `ats_source` counting to `aggregateStats()` function. Feeds the new ATS Source donut chart.
+- **Compare data fetching**: New `fetchAndRenderCompare()` function fetches both filters independently, aggregates separately, and passes paired stats to compare renderers.
+
+### Version Bump
+- `js/version.js`: v6.08 → v6.09
+- `dashboard.html`: version comment v6.09
+- `index.html`: version comment v6.09
+- Browser console: `[BJ] Dashboard v6.09 loaded`
+
+### Changed
+- `js/version.js`: v6.08 → v6.09
+- `js/stats.js`: +130 lines — compare mode state, toggle init, compare renderers (5 functions), ATS source chart, wired industry bars
+- `dashboard.html`: version comment v6.09, compare toggle enabled, ATS Source + Industry Detail chart containers added, compare warning div
+- `index.html`: version comment v6.09
+
+### Notification System Progress
+- Sessions 1-7: ✅ Complete (v6.01–v6.08)
+- Session 8 (Stats, Trends + Market Intel): Pending Pod 1 Batch 6 copy
+- v6.09: Unblocked stats chart work (compare mode + ATS source) shipped while Session 8 blocked
+
+
 ## v6.08 — Session 7: Extension Notifications + Heartbeat Monitoring (2026-03-01)
 
 ### Database Migration
