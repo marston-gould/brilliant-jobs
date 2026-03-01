@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v5.92 -->
+<!-- Brilliant Jobs Landing Page v5.93 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -1581,9 +1581,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ============================================================
-    // SIGNUP
+    // SIGNUP (registration locked — form empty, guard against null)
     // ============================================================
-    $('#signup-btn').addEventListener('click', async () => {
+    var signupBtn = $('#signup-btn');
+    if (signupBtn) signupBtn.addEventListener('click', async () => {
       await loadSupabase();
       var msgEl = $('#signup-msg');
       msgEl.className = 'msg'; msgEl.style.display = 'none';
