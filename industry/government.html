@@ -171,6 +171,40 @@
 <script>
 window.addEventListener('DOMContentLoaded',function(){try{var _sb=typeof supabase!=='undefined'?supabase.createClient('https://qojhagupdnbtomfoxnsf.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg'):null;if(_sb)_sb.auth.getSession().then(function(r){if(r.data&&r.data.session){var el=document.getElementById('dash-link');if(el)el.style.display='inline-block';}});}catch(e){}});
 </script>
+<script>
+document.addEventListener('DOMContentLoaded',async function(){
+  var RPC='https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1/rpc/';
+  var AK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+  var HD={'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json'};
+  var IND='Government';
+  var CACHE_TTL=86400000;
+  function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_ind_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
+  function cSet(k,d){try{localStorage.setItem('bj_ind_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
+  async function rpc(fn,params){var ck=fn+'_'+IND;var c=cGet(ck);if(c)return c;var r=await fetch(RPC+fn,{method:'POST',headers:HD,body:JSON.stringify(params||{})});var d=await r.json();cSet(ck,d);return d}
+
+  var TT={backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
+  var AL={color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
+  var SP={lineStyle:{color:'#151820'}};
+  var NO={show:false};
+  var PAL=['#3b82f6','#22c55e','#a855f7','#f59e0b','#06b6d4','#ec4899','#6366f1','#ef4444','#14b8a6','#f97316','#8b5cf6','#0ea5e9'];
+  function fmt(n){return n>=1000?(n/1000).toFixed(n>=10000?0:1)+'K':String(n)}
+  function fmtM(n){if(!n)return'N/A';return'$'+Math.round(n/1000)+'K'}
+  function el(id){return document.getElementById(id)}
+  var chs=[];
+  function I(id){var e=document.getElementById(id);if(!e)return null;var c=echarts.init(e);chs.push(c);return c}
+
+  var p={p_industry:IND};
+  var [detail,companies,depts,salDist,seniority]=await Promise.all([
+    rpc('get_industry_detail',p),rpc('get_industry_top_companies',p),
+    rpc('get_industry_departments',p),rpc('get_industry_salary_distribution',p),
+    rpc('get_industry_seniority',p)
+  ]);
+
+  // Stat cards
+  if(detail){
+    el('s-jobs').textContent=Number(detail.total_jobs||0).toLocaleString();
+    el('s-salary').textContent=fmtM(detail.median_salary);
+    el('s-companies').textContent=Number(detail.unique_companies||0).toLocaleString();
     var remotePct=detail.total_jobs?Math.round((detail.remote_jobs/detail.total_jobs)*100):0;
     el('s-remote').textContent=remotePct+'%';
     var salPct=detail.total_jobs?Math.round((detail.jobs_with_salary/detail.total_jobs)*100):0;

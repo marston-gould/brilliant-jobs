@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
 **Last updated:** 2026-03-01
-**Target launch:** March 2026
-**Current version:** v5.90
+**Target launch:** Monday, March 23, 2026
+**Current version:** v5.89
 
 ---
 
@@ -464,7 +464,7 @@
 | I8 | Email delivery verified | v3.77 | ✅ | Resend domain (brilliantjobs.app) verified. Welcome email sends. Daily digest sends. Idempotency dedup confirmed (1 log entry, not 2). |
 | I9 | pg_cron schedules active | v3.77 | ✅ | daily-digest (8am ET), weekly-summary (Mon 8am ET), escalation-checker (every 2h), job-intelligence (5am UTC). |
 
-### Phase 3: SMS System — 🔲 Not Started
+### Phase 3: SMS System — 🔲 Not Started (Post-Launch)
 
 | # | Item | Est. | Status | Blocker |
 |---|------|------|--------|---------|
@@ -735,56 +735,56 @@
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| Q1 | Replace all `alert()` with `showToast()` | 30min | 🔲 | settings.js: 3 `alert()` calls → `showToast()`. Already available globally from globals.js. |
-| Q2 | Standardize logo mark CSS across pages | 15min | 🔲 | index.html: 30×30px white bg. pricing.html: 32×32px translucent bg. help.html: 22×22px accent bg. → Unified `.brand-mark` class: 32×32px, `#fff`, `border-radius:8px`, `color:var(--nav-bg)`. |
-| Q3 | Add `aria-hidden="true"` to decorative nav SVGs | 20min | 🔲 | All 11 nav icons are inline SVGs with no aria labels. Add `aria-hidden="true"` where adjacent text label exists. |
-| Q4 | Fix empty state microcopy (3 strings) | 10min | 🔲 | "No resumes uploaded" → "No resumes yet — drop one here and we'll show you how it stacks up." "No saved filters" → "No searches saved yet. Build your first one to start seeing jobs." "No data to export yet." → "Nothing to export yet — start tracking applications and your data will appear here." |
-| Q5 | Add "Searching..." disabled state to search button | 20min | 🔲 | Disable search button during async query execution, show "Searching..." text, re-enable on complete. |
-| Q6 | Hide "0 beta users" social proof section | 5min | 🔲 | Add minimum threshold check (100 users / 1K applications) before rendering social proof counters on landing page. |
-| Q7 | Unify CTA text to "Start Free" | 15min | 🔲 | Replace 5 CTA variants ("Get Started — It's Free", "Get Started Free", "Sign Up Free", "Create Your Free Account") with "Start Free" globally. |
-| Q8 | Self-host fonts on help.html | 5min | 🔲 | Replace Google Fonts CDN reference with same `@font-face` declarations used on index/dashboard/pricing. |
-| Q9 | Rename "Be Brilliant" to "Get Started" | 5min | 🔲 | Nav label + page header. Subheading: "Five steps, three minutes. Then your search runs itself." |
-| Q10 | Add admin confirmation modals for write actions | 45min | 🔲 | Entitlements, Cohorts, Users tabs — confirm dialog before any data mutation: "You're about to change X. This takes effect immediately. Confirm?" |
+| Q1 | Replace all `alert()` with `showToast()` | 30min | ✅ | settings.js: 3 `alert()` calls → `showToast()`. Already available globally from globals.js. |
+| Q2 | Standardize logo mark CSS across pages | 15min | ✅ | index.html: 30×30px white bg. pricing.html: 32×32px translucent bg. help.html: 22×22px accent bg. → Unified `.brand-mark` class: 32×32px, `#fff`, `border-radius:8px`, `color:var(--nav-bg)`. |
+| Q3 | Add `aria-hidden="true"` to decorative nav SVGs | 20min | ✅ | All 11 nav icons are inline SVGs with no aria labels. Add `aria-hidden="true"` where adjacent text label exists. |
+| Q4 | Fix empty state microcopy (3 strings) | 10min | ✅ | "No resumes uploaded" → "No resumes yet — drop one here and we'll show you how it stacks up." "No saved filters" → "No searches saved yet. Build your first one to start seeing jobs." "No data to export yet." → "Nothing to export yet — start tracking applications and your data will appear here." |
+| Q5 | Add "Searching..." disabled state to search button | 20min | ✅ | Disable search button during async query execution, show "Searching..." text, re-enable on complete. |
+| Q6 | Hide "0 beta users" social proof section | 5min | ✅ | Add minimum threshold check (100 users / 1K applications) before rendering social proof counters on landing page. |
+| Q7 | Unify CTA text to "Start Free" | 15min | ✅ | Replace 5 CTA variants ("Get Started — It's Free", "Get Started Free", "Sign Up Free", "Create Your Free Account") with "Start Free" globally. |
+| Q8 | Self-host fonts on help.html | 5min | ✅ | Replace Google Fonts CDN reference with same `@font-face` declarations used on index/dashboard/pricing. |
+| Q9 | Rename "Be Brilliant" to "Get Started" | 5min | ✅ | Nav label + page header. Subheading: "Five steps, three minutes. Then your search runs itself." |
+| Q10 | Add admin confirmation modals for write actions | 45min | ✅ | Entitlements, Cohorts, Users tabs — confirm dialog before any data mutation: "You're about to change X. This takes effect immediately. Confirm?" |
 
 ### Sprint 1: Pricing & Messaging Unification (v4.14) — Est. 4h
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| Q11 | Unify pricing across landing ↔ pricing ↔ Stripe | 2h | 🔲 | Landing page shows Free/Pro $29/Success $149. Pricing page shows Free/Starter $20/Pro $40. Stripe has Free/Starter $20/Pro $40. Pick one source of truth (Stripe), render dynamically everywhere. Remove "Success" plan from landing if deprecated, or add to pricing.html if active. |
-| Q12 | Standardize "saved filters" vs "saved searches" | 30min | 🔲 | Pick "saved searches" (more intuitive) and rename all user-facing instances. Internal code can keep `bj_saved_filters` key. |
-| Q13 | Add credits explanation to landing page | 30min | 🔲 | Single line on pricing cards: "Includes X credits/mo for AI features." Add "What are credits?" FAQ entry. |
-| Q14 | Reconcile job/company count discrepancies | 30min | 🔲 | Landing: "350K+ jobs / 38K+ companies." Be Brilliant: "110K+ / 1,900+ (Greenhouse only)." Make Be Brilliant explicit: "Currently indexing 110K+ on Greenhouse — with Lever, Workday, Ashby expanding the index." Landing pulls from `get_landing_stats()` RPC dynamically. |
-| Q15 | Fix help.html product description mismatch | 30min | 🔲 | Current help.html describes LinkedIn scraping workflow ("Harvest connections", "Scan profiles"). Split into: (1) Dashboard help at `/help` — filters, resumes, pipeline, billing. (2) Extension help — current content, served only in extension popup and Setup page. |
+| Q11 | Unify pricing across landing ↔ pricing ↔ Stripe | 2h | ✅ | Landing page shows Free/Pro $29/Success $149. Pricing page shows Free/Starter $20/Pro $40. Stripe has Free/Starter $20/Pro $40. Pick one source of truth (Stripe), render dynamically everywhere. Remove "Success" plan from landing if deprecated, or add to pricing.html if active. |
+| Q12 | Standardize "saved filters" vs "saved searches" | 30min | ✅ | Pick "saved searches" (more intuitive) and rename all user-facing instances. Internal code can keep `bj_saved_filters` key. |
+| Q13 | Add credits explanation to landing page | 30min | ✅ | Single line on pricing cards: "Includes X credits/mo for AI features." Add "What are credits?" FAQ entry. |
+| Q14 | Reconcile job/company count discrepancies | 30min | ✅ | Landing: "350K+ jobs / 38K+ companies." Be Brilliant: "110K+ / 1,900+ (Greenhouse only)." Make Be Brilliant explicit: "Currently indexing 110K+ on Greenhouse — with Lever, Workday, Ashby expanding the index." Landing pulls from `get_landing_stats()` RPC dynamically. |
+| Q15 | Fix help.html product description mismatch | 30min | ✅ | Current help.html describes LinkedIn scraping workflow ("Harvest connections", "Scan profiles"). Split into: (1) Dashboard help at `/help` — filters, resumes, pipeline, billing. (2) Extension help — current content, served only in extension popup and Setup page. |
 
 ### Sprint 2: Resume-First Onboarding Flow (v4.15) — Est. 3d
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| Q16 | `extract-resume-profile` Edge Function | 4h | 🔲 | New EF using Claude Haiku. Input: resume text. Output: JSON `{ titles: [], locations: [], seniority: string, skills: [], industries: [], salary_range: string }`. Reuses existing resume text extraction (pdf.js/mammoth). |
-| Q17 | Resume-First onboarding card UI | 4h | 🔲 | After first login (no saved filters), show single card: "Let's find jobs that match you." Drop zone + "Skip for now — I'll build my own search →". Replaces Be Brilliant as default first-visit page. |
-| Q18 | Resume intelligence summary card | 3h | 🔲 | After extraction, show: "Here's what we found in your resume:" with editable tags for titles, locations, seniority, skills. Buttons: "Looks right — find my jobs →" / "Let me adjust →" |
-| Q19 | Auto-generated filter from resume profile | 3h | 🔲 | Create saved filter from extracted data: titles → whatPills, locations → wherePills, skills → keyword pills. Run search immediately. Show: "We found X jobs matching your resume." |
-| Q20 | Onboarding milestone tracking | 2h | 🔲 | Track completion: `onboarding_step` in profiles (0=new, 1=resume_uploaded, 2=profile_extracted, 3=filter_created, 4=first_search_run). Progressive nav disclosure tied to steps. |
+| Q16 | `extract-resume-profile` Edge Function | 4h | ✅ | New EF using Claude Haiku. Input: resume text. Output: JSON `{ titles: [], locations: [], seniority: string, skills: [], industries: [], salary_range: string }`. Reuses existing resume text extraction (pdf.js/mammoth). |
+| Q17 | Resume-First onboarding card UI | 4h | ✅ | After first login (no saved filters), show single card: "Let's find jobs that match you." Drop zone + "Skip for now — I'll build my own search →". Replaces Be Brilliant as default first-visit page. |
+| Q18 | Resume intelligence summary card | 3h | ✅ | After extraction, show: "Here's what we found in your resume:" with editable tags for titles, locations, seniority, skills. Buttons: "Looks right — find my jobs →" / "Let me adjust →" |
+| Q19 | Auto-generated filter from resume profile | 3h | ✅ | Create saved filter from extracted data: titles → whatPills, locations → wherePills, skills → keyword pills. Run search immediately. Show: "We found X jobs matching your resume." |
+| Q20 | Onboarding milestone tracking | 2h | ✅ | Track completion: `onboarding_step` in profiles (0=new, 1=resume_uploaded, 2=profile_extracted, 3=filter_created, 4=first_search_run). Progressive nav disclosure tied to steps. |
 
 ### Sprint 3: Navigation & Architecture Polish (v4.16) — Est. 2d
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| Q21 | Progressive nav disclosure for new users | 4h | 🔲 | On first login show 3 nav items: Get Started, Jobs, Settings. Unlock Tuning after first filter save, Resumes after first upload, Pipeline after first job save. |
-| Q22 | Merge Applications + Pipeline into single view | 4h | 🔲 | Single "My Applications" page with `[List | Board]` toggle. List = current Applications, Board = current Pipeline kanban. |
-| Q23 | Add "Global Rules" crosslink in filter builder | 1h | 🔲 | Banner above filter builder: "Rules that apply to ALL searches: US-only ✓, 3 excluded titles. [Edit Global Rules →]". Links to Tuning page. |
-| Q24 | Migrate saved filters to Supabase | 4h | 🔲 | Move `bj_saved_filters` from localStorage to Supabase `user_filters` table. Same pattern as pipeline migration (P1). localStorage as cache only. |
-| Q25 | Migrate tuning settings to Supabase | 3h | 🔲 | Move `bj_tuning` from localStorage to Supabase `user_tuning` table. Enables cross-device sync. |
+| Q21 | Progressive nav disclosure for new users | 4h | ✅ | On first login show 3 nav items: Get Started, Jobs, Settings. Unlock Tuning after first filter save, Resumes after first upload, Pipeline after first job save. |
+| Q22 | Merge Applications + Pipeline into single view | 4h | ✅ | Single "My Applications" page with `[List | Board]` toggle. List = current Applications, Board = current Pipeline kanban. |
+| Q23 | Add "Global Rules" crosslink in filter builder | 1h | ✅ | Banner above filter builder: "Rules that apply to ALL searches: US-only ✓, 3 excluded titles. [Edit Global Rules →]". Links to Tuning page. |
+| Q24 | Migrate saved filters to Supabase | 4h | ✅ | Move `bj_saved_filters` from localStorage to Supabase `user_filters` table. Same pattern as pipeline migration (P1). localStorage as cache only. |
+| Q25 | Migrate tuning settings to Supabase | 3h | ✅ | Move `bj_tuning` from localStorage to Supabase `user_tuning` table. Enables cross-device sync. |
 
 ### Sprint 4: Accessibility & Interaction Polish (v4.17) — Est. 2d
 
 | # | Item | Est. | Status | Notes |
 |---|------|------|--------|-------|
-| Q26 | Keyboard navigation for filter builder | 3h | 🔲 | `tabindex="0"` + `onkeydown` on all pill elements. Visible focus rings (`outline: 2px solid var(--accent)`). |
-| Q27 | Color-independent status indicators | 2h | 🔲 | Extension dot: add "Connected"/"Not connected" text label. Pipeline: ensure stage name always visible alongside color. Credit badge: add `aria-label`. |
-| Q28 | Loading/skeleton states for async operations | 3h | 🔲 | Skeleton rows for job feed during search. Spinner in search area. Disabled+loading state for all AI action buttons. |
-| Q29 | Mobile nav touch targets (48px min) | 2h | 🔲 | Increase mobile nav item height to 48px min (WCAG 2.5.8). 8px vertical padding between items. Hamburger icon 44×44px. |
-| Q30 | Dashboard voice alignment with landing page | 2h | 🔲 | Update dashboard meta description, page headers, and empty states to match landing page's confident, opinionated tone. |
+| Q26 | Keyboard navigation for filter builder | 3h | ✅ | `tabindex="0"` + `onkeydown` on all pill elements. Visible focus rings (`outline: 2px solid var(--accent)`). |
+| Q27 | Color-independent status indicators | 2h | ✅ | Extension dot: add "Connected"/"Not connected" text label. Pipeline: ensure stage name always visible alongside color. Credit badge: add `aria-label`. |
+| Q28 | Loading/skeleton states for async operations | 3h | ✅ | Skeleton rows for job feed during search. Spinner in search area. Disabled+loading state for all AI action buttons. |
+| Q29 | Mobile nav touch targets (48px min) | 2h | ✅ | Increase mobile nav item height to 48px min (WCAG 2.5.8). 8px vertical padding between items. Hamburger icon 44×44px. |
+| Q30 | Dashboard voice alignment with landing page | 2h | ✅ | Update dashboard meta description, page headers, and empty states to match landing page's confident, opinionated tone. |
 
 ### Phase Q Summary
 
@@ -980,12 +980,12 @@
 | **H** Stripe Monetization | 19/19 | v3.71–v3.75 | ⚠️ Billing Portal 🚫 blocked on CEO Stripe config |
 | **I** Communication Center v2 | 15/16 | v3.76–v3.79 | ⚠️ Toll-free verification 🚫 blocked on CEO Vonage action |
 | **J** Infrastructure Hardening | 12/13 | v3.81–v3.88 | ⚠️ J13 🚫 blocked on Greenhouse API partnership |
-| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v4.29 | ⚠️ Sprint 0 foundation verified. 13/25 P13 items complete. M-R1–R6 complete (v4.29). M-R7 🚫 blocked (Stripe). 12 P13 items 🚫 blocked (user volume). |
+| **M** Surveys & User Intelligence | 13/25 + 15 foundation | v3.92–v4.29 | ⚠️ M-R7 🚫 blocked (Stripe). 12 P13 items 🚫 blocked (user volume). |
 | **N** USAJOBS Integration | 7/7 | v3.80–v4.09 | ✅ Complete |
 | **K-2** Admin Console Restructure | 5/5 | v4.00–v4.06 | ✅ Complete |
 | **P** Ghost Build + Perf | 30/30 | v4.07–v4.12 | ✅ Complete |
 | **S** SEO Data Pages | 24/24 | v4.13 | ✅ Complete |
-| **Q** UX Polish & Resume-First Onboarding | 30/30 | v4.14–v4.27 | ✅ Complete |
+| **Q** UX Polish & Resume-First Onboarding | 30/30 | v4.14–v4.27 | ✅ Complete (Q1–Q15 all done) |
 | **R** AI Rewrite: JD-Match Boost | 9/9 | v4.28 | ✅ Complete |
 | **S2** Survey System Hardening | 6/6 | v4.29 | ✅ Complete |
 | **T** Intelligent Pipeline Tracking | 22/22 | v4.30–v4.32 | ✅ Complete |
@@ -993,55 +993,78 @@
 | **31** Daily Fixes & Admin Panel | 22/22 | v4.42–v4.48.1 | ✅ Complete |
 | **31b** Merchandising System | 5/5 | v4.51 | ✅ Complete |
 | **32** Layout & Query Builder Fixes | 4/4 | v4.52–v4.54 | ✅ Complete |
-| **33** Resume Archive + Metrics | 31/31 | v4.55–v4.60 | ✅ Complete (all 8 phases) |
+| **33** Resume Archive + Metrics | 31/31 | v4.55–v4.60 | ✅ Complete |
 | **34** Pipeline Intelligence Version Sync | 6/6 | v4.61 | ✅ Complete |
-| **Total built** | **350+ items** | **v2.68–v4.61** | **17 items 🚫 BLOCKED** |
+| **35** Calendar Intelligence + Cross-User Learning | 9/9 | v4.62 | ✅ Complete |
+| **36** Signal Analytics + Notification Templates | 7/7 | v4.63 | ✅ Complete |
+| **37** Content Engine Remaining — Handoff v3 | 35/35 | v4.71 | ✅ Complete |
+| **38** Styling Fixes | 4/4 | v4.79a | ✅ Complete |
+| **39** Bug Tracker Resolution | 6/6 | v4.83 | ✅ Complete |
+| **39b** Pod 1 UX & Design Sprint | 20/20 | v4.82–v4.83 | ✅ Complete |
+| **40** Feed Quality & Search Relevance | 13/13 | v4.86–v4.90 | ✅ Complete |
+| **40b** Pod 1 Sprint — Pricing, Global Version, AEO | 19/19 | v4.84 | ✅ Complete |
+| **43** City Pages + Internal Linking | 20/20 | v4.91–v4.93 | ✅ Complete |
+| **44** Data Integrity & Sync Consolidation | 15/15 | v4.94–v5.00 | ✅ Complete |
+| **45** Visual Consistency Pass + UX Fixes | 16/16 | v5.01–v5.05 | ✅ Complete |
+| **46** Referral Program | 9/9 | v5.07–v5.10 | ✅ Complete |
+| **47** Hotfixes & UX Polish | 11/11 | v5.06, v5.11–v5.17 | ✅ Complete |
+| **48** Referral Hub Redesign | 17/17 | v5.19–v5.25 | ✅ Complete |
+| **49** Extension Infrastructure | 17/17 | v5.44–v5.48 | ✅ Complete |
+| **50** Extension Completion Sprint | 12/12 | v5.49–v5.54 | ✅ Complete |
+| **51** Competitive Gap Closure | 7/7 | v5.55–v5.56 | ✅ Complete |
+| **52** Data Quality & Pipeline Hardening | 10/10 | v5.57–v5.62 | ✅ Complete |
+| **53** SEO Data Consistency | 4/4 | v5.63 | ✅ Complete |
+| **54** PDL Enrichment | 2/2 | v5.64 | ✅ Complete |
+| **55** Workday Discovery + Data Quality | 4/4 | v5.65 | ✅ Complete |
+| **56** SEO Count Accuracy | 4/4 | v5.66 | ✅ Complete |
+| **57** Industry Detail Pages | 0/1 | v5.90 (target) | 🔄 In Progress — Pod 2 active |
+| | | | |
+| **Total** | **~860 done** | **v2.68–v5.89** | **8 in progress, 114 todo, ~15 🚫 blocked** |
 
-### 🚫 Blocked Items Quick Reference
+### 🚫 Blocked Items Quick Reference (Updated 2026-03-01)
 
-| Item | Blocked On | Owner | Category |
-|------|-----------|-------|----------|
-| D3 — Landing Page interactive preview | D7 screenshots from CPO | CPO | **CEO/CPO Action** |
-| D7 — Walkthrough screenshots (5x) | CPO deliverable — no ETA | CPO | **CEO/CPO Action** |
-| Stripe Billing Portal configuration | Configure in Stripe Dashboard | CEO | **CEO/CPO Action** |
-| Vonage inbound webhook URL | Set in Vonage Dashboard | CEO | **CEO/CPO Action** |
-| Toll-free verification (I11) | Submit via Vonage Dashboard | CEO | **CEO/CPO Action** |
-| VACUUM ANALYZE + REINDEX | Run in Supabase SQL Editor | CEO | **CEO/CPO Action** |
-| 32K ungeocoded locations export | External geocoding service | CEO | **CEO/CPO Action** |
-| J13 — Enrich ~555 companies | Greenhouse API partnership (Mar 3) | External | **External Dependency** |
-| ATS partner applications | Greenhouse/Lever/Ashby partner programs | External | **External Dependency** |
-| Remaining ATS customer list (H-Z) | ATS partnerships + capacity | External | **External Dependency** |
-| Vendor payout consolidation | Active revenue + post-launch ops | Launch | **Post-Launch** |
-| P13-12 — Feature prioritization | User volume | Launch | **Post-Launch** |
-| P13-14 — Ghost Job flagship survey | 1K+ users for target | Launch | **Post-Launch** |
-| P13-15–17 — Market/employer/referral surveys | P13-14 + user volume | Launch | **Post-Launch** |
-| P13-18 — Survey → content pipeline | P13-14/15-17 survey data | Launch | **Post-Launch** |
-| P13-19–25 — User Intelligence System (7 items) | Launch + months of user data | Launch | **Post-Launch** |
+| Item | Blocked On | Owner | Category | Notes |
+|------|-----------|-------|----------|-------|
+| D3 — Landing Page interactive preview | D7 screenshots from CPO | CPO | **CEO/CPO Action** | |
+| D7 — Walkthrough screenshots (5x) | CPO deliverable | CPO | **CEO/CPO Action** | |
+| Stripe Billing Portal configuration | Configure in Stripe Dashboard | CEO | **CEO/CPO Action** | EF exists, portal needs config |
+| Vonage inbound webhook URL | Set in Vonage Dashboard | CEO | **CEO/CPO Action** | Required for production SMS |
+| Toll-free verification (I11) | Submit via Vonage Dashboard | CEO | **CEO/CPO Action** | Non-blocking for testing |
+| ~~VACUUM ANALYZE + REINDEX~~ | ~~Run in Supabase SQL Editor~~ | — | ~~Resolved~~ | ✅ Done during Supabase upgrade |
+| ~~32K ungeocoded locations export~~ | ~~External geocoding service~~ | — | ~~Resolved~~ | ✅ normalize_locations_v2 RPC (v5.74) — 92.2% coverage |
+| J13 — Enrich ~555 companies | Greenhouse API partnership | External | **External Dependency** | Partner program applications open |
+| ATS partner applications | Greenhouse/Lever/Ashby partner programs | External | **External Dependency** | |
+| Vendor payout consolidation | Active revenue + post-launch ops | Launch | **Post-Launch** | |
+| P13-12 — Feature prioritization | User volume | Launch | **Post-Launch** | |
+| P13-14 — Ghost Job flagship survey | 1K+ users for target | Launch | **Post-Launch** | |
+| P13-15–17 — Market/employer/referral surveys | P13-14 + user volume | Launch | **Post-Launch** | |
+| P13-18 — Survey → content pipeline | P13-14/15-17 survey data | Launch | **Post-Launch** | |
+| P13-19–25 — User Intelligence System (7 items) | Launch + months of user data | Launch | **Post-Launch** | |
 
-### Outstanding Items (Not Done)
+### Outstanding Items (Updated 2026-03-01)
 
-| Item | Phase | Priority | Blocker |
-|------|-------|----------|---------|
-| Production Stripe keys (`sk_live_*`) | H | ✅ | Live keys set in Supabase secrets + billing.js. Webhook registered. 3 EFs redeployed. |
-| Stripe webhook endpoint (live) | H | ✅ | `we_1T3lqYPKzCZbw3KzQwljS2K8` — 5 events, signing secret set |
-| Stripe pricing page (`pricing.html`) | H | ✅ | v3.80: Public pricing page live — cohort-tied (launch_2026), 3-tier (Free/Starter/Pro), credit packs, FAQ |
-| `nps-pulse` Edge Function not deployed | M | **High** | In repo but not in deployed EF list. `supabase functions deploy nps-pulse --no-verify-jwt` |
-| `survey_social_proof` anon access broken | M | **High** | 401 on anon key read. Grant in baseline migration may not be applied live. Blocks landing page social proof. |
-| 🚫 Stripe Billing Portal for self-service | H | **Medium** | ⛔ CEO action — configure Customer Portal in Stripe Dashboard (EF exists) |
-| 🚫 D3 — Landing Page interactive preview | D | Medium | ⛔ Blocked on D7 — 5 screenshot assets from CPO (no ETA) |
-| 🚫 D7 — Walkthrough screenshots (5x) | D | Medium | ⛔ Blocked on CPO deliverable (no ETA) |
-| 🚫 Vendor payout consolidation | H | Low | ⛔ Post-launch ops — need active revenue first |
-| 🚫 Toll-free verification | I | Low | ⛔ CEO action — submit via Vonage dashboard. Non-blocking for testing. |
-| 🚫 Vonage inbound webhook URL | I | **High** | ⛔ CEO action — set on Vonage Dashboard → Numbers → 18108923590 → Inbound URL |
-| 🚫 ATS partner applications (Greenhouse, Lever, Ashby) | — | Medium | ⛔ External — Greenhouse deadline March 3. Blocks J13 company enrichment. |
-| 🚫 Remaining ATS customer list (H-Z) | — | Low | ⛔ Depends on ATS partnerships + data team capacity |
+| Item | Phase | Priority | Status |
+|------|-------|----------|--------|
+| ~~Production Stripe keys~~ | H | — | ✅ Done — live keys set, webhook registered |
+| ~~Stripe webhook endpoint~~ | H | — | ✅ Done — `we_1T3lqYPKzCZbw3KzQwljS2K8` |
+| ~~Stripe pricing page~~ | H | — | ✅ Done — v3.80 |
+| ~~`survey_social_proof` anon access~~ | M | — | ✅ Done — M-R6 (v4.29) |
+| `nps-pulse` Edge Function not deployed | M | **High** | Needs deploy: `supabase functions deploy nps-pulse --no-verify-jwt` |
+| 🚫 Stripe Billing Portal for self-service | H | **High** | ⛔ CEO action — configure Customer Portal in Stripe Dashboard |
+| 🚫 D3 — Landing Page interactive preview | D | Medium | ⛔ Blocked on D7 screenshots from CPO |
+| 🚫 D7 — Walkthrough screenshots (5x) | D | Medium | ⛔ Blocked on CPO deliverable |
+| 🚫 Vonage inbound webhook URL | I | **High** | ⛔ CEO action — set on Vonage Dashboard → Numbers → 18108923590 |
+| 🚫 Toll-free verification | I | Low | ⛔ CEO action — submit via Vonage dashboard |
+| 🚫 Vendor payout consolidation | H | Low | ⛔ Post-launch ops |
+| 🚫 ATS partner applications | — | Medium | ⛔ External dependency |
+| Registration locked | — | **High** | Signup disabled in UI until launch (v5.89) — re-enable when ready |
 
 ---
 
 ## Changelog
 
 | Date | Sprint | Items | Summary |
-| 2026-03-01 | 57 | #16 | **Phase 57: Industry Detail Pages (v5.90).** 15 industry detail pages deployed to production. 5 new parameterized Supabase RPCs for per-industry analytics. ECharts visualizations (5 per page), FAQ schema, AI content blocks, cross-linking, sitemap updated. Completes Content Strategy Audit Item #16. All 19/19 items done. Phase 11 (Content & SEO) closed. Git tag v5.90. |
+| 2026-03-01 | 57 | #15 | **v5.89: Approval gates for editorial pipeline (Content Strategy Audit #15).** 6-layer validation gate in generate-editorial-content EF. New approve-content EF. DB migration: 8 columns + 2 indexes. Roadmap cards updated. Registration locked. Phase 57 (#16 industry detail pages) started — in progress. |
 | 2026-02-27 | 51 | CG1–CG5 | **Phase 51: Competitive Gap Closure (v5.55–v5.56).** 5 items from competitive analysis vs FastApply/Huntr/OwlApply. v5.55: Generic/Universal Form Handler (DOM heuristic for any ATS, doubles coverage to 8+) + Manifest Host Permissions Fix (auto-inject on all ATS domains). v5.56: On-Page Status Overlay (floating fill progress widget, `inject-overlay.js`), Cover Letter Generation (`generate-cover-letter` Edge Function, Claude Haiku ~$0.001/letter), Fill Metrics & Feedback Loop (`fillMetrics.js` — PostHog events, Supabase persistence, AI answer ratings). Extension 2.15.0→2.16.0. All 5 items code-complete and deployed. |
 | 2026-02-27 | 49 | EXT1–EXT8 | **Phase 49: Extension Rework & Auto-Apply Infrastructure (v5.26–v5.42).** Complete Chrome extension overhaul adding multi-ATS auto-apply on top of existing LinkedIn scanner. Browser-fill submission chain for 9 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, LinkedIn Easy Apply, Indeed, Workday, generic). AI question answering via Claude Haiku (50/day). Multilingual label detection (FR/ES/DE/IT). Human-simulation typing with bezier cursor paths. autoTracker.js for application success detection + Chrome notification on confirmation (v5.42). 3-layer code obfuscation. Extension RBAC (admin-gated scanner). Greenhouse API token scraping (205/4,204 boards). submit-application EF with Recruitee zero-auth + Greenhouse token-based API submission. Score-gated decision engine: 6 modes, score gate modal, score-resume EF (833 lines), pending_applications state machine, pg_cron expiry. Extension v2.11.0. Roadmap flips: Application auto-detect (done), Auto-apply form-fill (done), Decision engine (done). New items added: auto-apply trigger engine, extension update notification. 20 remaining items documented in EXTENSION_COMPLETION_HANDOFF.docx. |
 | 2026-02-27 | 48 | RH1–RH12 | **Phase 48: Referral Hub Redesign (v5.19–v5.25).** Full 4-phase redesign per spec v3. Phase 1: copy rewrite, hero banner, SVG badge icons, tier names (Signal/Source/Radar/Intel/Clearance), design system alignment (v5.19). Phase 2: leaderboard rewards backend — `leaderboard_rewards` table, `distribute_leaderboard_rewards` RPC (SECURITY DEFINER), pg_cron weekly+monthly, `get_leaderboard` RPC, Resend email template (v5.20). Phase 3: leaderboard frontend — period toggle, reward tier grid, countdown timer, user rank highlight, Earning column, 20-user threshold with progress bar (v5.22). Phase 4: milestone rewards — `referral_milestones` table, `process_tier_bonus` RPC (idempotent credit+Pro grants per tier), `check_clearance_retention` quarterly cron, profile flair system (icons, colored names, TOP REFERRER badge) (v5.25). Bug fixes: tab restore for referrals+ghost tabs, LinkedIn-based referral codes (`marston` instead of `BJ-972148`), `/in/` format links, updated `get_referral_stats` + `generate_referral_code` RPCs. |
@@ -2325,9 +2348,9 @@ All 22 items from the Extension & Platform Remaining Work handoff document are n
 
 ---
 
-## Phase 57: Industry Detail Pages (v5.90) — Mar 1, 2026 ✅
+## Phase 57: Industry Detail Pages (v5.90) — Mar 1, 2026 🔄 IN PROGRESS
 
-**Goal:** Create 15 industry-specific detail pages with live per-industry analytics. Completes Content Strategy Audit Item #16 and closes out Phase 11 (Content & SEO) — all 19/19 items done.
+**Goal:** Create 15 industry-specific detail pages with live per-industry analytics. Completes Content Strategy Audit Item #16 and closes out Phase 11 (Content & SEO). Pod 2 active.
 
 ### v5.90 — Industry Detail Pages (#16)
 
@@ -2393,14 +2416,14 @@ All RPCs use the same CASE-based industry mapping as `get_jobs_by_industry`, par
 | CHANGELOG.md | v5.90 entry |
 | Git tag | v5.90 |
 
-### Content Strategy Audit — Final Status
+### Content Strategy Audit — Current Status
 
-All 19 action items from the Content Strategy Audit (Phase 11) are now DONE:
+18 of 19 action items from the Content Strategy Audit (Phase 11) are DONE. #16 (Industry Detail Pages) in progress.
 
-| Pod | Done | Started | Not Started |
-|-----|------|---------|-------------|
+| Pod | Done | In Progress | Not Started |
+|-----|------|-------------|-------------|
 | Pod 1 (Growth) | 10 | 0 | 0 |
-| Pod 2 (Engineering) | 10 | 0 | 0 |
-| **Total** | **19** | **0** | **0** |
+| Pod 2 (Engineering) | 9 | 1 | 0 |
+| **Total** | **18** | **1** | **0** |
 
-**Phase 57 total: 1 version (v5.90) | 15 industry detail pages + 5 RPCs | Content Strategy Audit complete ✅**
+**Phase 57 status: 🔄 IN PROGRESS — Pod 2 building industry detail pages. Target: v5.90.**
