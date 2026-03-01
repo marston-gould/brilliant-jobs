@@ -578,6 +578,19 @@
 - **Day 1 data**: Yellow Labs (6 pages, all 99), Cloudflare (2 days), Knowledge Graph (4 entities), PSI (8 pages × 2 strategies), CrUX (awaiting sufficient traffic)
 
 
+
+## v5.94 — 2026-03-01
+
+### Added
+- **Competitor Comparison Page** (`/compare`) — SEO hub comparing Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter, Glassdoor
+- 12-row feature comparison table (desktop 6-col / mobile card stack)
+- Automated cover letter generation and one-click application submission highlighted as key differentiators
+- 4 competitor deep-dive sections with pain points vs. advantages
+- 8-question FAQ with FAQPage JSON-LD structured data
+- 5 PostHog tracking events
+- `/compare` added to landing page nav and footer, sitemap.xml
+
+
 ## v2.60 — 2026-02-16
 - **CRITICAL FIX — Resume scoring data path**: `toggleResumeFilter()` saves assignments to `resume.filterIds[]` (array of filter names on the resume object), but all scoring code checked `filter.resumeId` (a property on the filter object that was **never set**). This meant readiness analysis, feed match scores, and auto-analysis all silently found zero assignments and produced no scores. Fixed all three code paths: `initReadinessPanel`, `runReadinessAnalysis`, and `computeJobMatchScore` now read from `resume.filterIds`.
 - **Feed match scoring fix**: `computeJobMatchScore()` was taking first 40 tokens from a `Set` in insertion order (document order = arbitrary). Now frequency-ranks terms within each JD — most-repeated skill terms score highest. This makes match scores meaningful.
@@ -639,15 +652,3 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
-
-## v5.94 — 2026-03-01
-
-### Added
-- **Competitor Comparison Page** (`/compare`) — SEO hub comparing Brilliant Jobs vs LinkedIn, Indeed, ZipRecruiter, Glassdoor
-- 12-row feature comparison table (desktop 6-col / mobile card stack)
-- Automated cover letter generation and one-click application submission highlighted as key differentiators
-- 4 competitor deep-dive sections with pain points vs. advantages
-- 8-question FAQ with FAQPage JSON-LD structured data
-- 5 PostHog tracking events
-- `/compare` added to landing page nav and footer, sitemap.xml
-
