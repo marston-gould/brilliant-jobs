@@ -26,9 +26,11 @@ CREATE TABLE IF NOT EXISTS city_pages (
 
 ALTER TABLE city_pages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "city_pages_anon_select" ON city_pages;
 CREATE POLICY "city_pages_anon_select" ON city_pages
   FOR SELECT TO anon USING (true);
 
+DROP POLICY IF EXISTS "city_pages_auth_select" ON city_pages;
 CREATE POLICY "city_pages_auth_select" ON city_pages
   FOR SELECT TO authenticated USING (true);
 
@@ -53,8 +55,10 @@ CREATE TABLE IF NOT EXISTS city_popular_pills (
 
 ALTER TABLE city_popular_pills ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "city_popular_pills_anon_select" ON city_popular_pills;
 CREATE POLICY "city_popular_pills_anon_select" ON city_popular_pills
   FOR SELECT TO anon USING (true);
 
+DROP POLICY IF EXISTS "city_popular_pills_auth_select" ON city_popular_pills;
 CREATE POLICY "city_popular_pills_auth_select" ON city_popular_pills
   FOR SELECT TO authenticated USING (true);
