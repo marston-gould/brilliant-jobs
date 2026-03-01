@@ -1,3 +1,21 @@
+## v5.97 — Notification Session 2 Unblocked Items (2026-03-01)
+
+### Added
+- **confirm-email rate limiting**: IP-based sliding window (5 attempts per 15 min per IP) prevents token brute-force attacks. UUID format validation rejects malformed tokens early. Periodic memory cleanup prevents leaks on long-running instances.
+- **resend-confirmation Edge Function**: Token regeneration flow for expired confirmation links. Requires valid auth JWT, generates new token with 24h expiry, sends confirmation email via Resend. Rate limited to 3 resends per hour per user via notification_log count.
+- **Quiet hours hold queue**: send-notification v3 now queues SMS notifications blocked by quiet hours into held_notifications table instead of silently dropping them. Held messages include deliver_at timestamp for when quiet hours end. Logged as "held" instead of "blocked" in notification_log.
+- **held_notifications table**: New DB table with RLS policies + indexes for efficient delivery scheduling. Escalation-checker (runs every 15 min) can pick up held notifications for retry.
+- **Per-type SMS opt-in enforcement**: notification-center.js now wires individual SMS toggles per notification type. Only 7 SMS-allowed types show active toggles. Non-SMS types disabled with tooltip. Phone verification required.
+- **Resend confirmation UI**: "Resend confirmation email" button appears in notification section when email is unverified. Calls resend-confirmation Edge Function.
+
+### Changed
+- notification-center.js version header updated to v5.97
+- send-notification promoted to v3 with hold queue support
+- confirm-email promoted to v2 with rate limiting
+
+### Migration
+- `v5.97-notification-session2-unblocked.sql` — held_notifications table with RLS + indexes
+
 ## v5.96 — Notification Session 2 Completion + Backfill (2026-03-01)
 
 - **initNotificationCenter() wired into app.js**: Notification Center now initializes after auth resolves — loads user_notification_state, user_notification_preferences, checks opt-in modal trigger, and detects email confirmation. This was the last integration step to activate Session 2 features in the dashboard.
@@ -406,4 +424,3 @@ See roadmap.html for full feature history across P0–P18.
 - 8-question FAQ with FAQPage JSON-LD structured data
 - 5 PostHog tracking events
 - `/compare` added to landing page nav and footer, sitemap.xml
-
