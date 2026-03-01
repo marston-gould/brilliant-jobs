@@ -901,6 +901,8 @@ async function loadPipelineIntelligenceSettings() {
       const btnEl = document.getElementById('pi-gmail-connect');
       if (connEl) connEl.style.display = '';
       if (btnEl) btnEl.style.display = 'none';
+      // v6.04: Mark integration connected for adoption suppression
+      if (typeof markIntegrationConnected === 'function') markIntegrationConnected('gmail');
     }
   } catch (e) { /* no connection */ }
 }

@@ -1,3 +1,26 @@
+## v6.04 — Milestone Detection Hooks + Sessions 3-4 Live Activation (2026-03-01)
+
+### Frontend — Milestone Hooks
+- **`markOnboardingMilestone()` global function** in version.js: Updates `onboarding_milestones` table in real-time when user completes resume upload, filter creation, or extension connect. Suppresses future nudge emails immediately.
+- **`markIntegrationConnected()` global function** in version.js: Updates `integration_adoption_state` table when user connects Gmail, Calendar, Drive, or Extension. Auto-suppresses adoption nudges for that integration.
+- **resumes.js hook**: Calls `markOnboardingMilestone('resume')` after successful `resume_archive` insert.
+- **app.js hooks**: Calls `markOnboardingMilestone('filter')` after `createFilterFromProfile()`. Calls `markIntegrationConnected('gmail')` on Gmail OAuth redirect success.
+- **applications.js hook**: Calls `markIntegrationConnected('gmail')` when Gmail connection status detected as active.
+
+### Edge Functions — Live Activation
+- **onboarding-sequence v2**: Now imports and renders production email templates (`onboardWelcomeEmail`, `onboardResumeNudgeEmail`, `onboardFilterNudgeEmail`, `onboardExtensionNudgeEmail`) and passes rendered subject+html to send-notification. Previously relied on DB template resolution which had no entries. Also fetches user's `full_name` for personalized greeting.
+- **gmail-auth update**: Now updates `profiles.gmail_connected_at` on successful Gmail OAuth, enabling adoption-sequence auto-suppress detection.
+
+### Changed
+- `js/version.js`: v6.03 → v6.04, +milestone hooks (+60 lines)
+- `js/resumes.js`: +milestone hook after resume insert
+- `js/app.js`: +milestone hook after filter creation, +Gmail connected hook
+- `js/applications.js`: +Gmail integration connected hook
+- `supabase/functions/onboarding-sequence/index.ts`: v2 — imports email-templates, renders production HTML, passes to send-notification
+- `supabase/functions/gmail-auth/index.ts`: +profiles.gmail_connected_at update
+- `dashboard.html`: version comment + cache-bust v6.04
+- `index.html`: version comment v6.04
+
 ## v6.03 — Session 4: Integration Adoption System (2026-03-01)
 
 ### Database

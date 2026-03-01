@@ -708,6 +708,8 @@ window.disconnectGmail = async function() {
   if (gmail === 'connected') {
     initGmailStatus();
     showToast('Gmail connected! Ghost Monitor will now scan for company responses.', { type: 'success' });
+    // v6.04: Mark Gmail integration connected for adoption suppression
+    if (typeof markIntegrationConnected === 'function') markIntegrationConnected('gmail');
   } else if (gmail === 'denied') {
     showToast('Gmail connection was cancelled.', { type: 'info' });
   } else if (gmail === 'error') {
@@ -839,6 +841,9 @@ window.createFilterFromProfile = function() {
   
   // Update onboarding step
   updateOnboardingStep(2);
+
+  // v6.04: Mark onboarding milestone
+  if (typeof markOnboardingMilestone === 'function') markOnboardingMilestone('filter');
 
   // Navigate to Jobs page and run search
   showToast('Search created from your resume! Running your first search…', { type: 'success' });

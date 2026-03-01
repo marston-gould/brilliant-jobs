@@ -137,6 +137,9 @@ serve(withCorrelation("gmail-auth", async (req, logger) => {
       last_sync_at: null,
     }, { onConflict: "user_id" });
 
+    // v6.04: Mark Gmail connected in profiles for adoption suppression
+    await sb.from("profiles").update({ gmail_connected_at: new Date().toISOString() }).eq("id", userId);
+
     logger.info("Gmail connected", { userId, gmailAddress });
     return Response.redirect("https://brilliantjobs.app/dashboard?gmail=connected", 302);
 
