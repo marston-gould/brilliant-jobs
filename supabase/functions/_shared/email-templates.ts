@@ -1357,3 +1357,253 @@ export function scoreLowMatchEmail(
     `),
   };
 }
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 6: INTERVIEW REMINDERS + RESUME REWRITE (White Theme)
+// Pod 1 copy: PRODUCTION — Batch 4 delivered 2026-03-01
+// White theme design: APPROVED
+// ═══════════════════════════════════════════════════════════
+
+export function interviewScheduledWhiteEmail(
+  firstName?: string,
+  companyName?: string,
+  jobTitle?: string,
+  interviewDate?: string,
+  interviewTime?: string,
+  timezone?: string,
+  interviewFormat?: string,
+  interviewLocation?: string,
+  matchScore?: number,
+  dashboardUrl?: string
+): { subject: string; html: string; sms_text: string } {
+  const name = firstName || "there";
+  const company = companyName || "the company";
+  const title = jobTitle || "the role";
+  const date = interviewDate || "TBD";
+  const time = interviewTime || "TBD";
+  const tz = timezone || "your timezone";
+  const format = interviewFormat || "Not specified";
+  const location = interviewLocation || "";
+  const score = matchScore || 0;
+  const base = dashboardUrl || "https://brilliantjobs.app/dashboard.html";
+
+  const locationHtml = location
+    ? `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:80px;">Location</span><span style="font-size:13px;color:#1e293b;font-weight:600;">${location}</span></div>`
+    : "";
+
+  return {
+    subject: `Interview confirmed: ${company} for ${title}`,
+    html: whiteBaseLayout("Interview Confirmed", `
+      <div class="card">
+        <div class="card-title">Great news, ${name} — you have an interview coming up.</div>
+
+        <div style="margin:20px 0;padding:20px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+          <div style="font-size:16px;font-weight:700;color:#1e293b;margin-bottom:4px;">${company} — ${title}</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:80px;">Date</span><span style="font-size:13px;color:#1e293b;font-weight:600;">${date} at ${time} (${tz})</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:80px;">Format</span><span style="font-size:13px;color:#1e293b;font-weight:600;">${format}</span></div>
+          ${locationHtml}
+        </div>
+
+        <p class="text">Your resume match score for this role is <strong style="color:#3b82f6;">${score}%</strong>. Review your resume readiness breakdown to make sure you're prepared for the skills they're likely to ask about.</p>
+
+        <div style="margin:16px 0;">
+          <div class="text" style="font-weight:600;margin-bottom:8px;">Preparation checklist:</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">Review the job description one more time</span></div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">Check your resume readiness gaps for this filter</span></div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">Research the company's recent hiring activity on Brilliant Jobs</span></div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">Prepare questions that reference what you've learned about their team</span></div>
+        </div>
+
+        <p class="text" style="font-style:italic;color:#64748b;">You've done the hard work to get here. Now go show them why you're the right fit.</p>
+
+        <div class="btn-row">
+          <a href="${base}#pipeline?stage=interview" class="btn btn-primary">Review Interview Details →</a>
+        </div>
+      </div>
+    `),
+    sms_text: `Interview confirmed: ${title} at ${company}, ${date} at ${time}. Details in your dashboard.`,
+  };
+}
+
+export function interviewReminder24hEmail(
+  firstName?: string,
+  companyName?: string,
+  jobTitle?: string,
+  interviewDate?: string,
+  interviewTime?: string,
+  timezone?: string,
+  interviewFormat?: string,
+  matchScore?: number,
+  activeListings?: number,
+  dashboardUrl?: string
+): { subject: string; html: string; sms_text: string } {
+  const name = firstName || "there";
+  const company = companyName || "the company";
+  const title = jobTitle || "the role";
+  const date = interviewDate || "tomorrow";
+  const time = interviewTime || "TBD";
+  const tz = timezone || "your timezone";
+  const format = interviewFormat || "Not specified";
+  const score = matchScore || 0;
+  const listings = activeListings || 0;
+  const base = dashboardUrl || "https://brilliantjobs.app/dashboard.html";
+
+  const listingsHtml = listings > 0
+    ? `<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">${company} has <strong>${listings}</strong> open roles right now, which suggests active growth</span></div>`
+    : "";
+
+  return {
+    subject: `Tomorrow: ${title} interview at ${company}`,
+    html: whiteBaseLayout("Interview Tomorrow", `
+      <div class="card">
+        <div class="card-title">Your interview is tomorrow, ${name}.</div>
+
+        <div style="margin:16px 0;padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+          <div style="font-size:15px;font-weight:700;color:#1e293b;">${company} — ${title}</div>
+          <div style="font-size:13px;color:#64748b;margin-top:4px;">${date} at ${time} (${tz}) — ${format}</div>
+        </div>
+
+        <div style="margin:16px 0;">
+          <div class="text" style="font-weight:600;margin-bottom:8px;">Last-minute prep:</div>
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">Your resume scored <strong style="color:#3b82f6;">${score}%</strong> against this role — review any gaps flagged in your readiness report</span></div>
+          ${listingsHtml}
+          <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;"><span style="color:#3b82f6;">•</span><span style="font-size:13px;color:#475569;">Check if you have any connections at ${company} through your network on Brilliant Jobs</span></div>
+        </div>
+
+        <p class="text" style="font-style:italic;color:#64748b;">You earned this interview. Tomorrow is about showing them what they already suspect from your resume — that you're the right person for this role.</p>
+
+        <div class="btn-row">
+          <a href="${base}#pipeline?stage=interview" class="btn btn-primary">View Prep Details →</a>
+        </div>
+      </div>
+    `),
+    sms_text: `Tomorrow: ${title} interview at ${company}, ${time}. You're ready.`,
+  };
+}
+
+export function interviewReminder1hEmail(
+  firstName?: string,
+  companyName?: string,
+  jobTitle?: string,
+  interviewTime?: string,
+  timezone?: string,
+  interviewFormat?: string,
+  interviewLocation?: string,
+  matchScore?: number,
+  topStrengths?: string,
+  primaryGap?: string,
+  dashboardUrl?: string
+): { subject: string; html: string; sms_text: string } {
+  const name = firstName || "there";
+  const company = companyName || "the company";
+  const title = jobTitle || "the role";
+  const time = interviewTime || "soon";
+  const tz = timezone || "your timezone";
+  const format = interviewFormat || "Not specified";
+  const location = interviewLocation || "";
+  const score = matchScore || 0;
+  const strengths = topStrengths || "See your readiness report";
+  const gap = primaryGap || "None identified";
+  const base = dashboardUrl || "https://brilliantjobs.app/dashboard.html";
+
+  const locationHtml = location
+    ? `<div style="font-size:13px;color:#64748b;margin-top:4px;">${location}</div>`
+    : "";
+
+  return {
+    subject: `Starting soon: ${title} at ${company} in 1 hour`,
+    html: whiteBaseLayout("Interview in 1 Hour", `
+      <div class="card">
+        <div class="card-title">You're on in one hour, ${name}.</div>
+
+        <div style="margin:16px 0;padding:16px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;">
+          <div style="font-size:15px;font-weight:700;color:#1e293b;">${company} — ${title}</div>
+          <div style="font-size:13px;color:#64748b;margin-top:4px;">${time} (${tz}) — ${format}</div>
+          ${locationHtml}
+        </div>
+
+        <div style="margin:16px 0;">
+          <div class="text" style="font-weight:600;margin-bottom:8px;">Quick reference:</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:100px;">Match score</span><span style="font-size:13px;color:#3b82f6;font-weight:700;">${score}%</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:100px;">Top strengths</span><span style="font-size:13px;color:#1e293b;">${strengths}</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;"><span style="color:#94a3b8;font-size:13px;min-width:100px;">Key gap</span><span style="font-size:13px;color:#1e293b;">${gap}</span></div>
+        </div>
+
+        <p class="text" style="font-style:italic;color:#64748b;text-align:center;margin-top:20px;">Take a breath. You're ready.</p>
+
+        <div class="btn-row">
+          <a href="${base}#pipeline?stage=interview" class="btn btn-primary">Open Dashboard →</a>
+        </div>
+      </div>
+    `),
+    sms_text: `Interview in 1hr: ${title} at ${company}. ${format}. You've got this.`,
+  };
+}
+
+export function resumeRewriteReadyEmail(
+  firstName?: string,
+  companyName?: string,
+  jobTitle?: string,
+  originalResumeName?: string,
+  originalScore?: number,
+  newScore?: number,
+  keywordsAdded?: number,
+  sectionsChanged?: number,
+  newResumeId?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const company = companyName || "the company";
+  const title = jobTitle || "this role";
+  const resumeName = originalResumeName || "your resume";
+  const oldScore = originalScore || 0;
+  const nScore = newScore || 0;
+  const keywords = keywordsAdded || 0;
+  const sections = sectionsChanged || 0;
+  const rId = newResumeId || "";
+  const base = dashboardUrl || "https://brilliantjobs.app/dashboard.html";
+  const improvement = nScore - oldScore;
+
+  return {
+    subject: `Your optimized resume for ${title} is ready`,
+    html: whiteBaseLayout("Resume Rewrite Ready", `
+      <div class="card">
+        <div class="card-title">Your AI-optimized resume is ready for review, ${name}.</div>
+
+        <div style="margin:16px 0;">
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:120px;">Original resume</span><span style="font-size:13px;color:#1e293b;">${resumeName}</span></div>
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e2e8f0;"><span style="color:#94a3b8;font-size:13px;min-width:120px;">Optimized for</span><span style="font-size:13px;color:#1e293b;font-weight:600;">${title} at ${company}</span></div>
+        </div>
+
+        <div style="margin:20px 0;">
+          <div class="text" style="font-weight:600;margin-bottom:12px;">What changed:</div>
+          <div style="display:flex;justify-content:space-around;text-align:center;margin:16px 0;">
+            <div>
+              <div style="font-size:20px;font-weight:700;color:#22c55e;">+${improvement}%</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Score improvement</div>
+              <div style="font-size:12px;color:#64748b;">${oldScore}% → ${nScore}%</div>
+            </div>
+            <div>
+              <div style="font-size:20px;font-weight:700;color:#3b82f6;">${keywords}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Keywords added</div>
+            </div>
+            <div>
+              <div style="font-size:20px;font-weight:700;color:#3b82f6;">${sections}</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Sections restructured</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin:16px 0;padding:14px;background:#fefce8;border:1px solid #fef08a;border-radius:10px;">
+          <p style="font-size:13px;color:#854d0e;margin:0;line-height:1.5;"><strong>Important:</strong> This is a draft. Review every change before submitting. AI rewrites are designed to improve keyword alignment and structure, but only you know if the content accurately represents your experience.</p>
+        </div>
+
+        <p class="text" style="font-size:13px;color:#64748b;">The optimized version is saved as a new file in your resume library. Your original is untouched.</p>
+
+        <div class="btn-row">
+          <a href="${base}#resumes?highlight=${rId}" class="btn btn-primary">Review Your Optimized Resume →</a>
+        </div>
+      </div>
+    `),
+  };
+}

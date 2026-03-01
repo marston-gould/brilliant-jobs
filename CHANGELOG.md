@@ -1,3 +1,30 @@
+## v6.06 — Session 6: Interview Reminders + Resume Rewrite Templates (2026-03-01)
+
+### Pod 1 Batch 4 Copy — Delivered & Consumed
+- **4 interview/rewrite email templates delivered**: interview_scheduled (white theme, full prep checklist), interview_reminder_24h (last-minute prep with active listings context), interview_reminder_1h (quick reference with strengths/gaps), resume_rewrite_ready (score diff + keyword/section stats).
+- Templates use white theme (`whiteBaseLayout`) matching existing design system. Interview templates include SMS copy.
+
+### Edge Functions
+- **`interview-sequence` Edge Function (NEW)**: Handles 4 notification types routed through a single function. Accepts type discriminator (interview_scheduled, interview_reminder_24h, interview_reminder_1h, resume_rewrite_ready). Server-side suppression: dedup on pipeline_entry_id+type via notification_log, email preference check, quiet hours (1h reminder overrides quiet hours by design). Routes all sends through send-notification.
+
+### Email Templates
+- `supabase/functions/_shared/email-templates.ts`: Added `interviewScheduledWhiteEmail()`, `interviewReminder24hEmail()`, `interviewReminder1hEmail()`, `resumeRewriteReadyEmail()` — 4 exported functions following Batch 1-3 white theme pattern. Each template personalizes on user first name, company, job title, interview details, match score, and context-specific data (active listings, strengths/gaps, score diffs).
+
+### Cron Jobs (Pending v6.07)
+- **interview-reminder-24h**: pg_cron every 15min, queries interviews in 24h window not yet notified.
+- **interview-reminder-1h**: pg_cron every 10min, queries interviews in 1h window not yet notified.
+- Both use dedup pattern from escalation-checker: write notification_log on send, skip if entry exists.
+
+### Database
+- notification_channels seed: Default rows for interview_scheduled, interview_reminder_24h, interview_reminder_1h, resume_rewrite_ready (email=true, sms=true for interview types, sms=false for rewrite).
+
+### Changed
+- `js/version.js`: v6.05 → v6.06, session 6 template deployment
+- `supabase/functions/_shared/email-templates.ts`: +interviewScheduledWhiteEmail, +interviewReminder24hEmail, +interviewReminder1hEmail, +resumeRewriteReadyEmail
+- `supabase/functions/interview-sequence/index.ts`: NEW — Interview & rewrite notification Edge Function
+- `dashboard.html`: version comment v6.06
+- `index.html`: version comment v6.06
+
 ## v6.05 — Session 5: CV Score Notification Flow (2026-03-01)
 
 ### Pod 1 Batch 3 Copy — Delivered & Consumed

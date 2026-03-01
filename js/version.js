@@ -9,7 +9,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v6.05';
+var BJ_VERSION = 'v6.06';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
@@ -100,7 +100,7 @@ window.markIntegrationConnected = async function(integration) {
   }
 };
 
-// ─── CV Score Notification Trigger (v6.05) ───
+// ─── CV Score Notification Trigger (v6.06) ───
 // Call after resume scoring completes to fire score-tier email.
 // Handles suppression server-side (daily limit, dedup, prefs).
 window.triggerScoreNotification = async function(userId, jobId, score, analysisSummary, jobTitle, companyName) {
