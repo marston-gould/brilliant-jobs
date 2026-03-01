@@ -1,3 +1,23 @@
+## v6.01 — Onboarding Sequence Skeleton + White Theme Templates (2026-03-01)
+
+### Added
+- **onboarding-sequence Edge Function**: Session 3 skeleton — 4-email drip sequence triggered by signup milestones (welcome → resume nudge at 24h → filter nudge at 48h → extension nudge at 72h). Each email suppresses if user has already completed the action. Cron mode processes all incomplete users; direct mode for single user. Respects admin config per cohort, double opt-in gating, and one-email-per-run-per-user pacing.
+- **onboarding_milestones table**: Tracks per-user onboarding email sent/completed state with auto-complete trigger (sequence_completed flips true when all three milestones hit). RLS policies, partial index for cron efficiency. Existing users seeded as complete.
+- **White theme email base layout**: `whiteBaseLayout()` in `_shared/email-templates.ts` — light background (#f8fafc), white cards, blue accents, step indicators, highlight blocks. Used by onboarding and integration adoption emails.
+- **Onboarding email templates (4)**: `onboardWelcomeEmail()`, `onboardResumeNudgeEmail()`, `onboardFilterNudgeEmail()`, `onboardExtensionNudgeEmail()` — white theme, placeholder content marked with [POD1_COPY] for Pod 1 copy injection.
+- **Integration adoption email templates (6)**: `adoptExtensionReminderEmail()`, `adoptGmailEmail()`, `adoptCalendarEmail()`, `adoptDriveEmail()`, `adoptIntegrationComboEmail()` — white theme, placeholder content for Pod 1.
+- **Migration file**: `v6.01-onboarding-milestones.sql` committed to `supabase/migrations/`.
+
+### Infrastructure
+- Email templates file expanded from 42KB to ~52KB with white theme additions.
+- Version bump to v6.01 across version.js, dashboard.html (comment + cache-bust), index.html (comment), CHANGELOG.md.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
+### Pod 1 Blockers (unchanged)
+- Sessions 3-15 still blocked on Pod 1 copy deliverables.
+- Edge Function skeletons and suppression logic built with placeholder templates per session plan workaround.
+- Template content injection is the last step — Pod 1 delivers copy, Pod 2 swaps placeholders.
+
 ## v6.00 — Notification Log Wiring + Branch Sync (2026-03-01)
 
 ### Added
