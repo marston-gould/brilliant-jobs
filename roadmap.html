@@ -835,14 +835,14 @@ const features = [
   { s: 'done', n: 'ATS board health: admin metrics panel', d: 'Three headline stat cards in admin panel: Total Identified Feeds (COUNT of ats_companies), Feeds With Jobs (WHERE job_count > 0), Feeds Returning 4xx (WHERE last_http_status BETWEEN 400 AND 499). Platform breakdown table (Greenhouse/Lever/Ashby/Workable/Recruitee) with per-source counts. Health indicator dot: green < 5%% dead, amber 5-10%%, red > 10%%. Derived metrics: Feed Health %%, Feeds Never Scraped, Feeds With 0 Jobs (live but no openings). Admin-only access.', p: 14 },
 
   // Phase 15 — Gamification & Rewards
-  { s: 'todo', n: 'XP reward system', d: 'Earn XP: profile completion (+50), surveys (+25), applications (+10), interviews (+100), company reviews (+20), referrals (+200). Persistent balance.', b: 'post-launch', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'XP reward store — user-selected feature unlocks', d: 'Spend XP to temporarily unlock chosen premium features: 1-week Pro access (500 XP), 3-day profile boost (300 XP), resume review (1000 XP), early access (250 XP).', b: 'post-launch', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'Profile strength game', d: 'Progress bar with levels: "Rising Star" (50%) → "Highly Sought After" (85%) → "Top Talent" (100%). Level-up unlocks: 2x employer views, premium offer filter, early salary data.', b: 'post-launch', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'Market Value Index', d: 'Composite score (0-200) from skills demand + offer history + profile completeness + market positioning. "Top 15% for Marketing Directors, SaaS." Tips to increase.', b: 'needs-data', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'Achievement badges', d: '"Salary Setter" (3 offers above min), "Remote Magnet" (10 remote offers), "Fast Responder", "Survey Champion", "Network Builder". Displayed on profile.', b: 'post-launch', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'Application success predictor', d: 'Pre-apply scorecard: skills match %, salary alignment, culture fit, competition level, ghost probability, response rate. "Strong apply — high interview chance."', b: 'needs-data', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'Streaks and engagement loops', d: 'Daily login, weekly survey, application streaks. 7-day streak = 2x XP day. Gentle re-engagement on break. No dark patterns.', b: 'needs-users', p: 15, b: 'post-launch' },
-  { s: 'todo', n: 'Opt-in leaderboard', d: 'Anonymized rankings: "Top profiles in your industry this week." Opt-in only. Drives completion and survey participation.', b: 'needs-users', p: 15, b: 'post-launch' },
+  { s: 'todo', n: 'XP reward system', d: 'Earn XP: profile completion (+50), surveys (+25), applications (+10), interviews (+100), company reviews (+20), referrals (+200). Persistent balance.', b: 'post-launch', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'XP reward store — user-selected feature unlocks', d: 'Spend XP to temporarily unlock chosen premium features: 1-week Pro access (500 XP), 3-day profile boost (300 XP), resume review (1000 XP), early access (250 XP).', b: 'post-launch', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'Profile strength game', d: 'Progress bar with levels: "Rising Star" (50%) → "Highly Sought After" (85%) → "Top Talent" (100%). Level-up unlocks: 2x employer views, premium offer filter, early salary data.', b: 'post-launch', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'Market Value Index', d: 'Composite score (0-200) from skills demand + offer history + profile completeness + market positioning. "Top 15% for Marketing Directors, SaaS." Tips to increase.', b: 'needs-data', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'Achievement badges', d: '"Salary Setter" (3 offers above min), "Remote Magnet" (10 remote offers), "Fast Responder", "Survey Champion", "Network Builder". Displayed on profile.', b: 'post-launch', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'Application success predictor', d: 'Pre-apply scorecard: skills match %, salary alignment, culture fit, competition level, ghost probability, response rate. "Strong apply — high interview chance."', b: 'needs-data', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'Streaks and engagement loops', d: 'Daily login, weekly survey, application streaks. 7-day streak = 2x XP day. Gentle re-engagement on break. No dark patterns.', b: 'needs-users', p: 7, b: 'post-launch' },
+  { s: 'todo', n: 'Opt-in leaderboard', d: 'Anonymized rankings: "Top profiles in your industry this week." Opt-in only. Drives completion and survey participation.', b: 'needs-users', p: 7, b: 'post-launch' },
 
   // Phase 16 — Passive Job Hunting
   { s: 'todo', n: 'Passive profile (stealth mode)', d: '"Open to opportunities" toggle: visibility controls (hide from current employer + blocked cos), interest level (casual → urgent), minimum requirements to contact.', b: 'post-launch', p: 16, b: 'post-launch' },
@@ -1179,22 +1179,22 @@ const features = [
   { s: 'done', n: 'Enrich remaining unmatched boards via FCD pipeline', d: 'Completed via local FCD enrichment (v1 + v3, Feb 28). 26,363 companies matched across two passes using 5 strategies. Industry coverage 73.9%%, locality 63.8%%. 145 false-match records cleaned (bananeiras/quadra clusters). Ongoing pipeline via EF + cron pending Storage upload.', b: 'pre-launch', p: 22 },
 
   // Phase L: Roadmap & Baseline Fixes — Feb 23 2026 (v3.91)
-  { s: 'done', n: 'v3.91: Roadmap cleanup + ATS spike removed', d: 'Cleaned stale roadmap entries. Removed ATS feasibility spike from active backlog (decision made — pursuing partnerships instead).', p: 25 },
+  { s: 'done', n: 'v3.91: Roadmap cleanup + ATS spike removed', d: 'Cleaned stale roadmap entries. Removed ATS feasibility spike from active backlog (decision made — pursuing partnerships instead).', p: 13 },
 
   // Phase M: Surveys & User Intelligence (P13) — Feb 23 2026 (v3.92–v3.94)
-  { s: 'done', n: 'v3.92: P13-01/02/03/07 — periodic_v2 survey expansion', d: 'Added 8 new questions to periodic survey: job anxiety scale (1-5), expected timeline dropdown, appreciation score + testimonial comment, comparative ease, perceived control, filter adequacy + missing filters freetext. New question type renderers: scale, nps (0-10), dropdown. Registered periodic_v2 as latest.', p: 25 },
-  { s: 'done', n: 'v3.92: Supabase baseline migration fix', d: 'Fixed baseline migration that was failing on Preview branches. Added CREATE TABLE for 9 missing tables (profiles, ats_jobs, ats_companies, connections, resumes, notification_log, notification_actions, feedback, cohorts). All Supabase Preview checks now pass.', p: 25 },
-  { s: 'done', n: 'v3.93: P13-08 NPS pulse question bank', d: 'nps_v1 question bank (0-10 NPS score, reason quick-select, improvement freetext). NPS context routing in resolveVersion(). Edge Function for monthly cron trigger is follow-up.', p: 25 },
-  { s: 'done', n: 'v3.93: P13-04/05/06/09 micro-survey module', d: 'micro-surveys.js — inline survey components for post-search relevance, post-apply confidence, data value assessment, paywall friction. Generic createMicroCard() with choice/rating/chips follow-up. Session rate-limiting via sessionStorage. CSS in dashboard.html.', p: 25 },
-  { s: 'done', n: 'v3.94: P13-04/05/06 micro-survey hooks wired', d: 'Connected micro-survey triggers to dashboard modules: trackSearchForSurvey() in job-feed.js (after 10th search or 5min), showApplyConfidence() in pipeline.js (after apply action), startDataViewTimer() in stats.js (after 10s viewing charts). P13-09 paywall hook was already in billing.js.', p: 25 },
-  { s: 'done', n: 'P13-10: Survey completion rate dashboard', d: 'DONE v3.95 — Admin Surveys tab with 4 ECharts (version bar, daily line, NPS stacked bar, type funnel), KPI cards, recent responses table, period toggle. get_survey_analytics() RPC.', p: 25 },
-  { s: 'done', n: 'P13-11: Landing page survey social proof', d: 'DONE v3.96 — Social proof bar below stats on landing page. Star rating, respondent count, NPS recommend %%. Min 20 responses threshold. Reads survey_social_proof anon view.', p: 25 },
-  { s: 'todo', n: 'P13-12: Quarterly feature prioritization survey', d: 'Drag-and-drop ranking of potential features. New rank question type in survey.html. Quarterly pg_cron trigger.', b: 'needs-users', p: 25, b: 'post-launch' },
-  { s: 'done', n: 'P13-13: Public changelog + feedback board (Canny)', d: 'DONE v3.97 — Canny widget embedded in dashboard Feedback page. Feature Requests + Bug Reports boards. Canny Identify SSO with Supabase auth. GitHub integration for auto-complete on issue close. Changelog at brilliant-jobs.canny.io/changelog.', p: 25 },
-  { s: 'todo', n: 'P13-08: NPS monthly cron Edge Function', d: 'pg_cron job (1st of month, 10am ET) triggers nps-pulse Edge Function. Identifies active users, sends notification linking to /survey?context=nps&v=nps_v1.', b: 'needs-users', p: 25, b: 'post-launch' },
-  { s: 'done', n: 'P13-14: Ghost Job Reality Check flagship survey', d: 'DONE v4.14 — 10-question ghost_v1 instrument. Public, no auth. New multiselect question type. /ghost-report live results page with 6 ECharts, 4 KPIs, testimonial wall. Ghost-specific thank-you with share CTA for viral loop.', p: 25 },
-  { s: 'todo', n: 'P13-19–24: User Intelligence System', d: 'Explicit attribute capture, behavioral tracking (PostHog), merged intelligence profiles, progressive profiling, transparency dashboard, churn risk scoring. Months 2-3.', b: 'needs-users', p: 25, b: 'post-launch' },
-  { s: 'todo', n: 'P13-25: Cohort-survey assignment matrix', d: 'cohort_survey_assignments table mapping cohorts to survey versions. cohort_id column on feedback table (denormalized for fast aggregation). submitSurvey() looks up user cohort and attaches to payload. Admin analytics sliceable by cohort → version → user. Depends on Cohort Experience System Phase A.', b: 'cohort-system', p: 25, b: 'post-launch' },
+  { s: 'done', n: 'v3.92: P13-01/02/03/07 — periodic_v2 survey expansion', d: 'Added 8 new questions to periodic survey: job anxiety scale (1-5), expected timeline dropdown, appreciation score + testimonial comment, comparative ease, perceived control, filter adequacy + missing filters freetext. New question type renderers: scale, nps (0-10), dropdown. Registered periodic_v2 as latest.', p: 13 },
+  { s: 'done', n: 'v3.92: Supabase baseline migration fix', d: 'Fixed baseline migration that was failing on Preview branches. Added CREATE TABLE for 9 missing tables (profiles, ats_jobs, ats_companies, connections, resumes, notification_log, notification_actions, feedback, cohorts). All Supabase Preview checks now pass.', p: 13 },
+  { s: 'done', n: 'v3.93: P13-08 NPS pulse question bank', d: 'nps_v1 question bank (0-10 NPS score, reason quick-select, improvement freetext). NPS context routing in resolveVersion(). Edge Function for monthly cron trigger is follow-up.', p: 13 },
+  { s: 'done', n: 'v3.93: P13-04/05/06/09 micro-survey module', d: 'micro-surveys.js — inline survey components for post-search relevance, post-apply confidence, data value assessment, paywall friction. Generic createMicroCard() with choice/rating/chips follow-up. Session rate-limiting via sessionStorage. CSS in dashboard.html.', p: 13 },
+  { s: 'done', n: 'v3.94: P13-04/05/06 micro-survey hooks wired', d: 'Connected micro-survey triggers to dashboard modules: trackSearchForSurvey() in job-feed.js (after 10th search or 5min), showApplyConfidence() in pipeline.js (after apply action), startDataViewTimer() in stats.js (after 10s viewing charts). P13-09 paywall hook was already in billing.js.', p: 13 },
+  { s: 'done', n: 'P13-10: Survey completion rate dashboard', d: 'DONE v3.95 — Admin Surveys tab with 4 ECharts (version bar, daily line, NPS stacked bar, type funnel), KPI cards, recent responses table, period toggle. get_survey_analytics() RPC.', p: 13 },
+  { s: 'done', n: 'P13-11: Landing page survey social proof', d: 'DONE v3.96 — Social proof bar below stats on landing page. Star rating, respondent count, NPS recommend %%. Min 20 responses threshold. Reads survey_social_proof anon view.', p: 13 },
+  { s: 'todo', n: 'P13-12: Quarterly feature prioritization survey', d: 'Drag-and-drop ranking of potential features. New rank question type in survey.html. Quarterly pg_cron trigger.', b: 'needs-users', p: 13, b: 'post-launch' },
+  { s: 'done', n: 'P13-13: Public changelog + feedback board (Canny)', d: 'DONE v3.97 — Canny widget embedded in dashboard Feedback page. Feature Requests + Bug Reports boards. Canny Identify SSO with Supabase auth. GitHub integration for auto-complete on issue close. Changelog at brilliant-jobs.canny.io/changelog.', p: 13 },
+  { s: 'todo', n: 'P13-08: NPS monthly cron Edge Function', d: 'pg_cron job (1st of month, 10am ET) triggers nps-pulse Edge Function. Identifies active users, sends notification linking to /survey?context=nps&v=nps_v1.', b: 'needs-users', p: 13, b: 'post-launch' },
+  { s: 'done', n: 'P13-14: Ghost Job Reality Check flagship survey', d: 'DONE v4.14 — 10-question ghost_v1 instrument. Public, no auth. New multiselect question type. /ghost-report live results page with 6 ECharts, 4 KPIs, testimonial wall. Ghost-specific thank-you with share CTA for viral loop.', p: 13 },
+  { s: 'todo', n: 'P13-19–24: User Intelligence System', d: 'Explicit attribute capture, behavioral tracking (PostHog), merged intelligence profiles, progressive profiling, transparency dashboard, churn risk scoring. Months 2-3.', b: 'needs-users', p: 13, b: 'post-launch' },
+  { s: 'todo', n: 'P13-25: Cohort-survey assignment matrix', d: 'cohort_survey_assignments table mapping cohorts to survey versions. cohort_id column on feedback table (denormalized for fast aggregation). submitSurvey() looks up user cohort and attaches to payload. Admin analytics sliceable by cohort → version → user. Depends on Cohort Experience System Phase A.', b: 'cohort-system', p: 13, b: 'post-launch' },
 
   // Phase 26 — UX Polish & Resume-First Onboarding (Phase Q from audit)
   
@@ -1617,9 +1617,9 @@ const features = [
   { s: 'done', n: 'FCD Supabase infrastructure setup', d: 'v5.78: Created fcd-enrichment Storage bucket (private, 50 MB, JSON only). Unscheduled old pg_cron job 62 (enrich-pdl-batch). Created new pg_cron job 63 (enrich-fcd-batch, weekly Sun 3 AM UTC, DISABLED). Deleted old enrich-pdl-batch Edge Function via CLI (returns 404). Verified enrich-fcd-batch EF responds correctly.', p: 66 },
 
   // Phase 67: FCD Data Loading (v5.80) — Marston manual
-  { s: 'todo', n: 'Run filter-fcd.py locally against FCD dataset', d: 'Run python3 scripts/filter-fcd.py /path/to/free_company_dataset.json on local machine. Streams 10 GB JSON, filters by non-null industry, extracts linkedin_slug + domain. Output: filtered-companies.json.', b: 'pre-launch', p: 67 },
-  { s: 'todo', n: 'Check output size + upload to Storage', d: 'ls -lh filtered-companies.json — if >50 MB, create ref_fcd_companies table instead (EF reads via LIMIT/OFFSET). If ≤50 MB, upload with: bash scripts/upload-fcd-filtered.sh filtered-companies.json', b: 'pre-launch', p: 67 },
-  { s: 'todo', n: 'Test enrich-fcd-batch + activate cron', d: 'POST to /functions/v1/enrich-fcd-batch with service role key. Verify matches are written correctly. Then activate: SELECT cron.alter_job(63, active := true). Pipeline goes live on next Sunday 3 AM UTC run.', b: 'pre-launch', p: 67 },
+  { s: 'todo', n: 'Run filter-fcd.py locally against FCD dataset', d: 'Run python3 scripts/filter-fcd.py /path/to/free_company_dataset.json on local machine. Streams 10 GB JSON, filters by non-null industry, extracts linkedin_slug + domain. Output: filtered-companies.json.', b: 'pre-launch', p: 41 },
+  { s: 'todo', n: 'Check output size + upload to Storage', d: 'ls -lh filtered-companies.json — if >50 MB, create ref_fcd_companies table instead (EF reads via LIMIT/OFFSET). If ≤50 MB, upload with: bash scripts/upload-fcd-filtered.sh filtered-companies.json', b: 'pre-launch', p: 41 },
+  { s: 'todo', n: 'Test enrich-fcd-batch + activate cron', d: 'POST to /functions/v1/enrich-fcd-batch with service role key. Verify matches are written correctly. Then activate: SELECT cron.alter_job(63, active := true). Pipeline goes live on next Sunday 3 AM UTC run.', b: 'pre-launch', p: 41 },
 ];
 
 
@@ -1726,14 +1726,13 @@ function render() {
   const phaseNames = {
     0: 'Foundation', 1: 'Auth', 2: 'Core Platform', 3: 'Go-to-Market',
     4: 'Data & Analytics', 5: 'Resumes & Applications', 6: 'User Management',
-    7: 'Monetization & Growth', 8: 'Anti-detection', 9: 'Advanced Pipeline',
+    7: 'Monetization & Engagement', 8: 'Anti-detection', 9: 'Advanced Pipeline',
     10: 'Real-time & Alerts', 11: 'Employer Intelligence', 12: 'Community & Network',
-    13: 'User Feedback & Surveys', 14: 'Admin & Feature Flags', 15: 'Gamification',
+    13: 'User Feedback, Surveys & Intelligence', 14: 'Admin & Feature Flags', 15: 'Gamification',
     16: 'Passive Mode', 17: 'Backlog & Debt', 18: 'Security & Hardening',
     19: 'Scalability & Multi-User',
     20: 'Showcase',
     21: 'Enterprise', 22: 'Infra Hardening & Data Quality', 23: 'Security Hardening', 24: 'Platform Expansion',
-    25: 'Surveys & User Intelligence',
     26: 'UX Polish & Resume-First Onboarding',
     27: 'SEO Data Pages',
     28: 'AI Rewrite: JD-Match Boost',
@@ -1749,7 +1748,7 @@ function render() {
     38: 'Signal Analytics + Notification Templates',
     39: 'Content Distribution & Social Publishing',
     40: 'Bug Tracker Resolution',
-    41: 'Feed Quality & Search Relevance (v4.86-v4.90)',
+    41: 'Feed Quality & Search Relevance',
     42: 'Global Version, Pricing & City Pages',
     43: 'City Pages + Internal Linking Sprint ✅',
     44: 'Data Integrity & Sync Consolidation ✅',
@@ -1775,7 +1774,6 @@ function render() {
     64: 'ATS Handler Expansion (v5.75) ✅',
     65: 'E2E Auto-Apply Verified ✅',
     66: 'FCD Pipeline Cleanup (v5.78) ✅',
-    67: 'FCD Data Loading (v5.80)'
   };
 
   function buildSection(items, cls, label, startCollapsed) {
