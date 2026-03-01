@@ -18,7 +18,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=5.90" defer></script>
+  <script src="dist/dashboard.min.js?v=5.91" defer></script>
   <script src="js/canny.js" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
@@ -2826,6 +2826,15 @@
               <button class="admin-tab" data-tab="content">Content</button>
               <button class="admin-tab" data-tab="enrichment">Enrichment</button>
             <button class="admin-tab" data-tab="referrals">Referrals</button>
+            <button class="admin-tab" data-tab="notifications">Notifications</button>
+            <button class="admin-tab" data-tab="templates">Templates</button>
+          </div>
+
+          <div class="admin-panel" id="admin-panel-notifications">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading notification configs…</div>
+          </div>
+          <div class="admin-panel" id="admin-panel-templates">
+            <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading templates…</div>
           </div>
 
           <div class="admin-panel active" id="admin-panel-feed-health">
