@@ -19,12 +19,54 @@
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "Market Dynamics 2026: Where Jobs Are Moving",
-  "author": {"@type": "Organization", "name": "Brilliant Jobs", "url": "https://brilliantjobs.app"},
-  "publisher": {"@type": "Organization", "name": "Brilliant Jobs"},
-  "datePublished": "2026-02-20",
-  "dateModified": "2026-02-27"
+  "@graph": [
+    {
+      "@type": "Article",
+      "headline": "Market Dynamics 2026: Where Jobs Are Moving",
+      "author": {"@type": "Organization", "name": "Brilliant Jobs", "url": "https://brilliantjobs.app"},
+      "publisher": {"@type": "Organization", "name": "Brilliant Jobs"},
+      "datePublished": "2026-02-20",
+      "dateModified": "2026-02-28",
+      "mainEntityOfPage": "https://brilliantjobs.app/market-dynamics"
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Where are jobs moving geographically in 2026?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Job postings are concentrating in Sun Belt metros and secondary tech hubs. States like Texas, Florida, and North Carolina lead in net new listings, while traditional coastal hubs maintain volume but show slower growth. Remote-eligible listings distribute more evenly across states."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does the latest labor market data show?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Current labor market data from 315,000+ active listings shows weekly fluctuations across industries and departments. Engineering and healthcare maintain the highest sustained volume, while sectors like media and retail show more cyclical patterns. Week-over-week changes help identify emerging hiring trends before they appear in official BLS reports."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which states have the most job openings?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "California, Texas, New York, and Florida consistently lead in total job postings. When adjusted for population, states like Colorado, Washington, and Massachusetts show higher per-capita job density. The geographic distribution shifts weekly based on industry-specific hiring cycles."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How is the labor market shifting by industry and region?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The labor market is shifting toward distributed hiring patterns. Technology companies are posting more roles outside traditional hubs, healthcare hiring is expanding in suburban and rural areas, and financial services are concentrating in a handful of metros. Week-over-week trends on this page track these shifts in near real-time across 39,000+ company career pages."
+          }
+        }
+      ]
+    }
+  ]
 }
   </script>
   <style>
@@ -87,6 +129,16 @@
     @media(max-width:600px){.wrap{padding:20px 14px 60px}.ec{height:320px!important}.ec.map{height:380px!important}}
       .dash-link{display:none;position:fixed;top:16px;right:16px;z-index:100;background:rgba(59,130,246,0.12);color:var(--accent);font-size:12px;font-family:"JetBrains Mono",monospace;padding:6px 14px;border-radius:6px;border:1px solid rgba(59,130,246,0.25);text-decoration:none;transition:all 0.2s}
     .dash-link:hover{background:rgba(59,130,246,0.2);border-color:var(--accent)}
+  
+    /* Mobile chart responsiveness (Item #17) */
+    @media(max-width:640px){
+      .ec{height:auto!important;min-height:260px}
+      .ec.tall{min-height:340px!important}
+      .ec.xtall{min-height:400px!important}
+      .chart-card{overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .stat-grid,.stats{grid-template-columns:repeat(2,1fr)!important}
+      .summary{font-size:12px;padding:12px 14px}
+    }
   </style>
 </head>
 <body>
@@ -201,25 +253,37 @@
     <div id="role-cross-links" class="related-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
   </div>
 
+  
+  <!-- CTA: Free/Starter/Pro tiers -->
+  <div class="related" style="padding:28px;margin-block-start:32px;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(168,85,247,0.06));border:1px solid rgba(59,130,246,0.25);border-radius:12px;text-align:center">
+    <h3 style="font-size:18px;margin-block-end:8px;color:var(--text)">Put this data to work</h3>
+    <p style="font-size:14px;color:var(--text-dim);margin-block-end:20px;max-width:520px;margin-inline:auto">Search 315,000+ jobs with salary filters, AI matching, and automated applications. Free to start &mdash; upgrade when you&rsquo;re ready.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a href="/dashboard" onclick="if(typeof openModal==='function')openModal('signup')" style="display:inline-block;padding:10px 24px;background:var(--accent);color:#fff;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;transition:opacity .15s">Start Free</a>
+      <a href="/pricing" style="display:inline-block;padding:10px 24px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;transition:opacity .15s">See Plans</a>
+    </div>
+    <p style="font-size:11px;color:var(--text-faint);margin-block-start:12px">Free · Starter $20/mo · Pro $40/mo &mdash; No credit card required</p>
+  </div>
+
   <div class="foot">Data from <span class="seo-companies-k">39,000+</span> career pages<br><span class="bj-version"></span> · Updated daily &middot; <a href="https://brilliantjobs.app">Brilliant Jobs</a> &middot; <a href="/data-lab">Data Lab</a> · &copy; <span class="bj-year"></span> Brilliant Jobs</div>
 </div>
 </main>
 <!-- version managed by js/version.js -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
-  var SB = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1';
+  var SB_RPC = 'https://qojhagupdnbtomfoxnsf.supabase.co/rest/v1/rpc/';
   var AK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-  var HD = {'apikey':AK,'Authorization':'Bearer '+AK};
+  var HD = {'apikey':AK,'Authorization':'Bearer '+AK,'Content-Type':'application/json'};
   var TT = {backgroundColor:'rgba(12,14,20,0.96)',borderColor:'#1e2230',textStyle:{color:'#e8eaf0',fontFamily:'Outfit',fontSize:12}};
   var AL = {color:'#7884a8',fontFamily:'JetBrains Mono',fontSize:10};
 
   var CACHE_TTL=86400000;
   function cGet(k){try{var c=JSON.parse(localStorage.getItem('bj_md_'+k));if(c&&Date.now()-c.t<CACHE_TTL)return c.d}catch(e){}return null}
   function cSet(k,d){try{localStorage.setItem('bj_md_'+k,JSON.stringify({t:Date.now(),d:d}))}catch(e){}}
-  async function q(table) {
-    var c=cGet(table);if(c&&Array.isArray(c)&&c.length>0)return c;
-    try{var r = await fetch(SB+'/'+table+'?select=*&limit=10000',{headers:HD});
-    if(!r.ok)return[];var d = await r.json();if(Array.isArray(d)&&d.length>0)cSet(table,d);return d||[];}catch(e){return[];}
+  async function q(fn) {
+    var c=cGet(fn);if(c&&Array.isArray(c)&&c.length>0)return c;
+    try{var r = await fetch(SB_RPC+'get_'+fn,{method:'POST',headers:HD,body:'{}'});
+    if(!r.ok)return[];var d = await r.json();if(d&&d.code)return[];if(Array.isArray(d)&&d.length>0)cSet(fn,d);return d||[];}catch(e){return[];}
   }
 
   // Load all 3 datasets in parallel
