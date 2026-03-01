@@ -1364,7 +1364,8 @@
         <div class="modal-sub" id="modal-sub">Log in to your account</div>
         <div class="auth-tabs">
           <div class="auth-tab active" data-form="login">Log In</div>
-          <div class="auth-tab" data-form="signup">Sign Up</div>
+          <!-- REGISTRATION LOCKED — re-enable when ready to accept signups -->
+          <!-- <div class="auth-tab" data-form="signup">Sign Up</div> -->
         </div>
         <div class="auth-form active" id="form-login"><form onsubmit="return false;" autocomplete="on">
           <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"></div>
@@ -1384,39 +1385,8 @@
             <div class="msg" id="forgot-msg"></div>
           </div>
         </div>
-        <div class="auth-form" id="form-signup"><form onsubmit="return false;" autocomplete="on">
-          <div class="field"><label>Full Name</label><input type="text" id="signup-name" placeholder="Your full name (as it appears on LinkedIn)"></div>
-          <div class="field"><label>Email</label><input type="email" id="signup-email" placeholder="you@email.com"></div>
-          <div class="field">
-            <label>Password</label>
-            <div class="password-wrap">
-              <input type="password" id="signup-password" placeholder="Min 6 characters" autocomplete="new-password">
-              <button type="button" class="pw-toggle" data-target="signup-password">Show</button>
-            </div>
-          </div>
-          <div class="field">
-            <label>LinkedIn Profile URL</label>
-            <input type="url" id="signup-linkedin" placeholder="https://www.linkedin.com/in/your-profile" value="https://www.linkedin.com/in/">
-            <div class="hint">Used for account verification only.</div>
-          </div>
-          <script>
-            document.getElementById('signup-linkedin').addEventListener('focus', function() {
-              var v = this.value;
-              if (v === 'https://www.linkedin.com/in/') {
-                setTimeout(function() {
-                  var el = document.getElementById('signup-linkedin');
-                  el.setSelectionRange(v.length, v.length);
-                }, 0);
-              }
-            });
-          </script>
-          <div class="optin-row">
-            <input type="checkbox" id="signup-optin">
-            <label for="signup-optin">Send me product updates and job search tips.</label>
-          </div>
-          <button class="btn-auth" id="signup-btn">Create Account</button>
-          <div class="msg" id="signup-msg"></div></form>
-        </div>
+        <!-- REGISTRATION LOCKED — signup form hidden until launch -->
+        <div class="auth-form" id="form-signup" style="display:none !important;"></div>
         <div class="auth-form" id="form-forgot"><form onsubmit="return false;">
           <div class="field"><label>Email</label><input type="email" id="forgot-email" placeholder="you@email.com"></div>
           <button class="btn-auth" id="forgot-send-btn" style="background:var(--bg-input);color:var(--text-dim);">Send Password Reset Email</button>
