@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-02-27
+**Last updated:** 2026-03-01
 **Target launch:** March 2026
-**Current version:** v5.66
+**Current version:** v5.90
 
 ---
 
@@ -1041,6 +1041,7 @@
 ## Changelog
 
 | Date | Sprint | Items | Summary |
+| 2026-03-01 | 57 | #16 | **Phase 57: Industry Detail Pages (v5.90).** 15 industry detail pages deployed to production. 5 new parameterized Supabase RPCs for per-industry analytics. ECharts visualizations (5 per page), FAQ schema, AI content blocks, cross-linking, sitemap updated. Completes Content Strategy Audit Item #16. All 19/19 items done. Phase 11 (Content & SEO) closed. Git tag v5.90. |
 | 2026-02-27 | 51 | CG1–CG5 | **Phase 51: Competitive Gap Closure (v5.55–v5.56).** 5 items from competitive analysis vs FastApply/Huntr/OwlApply. v5.55: Generic/Universal Form Handler (DOM heuristic for any ATS, doubles coverage to 8+) + Manifest Host Permissions Fix (auto-inject on all ATS domains). v5.56: On-Page Status Overlay (floating fill progress widget, `inject-overlay.js`), Cover Letter Generation (`generate-cover-letter` Edge Function, Claude Haiku ~$0.001/letter), Fill Metrics & Feedback Loop (`fillMetrics.js` — PostHog events, Supabase persistence, AI answer ratings). Extension 2.15.0→2.16.0. All 5 items code-complete and deployed. |
 | 2026-02-27 | 49 | EXT1–EXT8 | **Phase 49: Extension Rework & Auto-Apply Infrastructure (v5.26–v5.42).** Complete Chrome extension overhaul adding multi-ATS auto-apply on top of existing LinkedIn scanner. Browser-fill submission chain for 9 platforms (Greenhouse, Lever, Ashby, Workable, Recruitee, LinkedIn Easy Apply, Indeed, Workday, generic). AI question answering via Claude Haiku (50/day). Multilingual label detection (FR/ES/DE/IT). Human-simulation typing with bezier cursor paths. autoTracker.js for application success detection + Chrome notification on confirmation (v5.42). 3-layer code obfuscation. Extension RBAC (admin-gated scanner). Greenhouse API token scraping (205/4,204 boards). submit-application EF with Recruitee zero-auth + Greenhouse token-based API submission. Score-gated decision engine: 6 modes, score gate modal, score-resume EF (833 lines), pending_applications state machine, pg_cron expiry. Extension v2.11.0. Roadmap flips: Application auto-detect (done), Auto-apply form-fill (done), Decision engine (done). New items added: auto-apply trigger engine, extension update notification. 20 remaining items documented in EXTENSION_COMPLETION_HANDOFF.docx. |
 | 2026-02-27 | 48 | RH1–RH12 | **Phase 48: Referral Hub Redesign (v5.19–v5.25).** Full 4-phase redesign per spec v3. Phase 1: copy rewrite, hero banner, SVG badge icons, tier names (Signal/Source/Radar/Intel/Clearance), design system alignment (v5.19). Phase 2: leaderboard rewards backend — `leaderboard_rewards` table, `distribute_leaderboard_rewards` RPC (SECURITY DEFINER), pg_cron weekly+monthly, `get_leaderboard` RPC, Resend email template (v5.20). Phase 3: leaderboard frontend — period toggle, reward tier grid, countdown timer, user rank highlight, Earning column, 20-user threshold with progress bar (v5.22). Phase 4: milestone rewards — `referral_milestones` table, `process_tier_bonus` RPC (idempotent credit+Pro grants per tier), `check_clearance_retention` quarterly cron, profile flair system (icons, colored names, TOP REFERRER badge) (v5.25). Bug fixes: tab restore for referrals+ghost tabs, LinkedIn-based referral codes (`marston` instead of `BJ-972148`), `/in/` format links, updated `get_referral_stats` + `generate_referral_code` RPCs. |
@@ -2320,3 +2321,86 @@ All 22 items from the Extension & Platform Remaining Work handoff document are n
 | Console log | [BJ] Dashboard v5.66 loaded |
 
 **Phase 56 total: 1 version (v5.66) | SEO count accuracy ✅**
+
+
+---
+
+## Phase 57: Industry Detail Pages (v5.90) — Mar 1, 2026 ✅
+
+**Goal:** Create 15 industry-specific detail pages with live per-industry analytics. Completes Content Strategy Audit Item #16 and closes out Phase 11 (Content & SEO) — all 19/19 items done.
+
+### v5.90 — Industry Detail Pages (#16)
+
+**Database (5 new RPCs):**
+- `get_industry_detail(text)` — total jobs, median/avg salary, unique companies, remote/hybrid/onsite counts
+- `get_industry_top_companies(text)` — top 15 employers by job count with avg salary
+- `get_industry_departments(text)` — department distribution within an industry
+- `get_industry_salary_distribution(text)` — salary buckets ($0-50K through $200K+)
+- `get_industry_seniority(text)` — seniority level distribution (intern through executive)
+
+All RPCs use the same CASE-based industry mapping as `get_jobs_by_industry`, parameterized by sector name, anon-accessible.
+
+**Frontend (15 new HTML pages):**
+
+| # | Page | URL | Jobs | Priority |
+|---|------|-----|------|----------|
+| 1 | Technology | /industry/technology | 16,459 | 0.8 |
+| 2 | Healthcare | /industry/healthcare | 5,351 | 0.8 |
+| 3 | Finance | /industry/finance | 3,905 | 0.8 |
+| 4 | Consulting & Services | /industry/consulting-services | 4,921 | 0.7 |
+| 5 | Retail & Consumer | /industry/retail-consumer | 3,293 | 0.7 |
+| 6 | Media & Marketing | /industry/media-marketing | 3,082 | 0.7 |
+| 7 | Manufacturing | /industry/manufacturing | 1,622 | 0.7 |
+| 8 | Real Estate & Construction | /industry/real-estate-construction | 1,364 | 0.7 |
+| 9 | Energy | /industry/energy | 740 | 0.7 |
+| 10 | Education | /industry/education | 502 | 0.7 |
+| 11 | Logistics & Transport | /industry/logistics-transport | 489 | 0.7 |
+| 12 | Telecom | /industry/telecom | 379 | 0.6 |
+| 13 | Government | /industry/government | 374 | 0.7 |
+| 14 | Legal | /industry/legal | 253 | 0.6 |
+| 15 | Non-Profit | /industry/non-profit | 13 | 0.6 |
+
+**Per-page features:**
+- 5 stat cards (Open Jobs, Median Salary, Companies, Remote %, Salary Data coverage)
+- 5 ECharts visualizations (salary distribution bar, top 15 employers horizontal bar, department donut, seniority bar, remote/onsite/hybrid donut)
+- Article + FAQPage structured data (JSON-LD)
+- AI-friendly content blocks (hidden, data-attribute tagged)
+- Cross-links to all 14 other industry pages
+- Breadcrumb navigation (Home > Data Lab > Jobs by Industry > {Industry})
+- Tier-aligned CTAs (Free / Starter $20 / Pro $40)
+- Methodology footer
+- 24h client-side localStorage caching
+- Responsive breakpoints at 640px and 900px
+
+**Cross-linking & SEO:**
+- `jobs-by-industry.html` updated with "Deep Dive by Industry" section linking to all 15 pages
+- `sitemap.xml` updated with 15 new URLs (priority 0.6-0.8, daily changefreq)
+- Canonical URLs on all pages
+
+**Files changed:**
+- 15 new: `industry/*.html`
+- 1 new: `supabase/migrations/20260301_industry_detail_pages.sql`
+- Updated: `js/version.js`, `index.html`, `dashboard.html`, `CHANGELOG.md`, `jobs-by-industry.html`, `sitemap.xml`
+
+### Version Surfaces (v5.90)
+
+| Surface | Value |
+|---------|-------|
+| js/version.js | v5.90 |
+| dashboard.html comment | v5.90 |
+| dashboard.html cache-bust | ?v=5.90 |
+| index.html comment | v5.90 |
+| CHANGELOG.md | v5.90 entry |
+| Git tag | v5.90 |
+
+### Content Strategy Audit — Final Status
+
+All 19 action items from the Content Strategy Audit (Phase 11) are now DONE:
+
+| Pod | Done | Started | Not Started |
+|-----|------|---------|-------------|
+| Pod 1 (Growth) | 10 | 0 | 0 |
+| Pod 2 (Engineering) | 10 | 0 | 0 |
+| **Total** | **19** | **0** | **0** |
+
+**Phase 57 total: 1 version (v5.90) | 15 industry detail pages + 5 RPCs | Content Strategy Audit complete ✅**
