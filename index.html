@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v5.80 -->
+<!-- Brilliant Jobs Landing Page v5.81 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -674,12 +674,31 @@
         "operatingSystem": "Web, Chrome",
         "url": "https://brilliantjobs.app",
         "description": "Aggregates 315,000+ jobs from 39,000+ company ATS systems. Provides salary extraction, keyword-to-resume matching, ghost rate tracking, and automated application management.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD",
-          "description": "Free during private beta"
-        },
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Basic job search with limited filters"
+          },
+          {
+            "@type": "Offer",
+            "name": "Starter",
+            "price": "20",
+            "priceCurrency": "USD",
+            "billingDuration": "P1M",
+            "description": "Enhanced filtering, 100 monthly credits"
+          },
+          {
+            "@type": "Offer",
+            "name": "Pro",
+            "price": "40",
+            "priceCurrency": "USD",
+            "billingDuration": "P1M",
+            "description": "Full access with AI resume scoring, 300 monthly credits"
+          }
+        ],
         "featureList": [
           "Real-time job aggregation from 39,000+ company career pages",
           "Salary range extraction and display",
@@ -899,6 +918,8 @@
       <div class="sp-rating" id="sp-rating">—</div>
       <div class="sp-divider"></div>
       <div class="sp-text"><strong id="sp-count">—</strong> job seekers rated their experience</div>
+      <div class="sp-divider"></div>
+      <div class="sp-text">Data from <strong>5 ATS platforms</strong> · <a href="/data-lab" style="color:var(--accent)">See market intelligence</a></div>
       <div class="sp-divider"></div>
       <div class="sp-badge" id="sp-nps-badge">
         <span>↑</span> <span id="sp-nps-pct">—</span> would recommend
