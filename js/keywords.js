@@ -701,6 +701,44 @@ async function runReadinessAnalysis(opts) {
     }
   }
 
+  // v6.05: Fire CV score notification (score-sequence Edge Function)
+  if (typeof window.triggerScoreNotification === 'function') {
+    (async function() {
+      try {
+        var _user = typeof sb !== 'undefined' ? (await sb.auth.getUser()).data.user : null;
+        if (!_user) return;
+        // Fire for each resume that was scored
+        for (var _ri in scores) {
+          var _sd = scores[_ri];
+          if (!_sd || !_sd.overallScore) continue;
+          // Use first filter's top job as context
+          var _filterNames = Object.keys(_sd.filters || {});
+          var _jobTitle = null, _companyName = null, _jobId = null, _analysisSummary = null;
+          if (_filterNames.length > 0) {
+            var _fd = _sd.filters[_filterNames[0]];
+            _analysisSummary = {
+              strengths: (_fd.topMatched || []).map(function(m) { return m.term; }),
+              gaps: (_fd.topMissing || []).map(function(m) { return { skill: m.term, recommendation: 'Add to resume' }; }),
+              missing_skills: (_fd.topMissing || []).map(function(m) { return m.term; })
+            };
+            // Try to get job context from jdCache
+            if (typeof jdCache !== 'undefined') {
+              for (var _jk in jdCache) {
+                if (jdCache[_jk] && jdCache[_jk].title) {
+                  _jobTitle = jdCache[_jk].title;
+                  _companyName = jdCache[_jk].company_name || jdCache[_jk].company || null;
+                  _jobId = _jk;
+                  break;
+                }
+              }
+            }
+          }
+          window.triggerScoreNotification(_user.id, _jobId || 'readiness-' + _ri, _sd.overallScore, _analysisSummary, _jobTitle, _companyName);
+        }
+      } catch(e) { console.warn('[score-notif] Hook error:', e.message); }
+    })();
+  }
+
   // v5.17: Show upsell card after Quick Score for non-Pro users
   if (singleResumeIdx !== null && _lastScoreMode === 'quick') {
     var tier = typeof getUserTier === 'function' ? getUserTier() : 'free';
