@@ -1,3 +1,29 @@
+## v6.02 — Pod 1 Batch 1-2 Copy Delivery + White Theme Approval (2026-03-01)
+
+### Pod 1 Deliverables (Copy & Design)
+- **Batch 1 copy delivered (4 onboarding templates)**: Production subject lines and body copy injected into `onboardWelcomeEmail()`, `onboardResumeNudgeEmail()`, `onboardFilterNudgeEmail()`, `onboardExtensionNudgeEmail()`. All [POD1_COPY] markers removed. Copy follows Fiorelli AI Content Framework — persona-aligned for mid-to-senior professionals (28-45), scannable structure, benefit-first messaging, clear single CTA per email.
+- **Batch 2 copy delivered (5 integration adoption templates)**: Production copy injected into `adoptExtensionReminderEmail()`, `adoptGmailEmail()`, `adoptCalendarEmail()`, `adoptDriveEmail()`, `adoptIntegrationComboEmail()`. Privacy-forward messaging for Gmail/Calendar. Context-sensitive copy with dynamic variable support.
+- **White theme design approved**: `whiteBaseLayout()` reviewed and approved — light background (#f8fafc), white cards with subtle shadows, blue accent buttons (#3b82f6), step indicators, highlight blocks. Brand-consistent. Ready for all onboarding and integration adoption emails.
+
+### Copy Strategy Notes
+- Subject lines optimized for inbox preview: benefit-first, under 60 characters where possible, no clickbait.
+- Onboarding sequence: progressive value disclosure — each email introduces one action with clear rationale, not a feature dump.
+- Integration adoption: trigger-contextual — Gmail email mentions active pipeline, Calendar mentions interviews, Drive mentions uploaded resume. Extension reminder supports dynamic context injection.
+- Integration combo (30-day recap): warning amber indicators for missing integrations replace neutral gray dashes — creates appropriate urgency without guilt-tripping.
+- Division of zero guard added to `adoptIntegrationComboEmail()` for edge case where both arrays are empty.
+
+### Changed
+- `_shared/email-templates.ts`: 10 template functions updated from placeholder to production copy. All [POD1_COPY] markers removed. Header comments updated to reflect production status.
+- Version bump to v6.02 across version.js, dashboard.html (comment + cache-bust), index.html (comment), CHANGELOG.md.
+
+### Unblocked
+- **Pod 2 Session 3**: Onboarding sequence can go fully live — Edge Function skeleton already deployed (v6.01), now has production templates.
+- **Pod 2 Session 4**: Integration adoption system can proceed — template copy is ready, Pod 2 builds `integration_adoption_state` table + adoption Edge Function + frequency caps.
+- **Sessions 3-4 combined activation**: Pod 2 can turn both sessions from skeleton to live in a single session.
+
+### Infrastructure
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
 ## v6.01 — Onboarding Sequence Skeleton + White Theme Templates (2026-03-01)
 
 ### Added
