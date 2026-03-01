@@ -1,4 +1,5 @@
-// interview-sequence Edge Function — v1 (Session 6, v6.07)
+// interview-sequence Edge Function — v2 (Session 6, v6.07)
+// v2: Added cron_24h / cron_1h batch mode for pg_cron triggers
 // Interview Reminders + Resume Rewrite Ready Notification Flow
 // Triggered by:
 //   1. Pipeline stage change to "interview" (interviewScheduledWhiteEmail)
@@ -55,6 +56,93 @@ serve(async (req: Request) => {
   try {
     const payload: InterviewPayload = await req.json();
     const { type, userId } = payload;
+
+
+    // ─── Cron mode (v6.07) ───
+    // When called by pg_cron with type "cron_24h" or "cron_1h",
+    // query user_pipeline for upcoming interviews and fire individual notifications.
+    if (payload.type === "cron_24h" || payload.type === "cron_1h") {
+      const is24h = payload.type === "cron_24h";
+      const windowHours = is24h ? 24 : 1;
+      const minHours = is24h ? 1 : 0; // 24h cron skips interviews <1h away (1h cron handles those)
+      const notifType = is24h ? "interview_reminder_24h" : "interview_reminder_1h";
+
+      console.log(`[interview-sequence] Cron mode: ${payload.type}`);
+
+      const now = new Date();
+      const windowEnd = new Date(now.getTime() + windowHours * 60 * 60 * 1000);
+      const windowStart = new Date(now.getTime() + minHours * 60 * 60 * 1000);
+
+      // Query upcoming interviews
+      const { data: interviews, error: qErr } = await sb
+        .from("user_pipeline")
+        .select("id, user_id, company_name, job_title, interview_at, match_score")
+        .eq("stage", "interview")
+        .not("interview_at", "is", null)
+        .gte("interview_at", windowStart.toISOString())
+        .lte("interview_at", windowEnd.toISOString());
+
+      if (qErr) {
+        console.error(`[interview-sequence] Cron query error:`, qErr);
+        return new Response(JSON.stringify({ error: "Query failed" }), { status: 500 });
+      }
+
+      console.log(`[interview-sequence] Cron found ${interviews?.length || 0} upcoming interviews in ${windowHours}h window`);
+      let sent = 0, skipped = 0;
+
+      for (const entry of (interviews || [])) {
+        // Dedup check
+        const { data: existing } = await sb
+          .from("notification_log")
+          .select("id")
+          .eq("user_id", entry.user_id)
+          .eq("notification_type", notifType)
+          .eq("metadata->>dedup_key", entry.id)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          skipped++;
+          continue;
+        }
+
+        // Format interview time
+        const interviewDate = new Date(entry.interview_at);
+        const dateStr = interviewDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+        const timeStr = interviewDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+        // Fire individual notification (reuse same function via internal call)
+        const selfUrl = `${SUPABASE_URL}/functions/v1/interview-sequence`;
+        try {
+          const res = await fetch(selfUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": \`Bearer \${SUPABASE_SERVICE_ROLE_KEY}\`,
+              "x-correlation-id": correlationId,
+            },
+            body: JSON.stringify({
+              type: notifType,
+              userId: entry.user_id,
+              pipelineEntryId: entry.id,
+              companyName: entry.company_name,
+              jobTitle: entry.job_title,
+              interviewDate: dateStr,
+              interviewTime: timeStr,
+              matchScore: entry.match_score,
+            }),
+          });
+          const result = await res.json();
+          if (result.sent) sent++;
+          else skipped++;
+        } catch (e) {
+          console.warn(`[interview-sequence] Cron send error for ${entry.id}:`, e.message);
+          skipped++;
+        }
+      }
+
+      console.log(`[interview-sequence] Cron ${payload.type} complete: sent=${sent}, skipped=${skipped}`);
+      return new Response(JSON.stringify({ mode: "cron", type: payload.type, sent, skipped }), { status: 200 });
+    }
 
     if (!type || !userId) {
       return new Response(JSON.stringify({ error: "type and userId required" }), { status: 400 });
