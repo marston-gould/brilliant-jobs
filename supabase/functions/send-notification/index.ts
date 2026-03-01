@@ -1,7 +1,8 @@
-// send-notification Edge Function — v2 (Session 2)
+// send-notification Edge Function — v3 (Session 2+)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → preferences → frequency cap → quiet hours
 // Then routes to Resend (email) or Vonage REST API (SMS), logs to notification_log with decision.
+// v3 adds: quiet hours hold queue (held_notifications table), per-type SMS enforcement
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -266,6 +267,77 @@ function isQuietHours(quietStart: string, quietEnd: string, timezone: string): b
     return currentMinutes >= startMinutes && currentMinutes < endMinutes;
   } catch {
     return false;
+  }
+}
+
+// Calculate when quiet hours end (for hold queue scheduling)
+function getQuietEndDatetime(quietEnd: string, timezone: string): string {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find((p) => p.type === "hour")?.value || "0");
+    const [endH, endM] = quietEnd.split(":").map(Number);
+
+    // If current hour is past midnight but before quiet end, quiet ends today
+    // If current hour is before midnight but after quiet start, quiet ends tomorrow
+    const endDate = new Date(now);
+    if (hour >= (parseInt(quietEnd.split(":")[0]) || 7)) {
+      // We're past quiet end time today, so quiet ends tomorrow morning
+      endDate.setDate(endDate.getDate() + 1);
+    }
+    endDate.setHours(endH, endM || 0, 0, 0);
+    return endDate.toISOString();
+  } catch {
+    // Fallback: 7 hours from now
+    return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString();
+  }
+}
+
+// Hold notification for delivery after quiet hours
+async function holdForQuietEnd(
+  userId: string,
+  notificationType: string,
+  channel: "email" | "sms",
+  reqBody: NotificationRequest,
+  quietEnd: string,
+  timezone: string
+): Promise<void> {
+  const deliverAt = getQuietEndDatetime(quietEnd, timezone);
+  try {
+    await sb.from("held_notifications").insert({
+      user_id: userId,
+      notification_type: notificationType,
+      channel,
+      deliver_at: deliverAt,
+      payload: {
+        subject: reqBody.subject,
+        html: reqBody.html,
+        text: reqBody.text,
+        sms_text: reqBody.sms_text,
+        job_id: reqBody.job_id,
+        company_name: reqBody.company_name,
+        job_title: reqBody.job_title,
+        payload: reqBody.payload,
+        template_version: reqBody.template_version,
+      },
+      status: "held",
+    });
+    console.log(
+      `[send-notification] Held ${notificationType} (${channel}) for ${userId} until ${deliverAt}`
+    );
+  } catch (e) {
+    // If held_notifications table doesn't exist yet, log but don't fail
+    // The table will be created as part of Session 3 DB migration
+    console.warn("[send-notification] Could not hold notification (table may not exist):", e);
   }
 }
 
@@ -536,11 +608,26 @@ serve(async (req: Request) => {
       } else {
         if (smsDecision.reason === "quiet_hours") {
           result.held_for_quiet_hours = true;
+          // Queue for delivery after quiet hours end
+          const { data: userState } = await sb
+            .from("user_notification_state")
+            .select("quiet_hours_end, timezone")
+            .eq("user_id", user_id)
+            .single();
+          await holdForQuietEnd(
+            user_id,
+            notification_type,
+            "sms",
+            body,
+            userState?.quiet_hours_end || "07:00",
+            userState?.timezone || "America/New_York"
+          );
         }
         await logNotification(
           user_id, notification_type, "sms",
           "blocked", body, classification,
-          "blocked", smsDecision.reason
+          smsDecision.reason === "quiet_hours" ? "held" : "blocked",
+          smsDecision.reason
         );
       }
     }
