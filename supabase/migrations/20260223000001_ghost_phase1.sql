@@ -44,7 +44,9 @@ CREATE INDEX IF NOT EXISTS idx_pipeline_applied ON user_pipeline (applied_at) WH
 CREATE INDEX IF NOT EXISTS idx_pipeline_user_updated ON user_pipeline (user_id, updated_at DESC);
 
 ALTER TABLE user_pipeline ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users manage own pipeline" ON user_pipeline;
 CREATE POLICY "Users manage own pipeline" ON user_pipeline FOR ALL USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins read all pipeline" ON user_pipeline;
 CREATE POLICY "Admins read all pipeline" ON user_pipeline FOR SELECT USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );
@@ -154,4 +156,5 @@ END; $$;
 -- 7. UPDATED_AT TRIGGER
 CREATE OR REPLACE FUNCTION update_pipeline_updated_at() RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END; $$ LANGUAGE plpgsql;
+DROP TRIGGER IF EXISTS trg_pipeline_updated_at ON user_pipeline;
 CREATE TRIGGER trg_pipeline_updated_at BEFORE UPDATE ON user_pipeline FOR EACH ROW EXECUTE FUNCTION update_pipeline_updated_at();
