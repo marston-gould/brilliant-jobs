@@ -869,3 +869,308 @@ export function leaderboardRewardEmail(params: LeaderboardRewardEmailParams): st
     </div>
   `);
 }
+// White theme email templates — Session 3+ (onboarding, integration adoption)
+// Appended to _shared/email-templates.ts
+// Pod 1 copy injection pending — placeholder content marked with [POD1_COPY]
+
+// ---- White Theme Base Layout ----
+function whiteBaseLayout(title: string, bodyHtml: string, footerExtra?: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+  body { margin:0; padding:0; background:#f8fafc; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1e293b; }
+  .wrapper { max-width:560px; margin:0 auto; padding:32px 20px; }
+  .header { text-align:center; padding-bottom:24px; border-bottom:1px solid #e2e8f0; margin-bottom:24px; }
+  .brand { font-size:20px; font-weight:700; color:#1e293b; text-decoration:none; letter-spacing:-0.3px; }
+  .brand span { color:#3b82f6; }
+  .card { background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:28px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+  .card-title { font-size:18px; font-weight:700; margin:0 0 8px; color:#1e293b; }
+  .card-sub { font-size:14px; color:#64748b; line-height:1.5; margin:0 0 20px; }
+  .text { font-size:14px; color:#475569; line-height:1.6; margin:0 0 16px; }
+  .btn { display:inline-block; padding:12px 28px; border-radius:10px; font-size:14px; font-weight:600; text-decoration:none; text-align:center; }
+  .btn-primary { background:#3b82f6; color:#ffffff !important; }
+  .btn-green { background:#22c55e; color:#ffffff !important; }
+  .btn-gray { background:#f1f5f9; color:#475569 !important; border:1px solid #e2e8f0; }
+  .btn-row { text-align:center; margin:24px 0; }
+  .btn-row .btn { margin:0 6px 8px; }
+  .divider { border:none; border-top:1px solid #e2e8f0; margin:20px 0; }
+  .step-row { display:flex; align-items:flex-start; margin-bottom:16px; }
+  .step-num { width:28px; height:28px; border-radius:50%; background:#3b82f6; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:12px; margin-top:2px; }
+  .step-done { background:#22c55e; }
+  .step-text { font-size:14px; color:#1e293b; line-height:1.5; }
+  .step-text small { display:block; color:#64748b; font-size:12px; margin-top:2px; }
+  .stat-row { display:flex; justify-content:space-around; text-align:center; margin:20px 0; }
+  .stat-item .stat-val { font-size:24px; font-weight:700; color:#3b82f6; }
+  .stat-item .stat-label { font-size:11px; color:#94a3b8; margin-top:2px; }
+  .highlight { background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:16px; margin:16px 0; }
+  .footer { text-align:center; padding-top:24px; border-top:1px solid #e2e8f0; margin-top:24px; }
+  .footer p { font-size:11px; color:#94a3b8; margin:4px 0; }
+  .footer a { color:#3b82f6; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <a href="https://brilliantjobs.app" class="brand"><span>Brilliant</span> Jobs</a>
+  </div>
+  ${bodyHtml}
+  <div class="footer">
+    ${footerExtra || ""}
+    <p><a href="https://brilliantjobs.app/dashboard.html#notifications">Notification preferences</a></p>
+    <p>&copy; ${new Date().getFullYear()} Brilliant Jobs. All rights reserved.</p>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 3: ONBOARDING SEQUENCE EMAILS (White Theme)
+// [POD1_COPY] markers indicate where Pod 1 copy will be injected
+// ═══════════════════════════════════════════════════════════
+
+export function onboardWelcomeEmail(userName?: string): { subject: string; html: string } {
+  const greeting = userName ? `Welcome, ${userName}!` : "Welcome to Brilliant Jobs!";
+  // [POD1_COPY] — Subject line, hero copy, value prop, 3-step quickstart, social proof stat
+  return {
+    subject: `${greeting} Your job search just got smarter`,
+    html: whiteBaseLayout("Welcome to Brilliant Jobs", `
+      <div class="card">
+        <div class="card-title">${greeting}</div>
+        <p class="card-sub">You now have access to the most transparent job search platform on the market. Here's how to get the most out of it.</p>
+
+        <div class="step-row">
+          <div class="step-num">1</div>
+          <div class="step-text">
+            <strong>Upload your resume</strong>
+            <small>Get match scores for every job and unlock AI-powered suggestions.</small>
+          </div>
+        </div>
+
+        <div class="step-row">
+          <div class="step-num">2</div>
+          <div class="step-text">
+            <strong>Create your first filter</strong>
+            <small>Tell us what you're looking for — role, location, salary, remote preference.</small>
+          </div>
+        </div>
+
+        <div class="step-row">
+          <div class="step-num">3</div>
+          <div class="step-text">
+            <strong>Install the Chrome extension</strong>
+            <small>See which connections work at companies in your feed.</small>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-primary">Get Started</a>
+        </div>
+      </div>
+
+      <div class="highlight">
+        <p class="text" style="margin:0; text-align:center;">
+          <strong>320,000+</strong> jobs tracked across <strong>7,500+</strong> company boards — updated daily.
+        </p>
+      </div>
+    `),
+  };
+}
+
+export function onboardResumeNudgeEmail(userName?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Subject line, benefit copy, sample match comparison, CTA
+  return {
+    subject: "Your resume unlocks match scores for every job",
+    html: whiteBaseLayout("Upload Your Resume", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, one quick step</div>
+        <p class="card-sub">Upload your resume and every job in your feed gets a match score — so you know exactly where to focus.</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            <strong>With a resume:</strong> See match percentages, skills gaps, and AI scoring (Pro).<br>
+            <strong>Without:</strong> You're browsing blind.
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#resumes" class="btn btn-primary">Upload Resume</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function onboardFilterNudgeEmail(userName?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Subject line, filter power explanation, example filter with results count, CTA
+  return {
+    subject: "Create a filter — jobs come to you",
+    html: whiteBaseLayout("Create Your First Filter", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, stop scrolling — let jobs find you</div>
+        <p class="card-sub">Set up a filter with your criteria and we'll deliver matching jobs straight to your feed and inbox. No more manual searching.</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            <strong>Example:</strong> "Product Manager" + "Remote" + "$120K+" = <strong>47 live matches right now</strong>
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#jobs" class="btn btn-primary">Create Your Filter</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function onboardExtensionNudgeEmail(userName?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Subject line, network intelligence pitch, connections example, privacy, CTA
+  return {
+    subject: "See who you know at every company hiring",
+    html: whiteBaseLayout("Install the Chrome Extension", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, unlock your network advantage</div>
+        <p class="card-sub">Our Chrome extension shows which of your LinkedIn connections work at companies in your job feed. Referrals are the #1 way to get hired.</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            Your connections data stays on your device. We never store or share your LinkedIn network.
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#extension" class="btn btn-primary">Install Extension</a>
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-gray">Maybe Later</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 4: INTEGRATION ADOPTION EMAILS (White Theme)
+// [POD1_COPY] markers indicate where Pod 1 copy will be injected
+// ═══════════════════════════════════════════════════════════
+
+export function adoptExtensionReminderEmail(userName?: string, context?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Context-specific copy based on milestone trigger
+  return {
+    subject: "You're missing connections at companies in your feed",
+    html: whiteBaseLayout("Connect Your Network", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, you're searching without your network</div>
+        <p class="card-sub">${context || "You've been active on the platform — but without the Chrome extension, you can't see which connections work at companies you're interested in."}</p>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#extension" class="btn btn-primary">Install Extension</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function adoptGmailEmail(userName?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Pipeline-triggered, privacy-first
+  return {
+    subject: "Auto-detect interview invites and responses",
+    html: whiteBaseLayout("Connect Gmail", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, let us track responses for you</div>
+        <p class="card-sub">You have applications in your pipeline. Connect Gmail and we'll automatically detect when companies respond — no more manual status updates.</p>
+
+        <div class="highlight">
+          <p class="text" style="margin:0;">
+            <strong>Privacy first:</strong> We only scan sender domains and subject lines. We never read email bodies.
+          </p>
+        </div>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Connect Gmail</a>
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-gray">Not Now</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function adoptCalendarEmail(userName?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Interview-triggered
+  return {
+    subject: "Never miss an interview — connect your calendar",
+    html: whiteBaseLayout("Connect Calendar", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, interviews ahead?</div>
+        <p class="card-sub">Connect Google Calendar and we'll send you interview prep reminders with company insights, talking points from the job description, and countdown alerts.</p>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Connect Calendar</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function adoptDriveEmail(userName?: string): { subject: string; html: string } {
+  const name = userName || "there";
+  // [POD1_COPY] — Resume-triggered
+  return {
+    subject: "Keep your resumes synced with Google Drive",
+    html: whiteBaseLayout("Connect Google Drive", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, auto-sync your resumes</div>
+        <p class="card-sub">You've uploaded a resume. Connect Google Drive to keep your latest versions automatically synced — edit in Docs, apply with the latest version.</p>
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Connect Drive</a>
+          <a href="https://brilliantjobs.app/dashboard.html" class="btn btn-gray">Skip</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function adoptIntegrationComboEmail(
+  userName?: string,
+  connected: string[] = [],
+  missing: string[] = []
+): { subject: string; html: string } {
+  const name = userName || "there";
+  const pct = Math.round((connected.length / (connected.length + missing.length)) * 100);
+  // [POD1_COPY] — 30-day comprehensive setup recap
+  return {
+    subject: `You're ${pct}% set up — here's what you're missing`,
+    html: whiteBaseLayout("Complete Your Setup", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, your setup is ${pct}% complete</div>
+        <p class="card-sub">Here's a quick look at what's connected and what's still available.</p>
+
+        ${connected.map(c => `
+          <div class="step-row">
+            <div class="step-num step-done">✓</div>
+            <div class="step-text"><strong>${c}</strong> <small>Connected</small></div>
+          </div>
+        `).join("")}
+
+        ${missing.map(m => `
+          <div class="step-row">
+            <div class="step-num" style="background:#e2e8f0;color:#64748b;">—</div>
+            <div class="step-text"><strong>${m}</strong> <small>Not connected</small></div>
+          </div>
+        `).join("")}
+
+        <div class="btn-row">
+          <a href="https://brilliantjobs.app/dashboard.html#integrations" class="btn btn-primary">Complete Setup</a>
+        </div>
+      </div>
+    `),
+  };
+}
