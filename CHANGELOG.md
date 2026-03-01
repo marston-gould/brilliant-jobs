@@ -1,3 +1,15 @@
+## v5.89 — Approval Gates for Editorial Pipeline (2026-02-28)
+
+- **Item #15 complete (Pod 2)**: Implemented approval gates for the Content Engine editorial pipeline. Content no longer goes straight to `published` — all generated stories must pass validation then editorial review.
+- **Validation gate**: 6-layer deterministic validation per CONTENT_ENGINE_MULTI_MODEL_VALIDATION.md spec — structure, data fidelity (DF-1 through DF-6), voice, volumetrics, entity density, dedup. Runs in-line after model output.
+- **Status flow change**: `pending` → generate → validate → `pending_review` (pass) or `validation_failed` (fail, retry up to 2×) → editorial review → `published` or `rejected`.
+- **Retry logic**: Failed content gets up to 2 retries with rejection reasons appended to the generation prompt. After 2 failures: `validation_failed_final` (requires manual editorial review).
+- **New Edge Function**: `approve-content` — supports `list` (review queue), `approve` (→ published), `reject` (→ rejected). Requires authenticated user.
+- **DB migration**: Added 8 columns to `content_stories`: `validation_score`, `validation_result` (jsonb), `retry_count`, `model_used`, `generation_latency_ms`, `reviewed_by`, `reviewed_at`, `review_notes`. Plus 2 partial indexes for review queue and retry queue.
+- **Edge Function deploys**: `generate-editorial-content` (updated), `approve-content` (new).
+- **Version surfaces**: version.js v5.89, index.html v5.89, dashboard.html v5.89 (comment + cache-bust ?v=5.89), CHANGELOG.md updated.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
 ## v5.87 — Version Discipline Sync (2026-02-28)
 
 - **Pod 1 version discipline pass**: Synchronized all version surfaces per DEPLOYMENT_PROCESS.md requirements.
