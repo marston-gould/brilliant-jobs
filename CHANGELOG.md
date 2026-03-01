@@ -1,3 +1,22 @@
+## v6.03 — Session 4: Integration Adoption System (2026-03-01)
+
+### Database
+- **`integration_adoption_state` table created**: Tracks per-user, per-integration nudge state. Columns for extension, Gmail, Calendar, Drive, and combo recap. Includes nudge counts, sent timestamps, connected timestamps, and permanent suppress flags. RLS policies for user self-read/update and service role full access.
+- **Profile columns added**: `gmail_connected_at`, `calendar_connected_at`, `drive_connected_at` on profiles table for integration connection tracking.
+
+### Edge Functions
+- **`adoption-sequence` Edge Function**: Cron-triggered (hourly at :30). Processes all users who completed onboarding. Per-integration nudge logic with 7-day cooldown, max 3 nudges per integration, auto-suppress on connect, global suppress when all connected. Combo recap email at 30-day mark. Sends rendered templates via send-notification with subject+html passthrough.
+
+### Infrastructure
+- **pg_cron: onboarding-sequence**: Hourly schedule (`0 * * * *`) wired via `net.http_post` to Edge Function.
+- **pg_cron: adoption-sequence**: Hourly at :30 (`30 * * * *`) wired via `net.http_post` to Edge Function.
+
+### Changed
+- `js/version.js`: v6.02 → v6.03
+- `dashboard.html`: version comment + cache-bust parameters updated
+- `index.html`: version comment updated
+- `CHANGELOG.md`: +v6.03 entry
+
 ## v6.02 — Pod 1 Batch 1-2 Copy Delivery + White Theme Approval (2026-03-01)
 
 ### Pod 1 Deliverables (Copy & Design)
