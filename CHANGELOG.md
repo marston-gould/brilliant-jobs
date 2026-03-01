@@ -1,3 +1,30 @@
+## v5.87 — Version Discipline Sync (2026-02-28)
+
+- **Pod 1 version discipline pass**: Synchronized all version surfaces per DEPLOYMENT_PROCESS.md requirements.
+- **version.js**: v5.83 → v5.87 (single source of truth).
+- **index.html HTML comment**: v5.81 → v5.87.
+- **dashboard.html HTML comment**: v5.80 → v5.87.
+- **dashboard.html cache-bust params**: ?v=5.78 → ?v=5.87 (JS bundle + CSS).
+- **CHANGELOG.md**: Added v5.84–v5.87 entries to close version gap.
+- All 6 Data Lab + pricing + roadmap pages use .bj-version / #rm-version (auto-populated by version.js) — no manual update needed.
+- All version increments follow VERSION_METHODOLOGY.docx in the repository.
+
+## v5.86 — AI-Friendly Content Blocks (2026-02-28)
+
+- **Item #13 complete**: Added 10 AI-friendly content blocks across all 6 Data Lab pages + hub page. Semantic `<section class="ai-block">` wrappers with `data-ai-*` attributes (topic, summary, source, updated, metric, scope) for LLM extraction, search enrichment, and freshness signals. Zero visual impact via invisible pseudo-elements.
+- **AI blocks by page**: salary-data (2), hiring-trends (2), career-level-data (1), jobs-by-industry (2), market-dynamics (2), data-lab hub (1).
+- **Version surfaces**: version.js v5.86, CHANGELOG.md updated.
+
+## v5.85 — Quotable Insight Statements (2026-02-28)
+
+- **Item #11 complete**: Added 10 quotable insight statements across all 6 Data Lab pages + hub page. Semantically marked up `<figure>`/`<blockquote>`/`<figcaption>` elements for AI/LLM citation, social sharing, and featured snippets.
+- **Version surfaces**: version.js v5.85, CHANGELOG.md updated.
+
+## v5.84 — Client-Side Aggregation Confirmation (2026-02-28)
+
+- **Item #10 confirmed**: Client-side aggregation on Data Lab pages verified as already complete. No additional implementation needed.
+- **Version surfaces**: version.js v5.84, CHANGELOG.md updated.
+
 ## v5.83 — Pod 2 Content Strategy Sprint (2026-02-28)
 
 - **Item #1 complete**: Added tier-aligned CTAs (Free/Starter $20/Pro $40) to all 6 Data Lab pages with "Start Free" + "See Plans" buttons linking to dashboard signup and pricing page.
