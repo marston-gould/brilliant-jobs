@@ -100,6 +100,7 @@ function switchAdminTab(tabId) {
       case 'mock-ats': loadMockAtsTab(); break;
       case 'notifications': loadNotificationsTab(); break;
       case 'templates': loadTemplatesTab(); break;
+      case 'notif-analytics': loadNotifAnalyticsTab(); break;
     }
   }
 }
