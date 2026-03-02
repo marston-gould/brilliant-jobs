@@ -1,3 +1,42 @@
+## v6.21 — Phase 69 Session 1: Resend Webhook Ingestion + Engagement Tracking (2026-03-01)
+
+### Edge Functions — New (1 function)
+
+**resend-webhook** — Delivery event ingestion from Resend
+- Receives Resend webhook events: email.delivered, email.bounced, email.complained, email.opened, email.clicked
+- Webhook signature verification via svix HMAC-SHA256
+- Status priority enforcement: sent < delivered < opened < clicked (no downgrades)
+- Updates notification_log.status + timestamp columns
+- Click tracking: stores click_url from Resend click event data
+- Hard bounce → permanent suppression in notification_suppressions
+- Soft bounce → counter tracking, temporary suppress (30d) after 2 in 7-day window
+- Complaint → permanent suppression + marketing_opt_in disabled
+
+### Edge Functions — Updated (1 function)
+
+**send-notification** — Upgraded to v4
+- Captures Resend message_id for webhook correlation
+- Suppression gate check before sending
+- Suppressed emails logged as blocked with reason
+
+### Database
+
+**notification_log** — 7 new columns: message_id, delivered_at, opened_at, clicked_at, click_url, bounced_at, bounce_type, complained_at. Index on message_id.
+
+**notification_suppressions** — New table: email suppression with type (hard_bounce, soft_bounce, complaint, manual), bounce_count, expires_at. RLS service_role only.
+
+### Deployment
+
+| Surface | Value | Status |
+|---------|-------|--------|
+| js/version.js | v6.21 | Done |
+| Browser console | v6.21 loaded | Done |
+| CHANGELOG.md | This entry | Done |
+| Edge Functions | resend-webhook + send-notification v4 | Done |
+| DB migration | 7 columns + 1 table | Done |
+
+---
+
 ## v6.19 — Pod 2 Session 15: Re-engagement + Escalation Chain Hardening (2026-03-01)
 
 ### Edge Functions — New (1 function)
