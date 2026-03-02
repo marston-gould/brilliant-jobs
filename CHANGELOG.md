@@ -1,3 +1,34 @@
+## v6.33 — Fake Job Detection: Phase 4 Filters + PostHog Analytics (2026-03-02)
+
+### Trust Level Filter
+- **Trust Level multi-select dropdown** in feed toolbar — filter jobs by fraud label: Verified, Caution, Suspicious, Unscored
+- Active filter state shown on button with accent border + count badge
+- "All" / "None" quick-select buttons for bulk toggling
+- Client-side post-filter on fetched page — applied after fraud scores are loaded
+- Dropdown auto-closes on outside click
+
+### Trust Score Sort
+- **Trust Score** sort option added to sort dropdown — sorts by `fraud_score` (safest first by default)
+- Green-themed sort pill matching trust/safety visual language
+
+### PostHog Analytics — 7 Events
+1. `fraud_badge_viewed` — fired per badge when job cards render (deduplicated per job per session)
+2. `fraud_tooltip_opened` — fired on badge hover/mouseenter
+3. `fraud_interstitial_shown` — fired when apply interstitial modal appears
+4. `fraud_interstitial_proceed` — fired when user clicks "Continue Anyway" / "Proceed with Caution"
+5. `fraud_interstitial_goback` — fired when user clicks "Go Back" on interstitial
+6. `fraud_filter_applied` — fired on every trust filter checkbox change (includes active labels + toggled label)
+7. `fraud_sort_applied` — fired when Trust Score sort is added
+
+### Files Changed (7)
+1. `js/version.js` — v6.32 → v6.33
+2. `js/job-feed.js` — trust filter logic, 6 PostHog events, client-side trust filtering
+3. `js/sort-bar.js` — fraud_score sort option, color map, PostHog fraud_sort_applied
+4. `src/input.css` — trust filter dropdown CSS
+5. `dashboard.html` — trust filter dropdown HTML, trust sort option, v6.33 comment
+6. `index.html` — v6.33 comment
+7. `CHANGELOG.md` — v6.33 entry
+
 ## v6.32 — Fake Job Detection: Phase 3 Trust Banner + Apply Interstitial (2026-03-02)
 
 ### Job Detail — Trust Banner
