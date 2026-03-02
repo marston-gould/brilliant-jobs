@@ -1,3 +1,22 @@
+## v6.31 — Fake Job Detection: Phase 2 Feed Badges + Tooltips (2026-03-02)
+
+### Jobs Feed UI — Fraud Badges
+- **Fraud badge** on every job card in the title cell: 🛡️ safe (green), ⚠️ caution (amber), 🚩 suspicious (red)
+- **Hover tooltip** on each badge shows trust label, confidence percentage, and top 5 scoring signals with ✓/✗ indicators
+- Badges rendered from `job_fraud_scores` table (Phase 1 infrastructure)
+- Client-side batch fetch: fraud scores for visible page of jobs loaded in a single query per page render
+- Results cached in `_fraudScoreCache` to avoid re-fetches on pagination
+- Unknown/unscored jobs show no badge (graceful absence)
+- CSS classes: `.fraud-badge`, `.fraud-badge--safe/caution/suspicious`, `.fraud-tooltip`, `.fraud-signal--positive/negative`
+- Tooltip overflow-safe: right-edge jobs anchor tooltip to the right
+
+### Versioning
+- js/version.js: v6.30 → v6.31
+- dashboard.html comment: v6.30 → v6.31
+- index.html comment: v6.30 → v6.31
+
+---
+
 ## v6.30 — Fake Job Posting Detection: Phase 1 Backend (2026-03-02)
 
 ### Database: job_fraud_scores Table
