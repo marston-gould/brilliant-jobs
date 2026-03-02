@@ -1,3 +1,75 @@
+## v6.24 — Phase 69 Session 4: Web Push Notifications + Template Preview & Test Send (2026-03-01)
+
+### Card 7: Web Push Notifications ✅ COMPLETE
+- **push-subscribe Edge Function** (new): Manages push subscription lifecycle (subscribe/unsubscribe/VAPID key endpoint)
+- **send-notification upgraded to v7**: Web push channel added alongside email and SMS
+  - VAPID JWT signing + aes128gcm payload encryption (RFC 8291)
+  - Push preference cascade: override → channel_pref → default (push ON for product types)
+  - Stale subscription cleanup on 404/410 responses
+  - Push result logged to notification_log
+- **Service worker** (sw.js): Handles push events, displays native notifications with action buttons
+- **Push toggle** on Applications page notification settings (subscribe/unsubscribe with browser permission flow)
+- **Database schema**: push_subscriptions table with RLS, push column added to notification_channels + notification_filter_overrides + user_notification_state
+- **VAPID keys** generated and stored as Supabase secrets
+
+### Card 9: Template Preview + Test Send ✅ COMPLETE
+- **Preview iframe** in template editor modal: renders email HTML with sample variable substitution, SMS phone mockup, in-app card preview
+- **Test Send button**: sends actual notification to logged-in admin's email via send-notification EF with [TEST] prefix
+- **Status feedback**: success/failure shown inline below preview
+- **Refresh button**: re-renders preview from current editor content without saving
+
+### Edge Functions — Updated/New (2 functions)
+
+**send-notification** — Upgraded to v7
+- Web push channel: VAPID auth + encrypted payload delivery to all user subscriptions
+- Push preference cascade mirrors email/SMS override logic
+- NotificationResult now includes push_sent + push_error
+- Backward compatible — existing email/SMS paths unchanged
+
+**push-subscribe** — New (v1)
+- GET: returns VAPID public key (no auth)
+- POST: saves push subscription (auth required)
+- POST action=unsubscribe / DELETE: removes subscription
+- Auto-updates user_notification_state.push_enabled
+
+### Frontend
+
+**admin-notifications.js** — v6.24 (+294 lines)
+- Template editor: preview iframe with sample data substitution
+- Template editor: test send to admin email
+- Push subscription toggle with service worker registration
+- VAPID key fetch from push-subscribe endpoint
+
+**dashboard.html** — v6.24
+- Push notification toggle row in notification settings card
+
+**sw.js** — New
+- Push event handler with JSON payload parsing
+- Notification click handler (focus existing tab or open new)
+- Action button support (apply/pass/view)
+
+### Database Migration (sql/v6.24-push-subscriptions.sql)
+- push_subscriptions table (user_id, endpoint, p256dh, auth, user_agent)
+- RLS policies for user self-management
+- push column on notification_channels, notification_filter_overrides
+- push_enabled on user_notification_state
+
+### Deployment
+
+| Surface | Value | Status |
+|---------|-------|--------|
+| js/version.js | v6.24 | Done |
+| dashboard.html | v6.24 | Done |
+| index.html | v6.24 | Done |
+| Browser console | v6.24 loaded | Pending Vercel |
+| CHANGELOG.md | This entry | Done |
+| send-notification EF | v7 deployed | Done |
+| push-subscribe EF | v1 deployed | Done |
+| admin-notifications.js | v6.24 | Done |
+| sw.js | New | Done |
+
+---
+
 ## v6.23 — Phase 69 Session 3: Per-Filter Override Cascade + Notification Analytics (2026-03-01)
 
 ### Edge Functions — Updated (1 function)
