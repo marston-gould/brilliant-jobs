@@ -1,7 +1,7 @@
 /* ───────────────────────────────────────────────────────────
    admin-notifications.js — Notification Management + Template Manager
    Session 1 of Notification System (Pod 2)
-   v5.91
+   v6.22
    ─────────────────────────────────────────────────────────── */
 
 // ═══════════════════════════════════════════════════════════
@@ -108,7 +108,17 @@ async function loadNotificationsTab() {
     var coveragePct = allTypes.length > 0 ? Math.round((configuredTypes.size / allTypes.length) * 100) : 0;
     html += '<div style="margin-top:12px;font-size:11px;color:var(--text-dim)">Coverage: ' + configuredTypes.size + '/' + allTypes.length + ' types (' + coveragePct + '%)</div>';
 
+    // Suppression Management Section (Card 3)
+    html += '<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer" onclick="toggleSuppressionSection()">' +
+        '<h3 style="margin:0;font-size:14px;color:var(--text)">Email Suppressions</h3>' +
+        '<span id="suppression-toggle-icon" style="color:var(--text-dim);font-size:12px">▼</span>' +
+      '</div>' +
+      '<div id="suppression-section"></div>' +
+    '</div>';
+
     container.innerHTML = html;
+    renderSuppressionSection();
   } catch (e) {
     console.error('[Admin] Notifications tab error:', e);
     container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
@@ -660,6 +670,273 @@ function bumpVersion(ver, type) {
   else if (type === 'minor') { parts[1]++; parts[2] = 0; }
   else { parts[2]++; }
   return parts.join('.');
+}
+
+
+function toggleSuppressionSection() {
+  var section = document.getElementById('suppression-section');
+  var icon = document.getElementById('suppression-toggle-icon');
+  if (!section) return;
+  if (section.style.display === 'none') {
+    section.style.display = '';
+    if (icon) icon.textContent = '▼';
+    renderSuppressionSection();
+  } else {
+    section.style.display = 'none';
+    if (icon) icon.textContent = '▶';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB SECTION: SUPPRESSION MANAGEMENT (Card 3 — Phase 69 Session 2)
+// Rendered inside the Notifications tab as a collapsible section
+// ═══════════════════════════════════════════════════════════
+
+async function renderSuppressionSection() {
+  var container = document.getElementById('suppression-section');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Loading suppression list…</div>';
+
+  try {
+    var { data: suppressions, error } = await sb
+      .from('notification_suppressions')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    var items = suppressions || [];
+
+    // Stats summary
+    var hard = items.filter(function(s) { return s.type === 'hard_bounce'; }).length;
+    var soft = items.filter(function(s) { return s.type === 'soft_bounce'; }).length;
+    var complaints = items.filter(function(s) { return s.type === 'complaint'; }).length;
+    var manual = items.filter(function(s) { return s.type === 'manual'; }).length;
+    var active = items.filter(function(s) {
+      return s.type === 'hard_bounce' || s.type === 'complaint' ||
+        (s.expires_at && new Date(s.expires_at) > new Date());
+    }).length;
+
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+      '<div style="display:flex;gap:12px;align-items:center">' +
+      '<span class="admin-badge admin-badge-red">' + active + ' active</span>' +
+      '<span style="font-size:11px;color:var(--text-faint)">' +
+        hard + ' hard · ' + soft + ' soft · ' + complaints + ' complaint · ' + manual + ' manual' +
+      '</span></div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<input type="text" id="suppression-search" placeholder="Search email…" ' +
+        'oninput="filterSuppressionRows()" ' +
+        'style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;width:180px">' +
+      '<select id="suppression-type-filter" onchange="filterSuppressionRows()" ' +
+        'style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px">' +
+        '<option value="all">All types</option>' +
+        '<option value="hard_bounce">Hard bounce</option>' +
+        '<option value="soft_bounce">Soft bounce</option>' +
+        '<option value="complaint">Complaint</option>' +
+        '<option value="manual">Manual</option>' +
+      '</select>' +
+      '<button onclick="showAddSuppressionModal()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:11px;cursor:pointer">+ Add</button>' +
+      '<button onclick="exportSuppressions()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:11px;cursor:pointer">Export CSV</button>' +
+      '</div></div>';
+
+    // Table
+    html += '<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="admin-table" style="width:100%;font-size:11px;border-collapse:collapse">' +
+      '<thead style="position:sticky;top:0;background:var(--bg-card);z-index:1"><tr style="text-align:left;border-bottom:1px solid var(--border)">' +
+      '<th style="padding:6px">Email</th>' +
+      '<th style="padding:6px">Type</th>' +
+      '<th style="padding:6px">Reason</th>' +
+      '<th style="padding:6px">Bounces</th>' +
+      '<th style="padding:6px">Expires</th>' +
+      '<th style="padding:6px">Updated</th>' +
+      '<th style="padding:6px">Actions</th>' +
+      '</tr></thead><tbody id="suppression-tbody">';
+
+    items.forEach(function(s) {
+      html += renderSuppressionRow(s);
+    });
+
+    if (items.length === 0) {
+      html += '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-faint)">No suppressions yet. Bounces and complaints from Resend webhooks will appear here automatically.</td></tr>';
+    }
+
+    html += '</tbody></table></div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div class="admin-red">Failed to load suppressions: ' + e.message + '</div>';
+  }
+}
+
+function renderSuppressionRow(s) {
+  var isActive = s.type === 'hard_bounce' || s.type === 'complaint' ||
+    (s.expires_at && new Date(s.expires_at) > new Date());
+  var typeBadge = {
+    hard_bounce: 'admin-badge-red',
+    soft_bounce: 'admin-badge-amber',
+    complaint: 'admin-badge-red',
+    manual: 'admin-badge-blue'
+  }[s.type] || 'admin-badge-blue';
+
+  var expiresText = '—';
+  if (s.type === 'hard_bounce' || s.type === 'complaint') {
+    expiresText = 'Permanent';
+  } else if (s.expires_at) {
+    var exp = new Date(s.expires_at);
+    expiresText = exp > new Date() ? relativeTime(exp) : '<span style="color:var(--text-faint)">Expired</span>';
+  }
+
+  return '<tr class="suppression-row" data-email="' + (s.email || '').toLowerCase() + '" data-type="' + s.type + '" ' +
+    'style="border-bottom:1px solid var(--border);opacity:' + (isActive ? '1' : '0.5') + '">' +
+    '<td style="padding:6px;font-family:var(--mono);font-size:10px">' + escapeHtml(s.email || '') + '</td>' +
+    '<td style="padding:6px"><span class="admin-badge ' + typeBadge + '">' + s.type.replace('_', ' ') + '</span></td>' +
+    '<td style="padding:6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(s.reason || '') + '">' + escapeHtml((s.reason || '').slice(0, 60)) + '</td>' +
+    '<td style="padding:6px;font-family:var(--mono)">' + (s.bounce_count || '—') + '</td>' +
+    '<td style="padding:6px;font-size:10px">' + expiresText + '</td>' +
+    '<td style="padding:6px;font-size:10px;color:var(--text-dim)">' + formatTimestamp(s.updated_at) + '</td>' +
+    '<td style="padding:6px">' +
+      '<button onclick="removeSuppression(\'' + s.id + '\',\'' + escapeHtml(s.email || '') + '\')" ' +
+        'style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--red);font-size:10px;cursor:pointer" ' +
+        'title="Remove suppression">Remove</button>' +
+    '</td></tr>';
+}
+
+function filterSuppressionRows() {
+  var search = (document.getElementById('suppression-search')?.value || '').toLowerCase();
+  var typeFilter = document.getElementById('suppression-type-filter')?.value || 'all';
+  var rows = document.querySelectorAll('.suppression-row');
+  rows.forEach(function(row) {
+    var email = row.getAttribute('data-email') || '';
+    var type = row.getAttribute('data-type') || '';
+    var matchSearch = !search || email.includes(search);
+    var matchType = typeFilter === 'all' || type === typeFilter;
+    row.style.display = (matchSearch && matchType) ? '' : 'none';
+  });
+}
+
+function showAddSuppressionModal() {
+  var overlay = document.createElement('div');
+  overlay.className = 'admin-modal-overlay';
+  overlay.id = 'suppression-modal';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = '<div class="admin-modal" style="max-width:400px">' +
+    '<h3 style="margin:0 0 16px;font-size:15px;color:var(--text)">Add Manual Suppression</h3>' +
+    '<label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px">Email address</label>' +
+    '<input type="email" id="supp-add-email" placeholder="user@example.com" ' +
+      'style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box">' +
+    '<label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px">Reason</label>' +
+    '<input type="text" id="supp-add-reason" placeholder="e.g. User requested removal" ' +
+      'style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;margin-bottom:16px;box-sizing:border-box">' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+      '<button onclick="document.getElementById(\'suppression-modal\').remove()" ' +
+        'style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;cursor:pointer">Cancel</button>' +
+      '<button onclick="submitAddSuppression()" ' +
+        'style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer">Add Suppression</button>' +
+    '</div></div>';
+
+  document.body.appendChild(overlay);
+  document.getElementById('supp-add-email')?.focus();
+}
+
+async function submitAddSuppression() {
+  var email = (document.getElementById('supp-add-email')?.value || '').trim().toLowerCase();
+  var reason = (document.getElementById('supp-add-reason')?.value || '').trim() || 'Manual suppression via admin';
+
+  if (!email || !email.includes('@')) {
+    toastError('Please enter a valid email address');
+    return;
+  }
+
+  try {
+    var { error } = await sb.from('notification_suppressions').upsert({
+      email: email,
+      type: 'manual',
+      reason: reason,
+      updated_at: new Date().toISOString(),
+      expires_at: null
+    }, { onConflict: 'email,type' });
+
+    if (error) throw error;
+
+    document.getElementById('suppression-modal')?.remove();
+    toastSuccess('Suppression added for ' + email);
+    renderSuppressionSection();
+  } catch (e) {
+    toastError('Failed to add suppression: ' + e.message);
+  }
+}
+
+async function removeSuppression(id, email) {
+  if (!confirm('Remove suppression for ' + email + '? They will start receiving emails again.')) return;
+
+  try {
+    var { error } = await sb.from('notification_suppressions').delete().eq('id', id);
+    if (error) throw error;
+    toastSuccess('Suppression removed for ' + email);
+    renderSuppressionSection();
+  } catch (e) {
+    toastError('Failed to remove: ' + e.message);
+  }
+}
+
+async function exportSuppressions() {
+  try {
+    var { data, error } = await sb
+      .from('notification_suppressions')
+      .select('email,type,reason,bounce_count,expires_at,created_at,updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      toastError('No suppressions to export');
+      return;
+    }
+
+    var csv = 'email,type,reason,bounce_count,expires_at,created_at,updated_at\n';
+    data.forEach(function(s) {
+      csv += '"' + (s.email || '') + '",' +
+        '"' + (s.type || '') + '",' +
+        '"' + (s.reason || '').replace(/"/g, '""') + '",' +
+        (s.bounce_count || 0) + ',' +
+        '"' + (s.expires_at || '') + '",' +
+        '"' + (s.created_at || '') + '",' +
+        '"' + (s.updated_at || '') + '"\n';
+    });
+
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'suppressions-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toastSuccess('Exported ' + data.length + ' suppressions');
+  } catch (e) {
+    toastError('Export failed: ' + e.message);
+  }
+}
+
+function relativeTime(date) {
+  var diff = date - new Date();
+  var days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (days <= 0) return 'Expired';
+  if (days === 1) return 'Tomorrow';
+  if (days < 30) return days + 'd';
+  return Math.floor(days / 30) + 'mo';
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '—';
+  var d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
 }
 
 // ═══════════════════════════════════════════════════════════
