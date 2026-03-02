@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-01
 **Target launch:** Monday, March 23, 2026
-**Current version:** v5.90
+**Current version:** v6.22
 
 ---
 
@@ -2475,3 +2475,71 @@ SEO competitor comparison hub page at `/compare` — single public-facing page p
 | Console | v5.94 (auto via version.js) |
 
 **Phase 58 total: 1 version (v5.94) | 1 new SEO page | competitor comparison hub live**
+
+---
+
+## Phases 59–68: Notification System Build-Out (v5.95–v6.19)
+
+**Date:** 2026-03-01
+**Versions:** v5.95 → v6.19
+**Pod:** Pod 2 (Architecture) + Pod 1 (Growth — copy delivery)
+
+Comprehensive notification system build spanning 15 sessions across two pods. 79 notification types across 13 categories, 4 classification tiers (required_transactional, configurable_transactional, product, marketing), double opt-in flow, classification-based send gates, quiet hours with SMS hold queue, email template manager with cohort-specific variants, A/B versioning, and production promotion workflow.
+
+Key deliverables: send-notification v4 with full classification + suppression, admin notification management tab, template manager with preview, Canny feedback integration, pipeline verification signals (Gmail + Calendar), re-engagement escalation chains, 18+ email templates (dark theme), billing/payment notification hooks, referral notification lifecycle, and marketing opt-in enforcement.
+
+---
+
+## Phase 69: Notification Hardening Sprint (v6.21–v6.22) — Mar 1, 2026
+
+**Pod:** Pod 2 (Architecture)
+**Sessions:** 2
+
+### Session 1 (v6.21) ✅
+
+| # | Card | Status | Notes |
+|---|------|--------|-------|
+| 1 | Resend webhook ingestion | ✅ | resend-webhook Edge Function, svix HMAC verification, 5 event types |
+| 2 | Open/click tracking pipeline | ✅ | 7 new columns on notification_log, message_id correlation |
+| 3 | Bounce management + suppression (partial) | ✅ | notification_suppressions table, send-notification v4 suppression gate |
+
+### Session 2 (v6.22) ✅
+
+| # | Card | Status | Notes |
+|---|------|--------|-------|
+| 3 | Admin suppression UI (Card 3 remainder) | ✅ | Searchable list, type filter, manual add/remove, CSV export |
+| 6 | SMS delivery receipts + failure handling | ✅ | vonage-webhook EF, send-notification v5, auto-fallback, retry, admin alerts |
+
+### Remaining Cards
+
+| # | Card | Status | Blocked By |
+|---|------|--------|------------|
+| 4 | Per-filter notification overrides UI | Todo | — |
+| 5 | Vonage 10DLC registration | Todo | Human task (Vonage dashboard) |
+| 7 | Web push notifications | Todo | — |
+| 8 | Notification analytics dashboard | Todo | — (data deps satisfied by Cards 1+2+6) |
+| 9 | Template preview + test send | Todo | — |
+| 10 | Cadence optimization | Todo | 30+ days delivery data |
+
+### Version Surfaces (v6.22)
+
+| Surface | Value |
+|---------|-------|
+| js/version.js | v6.22 |
+| dashboard.html | v6.22 |
+| index.html | v6.22 |
+| CHANGELOG.md | v6.22 |
+| Git tag | v6.22 → dd6783e4 |
+
+---
+
+## Phase 70: Social Presence (Mar 2026)
+
+**Owner:** CPO
+
+| # | Item | Status | Notes |
+|---|------|--------|-------|
+| 1 | X (Twitter) account | ✅ Live | Brand presence for launch marketing + job market insights |
+| 2 | Bluesky account | ✅ Live | Early presence on decentralized social for tech audience |
+| 3 | Reddit account | ✅ Live | Community engagement in job search subreddits |
+
