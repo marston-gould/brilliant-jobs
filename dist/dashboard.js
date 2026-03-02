@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.27';
+var BJ_VERSION = 'v6.32';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -2215,6 +2215,9 @@ async function searchJobs(page = 0) {
       });
     }
 
+    // Fetch fraud scores for visible jobs
+    await fetchFraudScores(currentJobs);
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger
@@ -2549,6 +2552,198 @@ function formatLocation(raw, locDisplay, negativeLocations) {
 }
 
 
+// ============================================================
+// FRAUD DETECTION — Phase 2: Badges + Tooltips (v6.31)
+// ============================================================
+
+// Cache fraud scores by job_id to avoid re-fetching on pagination
+var _fraudScoreCache = {};
+
+async function fetchFraudScores(jobs) {
+  if (!jobs || jobs.length === 0) return;
+  // Find jobs not yet in cache
+  var uncached = jobs.filter(function(j) { return !_fraudScoreCache[j.greenhouse_id]; });
+  if (uncached.length === 0) return;
+
+  var ids = uncached.map(function(j) { return j.greenhouse_id; });
+  try {
+    var { data, error } = await sb
+      .from('job_fraud_scores')
+      .select('job_id,fraud_score,fraud_label,top_signals,confidence')
+      .in('job_id', ids);
+    if (error) { console.warn('[BJ] Fraud score fetch error:', error); return; }
+    if (data) {
+      data.forEach(function(row) {
+        _fraudScoreCache[row.job_id] = {
+          score: row.fraud_score,
+          label: row.fraud_label,
+          signals: row.top_signals || [],
+          confidence: row.confidence,
+        };
+      });
+    }
+  } catch (e) {
+    console.warn('[BJ] Fraud score fetch failed:', e);
+  }
+}
+
+function fraudBadgeHtml(jobId) {
+  var info = _fraudScoreCache[jobId];
+  if (!info || info.label === 'unknown') return '';
+
+  var cfg = {
+    safe: { icon: '🛡️', cls: 'fraud-badge--safe', tip: 'Verified Posting' },
+    caution: { icon: '⚠️', cls: 'fraud-badge--caution', tip: 'Review Carefully' },
+    suspicious: { icon: '🚩', cls: 'fraud-badge--suspicious', tip: 'Potentially Fake' },
+  };
+  var c = cfg[info.label];
+  if (!c) return '';
+
+  // Build signal list for tooltip
+  var signalHtml = '';
+  if (info.signals && info.signals.length > 0) {
+    signalHtml = '<div class="fraud-tooltip-signals">'
+      + info.signals.slice(0, 5).map(function(s) {
+        var sign = s.positive ? '✓' : '✗';
+        var signCls = s.positive ? 'fraud-signal--positive' : 'fraud-signal--negative';
+        return '<div class="fraud-signal ' + signCls + '">' + sign + ' ' + escapeHtml(s.human || s.feature) + '</div>';
+      }).join('')
+      + '</div>';
+  }
+
+  var scoreText = info.score !== null && info.score !== undefined ? ' (' + (info.score * 100).toFixed(0) + '%)' : '';
+
+  return '<span class="fraud-badge ' + c.cls + '" data-fraud-jobid="' + escapeHtml(jobId) + '">'
+    + c.icon
+    + '<span class="fraud-tooltip">'
+    + '<div class="fraud-tooltip-title">' + c.tip + scoreText + '</div>'
+    + signalHtml
+    + '</span>'
+    + '</span>';
+}
+
+
+
+// ═══════════════════════════════════════════════════════════
+// FRAUD DETECTION — Phase 3: Trust Banner + Apply Interstitial (v6.32)
+// ═══════════════════════════════════════════════════════════
+
+function trustBannerHtml(jobId) {
+  var info = _fraudScoreCache[jobId];
+  if (!info || info.label === 'unknown' || info.label === 'safe') return '';
+
+  var cfg = {
+    caution: {
+      cls: 'trust-banner--caution',
+      icon: '⚠️',
+      title: 'Review This Posting Carefully',
+      desc: 'Some signals suggest this listing may need extra scrutiny. Verify the company and role details before applying.',
+    },
+    suspicious: {
+      cls: 'trust-banner--suspicious',
+      icon: '🚩',
+      title: 'High Fraud Risk Detected',
+      desc: 'Multiple signals indicate this posting may not be legitimate. Proceed with extreme caution.',
+    },
+  };
+  var c = cfg[info.label];
+  if (!c) return '';
+
+  var signalHtml = '';
+  if (info.signals && info.signals.length > 0) {
+    signalHtml = '<div class="trust-banner-signals">'
+      + info.signals.slice(0, 3).map(function(s) {
+        var sign = s.positive ? '✓' : '✗';
+        var signCls = s.positive ? 'fraud-signal--positive' : 'fraud-signal--negative';
+        return '<span class="trust-banner-signal ' + signCls + '">' + sign + ' ' + escapeHtml(s.human || s.feature) + '</span>';
+      }).join('')
+      + '</div>';
+  }
+
+  return '<div class="trust-banner ' + c.cls + '">'
+    + '<div class="trust-banner-header">'
+    + '<span class="trust-banner-icon">' + c.icon + '</span>'
+    + '<span class="trust-banner-title">' + c.title + '</span>'
+    + '</div>'
+    + '<div class="trust-banner-desc">' + c.desc + '</div>'
+    + signalHtml
+    + '</div>';
+}
+
+// Fraud interstitial modal — shown before apply on caution/suspicious jobs
+var _fraudInterstitialResolve = null;
+
+function showFraudInterstitial(jobId, applyUrl) {
+  var info = _fraudScoreCache[jobId];
+  if (!info) { window.open(applyUrl, '_blank'); return; }
+
+  var isSuspicious = info.label === 'suspicious';
+  var modalCls = isSuspicious ? 'fraud-interstitial--suspicious' : 'fraud-interstitial--caution';
+  var icon = isSuspicious ? '🚩' : '⚠️';
+  var title = isSuspicious ? 'High Fraud Risk' : 'Proceed with Caution';
+  var desc = isSuspicious
+    ? 'Multiple signals suggest this job posting may not be legitimate. We strongly recommend verifying the company before sharing personal information.'
+    : 'Some signals suggest this listing may need extra scrutiny. Review the company details and job description carefully before applying.';
+
+  var signalHtml = '';
+  if (info.signals && info.signals.length > 0) {
+    signalHtml = '<div class="fraud-interstitial-signals">'
+      + info.signals.slice(0, 5).map(function(s) {
+        var sign = s.positive ? '✓' : '✗';
+        var signCls = s.positive ? 'fraud-signal--positive' : 'fraud-signal--negative';
+        return '<div class="fraud-interstitial-signal ' + signCls + '">' + sign + ' ' + escapeHtml(s.human || s.feature) + '</div>';
+      }).join('')
+      + '</div>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'fraud-interstitial-overlay';
+  overlay.id = 'fraud-interstitial-overlay';
+  overlay.innerHTML = '<div class="fraud-interstitial-card ' + modalCls + '">'
+    + '<div class="fraud-interstitial-header">'
+    + '<span class="fraud-interstitial-icon">' + icon + '</span>'
+    + '<span class="fraud-interstitial-title">' + title + '</span>'
+    + '</div>'
+    + '<div class="fraud-interstitial-desc">' + desc + '</div>'
+    + signalHtml
+    + '<div class="fraud-interstitial-actions">'
+    + '<button class="btn btn-secondary fraud-interstitial-back" onclick="closeFraudInterstitial(false)">Go Back</button>'
+    + '<button class="btn ' + (isSuspicious ? 'fraud-interstitial-proceed-suspicious' : 'fraud-interstitial-proceed-caution') + '" onclick="closeFraudInterstitial(true)">'
+    + (isSuspicious ? 'Continue Anyway' : 'Proceed with Caution')
+    + '</button>'
+    + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  // Store apply URL for callback
+  overlay.dataset.applyUrl = applyUrl;
+  overlay.dataset.jobId = jobId;
+
+  // Close on overlay click (outside card)
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeFraudInterstitial(false);
+  });
+}
+
+function closeFraudInterstitial(proceed) {
+  var overlay = document.getElementById('fraud-interstitial-overlay');
+  if (!overlay) return;
+
+  var applyUrl = overlay.dataset.applyUrl;
+  var jobId = overlay.dataset.jobId;
+
+  overlay.remove();
+  document.body.style.overflow = '';
+
+  if (proceed && applyUrl) {
+    window.open(applyUrl, '_blank');
+    // Mark as applied
+    if (typeof markApplied === 'function') markApplied(jobId);
+  }
+}
+
 function renderJobRows(jobs, total, page, filtersToRun) {
   const tbody = $('#job-table-body');
   const now = new Date();
@@ -2638,9 +2833,12 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     if (isNew) newCount++;
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
+    // Fraud detection badge (v6.31)
+    const fraudBadge = fraudBadgeHtml(job.greenhouse_id);
+
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
       <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
-      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
@@ -2651,7 +2849,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="7"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
   // Pagination row
@@ -9263,6 +9461,7 @@ function sourcePill(source) {
 }
 
 // Apply button — picks best non-LI source, falls back to LI
+// v6.32: intercepts click for caution/suspicious fraud-scored jobs
 function applyButton(sources, urls, jobId) {
   const priority = ['greenhouse','lever','workday','ashby','career_page','indeed','linkedin'];
   let bestSource = 'linkedin';
@@ -9273,6 +9472,13 @@ function applyButton(sources, urls, jobId) {
   const isLI = bestSource === 'linkedin';
   const cls = isLI ? 'apply-btn apply-btn-linkedin' : 'apply-btn apply-btn-default';
   const label = isLI ? 'Apply on LI' : 'Apply →';
+
+  // Phase 3 fraud interstitial: intercept apply for caution/suspicious jobs
+  var fraudInfo = typeof _fraudScoreCache !== 'undefined' ? _fraudScoreCache[jobId] : null;
+  if (fraudInfo && (fraudInfo.label === 'caution' || fraudInfo.label === 'suspicious')) {
+    return `<a href="#" class="${cls}" onclick="event.preventDefault(); event.stopPropagation(); showFraudInterstitial('${jobId}', '${bestUrl.replace(/'/g, "\\'")}')">${label}</a>`;
+  }
+
   return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); markApplied('${jobId}', this)">${label}</a>`;
 }
 
@@ -20646,7 +20852,8 @@ $$('.nav-item').forEach(item => {
 const lastTab = localStorage.getItem('bj_active_tab');
 if (lastTab && $(`#page-${lastTab}`)) {
   // If admin was saved tab, redirect to /admin (v6.26)
-  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; return; }
+  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; }
+  else {
   $$('.page').forEach(p => p.classList.remove('active'));
   $(`#page-${lastTab}`).classList.add('active');
   $$('.nav-item').forEach(n => {
@@ -20657,6 +20864,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
   if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
   if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
   if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+  }
 }
 
 // Extension detection — check if extension has updated the profile recently
