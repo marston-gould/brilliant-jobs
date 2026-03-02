@@ -1,3 +1,50 @@
+## v6.17 — Pod 2 Session 13: Community, Feedback + Canny Integration (2026-03-01)
+
+### Edge Functions — New (1 function)
+
+**community-feedback** — Community, Feedback + Canny Integration
+- Canny webhook handler: maps webhook events to notification types (bug_report_thankyou, bug_resolved, feature_request_thankyou, feature_request_accepted, feature_request_shipped)
+- Monthly product update cron (1st of month 9:00 AM ET): sends curated monthly digest to marketing-opted-in users
+- Bug bounty entitlement system: auto-grants tiered rewards (minor: 10 credits, major: 50 credits + 7-day Pro trial, critical: 1 month Pro access)
+- Dedup: 1h window prevents duplicate notifications for same Canny event
+- Calls send-notification for all 6 community notification types
+
+### Edge Functions — Updated (1 function)
+
+**send-notification** — Classification map update
+- Added `monthly_product_update` to MARKETING classification (requires marketing opt-in, unsubscribe link)
+
+### Database Schema — New (1 table)
+
+**entitlement_grants** — Bug bounty entitlement tracking
+- Columns: user_id, grant_type, source_type, severity (minor/major/critical), credits_granted, trial_days_granted, pro_months_granted, canny_post_id, admin_approved, status (pending/approved/applied/expired/revoked)
+- RLS: users see own grants, service role manages all
+- Indexes: user_id + status, source_type + source_id
+
+### SQL Seeds
+
+**v6.17-community-feedback-edge-function.sql**
+- 1 pg_cron schedule (monthly-product-update: 1st of month 14:00 UTC / 9:00 AM ET)
+
+### Supabase — Deployed
+- community-feedback Edge Function deployed
+- entitlement_grants table created
+- send-notification updated with monthly_product_update in MARKETING classification
+- 6 notification_templates already seeded (Pod 1 v6.13 delivery)
+- 6 admin_notification_config rows already seeded (Pod 1 v6.13 delivery)
+
+### Version Bump
+- `js/version.js`: v6.16 → v6.17
+- `dashboard.html`: version comment v6.17
+- `index.html`: version comment v6.17
+- Browser console: `[BJ] Dashboard v6.17 loaded`
+
+### Notification System Progress
+- Pod 2 Sessions 1-12: ✅ Complete (v6.01–v6.16)
+- Pod 2 Session 13 (Community/Feedback/Canny): ✅ Complete (v6.17)
+- Pod 2 Sessions 14-15: Remaining (Billing + Payments, Re-engagement/Escalation)
+- Pod 1: ✅ ALL COMPLETE (v6.01–v6.14)
+
 ## v6.16 — Pod 2 Sessions 11-12: Referral System + Marketing/Credit Intelligence (2026-03-01)
 
 ### Edge Functions — New (2 functions)
