@@ -2553,3 +2553,41 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | 2 | Bluesky account | ✅ Live | Early presence on decentralized social for tech audience |
 | 3 | Reddit account | ✅ Live | Community engagement in job search subreddits |
 
+---
+
+## Phase 71: AI Enrichment Pipeline + Entitlements (Mar 2026)
+
+**Owner:** Pod 2 (Architecture)
+**Estimated sessions:** 5–6 (adjusted from 9 based on P69 velocity — 40% compression observed)
+
+### Pre-Launch (3 sessions)
+
+| # | Card | Status | Estimate | Notes |
+|---|------|--------|----------|-------|
+| 1 | Test enrich-fcd-batch + activate cron | Todo | 1.5h | POST test → verify → activate pg_cron #63. Blocks card 2. |
+| 2 | Ongoing JD AI enrichment cron | Todo | 3h | Perpetual pg_cron every 15 min. Same EF, lower frequency. Monitoring. |
+| 3 | FUNCTION filter pill (Pro-gated) | Todo | 3h | New pill type from jd_function. Query builder + autocomplete. |
+| 4 | TECHNICAL DEPTH filter pill (Pro-gated) | Todo | 2h | New pill type from jd_seniority/technical depth. |
+| 5 | "Why This Job?" feed card expansion | Todo | 3h | AI match reasons on feed cards (jd_skills, jd_function chips). |
+| 6 | Resume mismatch warnings | Todo | 4h | Cross-ref resume vs top jd_skills. Alert if 70%+ JDs require missing skill. |
+
+### Post-Launch (2 sessions)
+
+| # | Card | Status | Estimate | Notes |
+|---|------|--------|----------|-------|
+| 7 | Usage limits per tier (cohort entitlements) | Todo | 2–3d | Cohort schema + check_entitlement() v2 + client gating + usage tracking. |
+
+### Deferred
+
+| # | Card | Status | Estimate | Notes |
+|---|------|--------|----------|-------|
+| 8 | Data freshness gating | Todo | 4–5d | Tiered recency (Free=30d lag, Pro=real-time). Depends on Item 7 + Stripe. |
+
+### Dependency Chain
+
+```
+Card 1 (test/activate) → Card 2 (cron) → Cards 3,4,5 (filters + feed)
+                                        → Card 6 (resume mismatch, needs jd_skills coverage)
+Card 7 (entitlements, independent) → Card 8 (freshness gating)
+```
+
