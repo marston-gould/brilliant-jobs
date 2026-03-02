@@ -1359,6 +1359,11 @@
     .fraud-interstitial-proceed-caution:hover { opacity: 0.85; }
     .fraud-interstitial-proceed-suspicious { background: var(--red); color: #fff; border: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
     .fraud-interstitial-proceed-suspicious:hover { opacity: 0.85; }
+    /* Phase 4: Trust filter dropdown */
+    .trust-filter-wrap { position: relative; }
+    .trust-filter-opt:hover { background: var(--bg-hover); }
+    .trust-filter-opt input[type="checkbox"] { cursor: pointer; accent-color: var(--accent); }
+
 
 
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
