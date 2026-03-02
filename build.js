@@ -31,19 +31,21 @@ const jsFiles = [
 ];
 
 // Simple concatenation — no IIFE wrapper needed.
-// Browser <script> tags run in sloppy mode where function re-declarations are fine.
-// NOTE: const/let re-declarations in the same scope WILL fail in esbuild.
-// Fix: eliminate duplicate const declarations within single files (see app.js init() fix).
 const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/dashboard.js', combined);
 writeFileSync('dist/_tmp.js', combined);
 
+// IMPORTANT: Do NOT use minifyIdentifiers with concatenated (non-bundled) files.
+// esbuild renames local vars to short names (a,b,c,d) globally, causing collisions
+// across different function scopes in the concatenated output.
 buildSync({
   entryPoints: ['dist/_tmp.js'],
   outfile: 'dist/dashboard.min.js',
-  minify: true,
+  minifySyntax: true,
+  minifyWhitespace: true,
+  minifyIdentifiers: false,
   sourcemap: true,
   target: 'es2020',
   bundle: false,
