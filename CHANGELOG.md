@@ -1,3 +1,27 @@
+## v6.40 — Synthetic Content Detection: Session 2.3 — Cover Letter Inline Scoring (2026-03-02)
+
+### Cover Letter AI Scoring
+- **AI scoring hook in cover letter generation** — After cover letter save, text is automatically scored via `score-ai-content` Edge Function with `content_type='cover_letter'`. Minimum 100 chars required. Text assembled from salutation + paragraphs + closing
+- **AI badge on cover letter archive cards** — Color-coded badge on each cover letter card: ✅ Human-Written (green), ⚠️ Mixed (yellow), 🤖 AI-Generated (red) with percentage and hover tooltip showing AI detection summary
+- **Rescore button on cover letters** — Indigo "🔄 Rescore" button on each cover letter card with 60-second cooldown timer (reuses rate-limited pattern from Session 2.2). Fetches cover letter text from DB, re-invokes scoring EF, refreshes archive display
+- **AI badge in cover letter preview** — Inline "🔄 Scoring…" badge in rewrite results cover letter preview summary, updates after scoring completes
+- **PostHog events** — `ai_cover_letter_scored` on initial scoring, `ai_cover_letter_rescored` on manual rescore. Tracks ai_label, ai_score, confidence, text_length
+
+### Technical Details
+- `scoreCoverLetterAI(session, text, filterName)` — async function calling score-ai-content EF, fires PostHog event, refreshes archive
+- `bjRescoreCoverLetter(clId)` — window-exposed async function with cooldown tracking via `_clRescoreCooldowns` map
+- `_startClRescoreCooldown(clId)` — 1-second interval updating button text with remaining seconds
+- `CL_RESCORE_COOLDOWN_MS` constant (60000ms) controls cooldown duration
+- Cover letter archive now fetches `content_ai_scores` table with `content_type='cover_letter'` and joins by `content_id`
+- No Edge Function changes — reuses `score-ai-content` (v6.36) as-is
+- No database schema changes — `content_ai_scores` table already supports polymorphic `content_type`
+
+### Version Discipline
+- `js/version.js` → v6.40
+- `dashboard.html` → v6.40 + cache-bust ?v=6.40
+- `index.html` → v6.40
+- Git tag: v6.40
+
 ## v6.39 — Synthetic Content Detection: Session 2.2 — Resume Rescore Button (2026-03-02)
 
 ### Resume Rescore Button
