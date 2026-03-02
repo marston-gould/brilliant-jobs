@@ -2490,10 +2490,10 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 
 ---
 
-## Phase 69: Notification Hardening Sprint (v6.21–v6.24) — Mar 1, 2026
+## Phase 69: Notification Hardening Sprint (v6.21–v6.25) — Mar 1, 2026
 
 **Pod:** Pod 2 (Architecture)
-**Sessions:** 4
+**Sessions:** 5
 
 ### Session 1 (v6.21) ✅
 
@@ -2524,6 +2524,12 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | 7 | Web push notifications | ✅ | push-subscribe EF (new), send-notification v7 with push channel, sw.js service worker, push toggle on Applications page, push_subscriptions table + schema |
 | 9 | Template preview + test send | ✅ | Preview iframe in template editor (email/SMS/in-app), test send to admin email via send-notification EF, sample variable substitution |
 
+### Session 5 (v6.25) ✅
+
+| # | Card | Status | Notes |
+|---|------|--------|-------|
+| 11 | Email reporting by cohort | ✅ | Email Cohorts admin tab. Overview: aggregate per-campaign stats. Campaign Drilldown: zero-based cumulative curve (Day 0 = user receive date). Compare: same campaign across two cohorts with delta. 90-day window from notification_log. |
+
 ### Remaining Cards
 
 | # | Card | Status | Blocked By |
@@ -2531,15 +2537,14 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | 5 | Vonage 10DLC registration | ⏳ In Process | Submitted 2026-03-01, pending Vonage approval (1–4 week window) |
 | 10 | Cadence optimization | Todo | 30+ days delivery data |
 
-### Version Surfaces (v6.24)
+### Version Surfaces (v6.25)
 
 | Surface | Value |
 |---------|-------|
-| js/version.js | v6.24 |
-| dashboard.html | v6.24 |
-| index.html | v6.24 |
-| CHANGELOG.md | v6.24 |
-| Git tag | v6.24 → 3d934453 |
+| js/version.js | v6.25 |
+| dashboard.html | v6.25 |
+| index.html | v6.25 |
+| CHANGELOG.md | v6.25 |
 
 ---
 

@@ -1480,3 +1480,546 @@ if (document.readyState === 'loading') {
 } else {
   initPushToggle();
 }
+
+// ═══════════════════════════════════════════════════════════
+// EMAIL COHORT ANALYTICS TAB
+// Phase 69 Card 11 — Zero-based cohort email performance
+// ═══════════════════════════════════════════════════════════
+
+var _emailCohortState = {
+  cohorts: [],
+  logs: [],
+  selectedCohort: null,
+  selectedCampaign: null,
+  compareCohort: null,
+  view: 'overview' // 'overview' | 'campaign' | 'compare'
+};
+
+async function loadEmailCohortsTab() {
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading email cohort analytics…</div>';
+
+  try {
+    // Fetch cohorts
+    var { data: cohorts, error: cErr } = await sb
+      .from('cohorts')
+      .select('id, name, description, criteria_type, criteria_value, is_active')
+      .order('created_at', { ascending: true });
+    if (cErr) throw cErr;
+
+    // Fetch email notification_log with cohort data (last 90 days for broader window)
+    var since = new Date();
+    since.setDate(since.getDate() - 90);
+    var { data: logs, error: lErr } = await sb
+      .from('notification_log')
+      .select('notification_type, channel, status, user_cohort, created_at, delivered_at, opened_at, clicked_at, user_id')
+      .eq('channel', 'email')
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10000);
+    if (lErr) throw lErr;
+
+    _emailCohortState.cohorts = cohorts || [];
+    _emailCohortState.logs = logs || [];
+
+    // Default to first cohort
+    if (cohorts && cohorts.length > 0) {
+      _emailCohortState.selectedCohort = cohorts[0].id;
+    }
+
+    renderEmailCohortsTab(container);
+    console.log('[Admin] Email cohort analytics loaded: ' + (logs || []).length + ' email events, ' + (cohorts || []).length + ' cohorts');
+
+  } catch (e) {
+    console.error('[Admin] Email cohort analytics error:', e);
+    container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
+  }
+}
+
+function renderEmailCohortsTab(container) {
+  var state = _emailCohortState;
+  var html = '';
+
+  // ── Header with cohort selector ──
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">';
+  html += '<span style="font-size:15px;font-weight:600;color:var(--text)">Email Cohort Analytics</span>';
+  html += '<div style="display:flex;gap:6px;align-items:center">';
+
+  // View mode pills
+  var views = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'campaign', label: 'Campaign Drilldown' },
+    { id: 'compare', label: 'Compare Cohorts' }
+  ];
+  views.forEach(function(v) {
+    var active = state.view === v.id;
+    html += '<button onclick="switchEmailCohortView(\'' + v.id + '\')" style="font-size:11px;padding:4px 10px;border-radius:12px;cursor:pointer;border:1px solid ' +
+      (active ? 'var(--accent)' : 'var(--border)') + ';background:' +
+      (active ? 'var(--accent)' : 'transparent') + ';color:' +
+      (active ? '#fff' : 'var(--text-dim)') + ';font-family:JetBrains Mono,monospace;transition:all 0.15s">' + v.label + '</button>';
+  });
+  html += '</div></div>';
+
+  // ── Cohort selector row ──
+  html += '<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Cohort:</label>';
+  html += '<select id="ec-cohort-select" onchange="selectEmailCohort(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+  // Add 'All' option
+  html += '<option value="__all__"' + (state.selectedCohort === '__all__' ? ' selected' : '') + '>All (no filter)</option>';
+  state.cohorts.forEach(function(c) {
+    html += '<option value="' + c.id + '"' + (state.selectedCohort === c.id ? ' selected' : '') + '>' + c.name + ' (' + c.id + ')</option>';
+  });
+  // Null cohort
+  html += '<option value="__none__"' + (state.selectedCohort === '__none__' ? ' selected' : '') + '>Unassigned (null)</option>';
+  html += '</select>';
+
+  // Show cohort member count
+  var cohortLogs = filterLogsByCohort(state.logs, state.selectedCohort);
+  var uniqueUsers = new Set(cohortLogs.map(function(l) { return l.user_id; }));
+  html += '<span style="font-size:11px;color:var(--text-faint)">' + cohortLogs.length + ' emails · ' + uniqueUsers.size + ' users · last 90 days</span>';
+
+  if (state.view === 'compare') {
+    html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-left:16px">vs:</label>';
+    html += '<select id="ec-compare-select" onchange="selectCompareCohort(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+    html += '<option value="">Select cohort…</option>';
+    state.cohorts.forEach(function(c) {
+      if (c.id !== state.selectedCohort) {
+        html += '<option value="' + c.id + '"' + (state.compareCohort === c.id ? ' selected' : '') + '>' + c.name + '</option>';
+      }
+    });
+    html += '<option value="__none__"' + (state.compareCohort === '__none__' ? ' selected' : '') + '>Unassigned (null)</option>';
+    html += '</select>';
+  }
+  html += '</div>';
+
+  // ── Render active view ──
+  if (state.view === 'overview') {
+    html += renderCohortOverview(cohortLogs);
+  } else if (state.view === 'campaign') {
+    html += renderCampaignDrilldown(cohortLogs);
+  } else if (state.view === 'compare') {
+    var compareLogs = state.compareCohort ? filterLogsByCohort(state.logs, state.compareCohort) : [];
+    html += renderCohortCompare(cohortLogs, compareLogs);
+  }
+
+  container.innerHTML = html;
+}
+
+function filterLogsByCohort(logs, cohortId) {
+  if (!cohortId || cohortId === '__all__') return logs;
+  if (cohortId === '__none__') return logs.filter(function(l) { return !l.user_cohort; });
+  return logs.filter(function(l) { return l.user_cohort === cohortId; });
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 1: OVERVIEW — Aggregate performance per campaign
+// ═══════════════════════════════════════════════════════════
+
+function renderCohortOverview(logs) {
+  if (!logs || logs.length === 0) {
+    return '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">No email data for this cohort in the last 90 days.</div>';
+  }
+
+  // Aggregate by notification_type (campaign)
+  var campaigns = {};
+  logs.forEach(function(l) {
+    var t = l.notification_type || 'unknown';
+    if (!campaigns[t]) {
+      campaigns[t] = { sent: 0, delivered: 0, opened: 0, clicked: 0, users: new Set() };
+    }
+    campaigns[t].sent++;
+    campaigns[t].users.add(l.user_id);
+    if (l.delivered_at || l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked') campaigns[t].delivered++;
+    if (l.opened_at || l.status === 'opened' || l.status === 'clicked') campaigns[t].opened++;
+    if (l.clicked_at || l.status === 'clicked') campaigns[t].clicked++;
+  });
+
+  // Totals
+  var totalSent = logs.length;
+  var totalDelivered = logs.filter(function(l) { return l.delivered_at || l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked'; }).length;
+  var totalOpened = logs.filter(function(l) { return l.opened_at || l.status === 'opened' || l.status === 'clicked'; }).length;
+  var totalClicked = logs.filter(function(l) { return l.clicked_at || l.status === 'clicked'; }).length;
+
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; }
+
+  var html = '';
+
+  // Stat cards
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">';
+  var cards = [
+    { label: 'Total Sent', value: totalSent, color: 'var(--accent)' },
+    { label: 'Delivered', value: pct(totalDelivered, totalSent), color: 'var(--green)' },
+    { label: 'Open Rate', value: pct(totalOpened, totalSent), color: '#a78bfa' },
+    { label: 'Click Rate', value: pct(totalClicked, totalSent), color: '#f59e0b' },
+    { label: 'Campaigns', value: Object.keys(campaigns).length, color: 'var(--text)' }
+  ];
+  cards.forEach(function(c) {
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+      '<div style="font-size:22px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + c.color + '">' + c.value + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">' + c.label + '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+
+  // Campaign table
+  var sorted = Object.entries(campaigns).sort(function(a, b) { return b[1].sent - a[1].sent; });
+
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Campaign Performance</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:6px 10px;color:var(--text-dim)">Campaign</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Sent</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Users</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Delivered</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Opened</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Clicked</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Open Rate</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Click Rate</th>';
+  html += '<th style="text-align:center;padding:6px 10px;color:var(--text-dim)"></th>';
+  html += '</tr></thead><tbody>';
+
+  sorted.forEach(function(entry) {
+    var name = entry[0];
+    var c = entry[1];
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:6px 10px;color:var(--text)">' + name + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:var(--text)">' + c.sent + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:var(--text-dim)">' + c.users.size + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:var(--green)">' + pct(c.delivered, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#a78bfa">' + pct(c.opened, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#f59e0b">' + pct(c.clicked, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#a78bfa;font-weight:600">' + pct(c.opened, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#f59e0b;font-weight:600">' + pct(c.clicked, c.sent) + '</td>';
+    html += '<td style="text-align:center;padding:6px 10px"><button onclick="drillIntoCampaign(\'' + name + '\')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer;font-family:JetBrains Mono,monospace">Drilldown →</button></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 2: CAMPAIGN DRILLDOWN — Zero-based day curve
+// ═══════════════════════════════════════════════════════════
+
+function renderCampaignDrilldown(logs) {
+  var state = _emailCohortState;
+
+  // Campaign selector
+  var campaignTypes = {};
+  logs.forEach(function(l) {
+    var t = l.notification_type || 'unknown';
+    campaignTypes[t] = (campaignTypes[t] || 0) + 1;
+  });
+  var sortedCampaigns = Object.entries(campaignTypes).sort(function(a, b) { return b[1] - a[1]; });
+
+  if (!state.selectedCampaign && sortedCampaigns.length > 0) {
+    state.selectedCampaign = sortedCampaigns[0][0];
+  }
+
+  var html = '';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Campaign:</label>';
+  html += '<select id="ec-campaign-select" onchange="selectEmailCampaign(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+  sortedCampaigns.forEach(function(entry) {
+    html += '<option value="' + entry[0] + '"' + (state.selectedCampaign === entry[0] ? ' selected' : '') + '>' + entry[0] + ' (' + entry[1] + ')</option>';
+  });
+  html += '</select></div>';
+
+  if (!state.selectedCampaign || !campaignTypes[state.selectedCampaign]) {
+    return html + '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">Select a campaign to see zero-based performance.</div>';
+  }
+
+  // Filter logs for this campaign
+  var campaignLogs = logs.filter(function(l) { return l.notification_type === state.selectedCampaign; });
+
+  // Build zero-based day data
+  var dayData = buildZeroBasedDays(campaignLogs, 30);
+
+  // Render the table and chart
+  html += renderZeroBasedTable(dayData, campaignLogs.length);
+  html += renderZeroBasedChart(dayData, 'var(--accent)', '#a78bfa', '#f59e0b');
+
+  return html;
+}
+
+function buildZeroBasedDays(campaignLogs, maxDays) {
+  // For each log entry, Day 0 = date(created_at)
+  // Then check if opened_at / clicked_at / delivered_at fell on Day N relative to created_at
+  var now = new Date();
+  var days = [];
+
+  for (var d = 0; d <= maxDays; d++) {
+    days.push({ day: d, delivered: 0, opened: 0, clicked: 0 });
+  }
+
+  campaignLogs.forEach(function(l) {
+    var sendDate = new Date(l.created_at);
+
+    // Delivered
+    if (l.delivered_at || l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked') {
+      var deliveredDate = l.delivered_at ? new Date(l.delivered_at) : sendDate;
+      var dDay = Math.floor((deliveredDate - sendDate) / 86400000);
+      // Cumulative: mark all days from dDay onward
+      for (var i = Math.max(0, dDay); i <= maxDays; i++) {
+        days[i].delivered++;
+      }
+    }
+
+    // Opened
+    if (l.opened_at || l.status === 'opened' || l.status === 'clicked') {
+      var openDate = l.opened_at ? new Date(l.opened_at) : sendDate;
+      var oDay = Math.floor((openDate - sendDate) / 86400000);
+      for (var i = Math.max(0, oDay); i <= maxDays; i++) {
+        days[i].opened++;
+      }
+    }
+
+    // Clicked
+    if (l.clicked_at || l.status === 'clicked') {
+      var clickDate = l.clicked_at ? new Date(l.clicked_at) : sendDate;
+      var cDay = Math.floor((clickDate - sendDate) / 86400000);
+      for (var i = Math.max(0, cDay); i <= maxDays; i++) {
+        days[i].clicked++;
+      }
+    }
+  });
+
+  return days;
+}
+
+function renderZeroBasedTable(dayData, totalSent) {
+  function pct(n) { return totalSent > 0 ? (n / totalSent * 100).toFixed(1) + '%' : '—'; }
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Zero-Based Cumulative Performance · ' + totalSent + ' emails sent</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text-dim);width:60px">Day</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--green)">Delivered</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--green)">Del %</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#a78bfa">Opened</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#a78bfa">Open %</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#f59e0b">Clicked</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#f59e0b">Click %</th>';
+  html += '</tr></thead><tbody>';
+
+  // Show Day 0, 1, 2, 3, 5, 7, 14, 21, 30 (key milestones)
+  var showDays = [0, 1, 2, 3, 5, 7, 14, 21, 30];
+  showDays.forEach(function(d) {
+    if (d >= dayData.length) return;
+    var row = dayData[d];
+    var bg = d === 0 ? 'background:color-mix(in srgb, var(--accent) 5%, transparent);' : '';
+    html += '<tr style="border-bottom:1px solid var(--border);' + bg + '">';
+    html += '<td style="padding:6px 8px;color:var(--text);font-weight:' + (d === 0 ? '600' : '400') + '">Day ' + d + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--text)">' + row.delivered + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--green)">' + pct(row.delivered) + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--text)">' + row.opened + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:#a78bfa">' + pct(row.opened) + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--text)">' + row.clicked + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:#f59e0b">' + pct(row.clicked) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderZeroBasedChart(dayData, deliveredColor, openColor, clickColor) {
+  // Simple CSS bar chart showing cumulative open and click rates over days
+  var maxVal = Math.max.apply(null, dayData.map(function(d) { return d.opened; }).concat([1]));
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Cumulative Open / Click Curve</div>';
+  html += '<div style="display:flex;gap:16px;font-size:10px;color:var(--text-faint);margin-bottom:12px">';
+  html += '<span><span style="display:inline-block;width:10px;height:10px;background:#a78bfa;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Opens</span>';
+  html += '<span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Clicks</span>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:1px;height:140px">';
+
+  dayData.forEach(function(d, idx) {
+    var openH = maxVal > 0 ? Math.max(0, Math.round(d.opened / maxVal * 130)) : 0;
+    var clickH = maxVal > 0 ? Math.max(0, Math.round(d.clicked / maxVal * 130)) : 0;
+    var title = 'Day ' + d.day + ': ' + d.opened + ' opens, ' + d.clicked + ' clicks';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:3px" title="' + title + '">';
+    html += '<div style="width:100%;height:' + openH + 'px;background:#a78bfa;border-radius:2px 2px 0 0;opacity:0.7"></div>';
+    if (clickH > 0) {
+      html += '<div style="width:100%;height:' + clickH + 'px;background:#f59e0b;border-radius:0;opacity:0.85;margin-top:-' + clickH + 'px;position:relative"></div>';
+    }
+    html += '</div>';
+  });
+
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-faint);font-family:JetBrains Mono,monospace">';
+  html += '<span>Day 0</span><span>Day 7</span><span>Day 14</span><span>Day 21</span><span>Day 30</span>';
+  html += '</div></div>';
+
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 3: COMPARE — Same campaign, two cohorts side-by-side
+// ═══════════════════════════════════════════════════════════
+
+function renderCohortCompare(logsA, logsB) {
+  var state = _emailCohortState;
+
+  // Campaign selector (from cohort A)
+  var campaignTypes = {};
+  logsA.forEach(function(l) {
+    var t = l.notification_type || 'unknown';
+    campaignTypes[t] = (campaignTypes[t] || 0) + 1;
+  });
+  var sortedCampaigns = Object.entries(campaignTypes).sort(function(a, b) { return b[1] - a[1]; });
+
+  if (!state.selectedCampaign && sortedCampaigns.length > 0) {
+    state.selectedCampaign = sortedCampaigns[0][0];
+  }
+
+  var html = '';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Campaign:</label>';
+  html += '<select id="ec-compare-campaign" onchange="selectEmailCampaign(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+  sortedCampaigns.forEach(function(entry) {
+    html += '<option value="' + entry[0] + '"' + (state.selectedCampaign === entry[0] ? ' selected' : '') + '>' + entry[0] + ' (' + entry[1] + ')</option>';
+  });
+  html += '</select></div>';
+
+  if (!state.selectedCampaign) {
+    return html + '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">Select a campaign to compare.</div>';
+  }
+
+  if (!state.compareCohort) {
+    return html + '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">Select a second cohort above to compare.</div>';
+  }
+
+  var campaignLogsA = logsA.filter(function(l) { return l.notification_type === state.selectedCampaign; });
+  var campaignLogsB = logsB.filter(function(l) { return l.notification_type === state.selectedCampaign; });
+
+  var daysA = buildZeroBasedDays(campaignLogsA, 30);
+  var daysB = buildZeroBasedDays(campaignLogsB, 30);
+
+  // Find cohort names
+  var nameA = getCohortName(state.selectedCohort);
+  var nameB = getCohortName(state.compareCohort);
+
+  // Side-by-side summary cards
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+  html += renderComparisonSummaryCard(nameA, campaignLogsA, daysA, 'var(--accent)');
+  html += renderComparisonSummaryCard(nameB, campaignLogsB, daysB, '#22c55e');
+  html += '</div>';
+
+  // Combined comparison table
+  html += renderComparisonTable(daysA, daysB, campaignLogsA.length, campaignLogsB.length, nameA, nameB);
+
+  return html;
+}
+
+function getCohortName(cohortId) {
+  if (cohortId === '__all__') return 'All';
+  if (cohortId === '__none__') return 'Unassigned';
+  var match = _emailCohortState.cohorts.find(function(c) { return c.id === cohortId; });
+  return match ? match.name : cohortId;
+}
+
+function renderComparisonSummaryCard(name, logs, dayData, color) {
+  var sent = logs.length;
+  var day7 = dayData[7] || { delivered: 0, opened: 0, clicked: 0 };
+  var day30 = dayData[30] || dayData[dayData.length - 1] || { delivered: 0, opened: 0, clicked: 0 };
+  function pct(n) { return sent > 0 ? (n / sent * 100).toFixed(1) + '%' : '—'; }
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid ' + color + '">';
+  html += '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">' + name + '</div>';
+  html += '<div style="font-size:12px;font-family:JetBrains Mono,monospace;color:var(--text-dim);display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+  html += '<div>Sent: <span style="color:var(--text);font-weight:600">' + sent + '</span></div>';
+  html += '<div>Day 7 Open: <span style="color:#a78bfa;font-weight:600">' + pct(day7.opened) + '</span></div>';
+  html += '<div>Day 30 Open: <span style="color:#a78bfa;font-weight:600">' + pct(day30.opened) + '</span></div>';
+  html += '<div>Day 30 Click: <span style="color:#f59e0b;font-weight:600">' + pct(day30.clicked) + '</span></div>';
+  html += '</div></div>';
+  return html;
+}
+
+function renderComparisonTable(daysA, daysB, sentA, sentB, nameA, nameB) {
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; }
+  function delta(a, b, da, db) {
+    if (da === 0 || db === 0) return '';
+    var rateA = a / da * 100;
+    var rateB = b / db * 100;
+    var diff = rateA - rateB;
+    var color = diff > 0 ? 'var(--green)' : diff < 0 ? '#ef4444' : 'var(--text-faint)';
+    var sign = diff > 0 ? '+' : '';
+    return '<span style="color:' + color + ';font-weight:600">' + sign + diff.toFixed(1) + 'pp</span>';
+  }
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Side-by-Side · ' + nameA + ' vs ' + nameB + '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:5px 6px;color:var(--text-dim)">Day</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--accent)" colspan="2">' + nameA + ' Open</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:#22c55e" colspan="2">' + nameB + ' Open</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--text-dim)">Δ Open</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--accent)">' + nameA + ' Click</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:#22c55e">' + nameB + ' Click</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--text-dim)">Δ Click</th>';
+  html += '</tr></thead><tbody>';
+
+  var showDays = [0, 1, 2, 3, 5, 7, 14, 21, 30];
+  showDays.forEach(function(d) {
+    var a = daysA[d] || { delivered: 0, opened: 0, clicked: 0 };
+    var b = daysB[d] || { delivered: 0, opened: 0, clicked: 0 };
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:5px 6px;color:var(--text);font-weight:600">Day ' + d + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--text)">' + a.opened + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--accent)">' + pct(a.opened, sentA) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--text)">' + b.opened + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:#22c55e">' + pct(b.opened, sentB) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px">' + delta(a.opened, b.opened, sentA, sentB) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--accent)">' + pct(a.clicked, sentA) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:#22c55e">' + pct(b.clicked, sentB) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px">' + delta(a.clicked, b.clicked, sentA, sentB) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════
+
+function switchEmailCohortView(view) {
+  _emailCohortState.view = view;
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function selectEmailCohort(cohortId) {
+  _emailCohortState.selectedCohort = cohortId;
+  _emailCohortState.selectedCampaign = null; // reset campaign on cohort change
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function selectCompareCohort(cohortId) {
+  _emailCohortState.compareCohort = cohortId || null;
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function selectEmailCampaign(campaign) {
+  _emailCohortState.selectedCampaign = campaign;
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function drillIntoCampaign(campaign) {
+  _emailCohortState.selectedCampaign = campaign;
+  _emailCohortState.view = 'campaign';
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
