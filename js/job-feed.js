@@ -878,6 +878,9 @@ async function searchJobs(page = 0) {
       });
     }
 
+    // Fetch fraud scores for visible jobs
+    await fetchFraudScores(currentJobs);
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger
@@ -1212,6 +1215,77 @@ function formatLocation(raw, locDisplay, negativeLocations) {
 }
 
 
+// ============================================================
+// FRAUD DETECTION — Phase 2: Badges + Tooltips (v6.31)
+// ============================================================
+
+// Cache fraud scores by job_id to avoid re-fetching on pagination
+var _fraudScoreCache = {};
+
+async function fetchFraudScores(jobs) {
+  if (!jobs || jobs.length === 0) return;
+  // Find jobs not yet in cache
+  var uncached = jobs.filter(function(j) { return !_fraudScoreCache[j.greenhouse_id]; });
+  if (uncached.length === 0) return;
+
+  var ids = uncached.map(function(j) { return j.greenhouse_id; });
+  try {
+    var { data, error } = await sb
+      .from('job_fraud_scores')
+      .select('job_id,fraud_score,fraud_label,top_signals,confidence')
+      .in('job_id', ids);
+    if (error) { console.warn('[BJ] Fraud score fetch error:', error); return; }
+    if (data) {
+      data.forEach(function(row) {
+        _fraudScoreCache[row.job_id] = {
+          score: row.fraud_score,
+          label: row.fraud_label,
+          signals: row.top_signals || [],
+          confidence: row.confidence,
+        };
+      });
+    }
+  } catch (e) {
+    console.warn('[BJ] Fraud score fetch failed:', e);
+  }
+}
+
+function fraudBadgeHtml(jobId) {
+  var info = _fraudScoreCache[jobId];
+  if (!info || info.label === 'unknown') return '';
+
+  var cfg = {
+    safe: { icon: '🛡️', cls: 'fraud-badge--safe', tip: 'Verified Posting' },
+    caution: { icon: '⚠️', cls: 'fraud-badge--caution', tip: 'Review Carefully' },
+    suspicious: { icon: '🚩', cls: 'fraud-badge--suspicious', tip: 'Potentially Fake' },
+  };
+  var c = cfg[info.label];
+  if (!c) return '';
+
+  // Build signal list for tooltip
+  var signalHtml = '';
+  if (info.signals && info.signals.length > 0) {
+    signalHtml = '<div class="fraud-tooltip-signals">'
+      + info.signals.slice(0, 5).map(function(s) {
+        var sign = s.positive ? '✓' : '✗';
+        var signCls = s.positive ? 'fraud-signal--positive' : 'fraud-signal--negative';
+        return '<div class="fraud-signal ' + signCls + '">' + sign + ' ' + escapeHtml(s.human || s.feature) + '</div>';
+      }).join('')
+      + '</div>';
+  }
+
+  var scoreText = info.score !== null && info.score !== undefined ? ' (' + (info.score * 100).toFixed(0) + '%)' : '';
+
+  return '<span class="fraud-badge ' + c.cls + '" data-fraud-jobid="' + escapeHtml(jobId) + '">'
+    + c.icon
+    + '<span class="fraud-tooltip">'
+    + '<div class="fraud-tooltip-title">' + c.tip + scoreText + '</div>'
+    + signalHtml
+    + '</span>'
+    + '</span>';
+}
+
+
 function renderJobRows(jobs, total, page, filtersToRun) {
   const tbody = $('#job-table-body');
   const now = new Date();
@@ -1301,9 +1375,12 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     if (isNew) newCount++;
     const newBadge = isNew ? '<span class="jt-new-badge">NEW</span>' : '';
 
+    // Fraud detection badge (v6.31)
+    const fraudBadge = fraudBadgeHtml(job.greenhouse_id);
+
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
       <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
-      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}</td>
+      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
