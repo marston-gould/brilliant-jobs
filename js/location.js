@@ -1310,6 +1310,7 @@ function sourcePill(source) {
 }
 
 // Apply button — picks best non-LI source, falls back to LI
+// v6.32: intercepts click for caution/suspicious fraud-scored jobs
 function applyButton(sources, urls, jobId) {
   const priority = ['greenhouse','lever','workday','ashby','career_page','indeed','linkedin'];
   let bestSource = 'linkedin';
@@ -1320,6 +1321,13 @@ function applyButton(sources, urls, jobId) {
   const isLI = bestSource === 'linkedin';
   const cls = isLI ? 'apply-btn apply-btn-linkedin' : 'apply-btn apply-btn-default';
   const label = isLI ? 'Apply on LI' : 'Apply →';
+
+  // Phase 3 fraud interstitial: intercept apply for caution/suspicious jobs
+  var fraudInfo = typeof _fraudScoreCache !== 'undefined' ? _fraudScoreCache[jobId] : null;
+  if (fraudInfo && (fraudInfo.label === 'caution' || fraudInfo.label === 'suspicious')) {
+    return `<a href="#" class="${cls}" onclick="event.preventDefault(); event.stopPropagation(); showFraudInterstitial('${jobId}', '${bestUrl.replace(/'/g, "\\'")}')">${label}</a>`;
+  }
+
   return `<a href="${bestUrl}" target="_blank" rel="noopener" class="${cls}" onclick="event.stopPropagation(); markApplied('${jobId}', this)">${label}</a>`;
 }
 
