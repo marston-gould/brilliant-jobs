@@ -1286,6 +1286,127 @@ function fraudBadgeHtml(jobId) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════
+// FRAUD DETECTION — Phase 3: Trust Banner + Apply Interstitial (v6.32)
+// ═══════════════════════════════════════════════════════════
+
+function trustBannerHtml(jobId) {
+  var info = _fraudScoreCache[jobId];
+  if (!info || info.label === 'unknown' || info.label === 'safe') return '';
+
+  var cfg = {
+    caution: {
+      cls: 'trust-banner--caution',
+      icon: '⚠️',
+      title: 'Review This Posting Carefully',
+      desc: 'Some signals suggest this listing may need extra scrutiny. Verify the company and role details before applying.',
+    },
+    suspicious: {
+      cls: 'trust-banner--suspicious',
+      icon: '🚩',
+      title: 'High Fraud Risk Detected',
+      desc: 'Multiple signals indicate this posting may not be legitimate. Proceed with extreme caution.',
+    },
+  };
+  var c = cfg[info.label];
+  if (!c) return '';
+
+  var signalHtml = '';
+  if (info.signals && info.signals.length > 0) {
+    signalHtml = '<div class="trust-banner-signals">'
+      + info.signals.slice(0, 3).map(function(s) {
+        var sign = s.positive ? '✓' : '✗';
+        var signCls = s.positive ? 'fraud-signal--positive' : 'fraud-signal--negative';
+        return '<span class="trust-banner-signal ' + signCls + '">' + sign + ' ' + escapeHtml(s.human || s.feature) + '</span>';
+      }).join('')
+      + '</div>';
+  }
+
+  return '<div class="trust-banner ' + c.cls + '">'
+    + '<div class="trust-banner-header">'
+    + '<span class="trust-banner-icon">' + c.icon + '</span>'
+    + '<span class="trust-banner-title">' + c.title + '</span>'
+    + '</div>'
+    + '<div class="trust-banner-desc">' + c.desc + '</div>'
+    + signalHtml
+    + '</div>';
+}
+
+// Fraud interstitial modal — shown before apply on caution/suspicious jobs
+var _fraudInterstitialResolve = null;
+
+function showFraudInterstitial(jobId, applyUrl) {
+  var info = _fraudScoreCache[jobId];
+  if (!info) { window.open(applyUrl, '_blank'); return; }
+
+  var isSuspicious = info.label === 'suspicious';
+  var modalCls = isSuspicious ? 'fraud-interstitial--suspicious' : 'fraud-interstitial--caution';
+  var icon = isSuspicious ? '🚩' : '⚠️';
+  var title = isSuspicious ? 'High Fraud Risk' : 'Proceed with Caution';
+  var desc = isSuspicious
+    ? 'Multiple signals suggest this job posting may not be legitimate. We strongly recommend verifying the company before sharing personal information.'
+    : 'Some signals suggest this listing may need extra scrutiny. Review the company details and job description carefully before applying.';
+
+  var signalHtml = '';
+  if (info.signals && info.signals.length > 0) {
+    signalHtml = '<div class="fraud-interstitial-signals">'
+      + info.signals.slice(0, 5).map(function(s) {
+        var sign = s.positive ? '✓' : '✗';
+        var signCls = s.positive ? 'fraud-signal--positive' : 'fraud-signal--negative';
+        return '<div class="fraud-interstitial-signal ' + signCls + '">' + sign + ' ' + escapeHtml(s.human || s.feature) + '</div>';
+      }).join('')
+      + '</div>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'fraud-interstitial-overlay';
+  overlay.id = 'fraud-interstitial-overlay';
+  overlay.innerHTML = '<div class="fraud-interstitial-card ' + modalCls + '">'
+    + '<div class="fraud-interstitial-header">'
+    + '<span class="fraud-interstitial-icon">' + icon + '</span>'
+    + '<span class="fraud-interstitial-title">' + title + '</span>'
+    + '</div>'
+    + '<div class="fraud-interstitial-desc">' + desc + '</div>'
+    + signalHtml
+    + '<div class="fraud-interstitial-actions">'
+    + '<button class="btn btn-secondary fraud-interstitial-back" onclick="closeFraudInterstitial(false)">Go Back</button>'
+    + '<button class="btn ' + (isSuspicious ? 'fraud-interstitial-proceed-suspicious' : 'fraud-interstitial-proceed-caution') + '" onclick="closeFraudInterstitial(true)">'
+    + (isSuspicious ? 'Continue Anyway' : 'Proceed with Caution')
+    + '</button>'
+    + '</div>'
+    + '</div>';
+
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  // Store apply URL for callback
+  overlay.dataset.applyUrl = applyUrl;
+  overlay.dataset.jobId = jobId;
+
+  // Close on overlay click (outside card)
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) closeFraudInterstitial(false);
+  });
+}
+
+function closeFraudInterstitial(proceed) {
+  var overlay = document.getElementById('fraud-interstitial-overlay');
+  if (!overlay) return;
+
+  var applyUrl = overlay.dataset.applyUrl;
+  var jobId = overlay.dataset.jobId;
+
+  overlay.remove();
+  document.body.style.overflow = '';
+
+  if (proceed && applyUrl) {
+    window.open(applyUrl, '_blank');
+    // Mark as applied
+    if (typeof markApplied === 'function') markApplied(jobId);
+  }
+}
+
 function renderJobRows(jobs, total, page, filtersToRun) {
   const tbody = $('#job-table-body');
   const now = new Date();
@@ -1391,7 +1512,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="7"><span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
   // Pagination row
