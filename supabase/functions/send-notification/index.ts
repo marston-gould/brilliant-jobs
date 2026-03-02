@@ -1,4 +1,4 @@
-// send-notification Edge Function — v4 (Phase 69: webhook correlation + suppression gate)
+// send-notification Edge Function — v5 (Phase 69 Session 2: SMS tracking + auto-fallback)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → preferences → frequency cap → quiet hours
 // Then routes to Resend (email) or Vonage REST API (SMS), logs to notification_log with decision.
@@ -388,7 +388,7 @@ async function sendEmail(
 async function sendSMS(
   to: string,
   text: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; message_id?: string }> {
   if (!VONAGE_API_KEY || !VONAGE_API_SECRET || !VONAGE_FROM) {
     return { ok: false, error: "Vonage credentials not configured" };
   }
@@ -412,7 +412,8 @@ async function sendSMS(
       console.error("[send-notification] Vonage error:", errText);
       return { ok: false, error: errText };
     }
-    return { ok: true };
+    // Capture Vonage message-id for DLR webhook correlation
+    return { ok: true, message_id: msg?.["message-id"] || undefined };
   } catch (e) {
     console.error("[send-notification] SMS send failed:", e);
     return { ok: false, error: String(e) };
@@ -432,7 +433,8 @@ async function logNotification(
   sendDecision: string,
   sendReason?: string,
   error?: string,
-  messageId?: string
+  messageId?: string,
+  smsMessageId?: string
 ) {
   try {
     if (req.idempotency_key) {
@@ -470,6 +472,8 @@ async function logNotification(
       send_reason: sendReason || null,
       // Phase 69: Resend message_id for webhook correlation
       message_id: messageId || null,
+      // Phase 69 Session 2: Vonage message_id for DLR correlation
+      sms_message_id: smsMessageId || null,
     });
   } catch (e) {
     console.error("[send-notification] Failed to log notification:", e);
@@ -608,8 +612,22 @@ serve(async (req: Request) => {
       result.decision_reason = emailDecision.reason;
     }
 
-    // 4. Check SMS send gate
+    // 4. Check SMS send gate (with auto-fallback for users with repeated failures)
     if (smsText) {
+      // Check auto-fallback flag: skip SMS for users with 3+ failures in 7 days
+      const { data: fallbackState } = await sb
+        .from("user_notification_state")
+        .select("sms_fallback_email_only")
+        .eq("user_id", user_id)
+        .single();
+      if (fallbackState?.sms_fallback_email_only) {
+        console.log(`[send-notification] SMS auto-fallback active for ${user_id}, skipping SMS`);
+        await logNotification(
+          user_id, notification_type, "sms",
+          "blocked", body, classification,
+          "blocked", "sms_auto_fallback"
+        );
+      } else {
       const smsDecision = await canSendNotification(user_id, notification_type, "sms");
       const shouldSendSms = body.force_channel === "sms" || body.force_channel === "both"
         ? classification === "required_transactional" || smsDecision.send
@@ -632,7 +650,7 @@ serve(async (req: Request) => {
             user_id, notification_type, "sms",
             smsResult.ok ? "sent" : "failed",
             body, classification, smsResult.ok ? "sent" : "send_failed",
-            undefined, smsResult.error
+            undefined, smsResult.error, undefined, smsResult.message_id
           );
         }
       } else {
@@ -660,6 +678,7 @@ serve(async (req: Request) => {
           smsDecision.reason
         );
       }
+      } // close auto-fallback else
     }
 
     console.log(
