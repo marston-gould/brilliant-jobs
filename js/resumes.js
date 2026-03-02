@@ -185,6 +185,30 @@ function renderResumes() {
       aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:' + ac.bg + ';color:' + ac.text + ';border:1px solid ' + ac.border + ';cursor:help;" title="AI Detection: ' + labelText + ' (' + aiPct + '% AI probability)\n' + (aiData.summary || '').replace(/"/g, '&quot;') + '">' + ac.icon + ' ' + labelText + ' ' + aiPct + '%</span>';
     }
 
+    // v6.39: Rescore button (next to AI badge)
+    let rescoreBtn = '';
+    if (!isPlaceholder && r.extractedText && r.extractedText.length >= 100 && r.aiScoreStatus !== 'scoring') {
+      const isCooldown = r._rescoreCooldownUntil && Date.now() < r._rescoreCooldownUntil;
+      const cooldownSec = isCooldown ? Math.ceil((r._rescoreCooldownUntil - Date.now()) / 1000) : 0;
+      rescoreBtn = '<button onclick="event.stopPropagation();handleRescore(' + i + ')" ' +
+        'id="rescore-btn-' + i + '" ' +
+        'style="font-size:9px;font-weight:600;padding:2px 8px;border-radius:4px;background:rgba(99,102,241,0.1);color:#6366f1;border:1px solid rgba(99,102,241,0.15);cursor:' + (isCooldown ? 'not-allowed' : 'pointer') + ';margin-left:4px;' + (isCooldown ? 'opacity:0.5;' : '') + '" ' +
+        'title="' + (isCooldown ? 'Cooldown: wait ' + cooldownSec + 's' : 'Re-analyze for AI content') + '" ' +
+        (isCooldown ? 'disabled' : '') + '>\u{1F504} Rescore</button>';
+    }
+
+    // v6.39: Score history (previous vs current)
+    let scoreHistory = '';
+    if (aiData && aiData.label && r.aiScoreHistory && r.aiScoreHistory.length > 1) {
+      const prev = r.aiScoreHistory[r.aiScoreHistory.length - 2];
+      const prevPct = Math.round((prev.score || 0) * 100);
+      const currPct = Math.round((aiData.score || 0) * 100);
+      const delta = currPct - prevPct;
+      const arrow = delta > 0 ? '\u2191' : delta < 0 ? '\u2193' : '\u2194';
+      const deltaColor = delta > 5 ? '#ef4444' : delta < -5 ? '#22c55e' : '#94a3b8';
+      scoreHistory = '<span style="font-size:8px;color:' + deltaColor + ';margin-left:4px;cursor:help;" title="Previous: ' + prevPct + '% AI (' + new Date(prev.scoredAt).toLocaleString() + ')">' + arrow + ' was ' + prevPct + '%</span>';
+    }
+
     // Readiness grade from cache — shown inline on card
     let gradeHtml = '';
     if (!isPlaceholder) {
@@ -243,7 +267,7 @@ function renderResumes() {
       <div class="nri-row">
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
-          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}</div>
+          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}${scoreHistory}${rescoreBtn}</div>
           <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${r.levelLabel ? ' \u00b7 ' + r.levelLabel : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
         </div>
         <div class="nri-filters">${filterDots}</div>
@@ -900,14 +924,75 @@ async function scoreResumeAI(resumeId, text) {
   }
 }
 
-// v6.38: Manual rescore trigger
+// v6.39: Rescore with rate limiting, cooldown, and score history
+var RESCORE_COOLDOWN_MS = 60000; // 60-second cooldown between rescores
 window.rescoreResumeAI = function(idx) {
   const r = resumes[idx];
   if (!r || !r.extractedText || r.extractedText.length < 100) {
     showToast('Resume text too short for AI scoring', { type: 'warning' });
     return;
   }
+  // Rate limit check
+  if (r._rescoreCooldownUntil && Date.now() < r._rescoreCooldownUntil) {
+    const wait = Math.ceil((r._rescoreCooldownUntil - Date.now()) / 1000);
+    showToast('Please wait ' + wait + 's before rescoring again', { type: 'info' });
+    return;
+  }
+  // Save current score to history before rescoring
+  if (r.aiScore && r.aiScore.label) {
+    if (!r.aiScoreHistory) r.aiScoreHistory = [];
+    r.aiScoreHistory.push({
+      label: r.aiScore.label,
+      score: r.aiScore.score,
+      confidence: r.aiScore.confidence,
+      summary: r.aiScore.summary,
+      scoredAt: new Date().toISOString()
+    });
+    // Keep last 5 scores max
+    if (r.aiScoreHistory.length > 5) r.aiScoreHistory = r.aiScoreHistory.slice(-5);
+    saveResumes();
+  }
+  // Set cooldown
+  r._rescoreCooldownUntil = Date.now() + RESCORE_COOLDOWN_MS;
+  // Disable button immediately
+  const btn = document.getElementById('rescore-btn-' + idx);
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.title = 'Rescoring…';
+    btn.innerHTML = '\u{1F504} Rescoring…';
+  }
+  // Start cooldown countdown
+  _startRescoreCooldown(idx);
   scoreResumeAI(r.id, r.extractedText);
+};
+
+// v6.39: Cooldown timer for rescore button
+function _startRescoreCooldown(idx) {
+  const interval = setInterval(function() {
+    const r = resumes[idx];
+    const btn = document.getElementById('rescore-btn-' + idx);
+    if (!r || !btn) { clearInterval(interval); return; }
+    const remaining = r._rescoreCooldownUntil ? r._rescoreCooldownUntil - Date.now() : 0;
+    if (remaining <= 0) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.title = 'Re-analyze for AI content';
+      btn.innerHTML = '\u{1F504} Rescore';
+      clearInterval(interval);
+    } else {
+      const sec = Math.ceil(remaining / 1000);
+      btn.title = 'Cooldown: wait ' + sec + 's';
+      btn.innerHTML = '\u{1F504} ' + sec + 's';
+    }
+  }, 1000);
+}
+
+// v6.39: Button handler (calls rescoreResumeAI)
+window.handleRescore = function(idx) {
+  window.rescoreResumeAI(idx);
 };
 
 window.toggleResumeKeywords = function(idx) {
