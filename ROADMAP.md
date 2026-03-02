@@ -2490,10 +2490,10 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 
 ---
 
-## Phase 69: Notification Hardening Sprint (v6.21–v6.23) — Mar 1, 2026
+## Phase 69: Notification Hardening Sprint (v6.21–v6.24) — Mar 1, 2026
 
 **Pod:** Pod 2 (Architecture)
-**Sessions:** 3
+**Sessions:** 4
 
 ### Session 1 (v6.21) ✅
 
@@ -2517,24 +2517,29 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | 4 | Per-filter notification overrides | ✅ | send-notification v6: override cascade (filter_overrides → channels → preferences → default). filter_name in request interface. UI was already complete. |
 | 8 | Notification analytics dashboard | ✅ | Admin tab: 8 stat cards, daily email/SMS volume charts, top types, block reasons, classification breakdown. 30-day lookback, up to 5K events. |
 
+### Session 4 (v6.24) ✅
+
+| # | Card | Status | Notes |
+|---|------|--------|-------|
+| 7 | Web push notifications | ✅ | push-subscribe EF (new), send-notification v7 with push channel, sw.js service worker, push toggle on Applications page, push_subscriptions table + schema |
+| 9 | Template preview + test send | ✅ | Preview iframe in template editor (email/SMS/in-app), test send to admin email via send-notification EF, sample variable substitution |
+
 ### Remaining Cards
 
 | # | Card | Status | Blocked By |
 |---|------|--------|------------|
-| 5 | Vonage 10DLC registration | Todo | Human task (Vonage dashboard) |
-| 7 | Web push notifications | Todo | — |
-| 9 | Template preview + test send | Todo | — |
+| 5 | Vonage 10DLC registration | ⏳ In Process | Submitted 2026-03-01, pending Vonage approval (1–4 week window) |
 | 10 | Cadence optimization | Todo | 30+ days delivery data |
 
-### Version Surfaces (v6.23)
+### Version Surfaces (v6.24)
 
 | Surface | Value |
 |---------|-------|
-| js/version.js | v6.23 |
-| dashboard.html | v6.23 |
-| index.html | v6.23 |
-| CHANGELOG.md | v6.23 |
-| Git tag | v6.23 → 3b94c3dd |
+| js/version.js | v6.24 |
+| dashboard.html | v6.24 |
+| index.html | v6.24 |
+| CHANGELOG.md | v6.24 |
+| Git tag | v6.24 → 3d934453 |
 
 ---
 
