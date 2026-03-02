@@ -1,3 +1,56 @@
+## v6.22 — Phase 69 Session 2: SMS Delivery Receipts + Admin Suppression UI (2026-03-01)
+
+### Edge Functions — New (1 function)
+
+**vonage-webhook** — SMS delivery receipt (DLR) processing
+- Receives Vonage DLR callbacks: delivered, failed, rejected, expired, buffered
+- Updates notification_log with sms_delivered_at, sms_failed_at, sms_error_code, sms_carrier_code
+- SMS failure tracking: increments per-user sms_failure_count in user_notification_state
+- Auto-fallback: switches user to email-only after 3+ SMS failures in 7 days
+- Retry: queues 1 retry (5-min delay) via held_notifications for transient failures (expired/unknown)
+- Admin alert: logs system alert when 24h SMS failure rate exceeds 5%
+
+### Edge Functions — Updated (1 function)
+
+**send-notification** — Upgraded to v5
+- Captures Vonage message-id from API response, stores in sms_message_id column for DLR correlation
+- Auto-fallback gate: checks sms_fallback_email_only flag before attempting SMS send
+- Blocked SMS sends logged with reason "sms_auto_fallback"
+
+### Database
+
+**notification_log** — 5 new columns: sms_message_id, sms_delivered_at, sms_failed_at, sms_error_code, sms_carrier_code. Index on sms_message_id.
+
+**user_notification_state** — 3 new columns: sms_failure_count (default 0), sms_last_failure_at, sms_fallback_email_only (default false).
+
+**held_notifications** — 1 new column: retry_of (uuid, links to original notification_log entry).
+
+### Frontend
+
+**admin-notifications.js** — v6.22
+- New: Email Suppressions section in Notifications admin tab
+- Searchable suppression list with type filter (hard_bounce, soft_bounce, complaint, manual)
+- Manual add suppression with email + reason
+- Remove suppression capability
+- Bulk CSV export of all suppressions
+- Collapsible section with summary badges (active count by type)
+
+### Deployment
+
+| Surface | Value | Status |
+|---------|-------|--------|
+| js/version.js | v6.22 | Done |
+| dashboard.html | v6.22 | Done |
+| index.html | v6.22 | Done |
+| Browser console | v6.22 loaded | Done |
+| CHANGELOG.md | This entry | Done |
+| vonage-webhook EF | v1 deployed | Done |
+| send-notification EF | v5 deployed | Done |
+| DB migration | 9 new columns + 1 index | Done |
+| admin-notifications.js | v6.22 | Done |
+
+---
+
 ## v6.21 — Phase 69 Session 1: Resend Webhook Ingestion + Engagement Tracking (2026-03-01)
 
 ### Edge Functions — New (1 function)
