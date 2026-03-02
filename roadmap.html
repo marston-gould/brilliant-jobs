@@ -1686,6 +1686,16 @@ const features = [
   { s: 'done', n: 'X (Twitter) account live', d: 'Brilliant Jobs X/Twitter account created and active. Brand presence established for launch marketing, job market insights, and community engagement.', p: 70},
   { s: 'done', n: 'Bluesky account live', d: 'Brilliant Jobs Bluesky account created and active. Early presence on decentralized social platform for tech-forward audience reach.', p: 70},
   { s: 'done', n: 'Reddit account live', d: 'Brilliant Jobs Reddit account created and active. Community engagement for job search subreddits, product feedback, and organic discovery.', p: 70},
+
+  // AI Enrichment & Entitlements — P71
+  { s: 'todo', n: 'Test enrich-fcd-batch + activate cron', d: 'POST to /functions/v1/enrich-fcd-batch with service role key. Verify jd_skills, jd_seniority, jd_function populated correctly. Spot-check 10 enriched jobs for accuracy. Activate pg_cron job #63 (SELECT cron.alter_job(63, active := true)). Monitor first automated run. Blocks ongoing enrichment.', b: 'pre-launch', p: 71, e: '1.5h'},
+  { s: 'todo', n: 'Ongoing JD AI enrichment cron', d: 'Re-enable proven backfill pattern as perpetual pg_cron. Every 15 min, pick up jobs WHERE jd_ai_enriched_at IS NULL AND description_html IS NOT NULL, batch 50, concurrency 5. Same enrich-fcd-batch EF, lower frequency. Add monitoring for enrichment counts and backlog size.', b: 'pre-launch', p: 71, e: '3h'},
+  { s: 'todo', n: 'FUNCTION filter pill (Pro-gated)', d: 'New filter pill type powered by jd_function column from AI enrichment. Query builder integration with autocomplete from distinct jd_function values. Pro-gated via check_entitlement(). Adds functional role filtering (Engineering, Marketing, Sales, etc.) beyond keyword matching.', b: 'pre-launch', p: 71, e: '3h'},
+  { s: 'todo', n: 'TECHNICAL DEPTH filter pill (Pro-gated)', d: 'New filter pill type powered by jd_seniority/technical depth from AI enrichment. Allows filtering by technical complexity level beyond title-based seniority. Pro-gated via check_entitlement().', b: 'pre-launch', p: 71, e: '2h'},
+  { s: 'todo', n: '"Why This Job?" feed card expansion', d: 'Show AI-extracted match reasons on each job card in the feed. Pull jd_skills, jd_function, jd_work_type from enrichment data. Display as compact chips or expandable section explaining why this job matched the filter. Increases user confidence in results.', b: 'pre-launch', p: 71, e: '3h'},
+  { s: 'todo', n: 'Resume mismatch warnings', d: 'Cross-reference resume skills vs top jd_skills in filter results. Aggregate top skills appearing in >30% of JDs, diff against resume skill set. Alert banner if 70%+ of JDs require a missing skill. Link to Resumes page for action. Depends on jd_skills coverage from enrichment cron.', b: 'pre-launch', p: 71, e: '4h'},
+  { s: 'todo', n: 'Usage limits per tier (cohort entitlements)', d: 'Execute cohort schema migration (cohorts, cohort_plan_entitlements, behavior_category). Deploy check_entitlement() v2 RPC with cohort > plan > feature_default resolution. Backfill users to launch_2026. Client-side gating with upgrade prompts. Usage tracking in usage_events table.', b: 'post-launch', p: 71, e: '2-3d'},
+  { s: 'todo', n: 'Data freshness gating', d: 'Tiered data recency as monetization lever. Free = 30-day salary lag + public trend reports only. Pro = real-time salary + all reports. Premium = all + custom reports. Query-level date gating, UI upgrade badges on gated charts, trend report generation pipeline. Depends on entitlement system + Stripe.', b: 'deferred', p: 71, e: '4-5d'},
 ];
 
 
@@ -1843,6 +1853,8 @@ function render() {
     67: 'FCD Data Loading (v5.80)',
     68: 'Notification System Complete (v6.01–v6.19) ✅',
     69: 'Notification Hardening — Delivery + Analytics',
+    70: 'Content Distribution & Social Presence',
+    71: 'AI Enrichment Pipeline + Entitlements',
   };
 
   function buildSection(items, cls, label, startCollapsed) {
