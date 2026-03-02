@@ -362,7 +362,8 @@ $$('.nav-item').forEach(item => {
 const lastTab = localStorage.getItem('bj_active_tab');
 if (lastTab && $(`#page-${lastTab}`)) {
   // If admin was saved tab, redirect to /admin (v6.26)
-  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; return; }
+  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; }
+  else {
   $$('.page').forEach(p => p.classList.remove('active'));
   $(`#page-${lastTab}`).classList.add('active');
   $$('.nav-item').forEach(n => {
@@ -373,6 +374,7 @@ if (lastTab && $(`#page-${lastTab}`)) {
   if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
   if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
   if (lastTab === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
+  }
 }
 
 // Extension detection — check if extension has updated the profile recently
