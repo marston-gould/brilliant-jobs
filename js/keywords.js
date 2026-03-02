@@ -1864,7 +1864,7 @@ function bjShowRewriteResults(stateKey, ri, fi, data) {
   }
 
   if (data.cover_letter) {
-    html += '<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;">Cover Letter Preview (' + (data.cover_letter.word_count||'?') + ' words)</summary>';
+    html += '<details style="margin-top:10px;"><summary style="font-size:11px;font-weight:600;color:var(--text-faint);cursor:pointer;">Cover Letter Preview (' + (data.cover_letter.word_count||'?') + ' words) <span id="cl-ai-badge-inline" style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);">\ud83d\udd04 Scoring\u2026</span></summary>';
     html += '<div style="padding:8px;background:var(--bg-main);border:1px solid var(--border);border-radius:0 0 6px 6px;">';
     html += '<div style="font-size:11px;color:var(--text-dim);font-style:italic;">' + (escapeHtml(data.cover_letter.salutation||'')) + '</div>';
     (data.cover_letter.paragraphs||[]).forEach(function(p) { html += '<div style="font-size:11px;color:var(--text-dim);margin-top:6px;line-height:1.5;">' + escapeHtml(p) + '</div>'; });
@@ -3794,7 +3794,16 @@ async function bjSaveCoverLetter(data, filterName) {
       analysis_tier: 'premium'
     });
     if (error) console.error('[BJ] Cover letter save error:', error);
-    else console.log('[BJ] Cover letter saved');
+    else {
+      console.log('[BJ] Cover letter saved');
+      // v6.40: Score cover letter for AI content after save
+      var clText = (data.cover_letter.salutation || '') + '\n' +
+        (data.cover_letter.paragraphs || []).join('\n') + '\n' +
+        (data.cover_letter.closing || '');
+      if (clText.length >= 100) {
+        scoreCoverLetterAI(session.data.session, clText, filterName);
+      }
+    }
   } catch (e) { console.error('[BJ] Cover letter save exception:', e); }
 }
 
@@ -3809,18 +3818,53 @@ async function bjRenderCoverLetterArchive() {
       .order('created_at', { ascending: false }).limit(20);
     if (error || !covers || covers.length === 0) { container.style.display = 'none'; return; }
 
+    // v6.40: Fetch AI scores for cover letters
+    var clIds = covers.map(function(c) { return c.id; });
+    var aiScores = {};
+    try {
+      var { data: scores } = await sb.from('content_ai_scores')
+        .select('content_id,ai_label,ai_generated_score,confidence,summary')
+        .eq('content_type', 'cover_letter')
+        .in('content_id', clIds);
+      if (scores) scores.forEach(function(s) { aiScores[s.content_id] = s; });
+    } catch (e) { console.warn('[ai-score] CL score fetch error:', e.message); }
+
     container.style.display = '';
     var html = '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">';
     html += '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;">Cover Letters (' + covers.length + ')</div>';
-    covers.forEach(function(cl) {
+    covers.forEach(function(cl, idx) {
       var date = cl.created_at ? new Date(cl.created_at).toLocaleDateString() : '';
       var tierBadge = cl.tier === 'premium'
         ? '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.2);color:#4d8eff;font-weight:600;">\u2728 Premium</span>'
         : '<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(148,163,184,0.1);color:#94a3b8;font-weight:600;">AI Basic</span>';
       var downloadUrl = SUPABASE_URL + '/storage/v1/object/public/' + cl.storage_path;
+
+      // v6.40: AI detection badge for cover letter
+      var aiBadge = '';
+      var aiData = aiScores[cl.id];
+      if (aiData && aiData.ai_label) {
+        var aiColors = { human: { bg:'rgba(34,197,94,0.1)', text:'#22c55e', border:'rgba(34,197,94,0.15)', icon:'\u2705' },
+          mixed: { bg:'rgba(234,179,8,0.1)', text:'#eab308', border:'rgba(234,179,8,0.15)', icon:'\u26a0\ufe0f' },
+          ai_generated: { bg:'rgba(239,68,68,0.1)', text:'#ef4444', border:'rgba(239,68,68,0.15)', icon:'\ud83e\udd16' } };
+        var ac = aiColors[aiData.ai_label] || aiColors.mixed;
+        var aiPct = Math.round((aiData.ai_generated_score || 0) * 100);
+        var labelText = aiData.ai_label === 'human' ? 'Human' : aiData.ai_label === 'mixed' ? 'Mixed' : 'AI-Generated';
+        aiBadge = ' <span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:' + ac.bg + ';color:' + ac.text + ';border:1px solid ' + ac.border + ';cursor:help;" title="AI Detection: ' + labelText + ' (' + aiPct + '% AI)\n' + (aiData.summary || '').replace(/"/g, '&quot;') + '">' + ac.icon + ' ' + labelText + ' ' + aiPct + '%</span>';
+      }
+
+      // v6.40: Rescore button for cover letter
+      var clText = (cl.salutation || '') + '\n' + (cl.paragraphs || []).join('\n') + '\n' + (cl.closing || '');
+      var rescoreBtn = '';
+      if (clText.length >= 100) {
+        rescoreBtn = ' <button onclick="event.stopPropagation();bjRescoreCoverLetter(\'' + cl.id + '\')" ' +
+          'id="cl-rescore-btn-' + cl.id + '" ' +
+          'style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(99,102,241,0.1);color:#6366f1;border:1px solid rgba(99,102,241,0.15);cursor:pointer;" ' +
+          'title="Re-analyze for AI content">\ud83d\udd04 Rescore</button>';
+      }
+
       html += '<div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg-input);">';
       html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">';
-      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + escapeHtml(cl.filter_name || 'General') + '</span>' + tierBadge;
+      html += '<span style="font-size:12px;font-weight:600;color:var(--text);">\ud83d\udcc4 ' + escapeHtml(cl.filter_name || 'General') + '</span>' + tierBadge + aiBadge + rescoreBtn;
       html += '<span style="font-size:10px;color:var(--text-faint);margin-left:auto;">' + date + ' \u00b7 ' + (cl.word_count || '?') + ' words</span></div>';
       html += '<div id="cl-preview-' + cl.id + '" style="display:none;font-size:11px;color:var(--text-dim);margin:6px 0;padding:8px;background:var(--bg-main);border-radius:4px;line-height:1.5;">';
       html += '<div style="font-style:italic;margin-bottom:4px;">' + escapeHtml(cl.salutation || '') + '</div>';
@@ -3841,4 +3885,164 @@ async function bjDeleteCoverLetter(id) {
   if (!confirm('Delete this cover letter?')) return;
   try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
   catch (e) { console.error('[BJ] Delete cover letter error:', e); }
+}
+
+// ════════════════════════════════════════════════════════════
+// v6.40: COVER LETTER AI SCORING (Session 2.3)
+// ════════════════════════════════════════════════════════════
+
+// Score cover letter text via score-ai-content Edge Function
+async function scoreCoverLetterAI(session, text, filterName) {
+  try {
+    if (!session || !session.access_token) {
+      console.warn('[ai-score] No session, skipping cover letter scoring');
+      return;
+    }
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/score-ai-content', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        items: [{
+          content_type: 'cover_letter',
+          content_id: filterName || 'cover-letter-' + Date.now(),
+          text: text.substring(0, 8000),
+        }]
+      }),
+    });
+
+    if (!resp.ok) {
+      console.warn('[ai-score] Cover letter scoring failed:', resp.status);
+      return;
+    }
+
+    var data = await resp.json();
+    var result = data.results && data.results[0];
+
+    if (result) {
+      // PostHog event
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('ai_cover_letter_scored', {
+          ai_label: result.ai_label,
+          ai_score: result.ai_generated_score,
+          confidence: result.confidence,
+          text_length: text.length,
+          filter_name: filterName || '',
+        });
+      }
+      console.log('[ai-score] Cover letter scored:', result.ai_label, result.ai_generated_score);
+      // Refresh archive to show badge
+      bjRenderCoverLetterArchive();
+    }
+  } catch (e) {
+    console.warn('[ai-score] Cover letter scoring error:', e.message);
+  }
+}
+
+// v6.40: Rescore cover letter with 60-second cooldown (reuses resume cooldown pattern)
+var _clRescoreCooldowns = {};
+var CL_RESCORE_COOLDOWN_MS = 60000;
+
+window.bjRescoreCoverLetter = async function(clId) {
+  // Rate limit check
+  if (_clRescoreCooldowns[clId] && Date.now() < _clRescoreCooldowns[clId]) {
+    var wait = Math.ceil((_clRescoreCooldowns[clId] - Date.now()) / 1000);
+    if (typeof showToast === 'function') showToast('Please wait ' + wait + 's before rescoring again', { type: 'info' });
+    return;
+  }
+
+  var btn = document.getElementById('cl-rescore-btn-' + clId);
+  if (btn) {
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.style.cursor = 'not-allowed';
+    btn.innerHTML = '\ud83d\udd04 Scoring\u2026';
+  }
+
+  // Set cooldown
+  _clRescoreCooldowns[clId] = Date.now() + CL_RESCORE_COOLDOWN_MS;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { console.warn('[ai-score] No session'); return; }
+
+    // Fetch cover letter text from DB
+    var { data: cl, error } = await sb.from('cover_letters')
+      .select('salutation,paragraphs,closing')
+      .eq('id', clId).single();
+    if (error || !cl) { console.warn('[ai-score] CL fetch error:', error); return; }
+
+    var clText = (cl.salutation || '') + '\n' + (cl.paragraphs || []).join('\n') + '\n' + (cl.closing || '');
+    if (clText.length < 100) {
+      if (typeof showToast === 'function') showToast('Cover letter text too short for AI scoring', { type: 'warning' });
+      return;
+    }
+
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/score-ai-content', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.data.session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        items: [{
+          content_type: 'cover_letter',
+          content_id: clId,
+          text: clText.substring(0, 8000),
+        }]
+      }),
+    });
+
+    if (!resp.ok) {
+      console.warn('[ai-score] CL rescore failed:', resp.status);
+      return;
+    }
+
+    var data = await resp.json();
+    var result = data.results && data.results[0];
+    if (result) {
+      console.log('[ai-score] Cover letter rescored:', clId, result.ai_label, result.ai_generated_score);
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('ai_cover_letter_rescored', {
+          cover_letter_id: clId,
+          ai_label: result.ai_label,
+          ai_score: result.ai_generated_score,
+          confidence: result.confidence,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[ai-score] CL rescore error:', e.message);
+  } finally {
+    // Start cooldown timer on button
+    _startClRescoreCooldown(clId);
+    // Refresh archive to show updated badge
+    bjRenderCoverLetterArchive();
+  }
+};
+
+// v6.40: Cooldown timer for cover letter rescore button
+function _startClRescoreCooldown(clId) {
+  var interval = setInterval(function() {
+    var btn = document.getElementById('cl-rescore-btn-' + clId);
+    if (!btn) { clearInterval(interval); return; }
+    var remaining = _clRescoreCooldowns[clId] ? _clRescoreCooldowns[clId] - Date.now() : 0;
+    if (remaining <= 0) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.title = 'Re-analyze for AI content';
+      btn.innerHTML = '\ud83d\udd04 Rescore';
+      clearInterval(interval);
+    } else {
+      var sec = Math.ceil(remaining / 1000);
+      btn.title = 'Cooldown: wait ' + sec + 's';
+      btn.innerHTML = '\ud83d\udd04 ' + sec + 's';
+    }
+  }, 1000);
 }
