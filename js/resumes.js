@@ -172,6 +172,19 @@ function renderResumes() {
       ? '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:linear-gradient(135deg,rgba(77,142,255,0.1),rgba(124,58,237,0.1));border:1px solid rgba(77,142,255,0.15);color:#4d8eff;cursor:help;" title="' + (r.tier_history || []).map(function(h) { return h.action + ' (' + h.tier + ')'; }).join(' → ') + '">✨ Premium Rewrite' + (r.rewrite_round > 1 ? ' R' + r.rewrite_round : '') + '</span>'
       : '';
 
+    // v6.38: AI content detection badge
+    const aiData = r.aiScore;
+    let aiBadge = '';
+    if (r.aiScoreStatus === 'scoring') {
+      aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.15);cursor:help;" title="Analyzing content for AI authorship…">🔄 Scoring…</span>';
+    } else if (aiData && aiData.label) {
+      const aiColors = { human: { bg: 'rgba(34,197,94,0.1)', border: 'rgba(34,197,94,0.2)', text: '#22c55e', icon: '✅' }, mixed: { bg: 'rgba(234,179,8,0.1)', border: 'rgba(234,179,8,0.2)', text: '#eab308', icon: '⚠️' }, ai_generated: { bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.2)', text: '#ef4444', icon: '🤖' }, unknown: { bg: 'rgba(148,163,184,0.1)', border: 'rgba(148,163,184,0.2)', text: '#94a3b8', icon: '❓' } };
+      const ac = aiColors[aiData.label] || aiColors.unknown;
+      const aiPct = Math.round((aiData.score || 0) * 100);
+      const labelText = aiData.label === 'ai_generated' ? 'AI-Generated' : aiData.label === 'mixed' ? 'Mixed' : aiData.label === 'human' ? 'Human-Written' : 'Unknown';
+      aiBadge = '<span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;background:' + ac.bg + ';color:' + ac.text + ';border:1px solid ' + ac.border + ';cursor:help;" title="AI Detection: ' + labelText + ' (' + aiPct + '% AI probability)\n' + (aiData.summary || '').replace(/"/g, '&quot;') + '">' + ac.icon + ' ' + labelText + ' ' + aiPct + '%</span>';
+    }
+
     // Readiness grade from cache — shown inline on card
     let gradeHtml = '';
     if (!isPlaceholder) {
@@ -230,7 +243,7 @@ function renderResumes() {
       <div class="nri-row">
         <div class="nri-icon ${icon.cls}">${isPlaceholder ? '?' : icon.text}</div>
         <div class="nri-info">
-          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}</div>
+          <div class="nri-name" title="${escapeHtml(r.name||'')}">${escapeHtml(r.name)}${gdriveIcon}${tierBadge}${aiBadge}</div>
           <div class="nri-meta">${!isPlaceholder ? r.size + ' \u00b7 ' + r.uploadedAt : 'Placeholder'} \u00b7 ${assignedIds.length} filter${assignedIds.length !== 1 ? 's' : ''}${r.levelLabel ? ' \u00b7 ' + r.levelLabel : ''}${jobsApplied > 0 ? ' \u00b7 ' + jobsApplied + ' applied' : ''}</div>
         </div>
         <div class="nri-filters">${filterDots}</div>
@@ -797,8 +810,105 @@ async function addResume(file) {
     resumes[idx].textStatus = text ? 'ready' : 'no-text';
     saveResumes();
     renderResumes();
+    // v6.38: Trigger AI content scoring after successful text extraction
+    if (text && text.length >= 100) {
+      scoreResumeAI(id, text);
+    }
   });
 }
+
+// ═══════════════════════════════════════════════════════════
+// v6.38: AI Content Scoring for Resumes (Session 2.1)
+// Calls score-ai-content EF after text extraction
+// ═══════════════════════════════════════════════════════════
+
+async function scoreResumeAI(resumeId, text) {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { console.warn('[ai-score] No session, skipping resume scoring'); return; }
+
+    const idx = resumes.findIndex(r => r.id === resumeId);
+    if (idx < 0) return;
+
+    // Set scoring state
+    resumes[idx].aiScoreStatus = 'scoring';
+    renderResumes();
+
+    const resp = await fetch(SUPABASE_URL + '/functions/v1/score-ai-content', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+      },
+      body: JSON.stringify({
+        items: [{
+          content_type: 'resume',
+          content_id: resumeId,
+          text: text.substring(0, 8000),
+        }]
+      }),
+    });
+
+    if (!resp.ok) {
+      console.warn('[ai-score] Resume scoring failed:', resp.status);
+      resumes[idx].aiScoreStatus = 'error';
+      saveResumes();
+      renderResumes();
+      return;
+    }
+
+    const data = await resp.json();
+    const result = data.results && data.results[0];
+
+    if (result) {
+      resumes[idx].aiScore = {
+        score: result.ai_generated_score,
+        label: result.ai_label,
+        confidence: result.confidence,
+        summary: result.summary,
+        topSignals: result.top_signals || [],
+        scoredAt: new Date().toISOString(),
+      };
+      resumes[idx].aiScoreStatus = 'done';
+
+      // PostHog event: ai_resume_scored
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('ai_resume_scored', {
+          resume_id: resumeId,
+          ai_label: result.ai_label,
+          ai_score: result.ai_generated_score,
+          confidence: result.confidence,
+          text_length: text.length,
+        });
+      }
+    } else {
+      resumes[idx].aiScoreStatus = 'error';
+    }
+
+    saveResumes();
+    renderResumes();
+    console.log('[ai-score] Resume scored:', resumeId, result?.ai_label, result?.ai_generated_score);
+  } catch (e) {
+    console.warn('[ai-score] Resume scoring error:', e.message);
+    const idx = resumes.findIndex(r => r.id === resumeId);
+    if (idx >= 0) {
+      resumes[idx].aiScoreStatus = 'error';
+      saveResumes();
+      renderResumes();
+    }
+  }
+}
+
+// v6.38: Manual rescore trigger
+window.rescoreResumeAI = function(idx) {
+  const r = resumes[idx];
+  if (!r || !r.extractedText || r.extractedText.length < 100) {
+    showToast('Resume text too short for AI scoring', { type: 'warning' });
+    return;
+  }
+  scoreResumeAI(r.id, r.extractedText);
+};
 
 window.toggleResumeKeywords = function(idx) {
   const el = document.getElementById(`rc-kw-${idx}`);
