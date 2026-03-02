@@ -1,3 +1,31 @@
+## v6.34 — Fake Job Detection: Phase 5 Backfill + Auto-Scoring + Monitoring (2026-03-02)
+
+### Backfill Infrastructure
+- **pg_cron `backfill-fraud-scores`** — runs every minute, sends 500 jobs per invocation to `score-job-fraud` Edge Function
+- Offset-based pagination using `count(*) FROM job_fraud_scores` as cursor
+- Processes ~30K jobs/hour → full 318K backfill estimated in ~10.5 hours
+- Idempotent upserts — safe to re-run on already-scored jobs
+
+### Auto-Scoring for New Arrivals
+- **pg_cron `score-new-jobs`** — runs every 5 minutes, identifies up to 100 unscored open jobs
+- Queries `ats_jobs WHERE greenhouse_id NOT IN (SELECT job_id FROM job_fraud_scores)`
+- Ensures new jobs from `refresh-jobs` get fraud scores within 5 minutes of arrival
+
+### Monitoring
+- **`fraud_scoring_coverage()` RPC** — returns JSON with: total_open, scored, unscored, coverage_pct, label_breakdown, avg_score, last_scored_at, est_completion_minutes
+- Available to admin dashboard for real-time backfill progress tracking
+
+### Backfill Auto-Disable
+- Once coverage reaches >99%, `backfill-fraud-scores` cron should be manually unscheduled
+- `score-new-jobs` cron continues permanently for ongoing coverage
+
+### Version Discipline
+- `js/version.js` → v6.34
+- `dashboard.html` comment → v6.34
+- `dashboard.html` cache-busts → ?v=6.34
+- `index.html` comment → v6.34
+- `CHANGELOG.md` → v6.34 entry
+
 ## v6.33 — Fake Job Detection: Phase 4 Filters + PostHog Analytics (2026-03-02)
 
 ### Trust Level Filter
