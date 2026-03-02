@@ -1,6 +1,7 @@
-// send-notification Edge Function — v5 (Phase 69 Session 2: SMS tracking + auto-fallback)
+// send-notification Edge Function — v6 (Phase 69 Session 3: per-filter override cascade)
 // Core notification sender with classification-based send gates.
-// Checks: admin config → classification → double opt-in → preferences → frequency cap → quiet hours
+// Checks: admin config → classification → double opt-in → override cascade → frequency cap → quiet hours
+// Override cascade: notification_filter_overrides → notification_channels → notification_preferences → default
 // Then routes to Resend (email) or Vonage REST API (SMS), logs to notification_log with decision.
 // v3 adds: quiet hours hold queue (held_notifications table), per-type SMS enforcement
 
@@ -80,6 +81,7 @@ interface NotificationRequest {
   user_plan?: string;
   user_cohort?: string;
   template_version?: string;
+  filter_name?: string;
 }
 
 interface SendDecision {
@@ -104,7 +106,8 @@ interface NotificationResult {
 async function canSendNotification(
   userId: string,
   notificationType: string,
-  channel: "email" | "sms"
+  channel: "email" | "sms",
+  filterName?: string
 ): Promise<SendDecision> {
   const classification = getClassification(notificationType);
 
@@ -151,24 +154,70 @@ async function canSendNotification(
     return { send: false, reason: "no_marketing_consent" };
   }
 
-  // 7. Check user preference for this type + channel
-  const { data: pref } = await sb
-    .from("user_notification_preferences")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("notification_type", notificationType)
-    .single();
+  // 7. Channel preference cascade: override → channel_pref → default
+  // Step 7a: Check per-filter override (highest priority)
+  let channelEnabled: boolean | null = null;
+  let freqOverride: string | null = null;
 
-  if (channel === "email" && pref && !pref.email_enabled) {
+  if (filterName) {
+    const { data: override } = await sb
+      .from("notification_filter_overrides")
+      .select("email, sms, frequency")
+      .eq("user_id", userId)
+      .eq("filter_name", filterName)
+      .eq("notification_type", notificationType)
+      .single();
+
+    if (override) {
+      channelEnabled = channel === "email" ? override.email : override.sms;
+      freqOverride = override.frequency;
+      console.log(`[send-notification] Override found: filter=${filterName}, type=${notificationType}, ${channel}=${channelEnabled}`);
+    }
+  }
+
+  // Step 7b: Fall back to notification_channels (per-type channel prefs)
+  if (channelEnabled === null) {
+    const { data: chanPref } = await sb
+      .from("notification_channels")
+      .select("email, sms, frequency")
+      .eq("user_id", userId)
+      .eq("notification_type", notificationType)
+      .single();
+
+    if (chanPref) {
+      channelEnabled = channel === "email" ? chanPref.email : chanPref.sms;
+      if (!freqOverride) freqOverride = chanPref.frequency;
+    }
+  }
+
+  // Step 7c: Fall back to user_notification_preferences (legacy per-type prefs)
+  if (channelEnabled === null) {
+    const { data: pref } = await sb
+      .from("user_notification_preferences")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("notification_type", notificationType)
+      .single();
+
+    if (pref) {
+      channelEnabled = channel === "email" ? (pref.email_enabled ?? true) : (pref.sms_enabled ?? false);
+    }
+  }
+
+  // Step 7d: Default — email ON, sms OFF
+  if (channelEnabled === null) {
+    channelEnabled = channel === "email" ? true : false;
+  }
+
+  if (channel === "email" && !channelEnabled) {
     return { send: false, reason: "user_disabled_email" };
   }
 
   if (channel === "sms") {
-    // SMS restricted to allowed types only
     if (!SMS_ALLOWED_TYPES.has(notificationType)) {
       return { send: false, reason: "sms_not_allowed_for_type" };
     }
-    if (!pref?.sms_enabled || !state?.sms_verified) {
+    if (!channelEnabled || !state?.sms_verified) {
       return { send: false, reason: "sms_not_enabled_or_verified" };
     }
   }
@@ -461,6 +510,7 @@ async function logNotification(
         ...(req.payload || {}),
         ...(error ? { error } : {}),
         job_title: req.job_title || null,
+        filter_name: req.filter_name || null,
       },
       idempotency_key: req.idempotency_key || null,
       user_plan: req.user_plan || null,
@@ -572,7 +622,7 @@ serve(async (req: Request) => {
     }
 
     // 3b. Check email send gate
-    const emailDecision = await canSendNotification(user_id, notification_type, "email");
+    const emailDecision = await canSendNotification(user_id, notification_type, "email", body.filter_name);
     if (body.force_channel === "email" || body.force_channel === "both") {
       // Force channel bypasses classification for required transactional sends from other functions
       if (classification === "required_transactional") {
@@ -628,7 +678,7 @@ serve(async (req: Request) => {
           "blocked", "sms_auto_fallback"
         );
       } else {
-      const smsDecision = await canSendNotification(user_id, notification_type, "sms");
+      const smsDecision = await canSendNotification(user_id, notification_type, "sms", body.filter_name);
       const shouldSendSms = body.force_channel === "sms" || body.force_channel === "both"
         ? classification === "required_transactional" || smsDecision.send
         : smsDecision.send;
