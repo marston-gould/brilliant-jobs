@@ -1310,6 +1310,25 @@
     .job-table .jt-company { font-weight: 500; color: var(--text); }
     .jt-new-badge { font-size: 9px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 5px; border-radius: 4px; margin-inline-start: 5px; letter-spacing: 0.3px; vertical-align: middle; animation: newBadgePulse 2s ease-in-out; }
     @keyframes newBadgePulse { 0% { opacity: 0; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.05); } 100% { transform: scale(1); } }
+
+    /* Fraud detection badges (v6.31) */
+    .fraud-badge { position: relative; display: inline-flex; align-items: center; margin-inline-start: 5px; font-size: 11px; cursor: help; vertical-align: middle; line-height: 1; }
+    .fraud-badge--safe { opacity: 0.7; }
+    .fraud-badge--caution { opacity: 0.9; }
+    .fraud-badge--suspicious { opacity: 1; }
+    .fraud-tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 220px; max-width: 280px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1000; font-size: 11px; color: var(--text-body); white-space: normal; text-align: left; }
+    .fraud-badge:hover .fraud-tooltip { display: block; }
+    .fraud-tooltip-title { font-weight: 700; font-size: 12px; margin-bottom: 6px; }
+    .fraud-badge--safe .fraud-tooltip-title { color: var(--green); }
+    .fraud-badge--caution .fraud-tooltip-title { color: var(--warm); }
+    .fraud-badge--suspicious .fraud-tooltip-title { color: var(--red); }
+    .fraud-tooltip-signals { display: flex; flex-direction: column; gap: 3px; }
+    .fraud-signal { font-size: 11px; line-height: 1.4; color: var(--text-dim); }
+    .fraud-signal--positive { color: var(--green); }
+    .fraud-signal--negative { color: var(--red); }
+    /* Right-edge overflow prevention */
+    .job-data-row:nth-child(n) .fraud-tooltip { left: auto; right: 0; transform: none; }
+
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
     .job-table .jt-ghost { font-family: var(--mono); font-size: 12px; font-weight: 600; }
