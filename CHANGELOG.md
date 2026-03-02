@@ -1,3 +1,53 @@
+## v6.12 — Pod 1 Session: Marketing / Upgrade / Promotional Copy Delivery (2026-03-01)
+
+### Email Templates — New (5 functions)
+
+**Batch 10a: Marketing/Upgrade (3 templates — White theme, Marketing classification)**
+- `usageUpgradePromptEmail`: Plan limit warning with feature breakdown + upgrade CTA
+- `creditBurnRateAlertEmail`: Credit burn rate intelligence with projected exhaust date + urgency badges
+- `priceLockWarningEmail`: 3-variant price lock sequence (14d info → 7d warning → 1d urgency) with savings math
+
+**Batch 10a: Promotional (2 templates — White theme, Marketing classification)**
+- `promoTrialEmail`: Trial offer with feature list, configurable duration, no-card-required messaging
+- `promoFeaturePreviewEmail`: Early access feature preview with time-limited access + permanent upgrade CTA
+
+### SQL Seed (sql/v6.12-marketing-upgrade-templates.sql)
+- 5 notification_templates rows (3 upgrade + 2 promotional)
+- 5 admin_notification_config rows with frequency caps and classification
+- 30 notification_preference_defaults rows (5 types × 3 tiers × 2 regions)
+- All marketing classification: US defaults ON, EU defaults OFF (GDPR double opt-in required)
+- Pro tier excluded from usage_upgrade_prompt (already on highest tier)
+- Free tier excluded from credit_burn_rate_alert (no credits on free)
+
+### Pod 1 Product Decisions Delivered
+- **Upgrade messaging tone**: Helpful, not pushy — show value gap, not paywall
+- **Price lock sequence**: 3 escalating variants with increasing urgency (blue info → yellow warning → red urgency)
+- **Promo trial terms**: No credit card required, auto-expires, configurable duration per cohort
+- **Feature preview access**: Time-limited, converts to permanent with upgrade
+- **Marketing unsubscribe**: Every marketing email includes unsubscribe link per CAN-SPAM/GDPR
+- **Frequency caps**: Weekly for upgrade prompts, monthly for promos, 3/month for price lock sequences
+
+### Version Bump
+- `js/version.js`: v6.11 → v6.12
+- `dashboard.html`: version comment v6.12
+- `index.html`: version comment v6.12
+- Browser console: `[BJ] Dashboard v6.12 loaded`
+
+### Changed
+- `js/version.js`: v6.11 → v6.12
+- `dashboard.html`: version comment v6.12
+- `index.html`: version comment v6.12
+- `supabase/functions/_shared/email-templates.ts`: +296 lines — 5 new template functions
+- `sql/v6.12-marketing-upgrade-templates.sql`: NEW — template seeds, admin config, preference defaults
+
+### Notification System Progress
+- Sessions 1-10: ✅ Complete (v6.01–v6.10)
+- Pod 1 Batch 8 (Referral copy): ✅ Complete (v6.11)
+- Pod 1 Batch 9 (Billing copy): ✅ Complete (v6.11)
+- Pod 1 Batch 10a (Marketing/Upgrade copy): ✅ Complete — unblocks Pod 2 Session 12
+- Sessions 11-15: Partially unblocked (11 + 12 + 14 ready, 13/15 pending Pod 1 batches)
+
+
 ## v6.11 — Pod 1 Session: Billing + Referral Copy Delivery (2026-03-01)
 
 ### Email Templates — New (17 functions)
