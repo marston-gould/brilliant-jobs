@@ -1,3 +1,41 @@
+## v6.25 — Email Cohort Analytics Tab (2026-03-01)
+
+### New Admin Tab: Email Cohorts
+- **Cohort Overview**: Aggregate email performance per campaign (notification_type) for selected cohort. Stat cards (sent, delivery rate, open rate, click rate), campaign table with drilldown buttons.
+- **Campaign Drilldown**: Zero-based cumulative performance curve. Day 0 = when each user received the email. Shows Day 0, 1, 2, 3, 5, 7, 14, 21, 30 milestones with delivered/opened/clicked counts and rates. CSS bar chart for visual open/click curve.
+- **Compare Cohorts**: Same campaign across two cohorts side-by-side. Summary cards per cohort, comparison table with delta (in percentage points) for open and click rates at each day milestone.
+- **Cohort selector**: Pick any cohort from cohorts table, plus "All" and "Unassigned" options.
+- **Data source**: notification_log (email channel, last 90 days, up to 10K events). Uses existing user_cohort column.
+
+### Frontend
+
+**admin-notifications.js** — v6.25 (+543 lines)
+- loadEmailCohortsTab() — data fetch and render orchestration
+- renderCohortOverview() — aggregate stats + campaign table
+- renderCampaignDrilldown() — zero-based day curve with table + chart
+- renderCohortCompare() — side-by-side cohort comparison
+- buildZeroBasedDays() — core algorithm: cumulative delivered/opened/clicked by days since send
+- UI event handlers: switchEmailCohortView, selectEmailCohort, selectCompareCohort, selectEmailCampaign, drillIntoCampaign
+
+**admin.js** — v6.25
+- Email Cohorts tab registered in switch statement
+
+**dashboard.html** — v6.25
+- Email Cohorts tab button + admin-panel div
+
+### Deployment
+
+| Surface | Value | Status |
+|---------|-------|--------|
+| js/version.js | v6.25 | Done |
+| dashboard.html | v6.25 | Done |
+| index.html | v6.25 | Done |
+| admin-notifications.js | v6.25 | Done |
+| admin.js | v6.25 | Done |
+| CHANGELOG.md | This entry | Done |
+
+---
+
 ## v6.24 — Phase 69 Session 4: Web Push Notifications + Template Preview & Test Send (2026-03-01)
 
 ### Card 7: Web Push Notifications ✅ COMPLETE
