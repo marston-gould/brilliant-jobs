@@ -2490,10 +2490,10 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 
 ---
 
-## Phase 69: Notification Hardening Sprint (v6.21–v6.22) — Mar 1, 2026
+## Phase 69: Notification Hardening Sprint (v6.21–v6.23) — Mar 1, 2026
 
 **Pod:** Pod 2 (Architecture)
-**Sessions:** 2
+**Sessions:** 3
 
 ### Session 1 (v6.21) ✅
 
@@ -2510,26 +2510,31 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | 3 | Admin suppression UI (Card 3 remainder) | ✅ | Searchable list, type filter, manual add/remove, CSV export |
 | 6 | SMS delivery receipts + failure handling | ✅ | vonage-webhook EF, send-notification v5, auto-fallback, retry, admin alerts |
 
+### Session 3 (v6.23) ✅
+
+| # | Card | Status | Notes |
+|---|------|--------|-------|
+| 4 | Per-filter notification overrides | ✅ | send-notification v6: override cascade (filter_overrides → channels → preferences → default). filter_name in request interface. UI was already complete. |
+| 8 | Notification analytics dashboard | ✅ | Admin tab: 8 stat cards, daily email/SMS volume charts, top types, block reasons, classification breakdown. 30-day lookback, up to 5K events. |
+
 ### Remaining Cards
 
 | # | Card | Status | Blocked By |
 |---|------|--------|------------|
-| 4 | Per-filter notification overrides UI | Todo | — |
 | 5 | Vonage 10DLC registration | Todo | Human task (Vonage dashboard) |
 | 7 | Web push notifications | Todo | — |
-| 8 | Notification analytics dashboard | Todo | — (data deps satisfied by Cards 1+2+6) |
 | 9 | Template preview + test send | Todo | — |
 | 10 | Cadence optimization | Todo | 30+ days delivery data |
 
-### Version Surfaces (v6.22)
+### Version Surfaces (v6.23)
 
 | Surface | Value |
 |---------|-------|
-| js/version.js | v6.22 |
-| dashboard.html | v6.22 |
-| index.html | v6.22 |
-| CHANGELOG.md | v6.22 |
-| Git tag | v6.22 → dd6783e4 |
+| js/version.js | v6.23 |
+| dashboard.html | v6.23 |
+| index.html | v6.23 |
+| CHANGELOG.md | v6.23 |
+| Git tag | v6.23 → 3b94c3dd |
 
 ---
 
