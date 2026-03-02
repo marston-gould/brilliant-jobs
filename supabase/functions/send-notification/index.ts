@@ -1,4 +1,4 @@
-// send-notification Edge Function — v3 (Session 2+)
+// send-notification Edge Function — v4 (Phase 69: webhook correlation + suppression gate)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → preferences → frequency cap → quiet hours
 // Then routes to Resend (email) or Vonage REST API (SMS), logs to notification_log with decision.
@@ -351,7 +351,7 @@ async function sendEmail(
   subject: string,
   html: string,
   text?: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; message_id?: string }> {
   try {
     const res = await fetchWithRetry("https://api.resend.com/emails", {
       method: "POST",
@@ -373,7 +373,9 @@ async function sendEmail(
       console.error("[send-notification] Resend error:", res.status, err);
       return { ok: false, error: `Resend ${res.status}: ${err}` };
     }
-    return { ok: true };
+    // Capture Resend message ID for webhook correlation (Phase 69)
+    const resData = await res.json();
+    return { ok: true, message_id: resData?.id || undefined };
   } catch (e) {
     console.error("[send-notification] Email send failed:", e);
     return { ok: false, error: String(e) };
@@ -429,7 +431,8 @@ async function logNotification(
   classification: string,
   sendDecision: string,
   sendReason?: string,
-  error?: string
+  error?: string,
+  messageId?: string
 ) {
   try {
     if (req.idempotency_key) {
@@ -465,6 +468,8 @@ async function logNotification(
       classification,
       send_decision: sendDecision,
       send_reason: sendReason || null,
+      // Phase 69: Resend message_id for webhook correlation
+      message_id: messageId || null,
     });
   } catch (e) {
     console.error("[send-notification] Failed to log notification:", e);
@@ -539,7 +544,30 @@ serve(async (req: Request) => {
       if (smsTmpl) smsText = smsTmpl.sms_body;
     }
 
-    // 3. Check email send gate
+    // 3. Check suppression list (Phase 69)
+    const { data: suppression } = await sb
+      .from("notification_suppressions")
+      .select("type, expires_at")
+      .eq("email", userEmail)
+      .limit(1);
+    const activeSuppression = suppression?.find(s =>
+      s.type === "hard_bounce" || s.type === "complaint" ||
+      (s.expires_at && new Date(s.expires_at) > new Date())
+    );
+    if (activeSuppression) {
+      await logNotification(
+        user_id, notification_type, "email",
+        "blocked", body, classification,
+        "blocked", `suppressed: ${activeSuppression.type}`
+      );
+      return new Response(JSON.stringify({
+        email_sent: false, sms_sent: false, held_for_quiet_hours: false,
+        classification, decision: "blocked",
+        decision_reason: `suppressed: ${activeSuppression.type}`
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    // 3b. Check email send gate
     const emailDecision = await canSendNotification(user_id, notification_type, "email");
     if (body.force_channel === "email" || body.force_channel === "both") {
       // Force channel bypasses classification for required transactional sends from other functions
@@ -568,7 +596,7 @@ serve(async (req: Request) => {
         user_id, notification_type, "email",
         emailResult.ok ? "sent" : "failed",
         body, classification, emailResult.ok ? "sent" : "send_failed",
-        undefined, emailResult.error
+        undefined, emailResult.error, emailResult.message_id
       );
     } else if (!shouldSendEmail) {
       await logNotification(
