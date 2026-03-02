@@ -1,3 +1,38 @@
+## v6.36 — Synthetic Content Detection: Session 1.2 — score-ai-content Edge Function (2026-03-02)
+
+### New Edge Function: `score-ai-content`
+- **Claude Haiku-powered AI content detection** — analyzes text for AI authorship probability
+- Evaluates three dimensions: perplexity (predictability), burstiness (structural variation), and content signals
+- Returns `ai_generated_score` (0.0–1.0) with labels: `human` (<0.3), `mixed` (0.3–0.6), `ai_generated` (>0.6)
+- Batch processing: accepts up to 50 items per invocation for efficient backfill
+- Supports three content types: `jd` (job descriptions), `resume`, `cover_letter`
+- HTML stripping for JD content, 100-char minimum enforcement, 8K truncation for cost control
+- Upserts to `content_ai_scores` table with conflict resolution on unique constraint
+- Graceful error handling: returns `unknown` label on failures, never blocks job insertion
+- Cost: ~$0.0003 per JD analysis (500 words avg), ~$0.15/day ongoing
+
+### Deploy Details
+- Deployed via: `supabase functions deploy score-ai-content --no-verify-jwt`
+- Reuses existing `ANTHROPIC_API_KEY` secret (shared with `score-resume`)
+- Model: `claude-haiku-4-5-20251001` (model_version: `haiku-4.5-scd-v1`)
+- No frontend changes — backend only
+
+### Version Discipline
+- `js/version.js` → v6.36
+- `dashboard.html` comment → v6.36
+- `dashboard.html` cache-bust → ?v=6.36
+- `index.html` comment → v6.36
+- Git tag: v6.36
+
+## v6.35 — Synthetic Content Detection: Session 1.1 — Database Schema + RLS (2026-03-02)
+
+### Database Schema
+- Created `content_ai_scores` table with polymorphic `content_type` + `content_id`
+- Added `ai_jd_rate` and `ai_jd_rate_updated_at` columns to `ats_companies`
+- 3 partial indexes: `idx_ai_scores_jd`, `idx_ai_scores_resume`, `idx_ai_scores_label`
+- RLS policies: read for authenticated, write for service_role only
+- UNIQUE constraint: `(content_type, content_id, ats_source)` for upsert support
+
 ## v6.34 — Fake Job Detection: Phase 5 Backfill + Auto-Scoring + Monitoring (2026-03-02)
 
 ### Backfill Infrastructure
