@@ -24,9 +24,10 @@ function renderSortPills() {
     location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
     updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
     level: { bg: 'rgba(6,182,212,0.1)', text: '#06b6d4', dot: '#06b6d4' },
+    fraud_score: { bg: 'rgba(34,197,94,0.1)', text: '#22c55e', dot: '#22c55e' },
   };
   jobSortStack.forEach((s, i) => {
-    const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level' };
+    const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level', fraud_score: 'Trust' };
     const label = labelMap[s.field] || s.field;
     const dirLabel = s.asc ? '↑' : '↓';
     const dirTitle = s.asc
@@ -191,7 +192,11 @@ $$('#sort-dropdown .sort-opt').forEach(opt => {
     const field = opt.dataset.field;
     if (jobSortStack.some(s => s.field === field)) return;
     const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
-    jobSortStack.push({ field, asc: field === 'level' ? false : defaultAsc });
+    jobSortStack.push({ field, asc: field === 'level' ? false : (field === 'fraud_score' ? true : defaultAsc) });
+    // PostHog: fraud_sort_applied
+    if (field === 'fraud_score' && typeof posthog !== 'undefined') {
+      posthog.capture('fraud_sort_applied', { direction: defaultAsc ? 'asc' : 'desc' });
+    }
     $('#sort-dropdown').style.display = 'none';
     renderSortPills();
     searchJobs(0);
