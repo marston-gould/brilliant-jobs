@@ -1,9 +1,10 @@
-// send-notification Edge Function — v6 (Phase 69 Session 3: per-filter override cascade)
+// send-notification Edge Function — v7 (Phase 69 Session 4: Web Push channel)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → override cascade → frequency cap → quiet hours
 // Override cascade: notification_filter_overrides → notification_channels → notification_preferences → default
-// Then routes to Resend (email) or Vonage REST API (SMS), logs to notification_log with decision.
+// Then routes to Resend (email), Vonage REST API (SMS), or Web Push API, logs to notification_log with decision.
 // v3 adds: quiet hours hold queue (held_notifications table), per-type SMS enforcement
+// v7 adds: Web Push notification channel via VAPID + Web Push Protocol
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -16,6 +17,11 @@ const VONAGE_API_KEY = Deno.env.get("VONAGE_API_KEY") || "";
 const VONAGE_API_SECRET = Deno.env.get("VONAGE_API_SECRET") || "";
 const VONAGE_FROM = Deno.env.get("VONAGE_FROM") || "";
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") || "notifications@brilliantjobs.app";
+
+// Web Push VAPID credentials (Card 7)
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:notifications@brilliantjobs.app";
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -92,8 +98,10 @@ interface SendDecision {
 interface NotificationResult {
   email_sent: boolean;
   sms_sent: boolean;
+  push_sent: boolean;
   email_error?: string;
   sms_error?: string;
+  push_error?: string;
   held_for_quiet_hours: boolean;
   classification: string;
   decision?: string;
@@ -470,12 +478,285 @@ async function sendSMS(
 }
 
 // ═══════════════════════════════════════════════════════════
+// SEND WEB PUSH (Card 7 — Phase 69 Session 4)
+// ═══════════════════════════════════════════════════════════
+async function sendWebPush(
+  userId: string,
+  payload: Record<string, unknown>
+): Promise<{ ok: boolean; sent: number; failed: number; error?: string }> {
+  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    return { ok: false, sent: 0, failed: 0, error: "VAPID keys not configured" };
+  }
+
+  // Get all push subscriptions for this user
+  const { data: subscriptions, error } = await sb
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("user_id", userId);
+
+  if (error || !subscriptions || subscriptions.length === 0) {
+    return { ok: false, sent: 0, failed: 0, error: "No push subscriptions found" };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const staleIds: string[] = [];
+
+  for (const sub of subscriptions) {
+    try {
+      // Build the JWT for VAPID auth
+      const jwt = await buildVapidJwt(sub.endpoint);
+      const encrypted = await encryptPayload(
+        JSON.stringify(payload),
+        sub.p256dh,
+        sub.auth
+      );
+
+      const pushRes = await fetch(sub.endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`,
+          "Content-Encoding": "aes128gcm",
+          "Content-Type": "application/octet-stream",
+          "TTL": "86400",
+          "Urgency": "normal",
+        },
+        body: encrypted,
+      });
+
+      if (pushRes.status === 201 || pushRes.status === 200) {
+        sent++;
+        // Update last_used_at
+        await sb.from("push_subscriptions")
+          .update({ last_used_at: new Date().toISOString() })
+          .eq("id", sub.id);
+      } else if (pushRes.status === 404 || pushRes.status === 410) {
+        // Subscription expired — remove it
+        staleIds.push(sub.id);
+        failed++;
+      } else {
+        console.error(`[send-notification] Push failed for ${sub.endpoint.slice(0, 40)}...: ${pushRes.status}`);
+        failed++;
+      }
+    } catch (e) {
+      console.error("[send-notification] Push error:", e);
+      failed++;
+    }
+  }
+
+  // Clean up stale subscriptions
+  if (staleIds.length > 0) {
+    await sb.from("push_subscriptions").delete().in("id", staleIds);
+    console.log(`[send-notification] Cleaned ${staleIds.length} stale push subscriptions`);
+  }
+
+  return { ok: sent > 0, sent, failed };
+}
+
+// ── VAPID JWT builder ────────────────────────────────────────
+async function buildVapidJwt(endpoint: string): Promise<string> {
+  const audience = new URL(endpoint).origin;
+  const now = Math.floor(Date.now() / 1000);
+
+  const header = { typ: "JWT", alg: "ES256" };
+  const claims = {
+    aud: audience,
+    exp: now + 43200, // 12 hours
+    sub: VAPID_SUBJECT,
+  };
+
+  const headerB64 = b64url(new TextEncoder().encode(JSON.stringify(header)));
+  const claimsB64 = b64url(new TextEncoder().encode(JSON.stringify(claims)));
+  const unsigned = `${headerB64}.${claimsB64}`;
+
+  // Import VAPID private key for signing
+  const keyData = b64urlDecode(VAPID_PRIVATE_KEY);
+  const jwk = {
+    kty: "EC",
+    crv: "P-256",
+    d: VAPID_PRIVATE_KEY,
+    x: VAPID_PUBLIC_KEY.slice(0, 43), // first 32 bytes base64url
+    y: VAPID_PUBLIC_KEY.slice(43),    // last 32 bytes base64url
+  };
+
+  const cryptoKey = await crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    cryptoKey,
+    new TextEncoder().encode(unsigned)
+  );
+
+  // Convert DER signature to raw r||s format if needed
+  const sigBytes = new Uint8Array(signature);
+  const rawSig = sigBytes.length === 64 ? sigBytes : derToRaw(sigBytes);
+
+  return `${unsigned}.${b64url(rawSig)}`;
+}
+
+// ── Payload encryption (aes128gcm / RFC 8291) ──────────────
+async function encryptPayload(
+  plaintext: string,
+  p256dhB64: string,
+  authB64: string
+): Promise<Uint8Array> {
+  const clientPublicKey = b64urlDecode(p256dhB64);
+  const clientAuth = b64urlDecode(authB64);
+
+  // Generate ephemeral ECDH key pair
+  const localKeyPair = await crypto.subtle.generateKey(
+    { name: "ECDH", namedCurve: "P-256" },
+    true,
+    ["deriveBits"]
+  );
+
+  // Import client public key
+  const clientKey = await crypto.subtle.importKey(
+    "raw",
+    clientPublicKey,
+    { name: "ECDH", namedCurve: "P-256" },
+    false,
+    []
+  );
+
+  // Derive shared secret
+  const sharedSecret = await crypto.subtle.deriveBits(
+    { name: "ECDH", public: clientKey },
+    localKeyPair.privateKey,
+    256
+  );
+
+  // Export local public key (raw, 65 bytes uncompressed)
+  const localPublicKeyRaw = await crypto.subtle.exportKey("raw", localKeyPair.publicKey);
+  const localPubBytes = new Uint8Array(localPublicKeyRaw);
+
+  // Generate salt (16 bytes)
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  // HKDF: auth_secret → IKM
+  const prkInfoBuf = concatBytes(
+    new TextEncoder().encode("WebPush: info\0"),
+    new Uint8Array(clientPublicKey),
+    localPubBytes
+  );
+
+  const ikmKey = await crypto.subtle.importKey(
+    "raw", clientAuth, "HKDF", false, ["deriveBits"]
+  );
+  // PRK from auth secret + shared secret
+  const authInfo = concatBytes(new TextEncoder().encode("Content-Encoding: auth\0"));
+  
+  // Simplified: use HKDF with shared secret as input key material
+  const sharedKey = await crypto.subtle.importKey(
+    "raw", new Uint8Array(sharedSecret), "HKDF", false, ["deriveBits"]
+  );
+
+  // Derive IKM
+  const ikmBits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: clientAuth, info: prkInfoBuf },
+    sharedKey,
+    256
+  );
+
+  // Derive CEK and nonce from IKM
+  const ikmImport = await crypto.subtle.importKey(
+    "raw", new Uint8Array(ikmBits), "HKDF", false, ["deriveBits"]
+  );
+
+  const cekInfo = concatBytes(new TextEncoder().encode("Content-Encoding: aes128gcm\0"));
+  const cekBits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt, info: cekInfo },
+    ikmImport,
+    128
+  );
+
+  const nonceInfo = concatBytes(new TextEncoder().encode("Content-Encoding: nonce\0"));
+  const nonceBits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt, info: nonceInfo },
+    ikmImport,
+    96
+  );
+
+  // Encrypt with AES-128-GCM
+  const aesKey = await crypto.subtle.importKey(
+    "raw", new Uint8Array(cekBits), "AES-GCM", false, ["encrypt"]
+  );
+
+  // Pad plaintext with delimiter (0x02) per RFC 8291
+  const plaintextBytes = new TextEncoder().encode(plaintext);
+  const padded = new Uint8Array(plaintextBytes.length + 1);
+  padded.set(plaintextBytes);
+  padded[plaintextBytes.length] = 0x02; // delimiter
+
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: new Uint8Array(nonceBits), tagLength: 128 },
+    aesKey,
+    padded
+  );
+
+  // Build aes128gcm header: salt(16) + rs(4) + idlen(1) + keyid(65) + ciphertext
+  const rs = new Uint8Array(4);
+  new DataView(rs.buffer).setUint32(0, 4096, false);
+
+  return concatBytes(salt, rs, new Uint8Array([65]), localPubBytes, new Uint8Array(encrypted));
+}
+
+// ── Utility functions ────────────────────────────────────────
+function b64url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function b64urlDecode(s: string): Uint8Array {
+  const padded = s + "=".repeat((4 - (s.length % 4)) % 4);
+  const b = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+  const arr = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) arr[i] = b.charCodeAt(i);
+  return arr;
+}
+
+function concatBytes(...arrays: Uint8Array[]): Uint8Array {
+  const total = arrays.reduce((sum, a) => sum + a.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const a of arrays) { result.set(a, offset); offset += a.length; }
+  return result;
+}
+
+function derToRaw(der: Uint8Array): Uint8Array {
+  // DER signature is SEQUENCE { INTEGER r, INTEGER s }
+  // We need raw r || s (32 bytes each)
+  if (der.length === 64) return der;
+  const raw = new Uint8Array(64);
+  let offset = 2; // skip SEQUENCE tag + length
+  // r
+  const rLen = der[offset + 1];
+  const rStart = offset + 2 + (rLen > 32 ? 1 : 0);
+  const rBytes = der.slice(rStart, rStart + 32);
+  raw.set(rBytes, 32 - rBytes.length);
+  offset = offset + 2 + rLen;
+  // s
+  const sLen = der[offset + 1];
+  const sStart = offset + 2 + (sLen > 32 ? 1 : 0);
+  const sBytes = der.slice(sStart, sStart + 32);
+  raw.set(sBytes, 64 - sBytes.length);
+  return raw;
+}
+
+// ═══════════════════════════════════════════════════════════
 // LOG NOTIFICATION WITH DECISION
 // ═══════════════════════════════════════════════════════════
 async function logNotification(
   userId: string,
   notificationType: string,
-  channel: "email" | "sms",
+  channel: "email" | "sms" | "push",
   status: "sent" | "failed" | "blocked",
   req: NotificationRequest,
   classification: string,
@@ -566,6 +847,7 @@ serve(async (req: Request) => {
     const result: NotificationResult = {
       email_sent: false,
       sms_sent: false,
+      push_sent: false,
       held_for_quiet_hours: false,
       classification,
     };
@@ -731,8 +1013,76 @@ serve(async (req: Request) => {
       } // close auto-fallback else
     }
 
+    // 5. Web Push channel (Card 7 — Phase 69 Session 4)
+    // Push is sent for product + configurable_transactional types when user has push enabled
+    if (classification !== "marketing" && VAPID_PUBLIC_KEY) {
+      const { data: pushState } = await sb
+        .from("user_notification_state")
+        .select("push_enabled")
+        .eq("user_id", user_id)
+        .single();
+
+      if (pushState?.push_enabled) {
+        // Check push preference in cascade (same as email/sms)
+        let pushEnabled: boolean | null = null;
+
+        // Override check
+        if (body.filter_name) {
+          const { data: override } = await sb
+            .from("notification_filter_overrides")
+            .select("push")
+            .eq("user_id", user_id)
+            .eq("filter_name", body.filter_name)
+            .eq("notification_type", notification_type)
+            .single();
+          if (override && override.push !== null) pushEnabled = override.push;
+        }
+
+        // Channel pref check
+        if (pushEnabled === null) {
+          const { data: chanPref } = await sb
+            .from("notification_channels")
+            .select("push")
+            .eq("user_id", user_id)
+            .eq("notification_type", notification_type)
+            .single();
+          if (chanPref && chanPref.push !== null) pushEnabled = chanPref.push;
+        }
+
+        // Default: push ON for product, OFF for others
+        if (pushEnabled === null) {
+          pushEnabled = classification === "product" || classification === "configurable_transactional";
+        }
+
+        if (pushEnabled) {
+          const pushPayload = {
+            title: body.subject || notification_type.replace(/_/g, " "),
+            body: body.text || body.company_name
+              ? `${body.job_title || "New notification"} at ${body.company_name || "a company"}`
+              : notification_type.replace(/_/g, " "),
+            notification_type,
+            job_id: body.job_id || null,
+            url: "/dashboard.html",
+            tag: `bj-${notification_type}-${Date.now()}`,
+          };
+
+          const pushResult = await sendWebPush(user_id, pushPayload);
+          result.push_sent = pushResult.ok;
+          result.push_error = pushResult.error;
+
+          if (pushResult.ok) {
+            await logNotification(
+              user_id, notification_type, "push" as "email" | "sms",
+              "sent", body, classification, "sent",
+              undefined, undefined, undefined
+            );
+          }
+        }
+      }
+    }
+
     console.log(
-      `[send-notification] ${notification_type} (${classification}) for ${user_id}: email=${result.email_sent} sms=${result.sms_sent} decision=${result.decision || "sent"}`
+      `[send-notification] ${notification_type} (${classification}) for ${user_id}: email=${result.email_sent} sms=${result.sms_sent} push=${result.push_sent} decision=${result.decision || "sent"}`
     );
 
     return new Response(JSON.stringify(result), {
