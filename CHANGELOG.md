@@ -1,3 +1,24 @@
+## v6.38 — Synthetic Content Detection: Session 2.1 — Resume Upload Scoring (2026-03-02)
+
+### Resume AI Content Scoring
+- **AI scoring hook in resume upload flow** — After text extraction, resumes with ≥100 chars are automatically scored via `score-ai-content` Edge Function with `content_type='resume'`
+- **AI badge on resume card** — Color-coded badge displays detection result: ✅ Human-Written (green), ⚠️ Mixed (yellow), 🤖 AI-Generated (red), with percentage and hover tooltip showing summary
+- **PostHog event `ai_resume_scored`** — Tracks resume_id, ai_label, ai_score, confidence, text_length for analytics
+- **Manual rescore support** — `rescoreResumeAI(idx)` function available for future rescore button (Session 2.2)
+
+### Technical Details
+- Client-side call to `score-ai-content` EF using authenticated session token
+- Resume text truncated to 8K chars for cost control (matches EF limit)
+- Scoring state managed in resume object: `aiScoreStatus` (scoring/done/error) + `aiScore` data
+- Graceful degradation: scoring failures logged but never block upload flow
+- AI score data persisted in localStorage via `saveResumes()` and in `content_ai_scores` table via EF upsert
+
+### Version Discipline
+- `js/version.js` → v6.38
+- `dashboard.html` → v6.38 + cache-bust ?v=6.38
+- `index.html` → v6.38
+- Git tag: v6.38
+
 ## v6.37 — Synthetic Content Detection: Session 1.3 — JD Backfill + Cron Integration (2026-03-02)
 
 ### New pg_cron Jobs (4 jobs deployed)
