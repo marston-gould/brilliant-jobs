@@ -1,3 +1,28 @@
+## v6.30 — Fake Job Posting Detection: Phase 1 Backend (2026-03-02)
+
+### Database: job_fraud_scores Table
+- **New table** `job_fraud_scores` with composite PK (`job_id`, `ats_source`), `fraud_score` (0.000–1.000), `fraud_label` (safe/caution/suspicious/unknown), `confidence`, `top_signals` JSONB, `model_version`, `scored_at`
+- CHECK constraints: valid label enum, score range 0–1
+- Indexes: `fraud_label`, `fraud_score DESC`, `scored_at DESC`
+- RLS: public SELECT, service_role-only INSERT/UPDATE/DELETE
+- Table comments documenting scoring thresholds and signal format
+
+### Edge Function: score-job-fraud
+- **Heuristic scoring engine** based on EMSCAD feature importance research (Random Forest weights)
+- **11 weighted signal categories**: ATS trust (0.20), company verification (0.15), description quality (0.15), salary presence (0.10), high-fraud keywords (0.25), medium-fraud keywords (0.10), requirements (0.08), location (0.05), caps/exclamation (0.08), company activity (0.05)
+- **Feature extraction**: strips HTML, counts suspicious keywords from EMSCAD corpus (20 high-signal, 12 medium-signal phrases), checks company PDL match, ATS trust levels, salary outliers
+- **Scoring thresholds**: safe (0.000–0.299), caution (0.300–0.649), suspicious (0.650–1.000)
+- **Batch support**: up to 100 jobs per call via `job_ids` array, or backfill mode via `backfill_batch_size` + `backfill_offset`
+- **Fallback**: individual job failures produce `fraud_label = 'unknown'`, never blocks job insertion
+- Deployed and verified against 5 live jobs — all scored correctly with signal breakdowns
+
+### Versioning
+- js/version.js: v6.29 → v6.30
+- dashboard.html comment: v6.27 → v6.30
+- index.html comment: v6.27 → v6.30
+
+---
+
 ## v6.26 — 10DLC SMS Compliance Language (2026-03-01)
 
 ### Privacy Policy (`/privacy`)
