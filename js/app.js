@@ -77,7 +77,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
     });
   }
   // Re-init admin page if it was the active tab (tab restore runs before auth)
-  if (typeof initAdminPage === 'function') initAdminPage();
+  // Admin moved to /admin page (v6.26)
   
   // Q24-Q25: Load saved filters and tuning from Supabase (fallback to localStorage)
   const userId = session?.user?.id;
@@ -340,7 +340,7 @@ $$('.nav-item').forEach(item => {
     localStorage.setItem('bj_active_tab', item.dataset.page);
     // Init stats charts when stats tab is shown
     if (item.dataset.page === 'stats' && typeof initStatsPage === 'function') initStatsPage();
-    if (item.dataset.page === 'admin' && typeof initAdminPage === 'function') initAdminPage();
+    // Admin moved to /admin page (v6.26)
     if (item.dataset.page === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
     if (item.dataset.page === 'ghost' && typeof renderGhostMonitor === 'function') renderGhostMonitor();
     if (item.dataset.page === 'referrals' && typeof initReferralHub === 'function') initReferralHub();
@@ -361,12 +361,14 @@ $$('.nav-item').forEach(item => {
 // Restore last active tab on load
 const lastTab = localStorage.getItem('bj_active_tab');
 if (lastTab && $(`#page-${lastTab}`)) {
+  // If admin was saved tab, redirect to /admin (v6.26)
+  if (lastTab === "admin") { localStorage.setItem("bj_active_tab", "brilliant"); window.location.href = "/admin"; return; }
   $$('.page').forEach(p => p.classList.remove('active'));
   $(`#page-${lastTab}`).classList.add('active');
   $$('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.page === lastTab);
   });
-  if (lastTab === 'admin' && typeof initAdminPage === 'function') initAdminPage();
+  // Admin moved to /admin page (v6.26)
   if (lastTab === 'stats' && typeof initStatsPage === 'function') initStatsPage();
   if (lastTab === 'feedback' && typeof initCannyFeedback === 'function') initCannyFeedback();
   if (lastTab === 'referrals' && typeof initReferralHub === 'function') initReferralHub();

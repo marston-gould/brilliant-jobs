@@ -1,0 +1,7275 @@
+// === js/version.js ===
+var BJ_VERSION = 'v6.26';
+(function() {
+  function populateVersion() {
+    // Populate all .bj-version elements
+    document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
+      el.textContent = BJ_VERSION;
+    });
+    // Populate all .bj-year elements
+    var year = new Date().getFullYear();
+    document.querySelectorAll(".bj-year").forEach(function(el) {
+      el.textContent = year;
+    });
+    // Console log
+    console.log("[BJ] " + BJ_VERSION);
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", populateVersion);
+  } else {
+    populateVersion();
+  }
+})();
+
+
+// === js/globals.js ===
+// ============================================================
+// GLOBALS — Shared state across all dashboard modules
+// Must load before all other JS modules
+// ============================================================
+
+const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+window.bjSupabase = sb; // Expose for IIFE modules (referrals.js, etc.)
+
+// PostHog analytics (A13)
+window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// ============================================================
+// XSS PROTECTION — escapeHtml utility (v3.90)
+// ============================================================
+// Use for any user-generated content rendered via innerHTML/template literals.
+// Does NOT replace DOMPurify for untrusted rich HTML (job descriptions).
+
+var _escapeEl = document.createElement('div');
+/**
+ * Escape HTML special characters to prevent XSS.
+ * @param {string} str - Untrusted string
+ * @returns {string} Escaped string safe for innerHTML
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  _escapeEl.textContent = str;
+  return _escapeEl.innerHTML;
+}
+
+/**
+ * Truncate string with HTML escaping (safe for innerHTML).
+ * Drop-in replacement for raw truncate() in user-generated contexts.
+ * @param {string} str - Untrusted string
+ * @param {number} max - Max length
+ * @returns {string} Escaped and truncated string
+ */
+function truncateSafe(str, max) {
+  if (!str) return '\u2014';
+  var trimmed = str.length > max ? str.slice(0, max) + '\u2026' : str;
+  return escapeHtml(trimmed);
+}
+
+// ============================================================
+// TOAST NOTIFICATION SYSTEM — User-facing errors (v3.90)
+// ============================================================
+// Replaces silent console.error/warn for Supabase failures, auth issues, etc.
+
+var _toastContainer = null;
+var _toastQueue = [];
+var _toastCount = 0;
+var _MAX_TOASTS = 3;
+
+function _ensureToastContainer() {
+  if (_toastContainer && document.body.contains(_toastContainer)) return;
+  _toastContainer = document.createElement('div');
+  _toastContainer.id = 'bj-toast-container';
+  _toastContainer.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99998;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none;max-width:380px;';
+  document.body.appendChild(_toastContainer);
+}
+
+/**
+ * Show a toast notification to the user.
+ * @param {string} message - Message text (will be escaped)
+ * @param {object} opts - { type: 'error'|'warning'|'success'|'info', duration: ms, action: { label, fn } }
+ */
+function showToast(message, opts) {
+  var type = (opts && opts.type) || 'info';
+  var duration = (opts && opts.duration) || (type === 'error' ? 6000 : 4000);
+
+  _ensureToastContainer();
+
+  // Enforce max visible toasts
+  if (_toastCount >= _MAX_TOASTS) {
+    var oldest = _toastContainer.querySelector('.bj-toast');
+    if (oldest) _dismissToast(oldest);
+  }
+
+  var colors = {
+    error:   { bg: 'hsl(0, 84%, 60%)',   icon: '\u2716' },
+    warning: { bg: 'hsl(38, 92%, 50%)',   icon: '\u26A0' },
+    success: { bg: 'hsl(142, 71%, 45%)',  icon: '\u2714' },
+    info:    { bg: 'hsl(217, 100%, 62%)', icon: '\u2139' }
+  };
+  var c = colors[type] || colors.info;
+
+  var toast = document.createElement('div');
+  toast.className = 'bj-toast';
+  toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:hsl(230,28%,14%);color:#f0f1f3;font-size:13px;font-family:Outfit,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,0.3);opacity:0;transform:translateY(12px);transition:opacity .25s,transform .25s;max-width:380px;word-break:break-word;';
+
+  var iconSpan = '<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:' + c.bg + ';display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;">' + c.icon + '</span>';
+  var closeBtn = '<button style="flex-shrink:0;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:0 0 0 8px;line-height:1;" title="Dismiss">\u2715</button>';
+  var actionHtml = '';
+  if (opts && opts.action) {
+    actionHtml = '<button class="bj-toast-action" style="flex-shrink:0;background:none;border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">' + escapeHtml(opts.action.label) + '</button>';
+  }
+  toast.innerHTML = iconSpan + '<span style="flex:1;">' + escapeHtml(message) + '</span>' + actionHtml + closeBtn;
+
+  // Close button handler
+  toast.querySelector('button:last-child').addEventListener('click', function() { _dismissToast(toast); });
+
+  // Action button handler
+  if (opts && opts.action) {
+    toast.querySelector('.bj-toast-action').addEventListener('click', function() {
+      if (opts.action.fn) opts.action.fn();
+      _dismissToast(toast);
+    });
+  }
+
+  _toastContainer.appendChild(toast);
+  _toastCount++;
+
+  // Animate in
+  requestAnimationFrame(function() { toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; });
+
+  // Auto-dismiss
+  if (duration > 0) {
+    setTimeout(function() { _dismissToast(toast); }, duration);
+  }
+
+  return toast;
+}
+
+function _dismissToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  toast.style.opacity = '0';
+  toast.style.transform = 'translateY(12px)';
+  setTimeout(function() {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+    _toastCount = Math.max(0, _toastCount - 1);
+  }, 250);
+}
+
+// Convenience shortcuts
+function toastError(msg, opts) { return showToast(msg, Object.assign({ type: 'error' }, opts || {})); }
+function toastWarning(msg, opts) { return showToast(msg, Object.assign({ type: 'warning' }, opts || {})); }
+function toastSuccess(msg, opts) { return showToast(msg, Object.assign({ type: 'success' }, opts || {})); }
+function toastInfo(msg, opts) { return showToast(msg, Object.assign({ type: 'info' }, opts || {})); }
+
+// ============================================================
+// LOCALSTORAGE ENCRYPTION FOR PII (v3.90)
+// ============================================================
+// Encrypts sensitive data at rest using AES-GCM with a key derived from the user's session.
+// Only PII keys are encrypted: resume text, keywords, LinkedIn profile data.
+
+var _encryptionKey = null;
+var _PII_KEYS = ['bj_resumes', 'bj_readiness'];
+
+/**
+ * Derive an AES-GCM encryption key from the user's Supabase session ID.
+ * Key is deterministic per user (same user = same key).
+ */
+async function _deriveEncryptionKey(userId) {
+  if (_encryptionKey) return _encryptionKey;
+  var encoder = new TextEncoder();
+  var keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(userId + ':bj_pii_v1'), 'PBKDF2', false, ['deriveKey']);
+  _encryptionKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: encoder.encode('brilliant-jobs-pii-salt'), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+  return _encryptionKey;
+}
+
+/**
+ * Encrypt a string value for localStorage storage.
+ * @param {string} plaintext - Value to encrypt
+ * @param {string} userId - User ID for key derivation
+ * @returns {Promise<string>} Base64-encoded ciphertext with IV prefix
+ */
+async function encryptForStorage(plaintext, userId) {
+  try {
+    var key = await _deriveEncryptionKey(userId);
+    var encoder = new TextEncoder();
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    var encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, encoder.encode(plaintext));
+    // Prepend IV to ciphertext
+    var combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return 'enc:' + btoa(String.fromCharCode.apply(null, combined));
+  } catch (e) {
+    console.warn('[BJ] Encryption failed, storing plaintext:', e.message);
+    return plaintext;
+  }
+}
+
+/**
+ * Decrypt a localStorage value.
+ * @param {string} ciphertext - Base64-encoded value from localStorage
+ * @param {string} userId - User ID for key derivation
+ * @returns {Promise<string>} Decrypted plaintext
+ */
+async function decryptFromStorage(ciphertext, userId) {
+  if (!ciphertext || !ciphertext.startsWith('enc:')) return ciphertext; // Not encrypted
+  try {
+    var key = await _deriveEncryptionKey(userId);
+    var raw = atob(ciphertext.slice(4));
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    var iv = bytes.slice(0, 12);
+    var data = bytes.slice(12);
+    var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+    return new TextDecoder().decode(decrypted);
+  } catch (e) {
+    console.warn('[BJ] Decryption failed (key mismatch or corruption):', e.message);
+    return null;
+  }
+}
+
+/** Check if a localStorage key is PII and should be encrypted */
+function isPiiKey(lsKey) {
+  return _PII_KEYS.indexOf(lsKey) !== -1;
+}
+
+/**
+ * Read a PII key from localStorage, decrypting if needed. (v5.16)
+ * Falls back to plaintext for unencrypted legacy data (migration-safe).
+ * @param {string} lsKey - localStorage key
+ * @returns {Promise<any>} Parsed JSON value
+ */
+async function readPiiData(lsKey) {
+  var raw = localStorage.getItem(lsKey);
+  if (!raw) return null;
+  if (raw.startsWith('enc:')) {
+    if (!currentUser) return null; // Can't decrypt without user — don't parse enc: string
+    var decrypted = await decryptFromStorage(raw, currentUser.id);
+    if (decrypted) {
+      try { return JSON.parse(decrypted); } catch(e) { return null; }
+    }
+    return null; // Decryption failed — return null, never parse enc: as JSON
+  }
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+/**
+ * Safe synchronous localStorage read. (v5.22 hotfix)
+ * Returns fallback if the value starts with 'enc:' (encrypted, can't parse as JSON)
+ * or if JSON.parse fails for any reason. Use this everywhere instead of raw
+ * JSON.parse(localStorage.getItem(...)).
+ */
+function safeReadLS(key, fallback) {
+  try {
+    var raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    if (raw.startsWith('enc:')) return fallback; // Encrypted — needs async readPiiData()
+    return JSON.parse(raw);
+  } catch(e) { return fallback; }
+}
+window._safeReadLS = safeReadLS; // Expose for modules
+
+// ============================================================
+// SESSION MANAGEMENT HARDENING (v3.90)
+// ============================================================
+// - Monitors auth state changes for session expiry
+// - Auto-refreshes tokens before expiry
+// - Warns user before forced logout
+// - Inactivity timeout for PII protection
+
+var _sessionInactivityTimer = null;
+var _SESSION_INACTIVITY_MS = 30 * 60 * 1000; // 30 minutes
+var _lastActivity = Date.now();
+var _sessionWarningShown = false;
+
+/** Initialize session management */
+function initSessionManagement() {
+  // Listen for auth state changes (session expiry, token refresh)
+  sb.auth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_OUT') {
+        _clearSensitiveData();
+        window.location.href = '/?session_expired=1';
+      }
+    }
+    if (event === 'TOKEN_REFRESHED') {
+      console.log('[BJ] Session token refreshed');
+      _lastActivity = Date.now();
+    }
+  });
+
+  // Track user activity for inactivity timeout
+  ['click', 'keydown', 'scroll', 'mousemove'].forEach(function(evt) {
+    document.addEventListener(evt, _trackActivity, { passive: true });
+  });
+
+  // Check inactivity every minute
+  _sessionInactivityTimer = setInterval(_checkInactivity, 60000);
+
+  // Periodically verify session is still valid
+  setInterval(_verifySession, 5 * 60 * 1000); // every 5 min
+}
+
+function _trackActivity() {
+  _lastActivity = Date.now();
+  if (_sessionWarningShown) {
+    _sessionWarningShown = false;
+    // User came back — dismiss inactivity warning
+  }
+}
+
+function _checkInactivity() {
+  var idle = Date.now() - _lastActivity;
+  if (idle > _SESSION_INACTIVITY_MS && !_sessionWarningShown) {
+    _sessionWarningShown = true;
+    showToast('Your session will expire soon due to inactivity.', {
+      type: 'warning',
+      duration: 0, // persistent until action
+      action: { label: 'Stay signed in', fn: function() {
+        _lastActivity = Date.now();
+        _sessionWarningShown = false;
+        sb.auth.getSession(); // triggers refresh
+        toastSuccess('Session extended.');
+      }}
+    });
+  }
+  // Force logout after 2x the inactivity timeout
+  if (idle > _SESSION_INACTIVITY_MS * 2) {
+    _clearSensitiveData();
+    sb.auth.signOut();
+  }
+}
+
+async function _verifySession() {
+  try {
+    var result = await sb.auth.getSession();
+    if (!result.data.session) {
+      toastError('Your session has expired. Please sign in again.', {
+        duration: 0,
+        action: { label: 'Sign in', fn: function() { window.location.href = '/'; } }
+      });
+    }
+  } catch (e) {
+    // Network error — don't force logout
+  }
+}
+
+/** Clear sensitive data on logout / session expiry */
+function _clearSensitiveData() {
+  _encryptionKey = null;
+  _PII_KEYS.forEach(function(key) {
+    localStorage.removeItem(key);
+  });
+  // Clear any cached query data
+  _queryCache = {};
+}
+
+// Auth
+let currentUser = null;
+
+// ============================================================
+// USER DATA SYNC — localStorage ↔ Supabase profiles.user_data
+// ============================================================
+// Maps short keys to localStorage keys
+const UD_KEYS = {
+  saved_filters: 'bj_saved_filters',
+  resumes: 'bj_resumes',
+  pipeline_meta: 'bj_pipeline_meta',
+  tuning: 'bj_tuning',
+  saved_jobs: 'bj_saved_jobs',
+  applied_jobs: 'bj_applied_jobs',
+  applied_dates: 'bj_applied_dates',
+  hidden_jobs: 'bj_hidden_jobs',
+  app_queue: 'bj_app_queue',
+  app_history: 'bj_app_history',
+  readiness: 'bj_readiness'
+};
+const UD_LS_TO_SHORT = Object.fromEntries(Object.entries(UD_KEYS).map(([k,v]) => [v, k]));
+
+// Debounce timer for batched Supabase writes
+let _udSyncTimer = null;
+let _udPendingKeys = new Set();
+
+/**
+ * Save user data to localStorage AND queue Supabase sync.
+ * Drop-in replacement for localStorage.setItem('bj_X', JSON.stringify(val)).
+ * @param {string} lsKey - Full localStorage key (e.g. 'bj_saved_filters')
+ * @param {string} jsonStr - JSON string to save
+ */
+function saveUserData(lsKey, jsonStr) {
+  // Size guard: warn if single key exceeds 500KB, reject if >2MB (v3.85)
+  var bytes = new Blob([jsonStr]).size;
+  if (bytes > 2 * 1024 * 1024) {
+    console.error('[BJ] Storage rejected: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB (>2MB limit)');
+    return false;
+  }
+  if (bytes > 500 * 1024) {
+    console.warn('[BJ] Storage warning: ' + lsKey + ' is ' + Math.round(bytes / 1024) + 'KB');
+  }
+  // v5.16: Encrypt PII keys at rest in localStorage
+  if (isPiiKey(lsKey) && currentUser) {
+    encryptForStorage(jsonStr, currentUser.id).then(function(encrypted) {
+      try { localStorage.setItem(lsKey, encrypted); }
+      catch (e) { console.error('[BJ] Storage full (encrypted):', e.message); _handleStorageFull(lsKey); }
+    });
+  } else {
+    try {
+      localStorage.setItem(lsKey, jsonStr);
+    } catch (e) {
+      console.error('[BJ] Storage full! Failed to save ' + lsKey + ':', e.message);
+      _handleStorageFull(lsKey);
+      return false;
+    }
+  }
+  const shortKey = UD_LS_TO_SHORT[lsKey];
+  if (shortKey && currentUser) {
+    _udPendingKeys.add(shortKey);
+    clearTimeout(_udSyncTimer);
+    _udSyncTimer = setTimeout(_flushUserData, 2000);
+  }
+  return true;
+}
+
+/** Flush all pending keys to Supabase in one PATCH */
+async function _flushUserData() {
+  if (!currentUser || _udPendingKeys.size === 0) return;
+  const patch = {};
+  for (const key of _udPendingKeys) {
+    const lsKey = UD_KEYS[key];
+    try {
+      var raw = localStorage.getItem(lsKey) || 'null';
+      // v5.16: Decrypt PII before sending to cloud (cloud stays plaintext, protected by RLS)
+      if (isPiiKey(lsKey) && raw && raw.startsWith('enc:')) {
+        raw = await decryptFromStorage(raw, currentUser.id) || 'null';
+      }
+      patch[key] = JSON.parse(raw);
+    }
+    catch { patch[key] = null; }
+  }
+  _udPendingKeys.clear();
+  try {
+    const { error } = await sb.from('profiles')
+      .update({ user_data: sb.rpc ? undefined : undefined }) // placeholder
+      .eq('id', currentUser.id);
+    // Use raw PATCH to merge into JSONB (not overwrite entire column)
+    const session = (await sb.auth.getSession())?.data?.session;
+    const token = session?.access_token || SUPABASE_KEY;
+    await fetch(SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ user_data: Object.assign(
+        safeReadLS('_bj_ud_cache', {}),
+        patch
+      )})
+    });
+    // Update local cache of full user_data
+    const cached = safeReadLS('_bj_ud_cache', {});
+    Object.assign(cached, patch);
+    localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
+    console.log('[sync] Flushed', Object.keys(patch).join(', '));
+  } catch (e) {
+    console.warn('[sync] Flush error:', e.message);
+  }
+}
+
+/**
+ * Load user data from Supabase on login. Merges with localStorage:
+ * - Supabase wins if localStorage is empty for that key
+ * - localStorage wins if Supabase is empty (first sync / migration)
+ * - After merge, syncs back to Supabase
+ */
+async function loadUserData(userId) {
+  try {
+    const { data, error } = await sb.from('profiles')
+      .select('user_data')
+      .eq('id', userId)
+      .single();
+    if (error || !data?.user_data) {
+      console.log('[sync] No cloud data, will sync localStorage up on next save');
+      return;
+    }
+    const cloud = data.user_data;
+    localStorage.setItem('_bj_ud_cache', JSON.stringify(cloud));
+    let needsSync = false;
+    for (const [shortKey, lsKey] of Object.entries(UD_KEYS)) {
+      const cloudVal = cloud[shortKey];
+      let localVal = localStorage.getItem(lsKey);
+      // v5.16: Decrypt PII keys before comparing with cloud
+      if (isPiiKey(lsKey) && localVal && localVal.startsWith('enc:') && userId) {
+        localVal = await decryptFromStorage(localVal, userId) || localVal;
+      }
+      const localParsed = localVal ? JSON.parse(localVal) : null;
+      const cloudEmpty = cloudVal == null || (Array.isArray(cloudVal) && cloudVal.length === 0) || (typeof cloudVal === 'object' && !Array.isArray(cloudVal) && Object.keys(cloudVal).length === 0);
+      const localEmpty = localParsed == null || (Array.isArray(localParsed) && localParsed.length === 0) || (typeof localParsed === 'object' && !Array.isArray(localParsed) && Object.keys(localParsed).length === 0);
+
+      if (!cloudEmpty && localEmpty) {
+        // Cloud has data, local doesn't → pull from cloud
+        var cloudJson = JSON.stringify(cloudVal);
+        // v5.16: Encrypt PII when writing cloud data to localStorage
+        if (isPiiKey(lsKey) && userId) {
+          encryptForStorage(cloudJson, userId).then(function(enc) {
+            localStorage.setItem(lsKey, enc);
+          });
+        } else {
+          localStorage.setItem(lsKey, cloudJson);
+        }
+        console.log('[sync] Pulled', shortKey, 'from cloud');
+      } else if (cloudEmpty && !localEmpty) {
+        // Local has data, cloud doesn't → queue sync up
+        needsSync = true;
+        _udPendingKeys.add(shortKey);
+      }
+      // Both have data → local wins (user's current machine is source of truth)
+    }
+    if (needsSync) {
+      console.log('[sync] Local data needs upload:', [..._udPendingKeys].join(', '));
+      _flushUserData();
+    }
+  } catch (e) {
+    console.warn('[sync] Load error:', e.message);
+  }
+}
+
+// ============================================================
+// ENTITLEMENT SYSTEM — Cohort-aware feature gating
+// Calls check_entitlement() RPC with client-side caching
+// ============================================================
+
+var _entitlementCache = {};
+var _entitlementCacheTTL = 5 * 60 * 1000; // 5 min cache
+
+/**
+ * Check if user can use a feature. Returns { allowed, effective_limit, remaining, behavior, ... }
+ * @param {string} feature - Feature ID (e.g. 'filters', 'resumes', 'resume_grading')
+ * @param {number} [usageCount=0] - Current usage count to check against
+ * @returns {Promise<object>} Entitlement result from server
+ */
+async function checkEntitlement(feature, usageCount) {
+  // Admin bypass — unlimited access to all features
+  if (window._bjUserRole === 'admin') return { allowed: true, behavior: 'fixed', effective_limit: 9999, remaining: 9999 };
+  if (!currentUser) return { allowed: false, behavior: 'off', effective_limit: 0, remaining: 0 };
+  if (typeof usageCount === 'undefined') usageCount = 0;
+  var cacheKey = feature + ':' + usageCount;
+  var cached = _entitlementCache[cacheKey];
+  if (cached && Date.now() - cached._ts < _entitlementCacheTTL) return cached;
+  try {
+    var { data, error } = await sb.rpc('check_entitlement', {
+      p_user_id: currentUser.id,
+      p_feature: feature,
+      p_usage_count: usageCount
+    });
+    if (error) { console.warn('[entitlement]', feature, error.message); return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 }; }
+    data._ts = Date.now();
+    _entitlementCache[cacheKey] = data;
+    return data;
+  } catch (e) {
+    console.warn('[entitlement] Error:', e.message);
+    return { allowed: true, behavior: 'fixed', effective_limit: 99, remaining: 99 };
+  }
+}
+
+/** Clear entitlement cache (call after usage changes) */
+function clearEntitlementCache(feature) {
+  if (feature) {
+    Object.keys(_entitlementCache).forEach(function(k) { if (k.startsWith(feature + ':')) delete _entitlementCache[k]; });
+  } else {
+    _entitlementCache = {};
+  }
+}
+
+/**
+ * Show upgrade prompt when a feature is gated.
+ * @param {string} featureName - Human-readable feature name
+ * @param {object} ent - Entitlement result from checkEntitlement()
+ * @returns {boolean} true if blocked (caller should abort)
+ */
+function showUpgradePrompt(featureName, ent) {
+  var msg = ent.behavior === 'off'
+    ? featureName + ' is a Pro feature. Upgrade to unlock it.'
+    : 'You\'ve reached the ' + featureName + ' limit (' + ent.effective_limit + '). Upgrade to Pro for more.';
+  // Create a toast-style notification
+  var toast = document.createElement('div');
+  toast.className = 'upgrade-toast';
+  toast.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8z" fill="var(--accent)"/></svg>' +
+    '<div><div style="font-weight:600;color:var(--text);font-size:13px;">' + msg + '</div>' +
+    '<div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Go to Settings → Subscription to upgrade.</div></div>' +
+    '</div>';
+  document.body.appendChild(toast);
+  requestAnimationFrame(function() { toast.classList.add('show'); });
+  setTimeout(function() { toast.classList.remove('show'); setTimeout(function() { toast.remove(); }, 300); }, 4000);
+  return true;
+}
+
+// Saved filters
+var savedFilters = safeReadLS('bj_saved_filters', []);
+
+// Tuning state (refined by tuning.js when it loads)
+var tuningSettings = safeReadLS('bj_tuning', {});
+var tuningLocExclPills = tuningSettings.locationExcludes || [];
+var tuningTitleExclPills = tuningSettings.titleExcludes || [];
+var tuningCoExclPills = tuningSettings.companyExcludes || [];
+var tuningIndExclPills = tuningSettings.industryExcludes || [];
+var levelHierarchy = tuningSettings.levelHierarchy || [];
+// Stub — overridden by tuning.js with full implementation
+// getJobLevel — provided by tuning.js (do not stub here, var assignment kills function declaration hoisting)
+
+// Pill arrays (used by query-builder.js, location.js, browsers.js)
+var whatPills = [];
+var wherePills = [];
+var whenPills = [];
+var whoPills = [];
+var payPills = [];
+var whatNotPills = [];
+var whereNotPills = [];
+var whoNotPills = [];
+var skillsPills = [];
+var levelPills = [];
+var jdPills = [];
+var deptPills = [];
+var WORKPLACE_WORDS = ['remote','hybrid','onsite','on-site','in-office'];
+var SALARY_RE = /^\$?\d{2,3}k?\+?$/i;
+var DEFAULT_RADIUS = 30;
+
+// Job feed state
+var allJobs = [];
+var currentJobs = [];
+var jobSortStack = [{ field: 'first_seen_at', asc: false }];
+var hiddenJobIds = safeReadLS('bj_hidden_jobs', []);
+var savedJobIds = safeReadLS('bj_saved_jobs', []);
+var appliedJobIds = safeReadLS('bj_applied_jobs', []);
+var searchTimeout = null;
+var currentJobPage = 0;
+var JOBS_PER_PAGE = 20;
+
+// Resume state (populated fully in resumes.js)
+var resumes = safeReadLS('bj_resumes', []);
+
+// Shared filter color palette (10 colors for numbered filter badges)
+var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#06b6d4','#f97316','#14b8a6','#a855f7'];
+
+/**
+ * Enrich a job via Edge Function (service_role writes).
+ * Replaces direct sb.from('ats_jobs').update() calls blocked by RLS.
+ * @param {string} jobId - greenhouse_id
+ * @param {object} data - { content?: string, salary?: { min, max, raw, currency, rate } }
+ */
+async function enrichJob(jobId, data) {
+  try {
+    // Use anon key directly — Edge Function uses service_role internally for writes.
+    // Previously used session access_token which caused 401s when JWT expired.
+    const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ job_id: jobId, ...data })
+    });
+    if (!resp.ok) console.warn('[enrich-job] Failed for', jobId, resp.status);
+  } catch (e) {
+    console.warn('[enrich-job] Error:', e.message);
+  }
+}
+
+
+
+// ============================================================
+// STORAGE HEALTH — size monitoring and emergency cleanup (v3.85)
+// ============================================================
+
+/** Get total localStorage usage in bytes */
+function getStorageUsage() {
+  var total = 0;
+  var keys = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    var size = new Blob([localStorage.getItem(key)]).size;
+    total += size + new Blob([key]).size;
+    if (key.startsWith('bj_')) keys[key] = size;
+  }
+  return { totalBytes: total, totalKB: Math.round(total / 1024), bjKeys: keys };
+}
+
+/** Log storage usage to console (call from DevTools: storageHealth()) */
+function storageHealth() {
+  var usage = getStorageUsage();
+  console.group('[BJ] Storage Health');
+  console.log('Total localStorage:', usage.totalKB + 'KB');
+  var sorted = Object.entries(usage.bjKeys).sort(function(a, b) { return b[1] - a[1]; });
+  sorted.forEach(function(entry) {
+    var pct = Math.round(entry[1] / usage.totalBytes * 100);
+    console.log('  ' + entry[0] + ': ' + Math.round(entry[1] / 1024) + 'KB (' + pct + '%)');
+  });
+  console.log('Estimated limit: ~5MB (varies by browser)');
+  console.log('Usage: ' + Math.round(usage.totalBytes / (5 * 1024 * 1024) * 100) + '% of estimated limit');
+  console.groupEnd();
+  return usage;
+}
+
+/** Emergency cleanup when storage is full */
+function _handleStorageFull(failedKey) {
+  console.warn('[BJ] Running emergency storage cleanup...');
+  // Priority: remove caches first, then old data
+  var sacrificial = ['bj_readiness', 'bj_ref_city_radius', '_bj_ud_cache'];
+  for (var i = 0; i < sacrificial.length; i++) {
+    if (sacrificial[i] !== failedKey) {
+      localStorage.removeItem(sacrificial[i]);
+      console.log('[BJ] Cleared ' + sacrificial[i]);
+    }
+  }
+  // Trim hidden_jobs and applied_jobs to last 500
+  ['bj_hidden_jobs', 'bj_applied_jobs', 'bj_saved_jobs'].forEach(function(key) {
+    try {
+      var arr = safeReadLS(key, []);
+      if (arr.length > 500) {
+        arr = arr.slice(-500);
+        localStorage.setItem(key, JSON.stringify(arr));
+        console.log('[BJ] Trimmed ' + key + ' to 500 items');
+      }
+    } catch (e) {}
+  });
+  // Trim app_history to last 200
+  try {
+    var hist = safeReadLS('bj_app_history', []);
+    if (hist.length > 200) {
+      hist = hist.slice(-200);
+      saveUserData('bj_app_history', JSON.stringify(hist));
+      console.log('[BJ] Trimmed bj_app_history to 200 items');
+    }
+  } catch (e) {}
+}
+
+// ============================================================
+// CACHED QUERY — in-memory cache with TTL (v3.84)
+// ============================================================
+// Usage: const data = await cachedQuery('companies', () => sb.from('ats_companies').select('slug, name, job_count, source'), { ttl: 300000 });
+
+var _queryCache = {};
+
+/**
+ * Execute a Supabase query with in-memory caching.
+ * @param {string} key - Unique cache key
+ * @param {function} queryFn - Function that returns a Supabase query promise
+ * @param {object} opts - { ttl: ms (default 5 min), force: boolean }
+ * @returns {Promise<any>} Cached or fresh data
+ */
+async function cachedQuery(key, queryFn, opts) {
+  var ttl = (opts && opts.ttl) || 300000; // 5 min default
+  var force = opts && opts.force;
+  var entry = _queryCache[key];
+
+  if (!force && entry && Date.now() - entry.ts < ttl) {
+    return entry.data;
+  }
+
+  try {
+    var result = await queryFn();
+    if (result.error) {
+      console.warn('[cachedQuery] Error for', key, result.error.message);
+      // Return stale cache if available
+      return entry ? entry.data : null;
+    }
+    _queryCache[key] = { data: result.data, ts: Date.now(), count: result.count };
+    return result.data;
+  } catch (e) {
+    console.warn('[cachedQuery] Failed for', key, e.message);
+    return entry ? entry.data : null;
+  }
+}
+
+/** Get cached count (if query used { count: 'exact' }) */
+function cachedCount(key) {
+  var entry = _queryCache[key];
+  return entry ? entry.count : null;
+}
+
+/** Invalidate a specific cache key or all keys matching a prefix */
+function invalidateCache(keyOrPrefix) {
+  if (!keyOrPrefix) { _queryCache = {}; return; }
+  Object.keys(_queryCache).forEach(function(k) {
+    if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
+  });
+}
+
+/** Pre-warm static ref table caches on app init */
+async function prewarmRefCaches() {
+  try {
+    await Promise.all([
+      cachedQuery('ref:industries', function() {
+        return sb.from('ref_industries').select('name, category').order('name');
+      }, { ttl: 3600000 }), // 1 hour TTL — rarely changes
+      cachedQuery('ref:companies:list', function() {
+        return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+      }, { ttl: 600000 }), // 10 min TTL — job_count updates periodically
+    ]);
+    console.log('[BJ] Ref caches pre-warmed');
+  } catch (e) {
+    console.warn('[BJ] Ref cache pre-warm failed:', e.message);
+  }
+}
+
+// ============================================================
+// ERROR RECOVERY & OFFLINE RESILIENCE (v3.87)
+// ============================================================
+
+var _isOnline = navigator.onLine;
+var _offlineBanner = null;
+var _retryQueue = [];
+
+/** Check if the browser is online */
+function isOnline() { return _isOnline; }
+
+/** Initialize offline/online detection */
+function initOfflineDetection() {
+  window.addEventListener('online', function() {
+    _isOnline = true;
+    console.log('[BJ] Back online');
+    _hideOfflineBanner();
+    _drainRetryQueue();
+  });
+  window.addEventListener('offline', function() {
+    _isOnline = false;
+    console.warn('[BJ] Went offline');
+    _showOfflineBanner();
+  });
+}
+
+function _showOfflineBanner() {
+  if (_offlineBanner) return;
+  _offlineBanner = document.createElement('div');
+  _offlineBanner.id = 'bj-offline-banner';
+  _offlineBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f59e0b;color:#000;text-align:center;padding:8px 16px;font-size:14px;font-weight:600;';
+  _offlineBanner.textContent = 'You are offline — changes will sync when connection returns';
+  document.body.prepend(_offlineBanner);
+}
+
+function _hideOfflineBanner() {
+  if (_offlineBanner) { _offlineBanner.remove(); _offlineBanner = null; }
+}
+
+/** Retry a failed async operation with exponential backoff */
+async function withRetry(fn, opts) {
+  var maxRetries = (opts && opts.retries) || 3;
+  var baseDelay = (opts && opts.delay) || 1000;
+  var label = (opts && opts.label) || 'operation';
+
+  for (var attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt === maxRetries) {
+        console.error('[BJ] ' + label + ' failed after ' + (maxRetries + 1) + ' attempts:', e.message);
+        throw e;
+      }
+      var delay = baseDelay * Math.pow(2, attempt) + Math.random() * 500;
+      console.warn('[BJ] ' + label + ' attempt ' + (attempt + 1) + ' failed, retrying in ' + Math.round(delay) + 'ms');
+      await new Promise(function(resolve) { setTimeout(resolve, delay); });
+    }
+  }
+}
+
+/** Queue a failed write operation for retry when back online */
+function queueForRetry(fn, label) {
+  _retryQueue.push({ fn: fn, label: label || 'queued op', addedAt: Date.now() });
+  console.log('[BJ] Queued for retry: ' + label + ' (' + _retryQueue.length + ' pending)');
+}
+
+/** Drain the retry queue (called when coming back online) */
+async function _drainRetryQueue() {
+  if (_retryQueue.length === 0) return;
+  console.log('[BJ] Draining retry queue: ' + _retryQueue.length + ' items');
+  var queue = _retryQueue.slice();
+  _retryQueue = [];
+  for (var i = 0; i < queue.length; i++) {
+    try {
+      await queue[i].fn();
+      console.log('[BJ] Retry succeeded: ' + queue[i].label);
+    } catch (e) {
+      console.warn('[BJ] Retry failed: ' + queue[i].label, e.message);
+      // Don't re-queue items older than 10 minutes
+      if (Date.now() - queue[i].addedAt < 600000) {
+        _retryQueue.push(queue[i]);
+      }
+    }
+  }
+}
+
+/** Global unhandled error and rejection handlers */
+function initGlobalErrorHandlers() {
+  window.addEventListener('error', function(event) {
+    console.error('[BJ] Uncaught error:', event.message, 'at', event.filename + ':' + event.lineno);
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event.reason;
+    var msg = reason && reason.message ? reason.message : String(reason);
+    // Suppress noisy auth/network errors
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('Load failed')) {
+      if (!_isOnline) {
+        event.preventDefault(); // Don't spam console when offline
+        return;
+      }
+    }
+    console.error('[BJ] Unhandled promise rejection:', msg);
+  });
+}
+
+/** Safe Supabase query wrapper — handles offline, retries, fallback */
+async function safeQuery(queryFn, opts) {
+  var label = (opts && opts.label) || 'query';
+  var fallback = opts && opts.fallback;
+  var retry = opts && opts.retry !== false;
+
+  if (!_isOnline) {
+    console.warn('[BJ] Offline — skipping ' + label);
+    return fallback !== undefined ? fallback : null;
+  }
+
+  try {
+    if (retry) {
+      return await withRetry(function() {
+        return queryFn().then(function(result) {
+          if (result.error) throw new Error(result.error.message);
+          return result.data;
+        });
+      }, { retries: 2, delay: 800, label: label });
+    } else {
+      var result = await queryFn();
+      if (result.error) throw new Error(result.error.message);
+      return result.data;
+    }
+  } catch (e) {
+    console.warn('[BJ] ' + label + ' failed:', e.message);
+    return fallback !== undefined ? fallback : null;
+  }
+}
+
+
+// === js/admin.js ===
+/* ───────────────────────────────────────────────────────────
+   admin.js — Tabbed Admin Console
+   Tab 1: Feed Health (existing)
+   Tab 2: Cohorts
+   Tab 3: Users + Sessions
+   Tab 4: SEO / Data Coverage
+   Tab 5: Revenue
+   ─────────────────────────────────────────────────────────── */
+
+// ─── Admin access gate ───
+function checkAdminAccess() {
+  if (typeof sb === 'undefined') { console.warn('[Admin] No sb client'); return; }
+  sb.auth.getUser().then(function(res) {
+    if (!res.data || !res.data.user) { console.warn('[Admin] No authenticated user'); return; }
+    console.log('[Admin] Checking role for', res.data.user.email);
+    sb.from('profiles').select('role').eq('id', res.data.user.id).single().then(function(r) {
+      if (r.error) { console.error('[Admin] Profile query error:', r.error.message); return; }
+      if (r.data && r.data.role === 'admin') {
+        var nav = document.getElementById('nav-admin');
+        if (nav) { nav.style.display = ''; console.log('[Admin] ✓ Nav shown'); }
+      }
+    }).catch(function(e) { console.error('[Admin] Profile query failed:', e); });
+  }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
+}
+
+// ─── Tab state ───
+var adminActiveTab = localStorage.getItem('bj_admin_tab') || 'feed-health';
+var _adminTabInit = {};
+var adminPeriod = parseInt(localStorage.getItem('bj_admin_period')) || 168;
+
+function initAdminPage() {
+  var page = document.getElementById('page-admin');
+  if (!page || !page.classList.contains('active')) {
+    console.log('[Admin] page not active, skipping');
+    return;
+  }
+  // Guard: don't load data until user is authenticated
+  if (typeof currentUser === 'undefined' || !currentUser) {
+    console.log('[Admin] waiting for auth, deferring load');
+    _adminTabInit = {}; // reset so it reloads when auth is ready
+    return;
+  }
+  console.log('[Admin] initAdminPage called');
+  initAdminTabs();
+}
+
+function initAdminTabs() {
+  var tabBar = document.getElementById('admin-tabs');
+  if (!tabBar) return;
+
+  tabBar.addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-tab');
+    if (!btn || btn.classList.contains('disabled')) return;
+    switchAdminTab(btn.dataset.tab);
+  });
+
+  // Period toggle for Revenue tab
+  var revPeriod = document.getElementById('admin-rev-period');
+  if (revPeriod) {
+    revPeriod.addEventListener('click', function(e) {
+      var btn = e.target.closest('.admin-period-btn');
+      if (!btn) return;
+      revPeriod.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      _adminTabInit['revenue'] = false;
+      loadRevenueTab(parseInt(btn.dataset.revDays));
+    });
+  }
+
+  switchAdminTab(adminActiveTab);
+}
+
+function switchAdminTab(tabId) {
+  document.querySelectorAll('.admin-tab').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.admin-panel').forEach(function(p) {
+    p.classList.toggle('active', p.id === 'admin-panel-' + tabId);
+  });
+  adminActiveTab = tabId;
+  localStorage.setItem('bj_admin_tab', tabId);
+
+  if (!_adminTabInit[tabId]) {
+    _adminTabInit[tabId] = true;
+    switch (tabId) {
+      case 'feed-health': loadBoardHealth(); break;
+      case 'cohorts': loadCohortTab(); break;
+      case 'entitlements': loadEntitlementsTab(); break;
+      case 'users': loadUsersTab(); break;
+      case 'seo': loadSeoTab(); break;
+      case 'revenue': loadRevenueTab(); break;
+      case 'surveys': loadSurveysTab(); break;
+      case 'ghost': loadGhostTab(); break;
+      case 'feedback': loadFeedbackTab(); break;
+      case 'merch': loadMerchTab(); break;
+      case 'signals': loadAdminSignals(); break;
+      case 'referrals': loadReferralsAdminTab(); break;
+      case 'content': loadContentTab(); break;
+      case 'enrichment': loadEnrichmentTab(); break;
+      case 'mock-ats': loadMockAtsTab(); break;
+      case 'notifications': loadNotificationsTab(); break;
+      case 'templates': loadTemplatesTab(); break;
+      case 'notif-analytics': loadNotifAnalyticsTab(); break;
+      case 'email-cohorts': loadEmailCohortsTab(); break;
+      case 'cadence': loadCadenceTab(); break;
+    }
+  }
+}
+
+// ─── Helpers ───
+function setAdminText(id, val) {
+  var el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function fmtAdminNum(n) {
+  if (n == null) return '—';
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1) + 'K';
+  return String(n);
+}
+
+function fmtAdminPct(n, d) {
+  if (!d || d === 0) return '—';
+  return Math.round(n / d * 100) + '%';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB 1: FEED HEALTH
+// ═══════════════════════════════════════════════════════════
+
+async function loadBoardHealth() {
+  console.log('[Admin] loadBoardHealth called, period:', adminPeriod);
+  try {
+    // Load refresh cycle status (independent of period)
+    loadRefreshCycle();
+
+    var snapshot = await sb.rpc('get_board_health', { period_hours: adminPeriod });
+    console.log('[Admin] RPC data:', snapshot.data);
+    if (snapshot.error) {
+      console.error('[Admin] RPC error:', snapshot.error);
+      var healthEl = document.getElementById('admin-health');
+      if (healthEl) healthEl.innerHTML = '<span class="admin-red">⚠ Feed health data unavailable — ' + escapeHtml(snapshot.error.message || 'unknown error') + '</span> <button onclick="_adminTabInit[\'feed-health\']=false;loadBoardHealth()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button>';
+      return;
+    }
+    var d = snapshot.data;
+    if (!d) return;
+
+    setAdminText('ah-total', fmtAdminNum(d.total_feeds));
+    setAdminText('ah-with-jobs', fmtAdminNum(d.feeds_with_jobs));
+    setAdminText('ah-4xx', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-dead', fmtAdminNum(d.feeds_4xx));
+    setAdminText('ah-unscraped', fmtAdminNum(d.feeds_never_scraped || 0));
+    setAdminText('ah-jobs', fmtAdminNum(d.total_jobs));
+
+    var net = (d.jobs_added || 0) - (d.jobs_lost || 0);
+    setAdminText('ah-net', (net >= 0 ? '+' : '') + fmtAdminNum(net));
+
+    setDelta('ah-total-delta', d.boards_added, '+');
+    setDelta('ah-with-jobs-delta', null);
+    setDelta('ah-4xx-delta', d.boards_lost, '+', true);
+    setDelta('ah-dead-delta', null);
+    setDelta('ah-unscraped-delta', null);
+    setDelta('ah-jobs-delta', d.jobs_added, '+');
+    setDelta('ah-net-delta', d.jobs_lost, '-', true);
+
+    var healthPct = d.feed_health_pct || 0;
+    var healthEl = document.getElementById('admin-health');
+    if (healthEl) {
+      var color = healthPct >= 80 ? 'admin-green' : healthPct >= 60 ? 'admin-amber' : 'admin-red';
+      healthEl.innerHTML = '<span class="admin-health-dot ' + color + '"></span> Feed health: <strong>' + healthPct + '%</strong> of boards returning jobs';
+    }
+
+    var platform = await sb.rpc('get_board_health_by_platform', { period_hours: adminPeriod });
+    if (platform.data && platform.data.length) {
+      var tbody = document.getElementById('admin-platform-body');
+      var tfoot = document.getElementById('admin-platform-foot');
+      if (tbody) {
+        var totBoards = 0, totWithJobs = 0, totDead = 0, totUnscraped = 0, totJobs = 0;
+        tbody.innerHTML = platform.data.map(function(p) {
+          var activePct = p.total > 0 ? Math.round((p.with_jobs / p.total) * 100) : 0;
+          var pctColor = activePct >= 50 ? 'admin-green' : activePct >= 25 ? 'admin-amber' : 'admin-red';
+          var jpb = p.with_jobs > 0 ? Math.round(p.jobs / p.with_jobs) : 0;
+          var dead = p.dead || 0;
+          var unscraped = p.never_scraped || 0;
+          totBoards += p.total; totWithJobs += p.with_jobs; totDead += dead; totUnscraped += unscraped; totJobs += p.jobs;
+          return '<tr>' +
+            '<td class="admin-platform-name">' + (p.platform || 'unknown') + '</td>' +
+            '<td>' + fmtAdminNum(p.total) + '</td>' +
+            '<td class="' + pctColor + '">' + activePct + '%</td>' +
+            '<td class="' + (dead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(dead) + '</td>' +
+            '<td class="' + (unscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(unscraped) + '</td>' +
+            '<td>' + fmtAdminNum(p.jobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(jpb) + '</td>' +
+            '</tr>';
+        }).join('');
+        if (tfoot) {
+          var totPct = totBoards > 0 ? Math.round((totWithJobs / totBoards) * 100) : 0;
+          var totJpb = totWithJobs > 0 ? Math.round(totJobs / totWithJobs) : 0;
+          tfoot.innerHTML = '<tr style="font-weight:600;border-top:2px solid var(--border)">' +
+            '<td>Total</td>' +
+            '<td>' + fmtAdminNum(totBoards) + '</td>' +
+            '<td>' + totPct + '%</td>' +
+            '<td class="' + (totDead > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(totDead) + '</td>' +
+            '<td class="' + (totUnscraped > 0 ? 'admin-amber' : '') + '">' + fmtAdminNum(totUnscraped) + '</td>' +
+            '<td>' + fmtAdminNum(totJobs) + '</td>' +
+            '<td style="font-family:var(--mono)">' + fmtAdminNum(totJpb) + '</td>' +
+            '</tr>';
+        }
+      }
+    }
+
+    // Load feed health charts
+    loadFeedHealthCharts();
+    // Load discovery pipeline + auto-apply stats
+    loadDiscoveryPipelineStats();
+    loadAutoApplyStats();
+  } catch (err) {
+    console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
+  }
+}
+
+// ─── Export Boards CSV ───
+async function exportBoardsCsv(type) {
+  var btn = document.getElementById('export-' + type + '-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exporting…'; }
+  try {
+    var sb = window._bjSupa;
+    if (!sb) throw new Error('Supabase not ready');
+
+    var query = sb.from('ats_companies').select('slug,source,company_name,job_count,last_http_status,last_checked,last_refresh_at,created_at');
+
+    if (type === 'dead') {
+      query = query.eq('last_http_status', 404);
+    } else if (type === 'unscraped') {
+      query = query.is('last_refresh_at', null);
+    } else if (type === 'active') {
+      query = query.gt('job_count', 0);
+    }
+    // 'all' = no extra filter
+
+    query = query.eq('is_active', true).order('source').order('slug');
+
+    var allRows = [];
+    var pageSize = 1000;
+    var page = 0;
+    while (true) {
+      var { data, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allRows = allRows.concat(data);
+      if (data.length < pageSize) break;
+      page++;
+      if (page > 100) break; // safety
+    }
+
+    if (allRows.length === 0) {
+      if (typeof showToast === 'function') showToast('No boards found for "' + type + '"', { type: 'warn' });
+      return;
+    }
+
+    // Build CSV
+    var headers = ['slug','source','company_name','job_count','last_http_status','last_checked','last_refresh_at','created_at'];
+    var csvLines = [headers.join(',')];
+    allRows.forEach(function(r) {
+      csvLines.push(headers.map(function(h) {
+        var v = r[h];
+        if (v == null) return '';
+        v = String(v);
+        if (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0) {
+          return '"' + v.replace(/"/g, '""') + '"';
+        }
+        return v;
+      }).join(','));
+    });
+
+    var blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateStr = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'boards-' + type + '-' + dateStr + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (typeof showToast === 'function') showToast('Exported ' + allRows.length.toLocaleString() + ' ' + type + ' boards', { type: 'success' });
+  } catch (err) {
+    console.error('[Admin] Export error:', err); toastError('Export failed');
+    if (typeof showToast === 'function') showToast('Export failed: ' + err.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇ Export ' + type.charAt(0).toUpperCase() + type.slice(1) + ' Boards'; }
+  }
+}
+
+// ─── Feed Health Charts (stacked area by platform) ───
+var _fhCharts = {};
+var _platformColors = {
+  greenhouse: '#5b8a72',
+  lever: '#6b82a8',
+  ashby: '#a08858',
+  workable: '#8878a0',
+  recruitee: '#a07080'
+};
+var _platformLineColors = {
+  greenhouse: '#2d6b4a',
+  lever: '#3b5a8a',
+  ashby: '#7a6530',
+  workable: '#5e4880',
+  recruitee: '#804050'
+};
+
+async function loadFeedHealthCharts() {
+  if (typeof echarts === 'undefined') return;
+  try {
+    var res = await sb.rpc('get_feed_health_history', { days_back: 90 });
+    if (res.error || !res.data || !res.data.length) return;
+    var rows = res.data;
+
+    // Build date axis + per-platform series
+    var dates = [];
+    var dateSet = {};
+    var platforms = [];
+    var platSet = {};
+    rows.forEach(function(r) {
+      if (!dateSet[r.snapshot_date]) { dateSet[r.snapshot_date] = true; dates.push(r.snapshot_date); }
+      if (!platSet[r.platform]) { platSet[r.platform] = true; platforms.push(r.platform); }
+    });
+    dates.sort();
+
+    // Build lookup: data[platform][date] = row
+    var lookup = {};
+    rows.forEach(function(r) {
+      if (!lookup[r.platform]) lookup[r.platform] = {};
+      lookup[r.platform][r.snapshot_date] = r;
+    });
+
+    var t = seoChartTheme();
+    var legend = { data: platforms.map(function(p) { return p.charAt(0).toUpperCase() + p.slice(1); }), textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 };
+    var grid = { top: 40, right: 20, bottom: 30, left: 60 };
+    var xAxis = { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35, interval: Math.max(0, Math.floor(dates.length / 10) - 1) } };
+
+    function makeSeries(field) {
+      return platforms.map(function(p) {
+        return {
+          name: p.charAt(0).toUpperCase() + p.slice(1),
+          type: 'line',
+          stack: 'total',
+          areaStyle: { opacity: 0.15 },
+          lineStyle: { width: 2, color: _platformLineColors[p] || _platformColors[p] || '#666' },
+          symbol: 'none',
+          itemStyle: { color: _platformColors[p] || '#999' },
+          data: dates.map(function(d) { return lookup[p] && lookup[p][d] ? lookup[p][d][field] : 0; })
+        };
+      });
+    }
+
+    // Chart 1: Total Boards
+    var el1 = document.getElementById('fh-chart-total-boards');
+    if (el1) {
+      if (_fhCharts.totalBoards) _fhCharts.totalBoards.dispose();
+      _fhCharts.totalBoards = echarts.init(el1);
+      _fhCharts.totalBoards.setOption(Object.assign({}, t, {
+        title: { text: 'Total Boards by Platform', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('total_boards')
+      }), true);
+    }
+
+    // Chart 2: Active Boards
+    var el2 = document.getElementById('fh-chart-active-boards');
+    if (el2) {
+      if (_fhCharts.activeBoards) _fhCharts.activeBoards.dispose();
+      _fhCharts.activeBoards = echarts.init(el2);
+      _fhCharts.activeBoards.setOption(Object.assign({}, t, {
+        title: { text: 'Active Boards by Platform (with jobs)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('active_boards')
+      }), true);
+    }
+
+    // Chart 3: Jobs
+    var el3 = document.getElementById('fh-chart-jobs');
+    if (el3) {
+      if (_fhCharts.jobs) _fhCharts.jobs.dispose();
+      _fhCharts.jobs = echarts.init(el3);
+      _fhCharts.jobs.setOption(Object.assign({}, t, {
+        title: { text: 'Jobs by Platform', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        legend: legend, grid: grid, xAxis: xAxis,
+        yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: makeSeries('total_jobs')
+      }), true);
+    }
+
+    window.addEventListener('resize', function() {
+      Object.keys(_fhCharts).forEach(function(k) { if (_fhCharts[k]) _fhCharts[k].resize(); });
+    });
+  } catch (err) {
+    console.error('[Admin] Feed health charts error:', err); toastWarning('Feed health charts failed to load');
+  }
+}
+
+// ─── Discovery Pipeline Stats (Item #3) ───
+async function loadDiscoveryPipelineStats() {
+  try {
+    // Companies with discovery_status
+    var { data: discovered, count: discoveredCount } = await sb
+      .from('companies')
+      .select('*', { count: 'exact', head: true })
+      .eq('discovery_status', 'found');
+    setAdminText('dp-companies', fmtAdminNum(discoveredCount || 0));
+
+    var { count: noneCount } = await sb
+      .from('companies')
+      .select('*', { count: 'exact', head: true })
+      .eq('discovery_status', 'none');
+    setAdminText('dp-boards-none', fmtAdminNum(noneCount || 0));
+
+    // Boards found by source
+    var { data: boardsBySource } = await sb
+      .from('ats_companies')
+      .select('source')
+      .not('source', 'is', null);
+
+    if (boardsBySource) {
+      var sourceCounts = {};
+      var totalBoardsFound = 0;
+      boardsBySource.forEach(function(b) {
+        var src = b.source || 'unknown';
+        sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+        totalBoardsFound++;
+      });
+      setAdminText('dp-boards-found', fmtAdminNum(totalBoardsFound));
+
+      var tbody = document.getElementById('dp-source-body');
+      if (tbody) {
+        tbody.innerHTML = Object.entries(sourceCounts)
+          .sort(function(a, b) { return b[1] - a[1]; })
+          .map(function(entry) {
+            return '<tr><td>' + escapeHtml(entry[0]) + '</td><td style="text-align:right">' + fmtAdminNum(entry[1]) + '</td><td style="text-align:right">—</td><td style="text-align:right">—</td></tr>';
+          }).join('');
+      }
+    }
+
+    // Extension installs (profiles with extension_version set)
+    var { count: extCount } = await sb
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .not('extension_version', 'is', null);
+    setAdminText('dp-ext-installs', fmtAdminNum(extCount || 0));
+
+    // Connections scanned
+    var { count: connCount } = await sb
+      .from('connections')
+      .select('*', { count: 'exact', head: true });
+    setAdminText('dp-connections', fmtAdminNum(connCount || 0));
+
+    // Board Discovery Queue stats
+    var { count: queuePending } = await sb
+      .from('board_discovery_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    setAdminText('dp-queue-pending', fmtAdminNum(queuePending || 0));
+
+    var { count: queueFound } = await sb
+      .from('board_discovery_queue')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'found');
+    setAdminText('dp-queue-found', fmtAdminNum(queueFound || 0));
+
+    var { count: queueTotal } = await sb
+      .from('board_discovery_queue')
+      .select('*', { count: 'exact', head: true });
+    setAdminText('dp-queue-total', fmtAdminNum(queueTotal || 0));
+
+  } catch (err) {
+    console.error('[Admin] Discovery pipeline stats error:', err);
+  }
+}
+
+// ─── Auto-Apply Engine Stats (Item #1) ───
+async function loadAutoApplyStats() {
+  try {
+    // Get latest trigger run from audit_log
+    var { data: lastRun } = await sb
+      .from('audit_log')
+      .select('details, created_at')
+      .eq('action', 'auto_apply_trigger')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (lastRun && lastRun.length > 0) {
+      var details = typeof lastRun[0].details === 'string' ? JSON.parse(lastRun[0].details) : lastRun[0].details;
+      setAdminText('aa-eligible', fmtAdminNum(details.eligible_users || 0));
+      setAdminText('aa-matched', fmtAdminNum(details.matches_found || 0));
+      setAdminText('aa-scored', fmtAdminNum(details.scored || 0));
+      setAdminText('aa-queued', fmtAdminNum(details.queued || 0));
+
+      var ago = Math.round((Date.now() - new Date(lastRun[0].created_at).getTime()) / 60000);
+      setAdminText('aa-last-run', ago < 60 ? ago + 'm ago' : Math.round(ago / 60) + 'h ago');
+    } else {
+      setAdminText('aa-last-run', 'Never');
+    }
+
+    // Also show total pending applications
+    var { count: pendingCount } = await sb
+      .from('pending_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    if (pendingCount != null) {
+      var queuedEl = document.getElementById('aa-queued');
+      if (queuedEl) queuedEl.title = pendingCount + ' total pending';
+    }
+  } catch (err) {
+    console.error('[Admin] Auto-apply stats error:', err);
+  }
+}
+
+// ─── Refresh Cycle Status (Tiered) ───
+async function loadRefreshCycle() {
+  try {
+    var res = await sb.rpc('get_refresh_cycle_status');
+    if (res.error) { console.error('[Admin] Cycle RPC error:', res.error); toastWarning('Refresh cycle data unavailable'); return; }
+    var c = res.data;
+    if (!c) return;
+
+    // HOT tier progress (primary metric)
+    var hotPct = c.hot_pct || 0;
+    setAdminText('ac-cycle-pct', hotPct + '%');
+    var bar = document.getElementById('ac-cycle-bar');
+    if (bar) setTimeout(function() { bar.style.width = hotPct + '%'; }, 100);
+
+    setAdminText('ac-cycle-total', fmtAdminNum(c.total_boards));
+    setAdminText('ac-cycle-refreshed', fmtAdminNum(c.hot_fresh || 0) + ' / ' + fmtAdminNum(c.hot_total || 0) + ' HOT');
+    setAdminText('ac-cycle-pending', fmtAdminNum(c.hot_due || 0) + ' HOT due');
+
+    // Rate with trend arrow: compare 1h vs 6h average
+    var rate1h = c.rate_1h || 0;
+    var rate6h = c.rate_6h || 0;
+    var rateStr = fmtAdminNum(rate1h) + '/hr';
+    if (rate6h > 0 && rate1h > 0) {
+      var pctChange = Math.round(((rate1h - rate6h) / rate6h) * 100);
+      if (pctChange > 10) {
+        rateStr += ' <span style="color:#4a9a6b;font-size:0.8em">▲ ' + pctChange + '%</span>';
+      } else if (pctChange < -10) {
+        rateStr += ' <span style="color:#c06060;font-size:0.8em">▼ ' + Math.abs(pctChange) + '%</span>';
+      } else {
+        rateStr += ' <span style="color:#8b929e;font-size:0.8em">● steady</span>';
+      }
+    }
+    var rateEl = document.getElementById('ac-cycle-rate');
+    if (rateEl) rateEl.innerHTML = rateStr;
+
+    // ETA based on HOT cycle
+    var estHours = c.est_hot_cycle_hours || 0;
+    if (estHours <= 0) {
+      setAdminText('ac-cycle-eta', 'Up to date');
+    } else if (estHours < 1) {
+      setAdminText('ac-cycle-eta', Math.round(estHours * 60) + 'min cycle');
+    } else {
+      setAdminText('ac-cycle-eta', estHours.toFixed(1) + 'h cycle');
+    }
+
+    // Last refresh
+    if (c.last_refresh) {
+      var lr = new Date(c.last_refresh);
+      var minsAgo = Math.round((Date.now() - lr.getTime()) / 60000);
+      setAdminText('ac-cycle-start', minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ago');
+    }
+
+    // Sparkline: hourly throughput (last 24h)
+    var sparkEl = document.getElementById('ac-cycle-spark');
+    if (sparkEl && c.hourly_rates && c.hourly_rates.length > 1 && typeof echarts !== 'undefined') {
+      var hours = c.hourly_rates.map(function(r) { return new Date(r.hour).getHours() + ':00'; });
+      var counts = c.hourly_rates.map(function(r) { return r.count; });
+      var chart = echarts.init(sparkEl);
+      chart.setOption({
+        grid: { top: 4, right: 4, bottom: 16, left: 30 },
+        xAxis: { type: 'category', data: hours, axisLabel: { fontSize: 9, color: '#94a3b8' }, axisLine: { show: false }, axisTick: { show: false } },
+        yAxis: { type: 'value', axisLabel: { fontSize: 9, color: '#94a3b8' }, splitLine: { lineStyle: { color: '#1e293b' } } },
+        series: [{ type: 'bar', data: counts, itemStyle: { color: '#6b82a8', borderRadius: [2, 2, 0, 0] }, barMaxWidth: 16 }],
+        tooltip: { trigger: 'axis', formatter: function(p) { return p[0].name + ': ' + p[0].value.toLocaleString() + ' boards'; } }
+      });
+    }
+  } catch (err) {
+    console.error('[Admin] loadRefreshCycle error:', err); toastWarning('Refresh cycle data failed to load');
+  }
+}
+
+function setDelta(id, val, prefix, invert) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (val == null || val === 0) { el.textContent = ''; return; }
+  var cls = invert ? 'admin-red' : 'admin-green';
+  el.innerHTML = '<span class="' + cls + '">' + (prefix || '') + fmtAdminNum(val) + '</span>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB 2: COHORTS
+// ═══════════════════════════════════════════════════════════
+
+var _allCohorts = [];
+var _selectedCohortIds = []; // empty = all selected
+
+async function loadCohortTab() {
+  console.log('[Admin] loadCohortTab');
+  try {
+    var res = await sb.rpc('get_cohort_overview');
+    if (res.error) { console.error('[Admin] Cohort RPC error:', res.error); toastWarning('Cohort data unavailable'); return; }
+    var cohorts = res.data;
+    if (!cohorts || !cohorts.length) {
+      setAdminText('ac-total-cohorts', '0');
+      setAdminText('ac-total-users', '0');
+      setAdminText('ac-pro-pct', '—');
+      setAdminText('ac-active-7d', '0');
+      setAdminText('ac-churned', '0');
+      return;
+    }
+
+    _allCohorts = cohorts;
+    window._cohortList = cohorts;
+
+    // Build cohort filter chips
+    renderCohortData(cohorts);
+  } catch (err) {
+    console.error('[Admin] loadCohortTab error:', err); toastError('Failed to load cohort data');
+  }
+}
+
+function toggleCohortFilter(id) {
+  // Driven by table checkboxes now
+  _selectedCohortIds = [];
+  document.querySelectorAll('.cohort-row-cb:checked').forEach(function(cb) {
+    _selectedCohortIds.push(cb.dataset.cohortId);
+  });
+  var selectAll = document.getElementById('cohort-select-all');
+  if (selectAll) {
+    var total = document.querySelectorAll('.cohort-row-cb').length;
+    selectAll.checked = _selectedCohortIds.length === total;
+    selectAll.indeterminate = _selectedCohortIds.length > 0 && _selectedCohortIds.length < total;
+  }
+  var filtered = _selectedCohortIds.length === 0 ? _allCohorts : _allCohorts.filter(function(c) {
+    return _selectedCohortIds.indexOf(c.id) >= 0;
+  });
+  renderCohortData(filtered);
+}
+window.updateCohortCharts = function() { toggleCohortFilter(); };
+
+function renderCohortData(cohorts) {
+    var totalUsers = cohorts.reduce(function(s, c) { return s + (c.user_count || 0); }, 0);
+    var totalPro = cohorts.reduce(function(s, c) { return s + (c.pro_count || 0); }, 0);
+    var active7d = cohorts.reduce(function(s, c) { return s + (c.active_7d || 0); }, 0);
+    var churned28d = cohorts.reduce(function(s, c) { return s + (c.churned_28d || 0); }, 0);
+
+    setAdminText('ac-total-cohorts', cohorts.length);
+    setAdminText('ac-total-users', fmtAdminNum(totalUsers));
+    setAdminText('ac-pro-pct', fmtAdminPct(totalPro, totalUsers));
+    setAdminText('ac-active-7d', fmtAdminNum(active7d));
+    setAdminText('ac-churned', fmtAdminNum(churned28d));
+
+    var tbody = document.getElementById('admin-cohort-body');
+    if (!tbody) return;
+
+    // Collect all plan types across all cohorts
+    var allPlans = {};
+    cohorts.forEach(function(c) {
+      if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { allPlans[pb.plan] = true; });
+    });
+    var planOrder = ['free', 'starter', 'pro', 'enterprise'].filter(function(p) { return allPlans[p]; });
+
+    // Build dynamic header
+    var thead = tbody.parentElement.querySelector('thead');
+    if (thead) {
+      thead.innerHTML = '<tr>' +
+        '<th style="width:32px;"><input type="checkbox" id="cohort-select-all" title="Select all" style="cursor:pointer;" onchange="updateCohortCharts()"></th>' +
+        '<th>ID</th><th>Age</th><th>Enrollment</th><th>Users</th><th>Active 7d</th><th>Churned</th>' +
+        planOrder.map(function(p) { return '<th>' + p.charAt(0).toUpperCase() + p.slice(1) + '</th>'; }).join('') +
+        '<th>Revenue/mo</th><th>LTV</th><th>ARPU</th>' +
+        '</tr>';
+    }
+
+    tbody.innerHTML = cohorts.map(function(c) {
+      var enrollStart = c.enrollment_start ? new Date(c.enrollment_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+      var enrollClose = c.enrollment_close ? new Date(c.enrollment_close).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Open';
+      var isOpen = !c.enrollment_close || new Date(c.enrollment_close) > new Date();
+
+      // Build plan count lookup
+      var planCounts = {};
+      if (c.plan_breakdown) c.plan_breakdown.forEach(function(pb) { planCounts[pb.plan] = pb.count; });
+
+      return '<tr>' +
+        '<td><input type="checkbox" class="cohort-row-cb" data-cohort-id="' + c.id + '" onchange="toggleCohortFilter()" style="cursor:pointer;"></td>' +
+        '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + (c.display_id || c.id) + '</td>' +
+        '<td>' + (c.age_days || 0) + 'd</td>' +
+        '<td style="font-size:12px">' + enrollStart + ' — ' + enrollClose + (isOpen ? ' <span class="admin-green">●</span>' : '') + '</td>' +
+        '<td>' + fmtAdminNum(c.user_count) + '</td>' +
+        '<td>' + fmtAdminNum(c.active_7d) + '</td>' +
+        '<td class="' + (c.churned_28d > 0 ? 'admin-red' : '') + '">' + fmtAdminNum(c.churned_28d) + '</td>' +
+        planOrder.map(function(p) {
+          var cnt = planCounts[p] || 0;
+          var cls = p === 'pro' ? 'admin-green' : (p === 'enterprise' ? 'admin-amber' : '');
+          return '<td class="' + cls + '">' + fmtAdminNum(cnt) + '</td>';
+        }).join('') +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '<td style="color:var(--text-faint)">—</td>' +
+        '</tr>';
+    }).join('');
+
+    renderCohortCharts(cohorts);
+}
+
+// ─── Entitlements Tab ───
+async function loadEntitlementsTab() {
+  console.log('[Admin] loadEntitlementsTab');
+  var select = document.getElementById('entitlement-cohort-select');
+  var tbody = document.getElementById('admin-entitlement-body');
+  if (!select || !tbody) return;
+
+  // Populate dropdown if empty
+  if (select.options.length === 0) {
+    try {
+      var res = await sb.from('cohorts').select('id,display_id,name').eq('is_active', true).order('created_at');
+      if (res.data) {
+        res.data.forEach(function(c) {
+          var opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = (c.display_id || c.id) + ' — ' + c.name;
+          select.appendChild(opt);
+        });
+      }
+    } catch (e) {}
+    select.addEventListener('change', function() { loadEntitlementRows(select.value); });
+  }
+
+  if (select.value) loadEntitlementRows(select.value);
+}
+
+async function loadEntitlementRows(cohortId) {
+  var tbody = document.getElementById('admin-entitlement-body');
+  if (!tbody || !cohortId) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-faint)">Loading...</td></tr>';
+
+  var res = await sb.from('cohort_plan_entitlements')
+    .select('feature_id,plan_id,behavior,limit_value')
+    .eq('cohort_id', cohortId)
+    .order('feature_id')
+    .order('plan_id');
+
+  if (res.error || !res.data) {
+    tbody.innerHTML = '<tr><td colspan="5" class="admin-red">Error loading entitlements</td></tr>';
+    return;
+  }
+
+  // Group by feature for a cleaner view
+  tbody.innerHTML = res.data.map(function(e) {
+    var limitStr = e.limit_value === -1 ? '∞' : String(e.limit_value);
+    var behaviorColor = e.behavior === 'off' ? 'admin-red' : (e.behavior === 'unlimited' ? 'admin-green' : '');
+    return '<tr>' +
+      '<td>' + e.feature_id + '</td>' +
+      '<td>' + e.plan_id + '</td>' +
+      '<td class="' + behaviorColor + '">' + e.behavior + '</td>' +
+      '<td style="font-family:var(--mono)">' + limitStr + '</td>' +
+      '<td>—</td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ─── Cohort Charts ───
+function renderCohortCharts(cohorts) {
+  // 1. Sessions over time (adjusted to cohort open date)
+  renderCohortSessionsChart();
+
+  // 2. Cumulative Revenue (placeholder until Stripe data)
+  renderCohortRevenueChart();
+
+  // 3. Plan Distribution — stacked bar (Free/Pro per cohort)
+  var planEl = document.getElementById('admin-cohort-plan-chart');
+  if (planEl && typeof echarts !== 'undefined') {
+    var planChart = echarts.init(planEl);
+    var names = cohorts.map(function(c) { return c.display_id || c.name; });
+    var t = seoChartTheme();
+    planChart.setOption(Object.assign({}, t, {
+      title: { text: 'Plan Distribution', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      legend: { data: ['Free', 'Pro'], textStyle: { color: '#7b829a', fontSize: 11 }, top: 4, right: 10 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: names, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [
+        { name: 'Free', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.free_count || 0; }), itemStyle: { color: '#8b929e' } },
+        { name: 'Pro', type: 'bar', stack: 'plan', data: cohorts.map(function(c) { return c.pro_count || 0; }), itemStyle: { color: '#6b82a8' } }
+      ]
+    }), true);
+    window.addEventListener('resize', function() { planChart.resize(); });
+  }
+
+  // 4. User Growth — cumulative signups
+  renderCohortGrowthChart();
+}
+
+async function renderCohortRevenueChart() {
+  var el = document.getElementById('admin-cohort-revenue-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  // Placeholder until Stripe revenue data is wired
+  chart.setOption({
+    title: { text: 'Cumulative Revenue / Month', subtext: 'Waiting for Stripe integration', left: 'center', top: 'center', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, subtextStyle: { color: '#9ca3af', fontSize: 11 } }
+  });
+  window.addEventListener('resize', function() { chart.resize(); });
+}
+
+async function renderCohortGrowthChart() {
+  var el = document.getElementById('admin-cohort-growth-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var res = await sb.from('profiles').select('created_at').order('created_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'User Growth', subtext: 'No signup data yet', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var weekMap = {};
+    res.data.forEach(function(p) {
+      var d = new Date(p.created_at);
+      var wk = d.toISOString().slice(0, 10);
+      weekMap[wk] = (weekMap[wk] || 0) + 1;
+    });
+    var dates = Object.keys(weekMap).sort();
+    var cumulative = [], sum = 0;
+    dates.forEach(function(d) { sum += weekMap[d]; cumulative.push(sum); });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'User Growth', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'line', data: cumulative, smooth: true, lineStyle: { color: '#6b82a8', width: 2 }, itemStyle: { color: '#6b82a8' }, areaStyle: { color: 'rgba(107,130,168,0.06)' }, symbol: 'circle', symbolSize: 4 }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Growth chart error:', e); toastWarning('Growth chart failed to render'); }
+}
+
+async function renderCohortSessionsChart() {
+  var el = document.getElementById('admin-cohort-sessions-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+  try {
+    var since = new Date(Date.now() - 30 * 86400000).toISOString();
+    var res = await sb.from('user_sessions').select('started_at').gte('started_at', since).order('started_at', { ascending: true });
+    if (res.error || !res.data || !res.data.length) {
+      chart.setOption({ title: { text: 'Sessions / Day', subtext: 'Sessions will appear after launch', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+      return;
+    }
+    var dayMap = {};
+    res.data.forEach(function(s) {
+      var d = new Date(s.started_at).toISOString().slice(0, 10);
+      dayMap[d] = (dayMap[d] || 0) + 1;
+    });
+    var dates = Object.keys(dayMap).sort();
+    var counts = dates.map(function(d) { return dayMap[d]; });
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Sessions / Day (30d)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'bar', data: counts, itemStyle: { color: '#5b8a72', borderRadius: [3,3,0,0] } }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+  } catch (e) { console.error('[Admin] Sessions chart error:', e); toastWarning('Sessions chart failed to render'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB 3 (was 4): USERS + SESSIONS
+// ═══════════════════════════════════════════════════════════
+
+async function loadUsersTab() {
+  console.log('[Admin] loadUsersTab');
+  try {
+    var res = await sb.rpc('get_user_overview');
+    if (res.error) { console.error('[Admin] Users RPC error:', res.error); toastWarning('Users data unavailable'); return; }
+    var d = res.data;
+    if (!d) return;
+
+    setAdminText('au-total', fmtAdminNum(d.total_users));
+    setAdminText('au-active-7d', fmtAdminNum(d.active_7d));
+    setAdminText('au-new-7d', fmtAdminNum(d.new_7d));
+    setAdminText('au-pro', fmtAdminNum(d.pro_users));
+    setAdminText('au-filters', fmtAdminNum(d.with_filters));
+    setAdminText('au-resumes', fmtAdminNum(d.with_resumes));
+    setAdminText('au-connections', fmtAdminNum(d.with_connections));
+
+    // Session stats
+    if (d.sessions_7d != null) {
+      setAdminText('au-sessions-7d', fmtAdminNum(d.sessions_7d));
+      setAdminText('au-avg-duration', d.avg_duration_min != null ? d.avg_duration_min + 'm' : '—');
+      setAdminText('au-device-desktop', fmtAdminNum(d.desktop_sessions || 0));
+      setAdminText('au-device-mobile', fmtAdminNum(d.mobile_sessions || 0));
+    }
+
+    // Signup chart
+    if (d.signup_by_week && d.signup_by_week.length && typeof echarts !== 'undefined') {
+      var chartEl = document.getElementById('admin-signup-chart');
+      if (chartEl) {
+        var chart = echarts.init(chartEl);
+        chart.setOption({
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+          grid: { left: 50, right: 16, top: 12, bottom: 32 },
+          xAxis: { type: 'category', data: d.signup_by_week.map(function(w) { return w.week; }), axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+          yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+          series: [{ type: 'bar', data: d.signup_by_week.map(function(w) { return w.count; }), itemStyle: { borderRadius: [4, 4, 0, 0], color: '#6b82a8' }, barWidth: '60%' }]
+        });
+        window.addEventListener('resize', function() { chart.resize(); });
+      }
+    }
+  } catch (err) {
+    console.error('[Admin] loadUsersTab error:', err); toastError('Failed to load users data');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB 4: SEO / DATA COVERAGE
+// ═══════════════════════════════════════════════════════════
+// v3.42 — 9-tool SEO dashboard, date range pickers, auth-only fetch
+
+var _seoUrl = '';
+var _seoDateFrom = '';
+var _seoDateTo = '';
+var _seoCharts = {};
+var _seoData = {};
+
+function setSeoUrl(url) {
+  _seoUrl = url;
+  loadSeoTab();
+}
+
+function seoDateChanged() {
+  var from = document.getElementById('seo-date-from');
+  var to = document.getElementById('seo-date-to');
+  _seoDateFrom = from ? from.value : '';
+  _seoDateTo = to ? to.value : '';
+  loadSeoTab();
+}
+
+async function loadSeoTab() {
+  console.log('[Admin] loadSeoTab url=' + (_seoUrl || 'ALL') + ' from=' + (_seoDateFrom || 'all') + ' to=' + (_seoDateTo || 'now'));
+  try {
+    await fetchSeoData();
+    // Small delay to ensure panel is visible before chart init
+    await new Promise(function(r) { setTimeout(r, 50); });
+    renderSeoCharts();
+    renderSeoSidePanel();
+    // Resize all charts after render (handles hidden panel → visible transition)
+    setTimeout(function() {
+      Object.keys(_seoCharts).forEach(function(k) {
+        if (_seoCharts[k]) _seoCharts[k].resize();
+      });
+    }, 200);
+  } catch(err) { console.error('[Admin] SEO load error:', err); toastWarning('SEO data failed to load'); }
+}
+
+// ─── Data Fetching (auth-only) ───
+async function fetchSeoData() {
+  var hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+  // Try auth session if available (for RLS-protected tables), fall back to anon key
+  try {
+    var session = (await sb.auth.getSession()).data.session;
+    if (session) hdr = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + session.access_token };
+  } catch(e) {}
+  var authHeaders = hdr;
+
+  var urlFilter = _seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '';
+  var dateFilter = '';
+  if (_seoDateFrom) dateFilter += '&date=gte.' + _seoDateFrom;
+  if (_seoDateTo) dateFilter += '&date=lte.' + _seoDateTo;
+
+  var fetches = {
+    site_daily:  fetch(SUPABASE_URL + '/rest/v1/seo_site_daily?select=*&order=date.asc' + dateFilter, { headers: authHeaders }),
+    page_daily:  fetch(SUPABASE_URL + '/rest/v1/seo_page_daily?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }),
+    tech_audits: fetch(SUPABASE_URL + '/rest/v1/seo_tech_audits?select=*&order=date.asc' + dateFilter + urlFilter, { headers: authHeaders }),
+    index_status:fetch(SUPABASE_URL + '/rest/v1/seo_index_status?select=*&order=checked_at.desc' + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '') + '&limit=20', { headers: authHeaders }),
+    conversions: fetch(SUPABASE_URL + '/rest/v1/seo_conversions?select=*&order=date.asc' + dateFilter, { headers: authHeaders }),
+    gsc_queries: fetch(SUPABASE_URL + '/rest/v1/seo_gsc_daily?select=query,clicks,impressions,ctr,position' + dateFilter + (_seoUrl ? '&url=eq.' + encodeURIComponent(_seoUrl) : '&url=eq.*') + '&order=clicks.desc&limit=50', { headers: authHeaders }),
+  };
+
+  var keys = Object.keys(fetches);
+  var responses = await Promise.all(keys.map(function(k) { return fetches[k].then(function(r) { return r.json(); }).catch(function() { return []; }); }));
+  _seoData = {};
+  keys.forEach(function(k, i) { _seoData[k] = Array.isArray(responses[i]) ? responses[i] : []; });
+  console.log('[Admin] SEO data loaded:', Object.keys(_seoData).map(function(k) { return k + '=' + _seoData[k].length; }).join(', '));
+}
+
+// ─── Chart Rendering ───
+function renderSeoCharts() {
+  renderSeoStatCards();
+  renderGscChart();
+  renderPsiChart();
+  renderCruxChart();
+  renderYltChart();
+  renderCloudflareChart();
+}
+
+
+function renderSeoStatCards() {
+  var techAudits = _seoData.tech_audits || [];
+  var indexStatus = _seoData.index_status || [];
+  var siteDailyArr = _seoData.site_daily || [];
+
+  // PSI avg performance (latest mobile) — average across ALL pages
+  var psiMobile = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
+  var psiPerf = null;
+  if (psiMobile.length) {
+    var latestPsiDate = psiMobile[psiMobile.length - 1].date;
+    var latestPsiPages = psiMobile.filter(function(r) { return r.date === latestPsiDate; });
+    var perfSum = 0;
+    latestPsiPages.forEach(function(r) { if (r.metrics) perfSum += r.metrics.performance || 0; });
+    psiPerf = latestPsiPages.length ? Math.round(perfSum / latestPsiPages.length) : null;
+  }
+
+  // YLT avg
+  var yltData = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
+  var yltAvg = yltData.length ? Math.round(yltData.reduce(function(s, r) { return s + (r.score || 0); }, 0) / yltData.length) : null;
+
+  // Indexed pages
+  var indexed = 0, totalInspected = 0;
+  var seen = {};
+  indexStatus.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; totalInspected++; if (r.verdict === 'PASS') indexed++; });
+
+  // CF traffic (latest day)
+  var cfData = techAudits.filter(function(r) { return r.source === 'cloudflare'; });
+  var latestCf = cfData.length ? cfData[cfData.length - 1] : null;
+  var cfRequests = latestCf && latestCf.metrics ? latestCf.metrics.total_requests : null;
+
+  // GSC clicks (latest day)
+  var latestSite = siteDailyArr.length ? siteDailyArr[siteDailyArr.length - 1] : null;
+  var gscClicks = latestSite ? (latestSite.total_clicks || 0) : null;
+
+  // Set values via DOM
+  function setKpi(id, value, colorClass) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value != null ? String(value) : '\u2014';
+    el.className = 'stat-val';
+    if (colorClass) el.classList.add(colorClass);
+  }
+
+  var psiColor = psiPerf >= 90 ? 'admin-green' : psiPerf >= 50 ? 'admin-amber' : psiPerf != null ? 'admin-red' : '';
+  var yltColor = yltAvg >= 90 ? 'admin-green' : yltAvg >= 50 ? 'admin-amber' : yltAvg != null ? 'admin-red' : '';
+  var idxColor = totalInspected > 0 && indexed === totalInspected ? 'admin-green' : indexed > 0 ? 'admin-amber' : totalInspected > 0 ? 'admin-red' : '';
+
+  setKpi('seo-kpi-psi', psiPerf, psiColor);
+  setKpi('seo-kpi-ylt', yltAvg, yltColor);
+  setKpi('seo-kpi-indexed', totalInspected > 0 ? indexed + '/' + totalInspected : null, idxColor);
+  setKpi('seo-kpi-cf', cfRequests != null ? cfRequests.toLocaleString() : null);
+  setKpi('seo-kpi-gsc', gscClicks != null ? gscClicks.toLocaleString() : null);
+  var gscDateEl = document.getElementById('seo-kpi-gsc-date');
+  if (gscDateEl) gscDateEl.textContent = latestSite ? 'sampled ' + latestSite.date : '';
+}
+
+function seoChartTheme() {
+  return {
+    grid: { top: 35, right: 20, bottom: 30, left: 50, containLabel: true },
+    tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+  };
+}
+
+function seoAxis() {
+  return {
+    xAxis: { type: 'category', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, axisLine: { lineStyle: { color: '#e8eaef' } } },
+    yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+  };
+}
+
+function initSeoChart(elId) {
+  var el = document.getElementById(elId);
+  if (!el) return null;
+  if (_seoCharts[elId]) { _seoCharts[elId].dispose(); }
+  _seoCharts[elId] = echarts.init(el, null, { renderer: 'canvas' });
+  return _seoCharts[elId];
+}
+
+function seoNoData(chart, title, msg) {
+  chart.setOption({
+    graphic: { elements: [{ type: 'group', left: 'center', top: 'middle', children: [
+      { type: 'text', left: 'center', top: -10, style: { text: msg || 'No data yet', fill: '#9ca3af', fontSize: 13, fontFamily: 'Outfit' } },
+      { type: 'text', left: 'center', top: 12, style: { text: 'Run sync to populate', fill: '#d1d5db', fontSize: 11, fontFamily: 'Outfit' } }
+    ] }] }
+  }, true);
+}
+
+// 1. PostHog Traffic
+function renderTrafficChart() {
+  var chart = initSeoChart('seo-chart-traffic');
+  if (!chart) return;
+  var convs = _seoData.conversions || [];
+  var byDate = {};
+  convs.forEach(function(r) { if (r.event_type === 'pageview') byDate[r.date] = (byDate[r.date] || 0) + (r.count || 0); });
+  var dates = Object.keys(byDate).sort();
+  if (!dates.length) { seoNoData(chart, 'PostHog Traffic', 'No pageview data yet'); return; }
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
+    title: { text: 'PostHog Traffic', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+    xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+    yAxis: ax.yAxis,
+    series: [{ type: 'bar', data: dates.map(function(d) { return byDate[d]; }), itemStyle: { color: '#8878a0' }, barMaxWidth: 16 }]
+  }), true);
+}
+
+// 2. GSC
+function renderGscChart() {
+  var chart = initSeoChart('seo-chart-gsc');
+  if (!chart) return;
+  var data = _seoUrl ? (_seoData.page_daily || []) : (_seoData.site_daily || []);
+  if (!data.length) { seoNoData(chart, 'Google Search Console'); return; }
+  var dates = data.map(function(r) { return r.date; });
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
+
+    legend: { data: ['Clicks', 'Impressions'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
+    grid: { top: 35, right: 60, bottom: 30, left: 50 },
+    xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+    yAxis: [ax.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
+    series: [
+      { name: 'Clicks', type: 'bar', data: data.map(function(r) { return r.clicks || r.total_clicks || 0; }), itemStyle: { color: '#6b82a8' }, barMaxWidth: 12 },
+      { name: 'Impressions', type: 'line', yAxisIndex: 1, data: data.map(function(r) { return r.impressions || r.total_impressions || 0; }), lineStyle: { color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, smooth: true, symbol: 'none' }
+    ]
+  }), true);
+}
+
+// 3. PSI 4 categories
+function renderPsiChart() {
+  var chart = initSeoChart('seo-chart-psi');
+  if (!chart) return;
+  var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
+  if (!audits.length) { seoNoData(chart, 'PageSpeed Insights (Mobile)'); return; }
+
+  // Logarithmic transform: compress 0-100 scale to show detail in 80-100 range
+  // Use log10(101-v) inverted so higher scores get more visual space
+  function psiLog(v) { if (v == null) return null; return v; }
+
+  if (_seoUrl) {
+    // Single URL — bar chart of latest scores (matches all-pages style)
+    var pageAudits = audits.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageAudits.length) pageAudits = audits;
+    var latest = pageAudits[pageAudits.length - 1];
+    var m = latest.metrics || {};
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [m.performance || 0, m.seo || 0, m.accessibility || 0, m.best_practices || 0];
+    var colors = ['#a08858', '#5b8a72', '#6b82a8', '#8878a0'];
+    var t = seoChartTheme(), ax = seoAxis();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: (new URL(_seoUrl).pathname) + ' — ' + (latest.date || ''), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 12 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 13, fontWeight: 700, formatter: function(p) { return p.value; } } }]
+    }), true);
+  } else {
+    // Aggregate — average across all pages for latest date
+    var latestDate = audits[audits.length - 1].date;
+    var latest = audits.filter(function(r) { return r.date === latestDate; });
+    var avgMetrics = { performance: 0, seo: 0, accessibility: 0, best_practices: 0 };
+    latest.forEach(function(r) {
+      if (r.metrics) {
+        avgMetrics.performance += r.metrics.performance || 0;
+        avgMetrics.seo += r.metrics.seo || 0;
+        avgMetrics.accessibility += r.metrics.accessibility || 0;
+        avgMetrics.best_practices += r.metrics.best_practices || 0;
+      }
+    });
+    var n = latest.length || 1;
+    Object.keys(avgMetrics).forEach(function(k) { avgMetrics[k] = Math.round(avgMetrics[k] / n); });
+    
+    var labels = ['Performance', 'SEO', 'Accessibility', 'Best Practices'];
+    var values = [avgMetrics.performance, avgMetrics.seo, avgMetrics.accessibility, avgMetrics.best_practices];
+    var colors = ['#a08858', '#5b8a72', '#6b82a8', '#8878a0'];
+    var t = seoChartTheme(), ax = seoAxis();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Avg Across ' + n + ' Pages', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
+      grid: { top: 35, right: 20, bottom: 30, left: 40 },
+      xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 11 } },
+      yAxis: Object.assign({}, ax.yAxis, { min: 60, max: 100, interval: 10, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return Math.round(v); } } }),
+      series: [{ type: 'bar', data: values.map(function(v, i) { return { value: v, itemStyle: { color: colors[i] } }; }),
+        barMaxWidth: 50, itemStyle: { borderRadius: [4,4,0,0] },
+        label: { show: true, position: 'top', color: '#6b7280', fontFamily: 'JetBrains Mono', fontSize: 12, fontWeight: 700, formatter: function(p) { return p.value; } } }]
+    }), true);
+  }
+}
+
+// 4. CrUX
+function renderCruxChart() {
+  var chart = initSeoChart('seo-chart-crux');
+  if (!chart) return;
+  var cruxData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'crux'; });
+  if (!cruxData.length) { seoNoData(chart, 'Chrome UX Report', 'Not enough traffic for CrUX data yet'); return; }
+  var latest = cruxData[cruxData.length - 1];
+  var m = latest.metrics || {};
+  var metricNames = Object.keys(m);
+  var labels = metricNames.map(function(k) { return k.replace(/_/g, ' ').toUpperCase(); });
+  var p75s = metricNames.map(function(k) { return m[k] && m[k].p75 ? m[k].p75 : 0; });
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
+
+    grid: { top: 35, right: 20, bottom: 50, left: 60 },
+    xAxis: { type: 'category', data: labels, axisLabel: { color: '#7b829a', fontSize: 9, rotate: 30 } },
+    yAxis: ax.yAxis,
+    series: [{ type: 'bar', data: p75s, itemStyle: { color: function(p) { return ['#5b8a72','#6b82a8','#a08858','#8878a0','#c06060'][p.dataIndex % 5]; } }, barMaxWidth: 30 }]
+  }), true);
+}
+
+// 5. Yellow Lab Tools
+function renderYltChart() {
+  var chart = initSeoChart('seo-chart-ylt');
+  if (!chart) return;
+  var yltData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'yellowlab'; });
+  if (!yltData.length) { seoNoData(chart, 'Yellow Lab Tools'); return; }
+
+  if (_seoUrl) {
+    // Single URL — radar of latest category scores (matches all-pages style)
+    var pageData = yltData.filter(function(r) { return r.url === _seoUrl; });
+    if (!pageData.length) { seoNoData(chart, 'YLT — no data for this URL'); return; }
+    var latest = pageData[pageData.length - 1];
+    var score = latest.score || 0;
+    var cats = latest.metrics && latest.metrics.categories ? latest.metrics.categories : {};
+    var catEntries = Object.values(cats).map(function(c) {
+      return { name: c.label || 'Unknown', value: c.score || 0 };
+    });
+    if (!catEntries.length) { seoNoData(chart, 'YLT — no category data'); return; }
+
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: score + '/100 — ' + (new URL(_seoUrl).pathname), textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 10 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: new URL(_seoUrl).pathname,
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>' + score + '/100</b><br/>' + lines.join('<br/>');
+      } }
+    }), true);
+  } else {
+    // All Pages: blended average score + category radar
+    var latestDate = yltData[yltData.length - 1].date;
+    var latest = yltData.filter(function(r) { return r.date === latestDate; });
+    var avgScore = Math.round(latest.reduce(function(s, r) { return s + (r.score || 0); }, 0) / (latest.length || 1));
+    
+    // Aggregate categories across all pages
+    var catTotals = {}, catCount = 0;
+    latest.forEach(function(r) {
+      if (r.metrics && r.metrics.categories) {
+        catCount++;
+        Object.keys(r.metrics.categories).forEach(function(k) {
+          var cat = r.metrics.categories[k];
+          if (!catTotals[k]) catTotals[k] = { label: cat.label || k, total: 0, count: 0 };
+          catTotals[k].total += cat.score || 0;
+          catTotals[k].count++;
+        });
+      }
+    });
+    
+    var catEntries = Object.values(catTotals).map(function(c) {
+      return { name: c.label, value: Math.round(c.total / c.count) };
+    });
+    
+    var t = seoChartTheme();
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Avg: ' + avgScore + '/100 (' + latest.length + ' pages)', textStyle: { color: '#9ca3af', fontSize: 11, fontFamily: 'JetBrains Mono' }, left: 4, top: 4 },
+      radar: {
+        indicator: catEntries.map(function(c) { return { name: c.name, max: 100 }; }),
+        shape: 'polygon',
+        axisName: { color: '#7b829a', fontSize: 9 },
+        splitArea: { areaStyle: { color: ['rgba(59,130,246,0.02)', 'rgba(59,130,246,0.04)'] } },
+        splitLine: { lineStyle: { color: '#e8eaef' } },
+        axisLine: { lineStyle: { color: '#e8eaef' } }
+      },
+      series: [{ type: 'radar', data: [{
+        value: catEntries.map(function(c) { return c.value; }),
+        name: 'Avg Score',
+        lineStyle: { color: '#eab308', width: 2 },
+        itemStyle: { color: '#eab308' },
+        areaStyle: { color: 'rgba(234,179,8,0.15)' }
+      }] }],
+      tooltip: { trigger: 'item', formatter: function(p) {
+        var lines = catEntries.map(function(c, i) { return c.name + ': ' + p.value[i]; });
+        return '<b>Avg across ' + catCount + ' pages</b><br/>' + lines.join('<br/>');
+      } }
+    }), true);
+  }
+}
+
+// 6. Cloudflare
+function renderCloudflareChart() {
+  var chart = initSeoChart('seo-chart-cf');
+  if (!chart) return;
+  var cfData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'cloudflare'; });
+  if (!cfData.length) { seoNoData(chart, 'Cloudflare Traffic'); return; }
+  var dates = cfData.map(function(r) { return r.date; });
+  var t = seoChartTheme(), ax = seoAxis();
+  chart.setOption(Object.assign({}, t, {
+
+    legend: { data: ['Requests', 'Page Views', 'Uniques'], textStyle: { color: '#7b829a', fontSize: 10 }, top: 4, right: 10 },
+    grid: { top: 35, right: 60, bottom: 30, left: 50 },
+    xAxis: Object.assign({}, ax.xAxis, { data: dates }),
+    yAxis: [ax.yAxis, { type: 'value', axisLabel: { color: '#7b829a', fontSize: 10 }, splitLine: { show: false } }],
+    series: [
+      { name: 'Requests', type: 'bar', data: cfData.map(function(r) { return r.metrics && r.metrics.total_requests || 0; }), itemStyle: { color: 'rgba(77,142,255,0.3)' }, barMaxWidth: 16 },
+      { name: 'Page Views', type: 'line', data: cfData.map(function(r) { return r.metrics && r.metrics.page_views || 0; }), lineStyle: { color: '#f97316' }, itemStyle: { color: '#f97316' }, symbol: 'circle', symbolSize: 5 },
+      { name: 'Uniques', type: 'line', yAxisIndex: 1, data: cfData.map(function(r) { return r.metrics && r.metrics.unique_visitors || 0; }), lineStyle: { color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, symbol: 'circle', symbolSize: 5 }
+    ]
+  }), true);
+}
+
+// ─── Side Panel ───
+function renderSeoSidePanel() {
+  renderUrlInspection();
+  renderGscQueries();
+  renderPsiDrilldown();
+  renderDfsAudit();
+  renderKnowledgeGraph();
+}
+
+function renderUrlInspection() {
+  var el = document.getElementById('seo-side-inspection');
+  if (!el) return;
+  var data = _seoData.index_status || [];
+  if (!data.length) {
+    el.innerHTML = '<div class="seo-empty">No inspection data yet. Requires Google Service Account key.<br><a href="#" onclick="triggerSeoSync([&#39;gsc_inspect&#39;]);return false;">Run inspection</a></div>';
+    return;
+  }
+
+  if (_seoUrl) {
+    var latest = data.find(function(r) { return r.url === _seoUrl; }) || data[0];
+    var vc = latest.verdict === 'PASS' ? 'admin-green' : latest.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Verdict</span> <span class="seo-metric-value ' + vc + '">' + (latest.verdict || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Coverage</span> <span class="seo-metric-value">' + (latest.coverage_state || '\u2014') + '</span></div>' +
+      '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Indexing</span> <span class="seo-metric-value">' + (latest.indexing_state || '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Last Crawl</span> <span class="seo-metric-value">' + (latest.last_crawl_time ? new Date(latest.last_crawl_time).toLocaleDateString() : '\u2014') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Mobile</span> <span class="seo-metric-value">' + (latest.mobile_usability || '\u2014') + '</span></div>' +
+      '</div>';
+  } else {
+    // All pages: show horizontal bar chart of verdict per URL
+    var seen = {}, rows = [];
+    data.forEach(function(r) { if (seen[r.url]) return; seen[r.url] = true; rows.push(r); });
+    
+    var pass = 0, fail = 0, other = 0;
+    rows.forEach(function(r) { if (r.verdict === 'PASS') pass++; else if (r.verdict === 'FAIL' || r.verdict === 'ERROR') fail++; else other++; });
+    
+    var chartHtml = '<div style="margin-bottom:12px;display:flex;gap:16px;">' +
+      '<div><span class="seo-metric-value admin-green" style="font-size:18px;">' + pass + '</span> <span class="seo-metric-label">indexed</span></div>' +
+      '<div><span class="seo-metric-value admin-amber" style="font-size:18px;">' + other + '</span> <span class="seo-metric-label">pending</span></div>' +
+      '<div><span class="seo-metric-value admin-red" style="font-size:18px;">' + fail + '</span> <span class="seo-metric-label">failed</span></div>' +
+    '</div>';
+    
+    // Per-URL status table
+    chartHtml += '<div style="max-height:200px;overflow-y:auto;">';
+    chartHtml += '<table class="admin-platform-table" style="font-size:11px;"><thead><tr><th>URL</th><th>Status</th><th>Coverage</th></tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var path = '/';
+      try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+      var vc = r.verdict === 'PASS' ? 'admin-green' : r.verdict === 'NEUTRAL' ? 'admin-amber' : 'admin-red';
+      chartHtml += '<tr><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + path + '</td>' +
+        '<td class="' + vc + '">' + (r.verdict || '—') + '</td>' +
+        '<td style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + (r.coverage_state || '—') + '</td></tr>';
+    });
+    chartHtml += '</tbody></table></div>';
+    el.innerHTML = chartHtml;
+  }
+}
+
+function renderGscQueries() {
+  var el = document.getElementById('seo-side-queries');
+  if (!el) return;
+  var queries = _seoData.gsc_queries || [];
+  if (!queries.length) { el.innerHTML = '<div class="seo-empty">No search queries yet</div>'; return; }
+  var qMap = {};
+  queries.forEach(function(r) { if (!r.query) return; if (!qMap[r.query]) qMap[r.query] = { clicks:0, impressions:0, position:0, count:0 }; qMap[r.query].clicks += r.clicks||0; qMap[r.query].impressions += r.impressions||0; qMap[r.query].position += r.position||0; qMap[r.query].count++; });
+  var sorted = Object.entries(qMap).sort(function(a,b) { return b[1].clicks - a[1].clicks; }).slice(0,20);
+  el.innerHTML = '<table class="admin-platform-table"><thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>Avg Position</th></tr></thead><tbody>' +
+    sorted.map(function(e) {
+      var q = e[0], d = e[1];
+      var pos = d.count > 0 ? (d.position / d.count).toFixed(1) : '\u2014';
+      return '<tr><td class="admin-platform-name" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + q + '</td>' +
+        '<td class="admin-green">' + d.clicks + '</td>' +
+        '<td>' + d.impressions + '</td>' +
+        '<td>' + pos + '</td></tr>';
+    }).join('') + '</tbody></table>';
+}
+
+function renderKnowledgeGraph() {
+  var el = document.getElementById('seo-side-kg');
+  if (!el) return;
+  var kgData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'knowledge_graph'; });
+  if (!kgData.length) { el.innerHTML = '<div class="seo-empty">No Knowledge Graph data yet</div>'; return; }
+  var entities = (kgData[kgData.length-1].metrics && kgData[kgData.length-1].metrics.entities) || [];
+  if (!entities.length) { el.innerHTML = '<div class="seo-empty">No entities found</div>'; return; }
+  el.innerHTML = entities.map(function(e) {
+    return '<div class="seo-entity-row">' +
+      '<span class="seo-entity-name">' + (e.name || '\u2014') + '</span>' +
+      '<span class="seo-entity-type">' + (e.type || '') + '</span>' +
+      (e.score ? '<span class="seo-entity-score">' + e.score.toFixed(1) + '</span>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function renderPsiDrilldown() {
+  var el = document.getElementById('seo-side-psi');
+  if (!el) return;
+  var audits = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'psi_mobile'; });
+  if (!audits.length) { el.innerHTML = '<div class="seo-empty">No PSI data yet</div>'; return; }
+  var latest = audits[audits.length-1];
+  var issues = latest.issues || [];
+  var m = latest.metrics || {};
+  var vitals = [
+    { label:'FCP', val:m.fcp?(m.fcp/1000).toFixed(2)+'s':'\u2014', good:m.fcp<1800 },
+    { label:'LCP', val:m.lcp?(m.lcp/1000).toFixed(2)+'s':'\u2014', good:m.lcp<2500 },
+    { label:'CLS', val:m.cls!=null?m.cls.toFixed(3):'\u2014', good:m.cls<0.1 },
+    { label:'TBT', val:m.tbt!=null?Math.round(m.tbt)+'ms':'\u2014', good:m.tbt<200 },
+  ];
+  var html = '<div class="seo-metric-row" style="gap:24px;">';
+  vitals.forEach(function(v) {
+    html += '<div class="seo-vital"><div class="seo-vital-value ' + (v.good ? 'admin-green' : 'admin-red') + '">' + v.val + '</div><div class="seo-vital-label">' + v.label + '</div></div>';
+  });
+  html += '</div>';
+  if (issues.length > 0) {
+    html += '<div class="seo-issue-list">' + issues.slice(0,8).map(function(i) {
+      return '<div class="seo-issue-item">' + (i.title || i.id) + '</div>';
+    }).join('') + '</div>';
+  } else {
+    html += '<div class="seo-metric-row"><span class="seo-metric-value admin-green">\u2713 No issues flagged</span></div>';
+  }
+  el.innerHTML = html;
+}
+
+
+// ─── DataForSEO On-Page Audit ───
+function renderDfsAudit() {
+  var el = document.getElementById('seo-side-dfs');
+  if (!el) return;
+  var dfsData = (_seoData.tech_audits || []).filter(function(r) { return r.source === 'dataforseo'; });
+  if (!dfsData.length) { el.innerHTML = '<div class="seo-empty">No DataForSEO data yet \u2014 <a href="#" onclick="triggerSeoSync([&#39;dataforseo&#39;]);return false;">run sync</a></div>'; return; }
+
+  if (_seoUrl) {
+    var latest = dfsData.filter(function(r) { return r.url === _seoUrl; });
+    latest = latest.length ? latest[latest.length - 1] : dfsData[dfsData.length - 1];
+    var m = latest.metrics || {};
+    var issues = latest.issues || [];
+    var sc = latest.score;
+    var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
+    var scDisplay = sc != null ? sc : '\u2014';
+    el.innerHTML =
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">On-Page Score</span> <span class="seo-metric-value ' + scColor + '" style="font-size:22px;">' + scDisplay + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Checks</span> <span class="seo-metric-value"><span class="admin-green">' + (m.checks_passed || 0) + '</span>/<span>' + (m.checks_total || 0) + '</span></span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Status</span> <span class="seo-metric-value">' + (m.status_code || '\u2014') + '</span></div>' +
+      '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Title</span> <span class="seo-metric-value" title="' + (m.title || '').replace(/"/g, '&quot;') + '">' + (m.title_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Desc</span> <span class="seo-metric-value">' + (m.description_length || 0) + ' chars</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">H1/H2/H3</span> <span class="seo-metric-value">' + (m.h1_count||0) + '/' + (m.h2_count||0) + '/' + (m.h3_count||0) + '</span></div>' +
+      '</div>' +
+      '<div class="seo-metric-row">' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Int Links</span> <span class="seo-metric-value">' + (m.internal_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Ext Links</span> <span class="seo-metric-value">' + (m.external_links || 0) + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Images</span> <span class="seo-metric-value">' + (m.images_count || 0) + (m.images_without_alt ? ' <span class="admin-amber">(' + m.images_without_alt + ' no alt)</span>' : '') + '</span></div>' +
+        '<div class="seo-metric-item"><span class="seo-metric-label">Size</span> <span class="seo-metric-value">' + (m.page_size ? Math.round(m.page_size/1024) + 'KB' : '\u2014') + '</span></div>' +
+      '</div>' +
+      (issues.length > 0 ? '<div style="margin-top:8px;font-size:10px;text-transform:uppercase;color:var(--text-faint);font-weight:600;letter-spacing:0.5px;">Failed Checks (' + issues.length + ')</div><div class="seo-issue-list">' + issues.slice(0,10).map(function(i) { return '<div class="seo-issue-item">\u2717 ' + (i.message || i.check || '\u2014') + '</div>'; }).join('') + '</div>' : '<div class="seo-metric-row" style="margin-top:4px;"><span class="seo-metric-value admin-green">\u2713 All checks passed</span></div>');
+  } else {
+    // Aggregate — table of all pages with scores
+    var latestDate = dfsData[dfsData.length - 1].date;
+    var latest = dfsData.filter(function(r) { return r.date === latestDate; });
+    var avgScore = latest.reduce(function(s, r) { return s + (r.score || 0); }, 0);
+    avgScore = latest.length ? Math.round(avgScore / latest.length) : 0;
+    var avgColor = avgScore >= 90 ? 'admin-green' : avgScore >= 50 ? 'admin-amber' : 'admin-red';
+    el.innerHTML = '<div style="margin-bottom:8px;"><span class="seo-metric-label">Avg On-Page Score</span> <span class="seo-metric-value ' + avgColor + '" style="font-size:18px;margin-left:6px;">' + avgScore + '</span></div>' +
+      '<table class="admin-platform-table"><thead><tr><th>Page</th><th>Score</th><th>Title</th><th>H1s</th><th>Links</th><th>Issues</th></tr></thead><tbody>' +
+      latest.map(function(r) {
+        var m = r.metrics || {};
+        var path = '/';
+        try { path = new URL(r.url).pathname || '/'; } catch(e) {}
+        var sc = r.score;
+        var scColor = sc >= 90 ? 'admin-green' : sc >= 50 ? 'admin-amber' : sc != null ? 'admin-red' : '';
+        return '<tr><td class="admin-platform-name" style="font-family:var(--mono)!important;">' + path + '</td>' +
+          '<td class="' + scColor + '" style="font-weight:600;">' + (sc != null ? sc : '\u2014') + '</td>' +
+          '<td>' + (m.title_length || 0) + '</td>' +
+          '<td>' + (m.h1_count || 0) + '</td>' +
+          '<td>' + ((m.internal_links||0) + (m.external_links||0)) + '</td>' +
+          '<td>' + (Array.isArray(r.issues) ? r.issues.length : 0) + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+}
+
+// ─── Sync Trigger ───
+async function triggerSeoSync(tasks) {
+  var btn = document.getElementById('seo-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing\u2026'; }
+  try {
+    var session = (await sb.auth.getSession()).data.session;
+    if (!session) { alert('Sign in required'); return; }
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/seo-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ tasks: tasks || ['all'] })
+    });
+    var data = await resp.json();
+    console.log('[Admin] SEO sync result:', data);
+    if (btn) btn.textContent = 'Done \u2713';
+    setTimeout(function() { if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; } }, 2000);
+    _adminTabInit['seo'] = false;
+    loadSeoTab();
+  } catch(err) {
+    console.error('[Admin] SEO sync error:', err); toastError('SEO sync failed');
+    if (btn) { btn.disabled = false; btn.textContent = '\u21BB Sync All'; }
+    alert('Sync failed: ' + err.message);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// TAB 5: REVENUE
+// ═══════════════════════════════════════════════════════════
+
+async function loadRevenueTab(daysBack) {
+  daysBack = daysBack || 30;
+  console.log('[Admin] loadRevenueTab', daysBack, 'days');
+  try {
+    var res = await sb.rpc('get_admin_revenue', { p_days_back: daysBack });
+    if (res.error) { console.error('[Admin] Revenue RPC error:', res.error); toastWarning('Revenue data unavailable'); return; }
+    var d = res.data;
+    if (!d) return;
+
+    // KPI Cards
+    setAdminText('ar-total-users', fmtAdminNum(d.total_users));
+    var paidCount = (d.tier_distribution || []).filter(function(t) { return t.tier !== 'free'; }).reduce(function(s, t) { return s + t.user_count; }, 0);
+    setAdminText('ar-paid-subs', fmtAdminNum(paidCount));
+    var cs = d.credit_stats || {};
+    setAdminText('ar-credits-granted', fmtAdminNum(cs.total_credits_granted || 0));
+    setAdminText('ar-credits-used', fmtAdminNum(cs.total_credits_used || 0));
+    setAdminText('ar-active-users', fmtAdminNum(cs.unique_users || 0));
+    var totalCost = (d.cost_breakdown || []).reduce(function(s, c) { return s + (c.total_cost_cents || 0); }, 0);
+    setAdminText('ar-platform-cost', '$' + (totalCost / 100).toFixed(2));
+
+    // Tier Distribution Pie Chart
+    var tierData = (d.tier_distribution || []).map(function(t) {
+      return { name: (t.tier || 'free').charAt(0).toUpperCase() + (t.tier || 'free').slice(1), value: t.user_count };
+    });
+    if (tierData.length === 0) tierData = [{ name: 'Free', value: d.total_users || 0 }];
+    var tierChart = echarts.init(document.getElementById('ar-chart-tiers'));
+    tierChart.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      series: [{
+        type: 'pie', radius: ['40%', '70%'], center: ['50%', '55%'],
+        label: { show: true, formatter: '{b}\n{c}', fontSize: 11 },
+        data: tierData,
+        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 }
+      }]
+    });
+
+    // Daily Credit Activity Bar Chart
+    var dailyData = d.daily_activity || [];
+    var dailyChart = echarts.init(document.getElementById('ar-chart-daily'));
+    dailyChart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: 40, right: 16, top: 20, bottom: 28 },
+      xAxis: { type: 'category', data: dailyData.map(function(r) { return r.day; }), axisLabel: { fontSize: 10, rotate: 45 } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 10 } },
+      series: [
+        { name: 'Granted', type: 'bar', stack: 'credits', data: dailyData.map(function(r) { return r.credits_in; }), itemStyle: { color: 'hsl(142, 60%, 50%)' } },
+        { name: 'Used', type: 'bar', stack: 'used', data: dailyData.map(function(r) { return r.credits_out; }), itemStyle: { color: 'hsl(0, 70%, 55%)' } }
+      ]
+    });
+
+    // Revenue by Type Table
+    var typeBody = document.getElementById('ar-type-body');
+    if (typeBody) {
+      typeBody.innerHTML = (d.revenue_by_type || []).map(function(r) {
+        return '<tr><td class="admin-platform-name">' + r.type + '</td>' +
+          '<td>' + fmtAdminNum(r.tx_count) + '</td>' +
+          '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(r.credits_in) + '</td>' +
+          '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(r.credits_out) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">No transactions yet</td></tr>';
+    }
+
+    // Cost Breakdown Table
+    var costBody = document.getElementById('ar-cost-body');
+    if (costBody) {
+      costBody.innerHTML = (d.cost_breakdown || []).map(function(r) {
+        return '<tr><td class="admin-platform-name">' + (r.cost_category || '—').toUpperCase() + '</td>' +
+          '<td>' + fmtAdminNum(r.tx_count) + '</td>' +
+          '<td>$' + (r.total_cost_cents / 100).toFixed(2) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No cost data yet</td></tr>';
+    }
+
+    // Top Users Table
+    var usersBody = document.getElementById('ar-users-body');
+    if (usersBody) {
+      usersBody.innerHTML = (d.top_users || []).map(function(u) {
+        var email = escapeHtml(u.email || u.user_id.substring(0, 8)) + '...';
+        return '<tr><td class="admin-platform-name">' + email + '</td>' +
+          '<td style="color:hsl(0,70%,50%)">' + fmtAdminNum(u.credits_used) + '</td>' +
+          '<td style="color:hsl(142,60%,40%)">' + fmtAdminNum(u.credits_granted) + '</td>' +
+          '<td>' + fmtAdminNum(u.tx_count) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-faint)">No credit usage yet</td></tr>';
+    }
+
+    // Resize charts on window resize
+    window.addEventListener('resize', function() { tierChart.resize(); dailyChart.resize(); });
+
+  } catch (err) {
+    console.error('[Admin] loadRevenueTab error:', err); toastError('Failed to load revenue data');
+  }
+}
+
+// ─── P13-10: Survey Analytics Tab ───
+var _surveyDays = 30;
+
+// Period toggle — now in Feedback page
+(function() {
+  var toggle = document.getElementById('fb-survey-period-toggle');
+  if (!toggle) return;
+  toggle.addEventListener('click', function(e) {
+    var btn = e.target.closest('.admin-period-btn');
+    if (!btn) return;
+    toggle.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _surveyDays = parseInt(btn.dataset.fbSurveyDays);
+    _adminTabInit['surveys'] = false;
+    loadSurveysTab();
+  });
+})();
+
+// Expose for feedback tab switching
+window.loadSurveyData = loadSurveysTab;
+
+async function loadSurveysTab() {
+  console.log('[Admin] loadSurveysTab', _surveyDays, 'days');
+  _adminTabInit['surveys'] = true;
+
+  try {
+    var res = await sb.rpc('get_survey_analytics', { p_days: _surveyDays });
+    if (res.error) throw res.error;
+    var d = res.data || {};
+
+    // KPIs
+    setAdminText('sv-total', (d.total_responses || 0).toLocaleString());
+    setAdminText('sv-respondents', (d.unique_respondents || 0).toLocaleString());
+
+    // Avg completion: estimate from versions data
+    var versions = d.versions || [];
+    var totalQ = 0, totalV = 0;
+    versions.forEach(function(v) { if (v.avg_rating) { totalQ += v.count; totalV++; } });
+    setAdminText('sv-completion', versions.length > 0 ? versions.length + ' types' : '—');
+
+    // Avg NPS
+    var npsVersions = versions.filter(function(v) { return v.avg_nps !== null; });
+    if (npsVersions.length > 0) {
+      var avgNps = npsVersions.reduce(function(s, v) { return s + parseFloat(v.avg_nps); }, 0) / npsVersions.length;
+      setAdminText('sv-nps', avgNps.toFixed(1));
+    } else {
+      setAdminText('sv-nps', '—');
+    }
+
+    // Chart: Responses by Version (bar)
+    renderSurveyVersionsChart(versions);
+
+    // Chart: Daily volume (line)
+    renderSurveyDailyChart(d.daily || []);
+
+    // Chart: NPS trend (line)
+    renderSurveyNpsChart(d.nps_monthly || []);
+
+    // Chart: Completion funnel (placeholder — shows version distribution as funnel)
+    renderSurveyFunnel(versions);
+
+    // Recent responses table
+    renderSurveyRecentTable(d.recent || []);
+
+  } catch (err) {
+    console.error('[Admin] loadSurveysTab error:', err); toastError('Failed to load survey data');
+  }
+}
+
+function renderSurveyVersionsChart(versions) {
+  var el = document.getElementById('sv-chart-versions');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (versions.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No survey data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: versions.map(function(v) { return v.version; }), axisLabel: { rotate: 30, fontSize: 11 } },
+    yAxis: { type: 'value', name: 'Responses' },
+    series: [{
+      type: 'bar',
+      data: versions.map(function(v) { return v.count; }),
+      itemStyle: { color: '#6b82a8', borderRadius: [4, 4, 0, 0] }
+    }],
+    grid: { left: 50, right: 16, top: 30, bottom: 60 }
+  });
+}
+
+function renderSurveyDailyChart(daily) {
+  var el = document.getElementById('sv-chart-daily');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (daily.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No daily data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: daily.map(function(d) { return d.date; }), axisLabel: { fontSize: 10 } },
+    yAxis: { type: 'value' },
+    series: [{
+      type: 'line',
+      data: daily.map(function(d) { return d.count; }),
+      smooth: true,
+      areaStyle: { opacity: 0.15 },
+      lineStyle: { color: '#6b82a8' },
+      itemStyle: { color: '#6b82a8' }
+    }],
+    grid: { left: 40, right: 16, top: 20, bottom: 40 }
+  });
+}
+
+function renderSurveyNpsChart(npsMonthly) {
+  var el = document.getElementById('sv-chart-nps');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (npsMonthly.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No NPS data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  chart.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['Promoters', 'Passives', 'Detractors'], bottom: 0, textStyle: { fontSize: 11 } },
+    xAxis: { type: 'category', data: npsMonthly.map(function(m) { return m.month; }) },
+    yAxis: { type: 'value' },
+    series: [
+      { name: 'Promoters', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.promoters; }), itemStyle: { color: '#5b8a72' } },
+      { name: 'Passives', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.passives; }), itemStyle: { color: '#a08858' } },
+      { name: 'Detractors', type: 'bar', stack: 'nps', data: npsMonthly.map(function(m) { return m.detractors; }), itemStyle: { color: '#c06060' } }
+    ],
+    grid: { left: 40, right: 16, top: 20, bottom: 50 }
+  });
+}
+
+function renderSurveyFunnel(versions) {
+  var el = document.getElementById('sv-chart-funnel');
+  if (!el || !window.echarts) return;
+  var chart = echarts.init(el);
+  if (versions.length === 0) {
+    chart.setOption({ graphic: { type: 'text', left: 'center', top: 'center', style: { text: 'No funnel data yet', fill: '#888', fontSize: 14 } } });
+    return;
+  }
+  // Group by type: periodic, exit, nps, micro
+  var groups = {};
+  versions.forEach(function(v) {
+    var type = 'other';
+    if (v.version.indexOf('periodic') === 0) type = 'Periodic';
+    else if (v.version.indexOf('exit') === 0) type = 'Exit';
+    else if (v.version.indexOf('nps') === 0) type = 'NPS';
+    else if (v.version.indexOf('micro') === 0) type = 'Micro-survey';
+    groups[type] = (groups[type] || 0) + v.count;
+  });
+  var data = Object.keys(groups).map(function(k) { return { name: k, value: groups[k] }; });
+  data.sort(function(a, b) { return b.value - a.value; });
+
+  chart.setOption({
+    tooltip: { trigger: 'item' },
+    series: [{
+      type: 'funnel',
+      left: '10%',
+      width: '80%',
+      top: 10,
+      bottom: 10,
+      sort: 'descending',
+      gap: 4,
+      label: { show: true, position: 'inside', formatter: '{b}: {c}', fontSize: 12 },
+      itemStyle: { borderWidth: 1, borderColor: '#fff' },
+      data: data
+    }]
+  });
+}
+
+function renderSurveyRecentTable(recent) {
+  var tbody = document.getElementById('sv-responses-body');
+  if (!tbody) return;
+  if (recent.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:24px;">No survey responses yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map(function(r) {
+    var date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    var userId = (r.user_id || 'anon').substring(0, 8);
+    var nps = r.nps_score != null ? r.nps_score : '—';
+    var rating = r.overall_rating != null ? '★'.repeat(r.overall_rating) : '—';
+    var qCount = r.q_count || '—';
+    return '<tr><td>' + date + '</td><td><code style="font-size:12px">' + (r.survey_version || '') + '</code></td><td><code style="font-size:11px">' + userId + '</code></td><td>' + qCount + '</td><td>' + nps + '</td><td>' + rating + '</td></tr>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GHOST TAB
+// ═══════════════════════════════════════════════════════════════
+
+async function loadGhostTab() {
+  try {
+    // KPI: total applications tracked
+    var { count: totalApps } = await sb.from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .in('stage', ['applied', 'posting_closed', 'responded', 'interview', 'rejected', 'archived']);
+    setAdminText('ag-total-apps', fmtAdminNum(totalApps || 0));
+
+    // KPI: ghosted count
+    var { count: ghostedCount } = await sb.from('user_pipeline')
+      .select('*', { count: 'exact', head: true })
+      .in('stage', ['applied', 'posting_closed'])
+      .lt('applied_at', new Date(Date.now() - 21 * 86400000).toISOString());
+    setAdminText('ag-ghosted', fmtAdminNum(ghostedCount || 0));
+
+    // KPI: gmail connected
+    var { count: gmailCount } = await sb.from('gmail_connections')
+      .select('*', { count: 'exact', head: true })
+      .eq('sync_status', 'active');
+    setAdminText('ag-gmail-connected', gmailCount || 0);
+
+    // Company ghost stats table
+    var { data: stats } = await sb.from('company_ghost_stats')
+      .select('*')
+      .order('ghost_rate', { ascending: false });
+
+    var tbody = document.getElementById('ag-company-body');
+    if (!stats || stats.length === 0) {
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-faint);padding:24px;">No ghost stats yet. Data populates as users track applications.</td></tr>';
+      setAdminText('ag-avg-response', '—');
+      renderAdminGhostChart([]);
+      return;
+    }
+
+    // KPI: avg response days
+    var responseDays = stats.filter(function(s) { return s.avg_response_days > 0; });
+    var avgResp = responseDays.length > 0
+      ? Math.round(responseDays.reduce(function(a, b) { return a + b.avg_response_days; }, 0) / responseDays.length)
+      : 0;
+    setAdminText('ag-avg-response', avgResp > 0 ? avgResp + 'd' : '—');
+
+    // Render table
+    if (tbody) {
+      tbody.innerHTML = stats.map(function(s) {
+        var rate = s.ghost_rate != null ? Math.round(s.ghost_rate * 100) : 0;
+        var rateColor = rate >= 50 ? '#c06060' : rate >= 25 ? '#a08858' : '#4a9a6b';
+        var responded = (s.total_applications || 0) - (s.ghosted_count || 0);
+        var lastActivity = s.updated_at ? new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+        var avgDays = s.avg_response_days > 0 ? s.avg_response_days + 'd' : '—';
+
+        return '<tr>' +
+          '<td style="font-weight:600;text-transform:capitalize;">' + escapeHtml((s.company_slug || '—').replace(/-/g, ' ')) + '</td>' +
+          '<td>' + (s.total_applications || 0) + '</td>' +
+          '<td>' + responded + '</td>' +
+          '<td>' + (s.ghosted_count || 0) + '</td>' +
+          '<td style="color:' + rateColor + ';font-weight:600;">' + rate + '%</td>' +
+          '<td>' + avgDays + '</td>' +
+          '<td>' + lastActivity + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    renderAdminGhostChart(stats);
+
+  } catch (err) {
+    console.error('[BJ] Ghost admin error:', err); toastError('Ghost admin failed to load');
+    var tbody = document.getElementById('ag-company-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px;">Error: ' + escapeHtml(err.message || 'unknown') + '</td></tr>';
+  }
+}
+
+var _adminGhostChart = null;
+function renderAdminGhostChart(stats) {
+  var el = document.getElementById('ag-ghost-chart');
+  if (!el || !window.echarts) return;
+  if (_adminGhostChart) _adminGhostChart.dispose();
+  _adminGhostChart = echarts.init(el);
+
+  if (!stats || stats.length === 0) {
+    _adminGhostChart.setOption({
+      title: { text: 'No data yet', left: 'center', top: 'center', textStyle: { color: '#a0aec0', fontSize: 14 } }
+    });
+    return;
+  }
+
+  // Top 15 companies by total applications, sorted by ghost rate
+  var top = stats.filter(function(s) { return s.total_applications >= 1; })
+    .sort(function(a, b) { return (b.ghost_rate || 0) - (a.ghost_rate || 0); })
+    .slice(0, 15);
+
+  var names = top.map(function(s) { return (s.company_slug || '').replace(/-/g, ' '); });
+  var rates = top.map(function(s) { return Math.round((s.ghost_rate || 0) * 100); });
+  var colors = rates.map(function(r) { return r >= 50 ? '#c06060' : r >= 25 ? '#a08858' : '#4a9a6b'; });
+
+  var isDark = document.body.classList.contains('dark');
+  var textColor = isDark ? '#a0aec0' : '#4a5568';
+
+  _adminGhostChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 120, right: 24, top: 12, bottom: 24 },
+    xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%', color: textColor, fontSize: 11 }, splitLine: { lineStyle: { color: isDark ? '#2d3748' : '#e2e8f0' } } },
+    yAxis: { type: 'category', data: names.reverse(), axisLabel: { color: textColor, fontSize: 11, width: 100, overflow: 'truncate' } },
+    series: [{
+      type: 'bar',
+      data: rates.slice().reverse().map(function(v, i) {
+        var c = v >= 50 ? '#c06060' : v >= 25 ? '#a08858' : '#4a9a6b';
+        return { value: v, itemStyle: { color: c } };
+      }),
+      barWidth: 16, itemStyle: { borderRadius: [0, 4, 4, 0] },
+      label: { show: true, position: 'right', formatter: '{c}%', fontSize: 11, color: textColor }
+    }]
+  });
+}
+
+// ============================================================
+// SEO EXTRACT REPORT — v4.47
+// Generates a downloadable HTML report combining all 5 SEO tools
+// ============================================================
+window.generateSeoReport = async function() {
+  var btn = document.getElementById('seo-export-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+
+  try {
+    var url = _seoUrl || 'https://brilliantjobs.app/';
+    var strategy = 'Mobile';
+    var now = new Date().toLocaleString();
+
+    // Gather data from _seoData (already loaded by SEO tab)
+    var techAudits = (_seoData.tech_audits || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var psiAudits = techAudits.filter(function(r) { return r.source === 'psi_mobile'; });
+    var dfAudits = techAudits.filter(function(r) { return r.source === 'dataforseo'; });
+    var yltAudits = techAudits.filter(function(r) { return r.source === 'yellowlab'; });
+    var indexStatus = (_seoData.index_status || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var siteDailyArr = _seoData.site_daily || [];
+    var pageDailyArr = (_seoData.page_daily || []).filter(function(r) { return r.url === url || !_seoUrl; });
+    var gscQueries = _seoData.gsc_queries || [];
+
+    // PSI scores
+    var latestPsi = psiAudits.length ? psiAudits[psiAudits.length - 1] : null;
+    var psiMetrics = latestPsi ? (latestPsi.metrics || {}) : {};
+    var perfScore = psiMetrics.performance || 0;
+    var grade = perfScore >= 90 ? 'A' : perfScore >= 70 ? 'B' : perfScore >= 50 ? 'C' : perfScore >= 30 ? 'D' : 'F';
+    var gradeColor = { A: '#22c55e', B: '#84cc16', C: '#f59e0b', D: '#f97316', F: '#ef4444' }[grade];
+
+    // DataForSEO
+    var latestDf = dfAudits.length ? dfAudits[dfAudits.length - 1] : null;
+    var dfMetrics = latestDf ? (latestDf.metrics || {}) : {};
+
+    // YLT
+    var latestYlt = yltAudits.length ? yltAudits[yltAudits.length - 1] : null;
+    var yltMetrics = latestYlt ? (latestYlt.metrics || {}) : {};
+
+    // Index status
+    var latestIdx = indexStatus.length ? indexStatus[indexStatus.length - 1] : null;
+    var idxData = latestIdx ? (latestIdx.details || latestIdx.metrics || {}) : {};
+
+    // GSC totals
+    var gscTotalClicks = siteDailyArr.reduce(function(a, r) { return a + (r.total_clicks || 0); }, 0);
+    var gscTotalImpr = siteDailyArr.reduce(function(a, r) { return a + (r.total_impressions || 0); }, 0);
+    var gscAvgPos = siteDailyArr.filter(function(r) { return r.avg_position > 0; });
+    var avgPos = gscAvgPos.length ? (gscAvgPos.reduce(function(a, r) { return a + r.avg_position; }, 0) / gscAvgPos.length).toFixed(1) : '—';
+
+    function scoreBar(val, max) {
+      max = max || 100;
+      var pct = Math.min(100, Math.round((val / max) * 100));
+      var c = pct >= 90 ? '#22c55e' : pct >= 70 ? '#84cc16' : pct >= 50 ? '#f59e0b' : '#ef4444';
+      return '<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div style="width:' + pct + '%;height:100%;background:' + c + ';border-radius:4px;"></div></div><span style="font-weight:700;color:' + c + ';">' + val + '</span></div>';
+    }
+
+    function row(label, value) {
+      return '<tr><td style="padding:6px 12px;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;">' + label + '</td><td style="padding:6px 12px;font-weight:600;border-bottom:1px solid #f3f4f6;">' + (value != null ? value : '—') + '</td></tr>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>SEO Report — ' + url + '</title>' +
+      '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a2e;background:#fff;padding:40px;max-width:900px;margin:0 auto;line-height:1.5}' +
+      'h1{font-size:22px;margin-bottom:4px}h2{font-size:16px;color:#4b5563;margin:32px 0 12px;padding-bottom:8px;border-bottom:2px solid #e5e7eb}h3{font-size:14px;color:#6b7280;margin:16px 0 8px}' +
+      'table{width:100%;border-collapse:collapse;margin-bottom:16px}th{text-align:left;padding:8px 12px;background:#f9fafb;font-size:12px;color:#6b7280;border-bottom:2px solid #e5e7eb}' +
+      'td{padding:6px 12px;font-size:13px;border-bottom:1px solid #f3f4f6}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}' +
+      '.metric-card{background:#f9fafb;border-radius:8px;padding:16px;text-align:center}.metric-card .val{font-size:28px;font-weight:700}.metric-card .lbl{font-size:11px;color:#6b7280;margin-top:4px}' +
+      '.grade{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;font-size:24px;font-weight:800;color:#fff}' +
+      '@media print{body{padding:20px}h2{page-break-before:auto}}</style></head><body>';
+
+    // Header
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">';
+    html += '<div><h1>SEO Report</h1><div style="font-size:13px;color:#6b7280;">' + url + '</div><div style="font-size:11px;color:#9ca3af;">Generated ' + now + ' · Strategy: ' + strategy + '</div></div>';
+    html += '<div class="grade" style="background:' + gradeColor + ';">' + grade + '</div>';
+    html += '</div>';
+
+    // Section 1: PSI Scores
+    html += '<h2>1. PageSpeed Insights</h2>';
+    html += '<div class="metric-grid">';
+    ['Performance', 'SEO', 'Accessibility', 'Best Practices'].forEach(function(cat) {
+      var key = cat.toLowerCase().replace(' ', '_');
+      var val = psiMetrics[key] || 0;
+      var c = val >= 90 ? '#22c55e' : val >= 70 ? '#f59e0b' : '#ef4444';
+      html += '<div class="metric-card"><div class="val" style="color:' + c + ';">' + val + '</div><div class="lbl">' + cat + '</div></div>';
+    });
+    html += '</div>';
+
+    // Core Web Vitals
+    html += '<h3>Core Web Vitals</h3><table>';
+    html += '<tr><th>Metric</th><th>Value</th><th>Status</th></tr>';
+    var cwv = [
+      ['LCP', psiMetrics.lcp, '< 2.5s'],
+      ['FID / INP', psiMetrics.inp || psiMetrics.fid, '< 200ms'],
+      ['CLS', psiMetrics.cls, '< 0.1'],
+      ['TBT', psiMetrics.tbt, '< 200ms'],
+      ['FCP', psiMetrics.fcp, '< 1.8s'],
+      ['Speed Index', psiMetrics.speed_index || psiMetrics.si, '< 3.4s'],
+    ];
+    cwv.forEach(function(m) {
+      var val = m[1] != null ? m[1] : '—';
+      html += '<tr><td style="padding:6px 12px;font-weight:600;border-bottom:1px solid #f3f4f6;">' + m[0] + '</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + val + '</td><td style="padding:6px 12px;color:#6b7280;font-size:11px;border-bottom:1px solid #f3f4f6;">Target: ' + m[2] + '</td></tr>';
+    });
+    html += '</table>';
+
+    // PSI Opportunities
+    if (latestPsi && latestPsi.details && latestPsi.details.opportunities) {
+      html += '<h3>Opportunities</h3><table><tr><th>Audit</th><th>Savings</th></tr>';
+      latestPsi.details.opportunities.forEach(function(o) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (o.title || o.id || '—') + '</td><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (o.savings || o.displayValue || '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    // Section 2: DataForSEO
+    html += '<h2>2. On-Page Audit (DataForSEO)</h2>';
+    if (latestDf) {
+      html += '<table>';
+      html += row('Title', dfMetrics.title || '—');
+      html += row('Title Length', dfMetrics.title_length || '—');
+      html += row('Meta Description', (dfMetrics.meta_description || '—').toString().slice(0, 120));
+      html += row('H1 Count', dfMetrics.h1_count || '—');
+      html += row('Word Count', dfMetrics.word_count || '—');
+      html += row('Internal Links', dfMetrics.internal_links || '—');
+      html += row('External Links', dfMetrics.external_links || '—');
+      html += row('Images', dfMetrics.images_count || '—');
+      html += row('Images without Alt', dfMetrics.images_without_alt || '—');
+      html += row('Readability', dfMetrics.readability_score || '—');
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No DataForSEO audit data available. Run a sync first.</p>';
+    }
+
+    // Section 3: URL Inspection
+    html += '<h2>3. URL Inspection (Google Index)</h2>';
+    if (latestIdx) {
+      html += '<table>';
+      html += row('Index Status', idxData.indexing_state || idxData.verdict || '—');
+      html += row('Coverage State', idxData.coverage_state || '—');
+      html += row('Last Crawl', idxData.last_crawl_time || idxData.last_crawl || '—');
+      html += row('Crawl Status', idxData.crawl_status || idxData.pageFetchState || '—');
+      html += row('Google Canonical', idxData.google_canonical || idxData.googleCanonical || '—');
+      html += row('User Canonical', idxData.user_canonical || idxData.userCanonical || '—');
+      html += row('Mobile Usability', idxData.mobile_usability || idxData.mobileFriendly || '—');
+      html += row('Rich Results', idxData.rich_results || '—');
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No URL Inspection data. Requires Google Service Account with Search Console access.</p>';
+    }
+
+    // Section 4: Yellow Lab Tools
+    html += '<h2>4. Page Quality (Yellow Lab Tools)</h2>';
+    if (latestYlt) {
+      html += '<table>';
+      html += row('Global Score', scoreBar(yltMetrics.globalScore || yltMetrics.global_score || 0));
+      var yltCats = ['weight', 'requests', 'domComplexity', 'cssComplexity', 'jsComplexity', 'fonts', 'serverConfig', 'images'];
+      yltCats.forEach(function(cat) {
+        var val = yltMetrics[cat] || yltMetrics[cat.replace(/([A-Z])/g, '_$1').toLowerCase()];
+        if (val != null) html += row(cat.replace(/([A-Z])/g, ' $1').replace(/^./, function(s) { return s.toUpperCase(); }), typeof val === 'number' ? scoreBar(val) : val);
+      });
+      html += '</table>';
+    } else {
+      html += '<p style="color:#9ca3af;font-style:italic;">No Yellow Lab Tools data available.</p>';
+    }
+
+    // Section 5: CrUX / GSC Performance
+    html += '<h2>5. Search Performance (Google Search Console)</h2>';
+    html += '<div class="metric-grid">';
+    html += '<div class="metric-card"><div class="val">' + gscTotalClicks + '</div><div class="lbl">Total Clicks</div></div>';
+    html += '<div class="metric-card"><div class="val">' + gscTotalImpr.toLocaleString() + '</div><div class="lbl">Total Impressions</div></div>';
+    html += '<div class="metric-card"><div class="val">' + avgPos + '</div><div class="lbl">Avg Position</div></div>';
+    html += '<div class="metric-card"><div class="val">' + siteDailyArr.length + '</div><div class="lbl">Days of Data</div></div>';
+    html += '</div>';
+
+    if (gscQueries.length > 0) {
+      html += '<h3>Top Queries</h3><table><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr>';
+      gscQueries.slice(0, 20).forEach(function(q) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.query || '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.clicks || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.impressions || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.ctr ? (q.ctr * 100).toFixed(1) + '%' : '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (q.position ? q.position.toFixed(1) : '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    // Daily breakdown
+    if (siteDailyArr.length > 0) {
+      html += '<h3>Daily Performance</h3><table><tr><th>Date</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr>';
+      siteDailyArr.slice(-14).forEach(function(r) {
+        html += '<tr><td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + r.date + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.total_clicks || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.total_impressions || 0) + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.avg_ctr ? (r.avg_ctr * 100).toFixed(1) + '%' : '—') + '</td>';
+        html += '<td style="padding:6px 12px;border-bottom:1px solid #f3f4f6;">' + (r.avg_position || '—') + '</td></tr>';
+      });
+      html += '</table>';
+    }
+
+    html += '<div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;">Brilliant Jobs SEO Report · Generated ' + now + ' · <a href="https://brilliantjobs.app">brilliantjobs.app</a></div>';
+    html += '</body></html>';
+
+    // Create downloadable HTML file
+    var blob = new Blob([html], { type: 'text/html' });
+    var downloadUrl = URL.createObjectURL(blob);
+    var slug = url.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/-$/, '');
+    var dateStr = new Date().toISOString().slice(0, 10);
+    var a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = 'seo-report-' + slug + '-' + dateStr + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(downloadUrl);
+
+    if (typeof showToast === 'function') showToast('SEO report downloaded!', { type: 'success' });
+  } catch (e) {
+    console.error('[SEO Report]', e);
+    if (typeof showToast === 'function') showToast('Report generation failed: ' + e.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Export Report'; }
+  }
+};
+
+// ============================================================
+// ADMIN FEEDBACK TAB — v4.48
+// Unified view of Canny FR, Bug Reports, Supabase Feedback
+// ============================================================
+
+var _afbData = [];
+var _afbFiltered = [];
+var _afbSort = 'newest';
+var _afbTypeFilter = 'all';
+var _afbStatusFilter = 'all';
+var _afbCohortFilter = 'all';
+var _afbSearchQuery = '';
+var _afbUserMap = {};
+
+async function loadFeedbackTab() {
+  console.log('[Admin] loadFeedbackTab');
+  try {
+    var { data, error } = await sb.from('admin_feedback')
+      .select('*')
+      .order('submitted_at', { ascending: false })
+      .limit(1000);
+    if (error) { console.error('[Feedback]', error); toastWarning('Failed to load feedback'); return; }
+    _afbData = data || [];
+
+    // Resolve user emails
+    var userIds = [...new Set(_afbData.map(function(r) { return r.user_id; }).filter(Boolean))];
+    if (userIds.length > 0) {
+      var { data: profiles } = await sb.from('profiles').select('id, email, cohort_id').in('id', userIds);
+      (profiles || []).forEach(function(p) { _afbUserMap[p.id] = p; });
+    }
+
+    // Populate cohort dropdown
+    var cohorts = [...new Set(_afbData.map(function(r) { return r.cohort_id; }).filter(Boolean))];
+    var sel = document.getElementById('afb-cohort-filter');
+    if (sel) {
+      sel.innerHTML = '<option value="all">All Cohorts</option>';
+      cohorts.sort().forEach(function(c) {
+        sel.innerHTML += '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>';
+      });
+    }
+
+    applyFeedbackFilters();
+    renderFeedbackCards();
+  } catch (e) {
+    console.error('[Feedback]', e); toastWarning('Feedback load error');
+  }
+}
+
+function applyFeedbackFilters() {
+  _afbFiltered = _afbData.filter(function(r) {
+    if (_afbTypeFilter !== 'all' && r.source !== _afbTypeFilter) return false;
+    if (_afbStatusFilter !== 'all' && r.status !== _afbStatusFilter) return false;
+    if (_afbCohortFilter !== 'all' && r.cohort_id !== _afbCohortFilter) return false;
+    if (_afbSearchQuery) {
+      var q = _afbSearchQuery.toLowerCase();
+      var text = ((r.title || '') + ' ' + (r.content || '')).toLowerCase();
+      if (text.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  _afbFiltered.sort(function(a, b) {
+    switch (_afbSort) {
+      case 'oldest': return new Date(a.submitted_at) - new Date(b.submitted_at);
+      case 'votes': return (b.votes || 0) - (a.votes || 0);
+      case 'stale':
+        var da = Math.floor((Date.now() - new Date(a.submitted_at).getTime()) / 86400000);
+        var db = Math.floor((Date.now() - new Date(b.submitted_at).getTime()) / 86400000);
+        return db - da;
+      default: return new Date(b.submitted_at) - new Date(a.submitted_at);
+    }
+  });
+
+  renderFeedbackTable();
+}
+
+function renderFeedbackCards() {
+  var now = Date.now();
+  var weekAgo = now - 7 * 86400000;
+  var open = _afbData.filter(function(r) { return r.status !== 'done' && r.status !== 'wont_fix'; });
+  var newWeek = _afbData.filter(function(r) { return new Date(r.submitted_at).getTime() > weekAgo; });
+  var done = _afbData.filter(function(r) { return r.status === 'done'; });
+  var topFr = _afbData.filter(function(r) { return r.source === 'canny_fr'; }).sort(function(a, b) { return (b.votes || 0) - (a.votes || 0); })[0];
+
+  var el = function(id, val) { var e = document.getElementById(id); if (e) e.textContent = val; };
+  el('afb-open', open.length);
+  el('afb-new-week', newWeek.length);
+  el('afb-avg-resolve', done.length > 0 ? '—' : '—'); // No resolved_at yet
+  el('afb-top-fr', topFr ? (topFr.title || '').slice(0, 60) + ' (' + topFr.votes + '↑)' : '—');
+}
+
+var _SOURCE_LABELS = {
+  'canny_fr': { label: 'FR', color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  'canny_bug': { label: 'Bug', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  'supabase_feedback': { label: 'FB', color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+  'survey': { label: 'Survey', color: '#22c55e', bg: 'rgba(34,197,94,0.12)' }
+};
+
+var _STATUS_OPTIONS = ['new', 'reviewing', 'planned', 'in_progress', 'done', 'wont_fix'];
+var _STATUS_LABELS = { 'new': 'New', 'reviewing': 'Reviewing', 'planned': 'Planned', 'in_progress': 'In Progress', 'done': 'Done', 'wont_fix': "Won't Fix" };
+
+function renderFeedbackTable() {
+  var tbody = document.getElementById('afb-tbody');
+  var empty = document.getElementById('afb-empty');
+  if (!tbody) return;
+
+  if (_afbFiltered.length === 0) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  var now = Date.now();
+  var rows = _afbFiltered.slice(0, 200).map(function(r) {
+    var src = _SOURCE_LABELS[r.source] || { label: r.source, color: '#999', bg: '#f5f5f5' };
+    var daysSince = Math.floor((now - new Date(r.submitted_at).getTime()) / 86400000);
+    var staleColor = daysSince < 7 ? '#22c55e' : daysSince < 30 ? '#f59e0b' : '#ef4444';
+    var user = r.user_id && _afbUserMap[r.user_id] ? _afbUserMap[r.user_id].email : '—';
+    var userShort = escapeHtml(user.length > 16 ? user.slice(0, 14) + '…' : user);
+    var title = (r.title || r.content || '').slice(0, 80);
+    var relTime = daysSince === 0 ? 'today' : daysSince === 1 ? '1d ago' : daysSince < 7 ? daysSince + 'd ago' : daysSince < 30 ? Math.floor(daysSince / 7) + 'w ago' : Math.floor(daysSince / 30) + 'mo ago';
+
+    var statusSelect = '<select onchange="updateFeedbackStatus(\'' + r.id + '\', this.value)" style="font-size:11px;padding:2px 4px;border-radius:4px;border:1px solid var(--border);background:var(--card);">';
+    _STATUS_OPTIONS.forEach(function(s) {
+      statusSelect += '<option value="' + s + '"' + (r.status === s ? ' selected' : '') + '>' + _STATUS_LABELS[s] + '</option>';
+    });
+    statusSelect += '</select>';
+
+    return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="openFeedbackDetail(\'' + r.id + '\')">' +
+      '<td style="padding:6px 10px;"><span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;color:' + src.color + ';background:' + src.bg + ';">' + src.label + '</span></td>' +
+      '<td style="padding:6px 10px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (r.title || '').replace(/"/g, '&quot;') + '">' + title + '</td>' +
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text-faint);" title="' + user + '">' + userShort + '</td>' +
+      '<td style="padding:6px 10px;">' + (r.cohort_id ? '<span style="display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;background:rgba(99,102,241,0.1);color:var(--indigo);">' + r.cohort_id + '</span>' : '—') + '</td>' +
+      '<td style="padding:6px 10px;font-size:11px;color:var(--text-faint);" title="' + new Date(r.submitted_at).toLocaleString() + '">' + relTime + '</td>' +
+      '<td style="padding:6px 10px;text-align:center;font-weight:700;color:' + staleColor + ';">' + daysSince + '</td>' +
+      '<td style="padding:6px 10px;text-align:center;font-weight:600;">' + (r.votes || 0) + '</td>' +
+      '<td style="padding:6px 10px;" onclick="event.stopPropagation()">' + statusSelect + '</td>' +
+      '</tr>';
+  }).join('');
+
+  tbody.innerHTML = rows;
+}
+
+window.updateFeedbackStatus = async function(id, newStatus) {
+  var { error } = await sb.from('admin_feedback').update({ status: newStatus }).eq('id', id);
+  if (error) {
+    console.error('[Feedback] Status update failed:', error); toastError('Status update failed');
+    if (typeof showToast === 'function') showToast('Status update failed', { type: 'error' });
+    return;
+  }
+  // Update local data
+  var item = _afbData.find(function(r) { return r.id === id; });
+  if (item) item.status = newStatus;
+  applyFeedbackFilters();
+  renderFeedbackCards();
+  if (typeof showToast === 'function') showToast('Status updated', { type: 'success' });
+};
+
+window.openFeedbackDetail = function(id) {
+  var item = _afbData.find(function(r) { return r.id === id; });
+  if (!item) return;
+  var panel = document.getElementById('afb-detail');
+  if (!panel) return;
+  var src = _SOURCE_LABELS[item.source] || { label: item.source };
+  var user = item.user_id && _afbUserMap[item.user_id] ? _afbUserMap[item.user_id].email : 'Unknown';
+  document.getElementById('afb-detail-title').textContent = item.title || 'Feedback';
+  document.getElementById('afb-detail-meta').innerHTML = '<span style="color:' + (src.color || '#999') + ';font-weight:600;">' + escapeHtml(src.label) + '</span> · ' + escapeHtml(user) + ' · ' + new Date(item.submitted_at).toLocaleDateString() + (item.votes ? ' · ' + item.votes + ' votes' : '');
+  document.getElementById('afb-detail-content').textContent = item.content || '(no content)';
+  panel.style.display = '';
+};
+
+window.closeFeedbackDetail = function() {
+  var panel = document.getElementById('afb-detail');
+  if (panel) panel.style.display = 'none';
+};
+
+window.sortFeedbackBy = function(field) {
+  if (field === 'submitted') _afbSort = _afbSort === 'newest' ? 'oldest' : 'newest';
+  else if (field === 'votes') _afbSort = 'votes';
+  else if (field === 'stale') _afbSort = 'stale';
+  applyFeedbackFilters();
+};
+
+window.triggerFeedbackSync = async function() {
+  var btn = document.getElementById('afb-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+  try {
+    var res = await fetch(sb.supabaseUrl + '/functions/v1/sync-feedback', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + (await sb.auth.getSession()).data.session.access_token, 'Content-Type': 'application/json' }
+    });
+    var data = await res.json();
+    console.log('[Feedback] Sync result:', data);
+    if (typeof showToast === 'function') showToast('Synced: ' + (data.canny_fr || 0) + ' FR, ' + (data.canny_bug || 0) + ' bugs', { type: 'success' });
+    loadFeedbackTab(); // Reload
+  } catch (e) {
+    console.error('[Feedback] Sync failed:', e); toastError('Feedback sync failed');
+    if (typeof showToast === 'function') showToast('Sync failed: ' + e.message, { type: 'error' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Sync'; }
+  }
+};
+
+// Wire up filter pills + search + sort
+(function() {
+  // Type pills
+  document.getElementById('afb-type-pills')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-afb-type]');
+    if (!btn) return;
+    this.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _afbTypeFilter = btn.dataset.afbType;
+    applyFeedbackFilters();
+  });
+  // Status pills
+  document.getElementById('afb-status-pills')?.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-afb-status]');
+    if (!btn) return;
+    this.querySelectorAll('.admin-period-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    _afbStatusFilter = btn.dataset.afbStatus;
+    applyFeedbackFilters();
+  });
+  // Cohort filter
+  document.getElementById('afb-cohort-filter')?.addEventListener('change', function() {
+    _afbCohortFilter = this.value;
+    applyFeedbackFilters();
+  });
+  // Sort
+  document.getElementById('afb-sort')?.addEventListener('change', function() {
+    _afbSort = this.value;
+    applyFeedbackFilters();
+  });
+  // Search
+  var searchTimeout;
+  document.getElementById('afb-search')?.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    var val = this.value;
+    searchTimeout = setTimeout(function() {
+      _afbSearchQuery = val;
+      applyFeedbackFilters();
+    }, 250);
+  });
+})();
+
+
+/* ───────────────────────────────────────────────────────────
+   Merchandising Admin Tab — v4.51
+   Master-detail layout: Placements → Rules → Content Entries
+   CRUD via Supabase service role (admin context)
+   ─────────────────────────────────────────────────────────── */
+
+// ─── State ───
+var _merchPlacements = [];
+var _merchRules = [];
+var _merchContent = [];
+var _merchSelectedPlacement = null;
+var _merchSelectedRule = null;
+var _merchCohorts = []; // cached cohort list
+
+// ─── Load Tab ───
+function loadMerchTab() {
+  console.log('[Merch] Loading merchandising tab');
+  fetchMerchPlacements();
+  fetchMerchCohorts();
+}
+
+// ─── Fetch Cohorts (for rule dropdown) ───
+function fetchMerchCohorts() {
+  sb.from('cohorts').select('id,name').eq('is_active', true).order('name').then(function(r) {
+    _merchCohorts = r.data || [];
+    console.log('[Merch] Loaded ' + _merchCohorts.length + ' cohorts');
+  });
+}
+
+// ─── Placements ───
+function fetchMerchPlacements() {
+  sb.from('merch_placements').select('*').order('page_url').order('element_name').then(function(r) {
+    if (r.error) { console.error('[Merch] Placements error:', r.error); toastWarning('Merch placements failed to load'); return; }
+    _merchPlacements = r.data || [];
+    renderMerchPlacements();
+    // auto-select first or previously selected
+    if (_merchSelectedPlacement) {
+      var still = _merchPlacements.find(function(p) { return p.id === _merchSelectedPlacement.id; });
+      if (still) { selectMerchPlacement(still.id); return; }
+    }
+    if (_merchPlacements.length > 0) selectMerchPlacement(_merchPlacements[0].id);
+    else clearMerchDetail();
+  });
+}
+
+function renderMerchPlacements() {
+  var el = document.getElementById('merch-placement-list');
+  if (!el) return;
+  if (_merchPlacements.length === 0) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-faint)">No placements yet</div>';
+    return;
+  }
+  var grouped = {};
+  _merchPlacements.forEach(function(p) {
+    if (!grouped[p.page_url]) grouped[p.page_url] = [];
+    grouped[p.page_url].push(p);
+  });
+  var html = '';
+  Object.keys(grouped).sort().forEach(function(url) {
+    html += '<div style="font-size:11px;color:var(--text-faint);padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.5px">' + escHtml(url) + '</div>';
+    grouped[url].forEach(function(p) {
+      var sel = _merchSelectedPlacement && _merchSelectedPlacement.id === p.id;
+      var dot = p.is_active ? '<span style="color:var(--green)">●</span>' : '<span style="color:var(--text-faint)">○</span>';
+      html += '<div class="merch-pl-card' + (sel ? ' selected' : '') + '" data-id="' + p.id + '" onclick="selectMerchPlacement(\'' + p.id + '\')" style="padding:10px 12px;cursor:pointer;border-left:3px solid ' + (sel ? 'var(--accent)' : 'transparent') + ';background:' + (sel ? 'var(--accent-glow)' : 'transparent') + ';transition:all .15s">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-size:13px;font-weight:600">' + escHtml(p.element_name) + '</span>';
+      html += dot;
+      html += '</div>';
+      html += '<div style="font-size:11px;color:var(--text-faint);font-family:var(--mono)">' + escHtml(p.element_id) + '</div>';
+      html += '</div>';
+    });
+  });
+  el.innerHTML = html;
+}
+
+function selectMerchPlacement(id) {
+  var p = _merchPlacements.find(function(x) { return x.id === id; });
+  if (!p) return;
+  _merchSelectedPlacement = p;
+  _merchSelectedRule = null;
+  renderMerchPlacements(); // re-render to update selection
+  renderMerchPlacementDetail(p);
+  fetchMerchRules(p.id);
+}
+
+function clearMerchDetail() {
+  var el = document.getElementById('merch-detail');
+  if (el) el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-faint)">Select a placement or create one</div>';
+}
+
+function renderMerchPlacementDetail(p) {
+  var el = document.getElementById('merch-detail-header');
+  if (!el) return;
+  var fields = (p.content_format && p.content_format.fields) ? p.content_format.fields.join(', ') : '—';
+  var dot = p.is_active ? '<span style="color:var(--green)">● Active</span>' : '<span style="color:var(--red)">○ Inactive</span>';
+  el.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">' +
+    '<div>' +
+    '<h3 style="margin:0 0 4px;font-size:18px">' + escHtml(p.element_name) + '</h3>' +
+    '<div style="font-size:12px;color:var(--text-faint)">Page: <strong style="font-family:var(--mono)">' + escHtml(p.page_url) + '</strong> &nbsp;·&nbsp; Element: <strong style="font-family:var(--mono)">' + escHtml(p.element_id) + '</strong> &nbsp;·&nbsp; Format: <strong>' + escHtml(fields) + '</strong></div>' +
+    (p.element_description ? '<div style="font-size:12px;color:var(--text-faint);margin-top:4px">' + escHtml(p.element_description) + '</div>' : '') +
+    '</div>' +
+    '<div style="display:flex;gap:6px;align-items:center">' +
+    dot +
+    ' <button onclick="toggleMerchPlacementActive(\'' + p.id + '\',' + !p.is_active + ')" class="merch-btn-sm">' + (p.is_active ? 'Deactivate' : 'Activate') + '</button>' +
+    ' <button onclick="deleteMerchPlacement(\'' + p.id + '\')" class="merch-btn-sm merch-btn-danger">Delete</button>' +
+    '</div></div>';
+}
+
+// ─── Placement CRUD ───
+function showAddPlacementForm() {
+  var modal = document.getElementById('merch-modal');
+  modal.innerHTML = '<div class="merch-modal-inner">' +
+    '<h3 style="margin:0 0 16px">Add Placement</h3>' +
+    '<label class="merch-label">Page URL</label><input id="mp-url" class="merch-input" placeholder="/" value="/">' +
+    '<label class="merch-label">Element ID</label><input id="mp-eid" class="merch-input" placeholder="hero-headline">' +
+    '<label class="merch-label">Element Name</label><input id="mp-name" class="merch-input" placeholder="Hero Rotating Copy">' +
+    '<label class="merch-label">Description (optional)</label><input id="mp-desc" class="merch-input" placeholder="Admin context note">' +
+    '<label class="merch-label">Content Fields (comma-separated)</label><input id="mp-fields" class="merch-input" placeholder="h1, sub" value="h1, sub">' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+    '<button onclick="closeMerchModal()" class="merch-btn-sm">Cancel</button>' +
+    '<button onclick="saveMerchPlacement()" class="merch-btn-sm merch-btn-primary">Save</button></div></div>';
+  modal.style.display = 'flex';
+}
+
+function saveMerchPlacement() {
+  var url = document.getElementById('mp-url').value.trim();
+  var eid = document.getElementById('mp-eid').value.trim();
+  var name = document.getElementById('mp-name').value.trim();
+  var desc = document.getElementById('mp-desc').value.trim();
+  var fieldsRaw = document.getElementById('mp-fields').value.trim();
+  if (!url || !eid || !name) { alert('Page URL, Element ID, and Name are required'); return; }
+  var fields = fieldsRaw.split(',').map(function(f) { return f.trim(); }).filter(Boolean);
+  sb.from('merch_placements').insert({
+    page_url: url, element_id: eid, element_name: name,
+    element_description: desc || null,
+    content_format: { fields: fields, supports_html: true, placeholders: ['{JOBS}', '{COMPANIES}'] }
+  }).select().then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    closeMerchModal();
+    _merchSelectedPlacement = r.data[0];
+    fetchMerchPlacements();
+  });
+}
+
+function toggleMerchPlacementActive(id, active) {
+  if (!active && !confirm('Deactivating will hide all content for this placement from visitors. Continue?')) return;
+  sb.from('merch_placements').update({ is_active: active, updated_at: new Date().toISOString() }).eq('id', id).select().then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    fetchMerchPlacements();
+  });
+}
+
+function deleteMerchPlacement(id) {
+  if (!confirm('Delete this placement? This will also delete all rules and content entries. This cannot be undone.')) return;
+  sb.from('merch_placements').delete().eq('id', id).then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    _merchSelectedPlacement = null;
+    fetchMerchPlacements();
+  });
+}
+
+// ─── Rules ───
+function fetchMerchRules(placementId) {
+  sb.from('merch_rules').select('*, merch_content(count)').eq('placement_id', placementId).order('priority', { ascending: false }).order('audience').then(function(r) {
+    if (r.error) { console.error('[Merch] Rules error:', r.error); toastWarning('Merch rules failed to load'); return; }
+    _merchRules = r.data || [];
+    renderMerchRules();
+    // auto-select first rule
+    if (_merchRules.length > 0) selectMerchRule(_merchRules[0].id);
+    else { _merchSelectedRule = null; renderMerchContent(); }
+  });
+}
+
+function renderMerchRules() {
+  var el = document.getElementById('merch-rules-list');
+  if (!el) return;
+  if (_merchRules.length === 0) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-faint);font-size:13px">No rules yet — add one to start adding content</div>';
+    return;
+  }
+  var html = '';
+  _merchRules.forEach(function(r) {
+    var cohortName = r.cohort_id ? (_merchCohorts.find(function(c) { return c.id === r.cohort_id; }) || {}).name || r.cohort_id : 'All Cohorts';
+    var cnt = (r.merch_content && r.merch_content[0]) ? r.merch_content[0].count : 0;
+    var sel = _merchSelectedRule && _merchSelectedRule.id === r.id;
+    var dot = r.is_active ? '<span style="color:var(--green)">●</span>' : '<span style="color:var(--text-faint)">○</span>';
+    html += '<div class="merch-rule-row' + (sel ? ' selected' : '') + '" onclick="selectMerchRule(\'' + r.id + '\')" style="padding:8px 12px;cursor:pointer;border-radius:6px;background:' + (sel ? 'var(--accent-glow)' : 'var(--bg-card)') + ';border:1px solid ' + (sel ? 'var(--accent)' : 'var(--border)') + ';transition:all .15s">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:13px"><strong>' + escHtml(cohortName) + '</strong> × <strong>' + escHtml(r.audience) + '</strong></span>';
+    html += '<span style="font-size:12px;color:var(--text-faint)">' + cnt + ' entries &nbsp;' + dot + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:var(--text-faint)">Priority: ' + r.priority + '</div>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function selectMerchRule(id) {
+  var r = _merchRules.find(function(x) { return x.id === id; });
+  if (!r) return;
+  _merchSelectedRule = r;
+  renderMerchRules(); // re-render to update selection
+  fetchMerchContent(r.id);
+  // Show rule controls
+  var ctrl = document.getElementById('merch-rule-controls');
+  if (ctrl) {
+    ctrl.innerHTML = '<button onclick="toggleMerchRuleActive(\'' + r.id + '\',' + !r.is_active + ')" class="merch-btn-sm">' + (r.is_active ? 'Deactivate' : 'Activate') + '</button>' +
+      ' <button onclick="deleteMerchRule(\'' + r.id + '\')" class="merch-btn-sm merch-btn-danger">Delete Rule</button>';
+  }
+}
+
+function showAddRuleForm() {
+  if (!_merchSelectedPlacement) { alert('Select a placement first'); return; }
+  var cohortOpts = '<option value="">All Cohorts</option>';
+  _merchCohorts.forEach(function(c) { cohortOpts += '<option value="' + c.id + '">' + escHtml(c.name) + '</option>'; });
+  var modal = document.getElementById('merch-modal');
+  modal.innerHTML = '<div class="merch-modal-inner">' +
+    '<h3 style="margin:0 0 16px">Add Rule</h3>' +
+    '<label class="merch-label">Cohort</label><select id="mr-cohort" class="merch-input">' + cohortOpts + '</select>' +
+    '<label class="merch-label">Audience</label><select id="mr-audience" class="merch-input"><option value="all">All</option><option value="new">New</option><option value="returning">Returning</option><option value="lapsed">Lapsed</option><option value="active">Active</option></select>' +
+    '<label class="merch-label">Priority (higher = evaluated first)</label><input id="mr-priority" class="merch-input" type="number" value="0">' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+    '<button onclick="closeMerchModal()" class="merch-btn-sm">Cancel</button>' +
+    '<button onclick="saveMerchRule()" class="merch-btn-sm merch-btn-primary">Save</button></div></div>';
+  modal.style.display = 'flex';
+}
+
+function saveMerchRule() {
+  var cohort = document.getElementById('mr-cohort').value || null;
+  var audience = document.getElementById('mr-audience').value;
+  var priority = parseInt(document.getElementById('mr-priority').value) || 0;
+  sb.from('merch_rules').insert({
+    placement_id: _merchSelectedPlacement.id,
+    cohort_id: cohort, audience: audience, priority: priority
+  }).select().then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    closeMerchModal();
+    _merchSelectedRule = r.data[0];
+    fetchMerchRules(_merchSelectedPlacement.id);
+  });
+}
+
+function toggleMerchRuleActive(id, active) {
+  sb.from('merch_rules').update({ is_active: active, updated_at: new Date().toISOString() }).eq('id', id).then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    fetchMerchRules(_merchSelectedPlacement.id);
+  });
+}
+
+function deleteMerchRule(id) {
+  if (!confirm('Delete this rule and all its content entries? Cannot be undone.')) return;
+  sb.from('merch_rules').delete().eq('id', id).then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    _merchSelectedRule = null;
+    fetchMerchRules(_merchSelectedPlacement.id);
+  });
+}
+
+// ─── Content Entries ───
+function fetchMerchContent(ruleId) {
+  sb.from('merch_content').select('*').eq('rule_id', ruleId).order('sort_order').then(function(r) {
+    if (r.error) { console.error('[Merch] Content error:', r.error); toastWarning('Merch content failed to load'); return; }
+    _merchContent = r.data || [];
+    renderMerchContent();
+  });
+}
+
+function renderMerchContent() {
+  var el = document.getElementById('merch-content-body');
+  if (!el) return;
+  var hdr = document.getElementById('merch-content-header');
+  if (!_merchSelectedRule) {
+    el.innerHTML = '';
+    if (hdr) hdr.textContent = 'Content Entries';
+    return;
+  }
+  var cohortName = _merchSelectedRule.cohort_id ? (_merchCohorts.find(function(c) { return c.id === _merchSelectedRule.cohort_id; }) || {}).name || _merchSelectedRule.cohort_id : 'All Cohorts';
+  if (hdr) hdr.textContent = 'Content — ' + cohortName + ' × ' + _merchSelectedRule.audience + ' (' + _merchContent.length + ')';
+
+  if (_merchContent.length === 0) {
+    el.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-faint)">No entries yet</td></tr>';
+    return;
+  }
+  var html = '';
+  _merchContent.forEach(function(c, i) {
+    var h1Preview = (c.content && c.content.h1) ? c.content.h1.replace(/<[^>]*>/g, '').substring(0, 50) : '—';
+    var subPreview = (c.content && c.content.sub) ? c.content.sub.replace(/<[^>]*>/g, '').substring(0, 40) : '—';
+    var dot = c.is_active ? '<span style="color:var(--green)">●</span>' : '<span style="color:var(--text-faint)">○</span>';
+    var visits = c.min_visits > 0 ? '≥' + c.min_visits : '—';
+    if (c.max_visits) visits += ' / ≤' + c.max_visits;
+    html += '<tr style="cursor:pointer" onclick="showEditContentModal(\'' + c.id + '\')">';
+    html += '<td style="font-family:var(--mono);font-size:11px;color:var(--text-faint);width:40px">' + c.sort_order + '</td>';
+    html += '<td style="font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escAttr(h1Preview) + '">' + escHtml(h1Preview) + '</td>';
+    html += '<td style="font-size:11px;color:var(--text-faint);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(subPreview) + '</td>';
+    html += '<td style="font-size:11px">' + (c.category ? '<span style="background:var(--purple-dim);color:var(--purple);padding:1px 6px;border-radius:3px;font-size:10px">' + escHtml(c.category) + '</span>' : '') + '</td>';
+    html += '<td style="font-size:11px;font-family:var(--mono);color:var(--text-faint)">' + visits + '</td>';
+    html += '<td style="text-align:center">' + dot + '</td>';
+    html += '</tr>';
+  });
+  el.innerHTML = html;
+}
+
+// ─── Content Edit Modal ───
+function showAddContentModal() {
+  if (!_merchSelectedRule || !_merchSelectedPlacement) { alert('Select a placement and rule first'); return; }
+  showContentModal(null);
+}
+
+function showEditContentModal(id) {
+  var entry = _merchContent.find(function(c) { return c.id === id; });
+  if (!entry) return;
+  showContentModal(entry);
+}
+
+function showContentModal(entry) {
+  var fields = (_merchSelectedPlacement.content_format && _merchSelectedPlacement.content_format.fields) || ['h1', 'sub'];
+  var isEdit = !!entry;
+  var modal = document.getElementById('merch-modal');
+  var html = '<div class="merch-modal-inner" style="max-width:600px">';
+  html += '<h3 style="margin:0 0 16px">' + (isEdit ? 'Edit' : 'Add') + ' Content Entry</h3>';
+
+  // Content fields
+  fields.forEach(function(f) {
+    var val = (entry && entry.content && entry.content[f]) || '';
+    html += '<label class="merch-label">' + f + '</label>';
+    html += '<textarea id="mc-field-' + f + '" class="merch-input" rows="3" style="font-family:var(--mono);font-size:12px">' + escHtml(val) + '</textarea>';
+  });
+
+  // Metadata
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">';
+  html += '<div><label class="merch-label">Category</label><input id="mc-category" class="merch-input" placeholder="persistence, humor, etc." value="' + escAttr((entry && entry.category) || '') + '"></div>';
+  html += '<div><label class="merch-label">Sort Order</label><input id="mc-sort" class="merch-input" type="number" value="' + ((entry && entry.sort_order) || _merchContent.length) + '"></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:8px">';
+  html += '<div><label class="merch-label">Min Visits</label><input id="mc-minv" class="merch-input" type="number" value="' + ((entry && entry.min_visits) || 0) + '"></div>';
+  html += '<div><label class="merch-label">Max Visits</label><input id="mc-maxv" class="merch-input" type="number" value="' + ((entry && entry.max_visits) || '') + '" placeholder="no limit"></div>';
+  html += '<div><label class="merch-label">Season Months</label><input id="mc-season" class="merch-input" placeholder="1,2,12" value="' + ((entry && entry.season && entry.season.months) ? entry.season.months.join(',') : '') + '"></div>';
+  html += '</div>';
+  html += '<div style="margin-top:8px"><label style="font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px"><input type="checkbox" id="mc-active"' + ((!entry || entry.is_active) ? ' checked' : '') + '> Active</label></div>';
+
+  // Preview
+  html += '<div style="margin-top:16px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px">';
+  html += '<div style="font-size:11px;color:var(--text-faint);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Preview</div>';
+  html += '<div id="mc-preview" style="font-size:14px;line-height:1.5"></div>';
+  html += '</div>';
+
+  // Buttons
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">';
+  if (isEdit) {
+    html += '<button onclick="deleteMerchContent(\'' + entry.id + '\')" class="merch-btn-sm merch-btn-danger" style="margin-right:auto">Delete</button>';
+  }
+  html += '<button onclick="closeMerchModal()" class="merch-btn-sm">Cancel</button>';
+  html += '<button onclick="saveMerchContent(' + (isEdit ? "'" + entry.id + "'" : 'null') + ')" class="merch-btn-sm merch-btn-primary">Save</button></div>';
+  html += '</div>';
+
+  modal.innerHTML = html;
+  modal.style.display = 'flex';
+
+  // Wire up live preview
+  var previewFields = fields;
+  previewFields.forEach(function(f) {
+    var ta = document.getElementById('mc-field-' + f);
+    if (ta) ta.addEventListener('input', updateMerchPreview);
+  });
+  updateMerchPreview();
+}
+
+function updateMerchPreview() {
+  var el = document.getElementById('mc-preview');
+  if (!el) return;
+  var fields = (_merchSelectedPlacement.content_format && _merchSelectedPlacement.content_format.fields) || ['h1', 'sub'];
+  var html = '';
+  fields.forEach(function(f) {
+    var ta = document.getElementById('mc-field-' + f);
+    if (!ta) return;
+    var val = ta.value.replace(/\{JOBS\}/g, '<span style="color:var(--accent)">135,000</span>').replace(/\{COMPANIES\}/g, '<span style="color:var(--accent)">7,500</span>');
+    if (f === 'h1') html += '<div style="font-size:18px;font-weight:700;margin-bottom:6px">' + val + '</div>';
+    else html += '<div style="font-size:13px;color:var(--text-dim)">' + val + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function saveMerchContent(editId) {
+  var fields = (_merchSelectedPlacement.content_format && _merchSelectedPlacement.content_format.fields) || ['h1', 'sub'];
+  var content = {};
+  fields.forEach(function(f) {
+    var ta = document.getElementById('mc-field-' + f);
+    content[f] = ta ? ta.value : '';
+  });
+  var category = document.getElementById('mc-category').value.trim() || null;
+  var sort = parseInt(document.getElementById('mc-sort').value) || 0;
+  var minv = parseInt(document.getElementById('mc-minv').value) || 0;
+  var maxvRaw = document.getElementById('mc-maxv').value.trim();
+  var maxv = maxvRaw ? parseInt(maxvRaw) : null;
+  var seasonRaw = document.getElementById('mc-season').value.trim();
+  var season = seasonRaw ? { months: seasonRaw.split(',').map(function(m) { return parseInt(m.trim()); }).filter(function(m) { return !isNaN(m); }) } : null;
+  var active = document.getElementById('mc-active').checked;
+
+  var payload = {
+    content: content, category: category, sort_order: sort,
+    min_visits: minv, max_visits: maxv, season: season,
+    is_active: active, updated_at: new Date().toISOString()
+  };
+
+  if (editId) {
+    sb.from('merch_content').update(payload).eq('id', editId).then(function(r) {
+      if (r.error) { alert('Error: ' + r.error.message); return; }
+      closeMerchModal();
+      fetchMerchContent(_merchSelectedRule.id);
+    });
+  } else {
+    payload.rule_id = _merchSelectedRule.id;
+    sb.from('merch_content').insert(payload).then(function(r) {
+      if (r.error) { alert('Error: ' + r.error.message); return; }
+      closeMerchModal();
+      fetchMerchContent(_merchSelectedRule.id);
+    });
+  }
+}
+
+function deleteMerchContent(id) {
+  if (!confirm('Delete this content entry?')) return;
+  sb.from('merch_content').delete().eq('id', id).then(function(r) {
+    if (r.error) { alert('Error: ' + r.error.message); return; }
+    closeMerchModal();
+    fetchMerchContent(_merchSelectedRule.id);
+  });
+}
+
+// ─── Bulk Import ───
+function showBulkImportModal() {
+  if (!_merchSelectedRule) { alert('Select a rule first'); return; }
+  var modal = document.getElementById('merch-modal');
+  modal.innerHTML = '<div class="merch-modal-inner" style="max-width:600px">' +
+    '<h3 style="margin:0 0 16px">Bulk Import</h3>' +
+    '<p style="font-size:12px;color:var(--text-dim);margin-bottom:8px">Paste a JSON array of content objects. Each should have fields matching the placement format (e.g. h1, sub). Optional: category, min_visits.</p>' +
+    '<textarea id="mc-bulk" class="merch-input" rows="12" style="font-family:var(--mono);font-size:11px" placeholder=\'[{"h1":"...", "sub":"...", "category":"humor"}]\'></textarea>' +
+    '<div id="mc-bulk-status" style="font-size:12px;margin-top:8px"></div>' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+    '<button onclick="closeMerchModal()" class="merch-btn-sm">Cancel</button>' +
+    '<button onclick="runBulkImport()" class="merch-btn-sm merch-btn-primary">Import</button></div></div>';
+  modal.style.display = 'flex';
+}
+
+function runBulkImport() {
+  var raw = document.getElementById('mc-bulk').value.trim();
+  var status = document.getElementById('mc-bulk-status');
+  try {
+    var entries = JSON.parse(raw);
+    if (!Array.isArray(entries)) throw new Error('Must be a JSON array');
+    var rows = entries.map(function(e, i) {
+      var content = {};
+      var fields = (_merchSelectedPlacement.content_format && _merchSelectedPlacement.content_format.fields) || ['h1', 'sub'];
+      fields.forEach(function(f) { content[f] = e[f] || ''; });
+      return {
+        rule_id: _merchSelectedRule.id,
+        content: content,
+        sort_order: _merchContent.length + i,
+        category: e.category || null,
+        min_visits: e.min_visits || 0,
+        max_visits: e.max_visits || null,
+        season: e.season || null,
+        is_active: true
+      };
+    });
+    status.textContent = 'Importing ' + rows.length + ' entries...';
+    status.style.color = 'var(--accent)';
+    sb.from('merch_content').insert(rows).then(function(r) {
+      if (r.error) { status.textContent = 'Error: ' + r.error.message; status.style.color = 'var(--red)'; return; }
+      closeMerchModal();
+      fetchMerchContent(_merchSelectedRule.id);
+      fetchMerchRules(_merchSelectedPlacement.id); // refresh counts
+    });
+  } catch (e) {
+    status.textContent = 'Parse error: ' + e.message;
+    status.style.color = 'var(--red)';
+  }
+}
+
+// ─── Utilities ───
+function closeMerchModal() {
+  var modal = document.getElementById('merch-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Admin: Signals Tab (Phase D) ─────────────────────────────────
+async function loadAdminSignals() {
+  try {
+    // KPIs
+    var total = 0, pending = 0, confirmed = 0, dismissed = 0;
+    var sourceCounts = {};
+    var recentRows = [];
+
+    var { data: signals } = await sb.from('pipeline_signals')
+      .select('id, signal_source, signal_type, proposed_stage, confidence, status, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (signals) {
+      total = signals.length;
+      signals.forEach(function(s) {
+        if (s.status === 'pending_confirmation') pending++;
+        else if (s.status === 'confirmed') confirmed++;
+        else if (s.status === 'dismissed') dismissed++;
+        sourceCounts[s.signal_source] = (sourceCounts[s.signal_source] || 0) + 1;
+      });
+      recentRows = signals.slice(0, 50);
+    }
+
+    var rate = (confirmed + dismissed) > 0 ? Math.round((confirmed / (confirmed + dismissed)) * 100) + '%' : '—';
+    var el;
+    el = document.getElementById('sig-total'); if (el) el.textContent = total;
+    el = document.getElementById('sig-pending'); if (el) el.textContent = pending;
+    el = document.getElementById('sig-confirmed'); if (el) el.textContent = confirmed;
+    el = document.getElementById('sig-dismissed'); if (el) el.textContent = dismissed;
+    el = document.getElementById('sig-rate'); if (el) el.textContent = rate;
+
+    // Signals by Source chart
+    var sourceEl = document.getElementById('sig-chart-source');
+    if (sourceEl && typeof echarts !== 'undefined') {
+      var srcChart = echarts.init(sourceEl);
+      var srcData = Object.entries(sourceCounts).map(function(e) { return { name: e[0], value: e[1] }; });
+      srcChart.setOption({
+        tooltip: { trigger: 'item' },
+        series: [{ type: 'pie', radius: ['40%', '70%'], data: srcData,
+          label: { color: 'var(--text-dim)', fontSize: 11 },
+          itemStyle: { borderRadius: 4, borderColor: 'var(--bg-input)', borderWidth: 2 }
+        }]
+      });
+    }
+
+    // Pattern Confidence Distribution
+    var { data: patterns } = await sb.from('signal_patterns')
+      .select('pattern_type, pattern_value, associated_signal_type, confidence_score, confirmations, dismissals, last_seen_at')
+      .order('confidence_score', { ascending: false });
+
+    var patternEl = document.getElementById('sig-chart-patterns');
+    if (patternEl && patterns && typeof echarts !== 'undefined') {
+      var patChart = echarts.init(patternEl);
+      var buckets = { '90-100': 0, '70-89': 0, '50-69': 0, '30-49': 0, '<30': 0 };
+      patterns.forEach(function(p) {
+        var s = Math.round(p.confidence_score * 100);
+        if (s >= 90) buckets['90-100']++;
+        else if (s >= 70) buckets['70-89']++;
+        else if (s >= 50) buckets['50-69']++;
+        else if (s >= 30) buckets['30-49']++;
+        else buckets['<30']++;
+      });
+      patChart.setOption({
+        tooltip: {},
+        xAxis: { type: 'category', data: Object.keys(buckets), axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        yAxis: { type: 'value', axisLabel: { color: 'var(--text-dim)', fontSize: 10 } },
+        series: [{ type: 'bar', data: Object.values(buckets), itemStyle: { color: 'var(--accent)', borderRadius: [4, 4, 0, 0] } }]
+      });
+    }
+
+    // Patterns table
+    var patBody = document.getElementById('sig-patterns-body');
+    if (patBody && patterns) {
+      patBody.innerHTML = patterns.map(function(p) {
+        var confPct = Math.round(p.confidence_score * 100);
+        var confColor = confPct >= 80 ? '#22c55e' : confPct >= 60 ? '#f59e0b' : '#ef4444';
+        var lastSeen = p.last_seen_at ? new Date(p.last_seen_at).toLocaleDateString() : '—';
+        return '<tr><td>' + escHtml(p.pattern_type) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.pattern_value) +
+          '</td><td>' + escHtml(p.associated_signal_type) + '</td><td style="color:' + confColor + ';font-weight:600">' + confPct + '%</td><td>' + p.confirmations +
+          '</td><td>' + p.dismissals + '</td><td>' + lastSeen + '</td></tr>';
+      }).join('');
+    }
+
+    // Recent signals table
+    var sigBody = document.getElementById('sig-recent-body');
+    if (sigBody) {
+      sigBody.innerHTML = recentRows.map(function(s) {
+        var confPct = s.confidence ? Math.round(s.confidence * 100) + '%' : '—';
+        var statusColor = s.status === 'confirmed' ? '#22c55e' : s.status === 'dismissed' ? '#ef4444' : '#f59e0b';
+        var dt = new Date(s.created_at);
+        var dateStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return '<tr><td style="font-size:10px">' + (s.user_id || '').substring(0, 8) + '…</td><td>' + escHtml(s.signal_source) +
+          '</td><td>' + escHtml(s.signal_type) + '</td><td>' + escHtml(s.proposed_stage || '—') +
+          '</td><td>' + confPct + '</td><td style="color:' + statusColor + '">' + escHtml(s.status) +
+          '</td><td style="font-size:11px">' + dateStr + '</td></tr>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('[Admin] Signals tab error:', e); toastError('Signals tab failed to load');
+  }
+}
+
+
+// ─── REFERRALS ADMIN TAB ───
+// Fraud review queue, reward clawback, ban management
+// v5.10: Phase 4
+
+async function loadReferralsAdminTab() {
+  try {
+    var sb = window.bjSupabase;
+    if (!sb) return;
+
+    // Stats
+    var { data: allRefs } = await sb.from('referrals').select('status', { count: 'exact' });
+    var total = (allRefs || []).length;
+    var pending = (allRefs || []).filter(function(r) { return r.status === 'pending'; }).length;
+    var rewarded = (allRefs || []).filter(function(r) { return r.status === 'rewarded'; }).length;
+    var rejected = (allRefs || []).filter(function(r) { return r.status === 'rejected' || r.status === 'clawed_back'; }).length;
+
+    setAdminText('ar-total-referrals', fmtAdminNum(total));
+    setAdminText('ar-pending-review', fmtAdminNum(pending));
+    setAdminText('ar-total-rewarded', fmtAdminNum(rewarded));
+    setAdminText('ar-total-rejected', fmtAdminNum(rejected));
+
+    // Fraud queue — referrals with fraud_score > 0.2 or fraud_signals not empty
+    var { data: flagged } = await sb
+      .from('referrals')
+      .select('id, referrer_id, referred_id, referred_email, attribution_method, status, fraud_score, fraud_signals, signup_at, ip_address, browser_fingerprint')
+      .or('fraud_score.gt.0.2,status.eq.pending')
+      .order('fraud_score', { ascending: false })
+      .limit(50);
+
+    var queueBody = document.getElementById('ar-fraud-queue-body');
+    var queueEmpty = document.getElementById('ar-fraud-empty');
+    if (queueBody) {
+      if (!flagged || flagged.length === 0) {
+        queueBody.innerHTML = '';
+        if (queueEmpty) queueEmpty.style.display = '';
+      } else {
+        if (queueEmpty) queueEmpty.style.display = 'none';
+        // Get referrer profiles for display
+        var referrerIds = [...new Set(flagged.map(function(r) { return r.referrer_id; }))];
+        var { data: profiles } = await sb.from('profiles').select('id, email, full_name').in('id', referrerIds);
+        var profileMap = {};
+        (profiles || []).forEach(function(p) { profileMap[p.id] = p; });
+
+        queueBody.innerHTML = flagged.map(function(r) {
+          var referrer = profileMap[r.referrer_id] || {};
+          var signals = r.fraud_signals || {};
+          var signalTags = Object.keys(signals).map(function(k) {
+            return '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(239,68,68,.12);color:#dc2626;margin-right:4px;">' + k + '</span>';
+          }).join('');
+          var scoreColor = r.fraud_score >= 0.8 ? '#dc2626' : r.fraud_score >= 0.4 ? '#ca8a04' : '#16a34a';
+          var statusPill = '<span class="ref-status-pill ref-status-' + r.status + '">' + r.status + '</span>';
+
+          return '<tr>' +
+            '<td>' + escapeHtml(referrer.email || r.referrer_id.substring(0,8)) + '</td>' +
+            '<td>' + escapeHtml(r.referred_email || '—') + '</td>' +
+            '<td>' + r.attribution_method + '</td>' +
+            '<td><span style="color:' + scoreColor + ';font-weight:700;">' + (r.fraud_score || 0).toFixed(2) + '</span></td>' +
+            '<td>' + (signalTags || '—') + '</td>' +
+            '<td>' + statusPill + '</td>' +
+            '<td style="font-size:11px;">' + new Date(r.signup_at).toLocaleDateString() + '</td>' +
+            '<td style="white-space:nowrap;">' +
+              (r.status === 'pending' || r.status === 'activated' ? 
+                '<button class="merch-btn-sm" onclick="adminRefAction(\'' + r.id + '\',\'' + r.referrer_id + '\',\'approve\')" style="font-size:10px;margin-right:4px;">Approve</button>' +
+                '<button class="merch-btn-sm" onclick="adminRefAction(\'' + r.id + '\',\'' + r.referrer_id + '\',\'reject\')" style="font-size:10px;margin-right:4px;color:#dc2626;">Reject</button>' +
+                '<button class="merch-btn-sm" onclick="adminRefAction(\'' + r.id + '\',\'' + r.referrer_id + '\',\'ban\')" style="font-size:10px;color:#dc2626;font-weight:700;">Ban</button>'
+              : '—') +
+            '</td>' +
+          '</tr>';
+        }).join('');
+      }
+    }
+
+    // Recent rewards
+    var { data: rewards } = await sb
+      .from('referral_rewards')
+      .select('id, user_id, reward_type, reward_value, tier_at_grant, granted_at, clawed_back_at')
+      .order('granted_at', { ascending: false })
+      .limit(30);
+
+    var rewardsBody = document.getElementById('ar-rewards-body');
+    if (rewardsBody && rewards) {
+      var rewardUserIds = [...new Set(rewards.map(function(r) { return r.user_id; }))];
+      var { data: rwProfiles } = await sb.from('profiles').select('id, email').in('id', rewardUserIds);
+      var rwMap = {};
+      (rwProfiles || []).forEach(function(p) { rwMap[p.id] = p; });
+
+      rewardsBody.innerHTML = rewards.map(function(r) {
+        var user = rwMap[r.user_id] || {};
+        var val = r.reward_value || {};
+        var valStr = val.days ? val.days + 'd Pro' : val.credits ? val.credits + ' credits' : val.filters ? '+' + val.filters + ' filter' : JSON.stringify(val);
+        var clawed = r.clawed_back_at ? '<span style="color:#dc2626;font-size:10px;">CLAWED BACK</span>' : '';
+
+        return '<tr>' +
+          '<td>' + escapeHtml(user.email || r.user_id.substring(0,8)) + '</td>' +
+          '<td>' + r.reward_type + '</td>' +
+          '<td>' + valStr + ' ' + clawed + '</td>' +
+          '<td>T' + r.tier_at_grant + '</td>' +
+          '<td style="font-size:11px;">' + new Date(r.granted_at).toLocaleDateString() + '</td>' +
+          '<td>' + (!r.clawed_back_at ? '<button class="merch-btn-sm" onclick="adminClawback(\'' + r.id + '\',\'' + r.user_id + '\')" style="font-size:10px;color:#dc2626;">Clawback</button>' : '—') + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // Banned users
+    var { data: banned } = await sb
+      .from('profiles')
+      .select('id, email, full_name, referral_count')
+      .eq('referral_banned', true);
+
+    var bannedBody = document.getElementById('ar-banned-body');
+    var bannedEmpty = document.getElementById('ar-banned-empty');
+    if (bannedBody) {
+      if (!banned || banned.length === 0) {
+        bannedBody.innerHTML = '';
+        if (bannedEmpty) bannedEmpty.style.display = '';
+      } else {
+        if (bannedEmpty) bannedEmpty.style.display = 'none';
+        bannedBody.innerHTML = banned.map(function(u) {
+          return '<tr>' +
+            '<td>' + escapeHtml(u.full_name || '—') + '</td>' +
+            '<td>' + escapeHtml(u.email) + '</td>' +
+            '<td>' + u.referral_count + '</td>' +
+            '<td><button class="merch-btn-sm" onclick="adminUnban(\'' + u.id + '\')" style="font-size:10px;">Unban</button></td>' +
+          '</tr>';
+        }).join('');
+      }
+    }
+
+  } catch (e) {
+    console.error('[Admin] Referrals tab error:', e); toastError('Referrals tab failed to load');
+  }
+}
+
+// Admin referral actions: approve, reject, ban
+window.adminRefAction = async function(referralId, referrerId, action) {
+  if (!confirm('Are you sure you want to ' + action + ' this referral?')) return;
+  try {
+    var sb = window.bjSupabase;
+    if (action === 'approve') {
+      await sb.from('referrals').update({ status: 'activated', activated_at: new Date().toISOString(), fraud_score: 0 }).eq('id', referralId);
+    } else if (action === 'reject') {
+      await sb.from('referrals').update({ status: 'rejected', rejected_at: new Date().toISOString() }).eq('id', referralId);
+    } else if (action === 'ban') {
+      await sb.from('referrals').update({ status: 'rejected', rejected_at: new Date().toISOString() }).eq('id', referralId);
+      await sb.from('profiles').update({ referral_banned: true }).eq('id', referrerId);
+      // Reject all pending referrals from this referrer
+      await sb.from('referrals').update({ status: 'rejected', rejected_at: new Date().toISOString() }).eq('referrer_id', referrerId).in('status', ['pending', 'activated']);
+    }
+    _adminTabInit['referrals'] = false;
+    loadReferralsAdminTab();
+  } catch (e) {
+    console.error('[Admin] Referral action error:', e); toastError('Referral action failed');
+    alert('Error: ' + e.message);
+  }
+};
+
+// Clawback a reward
+window.adminClawback = async function(rewardId, userId) {
+  if (!confirm('Clawback this reward? This will reverse the reward for the user.')) return;
+  try {
+    var sb = window.bjSupabase;
+    // Mark reward as clawed back
+    await sb.from('referral_rewards').update({ clawed_back_at: new Date().toISOString(), clawback_reason: 'Admin manual clawback' }).eq('id', rewardId);
+
+    // Get the reward details to reverse
+    var { data: reward } = await sb.from('referral_rewards').select('*').eq('id', rewardId).single();
+    if (reward) {
+      var val = reward.reward_value || {};
+      // Reverse credits
+      if (reward.reward_type === 'credits' && val.credits) {
+        var { data: latest } = await sb.from('credit_ledger').select('balance_after').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).single();
+        var curBal = (latest && latest.balance_after) || 0;
+        await sb.from('credit_ledger').insert({
+          user_id: userId,
+          type: 'referral_clawback',
+          amount: -val.credits,
+          balance_after: Math.max(0, curBal - val.credits),
+          description: 'Referral reward clawback — ' + val.credits + ' credits',
+          cost_category: 'referral'
+        });
+      }
+      // Reverse Pro time
+      if (reward.reward_type === 'pro_time' && val.days) {
+        var { data: prof } = await sb.from('profiles').select('pro_bonus_until').eq('id', userId).single();
+        if (prof && prof.pro_bonus_until) {
+          var newEnd = new Date(prof.pro_bonus_until);
+          newEnd.setDate(newEnd.getDate() - val.days);
+          if (newEnd < new Date()) newEnd = null;
+          await sb.from('profiles').update({ pro_bonus_until: newEnd ? newEnd.toISOString() : null }).eq('id', userId);
+        }
+      }
+      // Reverse extra filters
+      if (reward.reward_type === 'extra_filter' && val.filters) {
+        await sb.rpc('exec_sql', { query: "UPDATE profiles SET extra_filters = GREATEST(0, extra_filters - " + val.filters + ") WHERE id = '" + userId + "'" });
+      }
+    }
+
+    _adminTabInit['referrals'] = false;
+    loadReferralsAdminTab();
+  } catch (e) {
+    console.error('[Admin] Clawback error:', e); toastError('Clawback failed');
+    alert('Error: ' + e.message);
+  }
+};
+
+// Unban a referrer
+window.adminUnban = async function(userId) {
+  if (!confirm('Unban this referrer?')) return;
+  try {
+    var sb = window.bjSupabase;
+    await sb.from('profiles').update({ referral_banned: false }).eq('id', userId);
+    _adminTabInit['referrals'] = false;
+    loadReferralsAdminTab();
+  } catch (e) {
+    console.error('[Admin] Unban error:', e); toastError('Unban failed');
+  }
+};
+
+
+// --- TAB: CONTENT (Editorial Engine) ---
+async function loadContentTab() {
+  console.log("[Admin] Loading Content tab");
+  try {
+    var statusSel = document.getElementById("ct-filter-status");
+    var catSel = document.getElementById("ct-filter-category");
+    var refreshBtn = document.getElementById("ct-refresh-btn");
+    var detectBtn = document.getElementById("ct-detect-btn");
+    var generateBtn = document.getElementById("ct-generate-btn");
+    var closePreview = document.getElementById("ct-close-preview");
+    var actionStatus = document.getElementById("ct-action-status");
+
+    if (refreshBtn) refreshBtn.onclick = function() { fetchContentStories(); };
+    if (statusSel) statusSel.onchange = function() { fetchContentStories(); };
+    if (catSel) catSel.onchange = function() { fetchContentStories(); };
+    if (closePreview) closePreview.onclick = function() {
+      document.getElementById("ct-preview-panel").style.display = "none";
+    };
+
+    if (detectBtn) detectBtn.onclick = async function() {
+      detectBtn.disabled = true;
+      actionStatus.textContent = "Running detection...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/detect-editorial-insights", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Detected " + (data.detected || 0) + " stories (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Detection failed: " + e.message;
+      }
+      detectBtn.disabled = false;
+    };
+
+    if (generateBtn) generateBtn.onclick = async function() {
+      generateBtn.disabled = true;
+      actionStatus.textContent = "Generating content (this may take ~60s)...";
+      try {
+        var resp = await fetch(SUPABASE_URL + "/functions/v1/generate-editorial-content", {
+          method: "POST",
+          headers: { "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": "application/json" }
+        });
+        var data = await resp.json();
+        actionStatus.textContent = "Generated " + (data.generated || 0) + " / Failed " + (data.failed || 0) + " (" + (data.elapsed_ms || "?") + "ms)";
+        fetchContentStories();
+      } catch(e) {
+        actionStatus.textContent = "Generation failed: " + e.message;
+      }
+      generateBtn.disabled = false;
+    };
+
+    fetchContentStories();
+  } catch (e) {
+    console.error('[Admin] Content tab error:', e); toastError('Content tab failed to load');
+  }
+}
+
+async function fetchContentStories() {
+  try {
+    var statusFilter = document.getElementById("ct-filter-status").value;
+    var catFilter = document.getElementById("ct-filter-category").value;
+
+    var url = SUPABASE_URL + "/rest/v1/content_stories?select=id,story_type,category,headline,lede,body_html,meta_description,social_snippet,chart_config,evergreen_link,score,status,tags,created_at&order=score.desc,created_at.desc&limit=100";
+    if (statusFilter) url += "&status=eq." + statusFilter;
+    if (catFilter) url += "&category=eq." + catFilter;
+
+    var resp = await fetch(url, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var stories = await resp.json();
+
+    var allUrl = SUPABASE_URL + "/rest/v1/content_stories?select=status";
+    var allResp = await fetch(allUrl, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+    });
+    var allStories = await allResp.json();
+    var counts = { total: allStories.length, pending: 0, approved: 0, published: 0, rejected: 0 };
+    allStories.forEach(function(s) {
+      if (counts[s.status] !== undefined) counts[s.status]++;
+    });
+    document.getElementById("ct-total").textContent = counts.total;
+    document.getElementById("ct-pending").textContent = counts.pending;
+    document.getElementById("ct-approved").textContent = counts.approved;
+    document.getElementById("ct-published").textContent = counts.published;
+    document.getElementById("ct-rejected").textContent = counts.rejected;
+
+    var tbody = document.getElementById("ct-stories-body");
+    if (!tbody) return;
+
+    if (!stories.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No stories found</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = stories.map(function(s) {
+      var dt = new Date(s.created_at);
+      var dateStr = dt.toLocaleDateString() + " " + dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      var statusColors = { pending: "#f59e0b", approved: "#22c55e", published: "#3b82f6", scheduled: "#8b5cf6", rejected: "#ef4444" };
+      var statusColor = statusColors[s.status] || "#888";
+      var hasContent = s.body_html ? "Y" : "N";
+      var scoreColor = s.score >= 70 ? "#22c55e" : s.score >= 40 ? "#f59e0b" : "#888";
+
+      var actions = "";
+      if (s.status === "pending") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'approved\')" style="padding:2px 8px;font-size:11px;background:#22c55e;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:4px" title="Approve">V</button>' +
+                  '<button onclick="contentAction(' + s.id + ',\'rejected\')" style="padding:2px 8px;font-size:11px;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer" title="Reject">X</button>';
+      } else if (s.status === "approved") {
+        actions = '<button onclick="contentAction(' + s.id + ',\'published\')" style="padding:2px 8px;font-size:11px;background:#3b82f6;color:#fff;border:none;border-radius:4px;cursor:pointer">Publish</button>';
+      }
+
+      return '<tr style="cursor:pointer" onclick="previewStory(' + s.id + ')">' +
+        '<td style="color:' + scoreColor + ';font-weight:600">' + s.score + '</td>' +
+        '<td style="font-size:11px">' + hasContent + ' ' + escHtml(s.story_type) + '</td>' +
+        '<td>' + escHtml(s.category) + '</td>' +
+        '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(s.headline) + '</td>' +
+        '<td><span style="color:' + statusColor + ';font-weight:600;font-size:12px">' + s.status.toUpperCase() + '</span></td>' +
+        '<td style="font-size:11px;white-space:nowrap">' + dateStr + '</td>' +
+        '<td style="text-align:right" onclick="event.stopPropagation()">' + actions + '</td></tr>';
+    }).join("");
+
+    window._contentStories = {};
+    stories.forEach(function(s) { window._contentStories[s.id] = s; });
+  } catch(e) {
+    console.error('[Admin] Fetch content stories error:', e); toastWarning('Failed to load content stories');
+  }
+}
+
+function previewStory(id) {
+  var s = window._contentStories && window._contentStories[id];
+  if (!s) return;
+  var panel = document.getElementById("ct-preview-panel");
+  panel.style.display = "block";
+  document.getElementById("ct-preview-headline").textContent = s.headline || "--";
+  document.getElementById("ct-preview-lede").textContent = s.lede || "--";
+  document.getElementById("ct-preview-body").innerHTML = (typeof DOMPurify !== "undefined" && s.body_html ? DOMPurify.sanitize(s.body_html) : s.body_html) || "<em>No content generated yet</em>";
+  document.getElementById("ct-preview-meta").textContent = s.meta_description || "--";
+  document.getElementById("ct-preview-social").textContent = s.social_snippet || "--";
+  document.getElementById("ct-preview-link").textContent = s.evergreen_link || "--";
+  document.getElementById("ct-preview-chart").textContent = s.chart_config ? JSON.stringify(s.chart_config) : "--";
+  panel.scrollIntoView({ behavior: "smooth" });
+}
+
+async function contentAction(id, newStatus) {
+  try {
+    var updates = { status: newStatus };
+    if (newStatus === "published") {
+      updates.published_at = new Date().toISOString();
+    }
+    var resp = await fetch(SUPABASE_URL + "/rest/v1/content_stories?id=eq." + id, {
+      method: "PATCH",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify(updates)
+    });
+    if (resp.ok) {
+      document.getElementById("ct-action-status").textContent = "Story #" + id + " -> " + newStatus;
+      fetchContentStories();
+    } else {
+      document.getElementById("ct-action-status").textContent = "Update failed";
+    }
+  } catch(e) {
+    document.getElementById("ct-action-status").textContent = e.message;
+  }
+}
+
+// ========== Enrichment Coverage Dashboard (D1) ==========
+var _enChart = null;
+
+async function loadEnrichmentTab() {
+  if (_adminTabInit['enrichment']) return;
+  console.log('[Admin] loadEnrichmentTab');
+  try {
+    var res = await sb.rpc('get_enrichment_coverage');
+    if (res.error) { console.error('[Admin] Enrichment RPC error:', res.error); toastWarning('Enrichment data unavailable'); return; }
+    var d = res.data;
+
+    // Coverage cards
+    setAdminText('en-salary-pct', d.salary_pct + '%');
+    setAdminText('en-loctype-pct', d.loc_type_pct + '%');
+    setAdminText('en-dept-pct', d.department_pct + '%');
+    setAdminText('en-country-pct', d.country_pct + '%');
+    setAdminText('en-total-jobs', fmtAdminNum(d.total_jobs));
+
+    // Color code cards by coverage level
+    var salEl = document.getElementById('en-salary-pct');
+    var ltEl = document.getElementById('en-loctype-pct');
+    var dpEl = document.getElementById('en-dept-pct');
+    var ctEl = document.getElementById('en-country-pct');
+    if (salEl) salEl.style.color = d.salary_pct >= 40 ? '#4a9a6b' : d.salary_pct >= 20 ? '#a08858' : '#c06060';
+    if (ltEl) ltEl.style.color = d.loc_type_pct >= 60 ? '#4a9a6b' : d.loc_type_pct >= 30 ? '#a08858' : '#c06060';
+    if (dpEl) dpEl.style.color = d.department_pct >= 60 ? '#4a9a6b' : d.department_pct >= 30 ? '#a08858' : '#c06060';
+    if (ctEl) ctEl.style.color = d.country_pct >= 80 ? '#4a9a6b' : d.country_pct >= 40 ? '#a08858' : '#c06060';
+
+    // Gate indicators
+    var gates = d.gates || {};
+    var gateConfig = [
+      { key: 'salary_40', label: 'Salary 40%', met: gates.salary_40, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'loc_type_60', label: 'Loc Type 60%', met: gates.loc_type_60, unlocks: 'Remote Tracker (A4), Multi-dim Stories (B2)' },
+      { key: 'department_60', label: 'Department 60%', met: gates.department_60, unlocks: 'Multi-dim Stories (B2)' },
+      { key: 'country_80', label: 'Country 80%', met: gates.country_80, unlocks: 'Jobs by Location (A3)' }
+    ];
+    var gateEl = document.getElementById('en-gates');
+    if (gateEl) {
+      gateEl.innerHTML = gateConfig.map(function(g) {
+        var color = g.met ? '#4a9a6b' : '#a08858';
+        var icon = g.met ? '✓' : '○';
+        var label = g.met ? 'Gate met' : 'Not met';
+        return '<div style="padding:8px 14px;border-radius:8px;border:1px solid ' + color + ';background:color-mix(in srgb,' + color + ' 10%,transparent);font-size:12px">' +
+          '<span style="color:' + color + ';font-weight:700">' + icon + ' ' + g.label + '</span>' +
+          '<span style="color:var(--text-dim);margin-left:6px">' + label + '</span>' +
+          (g.met ? '' : '<div style="color:var(--text-faint);font-size:11px;margin-top:2px">Unlocks: ' + g.unlocks + '</div>') +
+          '</div>';
+      }).join('');
+    }
+
+    // Gate badge on coverage cards
+    gateConfig.forEach(function(g, i) {
+      var ids = ['en-salary-gate','en-loctype-gate','en-dept-gate','en-country-gate'];
+      var el = document.getElementById(ids[i]);
+      if (el) {
+        el.innerHTML = g.met ? '<span style="color:#4a9a6b;font-size:11px">✓ Gate met</span>' : '<span style="color:#a08858;font-size:11px">Target: ' + g.label.split(' ')[1] + '</span>';
+      }
+    });
+
+    // Platform breakdown table
+    var platforms = d.platforms || [];
+    var tbody = document.getElementById('en-platform-body');
+    var tfoot = document.getElementById('en-platform-foot');
+    if (tbody) {
+      tbody.innerHTML = platforms.map(function(p) {
+        var pct = function(n) { return p.total > 0 ? (n * 100 / p.total).toFixed(1) + '%' : '0%'; };
+        var colorPct = function(n, target) {
+          var v = p.total > 0 ? n * 100 / p.total : 0;
+          var c = v >= target ? '#4a9a6b' : v >= target * 0.5 ? '#a08858' : '#c06060';
+          return '<span style="color:' + c + '">' + v.toFixed(1) + '%</span>';
+        };
+        return '<tr>' +
+          '<td class="admin-platform-name">' + p.ats_source + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(p.total) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_salary, 40) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_loc_type, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_department, 60) + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + colorPct(p.with_country, 80) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+    if (tfoot) {
+      tfoot.innerHTML = '<tr style="font-weight:700;border-top:2px solid var(--border)">' +
+        '<td>Total</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + fmtAdminNum(d.total_jobs) + '</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.salary_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.loc_type_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.department_pct + '%</td>' +
+        '<td style="text-align:right;font-family:var(--mono)">' + d.country_pct + '%</td>' +
+        '</tr>';
+    }
+
+    // Platform coverage bar chart
+    var chartEl = document.getElementById('en-chart-platforms');
+    if (chartEl && typeof echarts !== 'undefined') {
+      if (_enChart) _enChart.dispose();
+      _enChart = echarts.init(chartEl);
+      var names = platforms.map(function(p) { return p.ats_source; });
+      var mkSeries = function(field, name, color) {
+        return {
+          name: name, type: 'bar', stack: false,
+          data: platforms.map(function(p) { return p.total > 0 ? +(p[field] * 100 / p.total).toFixed(1) : 0; }),
+          itemStyle: { color: color, borderRadius: [2,2,0,0] },
+          barMaxWidth: 24
+        };
+      };
+      _enChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: function(params) {
+          var tip = '<strong>' + params[0].name + '</strong>';
+          params.forEach(function(p) { tip += '<br>' + p.marker + ' ' + p.seriesName + ': ' + p.value + '%'; });
+          return tip;
+        }},
+        legend: { top: 0, textStyle: { color: 'var(--text-dim)', fontSize: 11 } },
+        grid: { left: 50, right: 20, top: 36, bottom: 30 },
+        xAxis: { type: 'category', data: names, axisLabel: { color: 'var(--text-dim)', fontSize: 11 } },
+        yAxis: { type: 'value', max: 100, axisLabel: { color: 'var(--text-dim)', fontSize: 11, formatter: '{value}%' },
+          splitLine: { lineStyle: { color: 'var(--border)' } } },
+        series: [
+          mkSeries('with_salary', 'Salary', '#6366f1'),
+          mkSeries('with_loc_type', 'Loc Type', '#3b82f6'),
+          mkSeries('with_department', 'Department', '#22c55e'),
+          mkSeries('with_country', 'Country', '#f59e0b')
+        ]
+      });
+      window.addEventListener('resize', function() { if (_enChart) _enChart.resize(); });
+    }
+
+    _adminTabInit['enrichment'] = true;
+
+    // Load refresh schedule (A5)
+    loadRefreshSchedule();
+  } catch(e) {
+    console.error('[Admin] Enrichment error:', e); toastError('Enrichment data failed to load');
+  }
+}
+
+async function loadRefreshSchedule() {
+  try {
+    var res = await sb.rpc('get_refresh_schedule');
+    if (res.error || !res.data) return;
+    var pages = res.data;
+
+    var dueCount = pages.filter(function(p) { return p.needs_refresh; }).length;
+    var summaryEl = document.getElementById('en-refresh-summary');
+    if (summaryEl) {
+      summaryEl.innerHTML = dueCount > 0
+        ? '<span style="color:#a08858">' + dueCount + ' pages due for refresh</span>'
+        : '<span style="color:#4a9a6b">All pages fresh ✓</span>';
+    }
+
+    var tbody = document.getElementById('en-refresh-body');
+    if (tbody) {
+      tbody.innerHTML = pages.map(function(p) {
+        var hrsAgo = Math.floor(p.hours_since_refresh);
+        var hrsDue = Math.floor(p.hours_until_due || 0);
+        var freshLabel = hrsAgo < 1 ? '<1h ago' : hrsAgo < 24 ? hrsAgo + 'h ago' : Math.floor(hrsAgo/24) + 'd ago';
+        var dueLabel = p.needs_refresh ? 'Overdue' : (hrsDue < 1 ? '<1h' : hrsDue < 24 ? hrsDue + 'h' : Math.floor(hrsDue/24) + 'd');
+        var statusColor = p.needs_refresh ? '#c06060' : hrsDue < 24 ? '#a08858' : '#4a9a6b';
+        var statusIcon = p.needs_refresh ? '⚠' : '✓';
+        return '<tr>' +
+          '<td style="font-family:var(--mono);font-size:12px">' + p.cache_key + '</td>' +
+          '<td>' + p.page_type + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + p.refresh_interval_days + 'd</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + freshLabel + '</td>' +
+          '<td style="text-align:right;font-family:var(--mono)">' + dueLabel + '</td>' +
+          '<td style="text-align:center;color:' + statusColor + '">' + statusIcon + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+  } catch(e) {
+    console.error('[Admin] Refresh schedule error:', e); toastWarning('Refresh schedule failed to load');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// D7: MOCK ATS LOG TAB (v4.85)
+// Shows mock_ats_submissions with payload inspection
+// ═══════════════════════════════════════════════════════════
+
+async function loadMockAtsTab() {
+  var container = document.getElementById('admin-panel-mock-ats');
+  if (!container) return;
+
+  container.innerHTML = '<div class="admin-loading">Loading mock ATS submissions...</div>';
+
+  try {
+    var { data, error } = await sb
+      .from('mock_ats_submissions')
+      .select('id, user_id, job_id, ats_source, response_type, response_body, payload, created_at, idempotency_key')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      container.innerHTML = '<div class="admin-red">Error loading mock ATS data: ' + escapeHtml(error.message) + '</div>';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      container.innerHTML = '<div style="padding:20px;color:var(--text-dim);text-align:center;">No mock ATS submissions yet.</div>';
+      return;
+    }
+
+    // Stats summary
+    var total = data.length;
+    var success = data.filter(function(r) { return r.response_type === 'success'; }).length;
+    var rejected = data.filter(function(r) { return r.response_type === 'rejected'; }).length;
+    var timeout = data.filter(function(r) { return r.response_type === 'timeout'; }).length;
+
+    var statsHtml = '<div style="display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;">' +
+      '<div class="admin-stat-card"><div class="admin-stat-val">' + total + '</div><div class="admin-stat-label">Total</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#22c55e40"><div class="admin-stat-val" style="color:#22c55e">' + success + '</div><div class="admin-stat-label">Success</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#f59e0b40"><div class="admin-stat-val" style="color:#f59e0b">' + rejected + '</div><div class="admin-stat-label">Rejected</div></div>' +
+      '<div class="admin-stat-card" style="border-color:#ef444440"><div class="admin-stat-val" style="color:#ef4444">' + timeout + '</div><div class="admin-stat-label">Timeout</div></div>' +
+      '</div>';
+
+    // Table
+    var tableHtml = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%;font-size:13px;">' +
+      '<thead><tr>' +
+      '<th>Time</th><th>Job ID</th><th>ATS</th><th>Result</th><th>User</th><th>Details</th>' +
+      '</tr></thead><tbody>';
+
+    tableHtml += data.map(function(row) {
+      var time = new Date(row.created_at).toLocaleString();
+      var badge = '';
+      if (row.response_type === 'success') badge = '<span class="admin-badge admin-badge-green">✓ Success</span>';
+      else if (row.response_type === 'rejected') badge = '<span class="admin-badge admin-badge-amber">✗ Rejected</span>';
+      else badge = '<span class="admin-badge admin-badge-red">⏱ Timeout</span>';
+
+      var detailSnippet = '';
+      if (row.response_body) {
+        if (row.response_type === 'success') detailSnippet = row.response_body.confirmation_id || '';
+        else if (row.response_type === 'rejected') detailSnippet = (row.response_body.error || '') + ': ' + (row.response_body.detail || '');
+        else detailSnippet = 'timeout';
+      }
+
+      var jobIdShort = (row.job_id || '').length > 20 ? row.job_id.substring(0, 20) + '…' : (row.job_id || '');
+      var userIdShort = (row.user_id || '').substring(0, 8) + '…';
+
+      return '<tr data-row-id="' + row.id + '" style="cursor:pointer;" onclick="toggleMockAtsDetail(this)">' +
+        '<td style="white-space:nowrap;font-size:12px;color:var(--text-dim)">' + time + '</td>' +
+        '<td style="font-family:var(--mono);font-size:12px;" title="' + escapeHtml(row.job_id || '') + '">' + escapeHtml(jobIdShort) + '</td>' +
+        '<td>' + escapeHtml(row.ats_source || '') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td style="font-family:var(--mono);font-size:11px;" title="' + escapeHtml(row.user_id || '') + '">' + escapeHtml(userIdShort) + '</td>' +
+        '<td style="font-size:12px;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(detailSnippet) + '</td>' +
+        '</tr>' +
+        '<tr class="mock-ats-detail" style="display:none;"><td colspan="6">' +
+          '<div style="background:var(--bg);padding:12px;border-radius:8px;font-size:12px;overflow-x:auto;">' +
+            '<div style="margin-bottom:8px;"><strong>Request Payload:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:300px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.payload, null, 2)) + '</pre>' +
+            '<div style="margin:8px 0;"><strong>Response:</strong></div>' +
+            '<pre style="background:var(--bg-card);padding:10px;border-radius:6px;font-size:11px;overflow-x:auto;max-height:200px;color:var(--text-dim);">' + escapeHtml(JSON.stringify(row.response_body, null, 2)) + '</pre>' +
+            '<div style="margin-top:8px;font-size:11px;color:var(--text-faint);">Idempotency: ' + escapeHtml(row.idempotency_key || 'none') + '</div>' +
+          '</div>' +
+        '</td></tr>';
+    }).join('');
+
+    tableHtml += '</tbody></table></div>';
+
+    container.innerHTML = statsHtml + tableHtml;
+
+  } catch (e) {
+    console.error('[Admin] Mock ATS tab error:', e); toastError('Mock ATS failed to load');
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function toggleMockAtsDetail(row) {
+  var detail = row.nextElementSibling;
+  if (detail && detail.classList.contains('mock-ats-detail')) {
+    detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  }
+}
+
+
+// === js/admin-notifications.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-notifications.js — Notification Management + Template Manager
+   Session 1 of Notification System (Pod 2)
+   v6.22
+   ─────────────────────────────────────────────────────────── */
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION TYPE CATALOG (79 types, 13 categories)
+// ═══════════════════════════════════════════════════════════
+var NOTIF_CATEGORIES = {
+  onboarding: { label: 'Onboarding', types: ['welcome','onboard_resume','onboard_filter','onboard_extension'] },
+  integration: { label: 'Integration Adoption', types: ['adopt_extension_reminder','adopt_gmail','adopt_calendar','adopt_drive','adopt_integration_combo','adopt_post_value_moment'] },
+  extension: { label: 'Extension', types: ['extension_update','extension_disconnected'] },
+  application: { label: 'Application Process', types: ['auto_apply_confirm','apply_alert','cv_score_approval','auth_pending_reminder','auth_expired','auth_pre_rewrite','pipeline_response','pipeline_interview','interview_reminder','pipeline_stale'] },
+  resume: { label: 'Resume Intelligence', types: ['rewrite_started','rewrite_complete','rewrite_failed','rewrite_review_reminder','rewrite_batch_summary'] },
+  stats: { label: 'Stats & Trends', types: ['weekly_summary','monthly_pipeline_report','pipeline_benchmark','filter_trend_weekly','market_pulse','trend_anomaly'] },
+  ghost: { label: 'Ghost Intelligence', types: ['ghost_alert','ghost_report_weekly'] },
+  discovery: { label: 'Job Discovery', types: ['new_jobs_daily','new_jobs_realtime'] },
+  verification: { label: 'Pipeline Verification', types: ['pipeline_status_check','pipeline_bulk_review','pipeline_detected_update','pipeline_auto_updated','pipeline_ambiguous_signal','pipeline_outcome_unknown'] },
+  referral: { label: 'Referral', types: ['referral_invite','referral_sent_confirmation','referral_status_update','referral_nudge_referee','referral_conversion','referral_reward_earned','referral_expiring_reward','referral_milestone','referral_periodic_summary'] },
+  upgrade: { label: 'Upgrade & Credits', types: ['usage_upgrade_prompt','credit_cost_comparison','credit_burn_rate_alert','credit_low_balance','credit_exhausted','upgrade_roi_summary','price_lock_warning','promo_trial','promo_feature_preview'] },
+  community: { label: 'Community & Feedback', types: ['bug_report_thankyou','bug_resolved','feature_request_thankyou','feature_request_accepted','feature_request_shipped','monthly_product_update'] },
+  account: { label: 'Account & Billing', types: ['double_opt_in','notification_opt_in','subscription_expiring','subscription_confirm','credit_purchase_receipt','payment_failed','payment_recovered','plan_change_confirm','subscription_cancelled','invoice_generated','refund_processed','inactive_reengagement','reengagement_14d','reengagement_30d','reengagement_60d'] }
+};
+
+// Message classification
+var NOTIF_CLASSIFICATION = {
+  required_transactional: ['subscription_confirm','credit_purchase_receipt','payment_failed','payment_recovered','plan_change_confirm','subscription_cancelled','invoice_generated','refund_processed','double_opt_in'],
+  configurable_transactional: ['subscription_expiring','notification_opt_in'],
+  product: ['welcome','onboard_resume','onboard_filter','onboard_extension','adopt_extension_reminder','adopt_gmail','adopt_calendar','adopt_drive','adopt_integration_combo','adopt_post_value_moment','extension_update','extension_disconnected','auto_apply_confirm','apply_alert','cv_score_approval','auth_pending_reminder','auth_expired','auth_pre_rewrite','pipeline_response','pipeline_interview','interview_reminder','pipeline_stale','rewrite_started','rewrite_complete','rewrite_failed','rewrite_review_reminder','rewrite_batch_summary','weekly_summary','monthly_pipeline_report','pipeline_benchmark','filter_trend_weekly','market_pulse','trend_anomaly','ghost_alert','ghost_report_weekly','new_jobs_daily','new_jobs_realtime','pipeline_status_check','pipeline_bulk_review','pipeline_detected_update','pipeline_auto_updated','pipeline_ambiguous_signal','pipeline_outcome_unknown','bug_report_thankyou','bug_resolved','feature_request_thankyou','feature_request_accepted','feature_request_shipped','monthly_product_update'],
+  marketing: ['usage_upgrade_prompt','credit_cost_comparison','credit_burn_rate_alert','credit_low_balance','credit_exhausted','upgrade_roi_summary','price_lock_warning','promo_trial','promo_feature_preview','referral_invite','referral_sent_confirmation','referral_status_update','referral_nudge_referee','referral_conversion','referral_reward_earned','referral_expiring_reward','referral_milestone','referral_periodic_summary','inactive_reengagement','reengagement_14d','reengagement_30d','reengagement_60d']
+};
+
+// Dark theme types
+var DARK_THEME_TYPES = ['weekly_summary','monthly_pipeline_report','pipeline_benchmark','market_pulse','trend_anomaly','filter_trend_weekly','ghost_report_weekly','upgrade_roi_summary','credit_cost_comparison','monthly_product_update','rewrite_batch_summary'];
+
+// ═══════════════════════════════════════════════════════════
+// TAB: NOTIFICATION MANAGEMENT
+// ═══════════════════════════════════════════════════════════
+async function loadNotificationsTab() {
+  var container = document.getElementById('admin-panel-notifications');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Loading notification configs…</div>';
+
+  try {
+    // Load configs
+    var { data: configs, error } = await sb.from('admin_notification_config').select('*').order('notification_type');
+    if (error) throw error;
+
+    // Load cohorts for dropdown
+    var { data: cohorts } = await sb.from('cohorts').select('id,name').order('name');
+    var cohortList = cohorts || [{ id: 'all', name: 'All' }];
+
+    // Build category filter
+    var categoryFilter = '<select id="notif-cat-filter" onchange="filterNotifConfigs()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;">' +
+      '<option value="all">All Categories</option>';
+    Object.keys(NOTIF_CATEGORIES).forEach(function(k) {
+      categoryFilter += '<option value="' + k + '">' + NOTIF_CATEGORIES[k].label + '</option>';
+    });
+    categoryFilter += '</select>';
+
+    // Header + actions
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">' +
+      '<div style="display:flex;gap:8px;align-items:center">' + categoryFilter +
+      '<span style="font-size:12px;color:var(--text-dim)" id="notif-config-count">' + (configs || []).length + ' configs</span></div>' +
+      '<button onclick="seedAllNotifConfigs()" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:12px;cursor:pointer;">Seed Missing Configs</button>' +
+      '</div>';
+
+    // Config table
+    html += '<div style="overflow-x:auto"><table class="admin-table" style="width:100%;font-size:12px;border-collapse:collapse;">' +
+      '<thead><tr style="text-align:left;border-bottom:1px solid var(--border)">' +
+      '<th style="padding:8px 6px">Type</th>' +
+      '<th style="padding:8px 6px">Category</th>' +
+      '<th style="padding:8px 6px">Classification</th>' +
+      '<th style="padding:8px 6px">Cohort</th>' +
+      '<th style="padding:8px 6px">Enabled</th>' +
+      '<th style="padding:8px 6px">Cadence</th>' +
+      '<th style="padding:8px 6px">Channel</th>' +
+      '<th style="padding:8px 6px">Freq Cap</th>' +
+      '<th style="padding:8px 6px">Actions</th>' +
+      '</tr></thead><tbody id="notif-config-body">';
+
+    // Render existing configs
+    (configs || []).forEach(function(c) {
+      html += renderNotifConfigRow(c);
+    });
+
+    // Also show unconfigured types
+    var configuredTypes = new Set((configs || []).map(function(c) { return c.notification_type; }));
+    var missingTypes = [];
+    Object.keys(NOTIF_CATEGORIES).forEach(function(cat) {
+      NOTIF_CATEGORIES[cat].types.forEach(function(t) {
+        if (!configuredTypes.has(t)) missingTypes.push(t);
+      });
+    });
+
+    if (missingTypes.length > 0) {
+      html += '<tr><td colspan="9" style="padding:12px 6px;color:var(--text-faint);font-style:italic;border-top:2px solid var(--border)">' +
+        '⚠ ' + missingTypes.length + ' notification types without config: ' + missingTypes.slice(0, 10).join(', ') +
+        (missingTypes.length > 10 ? ' + ' + (missingTypes.length - 10) + ' more' : '') + '</td></tr>';
+    }
+
+    html += '</tbody></table></div>';
+
+    // Coverage stats
+    var allTypes = [];
+    Object.values(NOTIF_CATEGORIES).forEach(function(c) { allTypes = allTypes.concat(c.types); });
+    var coveragePct = allTypes.length > 0 ? Math.round((configuredTypes.size / allTypes.length) * 100) : 0;
+    html += '<div style="margin-top:12px;font-size:11px;color:var(--text-dim)">Coverage: ' + configuredTypes.size + '/' + allTypes.length + ' types (' + coveragePct + '%)</div>';
+
+    // Suppression Management Section (Card 3)
+    html += '<div style="margin-top:24px;padding-top:20px;border-top:2px solid var(--border)">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;cursor:pointer" onclick="toggleSuppressionSection()">' +
+        '<h3 style="margin:0;font-size:14px;color:var(--text)">Email Suppressions</h3>' +
+        '<span id="suppression-toggle-icon" style="color:var(--text-dim);font-size:12px">▼</span>' +
+      '</div>' +
+      '<div id="suppression-section"></div>' +
+    '</div>';
+
+    container.innerHTML = html;
+    renderSuppressionSection();
+  } catch (e) {
+    console.error('[Admin] Notifications tab error:', e);
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function renderNotifConfigRow(c) {
+  var cat = getCategoryForType(c.notification_type);
+  var cls = getClassification(c.notification_type);
+  var clsBadge = cls === 'required_transactional' ? '<span class="admin-badge admin-badge-red">Required</span>' :
+    cls === 'configurable_transactional' ? '<span class="admin-badge admin-badge-amber">Config Trans</span>' :
+    cls === 'marketing' ? '<span class="admin-badge admin-badge-blue">Marketing</span>' :
+    '<span class="admin-badge admin-badge-green">Product</span>';
+
+  return '<tr data-category="' + cat + '" data-type="' + c.notification_type + '">' +
+    '<td style="padding:6px;font-family:var(--mono);font-size:11px">' + escapeHtml(c.notification_type) + '</td>' +
+    '<td style="padding:6px;font-size:11px">' + (NOTIF_CATEGORIES[cat] ? NOTIF_CATEGORIES[cat].label : cat) + '</td>' +
+    '<td style="padding:6px">' + clsBadge + '</td>' +
+    '<td style="padding:6px;font-size:11px">' + escapeHtml(c.cohort_id) + '</td>' +
+    '<td style="padding:6px">' +
+      '<label class="admin-toggle" style="margin:0">' +
+        '<input type="checkbox" ' + (c.enabled ? 'checked' : '') +
+        ' onchange="toggleNotifConfig(\'' + c.id + '\', this.checked)"' +
+        (cls === 'required_transactional' ? ' disabled title="Required transactional — cannot disable"' : '') + '>' +
+        '<span class="admin-toggle-slider"></span>' +
+      '</label>' +
+    '</td>' +
+    '<td style="padding:6px;font-size:11px">' + escapeHtml(c.cadence || 'default') + '</td>' +
+    '<td style="padding:6px;font-size:11px">' + escapeHtml(c.channel_override || 'user_preference') + '</td>' +
+    '<td style="padding:6px;font-size:11px">' + (c.frequency_cap_count ? c.frequency_cap_count + '/' + (c.frequency_cap_period || '?') : '—') + '</td>' +
+    '<td style="padding:6px"><button onclick="editNotifConfig(\'' + c.id + '\')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:11px;cursor:pointer">Edit</button></td>' +
+    '</tr>';
+}
+
+function getCategoryForType(type) {
+  for (var cat in NOTIF_CATEGORIES) {
+    if (NOTIF_CATEGORIES[cat].types.indexOf(type) !== -1) return cat;
+  }
+  return 'unknown';
+}
+
+function getClassification(type) {
+  for (var cls in NOTIF_CLASSIFICATION) {
+    if (NOTIF_CLASSIFICATION[cls].indexOf(type) !== -1) return cls;
+  }
+  return 'product';
+}
+
+function filterNotifConfigs() {
+  var filter = document.getElementById('notif-cat-filter').value;
+  var rows = document.querySelectorAll('#notif-config-body tr[data-category]');
+  var count = 0;
+  rows.forEach(function(r) {
+    var show = filter === 'all' || r.dataset.category === filter;
+    r.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+  var countEl = document.getElementById('notif-config-count');
+  if (countEl) countEl.textContent = count + ' configs shown';
+}
+
+async function toggleNotifConfig(id, enabled) {
+  try {
+    var { error } = await sb.from('admin_notification_config').update({ enabled: enabled, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) throw error;
+    toastSuccess('Config ' + (enabled ? 'enabled' : 'disabled'));
+  } catch (e) {
+    toastError('Failed to update: ' + e.message);
+  }
+}
+
+async function seedAllNotifConfigs() {
+  try {
+    var { data: existing } = await sb.from('admin_notification_config').select('notification_type,cohort_id');
+    var existingSet = new Set((existing || []).map(function(r) { return r.notification_type + '|' + r.cohort_id; }));
+    var toInsert = [];
+    Object.keys(NOTIF_CATEGORIES).forEach(function(cat) {
+      NOTIF_CATEGORIES[cat].types.forEach(function(type) {
+        if (!existingSet.has(type + '|all')) {
+          var cls = getClassification(type);
+          toInsert.push({
+            notification_type: type,
+            cohort_id: 'all',
+            enabled: true,
+            cadence: 'default',
+            channel_override: 'user_preference',
+            landing_page: '/dashboard'
+          });
+        }
+      });
+    });
+
+    if (toInsert.length === 0) {
+      toastSuccess('All configs already exist');
+      return;
+    }
+
+    var { error } = await sb.from('admin_notification_config').insert(toInsert);
+    if (error) throw error;
+    toastSuccess('Seeded ' + toInsert.length + ' notification configs');
+    loadNotificationsTab();
+  } catch (e) {
+    toastError('Seed failed: ' + e.message);
+  }
+}
+
+async function editNotifConfig(id) {
+  try {
+    var { data: config, error } = await sb.from('admin_notification_config').select('*').eq('id', id).single();
+    if (error) throw error;
+
+    var modal = document.createElement('div');
+    modal.className = 'admin-modal-overlay';
+    modal.innerHTML = '<div class="admin-modal" style="max-width:520px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<h3 style="margin:0;font-size:16px">Edit: ' + escapeHtml(config.notification_type) + '</h3>' +
+        '<button onclick="this.closest(\'.admin-modal-overlay\').remove()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>' +
+      '</div>' +
+      '<div style="display:grid;gap:12px">' +
+        '<label style="font-size:12px;color:var(--text-dim)">Cadence' +
+          '<select id="nc-cadence" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+            '<option value="default"' + (config.cadence === 'default' ? ' selected' : '') + '>Default</option>' +
+            '<option value="realtime"' + (config.cadence === 'realtime' ? ' selected' : '') + '>Real-time</option>' +
+            '<option value="daily"' + (config.cadence === 'daily' ? ' selected' : '') + '>Daily Digest</option>' +
+            '<option value="weekly"' + (config.cadence === 'weekly' ? ' selected' : '') + '>Weekly</option>' +
+            '<option value="monthly"' + (config.cadence === 'monthly' ? ' selected' : '') + '>Monthly</option>' +
+          '</select></label>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Channel Override' +
+          '<select id="nc-channel" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+            '<option value="user_preference"' + (config.channel_override === 'user_preference' ? ' selected' : '') + '>User Preference</option>' +
+            '<option value="email_only"' + (config.channel_override === 'email_only' ? ' selected' : '') + '>Email Only</option>' +
+            '<option value="sms_only"' + (config.channel_override === 'sms_only' ? ' selected' : '') + '>SMS Only</option>' +
+          '</select></label>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+          '<label style="font-size:12px;color:var(--text-dim)">Freq Cap Count' +
+            '<input id="nc-freq-count" type="number" value="' + (config.frequency_cap_count || '') + '" placeholder="e.g. 3" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+          '</label>' +
+          '<label style="font-size:12px;color:var(--text-dim)">Freq Cap Period' +
+            '<input id="nc-freq-period" type="text" value="' + escapeHtml(config.frequency_cap_period || '') + '" placeholder="e.g. week" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+          '</label>' +
+        '</div>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Landing Page' +
+          '<input id="nc-landing" type="text" value="' + escapeHtml(config.landing_page || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+        '</label>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Landing Tab' +
+          '<input id="nc-tab" type="text" value="' + escapeHtml(config.landing_tab || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+        '</label>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">' +
+        '<button onclick="this.closest(\'.admin-modal-overlay\').remove()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer">Cancel</button>' +
+        '<button onclick="saveNotifConfig(\'' + id + '\')" style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer">Save</button>' +
+      '</div>' +
+    '</div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+  } catch (e) {
+    toastError('Failed to load config: ' + e.message);
+  }
+}
+
+async function saveNotifConfig(id) {
+  try {
+    var freqCount = document.getElementById('nc-freq-count').value;
+    var updates = {
+      cadence: document.getElementById('nc-cadence').value,
+      channel_override: document.getElementById('nc-channel').value,
+      frequency_cap_count: freqCount ? parseInt(freqCount) : null,
+      frequency_cap_period: document.getElementById('nc-freq-period').value || null,
+      landing_page: document.getElementById('nc-landing').value || null,
+      landing_tab: document.getElementById('nc-tab').value || null,
+      updated_at: new Date().toISOString()
+    };
+    var { error } = await sb.from('admin_notification_config').update(updates).eq('id', id);
+    if (error) throw error;
+    document.querySelector('.admin-modal-overlay').remove();
+    toastSuccess('Config saved');
+    loadNotificationsTab();
+  } catch (e) {
+    toastError('Save failed: ' + e.message);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// TAB: TEMPLATE MANAGER
+// ═══════════════════════════════════════════════════════════
+async function loadTemplatesTab() {
+  var container = document.getElementById('admin-panel-templates');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Loading templates…</div>';
+
+  try {
+    var { data: templates, error } = await sb.from('notification_templates').select('*').order('notification_type').order('channel').order('created_at', { ascending: false });
+    if (error) throw error;
+
+    // Category + status filters
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">' +
+      '<div style="display:flex;gap:8px;align-items:center">' +
+        '<select id="tpl-cat-filter" onchange="filterTemplates()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">' +
+          '<option value="all">All Categories</option>';
+    Object.keys(NOTIF_CATEGORIES).forEach(function(k) {
+      html += '<option value="' + k + '">' + NOTIF_CATEGORIES[k].label + '</option>';
+    });
+    html += '</select>' +
+        '<select id="tpl-status-filter" onchange="filterTemplates()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">' +
+          '<option value="all">All Statuses</option>' +
+          '<option value="production">Production</option>' +
+          '<option value="draft">Draft</option>' +
+          '<option value="archived">Archived</option>' +
+        '</select>' +
+        '<select id="tpl-channel-filter" onchange="filterTemplates()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">' +
+          '<option value="all">All Channels</option>' +
+          '<option value="email">Email</option>' +
+          '<option value="sms">SMS</option>' +
+          '<option value="in_app">In-App</option>' +
+        '</select>' +
+        '<input id="tpl-search" type="text" placeholder="Search templates…" oninput="filterTemplates()" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;width:180px">' +
+      '</div>' +
+      '<button onclick="openTemplateEditor()" style="padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer">+ New Template</button>' +
+    '</div>';
+
+    // Coverage indicator
+    var allTypes = [];
+    Object.values(NOTIF_CATEGORIES).forEach(function(c) { allTypes = allTypes.concat(c.types); });
+    var prodTemplates = (templates || []).filter(function(t) { return t.is_production && t.channel === 'email'; });
+    var coveredTypes = new Set(prodTemplates.map(function(t) { return t.notification_type; }));
+    var missingCount = allTypes.filter(function(t) { return !coveredTypes.has(t); }).length;
+    if (missingCount > 0) {
+      html += '<div style="padding:8px 12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;margin-bottom:12px;font-size:12px;color:#ef4444">' +
+        '⚠ ' + missingCount + ' notification types missing production email template</div>';
+    }
+
+    // Template table
+    html += '<div style="overflow-x:auto"><table class="admin-table" style="width:100%;font-size:12px;border-collapse:collapse">' +
+      '<thead><tr style="text-align:left;border-bottom:1px solid var(--border)">' +
+      '<th style="padding:8px 6px">Type</th>' +
+      '<th style="padding:8px 6px">Channel</th>' +
+      '<th style="padding:8px 6px">Cohort</th>' +
+      '<th style="padding:8px 6px">Plan</th>' +
+      '<th style="padding:8px 6px">Version</th>' +
+      '<th style="padding:8px 6px">Status</th>' +
+      '<th style="padding:8px 6px">Theme</th>' +
+      '<th style="padding:8px 6px">Subject</th>' +
+      '<th style="padding:8px 6px">Updated</th>' +
+      '<th style="padding:8px 6px">Actions</th>' +
+      '</tr></thead><tbody id="tpl-table-body">';
+
+    (templates || []).forEach(function(t) {
+      var cat = getCategoryForType(t.notification_type);
+      var statusBadge = t.status === 'production' ? '<span class="admin-badge admin-badge-green">Production</span>' :
+        t.status === 'draft' ? '<span class="admin-badge admin-badge-amber">Draft</span>' :
+        t.status === 'review' ? '<span class="admin-badge admin-badge-blue">Review</span>' :
+        '<span class="admin-badge" style="background:var(--bg-input);color:var(--text-dim)">Archived</span>';
+      var themeBadge = t.theme === 'dark' ? '<span style="padding:2px 6px;border-radius:3px;background:#1E2028;color:#F0F1F3;font-size:10px">Dark</span>' :
+        '<span style="padding:2px 6px;border-radius:3px;background:#F8FAFC;color:#1E293B;font-size:10px;border:1px solid #ddd">Light</span>';
+      var subjectSnippet = (t.subject_line || '—').substring(0, 40) + (t.subject_line && t.subject_line.length > 40 ? '…' : '');
+      var updatedDate = t.updated_at ? new Date(t.updated_at).toLocaleDateString() : '—';
+
+      html += '<tr data-category="' + cat + '" data-status="' + (t.status || 'production') + '" data-channel="' + (t.channel || 'email') + '" data-search="' + escapeHtml((t.notification_type + ' ' + (t.subject_line || '')).toLowerCase()) + '">' +
+        '<td style="padding:6px;font-family:var(--mono);font-size:11px">' + escapeHtml(t.notification_type) + '</td>' +
+        '<td style="padding:6px;font-size:11px">' + escapeHtml(t.channel || 'email') + '</td>' +
+        '<td style="padding:6px;font-size:11px">' + escapeHtml(t.cohort_id || 'default') + '</td>' +
+        '<td style="padding:6px;font-size:11px">' + escapeHtml(t.plan || '—') + '</td>' +
+        '<td style="padding:6px;font-family:var(--mono);font-size:11px">' + escapeHtml(t.version) + '</td>' +
+        '<td style="padding:6px">' + statusBadge + '</td>' +
+        '<td style="padding:6px">' + themeBadge + '</td>' +
+        '<td style="padding:6px;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(t.subject_line || '') + '">' + escapeHtml(subjectSnippet) + '</td>' +
+        '<td style="padding:6px;font-size:11px;color:var(--text-dim)">' + updatedDate + '</td>' +
+        '<td style="padding:6px;white-space:nowrap">' +
+          '<button onclick="openTemplateEditor(\'' + t.id + '\')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:11px;cursor:pointer;margin-right:4px" title="Edit">✎</button>' +
+          '<button onclick="duplicateTemplate(\'' + t.id + '\')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:11px;cursor:pointer;margin-right:4px" title="Duplicate">⧉</button>' +
+          (t.status !== 'production' && t.status !== 'archived' ? '<button onclick="promoteTemplate(\'' + t.id + '\')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:11px;cursor:pointer" title="Promote to Production">▲</button>' : '') +
+          (t.status === 'archived' ? '<button onclick="promoteTemplate(\'' + t.id + '\')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--accent);background:var(--bg-input);color:var(--accent);font-size:11px;cursor:pointer" title="Rollback to Production">↩</button>' : '') +
+        '</td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    html += '<div style="margin-top:12px;font-size:11px;color:var(--text-dim)">' + (templates || []).length + ' templates total, ' + prodTemplates.length + ' in production</div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    console.error('[Admin] Templates tab error:', e);
+    container.innerHTML = '<div class="admin-red">Error: ' + escapeHtml(String(e)) + '</div>';
+  }
+}
+
+function filterTemplates() {
+  var catFilter = document.getElementById('tpl-cat-filter').value;
+  var statusFilter = document.getElementById('tpl-status-filter').value;
+  var channelFilter = document.getElementById('tpl-channel-filter').value;
+  var searchTerm = (document.getElementById('tpl-search').value || '').toLowerCase();
+
+  document.querySelectorAll('#tpl-table-body tr').forEach(function(row) {
+    var catMatch = catFilter === 'all' || row.dataset.category === catFilter;
+    var statusMatch = statusFilter === 'all' || row.dataset.status === statusFilter;
+    var channelMatch = channelFilter === 'all' || row.dataset.channel === channelFilter;
+    var searchMatch = !searchTerm || (row.dataset.search || '').indexOf(searchTerm) !== -1;
+    row.style.display = (catMatch && statusMatch && channelMatch && searchMatch) ? '' : 'none';
+  });
+}
+
+async function openTemplateEditor(templateId) {
+  var template = null;
+  if (templateId) {
+    var { data, error } = await sb.from('notification_templates').select('*').eq('id', templateId).single();
+    if (error) { toastError('Failed to load template'); return; }
+    template = data;
+  }
+
+  var isNew = !template;
+  var t = template || { notification_type: '', channel: 'email', cohort_id: 'default', plan: 'free', version: '1.0.0', status: 'draft', theme: 'white', subject_line: '', preheader: '', html_body: '', plain_text_body: '', sms_body: '', in_app_title: '', in_app_body: '', in_app_icon: '', in_app_action_url: '', cta_primary_text: '', cta_primary_url: '', cta_secondary_text: '', cta_secondary_url: '', notes: '' };
+
+  // Build type dropdown options
+  var typeOptions = '';
+  Object.keys(NOTIF_CATEGORIES).forEach(function(cat) {
+    typeOptions += '<optgroup label="' + NOTIF_CATEGORIES[cat].label + '">';
+    NOTIF_CATEGORIES[cat].types.forEach(function(type) {
+      typeOptions += '<option value="' + type + '"' + (t.notification_type === type ? ' selected' : '') + '>' + type + '</option>';
+    });
+    typeOptions += '</optgroup>';
+  });
+
+  var modal = document.createElement('div');
+  modal.className = 'admin-modal-overlay';
+  modal.innerHTML = '<div class="admin-modal" style="max-width:800px;max-height:90vh;overflow-y:auto">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;position:sticky;top:0;background:var(--bg-card);padding:8px 0;z-index:1">' +
+      '<h3 style="margin:0;font-size:16px">' + (isNew ? 'New Template' : 'Edit: ' + t.notification_type + ' (' + t.channel + ')') + '</h3>' +
+      '<button onclick="this.closest(\'.admin-modal-overlay\').remove()" style="background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer">✕</button>' +
+    '</div>' +
+
+    // Identity row
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">' +
+      '<label style="font-size:12px;color:var(--text-dim)">Type<select id="te-type" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px;font-size:11px">' + typeOptions + '</select></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Channel<select id="te-channel" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+        '<option value="email"' + (t.channel === 'email' ? ' selected' : '') + '>Email</option>' +
+        '<option value="sms"' + (t.channel === 'sms' ? ' selected' : '') + '>SMS</option>' +
+        '<option value="in_app"' + (t.channel === 'in_app' ? ' selected' : '') + '>In-App</option>' +
+      '</select></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Cohort<input id="te-cohort" type="text" value="' + escapeHtml(t.cohort_id || 'default') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Version<input id="te-version" type="text" value="' + escapeHtml(t.version) + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px;font-family:var(--mono)"></label>' +
+    '</div>' +
+
+    // Status + Theme
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">' +
+      '<label style="font-size:12px;color:var(--text-dim)">Status<select id="te-status" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+        '<option value="draft"' + (t.status === 'draft' ? ' selected' : '') + '>Draft</option>' +
+        '<option value="review"' + (t.status === 'review' ? ' selected' : '') + '>Review</option>' +
+        '<option value="production"' + (t.status === 'production' ? ' selected' : '') + '>Production</option>' +
+        '<option value="archived"' + (t.status === 'archived' ? ' selected' : '') + '>Archived</option>' +
+      '</select></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Theme<select id="te-theme" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+        '<option value="white"' + (t.theme === 'white' ? ' selected' : '') + '>White (Light)</option>' +
+        '<option value="dark"' + (t.theme === 'dark' ? ' selected' : '') + '>Dark (Data)</option>' +
+      '</select></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Plan<select id="te-plan" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px">' +
+        '<option value="free"' + (t.plan === 'free' ? ' selected' : '') + '>Free</option>' +
+        '<option value="starter"' + (t.plan === 'starter' ? ' selected' : '') + '>Starter</option>' +
+        '<option value="pro"' + (t.plan === 'pro' ? ' selected' : '') + '>Pro</option>' +
+        '<option value="default"' + (t.plan === 'default' ? ' selected' : '') + '>Default (all plans)</option>' +
+      '</select></label>' +
+    '</div>' +
+
+    // Email fields
+    '<div id="te-email-fields">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">Email Content</div>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Subject Line<input id="te-subject" type="text" value="' + escapeHtml(t.subject_line || '') + '" placeholder="e.g. Welcome to Brilliant Jobs — {{user.first_name}}" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0"></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Preheader<input id="te-preheader" type="text" value="' + escapeHtml(t.preheader || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0"></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">HTML Body<textarea id="te-html" rows="8" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0;font-family:var(--mono);font-size:11px;resize:vertical">' + escapeHtml(t.html_body || '') + '</textarea></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Plain Text Body<textarea id="te-plaintext" rows="4" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0;font-family:var(--mono);font-size:11px;resize:vertical">' + escapeHtml(t.plain_text_body || '') + '</textarea></label>' +
+    '</div>' +
+
+    // SMS fields
+    '<div id="te-sms-fields" style="display:none">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">SMS Content</div>' +
+      '<label style="font-size:12px;color:var(--text-dim)">SMS Body (160 char segments)<textarea id="te-sms" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0;font-size:12px;resize:vertical" oninput="updateSmsCounter()">' + escapeHtml(t.sms_body || '') + '</textarea></label>' +
+      '<div id="te-sms-counter" style="font-size:11px;color:var(--text-dim);margin-bottom:8px">0/160</div>' +
+    '</div>' +
+
+    // In-app fields
+    '<div id="te-inapp-fields" style="display:none">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">In-App Content</div>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Title<input id="te-inapp-title" type="text" value="' + escapeHtml(t.in_app_title || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0"></label>' +
+      '<label style="font-size:12px;color:var(--text-dim)">Body<textarea id="te-inapp-body" rows="3" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin:4px 0 8px 0;resize:vertical">' + escapeHtml(t.in_app_body || '') + '</textarea></label>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<label style="font-size:12px;color:var(--text-dim)">Icon<input id="te-inapp-icon" type="text" value="' + escapeHtml(t.in_app_icon || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Action URL<input id="te-inapp-url" type="text" value="' + escapeHtml(t.in_app_action_url || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+      '</div>' +
+    '</div>' +
+
+    // CTA fields
+    '<div style="margin-top:12px">' +
+      '<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">CTAs</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<label style="font-size:12px;color:var(--text-dim)">Primary CTA Text<input id="te-cta1-text" type="text" value="' + escapeHtml(t.cta_primary_text || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Primary CTA URL<input id="te-cta1-url" type="text" value="' + escapeHtml(t.cta_primary_url || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Secondary CTA Text<input id="te-cta2-text" type="text" value="' + escapeHtml(t.cta_secondary_text || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+        '<label style="font-size:12px;color:var(--text-dim)">Secondary CTA URL<input id="te-cta2-url" type="text" value="' + escapeHtml(t.cta_secondary_url || '') + '" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px"></label>' +
+      '</div>' +
+    '</div>' +
+
+    // Notes
+    '<label style="font-size:12px;color:var(--text-dim);margin-top:12px;display:block">Notes<textarea id="te-notes" rows="2" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);margin-top:4px;resize:vertical">' + escapeHtml(t.notes || '') + '</textarea></label>' +
+
+    // Actions
+    '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">' +
+      '<button onclick="this.closest(\'.admin-modal-overlay\').remove()" style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer">Cancel</button>' +
+      '<button onclick="saveTemplate(' + (isNew ? 'null' : '\'' + templateId + '\'') + ')" style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;cursor:pointer">Save</button>' +
+    '</div>' +
+  '</div>';
+
+  document.body.appendChild(modal);
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.remove(); });
+
+  // Toggle channel-specific fields
+  var channelSelect = document.getElementById('te-channel');
+  function updateChannelFields() {
+    var ch = channelSelect.value;
+    document.getElementById('te-email-fields').style.display = ch === 'email' ? '' : 'none';
+    document.getElementById('te-sms-fields').style.display = ch === 'sms' ? '' : 'none';
+    document.getElementById('te-inapp-fields').style.display = ch === 'in_app' ? '' : 'none';
+  }
+  channelSelect.addEventListener('change', updateChannelFields);
+  updateChannelFields();
+
+  // Auto-set theme based on type
+  var typeSelect = document.getElementById('te-type');
+  typeSelect.addEventListener('change', function() {
+    var themeSelect = document.getElementById('te-theme');
+    themeSelect.value = DARK_THEME_TYPES.indexOf(typeSelect.value) !== -1 ? 'dark' : 'white';
+  });
+}
+
+function updateSmsCounter() {
+  var body = document.getElementById('te-sms');
+  var counter = document.getElementById('te-sms-counter');
+  if (body && counter) {
+    var len = body.value.length;
+    var segments = Math.ceil(len / 160) || 1;
+    counter.textContent = len + '/' + (segments * 160) + ' (' + segments + ' segment' + (segments > 1 ? 's' : '') + ')';
+    counter.style.color = len > 320 ? '#ef4444' : 'var(--text-dim)';
+  }
+}
+
+async function saveTemplate(templateId) {
+  try {
+    var channel = document.getElementById('te-channel').value;
+    var status = document.getElementById('te-status').value;
+    var data = {
+      notification_type: document.getElementById('te-type').value,
+      channel: channel,
+      cohort_id: document.getElementById('te-cohort').value || 'default',
+      plan: document.getElementById('te-plan').value || 'free',
+      version: document.getElementById('te-version').value,
+      status: status,
+      is_production: status === 'production',
+      theme: document.getElementById('te-theme').value,
+      subject_line: document.getElementById('te-subject').value || null,
+      preheader: document.getElementById('te-preheader').value || null,
+      html_body: document.getElementById('te-html').value || null,
+      plain_text_body: document.getElementById('te-plaintext').value || null,
+      sms_body: document.getElementById('te-sms').value || null,
+      in_app_title: document.getElementById('te-inapp-title').value || null,
+      in_app_body: document.getElementById('te-inapp-body').value || null,
+      in_app_icon: document.getElementById('te-inapp-icon').value || null,
+      in_app_action_url: document.getElementById('te-inapp-url').value || null,
+      cta_primary_text: document.getElementById('te-cta1-text').value || null,
+      cta_primary_url: document.getElementById('te-cta1-url').value || null,
+      cta_secondary_text: document.getElementById('te-cta2-text').value || null,
+      cta_secondary_url: document.getElementById('te-cta2-url').value || null,
+      notes: document.getElementById('te-notes').value || null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (templateId) {
+      var { error } = await sb.from('notification_templates').update(data).eq('id', templateId);
+      if (error) throw error;
+    } else {
+      data.active = true;
+      data.config = {};
+      var { error } = await sb.from('notification_templates').insert(data);
+      if (error) throw error;
+    }
+
+    document.querySelector('.admin-modal-overlay').remove();
+    toastSuccess('Template saved');
+    loadTemplatesTab();
+  } catch (e) {
+    toastError('Save failed: ' + e.message);
+  }
+}
+
+async function duplicateTemplate(id) {
+  try {
+    var { data: original, error } = await sb.from('notification_templates').select('*').eq('id', id).single();
+    if (error) throw error;
+
+    var clone = Object.assign({}, original);
+    delete clone.id;
+    clone.status = 'draft';
+    clone.is_production = false;
+    clone.version = bumpVersion(clone.version, 'minor');
+    clone.notes = 'Duplicated from v' + original.version;
+    clone.created_at = new Date().toISOString();
+    clone.updated_at = new Date().toISOString();
+    clone.promoted_at = null;
+    clone.promoted_by = null;
+
+    var { error: insertErr } = await sb.from('notification_templates').insert(clone);
+    if (insertErr) throw insertErr;
+    toastSuccess('Template duplicated as draft v' + clone.version);
+    loadTemplatesTab();
+  } catch (e) {
+    toastError('Duplicate failed: ' + e.message);
+  }
+}
+
+async function promoteTemplate(id) {
+  if (!confirm('Promote this template to production? The current production version will be archived.')) return;
+  try {
+    var { data: template, error } = await sb.from('notification_templates').select('*').eq('id', id).single();
+    if (error) throw error;
+
+    // Archive current production version(s) for this type/channel/cohort/plan
+    await sb.from('notification_templates')
+      .update({ status: 'archived', is_production: false, updated_at: new Date().toISOString() })
+      .eq('notification_type', template.notification_type)
+      .eq('channel', template.channel)
+      .eq('cohort_id', template.cohort_id)
+      .eq('plan', template.plan)
+      .eq('is_production', true)
+      .neq('id', id);
+
+    // Promote this one
+    await sb.from('notification_templates')
+      .update({ status: 'production', is_production: true, promoted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    toastSuccess('Template promoted to production');
+    loadTemplatesTab();
+  } catch (e) {
+    toastError('Promote failed: ' + e.message);
+  }
+}
+
+function bumpVersion(ver, type) {
+  var parts = (ver || '1.0.0').split('.').map(Number);
+  if (type === 'major') { parts[0]++; parts[1] = 0; parts[2] = 0; }
+  else if (type === 'minor') { parts[1]++; parts[2] = 0; }
+  else { parts[2]++; }
+  return parts.join('.');
+}
+
+
+function toggleSuppressionSection() {
+  var section = document.getElementById('suppression-section');
+  var icon = document.getElementById('suppression-toggle-icon');
+  if (!section) return;
+  if (section.style.display === 'none') {
+    section.style.display = '';
+    if (icon) icon.textContent = '▼';
+    renderSuppressionSection();
+  } else {
+    section.style.display = 'none';
+    if (icon) icon.textContent = '▶';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB SECTION: SUPPRESSION MANAGEMENT (Card 3 — Phase 69 Session 2)
+// Rendered inside the Notifications tab as a collapsible section
+// ═══════════════════════════════════════════════════════════
+
+async function renderSuppressionSection() {
+  var container = document.getElementById('suppression-section');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Loading suppression list…</div>';
+
+  try {
+    var { data: suppressions, error } = await sb
+      .from('notification_suppressions')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    var items = suppressions || [];
+
+    // Stats summary
+    var hard = items.filter(function(s) { return s.type === 'hard_bounce'; }).length;
+    var soft = items.filter(function(s) { return s.type === 'soft_bounce'; }).length;
+    var complaints = items.filter(function(s) { return s.type === 'complaint'; }).length;
+    var manual = items.filter(function(s) { return s.type === 'manual'; }).length;
+    var active = items.filter(function(s) {
+      return s.type === 'hard_bounce' || s.type === 'complaint' ||
+        (s.expires_at && new Date(s.expires_at) > new Date());
+    }).length;
+
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">' +
+      '<div style="display:flex;gap:12px;align-items:center">' +
+      '<span class="admin-badge admin-badge-red">' + active + ' active</span>' +
+      '<span style="font-size:11px;color:var(--text-faint)">' +
+        hard + ' hard · ' + soft + ' soft · ' + complaints + ' complaint · ' + manual + ' manual' +
+      '</span></div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<input type="text" id="suppression-search" placeholder="Search email…" ' +
+        'oninput="filterSuppressionRows()" ' +
+        'style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px;width:180px">' +
+      '<select id="suppression-type-filter" onchange="filterSuppressionRows()" ' +
+        'style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:12px">' +
+        '<option value="all">All types</option>' +
+        '<option value="hard_bounce">Hard bounce</option>' +
+        '<option value="soft_bounce">Soft bounce</option>' +
+        '<option value="complaint">Complaint</option>' +
+        '<option value="manual">Manual</option>' +
+      '</select>' +
+      '<button onclick="showAddSuppressionModal()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:11px;cursor:pointer">+ Add</button>' +
+      '<button onclick="exportSuppressions()" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:11px;cursor:pointer">Export CSV</button>' +
+      '</div></div>';
+
+    // Table
+    html += '<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="admin-table" style="width:100%;font-size:11px;border-collapse:collapse">' +
+      '<thead style="position:sticky;top:0;background:var(--bg-card);z-index:1"><tr style="text-align:left;border-bottom:1px solid var(--border)">' +
+      '<th style="padding:6px">Email</th>' +
+      '<th style="padding:6px">Type</th>' +
+      '<th style="padding:6px">Reason</th>' +
+      '<th style="padding:6px">Bounces</th>' +
+      '<th style="padding:6px">Expires</th>' +
+      '<th style="padding:6px">Updated</th>' +
+      '<th style="padding:6px">Actions</th>' +
+      '</tr></thead><tbody id="suppression-tbody">';
+
+    items.forEach(function(s) {
+      html += renderSuppressionRow(s);
+    });
+
+    if (items.length === 0) {
+      html += '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--text-faint)">No suppressions yet. Bounces and complaints from Resend webhooks will appear here automatically.</td></tr>';
+    }
+
+    html += '</tbody></table></div>';
+
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div class="admin-red">Failed to load suppressions: ' + e.message + '</div>';
+  }
+}
+
+function renderSuppressionRow(s) {
+  var isActive = s.type === 'hard_bounce' || s.type === 'complaint' ||
+    (s.expires_at && new Date(s.expires_at) > new Date());
+  var typeBadge = {
+    hard_bounce: 'admin-badge-red',
+    soft_bounce: 'admin-badge-amber',
+    complaint: 'admin-badge-red',
+    manual: 'admin-badge-blue'
+  }[s.type] || 'admin-badge-blue';
+
+  var expiresText = '—';
+  if (s.type === 'hard_bounce' || s.type === 'complaint') {
+    expiresText = 'Permanent';
+  } else if (s.expires_at) {
+    var exp = new Date(s.expires_at);
+    expiresText = exp > new Date() ? relativeTime(exp) : '<span style="color:var(--text-faint)">Expired</span>';
+  }
+
+  return '<tr class="suppression-row" data-email="' + (s.email || '').toLowerCase() + '" data-type="' + s.type + '" ' +
+    'style="border-bottom:1px solid var(--border);opacity:' + (isActive ? '1' : '0.5') + '">' +
+    '<td style="padding:6px;font-family:var(--mono);font-size:10px">' + escapeHtml(s.email || '') + '</td>' +
+    '<td style="padding:6px"><span class="admin-badge ' + typeBadge + '">' + s.type.replace('_', ' ') + '</span></td>' +
+    '<td style="padding:6px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escapeHtml(s.reason || '') + '">' + escapeHtml((s.reason || '').slice(0, 60)) + '</td>' +
+    '<td style="padding:6px;font-family:var(--mono)">' + (s.bounce_count || '—') + '</td>' +
+    '<td style="padding:6px;font-size:10px">' + expiresText + '</td>' +
+    '<td style="padding:6px;font-size:10px;color:var(--text-dim)">' + formatTimestamp(s.updated_at) + '</td>' +
+    '<td style="padding:6px">' +
+      '<button onclick="removeSuppression(\'' + s.id + '\',\'' + escapeHtml(s.email || '') + '\')" ' +
+        'style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--red);font-size:10px;cursor:pointer" ' +
+        'title="Remove suppression">Remove</button>' +
+    '</td></tr>';
+}
+
+function filterSuppressionRows() {
+  var search = (document.getElementById('suppression-search')?.value || '').toLowerCase();
+  var typeFilter = document.getElementById('suppression-type-filter')?.value || 'all';
+  var rows = document.querySelectorAll('.suppression-row');
+  rows.forEach(function(row) {
+    var email = row.getAttribute('data-email') || '';
+    var type = row.getAttribute('data-type') || '';
+    var matchSearch = !search || email.includes(search);
+    var matchType = typeFilter === 'all' || type === typeFilter;
+    row.style.display = (matchSearch && matchType) ? '' : 'none';
+  });
+}
+
+function showAddSuppressionModal() {
+  var overlay = document.createElement('div');
+  overlay.className = 'admin-modal-overlay';
+  overlay.id = 'suppression-modal';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = '<div class="admin-modal" style="max-width:400px">' +
+    '<h3 style="margin:0 0 16px;font-size:15px;color:var(--text)">Add Manual Suppression</h3>' +
+    '<label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px">Email address</label>' +
+    '<input type="email" id="supp-add-email" placeholder="user@example.com" ' +
+      'style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;margin-bottom:12px;box-sizing:border-box">' +
+    '<label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px">Reason</label>' +
+    '<input type="text" id="supp-add-reason" placeholder="e.g. User requested removal" ' +
+      'style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;margin-bottom:16px;box-sizing:border-box">' +
+    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+      '<button onclick="document.getElementById(\'suppression-modal\').remove()" ' +
+        'style="padding:8px 16px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;cursor:pointer">Cancel</button>' +
+      '<button onclick="submitAddSuppression()" ' +
+        'style="padding:8px 16px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;cursor:pointer">Add Suppression</button>' +
+    '</div></div>';
+
+  document.body.appendChild(overlay);
+  document.getElementById('supp-add-email')?.focus();
+}
+
+async function submitAddSuppression() {
+  var email = (document.getElementById('supp-add-email')?.value || '').trim().toLowerCase();
+  var reason = (document.getElementById('supp-add-reason')?.value || '').trim() || 'Manual suppression via admin';
+
+  if (!email || !email.includes('@')) {
+    toastError('Please enter a valid email address');
+    return;
+  }
+
+  try {
+    var { error } = await sb.from('notification_suppressions').upsert({
+      email: email,
+      type: 'manual',
+      reason: reason,
+      updated_at: new Date().toISOString(),
+      expires_at: null
+    }, { onConflict: 'email,type' });
+
+    if (error) throw error;
+
+    document.getElementById('suppression-modal')?.remove();
+    toastSuccess('Suppression added for ' + email);
+    renderSuppressionSection();
+  } catch (e) {
+    toastError('Failed to add suppression: ' + e.message);
+  }
+}
+
+async function removeSuppression(id, email) {
+  if (!confirm('Remove suppression for ' + email + '? They will start receiving emails again.')) return;
+
+  try {
+    var { error } = await sb.from('notification_suppressions').delete().eq('id', id);
+    if (error) throw error;
+    toastSuccess('Suppression removed for ' + email);
+    renderSuppressionSection();
+  } catch (e) {
+    toastError('Failed to remove: ' + e.message);
+  }
+}
+
+async function exportSuppressions() {
+  try {
+    var { data, error } = await sb
+      .from('notification_suppressions')
+      .select('email,type,reason,bounce_count,expires_at,created_at,updated_at')
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      toastError('No suppressions to export');
+      return;
+    }
+
+    var csv = 'email,type,reason,bounce_count,expires_at,created_at,updated_at\n';
+    data.forEach(function(s) {
+      csv += '"' + (s.email || '') + '",' +
+        '"' + (s.type || '') + '",' +
+        '"' + (s.reason || '').replace(/"/g, '""') + '",' +
+        (s.bounce_count || 0) + ',' +
+        '"' + (s.expires_at || '') + '",' +
+        '"' + (s.created_at || '') + '",' +
+        '"' + (s.updated_at || '') + '"\n';
+    });
+
+    var blob = new Blob([csv], { type: 'text/csv' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'suppressions-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toastSuccess('Exported ' + data.length + ' suppressions');
+  } catch (e) {
+    toastError('Export failed: ' + e.message);
+  }
+}
+
+function relativeTime(date) {
+  var diff = date - new Date();
+  var days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (days <= 0) return 'Expired';
+  if (days === 1) return 'Tomorrow';
+  if (days < 30) return days + 'd';
+  return Math.floor(days / 30) + 'mo';
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '—';
+  var d = new Date(ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+    d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL STYLES (injected once)
+// ═══════════════════════════════════════════════════════════
+(function injectNotifStyles() {
+  if (document.getElementById('admin-notif-styles')) return;
+  var style = document.createElement('style');
+  style.id = 'admin-notif-styles';
+  style.textContent = '.admin-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}' +
+    '.admin-modal{background:var(--bg-card);border-radius:12px;padding:24px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);border:1px solid var(--border)}' +
+    '.admin-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:0.3px}' +
+    '.admin-badge-green{background:rgba(34,197,94,0.15);color:#22c55e}' +
+    '.admin-badge-amber{background:rgba(245,158,11,0.15);color:#f59e0b}' +
+    '.admin-badge-red{background:rgba(239,68,68,0.15);color:#ef4444}' +
+    '.admin-badge-blue{background:rgba(59,130,246,0.15);color:#3b82f6}' +
+    '.admin-toggle{position:relative;display:inline-block;width:32px;height:18px}' +
+    '.admin-toggle input{opacity:0;width:0;height:0}' +
+    '.admin-toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border);border-radius:18px;transition:.2s}' +
+    '.admin-toggle-slider:before{content:"";position:absolute;height:14px;width:14px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s}' +
+    '.admin-toggle input:checked+.admin-toggle-slider{background:var(--accent)}' +
+    '.admin-toggle input:checked+.admin-toggle-slider:before{transform:translateX(14px)}' +
+    '.admin-toggle input:disabled+.admin-toggle-slider{opacity:0.5;cursor:not-allowed}' +
+    '.admin-loading{padding:24px;text-align:center;color:var(--text-dim);font-size:13px}' +
+    '.admin-red{padding:12px;color:#ef4444;font-size:13px}';
+  document.head.appendChild(style);
+})();
+
+// ═══════════════════════════════════════════════════════════
+// CARD 8: NOTIFICATION ANALYTICS DASHBOARD (Phase 69 Session 3)
+// ═══════════════════════════════════════════════════════════
+// Admin tab: send volume, delivery rate, open rate, click rate,
+// bounce rate, SMS delivery rate — powered by notification_log data
+// from Resend webhooks (Cards 1+2) and Vonage DLRs (Card 6).
+
+async function loadNotifAnalyticsTab() {
+  var container = document.getElementById('admin-panel-notif-analytics');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Loading notification analytics…</div>';
+
+  try {
+    // Fetch notification_log data for the past 30 days
+    var since = new Date();
+    since.setDate(since.getDate() - 30);
+    var sinceISO = since.toISOString();
+
+    var { data: logs, error } = await sb
+      .from('notification_log')
+      .select('id, notification_type, channel, status, classification, send_decision, send_reason, created_at, sms_delivered_at, sms_failed_at')
+      .gte('created_at', sinceISO)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (error) throw error;
+    if (!logs || logs.length === 0) {
+      container.innerHTML = '<div style="padding:24px;color:var(--text-dim);font-size:13px;text-align:center">No notification data in the past 30 days. Send some notifications first.</div>';
+      return;
+    }
+
+    // ── Aggregate stats ──
+    var emailLogs = logs.filter(function(l) { return l.channel === 'email'; });
+    var smsLogs = logs.filter(function(l) { return l.channel === 'sms'; });
+
+    var emailSent = emailLogs.filter(function(l) { return l.send_decision === 'sent'; });
+    var emailBlocked = emailLogs.filter(function(l) { return l.send_decision === 'blocked'; });
+    var emailDelivered = emailLogs.filter(function(l) { return l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked'; });
+    var emailOpened = emailLogs.filter(function(l) { return l.status === 'opened' || l.status === 'clicked'; });
+    var emailClicked = emailLogs.filter(function(l) { return l.status === 'clicked'; });
+    var emailBounced = emailLogs.filter(function(l) { return l.status === 'bounced' || l.status === 'failed'; });
+
+    var smsSent = smsLogs.filter(function(l) { return l.send_decision === 'sent'; });
+    var smsDelivered = smsLogs.filter(function(l) { return l.sms_delivered_at !== null; });
+    var smsFailed = smsLogs.filter(function(l) { return l.sms_failed_at !== null; });
+
+    function pct(num, denom) {
+      if (!denom || denom === 0) return '—';
+      return (num / denom * 100).toFixed(1) + '%';
+    }
+
+    // ── Daily volume for chart ──
+    var dailyVolume = {};
+    var dailyOpen = {};
+    var dailyClick = {};
+    var dailySms = {};
+    logs.forEach(function(l) {
+      var day = l.created_at.slice(0, 10);
+      if (!dailyVolume[day]) { dailyVolume[day] = 0; dailyOpen[day] = 0; dailyClick[day] = 0; dailySms[day] = 0; }
+      if (l.channel === 'email' && l.send_decision === 'sent') dailyVolume[day]++;
+      if (l.status === 'opened' || l.status === 'clicked') dailyOpen[day]++;
+      if (l.status === 'clicked') dailyClick[day]++;
+      if (l.channel === 'sms' && l.send_decision === 'sent') dailySms[day]++;
+    });
+
+    var days = Object.keys(dailyVolume).sort();
+    var maxVol = Math.max.apply(null, days.map(function(d) { return dailyVolume[d]; }).concat([1]));
+
+    // ── Block reason breakdown ──
+    var blockReasons = {};
+    emailBlocked.forEach(function(l) {
+      var reason = l.send_reason || 'unknown';
+      blockReasons[reason] = (blockReasons[reason] || 0) + 1;
+    });
+
+    // ── Type breakdown ──
+    var typeBreakdown = {};
+    emailSent.forEach(function(l) {
+      var t = l.notification_type || 'unknown';
+      typeBreakdown[t] = (typeBreakdown[t] || 0) + 1;
+    });
+    var topTypes = Object.entries(typeBreakdown).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
+
+    // ── Build HTML ──
+    var html = '';
+
+    // Period selector
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
+      '<span style="font-size:15px;font-weight:600;color:var(--text)">Notification Analytics</span>' +
+      '<span style="font-size:12px;color:var(--text-faint)">Last 30 days · ' + logs.length + ' events</span>' +
+    '</div>';
+
+    // Stat cards row
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">';
+    var cards = [
+      { label: 'Emails Sent', value: emailSent.length, color: 'var(--accent)' },
+      { label: 'Delivery Rate', value: pct(emailDelivered.length, emailSent.length), color: 'var(--green)' },
+      { label: 'Open Rate', value: pct(emailOpened.length, emailSent.length), color: '#a78bfa' },
+      { label: 'Click Rate', value: pct(emailClicked.length, emailSent.length), color: '#f59e0b' },
+      { label: 'Bounce Rate', value: pct(emailBounced.length, emailSent.length), color: 'var(--red)' },
+      { label: 'SMS Sent', value: smsSent.length, color: 'var(--accent)' },
+      { label: 'SMS Delivery', value: pct(smsDelivered.length, smsSent.length), color: 'var(--green)' },
+      { label: 'Blocked', value: emailBlocked.length, color: 'var(--text-faint)' }
+    ];
+    cards.forEach(function(c) {
+      html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+        '<div style="font-size:22px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + c.color + '">' + c.value + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">' + c.label + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // Daily volume chart (CSS bar chart — no external lib needed)
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Daily Send Volume (Email)</div>' +
+      '<div style="display:flex;align-items:flex-end;gap:2px;height:120px">';
+    days.forEach(function(d) {
+      var h = Math.max(4, Math.round(dailyVolume[d] / maxVol * 110));
+      var title = d + ': ' + dailyVolume[d] + ' emails';
+      html += '<div title="' + title + '" style="flex:1;height:' + h + 'px;background:var(--accent);border-radius:3px 3px 0 0;min-width:4px;opacity:0.85;transition:opacity 0.2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.85"></div>';
+    });
+    html += '</div>' +
+      '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-faint);font-family:JetBrains Mono,monospace">' +
+        '<span>' + (days[0] || '') + '</span><span>' + (days[days.length - 1] || '') + '</span>' +
+      '</div>' +
+    '</div>';
+
+    // SMS volume chart
+    if (smsSent.length > 0) {
+      var maxSms = Math.max.apply(null, days.map(function(d) { return dailySms[d] || 0; }).concat([1]));
+      html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Daily Send Volume (SMS)</div>' +
+        '<div style="display:flex;align-items:flex-end;gap:2px;height:80px">';
+      days.forEach(function(d) {
+        var sv = dailySms[d] || 0;
+        var h = sv === 0 ? 0 : Math.max(4, Math.round(sv / maxSms * 70));
+        var title = d + ': ' + sv + ' SMS';
+        html += '<div title="' + title + '" style="flex:1;height:' + h + 'px;background:#22c55e;border-radius:3px 3px 0 0;min-width:4px;opacity:0.85;transition:opacity 0.2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.85"></div>';
+      });
+      html += '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-faint);font-family:JetBrains Mono,monospace">' +
+          '<span>' + (days[0] || '') + '</span><span>' + (days[days.length - 1] || '') + '</span>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Two-column: Top types + Block reasons
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+
+    // Top notification types
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Top Notification Types</div>';
+    if (topTypes.length > 0) {
+      var topMax = topTypes[0][1];
+      topTypes.forEach(function(entry) {
+        var barW = Math.max(8, Math.round(entry[1] / topMax * 100));
+        html += '<div style="margin-bottom:6px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">' +
+            '<span style="color:var(--text);font-family:JetBrains Mono,monospace">' + entry[0] + '</span>' +
+            '<span style="color:var(--text-dim)">' + entry[1] + '</span>' +
+          '</div>' +
+          '<div style="height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden">' +
+            '<div style="width:' + barW + '%;height:100%;background:var(--accent);border-radius:3px"></div>' +
+          '</div>' +
+        '</div>';
+      });
+    } else {
+      html += '<div style="color:var(--text-faint);font-size:12px">No data</div>';
+    }
+    html += '</div>';
+
+    // Block reasons
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Block Reasons</div>';
+    var blockEntries = Object.entries(blockReasons).sort(function(a, b) { return b[1] - a[1]; });
+    if (blockEntries.length > 0) {
+      var blockMax = blockEntries[0][1];
+      blockEntries.forEach(function(entry) {
+        var barW = Math.max(8, Math.round(entry[1] / blockMax * 100));
+        html += '<div style="margin-bottom:6px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">' +
+            '<span style="color:var(--text);font-family:JetBrains Mono,monospace">' + entry[0] + '</span>' +
+            '<span style="color:var(--text-dim)">' + entry[1] + '</span>' +
+          '</div>' +
+          '<div style="height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden">' +
+            '<div style="width:' + barW + '%;height:100%;background:#ef4444;border-radius:3px"></div>' +
+          '</div>' +
+        '</div>';
+      });
+    } else {
+      html += '<div style="color:var(--text-faint);font-size:12px">No blocked notifications</div>';
+    }
+    html += '</div></div>';
+
+    // Classification breakdown
+    var classBreakdown = {};
+    logs.forEach(function(l) {
+      var c = l.classification || 'unknown';
+      classBreakdown[c] = (classBreakdown[c] || 0) + 1;
+    });
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Classification Breakdown</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap">';
+    var classColors = { product: 'var(--accent)', required_transactional: 'var(--green)', configurable_transactional: '#f59e0b', marketing: '#a78bfa', unknown: 'var(--text-faint)' };
+    Object.entries(classBreakdown).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
+      var color = classColors[entry[0]] || 'var(--text-dim)';
+      html += '<div style="text-align:center">' +
+        '<div style="font-size:20px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + color + '">' + entry[1] + '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.3px">' + entry[0].replace(/_/g, ' ') + '</div>' +
+      '</div>';
+    });
+    html += '</div></div>';
+
+    container.innerHTML = html;
+    console.log('[Admin] Notification analytics loaded: ' + logs.length + ' events');
+
+  } catch (e) {
+    console.error('[Admin] Notification analytics error:', e);
+    container.innerHTML = '<div class="admin-red">Failed to load analytics: ' + (e.message || e) + '</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATE PREVIEW + TEST SEND (Card 9 — Phase 69 Session 4)
+// ═══════════════════════════════════════════════════════════
+
+function refreshTemplatePreview() {
+  var iframe = document.getElementById('te-preview-iframe');
+  var empty = document.getElementById('te-preview-empty');
+  var channel = document.getElementById('te-channel').value;
+
+  if (channel === 'sms') {
+    // SMS preview — show text in a phone mockup
+    var smsBody = document.getElementById('te-sms').value || '';
+    iframe.srcdoc = '<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#e5e5ea;display:flex;justify-content:center;align-items:flex-start;min-height:100%">' +
+      '<div style="max-width:280px;background:#fff;border-radius:18px;padding:12px 16px;margin-top:20px;box-shadow:0 1px 3px rgba(0,0,0,0.12);font-size:14px;line-height:1.5;color:#1a1a1a">' +
+      smsBody.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') +
+      '<div style="font-size:10px;color:#8e8e93;margin-top:6px;text-align:right">Preview</div>' +
+      '</div></body></html>';
+    if (empty) empty.style.display = 'none';
+    return;
+  }
+
+  if (channel === 'in_app') {
+    var title = document.getElementById('te-inapp-title').value || '';
+    var body = document.getElementById('te-inapp-body').value || '';
+    var icon = document.getElementById('te-inapp-icon').value || '🔔';
+    iframe.srcdoc = '<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f1117">' +
+      '<div style="max-width:360px;background:#181a20;border:1px solid #2a2d35;border-radius:14px;padding:16px;display:flex;gap:12px;align-items:flex-start">' +
+      '<span style="font-size:24px">' + icon + '</span>' +
+      '<div><div style="font-size:14px;font-weight:600;color:#f0f1f3;margin-bottom:4px">' + title.replace(/</g, '&lt;') + '</div>' +
+      '<div style="font-size:13px;color:#94a3b8;line-height:1.4">' + body.replace(/</g, '&lt;').replace(/\n/g, '<br>') + '</div></div>' +
+      '</div></body></html>';
+    if (empty) empty.style.display = 'none';
+    return;
+  }
+
+  // Email preview — render HTML in iframe
+  var htmlContent = document.getElementById('te-html').value || '';
+  if (!htmlContent.trim()) {
+    if (empty) empty.style.display = 'flex';
+    iframe.srcdoc = '';
+    return;
+  }
+
+  // Replace template variables with sample data
+  var preview = htmlContent
+    .replace(/\{\{user\.first_name\}\}/g, 'Alex')
+    .replace(/\{\{user\.email\}\}/g, 'alex@example.com')
+    .replace(/\{\{company_name\}\}/g, 'Acme Corp')
+    .replace(/\{\{job_title\}\}/g, 'Senior Engineer')
+    .replace(/\{\{score\}\}/g, '87')
+    .replace(/\{\{dashboard_url\}\}/g, 'https://brilliantjobs.app/dashboard.html')
+    .replace(/\{\{unsubscribe_url\}\}/g, '#')
+    .replace(/\{\{[^}]+\}\}/g, '[sample]');
+
+  iframe.srcdoc = preview;
+  if (empty) empty.style.display = 'none';
+}
+
+async function testSendTemplate() {
+  var btn = document.getElementById('te-test-send-btn');
+  var status = document.getElementById('te-test-send-status');
+  var channel = document.getElementById('te-channel').value;
+  var notifType = document.getElementById('te-type').value;
+  var subject = document.getElementById('te-subject').value || 'Test: ' + notifType;
+  var html = document.getElementById('te-html').value || '';
+  var smsBody = document.getElementById('te-sms').value || '';
+
+  if (channel === 'email' && !html.trim()) {
+    status.textContent = 'No HTML body to send.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  if (channel === 'sms' && !smsBody.trim()) {
+    status.textContent = 'No SMS body to send.';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  // Get current admin user
+  var user = null;
+  try { user = (await sb.auth.getUser()).data.user; } catch(e) {}
+  if (!user) {
+    status.textContent = 'Not logged in.';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending…';
+  status.textContent = '';
+
+  try {
+    // Replace template variables with real user data for test
+    var testSubject = '[TEST] ' + subject
+      .replace(/\{\{user\.first_name\}\}/g, user.email.split('@')[0])
+      .replace(/\{\{[^}]+\}\}/g, '[test]');
+
+    var testHtml = html
+      .replace(/\{\{user\.first_name\}\}/g, user.email.split('@')[0])
+      .replace(/\{\{user\.email\}\}/g, user.email)
+      .replace(/\{\{company_name\}\}/g, 'Test Company')
+      .replace(/\{\{job_title\}\}/g, 'Test Position')
+      .replace(/\{\{score\}\}/g, '85')
+      .replace(/\{\{dashboard_url\}\}/g, 'https://brilliantjobs.app/dashboard.html')
+      .replace(/\{\{[^}]+\}\}/g, '[test]');
+
+    var payload = {
+      user_id: user.id,
+      notification_type: notifType,
+      subject: testSubject,
+      html: testHtml,
+      text: 'Test notification from template editor',
+      force_channel: channel === 'sms' ? 'sms' : 'email',
+      idempotency_key: 'test-send-' + Date.now()
+    };
+
+    if (channel === 'sms') {
+      payload.sms_text = smsBody
+        .replace(/\{\{[^}]+\}\}/g, '[test]');
+    }
+
+    var res = await fetch(
+      (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/send-notification',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (window._bjServiceKey || window._bjAnonKey || '')
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    var result = await res.json();
+    if (result.email_sent || result.sms_sent) {
+      status.textContent = '✓ Test sent to ' + user.email + (result.sms_sent ? ' (SMS)' : ' (email)');
+      status.style.color = '#22c55e';
+    } else {
+      status.textContent = '✗ Send blocked: ' + (result.decision_reason || result.error || 'unknown');
+      status.style.color = '#ef4444';
+    }
+  } catch (e) {
+    status.textContent = '✗ Error: ' + (e.message || e);
+    status.style.color = '#ef4444';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✉ Test Send';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// WEB PUSH SUBSCRIPTION MANAGEMENT (Card 7 — Phase 69 Session 4)
+// ═══════════════════════════════════════════════════════════
+
+async function initPushToggle() {
+  var toggle = document.getElementById('notify-push');
+  if (!toggle) return;
+
+  // Check if push is supported
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toggle.disabled = true;
+    toggle.parentElement.title = 'Push notifications not supported in this browser';
+    return;
+  }
+
+  // Check current subscription status
+  try {
+    var reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (reg) {
+      var sub = await reg.pushManager.getSubscription();
+      toggle.checked = !!sub;
+    }
+  } catch (e) {
+    console.warn('[Push] Init check failed:', e);
+  }
+
+  toggle.addEventListener('change', async function() {
+    if (toggle.checked) {
+      await subscribeToPush();
+    } else {
+      await unsubscribeFromPush();
+    }
+  });
+}
+
+async function subscribeToPush() {
+  var toggle = document.getElementById('notify-push');
+  try {
+    // Register service worker
+    var reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    // Get VAPID public key from push-subscribe endpoint
+    var keyRes = await fetch(
+      (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/push-subscribe'
+    );
+    var keyData = await keyRes.json();
+    if (!keyData.vapid_public_key) throw new Error('No VAPID key');
+
+    // Convert VAPID key to Uint8Array
+    var vapidKey = urlBase64ToUint8Array(keyData.vapid_public_key);
+
+    // Subscribe to push
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidKey
+    });
+
+    // Send subscription to server
+    var session = await sb.auth.getSession();
+    var token = session.data.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+
+    var saveRes = await fetch(
+      (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/push-subscribe',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ subscription: sub.toJSON() })
+      }
+    );
+
+    var saveData = await saveRes.json();
+    if (saveData.ok) {
+      console.log('[Push] Subscribed successfully');
+      if (typeof toastSuccess === 'function') toastSuccess('Push notifications enabled');
+    } else {
+      throw new Error(saveData.error || 'Failed to save subscription');
+    }
+  } catch (e) {
+    console.error('[Push] Subscribe failed:', e);
+    if (toggle) toggle.checked = false;
+    if (e.name === 'NotAllowedError') {
+      if (typeof toastError === 'function') toastError('Push notifications blocked by browser. Check site permissions.');
+    } else {
+      if (typeof toastError === 'function') toastError('Failed to enable push: ' + (e.message || e));
+    }
+  }
+}
+
+async function unsubscribeFromPush() {
+  try {
+    var reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (reg) {
+      var sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+
+        // Tell server
+        var session = await sb.auth.getSession();
+        var token = session.data.session?.access_token;
+        if (token) {
+          await fetch(
+            (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/push-subscribe',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({ action: 'unsubscribe', endpoint: sub.endpoint })
+            }
+          );
+        }
+      }
+    }
+    console.log('[Push] Unsubscribed');
+    if (typeof toastSuccess === 'function') toastSuccess('Push notifications disabled');
+  } catch (e) {
+    console.error('[Push] Unsubscribe error:', e);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Initialize push toggle when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPushToggle);
+} else {
+  initPushToggle();
+}
+
+// ═══════════════════════════════════════════════════════════
+// EMAIL COHORT ANALYTICS TAB
+// Phase 69 Card 11 — Zero-based cohort email performance
+// ═══════════════════════════════════════════════════════════
+
+var _emailCohortState = {
+  cohorts: [],
+  logs: [],
+  selectedCohort: null,
+  selectedCampaign: null,
+  compareCohort: null,
+  view: 'overview' // 'overview' | 'campaign' | 'compare'
+};
+
+async function loadEmailCohortsTab() {
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading email cohort analytics…</div>';
+
+  try {
+    // Fetch cohorts
+    var { data: cohorts, error: cErr } = await sb
+      .from('cohorts')
+      .select('id, name, description, criteria_type, criteria_value, is_active')
+      .order('created_at', { ascending: true });
+    if (cErr) throw cErr;
+
+    // Fetch email notification_log with cohort data (last 90 days for broader window)
+    var since = new Date();
+    since.setDate(since.getDate() - 90);
+    var { data: logs, error: lErr } = await sb
+      .from('notification_log')
+      .select('notification_type, channel, status, user_cohort, created_at, delivered_at, opened_at, clicked_at, user_id')
+      .eq('channel', 'email')
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10000);
+    if (lErr) throw lErr;
+
+    _emailCohortState.cohorts = cohorts || [];
+    _emailCohortState.logs = logs || [];
+
+    // Default to first cohort
+    if (cohorts && cohorts.length > 0) {
+      _emailCohortState.selectedCohort = cohorts[0].id;
+    }
+
+    renderEmailCohortsTab(container);
+    console.log('[Admin] Email cohort analytics loaded: ' + (logs || []).length + ' email events, ' + (cohorts || []).length + ' cohorts');
+
+  } catch (e) {
+    console.error('[Admin] Email cohort analytics error:', e);
+    container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
+  }
+}
+
+function renderEmailCohortsTab(container) {
+  var state = _emailCohortState;
+  var html = '';
+
+  // ── Header with cohort selector ──
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">';
+  html += '<span style="font-size:15px;font-weight:600;color:var(--text)">Email Cohort Analytics</span>';
+  html += '<div style="display:flex;gap:6px;align-items:center">';
+
+  // View mode pills
+  var views = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'campaign', label: 'Campaign Drilldown' },
+    { id: 'compare', label: 'Compare Cohorts' }
+  ];
+  views.forEach(function(v) {
+    var active = state.view === v.id;
+    html += '<button onclick="switchEmailCohortView(\'' + v.id + '\')" style="font-size:11px;padding:4px 10px;border-radius:12px;cursor:pointer;border:1px solid ' +
+      (active ? 'var(--accent)' : 'var(--border)') + ';background:' +
+      (active ? 'var(--accent)' : 'transparent') + ';color:' +
+      (active ? '#fff' : 'var(--text-dim)') + ';font-family:JetBrains Mono,monospace;transition:all 0.15s">' + v.label + '</button>';
+  });
+  html += '</div></div>';
+
+  // ── Cohort selector row ──
+  html += '<div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Cohort:</label>';
+  html += '<select id="ec-cohort-select" onchange="selectEmailCohort(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+  // Add 'All' option
+  html += '<option value="__all__"' + (state.selectedCohort === '__all__' ? ' selected' : '') + '>All (no filter)</option>';
+  state.cohorts.forEach(function(c) {
+    html += '<option value="' + c.id + '"' + (state.selectedCohort === c.id ? ' selected' : '') + '>' + c.name + ' (' + c.id + ')</option>';
+  });
+  // Null cohort
+  html += '<option value="__none__"' + (state.selectedCohort === '__none__' ? ' selected' : '') + '>Unassigned (null)</option>';
+  html += '</select>';
+
+  // Show cohort member count
+  var cohortLogs = filterLogsByCohort(state.logs, state.selectedCohort);
+  var uniqueUsers = new Set(cohortLogs.map(function(l) { return l.user_id; }));
+  html += '<span style="font-size:11px;color:var(--text-faint)">' + cohortLogs.length + ' emails · ' + uniqueUsers.size + ' users · last 90 days</span>';
+
+  if (state.view === 'compare') {
+    html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-left:16px">vs:</label>';
+    html += '<select id="ec-compare-select" onchange="selectCompareCohort(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+    html += '<option value="">Select cohort…</option>';
+    state.cohorts.forEach(function(c) {
+      if (c.id !== state.selectedCohort) {
+        html += '<option value="' + c.id + '"' + (state.compareCohort === c.id ? ' selected' : '') + '>' + c.name + '</option>';
+      }
+    });
+    html += '<option value="__none__"' + (state.compareCohort === '__none__' ? ' selected' : '') + '>Unassigned (null)</option>';
+    html += '</select>';
+  }
+  html += '</div>';
+
+  // ── Render active view ──
+  if (state.view === 'overview') {
+    html += renderCohortOverview(cohortLogs);
+  } else if (state.view === 'campaign') {
+    html += renderCampaignDrilldown(cohortLogs);
+  } else if (state.view === 'compare') {
+    var compareLogs = state.compareCohort ? filterLogsByCohort(state.logs, state.compareCohort) : [];
+    html += renderCohortCompare(cohortLogs, compareLogs);
+  }
+
+  container.innerHTML = html;
+}
+
+function filterLogsByCohort(logs, cohortId) {
+  if (!cohortId || cohortId === '__all__') return logs;
+  if (cohortId === '__none__') return logs.filter(function(l) { return !l.user_cohort; });
+  return logs.filter(function(l) { return l.user_cohort === cohortId; });
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 1: OVERVIEW — Aggregate performance per campaign
+// ═══════════════════════════════════════════════════════════
+
+function renderCohortOverview(logs) {
+  if (!logs || logs.length === 0) {
+    return '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">No email data for this cohort in the last 90 days.</div>';
+  }
+
+  // Aggregate by notification_type (campaign)
+  var campaigns = {};
+  logs.forEach(function(l) {
+    var t = l.notification_type || 'unknown';
+    if (!campaigns[t]) {
+      campaigns[t] = { sent: 0, delivered: 0, opened: 0, clicked: 0, users: new Set() };
+    }
+    campaigns[t].sent++;
+    campaigns[t].users.add(l.user_id);
+    if (l.delivered_at || l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked') campaigns[t].delivered++;
+    if (l.opened_at || l.status === 'opened' || l.status === 'clicked') campaigns[t].opened++;
+    if (l.clicked_at || l.status === 'clicked') campaigns[t].clicked++;
+  });
+
+  // Totals
+  var totalSent = logs.length;
+  var totalDelivered = logs.filter(function(l) { return l.delivered_at || l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked'; }).length;
+  var totalOpened = logs.filter(function(l) { return l.opened_at || l.status === 'opened' || l.status === 'clicked'; }).length;
+  var totalClicked = logs.filter(function(l) { return l.clicked_at || l.status === 'clicked'; }).length;
+
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; }
+
+  var html = '';
+
+  // Stat cards
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">';
+  var cards = [
+    { label: 'Total Sent', value: totalSent, color: 'var(--accent)' },
+    { label: 'Delivered', value: pct(totalDelivered, totalSent), color: 'var(--green)' },
+    { label: 'Open Rate', value: pct(totalOpened, totalSent), color: '#a78bfa' },
+    { label: 'Click Rate', value: pct(totalClicked, totalSent), color: '#f59e0b' },
+    { label: 'Campaigns', value: Object.keys(campaigns).length, color: 'var(--text)' }
+  ];
+  cards.forEach(function(c) {
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+      '<div style="font-size:22px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + c.color + '">' + c.value + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">' + c.label + '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+
+  // Campaign table
+  var sorted = Object.entries(campaigns).sort(function(a, b) { return b[1].sent - a[1].sent; });
+
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Campaign Performance</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:6px 10px;color:var(--text-dim)">Campaign</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Sent</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Users</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Delivered</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Opened</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Clicked</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Open Rate</th>';
+  html += '<th style="text-align:right;padding:6px 10px;color:var(--text-dim)">Click Rate</th>';
+  html += '<th style="text-align:center;padding:6px 10px;color:var(--text-dim)"></th>';
+  html += '</tr></thead><tbody>';
+
+  sorted.forEach(function(entry) {
+    var name = entry[0];
+    var c = entry[1];
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:6px 10px;color:var(--text)">' + name + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:var(--text)">' + c.sent + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:var(--text-dim)">' + c.users.size + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:var(--green)">' + pct(c.delivered, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#a78bfa">' + pct(c.opened, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#f59e0b">' + pct(c.clicked, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#a78bfa;font-weight:600">' + pct(c.opened, c.sent) + '</td>';
+    html += '<td style="text-align:right;padding:6px 10px;color:#f59e0b;font-weight:600">' + pct(c.clicked, c.sent) + '</td>';
+    html += '<td style="text-align:center;padding:6px 10px"><button onclick="drillIntoCampaign(\'' + name + '\')" style="font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer;font-family:JetBrains Mono,monospace">Drilldown →</button></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 2: CAMPAIGN DRILLDOWN — Zero-based day curve
+// ═══════════════════════════════════════════════════════════
+
+function renderCampaignDrilldown(logs) {
+  var state = _emailCohortState;
+
+  // Campaign selector
+  var campaignTypes = {};
+  logs.forEach(function(l) {
+    var t = l.notification_type || 'unknown';
+    campaignTypes[t] = (campaignTypes[t] || 0) + 1;
+  });
+  var sortedCampaigns = Object.entries(campaignTypes).sort(function(a, b) { return b[1] - a[1]; });
+
+  if (!state.selectedCampaign && sortedCampaigns.length > 0) {
+    state.selectedCampaign = sortedCampaigns[0][0];
+  }
+
+  var html = '';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Campaign:</label>';
+  html += '<select id="ec-campaign-select" onchange="selectEmailCampaign(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+  sortedCampaigns.forEach(function(entry) {
+    html += '<option value="' + entry[0] + '"' + (state.selectedCampaign === entry[0] ? ' selected' : '') + '>' + entry[0] + ' (' + entry[1] + ')</option>';
+  });
+  html += '</select></div>';
+
+  if (!state.selectedCampaign || !campaignTypes[state.selectedCampaign]) {
+    return html + '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">Select a campaign to see zero-based performance.</div>';
+  }
+
+  // Filter logs for this campaign
+  var campaignLogs = logs.filter(function(l) { return l.notification_type === state.selectedCampaign; });
+
+  // Build zero-based day data
+  var dayData = buildZeroBasedDays(campaignLogs, 30);
+
+  // Render the table and chart
+  html += renderZeroBasedTable(dayData, campaignLogs.length);
+  html += renderZeroBasedChart(dayData, 'var(--accent)', '#a78bfa', '#f59e0b');
+
+  return html;
+}
+
+function buildZeroBasedDays(campaignLogs, maxDays) {
+  // For each log entry, Day 0 = date(created_at)
+  // Then check if opened_at / clicked_at / delivered_at fell on Day N relative to created_at
+  var now = new Date();
+  var days = [];
+
+  for (var d = 0; d <= maxDays; d++) {
+    days.push({ day: d, delivered: 0, opened: 0, clicked: 0 });
+  }
+
+  campaignLogs.forEach(function(l) {
+    var sendDate = new Date(l.created_at);
+
+    // Delivered
+    if (l.delivered_at || l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked') {
+      var deliveredDate = l.delivered_at ? new Date(l.delivered_at) : sendDate;
+      var dDay = Math.floor((deliveredDate - sendDate) / 86400000);
+      // Cumulative: mark all days from dDay onward
+      for (var i = Math.max(0, dDay); i <= maxDays; i++) {
+        days[i].delivered++;
+      }
+    }
+
+    // Opened
+    if (l.opened_at || l.status === 'opened' || l.status === 'clicked') {
+      var openDate = l.opened_at ? new Date(l.opened_at) : sendDate;
+      var oDay = Math.floor((openDate - sendDate) / 86400000);
+      for (var i = Math.max(0, oDay); i <= maxDays; i++) {
+        days[i].opened++;
+      }
+    }
+
+    // Clicked
+    if (l.clicked_at || l.status === 'clicked') {
+      var clickDate = l.clicked_at ? new Date(l.clicked_at) : sendDate;
+      var cDay = Math.floor((clickDate - sendDate) / 86400000);
+      for (var i = Math.max(0, cDay); i <= maxDays; i++) {
+        days[i].clicked++;
+      }
+    }
+  });
+
+  return days;
+}
+
+function renderZeroBasedTable(dayData, totalSent) {
+  function pct(n) { return totalSent > 0 ? (n / totalSent * 100).toFixed(1) + '%' : '—'; }
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Zero-Based Cumulative Performance · ' + totalSent + ' emails sent</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:6px 8px;color:var(--text-dim);width:60px">Day</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--green)">Delivered</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:var(--green)">Del %</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#a78bfa">Opened</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#a78bfa">Open %</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#f59e0b">Clicked</th>';
+  html += '<th style="text-align:right;padding:6px 8px;color:#f59e0b">Click %</th>';
+  html += '</tr></thead><tbody>';
+
+  // Show Day 0, 1, 2, 3, 5, 7, 14, 21, 30 (key milestones)
+  var showDays = [0, 1, 2, 3, 5, 7, 14, 21, 30];
+  showDays.forEach(function(d) {
+    if (d >= dayData.length) return;
+    var row = dayData[d];
+    var bg = d === 0 ? 'background:color-mix(in srgb, var(--accent) 5%, transparent);' : '';
+    html += '<tr style="border-bottom:1px solid var(--border);' + bg + '">';
+    html += '<td style="padding:6px 8px;color:var(--text);font-weight:' + (d === 0 ? '600' : '400') + '">Day ' + d + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--text)">' + row.delivered + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--green)">' + pct(row.delivered) + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--text)">' + row.opened + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:#a78bfa">' + pct(row.opened) + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:var(--text)">' + row.clicked + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:#f59e0b">' + pct(row.clicked) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function renderZeroBasedChart(dayData, deliveredColor, openColor, clickColor) {
+  // Simple CSS bar chart showing cumulative open and click rates over days
+  var maxVal = Math.max.apply(null, dayData.map(function(d) { return d.opened; }).concat([1]));
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Cumulative Open / Click Curve</div>';
+  html += '<div style="display:flex;gap:16px;font-size:10px;color:var(--text-faint);margin-bottom:12px">';
+  html += '<span><span style="display:inline-block;width:10px;height:10px;background:#a78bfa;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Opens</span>';
+  html += '<span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Clicks</span>';
+  html += '</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:1px;height:140px">';
+
+  dayData.forEach(function(d, idx) {
+    var openH = maxVal > 0 ? Math.max(0, Math.round(d.opened / maxVal * 130)) : 0;
+    var clickH = maxVal > 0 ? Math.max(0, Math.round(d.clicked / maxVal * 130)) : 0;
+    var title = 'Day ' + d.day + ': ' + d.opened + ' opens, ' + d.clicked + ' clicks';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:3px" title="' + title + '">';
+    html += '<div style="width:100%;height:' + openH + 'px;background:#a78bfa;border-radius:2px 2px 0 0;opacity:0.7"></div>';
+    if (clickH > 0) {
+      html += '<div style="width:100%;height:' + clickH + 'px;background:#f59e0b;border-radius:0;opacity:0.85;margin-top:-' + clickH + 'px;position:relative"></div>';
+    }
+    html += '</div>';
+  });
+
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-faint);font-family:JetBrains Mono,monospace">';
+  html += '<span>Day 0</span><span>Day 7</span><span>Day 14</span><span>Day 21</span><span>Day 30</span>';
+  html += '</div></div>';
+
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 3: COMPARE — Same campaign, two cohorts side-by-side
+// ═══════════════════════════════════════════════════════════
+
+function renderCohortCompare(logsA, logsB) {
+  var state = _emailCohortState;
+
+  // Campaign selector (from cohort A)
+  var campaignTypes = {};
+  logsA.forEach(function(l) {
+    var t = l.notification_type || 'unknown';
+    campaignTypes[t] = (campaignTypes[t] || 0) + 1;
+  });
+  var sortedCampaigns = Object.entries(campaignTypes).sort(function(a, b) { return b[1] - a[1]; });
+
+  if (!state.selectedCampaign && sortedCampaigns.length > 0) {
+    state.selectedCampaign = sortedCampaigns[0][0];
+  }
+
+  var html = '';
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">';
+  html += '<label style="font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Campaign:</label>';
+  html += '<select id="ec-compare-campaign" onchange="selectEmailCampaign(this.value)" style="font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-family:JetBrains Mono,monospace">';
+  sortedCampaigns.forEach(function(entry) {
+    html += '<option value="' + entry[0] + '"' + (state.selectedCampaign === entry[0] ? ' selected' : '') + '>' + entry[0] + ' (' + entry[1] + ')</option>';
+  });
+  html += '</select></div>';
+
+  if (!state.selectedCampaign) {
+    return html + '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">Select a campaign to compare.</div>';
+  }
+
+  if (!state.compareCohort) {
+    return html + '<div style="padding:40px;text-align:center;color:var(--text-faint);font-size:13px">Select a second cohort above to compare.</div>';
+  }
+
+  var campaignLogsA = logsA.filter(function(l) { return l.notification_type === state.selectedCampaign; });
+  var campaignLogsB = logsB.filter(function(l) { return l.notification_type === state.selectedCampaign; });
+
+  var daysA = buildZeroBasedDays(campaignLogsA, 30);
+  var daysB = buildZeroBasedDays(campaignLogsB, 30);
+
+  // Find cohort names
+  var nameA = getCohortName(state.selectedCohort);
+  var nameB = getCohortName(state.compareCohort);
+
+  // Side-by-side summary cards
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+  html += renderComparisonSummaryCard(nameA, campaignLogsA, daysA, 'var(--accent)');
+  html += renderComparisonSummaryCard(nameB, campaignLogsB, daysB, '#22c55e');
+  html += '</div>';
+
+  // Combined comparison table
+  html += renderComparisonTable(daysA, daysB, campaignLogsA.length, campaignLogsB.length, nameA, nameB);
+
+  return html;
+}
+
+function getCohortName(cohortId) {
+  if (cohortId === '__all__') return 'All';
+  if (cohortId === '__none__') return 'Unassigned';
+  var match = _emailCohortState.cohorts.find(function(c) { return c.id === cohortId; });
+  return match ? match.name : cohortId;
+}
+
+function renderComparisonSummaryCard(name, logs, dayData, color) {
+  var sent = logs.length;
+  var day7 = dayData[7] || { delivered: 0, opened: 0, clicked: 0 };
+  var day30 = dayData[30] || dayData[dayData.length - 1] || { delivered: 0, opened: 0, clicked: 0 };
+  function pct(n) { return sent > 0 ? (n / sent * 100).toFixed(1) + '%' : '—'; }
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;border-top:3px solid ' + color + '">';
+  html += '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:10px">' + name + '</div>';
+  html += '<div style="font-size:12px;font-family:JetBrains Mono,monospace;color:var(--text-dim);display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+  html += '<div>Sent: <span style="color:var(--text);font-weight:600">' + sent + '</span></div>';
+  html += '<div>Day 7 Open: <span style="color:#a78bfa;font-weight:600">' + pct(day7.opened) + '</span></div>';
+  html += '<div>Day 30 Open: <span style="color:#a78bfa;font-weight:600">' + pct(day30.opened) + '</span></div>';
+  html += '<div>Day 30 Click: <span style="color:#f59e0b;font-weight:600">' + pct(day30.clicked) + '</span></div>';
+  html += '</div></div>';
+  return html;
+}
+
+function renderComparisonTable(daysA, daysB, sentA, sentB, nameA, nameB) {
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; }
+  function delta(a, b, da, db) {
+    if (da === 0 || db === 0) return '';
+    var rateA = a / da * 100;
+    var rateB = b / db * 100;
+    var diff = rateA - rateB;
+    var color = diff > 0 ? 'var(--green)' : diff < 0 ? '#ef4444' : 'var(--text-faint)';
+    var sign = diff > 0 ? '+' : '';
+    return '<span style="color:' + color + ';font-weight:600">' + sign + diff.toFixed(1) + 'pp</span>';
+  }
+
+  var html = '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Side-by-Side · ' + nameA + ' vs ' + nameB + '</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:5px 6px;color:var(--text-dim)">Day</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--accent)" colspan="2">' + nameA + ' Open</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:#22c55e" colspan="2">' + nameB + ' Open</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--text-dim)">Δ Open</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--accent)">' + nameA + ' Click</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:#22c55e">' + nameB + ' Click</th>';
+  html += '<th style="text-align:right;padding:5px 6px;color:var(--text-dim)">Δ Click</th>';
+  html += '</tr></thead><tbody>';
+
+  var showDays = [0, 1, 2, 3, 5, 7, 14, 21, 30];
+  showDays.forEach(function(d) {
+    var a = daysA[d] || { delivered: 0, opened: 0, clicked: 0 };
+    var b = daysB[d] || { delivered: 0, opened: 0, clicked: 0 };
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:5px 6px;color:var(--text);font-weight:600">Day ' + d + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--text)">' + a.opened + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--accent)">' + pct(a.opened, sentA) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--text)">' + b.opened + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:#22c55e">' + pct(b.opened, sentB) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px">' + delta(a.opened, b.opened, sentA, sentB) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:var(--accent)">' + pct(a.clicked, sentA) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px;color:#22c55e">' + pct(b.clicked, sentB) + '</td>';
+    html += '<td style="text-align:right;padding:5px 6px">' + delta(a.clicked, b.clicked, sentA, sentB) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// UI EVENT HANDLERS
+// ═══════════════════════════════════════════════════════════
+
+function switchEmailCohortView(view) {
+  _emailCohortState.view = view;
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function selectEmailCohort(cohortId) {
+  _emailCohortState.selectedCohort = cohortId;
+  _emailCohortState.selectedCampaign = null; // reset campaign on cohort change
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function selectCompareCohort(cohortId) {
+  _emailCohortState.compareCohort = cohortId || null;
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function selectEmailCampaign(campaign) {
+  _emailCohortState.selectedCampaign = campaign;
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+function drillIntoCampaign(campaign) {
+  _emailCohortState.selectedCampaign = campaign;
+  _emailCohortState.view = 'campaign';
+  var container = document.getElementById('admin-panel-email-cohorts');
+  if (container) renderEmailCohortsTab(container);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CADENCE OPTIMIZATION (Phase 69 Card 10)
+// Analyzes open/click rates by send hour, day of week, frequency.
+// Computes re-engagement tier win-back rates.
+// Surfaces recommendations and allows auto-adjust of thresholds.
+// ═══════════════════════════════════════════════════════════
+
+var _cadenceState = {
+  settings: null,
+  analysis: null,
+  loaded: false
+};
+
+async function loadCadenceTab() {
+  var container = document.getElementById('admin-panel-cadence');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Analyzing notification cadence…</div>';
+
+  try {
+    // Fetch cadence_settings
+    var { data: settings, error: sErr } = await sb
+      .from('cadence_settings')
+      .select('*')
+      .eq('id', 'global')
+      .single();
+    if (sErr) throw sErr;
+
+    // Fetch notification_log for analysis (90 days, email only, with engagement data)
+    var since = new Date();
+    since.setDate(since.getDate() - 90);
+    var { data: logs, error: lErr } = await sb
+      .from('notification_log')
+      .select('notification_type, status, created_at, delivered_at, opened_at, clicked_at, user_id, user_cohort, send_decision')
+      .eq('channel', 'email')
+      .eq('send_decision', 'sent')
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10000);
+    if (lErr) throw lErr;
+
+    // Fetch re-engagement logs specifically
+    var { data: reengageLogs, error: rErr } = await sb
+      .from('notification_log')
+      .select('notification_type, status, opened_at, clicked_at, user_id, created_at')
+      .eq('channel', 'email')
+      .in('notification_type', ['reengagement_14d', 'reengagement_30d', 'reengagement_60d', 'inactive_reengagement'])
+      .gte('created_at', since.toISOString())
+      .limit(5000);
+
+    // Fetch last_seen data for re-engagement analysis
+    var { data: profiles, error: pErr } = await sb
+      .from('profiles')
+      .select('id, last_seen_at')
+      .not('last_seen_at', 'is', null)
+      .limit(5000);
+
+    _cadenceState.settings = settings;
+    _cadenceState.analysis = runCadenceAnalysis(logs || [], reengageLogs || [], profiles || []);
+    _cadenceState.loaded = true;
+
+    renderCadenceTab(container);
+    console.log('[Admin] Cadence optimization loaded: ' + (logs || []).length + ' email events analyzed');
+
+  } catch (e) {
+    console.error('[Admin] Cadence optimization error:', e);
+    container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
+  }
+}
+
+// ── Core analysis engine ──
+
+function runCadenceAnalysis(logs, reengageLogs, profiles) {
+  var analysis = {
+    byHour: {},      // hour -> { sent, opened, clicked }
+    byDow: {},       // dow -> { sent, opened, clicked }
+    byType: {},      // type -> { sent, opened, clicked, frequency_per_week }
+    reengagement: {  // tier -> { sent, opened (=winback) }
+      tier1: { sent: 0, opened: 0 },
+      tier2: { sent: 0, opened: 0 },
+      tier3: { sent: 0, opened: 0 }
+    },
+    totalSent: logs.length,
+    totalOpened: 0,
+    totalClicked: 0,
+    dateRange: { start: null, end: null },
+    topHours: [],
+    topDows: [],
+    recommendations: []
+  };
+
+  if (logs.length === 0) return analysis;
+
+  // Date range
+  var dates = logs.map(function(l) { return new Date(l.created_at); });
+  analysis.dateRange.start = new Date(Math.min.apply(null, dates));
+  analysis.dateRange.end = new Date(Math.max.apply(null, dates));
+  var weeksSpan = Math.max(1, (analysis.dateRange.end - analysis.dateRange.start) / (7 * 86400000));
+
+  // Initialize hours and days
+  for (var h = 0; h < 24; h++) analysis.byHour[h] = { sent: 0, opened: 0, clicked: 0 };
+  for (var d = 0; d < 7; d++) analysis.byDow[d] = { sent: 0, opened: 0, clicked: 0 };
+
+  // Analyze each log
+  logs.forEach(function(l) {
+    var dt = new Date(l.created_at);
+    var hour = dt.getUTCHours();
+    var dow = dt.getUTCDay();
+    var type = l.notification_type || 'unknown';
+    var wasOpened = !!(l.opened_at || l.status === 'opened' || l.status === 'clicked');
+    var wasClicked = !!(l.clicked_at || l.status === 'clicked');
+
+    // By hour
+    analysis.byHour[hour].sent++;
+    if (wasOpened) analysis.byHour[hour].opened++;
+    if (wasClicked) analysis.byHour[hour].clicked++;
+
+    // By day of week
+    analysis.byDow[dow].sent++;
+    if (wasOpened) analysis.byDow[dow].opened++;
+    if (wasClicked) analysis.byDow[dow].clicked++;
+
+    // By type
+    if (!analysis.byType[type]) analysis.byType[type] = { sent: 0, opened: 0, clicked: 0 };
+    analysis.byType[type].sent++;
+    if (wasOpened) analysis.byType[type].opened++;
+    if (wasClicked) analysis.byType[type].clicked++;
+
+    if (wasOpened) analysis.totalOpened++;
+    if (wasClicked) analysis.totalClicked++;
+  });
+
+  // Compute frequency per week for each type
+  Object.keys(analysis.byType).forEach(function(t) {
+    analysis.byType[t].frequency_per_week = +(analysis.byType[t].sent / weeksSpan).toFixed(1);
+  });
+
+  // Re-engagement analysis
+  (reengageLogs || []).forEach(function(l) {
+    var tier = null;
+    if (l.notification_type === 'reengagement_14d') tier = 'tier1';
+    else if (l.notification_type === 'reengagement_30d') tier = 'tier2';
+    else if (l.notification_type === 'reengagement_60d') tier = 'tier3';
+    else if (l.notification_type === 'inactive_reengagement') tier = 'tier2'; // default bucket
+    if (tier) {
+      analysis.reengagement[tier].sent++;
+      if (l.opened_at || l.status === 'opened' || l.status === 'clicked') {
+        analysis.reengagement[tier].opened++;
+      }
+    }
+  });
+
+  // Rank hours by open rate (minimum 5 sends to be statistically relevant)
+  analysis.topHours = Object.entries(analysis.byHour)
+    .filter(function(e) { return e[1].sent >= 5; })
+    .map(function(e) { return { hour: parseInt(e[0]), rate: e[1].opened / e[1].sent, sent: e[1].sent }; })
+    .sort(function(a, b) { return b.rate - a.rate; })
+    .slice(0, 5);
+
+  // Rank days by open rate
+  var dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  analysis.topDows = Object.entries(analysis.byDow)
+    .filter(function(e) { return e[1].sent >= 3; })
+    .map(function(e) { return { dow: parseInt(e[0]), name: dowNames[parseInt(e[0])], rate: e[1].opened / e[1].sent, sent: e[1].sent }; })
+    .sort(function(a, b) { return b.rate - a.rate; });
+
+  // Generate recommendations
+  if (analysis.topHours.length >= 2) {
+    var bestH = analysis.topHours[0];
+    var worstH = analysis.topHours[analysis.topHours.length - 1];
+    if (bestH.rate > worstH.rate * 1.3) {
+      analysis.recommendations.push({
+        type: 'send_time',
+        text: 'Best open rate at ' + bestH.hour + ':00 UTC (' + (bestH.rate * 100).toFixed(1) + '%) vs ' + worstH.hour + ':00 UTC (' + (worstH.rate * 100).toFixed(1) + '%). Shift sends toward ' + bestH.hour + ':00.',
+        impact: 'high'
+      });
+    }
+  }
+
+  if (analysis.topDows.length >= 2) {
+    var bestD = analysis.topDows[0];
+    var worstD = analysis.topDows[analysis.topDows.length - 1];
+    if (bestD.rate > worstD.rate * 1.2) {
+      analysis.recommendations.push({
+        type: 'send_day',
+        text: bestD.name + ' has highest open rate (' + (bestD.rate * 100).toFixed(1) + '%). ' + worstD.name + ' is lowest (' + (worstD.rate * 100).toFixed(1) + '%). Prioritize ' + bestD.name + '-' + analysis.topDows[Math.min(1, analysis.topDows.length - 1)].name + ' for non-urgent emails.',
+        impact: 'medium'
+      });
+    }
+  }
+
+  // Check over-frequency types
+  Object.entries(analysis.byType).forEach(function(e) {
+    if (e[1].frequency_per_week > 5 && e[1].opened / e[1].sent < 0.1) {
+      analysis.recommendations.push({
+        type: 'frequency',
+        text: e[0] + ' sends ' + e[1].frequency_per_week + 'x/week but only ' + (e[1].opened / e[1].sent * 100).toFixed(1) + '% open rate. Consider reducing frequency.',
+        impact: 'high'
+      });
+    }
+  });
+
+  // Re-engagement threshold recommendations
+  ['tier1', 'tier2', 'tier3'].forEach(function(tier) {
+    var data = analysis.reengagement[tier];
+    if (data.sent >= 10) {
+      var rate = data.opened / data.sent;
+      if (rate < 0.05) {
+        var label = tier === 'tier1' ? '14-day' : tier === 'tier2' ? '30-day' : '60-day';
+        analysis.recommendations.push({
+          type: 'reengagement',
+          text: label + ' re-engagement has only ' + (rate * 100).toFixed(1) + '% win-back rate (' + data.sent + ' sent). Consider shortening the threshold or changing the template.',
+          impact: 'medium'
+        });
+      }
+    }
+  });
+
+  if (analysis.totalSent < 100) {
+    analysis.recommendations.unshift({
+      type: 'data',
+      text: 'Only ' + analysis.totalSent + ' emails analyzed. Recommendations improve with 500+ emails. Current insights are directional only.',
+      impact: 'low'
+    });
+  }
+
+  return analysis;
+}
+
+// ── Render ──
+
+function renderCadenceTab(container) {
+  var s = _cadenceState.settings;
+  var a = _cadenceState.analysis;
+  if (!s || !a) return;
+
+  var html = '';
+
+  // Header
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">';
+  html += '<span style="font-size:15px;font-weight:600;color:var(--text)">Cadence Optimization</span>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<span style="font-size:11px;color:var(--text-faint)">' + a.totalSent + ' emails · ' + (a.dateRange.start ? a.dateRange.start.toLocaleDateString() : '?') + ' – ' + (a.dateRange.end ? a.dateRange.end.toLocaleDateString() : '?') + '</span>';
+  html += '<button onclick="rerunCadenceAnalysis()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer;font-family:JetBrains Mono,monospace">Re-analyze</button>';
+  html += '</div></div>';
+
+  // ── Stat cards ──
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; }
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">';
+  var cards = [
+    { label: 'Emails Analyzed', value: a.totalSent, color: 'var(--accent)' },
+    { label: 'Overall Open Rate', value: pct(a.totalOpened, a.totalSent), color: '#a78bfa' },
+    { label: 'Overall Click Rate', value: pct(a.totalClicked, a.totalSent), color: '#f59e0b' },
+    { label: 'Best Hour (UTC)', value: a.topHours.length > 0 ? a.topHours[0].hour + ':00' : '—', color: 'var(--green)' },
+    { label: 'Best Day', value: a.topDows.length > 0 ? a.topDows[0].name : '—', color: 'var(--green)' }
+  ];
+  cards.forEach(function(c) {
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+      '<div style="font-size:22px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + c.color + '">' + c.value + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">' + c.label + '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+
+  // ── Recommendations ──
+  if (a.recommendations.length > 0) {
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Recommendations</div>';
+    a.recommendations.forEach(function(r) {
+      var impactColor = r.impact === 'high' ? '#ef4444' : r.impact === 'medium' ? '#f59e0b' : 'var(--text-faint)';
+      var impactBg = r.impact === 'high' ? 'color-mix(in srgb, #ef4444 10%, transparent)' : r.impact === 'medium' ? 'color-mix(in srgb, #f59e0b 10%, transparent)' : 'var(--bg-card)';
+      html += '<div style="padding:8px 12px;border-radius:6px;margin-bottom:6px;background:' + impactBg + ';border-left:3px solid ' + impactColor + '">';
+      html += '<span style="font-size:10px;font-weight:600;text-transform:uppercase;color:' + impactColor + ';letter-spacing:0.5px">' + r.impact + ' · ' + r.type + '</span>';
+      html += '<div style="font-size:12px;color:var(--text);margin-top:4px;font-family:JetBrains Mono,monospace">' + r.text + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Two-column: Send Hour Heatmap + Day of Week ──
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+
+  // Hour of day chart
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Open Rate by Hour (UTC)</div>';
+  var maxHourRate = Math.max.apply(null, Object.values(a.byHour).map(function(h) { return h.sent > 0 ? h.opened / h.sent : 0; }).concat([0.01]));
+  html += '<div style="display:flex;align-items:flex-end;gap:1px;height:100px">';
+  for (var h = 0; h < 24; h++) {
+    var hd = a.byHour[h];
+    var rate = hd.sent > 0 ? hd.opened / hd.sent : 0;
+    var barH = Math.max(0, Math.round(rate / maxHourRate * 90));
+    var isBest = a.topHours.length > 0 && a.topHours[0].hour === h;
+    var color = isBest ? 'var(--green)' : rate > maxHourRate * 0.7 ? '#a78bfa' : 'var(--accent)';
+    var opacity = hd.sent < 3 ? '0.3' : '0.7';
+    html += '<div title="' + h + ':00 UTC — ' + (rate * 100).toFixed(1) + '% open (' + hd.sent + ' sent)" style="flex:1;height:' + barH + 'px;background:' + color + ';border-radius:2px 2px 0 0;min-width:3px;opacity:' + opacity + ';transition:opacity 0.2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=' + opacity + '"></div>';
+  }
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-faint);font-family:JetBrains Mono,monospace"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>';
+  html += '</div>';
+
+  // Day of week chart
+  var dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var maxDowRate = Math.max.apply(null, Object.values(a.byDow).map(function(d) { return d.sent > 0 ? d.opened / d.sent : 0; }).concat([0.01]));
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Open Rate by Day of Week</div>';
+  for (var d = 0; d < 7; d++) {
+    var dd = a.byDow[d];
+    var rate = dd.sent > 0 ? dd.opened / dd.sent : 0;
+    var barW = Math.max(0, Math.round(rate / maxDowRate * 100));
+    var isBest = a.topDows.length > 0 && a.topDows[0].dow === d;
+    var color = isBest ? 'var(--green)' : '#a78bfa';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+    html += '<span style="width:30px;font-size:11px;color:var(--text-dim);font-family:JetBrains Mono,monospace;text-align:right">' + dowNames[d] + '</span>';
+    html += '<div style="flex:1;height:16px;background:var(--bg-card);border-radius:4px;overflow:hidden">';
+    html += '<div style="width:' + barW + '%;height:100%;background:' + color + ';border-radius:4px;opacity:0.8"></div>';
+    html += '</div>';
+    html += '<span style="width:45px;font-size:10px;color:var(--text-dim);font-family:JetBrains Mono,monospace;text-align:right">' + (rate * 100).toFixed(1) + '%</span>';
+    html += '<span style="width:30px;font-size:10px;color:var(--text-faint);font-family:JetBrains Mono,monospace;text-align:right">n=' + dd.sent + '</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; // end grid
+
+  // ── Per-type frequency table ──
+  var sortedTypes = Object.entries(a.byType).sort(function(a, b) { return b[1].sent - a[1].sent; });
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Per-Campaign Frequency & Performance</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:5px 8px;color:var(--text-dim)">Campaign</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Sent</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Per Week</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Open %</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Click %</th>';
+  html += '<th style="text-align:left;padding:5px 8px;color:var(--text-dim)">Signal</th>';
+  html += '</tr></thead><tbody>';
+
+  sortedTypes.forEach(function(entry) {
+    var name = entry[0];
+    var t = entry[1];
+    var openRate = t.sent > 0 ? t.opened / t.sent : 0;
+    var clickRate = t.sent > 0 ? t.clicked / t.sent : 0;
+    var signal = '';
+    if (t.frequency_per_week > 5 && openRate < 0.1) signal = '<span style="color:#ef4444">⚠ Over-sending</span>';
+    else if (openRate > 0.3) signal = '<span style="color:var(--green)">✓ Strong</span>';
+    else if (openRate > 0.15) signal = '<span style="color:#f59e0b">○ OK</span>';
+    else if (t.sent >= 10) signal = '<span style="color:var(--text-faint)">△ Low engagement</span>';
+
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:5px 8px;color:var(--text)">' + name + '</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:var(--text)">' + t.sent + '</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:var(--text)">' + t.frequency_per_week + '</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:#a78bfa">' + (openRate * 100).toFixed(1) + '%</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:#f59e0b">' + (clickRate * 100).toFixed(1) + '%</td>';
+    html += '<td style="padding:5px 8px;font-size:10px">' + signal + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // ── Re-engagement thresholds ──
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Re-engagement Thresholds</div>';
+  html += '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);cursor:pointer">';
+  html += '<input type="checkbox" id="cadence-auto-adjust" ' + (s.auto_adjust_enabled ? 'checked' : '') + ' onchange="toggleCadenceAutoAdjust(this.checked)" style="accent-color:var(--accent)">';
+  html += 'Auto-adjust from data</label>';
+  html += '</div>';
+
+  var tiers = [
+    { key: 'tier1', label: 'Tier 1', days: s.reengagement_tier1_days, data: a.reengagement.tier1, type: 'reengagement_14d' },
+    { key: 'tier2', label: 'Tier 2', days: s.reengagement_tier2_days, data: a.reengagement.tier2, type: 'reengagement_30d' },
+    { key: 'tier3', label: 'Tier 3', days: s.reengagement_tier3_days, data: a.reengagement.tier3, type: 'reengagement_60d' }
+  ];
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
+  tiers.forEach(function(tier) {
+    var winback = tier.data.sent > 0 ? (tier.data.opened / tier.data.sent * 100).toFixed(1) : '—';
+    var winbackColor = tier.data.sent > 0 ? (tier.data.opened / tier.data.sent > 0.1 ? 'var(--green)' : tier.data.opened / tier.data.sent > 0.05 ? '#f59e0b' : '#ef4444') : 'var(--text-faint)';
+    html += '<div style="background:var(--bg-card);border-radius:8px;padding:12px;text-align:center">';
+    html += '<div style="font-size:12px;font-weight:600;color:var(--text)">' + tier.label + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-dim);margin:4px 0">';
+    html += '<input type="number" id="cadence-' + tier.key + '-days" value="' + tier.days + '" min="1" max="365" style="width:50px;text-align:center;font-size:13px;font-family:JetBrains Mono,monospace;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text);padding:2px"> days inactive</div>';
+    html += '<div style="font-size:11px;color:var(--text-faint);margin-top:4px">Sends: ' + tier.data.sent + '</div>';
+    html += '<div style="font-size:16px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + winbackColor + ';margin-top:4px">' + winback + (winback !== '—' ? '%' : '') + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase">Win-back Rate</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Save button
+  html += '<div style="margin-top:12px;text-align:right">';
+  html += '<button onclick="saveCadenceSettings()" style="font-size:12px;padding:6px 16px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-family:JetBrains Mono,monospace">Save Thresholds</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── Current settings summary ──
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Current Optimized Settings</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<div style="color:var(--text-dim)">Best send hours (UTC):</div><div style="color:var(--text)">' + s.best_send_hour_1 + ':00, ' + s.best_send_hour_2 + ':00, ' + s.best_send_hour_3 + ':00</div>';
+  html += '<div style="color:var(--text-dim)">Best send days:</div><div style="color:var(--text)">' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.best_send_dow_1] + ', ' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.best_send_dow_2] + ', ' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.best_send_dow_3] + '</div>';
+  html += '<div style="color:var(--text-dim)">Sample size:</div><div style="color:var(--text)">' + s.analysis_sample_size + ' emails</div>';
+  html += '<div style="color:var(--text-dim)">Last analyzed:</div><div style="color:var(--text)">' + (s.last_analyzed_at ? new Date(s.last_analyzed_at).toLocaleString() : 'Never') + '</div>';
+  html += '<div style="color:var(--text-dim)">Auto-adjust:</div><div style="color:' + (s.auto_adjust_enabled ? 'var(--green)' : 'var(--text-faint)') + '">' + (s.auto_adjust_enabled ? 'Enabled' : 'Disabled') + '</div>';
+  html += '</div>';
+
+  // Apply analysis button
+  html += '<div style="margin-top:12px;text-align:right">';
+  html += '<button onclick="applyCadenceAnalysis()" style="font-size:12px;padding:6px 16px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:JetBrains Mono,monospace">Apply Analysis → Settings</button>';
+  html += '</div>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ── Event handlers ──
+
+async function saveCadenceSettings() {
+  try {
+    var tier1 = parseInt(document.getElementById('cadence-tier1-days').value) || 14;
+    var tier2 = parseInt(document.getElementById('cadence-tier2-days').value) || 30;
+    var tier3 = parseInt(document.getElementById('cadence-tier3-days').value) || 60;
+
+    var { error } = await sb
+      .from('cadence_settings')
+      .update({
+        reengagement_tier1_days: tier1,
+        reengagement_tier2_days: tier2,
+        reengagement_tier3_days: tier3,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', 'global');
+
+    if (error) throw error;
+    _cadenceState.settings.reengagement_tier1_days = tier1;
+    _cadenceState.settings.reengagement_tier2_days = tier2;
+    _cadenceState.settings.reengagement_tier3_days = tier3;
+    if (typeof toastSuccess === 'function') toastSuccess('Thresholds saved');
+  } catch (e) {
+    console.error('[Cadence] Save error:', e);
+    if (typeof toastError === 'function') toastError('Save failed: ' + (e.message || e));
+  }
+}
+
+async function toggleCadenceAutoAdjust(enabled) {
+  try {
+    var { error } = await sb
+      .from('cadence_settings')
+      .update({ auto_adjust_enabled: enabled, updated_at: new Date().toISOString() })
+      .eq('id', 'global');
+    if (error) throw error;
+    _cadenceState.settings.auto_adjust_enabled = enabled;
+  } catch (e) {
+    console.error('[Cadence] Toggle error:', e);
+  }
+}
+
+async function applyCadenceAnalysis() {
+  var a = _cadenceState.analysis;
+  if (!a || a.totalSent === 0) return;
+
+  var updates = {
+    analysis_sample_size: a.totalSent,
+    analysis_window_days: 90,
+    last_analyzed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  // Apply best hours
+  if (a.topHours.length >= 1) updates.best_send_hour_1 = a.topHours[0].hour;
+  if (a.topHours.length >= 2) updates.best_send_hour_2 = a.topHours[1].hour;
+  if (a.topHours.length >= 3) updates.best_send_hour_3 = a.topHours[2].hour;
+
+  // Apply best days
+  if (a.topDows.length >= 1) updates.best_send_dow_1 = a.topDows[0].dow;
+  if (a.topDows.length >= 2) updates.best_send_dow_2 = a.topDows[1].dow;
+  if (a.topDows.length >= 3) updates.best_send_dow_3 = a.topDows[2].dow;
+
+  // Apply win-back rates
+  if (a.reengagement.tier1.sent > 0) updates.tier1_winback_rate = +(a.reengagement.tier1.opened / a.reengagement.tier1.sent).toFixed(4);
+  if (a.reengagement.tier2.sent > 0) updates.tier2_winback_rate = +(a.reengagement.tier2.opened / a.reengagement.tier2.sent).toFixed(4);
+  if (a.reengagement.tier3.sent > 0) updates.tier3_winback_rate = +(a.reengagement.tier3.opened / a.reengagement.tier3.sent).toFixed(4);
+
+  // Per-type frequency
+  var freqMap = {};
+  Object.entries(a.byType).forEach(function(e) {
+    freqMap[e[0]] = { per_week: e[1].frequency_per_week, open_rate: +(e[1].opened / Math.max(1, e[1].sent)).toFixed(4) };
+  });
+  updates.optimal_frequency = freqMap;
+
+  try {
+    var { error } = await sb.from('cadence_settings').update(updates).eq('id', 'global');
+    if (error) throw error;
+    Object.assign(_cadenceState.settings, updates);
+    var container = document.getElementById('admin-panel-cadence');
+    if (container) renderCadenceTab(container);
+    if (typeof toastSuccess === 'function') toastSuccess('Analysis applied to settings');
+  } catch (e) {
+    console.error('[Cadence] Apply error:', e);
+    if (typeof toastError === 'function') toastError('Apply failed: ' + (e.message || e));
+  }
+}
+
+async function rerunCadenceAnalysis() {
+  _cadenceState.loaded = false;
+  await loadCadenceTab();
+}
+
+
+// === js/admin-shell.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-shell.js — Auth gate + init for standalone /admin page
+   v6.26 — Separated from dashboard shell (app.js)
+   
+   This is the entry point for admin.html. It handles:
+   1. Supabase auth check
+   2. Admin role verification
+   3. Redirect non-admins
+   4. Init admin page when authenticated
+   ─────────────────────────────────────────────────────────── */
+
+(async function() {
+  'use strict';
+
+  // Version display
+  document.querySelectorAll('.bj-version').forEach(function(el) { el.textContent = BJ_VERSION; });
+  document.querySelectorAll('.bj-year').forEach(function(el) { el.textContent = new Date().getFullYear(); });
+  console.log('[BJ] Admin Console ' + BJ_VERSION);
+
+  var gate = document.getElementById('admin-gate');
+  var denied = document.getElementById('admin-denied');
+  var shell = document.getElementById('admin-shell');
+
+  try {
+    // 1. Check auth
+    var authRes = await sb.auth.getUser();
+    if (!authRes.data || !authRes.data.user) {
+      // Not logged in — redirect to login
+      window.location.href = '/?redirect=/admin';
+      return;
+    }
+
+    var user = authRes.data.user;
+    window.currentUser = user;
+
+    // 2. Check admin role
+    var profileRes = await sb.from('profiles')
+      .select('role, approved, plan')
+      .eq('id', user.id)
+      .single();
+
+    if (profileRes.error || !profileRes.data) {
+      showDenied();
+      return;
+    }
+
+    var profile = profileRes.data;
+
+    if (profile.role !== 'admin') {
+      showDenied();
+      return;
+    }
+
+    // 3. Admin verified — show the console
+    gate.style.display = 'none';
+    shell.style.display = 'block';
+
+    // Set user email in topbar
+    var emailEl = document.getElementById('admin-user-email');
+    if (emailEl) emailEl.textContent = user.email;
+
+    // Set version in topbar
+    var versionEl = document.getElementById('admin-version');
+    if (versionEl) versionEl.textContent = BJ_VERSION;
+
+    // 4. Init admin page
+    // The page-admin div is always active on this page
+    if (typeof initAdminPage === 'function') {
+      initAdminPage();
+    }
+
+  } catch (e) {
+    console.error('[Admin Shell] Auth error:', e);
+    showDenied();
+  }
+
+  function showDenied() {
+    gate.style.display = 'none';
+    denied.style.display = 'flex';
+  }
+
+  // Listen for auth state changes (session expiry, etc.)
+  sb.auth.onAuthStateChange(function(event, session) {
+    if (event === 'SIGNED_OUT') {
+      window.location.href = '/';
+    }
+  });
+})();
