@@ -1,3 +1,24 @@
+## v6.39 — Synthetic Content Detection: Session 2.2 — Resume Rescore Button (2026-03-02)
+
+### Resume Rescore Button
+- **Rescore button on resume card** — Indigo "🔄 Rescore" button appears next to AI badge for any resume with ≥100 chars of extracted text. Calls `rescoreResumeAI(idx)` exposed in v6.38
+- **60-second cooldown rate limiting** — After rescoring, button disables and shows live countdown timer. Prevents API abuse. Cooldown tracked per-resume in memory
+- **Score history tracking** — Previous scores saved to `aiScoreHistory` array (max 5 entries) before each rescore. History includes label, score, confidence, summary, and timestamp
+- **Previous vs current display** — When history exists, delta indicator shows next to AI badge (↑/↓/↔ with "was X%" tooltip). Green for improvement, red for worse, gray for stable
+
+### Technical Details
+- `RESCORE_COOLDOWN_MS` constant (60000ms) controls cooldown duration
+- `_startRescoreCooldown(idx)` runs 1-second interval updating button text with remaining seconds
+- `handleRescore(idx)` wrapper on window for onclick binding from template string
+- Score history persisted in localStorage via `saveResumes()` for cross-session continuity
+- Cooldown state (`_rescoreCooldownUntil`) is in-memory only — resets on page reload
+
+### Version Discipline
+- `js/version.js` → v6.39
+- `dashboard.html` → v6.39 + cache-bust ?v=6.39
+- `index.html` → v6.39
+- Git tag: v6.39
+
 ## v6.38 — Synthetic Content Detection: Session 2.1 — Resume Upload Scoring (2026-03-02)
 
 ### Resume AI Content Scoring
