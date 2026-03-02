@@ -2900,3 +2900,299 @@ export function refundProcessedEmail(
     `),
   };
 }
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 12: MARKETING / UPGRADE / PROMOTIONAL EMAILS (White Theme)
+// Pod 1 copy: PRODUCTION — Batch 10a delivered 2026-03-01
+// White theme design: APPROVED — v6.12
+// Classification: MARKETING (requires double opt-in, unsubscribe in every email)
+// ═══════════════════════════════════════════════════════════
+
+export function usageUpgradePromptEmail(
+  firstName?: string,
+  currentPlan?: string,
+  limitType?: string,
+  currentUsage?: number,
+  limitMax?: number,
+  featureBlocked?: string,
+  recommendedPlan?: string,
+  recommendedPrice?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const plan = currentPlan || "Free";
+  const limit = limitType || "filter";
+  const usage = currentUsage ?? 1;
+  const max = limitMax ?? 1;
+  const feature = featureBlocked || "additional filters";
+  const recPlan = recommendedPlan || "Starter";
+  const recPrice = recommendedPrice || "$20/mo";
+  const base = dashboardUrl || DASHBOARD_URL;
+  const pct = max > 0 ? Math.round((usage / max) * 100) : 100;
+
+  return {
+    subject: `You've hit your ${limit} limit — unlock more with ${recPlan}`,
+    html: whiteBaseLayout("Upgrade Available", `
+      <div class="card">
+        <div class="card-title">Hey ${name}, you've reached your ${plan} plan limit.</div>
+        <p class="card-sub">You're using ${usage} of ${max} available ${limit}s (${pct}%). To access ${feature}, you'll need to upgrade.</p>
+
+        <div class="highlight">
+          <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:8px;">What you get with ${recPlan} (${recPrice})</div>
+          <div style="font-size:13px;color:#475569;line-height:1.7;">
+            ${recPlan === "Starter" ? `
+              &bull; Up to 5 saved filters (you have ${usage})<br>
+              &bull; Boolean search operators (AND, OR, NOT)<br>
+              &bull; 100 monthly AI credits for resume scoring<br>
+              &bull; Priority email support
+            ` : `
+              &bull; Unlimited saved filters<br>
+              &bull; 300 monthly AI credits<br>
+              &bull; Auto-apply with smart matching<br>
+              &bull; Full market intelligence reports<br>
+              &bull; Priority support + early features
+            `}
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#subscription" class="btn btn-primary">Upgrade to ${recPlan} →</a>
+          <a href="${base}#subscription" class="btn btn-gray">Compare Plans</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">No long-term commitment. Cancel anytime.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from upgrade notifications</a></p>`),
+  };
+}
+
+export function creditBurnRateAlertEmail(
+  firstName?: string,
+  creditsRemaining?: number,
+  burnRatePerDay?: number,
+  projectedExhaustDate?: string,
+  daysUntilExhaust?: number,
+  currentPlan?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const remaining = creditsRemaining ?? 0;
+  const rate = burnRatePerDay ?? 0;
+  const exhaustDate = projectedExhaustDate || "soon";
+  const daysLeft = daysUntilExhaust ?? 0;
+  const plan = currentPlan || "Starter";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const urgencyColor = daysLeft <= 2 ? "#ef4444" : daysLeft <= 5 ? "#f59e0b" : "#3b82f6";
+  const urgencyLabel = daysLeft <= 2 ? "Critical" : daysLeft <= 5 ? "Low" : "Moderate";
+
+  return {
+    subject: `Credit alert: ${remaining} credits left — ~${daysLeft} days at current pace`,
+    html: whiteBaseLayout("Credit Burn Rate Alert", `
+      <div class="card">
+        <div class="card-title">${name}, your credits are running faster than expected.</div>
+
+        <div style="margin:16px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Credits remaining</td>
+              <td style="padding:8px 0;font-size:13px;color:${urgencyColor};font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;">${remaining}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Daily burn rate</td>
+              <td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:600;text-align:right;border-bottom:1px solid #e2e8f0;">${rate} credits/day</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Projected empty</td>
+              <td style="padding:8px 0;font-size:13px;color:#1e293b;text-align:right;border-bottom:1px solid #e2e8f0;">${exhaustDate}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;">Status</td>
+              <td style="padding:8px 0;text-align:right;"><span style="display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;font-weight:600;background:${urgencyColor}22;color:${urgencyColor};">${urgencyLabel}</span></td>
+            </tr>
+          </table>
+        </div>
+
+        <p class="text">You're using credits faster than your plan replenishes them. Here's how to stay covered:</p>
+
+        <div class="btn-row">
+          <a href="${base}#billing" class="btn btn-primary">Buy Credits →</a>
+          <a href="${base}#settings" class="btn btn-gray">Enable Auto-Refill</a>
+        </div>
+
+        ${plan === "starter" ? `<p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">Or <a href="${base}#subscription" style="color:#3b82f6;">upgrade to Pro</a> for 300 monthly credits.</p>` : ""}
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from credit alerts</a></p>`),
+  };
+}
+
+export function priceLockWarningEmail(
+  firstName?: string,
+  variant?: "14d" | "7d" | "1d",
+  currentPrice?: string,
+  newPrice?: string,
+  effectiveDate?: string,
+  currentPlan?: string,
+  savingsAmount?: string,
+  savingsPercent?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const v = variant || "14d";
+  const curPrice = currentPrice || "$20/mo";
+  const nPrice = newPrice || "$24/mo";
+  const date = effectiveDate || "soon";
+  const plan = currentPlan || "Starter";
+  const savings = savingsAmount || "$4/mo";
+  const pct = savingsPercent || "17%";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const subjects: Record<string, string> = {
+    "14d": `Heads up: ${plan} pricing changes on ${date}`,
+    "7d": `One week left to lock in ${curPrice}/mo — price going to ${nPrice}`,
+    "1d": `Last day: lock in ${curPrice}/mo before tomorrow's price increase`,
+  };
+
+  const tones: Record<string, { heading: string; body: string; boxColor: string; boxBorder: string }> = {
+    "14d": {
+      heading: `${name}, a pricing update is coming.`,
+      body: `Starting ${date}, ${plan} will move from ${curPrice} to ${nPrice}. If you subscribe (or renew) before then, you'll keep the current rate for as long as you stay subscribed.`,
+      boxColor: "#eff6ff",
+      boxBorder: "#bfdbfe",
+    },
+    "7d": {
+      heading: `${name}, one week until the price change.`,
+      body: `${plan} moves from ${curPrice} to ${nPrice} on ${date}. Lock in the current rate now and save ${savings}/mo (${pct} off) — permanently, as long as you stay subscribed.`,
+      boxColor: "#fef9c3",
+      boxBorder: "#fde68a",
+    },
+    "1d": {
+      heading: `${name}, this is your last chance at ${curPrice}/mo.`,
+      body: `Tomorrow, ${plan} goes from ${curPrice} to ${nPrice}. After that, the current rate is gone for good. Lock it in now and you'll keep ${curPrice}/mo for life.`,
+      boxColor: "#fee2e2",
+      boxBorder: "#fca5a5",
+    },
+  };
+
+  const tone = tones[v];
+
+  return {
+    subject: subjects[v],
+    html: whiteBaseLayout("Price Lock", `
+      <div class="card">
+        <div class="card-title">${tone.heading}</div>
+
+        <div style="background:${tone.boxColor};border:1px solid ${tone.boxBorder};border-radius:10px;padding:16px;margin:16px 0;">
+          <p style="font-size:14px;color:#1e293b;line-height:1.6;margin:0;">${tone.body}</p>
+        </div>
+
+        <div style="margin:16px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">Current price</td>
+              <td style="padding:8px 0;font-size:13px;color:#22c55e;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;">${curPrice}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;border-bottom:1px solid #e2e8f0;">New price (${date})</td>
+              <td style="padding:8px 0;font-size:13px;color:#ef4444;font-weight:700;text-align:right;border-bottom:1px solid #e2e8f0;">${nPrice}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 0;font-size:13px;color:#94a3b8;">You save</td>
+              <td style="padding:8px 0;font-size:13px;color:#1e293b;font-weight:700;text-align:right;">${savings}/mo (${pct})</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}#subscription" class="btn btn-primary">${v === "1d" ? "Lock In My Price Now →" : "Lock In Current Price →"}</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">This rate stays locked for as long as your subscription is active.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from pricing updates</a></p>`),
+  };
+}
+
+export function promoTrialEmail(
+  firstName?: string,
+  trialPlan?: string,
+  trialDays?: number,
+  featuresIncluded?: string[],
+  expiryDate?: string,
+  activationUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const plan = trialPlan || "Pro";
+  const days = trialDays ?? 7;
+  const features = featuresIncluded || ["Unlimited filters", "300 AI credits", "Auto-apply", "Market intelligence"];
+  const expiry = expiryDate || "";
+  const activateUrl = activationUrl || `${dashboardUrl || DASHBOARD_URL}#subscription`;
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `${name}, try ${plan} free for ${days} days — no card required`,
+    html: whiteBaseLayout("Free Trial Offer", `
+      <div class="card">
+        <div class="card-title">${name}, you've earned a free look at ${plan}.</div>
+        <p class="card-sub">Based on your activity, we think you'd get real value from ${plan} features. Try them free for ${days} days — no credit card, no commitment.</p>
+
+        <div class="highlight">
+          <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:10px;">Your ${days}-day ${plan} trial includes:</div>
+          ${features.map(f => `<div style="font-size:13px;color:#475569;padding:4px 0;">&bull; ${f}</div>`).join("")}
+        </div>
+
+        <div class="btn-row">
+          <a href="${activateUrl}" class="btn btn-primary">Start Free Trial →</a>
+        </div>
+
+        ${expiry ? `<p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">This offer expires ${expiry}.</p>` : ""}
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">No credit card needed. Your trial ends automatically after ${days} days unless you choose to subscribe.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from promotional emails</a></p>`),
+  };
+}
+
+export function promoFeaturePreviewEmail(
+  firstName?: string,
+  featureName?: string,
+  featureDescription?: string,
+  previewDays?: number,
+  previewExpiryDate?: string,
+  screenshotAlt?: string,
+  requiredPlan?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const feature = featureName || "a new feature";
+  const desc = featureDescription || "We're giving you early access to an upcoming feature.";
+  const days = previewDays ?? 3;
+  const expiry = previewExpiryDate || "";
+  const alt = screenshotAlt || "";
+  const reqPlan = requiredPlan || "Pro";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `${name}, early access: ${feature} is yours for ${days} days`,
+    html: whiteBaseLayout("Feature Preview", `
+      <div class="card">
+        <div class="card-title">${name}, you're getting early access.</div>
+        <p class="card-sub">${desc}</p>
+
+        <div class="highlight">
+          <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:6px;">${feature}</div>
+          <div style="font-size:13px;color:#475569;">Available for ${days} days in your dashboard. ${reqPlan} subscribers get permanent access.</div>
+        </div>
+
+        ${alt ? `<p class="text" style="font-size:12px;color:#94a3b8;font-style:italic;">${alt}</p>` : ""}
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Try ${feature} →</a>
+          <a href="${base}#subscription" class="btn btn-gray">Get Permanent Access</a>
+        </div>
+
+        ${expiry ? `<p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">Preview expires ${expiry}. Upgrade to ${reqPlan} to keep it.</p>` : ""}
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from promotional emails</a></p>`),
+  };
+}
