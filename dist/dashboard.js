@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.32';
+var BJ_VERSION = 'v6.33';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -2218,6 +2218,12 @@ async function searchJobs(page = 0) {
     // Fetch fraud scores for visible jobs
     await fetchFraudScores(currentJobs);
 
+    // Phase 4: Apply trust level filter (client-side post-filter)
+    if (isTrustFilterActive()) {
+      currentJobs = applyTrustFilter(currentJobs);
+      totalCount = currentJobs.length;
+    }
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger
@@ -2557,6 +2563,112 @@ function formatLocation(raw, locDisplay, negativeLocations) {
 // ============================================================
 
 // Cache fraud scores by job_id to avoid re-fetching on pagination
+
+// ============================================================
+// TRUST LEVEL FILTER + PostHog FRAUD ANALYTICS (Phase 4 — v6.33)
+// ============================================================
+
+// Trust filter state
+var _trustFilterLabels = new Set(['safe', 'caution', 'suspicious', 'unknown']);
+
+function getActiveTrustLabels() {
+  var labels = new Set();
+  document.querySelectorAll('.trust-cb').forEach(function(cb) {
+    if (cb.checked) labels.add(cb.value);
+  });
+  return labels.size > 0 ? labels : _trustFilterLabels; // Fallback if no checkboxes yet
+}
+
+function isTrustFilterActive() {
+  var cbs = document.querySelectorAll('.trust-cb');
+  if (cbs.length === 0) return false;
+  var checked = 0;
+  cbs.forEach(function(cb) { if (cb.checked) checked++; });
+  return checked < cbs.length;
+}
+
+function applyTrustFilter(jobs) {
+  if (!isTrustFilterActive()) return jobs;
+  var labels = getActiveTrustLabels();
+  return jobs.filter(function(j) {
+    var info = _fraudScoreCache[j.greenhouse_id];
+    var label = (info && info.label) ? info.label : 'unknown';
+    return labels.has(label);
+  });
+}
+
+function updateTrustFilterUI() {
+  var btn = document.getElementById('trust-filter-btn');
+  var countEl = document.getElementById('trust-filter-count');
+  if (!btn) return;
+  var active = isTrustFilterActive();
+  if (active) {
+    var n = getActiveTrustLabels().size;
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    if (countEl) { countEl.style.display = 'inline'; countEl.textContent = n; }
+  } else {
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text-faint)';
+    if (countEl) countEl.style.display = 'none';
+  }
+}
+
+function setAllTrustFilters(checked) {
+  document.querySelectorAll('.trust-cb').forEach(function(cb) { cb.checked = checked; });
+  updateTrustFilterUI();
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('fraud_filter_applied', {
+      labels: Array.from(getActiveTrustLabels()),
+      action: checked ? 'select_all' : 'select_none'
+    });
+  }
+  searchJobs(0);
+}
+
+// Init trust filter UI
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('trust-filter-btn');
+  var dd = document.getElementById('trust-filter-dropdown');
+  if (btn && dd) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', function(e) {
+      if (!dd.contains(e.target) && e.target !== btn) dd.style.display = 'none';
+    });
+    dd.querySelectorAll('.trust-cb').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        updateTrustFilterUI();
+        if (typeof posthog !== 'undefined') {
+          posthog.capture('fraud_filter_applied', {
+            labels: Array.from(getActiveTrustLabels()),
+            toggled_label: cb.value,
+            toggled_to: cb.checked
+          });
+        }
+        searchJobs(0);
+      });
+    });
+  }
+
+  // PostHog: fraud_tooltip_opened — delegated mouseenter on badge
+  document.addEventListener('mouseenter', function(e) {
+    var badge = e.target.closest('.fraud-badge');
+    if (!badge) return;
+    var jobId = badge.dataset.fraudJobid || badge.getAttribute('data-fraud-jobid');
+    if (jobId && typeof posthog !== 'undefined') {
+      var info = _fraudScoreCache[jobId];
+      posthog.capture('fraud_tooltip_opened', {
+        fraud_label: info ? info.label : 'unknown',
+        fraud_score: info ? info.score : null,
+        job_id: jobId
+      });
+    }
+  }, true);
+});
+
 var _fraudScoreCache = {};
 
 async function fetchFraudScores(jobs) {
@@ -2715,6 +2827,14 @@ function showFraudInterstitial(jobId, applyUrl) {
     + '</div>';
 
   document.body.appendChild(overlay);
+  // PostHog: fraud_interstitial_shown
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('fraud_interstitial_shown', {
+      fraud_label: info ? info.label : 'unknown',
+      fraud_score: info ? info.score : null,
+      job_id: jobId
+    });
+  }
   document.body.style.overflow = 'hidden';
 
   // Store apply URL for callback
@@ -2728,6 +2848,10 @@ function showFraudInterstitial(jobId, applyUrl) {
 }
 
 function closeFraudInterstitial(proceed) {
+  // PostHog: fraud_interstitial_proceed or fraud_interstitial_goback
+  if (typeof posthog !== 'undefined') {
+    posthog.capture(proceed ? 'fraud_interstitial_proceed' : 'fraud_interstitial_goback', {});
+  }
   var overlay = document.getElementById('fraud-interstitial-overlay');
   if (!overlay) return;
 
@@ -2835,6 +2959,11 @@ function renderJobRows(jobs, total, page, filtersToRun) {
 
     // Fraud detection badge (v6.31)
     const fraudBadge = fraudBadgeHtml(job.greenhouse_id);
+    if (fraudBadge && typeof posthog !== 'undefined' && !job._fraudBadgeTracked) {
+      var _fbi = _fraudScoreCache[job.greenhouse_id];
+      posthog.capture('fraud_badge_viewed', { fraud_label: _fbi ? _fbi.label : 'unknown', job_id: job.greenhouse_id });
+      job._fraudBadgeTracked = true;
+    }
 
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
       <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
@@ -3002,9 +3131,10 @@ function renderSortPills() {
     location: { bg: 'rgba(245,158,11,0.1)', text: '#f59e0b', dot: '#f59e0b' },
     updated_at: { bg: 'rgba(168,85,247,0.1)', text: '#a855f7', dot: '#a855f7' },
     level: { bg: 'rgba(6,182,212,0.1)', text: '#06b6d4', dot: '#06b6d4' },
+    fraud_score: { bg: 'rgba(34,197,94,0.1)', text: '#22c55e', dot: '#22c55e' },
   };
   jobSortStack.forEach((s, i) => {
-    const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level' };
+    const labelMap = { updated_at: 'Days', title: 'Title', company_name: 'Company', location: 'Location', level: 'Level', fraud_score: 'Trust' };
     const label = labelMap[s.field] || s.field;
     const dirLabel = s.asc ? '↑' : '↓';
     const dirTitle = s.asc
@@ -3169,7 +3299,11 @@ $$('#sort-dropdown .sort-opt').forEach(opt => {
     const field = opt.dataset.field;
     if (jobSortStack.some(s => s.field === field)) return;
     const defaultAsc = field === 'title' || field === 'company_name' || field === 'location';
-    jobSortStack.push({ field, asc: field === 'level' ? false : defaultAsc });
+    jobSortStack.push({ field, asc: field === 'level' ? false : (field === 'fraud_score' ? true : defaultAsc) });
+    // PostHog: fraud_sort_applied
+    if (field === 'fraud_score' && typeof posthog !== 'undefined') {
+      posthog.capture('fraud_sort_applied', { direction: defaultAsc ? 'asc' : 'desc' });
+    }
     $('#sort-dropdown').style.display = 'none';
     renderSortPills();
     searchJobs(0);
