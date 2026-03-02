@@ -1,3 +1,52 @@
+## v6.14 — Pod 1 Session 15: Re-engagement / Escalation Copy Delivery (2026-03-01)
+
+### Email Templates — New (3 functions)
+
+**Re-engagement Sequence (3 templates — White theme, Marketing classification)**
+- `reengagement14dEmail`: 14-day inactivity nudge with missed job count, top hiring companies, saved filter context
+- `reengagement30dEmail`: 30-day escalation with missed + closed job counts, avg salary range, time-sensitivity framing, urgency callout
+- `reengagement60dEmail`: 60-day terminal check-in with 60-day snapshot (matched/closed/new companies/market trend), explicit "last email" messaging
+
+### SQL Seed (sql/v6.14-reengagement-templates.sql)
+- 3 notification_templates rows (14d/30d/60d re-engagement variants)
+- 3 admin_notification_config rows with sequence frequency caps
+- 18 notification_preference_defaults rows (3 types × 3 tiers × 2 regions)
+- All marketing classification: US defaults ON, EU defaults OFF (GDPR double opt-in required)
+- Suppression: entire sequence stops immediately on any login event
+
+### Pod 1 Product Decisions Delivered
+- **Re-engagement escalation ladder**: 14d (gentle nudge + FOMO) → 30d (urgency + closed listings) → 60d (final check-in, explicit terminal)
+- **Suppression model**: Any auth session event (login, token refresh) immediately cancels the re-engagement sequence
+- **Tone progression**: Warm/helpful at 14d, concerned/data-driven at 30d, respectful/final at 60d — never guilt-tripping
+- **Marketing classification**: All 3 variants require unsubscribe link per CAN-SPAM/GDPR
+- **Terminal boundary**: 60d is the last re-engagement email — no further automated outreach after this
+- **Email-only**: No SMS for re-engagement (per SMS scope decision — re-engagement is "NEVER via SMS")
+- **Escalation chain hardening**: Apply-on-notification flow documented for Pod 2 (email → timeout → SMS escalation → missed)
+
+### Version Bump
+- `js/version.js`: v6.13 → v6.14
+- `dashboard.html`: version comment v6.14
+- `index.html`: version comment v6.14
+- Browser console: `[BJ] Dashboard v6.14 loaded`
+
+### Changed
+- `js/version.js`: v6.13 → v6.14
+- `dashboard.html`: version comment v6.14
+- `index.html`: version comment v6.14
+- `supabase/functions/_shared/email-templates.ts`: +170 lines — 3 new re-engagement template functions
+- `sql/v6.14-reengagement-templates.sql`: NEW — template seeds, admin config, preference defaults
+
+### Notification System Progress — COMPLETE
+- Sessions 1-10: ✅ Complete (v6.01–v6.10)
+- Pod 1 Batch 8 (Referral copy): ✅ Complete (v6.11)
+- Pod 1 Batch 9 (Billing copy): ✅ Complete (v6.11)
+- Pod 1 Batch 10a (Marketing/Upgrade copy): ✅ Complete (v6.12)
+- Pod 1 Batch 10b (Community/Feedback copy): ✅ Complete (v6.13)
+- Pod 1 Re-engagement/Escalation copy: ✅ Complete (v6.14) — ALL POD 1 NOTIFICATION WORK DONE
+- Pod 2 Sessions 11-14: Ready (unblocked by v6.11–v6.13)
+- Pod 2 Session 15: ✅ Now unblocked — final notification system engineering session
+
+
 ## v6.13 — Pod 1 Session: Community & Feedback Copy Delivery (2026-03-01)
 
 ### Email Templates — New (6 functions)
