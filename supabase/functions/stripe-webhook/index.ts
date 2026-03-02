@@ -2,6 +2,7 @@
 // Edge Function: Receives Stripe webhook events, validates signature, routes to handlers
 // Writes to: user_subscriptions, credit_ledger, cost_tracking
 // Idempotency: Deduplicates on stripe_payment_intent_id / stripe_subscription_id
+// v2 (v6.18): Wires billing notifications through send-notification for all 9 billing types
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
@@ -11,6 +12,30 @@ const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')!;
 const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
+
+// ─── Notification helper ───
+// Calls send-notification Edge Function to route billing notifications
+// through the standard pipeline (admin config, classification, opt-in, prefs, quiet hours)
+async function callSendNotification(params: {
+  user_id: string;
+  notification_type: string;
+  payload: Record<string, any>;
+}) {
+  try {
+    const res = await fetch(`${SB_URL}/functions/v1/send-notification`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SB_KEY}`,
+      },
+      body: JSON.stringify(params),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('[billing-notif] send-notification call failed:', (e as Error).message);
+    return { error: (e as Error).message };
+  }
+}
 
 // ─── Stripe signature verification ───
 // Stripe signs webhooks with HMAC-SHA256. We verify manually since
@@ -67,8 +92,6 @@ async function handleSubscriptionCreated(sb: any, event: any, logger: any) {
   const tier = sub.metadata?.tier || 'free';
   const credits = parseInt(sub.metadata?.credits || '0');
 
-  // Get user_id from existing user_subscriptions row (created during checkout)
-  // or find by stripe_customer_id
   const { data: existing } = await sb
     .from('user_subscriptions')
     .select('user_id')
@@ -101,7 +124,25 @@ async function handleSubscriptionCreated(sb: any, event: any, logger: any) {
       `Monthly ${tier} credits`, null, logger);
   }
 
-  logger.info('Subscription created', { userId, tier, credits, subscriptionId: sub.id });
+  // ── NOTIFICATION: subscription_confirm ──
+  // Required transactional — always sends (user cannot disable)
+  const periodEnd = new Date(sub.current_period_end * 1000);
+  await callSendNotification({
+    user_id: userId,
+    notification_type: 'subscription_confirm',
+    payload: {
+      tier,
+      credits_granted: credits,
+      payment_method_last4: sub.default_payment_method ? '****' : null,
+      billing_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+      billing_period_end: periodEnd.toISOString(),
+      next_renewal_date: periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      is_new_subscription: true,
+      stripe_receipt_url: null, // Populated from invoice if available
+    },
+  });
+
+  logger.info('Subscription created + notification sent', { userId, tier, credits, subscriptionId: sub.id });
 }
 
 async function handleSubscriptionUpdated(sb: any, event: any, logger: any) {
@@ -142,6 +183,40 @@ async function handleSubscriptionUpdated(sb: any, event: any, logger: any) {
       await grantCredits(sb, existing.user_id, diff, 'subscription_grant',
         `Upgrade from ${previousTier} to ${tier}: ${diff} bonus credits`, null, logger);
     }
+
+    // ── NOTIFICATION: plan_change_confirm ──
+    // Required transactional — always sends
+    await callSendNotification({
+      user_id: existing.user_id,
+      notification_type: 'plan_change_confirm',
+      payload: {
+        old_tier: previousTier,
+        new_tier: tier,
+        effective_date: new Date().toISOString(),
+        prorated_credit: diff > 0 ? diff : 0,
+        features_gained: tier === 'pro' ? ['Unlimited applications', 'AI resume rewriting', 'Priority support'] : [],
+        features_lost: tier === 'free' ? ['AI resume rewriting', 'Priority support'] : [],
+      },
+    });
+
+    logger.info('Plan change notification sent', { userId: existing.user_id, from: previousTier, to: tier });
+  }
+
+  // ── Handle cancellation notification ──
+  if (sub.cancel_at_period_end && !event.data.previous_attributes?.cancel_at_period_end) {
+    const periodEnd = new Date(sub.current_period_end * 1000);
+    await callSendNotification({
+      user_id: existing.user_id,
+      notification_type: 'subscription_cancelled',
+      payload: {
+        tier,
+        access_until: periodEnd.toISOString(),
+        access_until_display: periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        win_back_discount_pct: 0, // Configurable per cohort in admin
+      },
+    });
+
+    logger.info('Cancellation notification sent', { userId: existing.user_id, accessUntil: periodEnd.toISOString() });
   }
 
   logger.info('Subscription updated', { userId: existing.user_id, tier, status: sub.status });
@@ -151,10 +226,31 @@ async function handleSubscriptionDeleted(sb: any, event: any, logger: any) {
   const sub = event.data.object;
   const customerId = sub.customer;
 
+  const { data: existing } = await sb
+    .from('user_subscriptions')
+    .select('user_id, tier')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
   await sb
     .from('user_subscriptions')
     .update({ status: 'canceled', stripe_subscription_id: null, tier: 'free' })
     .eq('stripe_customer_id', customerId);
+
+  // ── NOTIFICATION: subscription_cancelled (if not already sent on cancel_at_period_end) ──
+  if (existing) {
+    await callSendNotification({
+      user_id: existing.user_id,
+      notification_type: 'subscription_cancelled',
+      payload: {
+        tier: existing.tier || 'free',
+        access_until: new Date().toISOString(),
+        access_until_display: 'now',
+        win_back_discount_pct: 0,
+        is_immediate: true,
+      },
+    });
+  }
 
   logger.info('Subscription canceled', { customerId, subscriptionId: sub.id });
 }
@@ -166,7 +262,32 @@ async function handleInvoicePaymentSucceeded(sb: any, event: any, logger: any) {
 
   // Only grant credits on subscription renewal invoices (not first invoice — that's handled by subscription.created)
   if (!subscriptionId || invoice.billing_reason === 'subscription_create') {
-    logger.info('Skipping non-renewal invoice', { invoiceId: invoice.id, reason: invoice.billing_reason });
+    // ── NOTIFICATION: invoice_generated (for first invoice) ──
+    if (invoice.billing_reason === 'subscription_create') {
+      const { data: user } = await sb
+        .from('user_subscriptions')
+        .select('user_id, tier')
+        .eq('stripe_customer_id', customerId)
+        .single();
+
+      if (user) {
+        await callSendNotification({
+          user_id: user.user_id,
+          notification_type: 'invoice_generated',
+          payload: {
+            invoice_id: invoice.id,
+            amount_paid: (invoice.amount_paid / 100).toFixed(2),
+            currency: (invoice.currency || 'usd').toUpperCase(),
+            billing_reason: 'new_subscription',
+            tier: user.tier,
+            invoice_pdf_url: invoice.invoice_pdf || null,
+            hosted_invoice_url: invoice.hosted_invoice_url || null,
+          },
+        });
+      }
+    }
+
+    logger.info('Skipping non-renewal invoice credit grant', { invoiceId: invoice.id, reason: invoice.billing_reason });
     return;
   }
 
@@ -223,7 +344,40 @@ async function handleInvoicePaymentSucceeded(sb: any, event: any, logger: any) {
       .eq('user_id', existing.user_id);
   }
 
-  logger.info('Renewal credits granted', { userId: existing.user_id, credits, invoiceId: invoice.id });
+  // ── NOTIFICATION: subscription_confirm (renewal) + invoice_generated ──
+  const periodEnd = subData?.current_period_end
+    ? new Date(subData.current_period_end * 1000)
+    : new Date();
+
+  await callSendNotification({
+    user_id: existing.user_id,
+    notification_type: 'subscription_confirm',
+    payload: {
+      tier: existing.tier,
+      credits_granted: credits,
+      billing_period_end: periodEnd.toISOString(),
+      next_renewal_date: periodEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      is_new_subscription: false,
+      stripe_receipt_url: invoice.hosted_invoice_url || null,
+    },
+  });
+
+  await callSendNotification({
+    user_id: existing.user_id,
+    notification_type: 'invoice_generated',
+    payload: {
+      invoice_id: invoice.id,
+      amount_paid: (invoice.amount_paid / 100).toFixed(2),
+      currency: (invoice.currency || 'usd').toUpperCase(),
+      billing_reason: 'renewal',
+      tier: existing.tier,
+      credits_granted: credits,
+      invoice_pdf_url: invoice.invoice_pdf || null,
+      hosted_invoice_url: invoice.hosted_invoice_url || null,
+    },
+  });
+
+  logger.info('Renewal credits granted + notifications sent', { userId: existing.user_id, credits, invoiceId: invoice.id });
 }
 
 async function handleInvoicePaymentFailed(sb: any, event: any, logger: any) {
@@ -235,8 +389,51 @@ async function handleInvoicePaymentFailed(sb: any, event: any, logger: any) {
     .update({ status: 'past_due' })
     .eq('stripe_customer_id', customerId);
 
-  // TODO: Trigger dunning notification via notification system
-  logger.warn('Payment failed, status set to past_due', {
+  // ── NOTIFICATION: payment_failed (dunning sequence) ──
+  // Required transactional — always sends. Dunning step determined by attempt_count.
+  const { data: existing } = await sb
+    .from('user_subscriptions')
+    .select('user_id, tier')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
+  if (existing) {
+    const attemptCount = invoice.attempt_count || 1;
+
+    // Dunning sequence: Day 1 (update payment), Day 3 (access warning), Day 7 (last chance), Day 14 (downgrade)
+    let dunning_step = 'update_payment';
+    if (attemptCount >= 4) dunning_step = 'downgraded';
+    else if (attemptCount >= 3) dunning_step = 'last_chance';
+    else if (attemptCount >= 2) dunning_step = 'access_warning';
+
+    await callSendNotification({
+      user_id: existing.user_id,
+      notification_type: 'payment_failed',
+      payload: {
+        tier: existing.tier,
+        amount_due: (invoice.amount_due / 100).toFixed(2),
+        currency: (invoice.currency || 'usd').toUpperCase(),
+        attempt_count: attemptCount,
+        dunning_step,
+        next_attempt_date: invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000).toISOString()
+          : null,
+        update_payment_url: invoice.hosted_invoice_url || null,
+      },
+    });
+
+    // If final dunning step, downgrade to free
+    if (dunning_step === 'downgraded') {
+      await sb
+        .from('user_subscriptions')
+        .update({ tier: 'free', status: 'canceled' })
+        .eq('user_id', existing.user_id);
+
+      logger.warn('User downgraded to free after failed payments', { userId: existing.user_id });
+    }
+  }
+
+  logger.warn('Payment failed, notification sent', {
     customerId,
     invoiceId: invoice.id,
     attemptCount: invoice.attempt_count,
@@ -282,7 +479,30 @@ async function handlePaymentIntentSucceeded(sb: any, event: any, logger: any) {
       await grantCredits(sb, existing.user_id, qty, 'purchase',
         `Credit pack: ${qty} credits`, pi.id, logger);
     }
-    logger.info('Credit pack purchased', { userId: existing.user_id, qty, piId: pi.id });
+
+    // ── NOTIFICATION: credit_purchase_receipt ──
+    // Required transactional — always sends
+    const { data: ledger } = await sb
+      .from('credit_ledger')
+      .select('balance_after')
+      .eq('user_id', existing.user_id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    await callSendNotification({
+      user_id: existing.user_id,
+      notification_type: 'credit_purchase_receipt',
+      payload: {
+        credits_purchased: qty,
+        amount_paid: (pi.amount / 100).toFixed(2),
+        currency: (pi.currency || 'usd').toUpperCase(),
+        per_credit_cost: qty > 0 ? ((pi.amount / 100) / qty).toFixed(3) : '0',
+        new_balance: ledger?.[0]?.balance_after || qty,
+        payment_method_last4: pi.payment_method_types?.[0] || 'card',
+      },
+    });
+
+    logger.info('Credit pack purchased + notification sent', { userId: existing.user_id, qty, piId: pi.id });
   } else if (type === 'auto_refill') {
     // Calculate credits from amount + tier rate + discount
     const { data: pricing } = await sb
@@ -304,7 +524,30 @@ async function handlePaymentIntentSucceeded(sb: any, event: any, logger: any) {
           `Auto-refill: ${credits} credits ($${(pi.amount / 100).toFixed(2)})`,
           pi.id, logger);
       }
-      logger.info('Auto-refill processed', { userId: existing.user_id, credits, amount: pi.amount });
+
+      // ── NOTIFICATION: credit_purchase_receipt (auto-refill variant) ──
+      const { data: ledger } = await sb
+        .from('credit_ledger')
+        .select('balance_after')
+        .eq('user_id', existing.user_id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      await callSendNotification({
+        user_id: existing.user_id,
+        notification_type: 'credit_purchase_receipt',
+        payload: {
+          credits_purchased: credits,
+          amount_paid: (pi.amount / 100).toFixed(2),
+          currency: (pi.currency || 'usd').toUpperCase(),
+          per_credit_cost: credits > 0 ? ((pi.amount / 100) / credits).toFixed(3) : '0',
+          new_balance: ledger?.[0]?.balance_after || credits,
+          is_auto_refill: true,
+          discount_pct: pricing.auto_refill_discount_pct,
+        },
+      });
+
+      logger.info('Auto-refill processed + notification sent', { userId: existing.user_id, credits, amount: pi.amount });
     }
   } else if (type === 'hire_fee') {
     logger.info('Hire fee collected', { userId: existing.user_id, amount: pi.amount, piId: pi.id });
@@ -334,6 +577,64 @@ async function handleSetupIntentSucceeded(sb: any, event: any, logger: any) {
 
     logger.info('Auto-refill payment method stored', { customerId, paymentMethod });
   }
+}
+
+// ─── Charge refunded handler (NEW v6.18) ───
+async function handleChargeRefunded(sb: any, event: any, logger: any) {
+  const charge = event.data.object;
+  const customerId = charge.customer;
+  const refundAmount = charge.amount_refunded;
+
+  const { data: existing } = await sb
+    .from('user_subscriptions')
+    .select('user_id, tier')
+    .eq('stripe_customer_id', customerId)
+    .single();
+
+  if (!existing) {
+    logger.error('No user found for refund', { customerId });
+    return;
+  }
+
+  // ── NOTIFICATION: refund_processed ──
+  // Required transactional — always sends
+  await callSendNotification({
+    user_id: existing.user_id,
+    notification_type: 'refund_processed',
+    payload: {
+      refund_amount: (refundAmount / 100).toFixed(2),
+      currency: (charge.currency || 'usd').toUpperCase(),
+      processing_time: '5-10 business days',
+      charge_id: charge.id,
+    },
+  });
+
+  logger.info('Refund processed + notification sent', {
+    userId: existing.user_id,
+    amount: refundAmount,
+    chargeId: charge.id,
+  });
+}
+
+// ─── Payment recovered handler (NEW v6.18) ───
+// Fires when a past_due subscription gets a successful payment
+async function handlePaymentRecovered(sb: any, userId: string, tier: string, amount: number, logger: any) {
+  await sb
+    .from('user_subscriptions')
+    .update({ status: 'active' })
+    .eq('user_id', userId);
+
+  await callSendNotification({
+    user_id: userId,
+    notification_type: 'payment_recovered',
+    payload: {
+      tier,
+      amount_recovered: (amount / 100).toFixed(2),
+      account_status: 'active',
+    },
+  });
+
+  logger.info('Payment recovered + notification sent', { userId, amount });
 }
 
 // ─── Credit helper ───
@@ -422,9 +723,20 @@ serve(async (req: Request) => {
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(sb, event, logger);
         break;
-      case 'invoice.payment_succeeded':
+      case 'invoice.payment_succeeded': {
+        // Check if this is a recovery (was past_due)
+        const inv = event.data.object;
+        const { data: subCheck } = await sb
+          .from('user_subscriptions')
+          .select('user_id, tier, status')
+          .eq('stripe_customer_id', inv.customer)
+          .single();
+        if (subCheck?.status === 'past_due') {
+          await handlePaymentRecovered(sb, subCheck.user_id, subCheck.tier, inv.amount_paid, logger);
+        }
         await handleInvoicePaymentSucceeded(sb, event, logger);
         break;
+      }
       case 'invoice.payment_failed':
         await handleInvoicePaymentFailed(sb, event, logger);
         break;
@@ -433,6 +745,9 @@ serve(async (req: Request) => {
         break;
       case 'setup_intent.succeeded':
         await handleSetupIntentSucceeded(sb, event, logger);
+        break;
+      case 'charge.refunded':
+        await handleChargeRefunded(sb, event, logger);
         break;
       default:
         logger.info('Unhandled event type', { type: event.type });
