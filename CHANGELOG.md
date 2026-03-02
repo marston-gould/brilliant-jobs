@@ -1,3 +1,51 @@
+## v6.13 — Pod 1 Session: Community & Feedback Copy Delivery (2026-03-01)
+
+### Email Templates — New (6 functions)
+
+**Batch 10b: Community & Feedback (6 templates — White theme)**
+- `bugReportThankyouEmail`: Confirmed bug notification with severity badge + tiered reward (10 credits / 50 credits + 7d Pro / 1mo Pro)
+- `bugResolvedEmail`: Bug fixed notification with fix summary + release reference
+- `featureRequestThankyouEmail`: Feature request acknowledgment with 3-step lifecycle tracker + Canny upvote CTA
+- `featureRequestAcceptedEmail`: Roadmap acceptance notification with estimated timeline
+- `featureRequestShippedEmail`: Feature shipped celebration with access instructions + changelog link
+- `monthlyProductUpdateEmail`: Monthly editorial digest with features shipped, bugs fixed, platform stats, roadmap preview
+
+### SQL Seed (sql/v6.13-community-feedback-templates.sql)
+- 6 notification_templates rows (5 community lifecycle + 1 monthly editorial)
+- 6 admin_notification_config rows with Canny webhook descriptions
+- 36 notification_preference_defaults rows (6 types × 3 tiers × 2 regions)
+- Bug/feature lifecycle: Product classification — all tiers/regions default ON
+- monthly_product_update: Marketing classification — US defaults ON, EU defaults OFF (GDPR)
+
+### Pod 1 Product Decisions Delivered
+- **Bug bounty reward tiers**: Minor = 10 credits (auto-grant), Major = 50 credits + 7d Pro (auto-grant), Critical = 1mo Pro (manual admin grant)
+- **Feature request lifecycle**: 3-stage tracking (submitted → accepted → shipped) with Canny integration
+- **Monthly product update**: Marketing classification, monthly frequency cap, unsubscribe required, editorial curated via admin console
+- **Canny integration pattern**: All community templates reference Canny board URLs for cross-platform tracking
+- **Community tone**: Celebratory on shipped features, transparent on timelines, grateful for bug reports
+
+### Version Bump
+- `js/version.js`: v6.12 → v6.13
+- `dashboard.html`: version comment v6.13
+- `index.html`: version comment v6.13
+- Browser console: `[BJ] Dashboard v6.13 loaded`
+
+### Changed
+- `js/version.js`: v6.12 → v6.13
+- `dashboard.html`: version comment v6.13
+- `index.html`: version comment v6.13
+- `supabase/functions/_shared/email-templates.ts`: +297 lines — 6 new template functions
+- `sql/v6.13-community-feedback-templates.sql`: NEW — template seeds, admin config, preference defaults
+
+### Notification System Progress
+- Sessions 1-10: ✅ Complete (v6.01–v6.10)
+- Pod 1 Batch 8 (Referral copy): ✅ Complete (v6.11)
+- Pod 1 Batch 9 (Billing copy): ✅ Complete (v6.11)
+- Pod 1 Batch 10a (Marketing/Upgrade copy): ✅ Complete (v6.12)
+- Pod 1 Batch 10b (Community/Feedback copy): ✅ Complete — unblocks Pod 2 Session 13
+- Sessions 11-15: Partially unblocked (11 + 12 + 13 + 14 ready, 15 pending Pod 1 re-engagement copy)
+
+
 ## v6.12 — Pod 1 Session: Marketing / Upgrade / Promotional Copy Delivery (2026-03-01)
 
 ### Email Templates — New (5 functions)
