@@ -3196,3 +3196,301 @@ export function promoFeaturePreviewEmail(
     `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from promotional emails</a></p>`),
   };
 }
+
+// ═══════════════════════════════════════════════════════════════
+// v6.13 — Community & Feedback Templates (6 functions)
+// Batch 10b: Canny-integrated community lifecycle notifications
+// Pod 1 Session 13 | White theme | Product + Marketing classification
+// ═══════════════════════════════════════════════════════════════
+
+export function bugReportThankyouEmail(
+  firstName?: string,
+  bugTitle?: string,
+  bugId?: string,
+  severity?: string,
+  rewardCredits?: number,
+  rewardTrial?: string,
+  cannyUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const title = bugTitle || "your report";
+  const id = bugId || "";
+  const sev = severity || "minor";
+  const credits = rewardCredits ?? 10;
+  const trial = rewardTrial || "";
+  const cUrl = cannyUrl || "https://brilliant-jobs.canny.io/bug-reports";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const sevLabel = sev === "critical" ? "Critical" : sev === "major" ? "Major" : "Minor";
+  const sevColor = sev === "critical" ? "#dc2626" : sev === "major" ? "#f59e0b" : "#3b82f6";
+
+  let rewardLine = `<strong>${credits} credits</strong> added to your account`;
+  if (sev === "major") rewardLine += ` + <strong>7 days Pro access</strong>`;
+  if (sev === "critical") rewardLine = `<strong>1 month Pro access</strong> added to your account`;
+
+  return {
+    subject: `Bug confirmed${id ? ` (#${id})` : ""} — thank you, ${name}`,
+    html: whiteBaseLayout("Bug Report Confirmed", `
+      <div class="card">
+        <div class="card-title">Thanks for making Brilliant Jobs better.</div>
+        <p class="card-sub">We've confirmed your bug report and classified it. Here's what happens next.</p>
+
+        <div class="highlight">
+          <div style="font-size:13px;color:#64748b;margin-bottom:6px;">Your report</div>
+          <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:8px;">${title}</div>
+          <div style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;color:#fff;background:${sevColor};">${sevLabel}</div>
+        </div>
+
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin:16px 0;">
+          <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:4px;">Your reward</div>
+          <div style="font-size:14px;color:#15803d;">${rewardLine}</div>
+        </div>
+
+        <p class="text">Our engineering team is on it. We'll notify you when the fix ships.</p>
+
+        <div class="btn-row">
+          <a href="${cUrl}" class="btn btn-primary">Track on Canny →</a>
+          <a href="${base}" class="btn btn-gray">Back to Dashboard</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function bugResolvedEmail(
+  firstName?: string,
+  bugTitle?: string,
+  bugId?: string,
+  fixSummary?: string,
+  releasedIn?: string,
+  cannyUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const title = bugTitle || "an issue you reported";
+  const id = bugId || "";
+  const fix = fixSummary || "The issue has been resolved.";
+  const release = releasedIn || "the latest update";
+  const cUrl = cannyUrl || "https://brilliant-jobs.canny.io/bug-reports";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Fixed${id ? ` (#${id})` : ""}: ${title}`,
+    html: whiteBaseLayout("Bug Fixed", `
+      <div class="card">
+        <div class="card-title">${name}, your bug report is resolved.</div>
+        <p class="card-sub">Thanks to your report, we've shipped a fix. Here's what changed.</p>
+
+        <div class="highlight">
+          <div style="font-size:13px;color:#64748b;margin-bottom:6px;">Issue</div>
+          <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:10px;">${title}</div>
+          <div style="font-size:13px;color:#64748b;margin-bottom:4px;">Resolution</div>
+          <div style="font-size:14px;color:#1e293b;">${fix}</div>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;">Shipped in ${release}</p>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">See It Live →</a>
+          <a href="${cUrl}" class="btn btn-gray">View on Canny</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function featureRequestThankyouEmail(
+  firstName?: string,
+  featureTitle?: string,
+  featureId?: string,
+  cannyUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const title = featureTitle || "your suggestion";
+  const id = featureId || "";
+  const cUrl = cannyUrl || "https://brilliant-jobs.canny.io/feature-requests";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Feature request received${id ? ` (#${id})` : ""} — we're listening`,
+    html: whiteBaseLayout("Feature Request Received", `
+      <div class="card">
+        <div class="card-title">Great idea, ${name}.</div>
+        <p class="card-sub">Your feature request is now on our radar. Here's what happens next.</p>
+
+        <div class="highlight">
+          <div style="font-size:13px;color:#64748b;margin-bottom:6px;">Your request</div>
+          <div style="font-size:15px;font-weight:700;color:#1e293b;">${title}</div>
+        </div>
+
+        <div class="step-row"><div class="step-num step-done">✓</div><div class="step-text">Submitted<small>We've logged your request</small></div></div>
+        <div class="step-row"><div class="step-num">2</div><div class="step-text">Under review<small>Our product team evaluates feasibility and demand</small></div></div>
+        <div class="step-row"><div class="step-num">3</div><div class="step-text">Roadmap decision<small>We'll notify you if it's accepted or if we go a different direction</small></div></div>
+
+        <p class="text">Other users can upvote your request on Canny. The more votes, the higher priority it gets.</p>
+
+        <div class="btn-row">
+          <a href="${cUrl}" class="btn btn-primary">Share & Get Votes →</a>
+          <a href="${base}" class="btn btn-gray">Back to Dashboard</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function featureRequestAcceptedEmail(
+  firstName?: string,
+  featureTitle?: string,
+  featureId?: string,
+  estimatedTimeline?: string,
+  cannyUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const title = featureTitle || "a feature you requested";
+  const id = featureId || "";
+  const timeline = estimatedTimeline || "the coming weeks";
+  const cUrl = cannyUrl || "https://brilliant-jobs.canny.io/feature-requests";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Your feature request is on the roadmap${id ? ` (#${id})` : ""}`,
+    html: whiteBaseLayout("Feature Accepted", `
+      <div class="card">
+        <div class="card-title">${name}, it's happening.</div>
+        <p class="card-sub">Your feature request has been accepted and added to our build roadmap.</p>
+
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin:16px 0;">
+          <div style="font-size:13px;color:#166534;margin-bottom:6px;">Accepted</div>
+          <div style="font-size:15px;font-weight:700;color:#15803d;">${title}</div>
+          ${timeline ? `<div style="font-size:13px;color:#166534;margin-top:8px;">Estimated timeline: ${timeline}</div>` : ""}
+        </div>
+
+        <p class="text">We'll send you another notification when it ships. Timeline estimates may shift as we balance priorities, but your feature is committed.</p>
+
+        <div class="btn-row">
+          <a href="${cUrl}" class="btn btn-primary">Follow on Canny →</a>
+          <a href="${base}" class="btn btn-gray">Back to Dashboard</a>
+        </div>
+      </div>
+    `),
+  };
+}
+
+export function featureRequestShippedEmail(
+  firstName?: string,
+  featureTitle?: string,
+  featureId?: string,
+  featureDescription?: string,
+  howToAccess?: string,
+  cannyUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const title = featureTitle || "a feature you requested";
+  const id = featureId || "";
+  const desc = featureDescription || "The feature is now live in your dashboard.";
+  const howTo = howToAccess || "";
+  const cUrl = cannyUrl || "https://brilliant-jobs.canny.io/changelog";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Shipped: ${title}${id ? ` (#${id})` : ""} is live`,
+    html: whiteBaseLayout("Feature Shipped", `
+      <div class="card">
+        <div class="card-title">${name}, you asked — we built it.</div>
+        <p class="card-sub">${desc}</p>
+
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:16px 0;">
+          <div style="font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.5px;margin-bottom:6px;">NOW LIVE</div>
+          <div style="font-size:16px;font-weight:700;color:#1e293b;">${title}</div>
+          ${howTo ? `<div style="font-size:13px;color:#475569;margin-top:8px;">${howTo}</div>` : ""}
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Try It Now →</a>
+          <a href="${cUrl}" class="btn btn-gray">Full Changelog</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">This feature shipped because users like you spoke up. Keep the ideas coming.</p>
+      </div>
+    `),
+  };
+}
+
+export function monthlyProductUpdateEmail(
+  firstName?: string,
+  monthLabel?: string,
+  featuresShipped?: Array<{ title: string; description: string }>,
+  bugsFixed?: number,
+  comingNext?: string[],
+  platformStats?: { jobsTracked?: string; applicationsProcessed?: string; avgResponseRate?: string },
+  changelogUrl?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const month = monthLabel || new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+  const features = featuresShipped || [];
+  const bugs = bugsFixed ?? 0;
+  const coming = comingNext || [];
+  const stats = platformStats || {};
+  const cUrl = changelogUrl || "https://brilliant-jobs.canny.io/changelog";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const featuresHtml = features.length > 0
+    ? features.map(f => `
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:#1e293b;">${f.title}</div>
+          <div style="font-size:13px;color:#475569;margin-top:2px;">${f.description}</div>
+        </div>
+      `).join("")
+    : `<div style="font-size:13px;color:#94a3b8;">No major feature releases this month.</div>`;
+
+  const statsHtml = (stats.jobsTracked || stats.applicationsProcessed || stats.avgResponseRate)
+    ? `<div class="stat-row">
+        ${stats.jobsTracked ? `<div class="stat-item"><div class="stat-val">${stats.jobsTracked}</div><div class="stat-label">Jobs Tracked</div></div>` : ""}
+        ${stats.applicationsProcessed ? `<div class="stat-item"><div class="stat-val">${stats.applicationsProcessed}</div><div class="stat-label">Applications Sent</div></div>` : ""}
+        ${stats.avgResponseRate ? `<div class="stat-item"><div class="stat-val">${stats.avgResponseRate}</div><div class="stat-label">Avg Response Rate</div></div>` : ""}
+      </div>`
+    : "";
+
+  const comingHtml = coming.length > 0
+    ? coming.map(c => `<div style="font-size:13px;color:#475569;padding:4px 0;">&bull; ${c}</div>`).join("")
+    : "";
+
+  return {
+    subject: `${month} product update — here's what's new`,
+    html: whiteBaseLayout("Monthly Product Update", `
+      <div class="card">
+        <div class="card-title">${month} Update</div>
+        <p class="card-sub">${name}, here's what we shipped, fixed, and planned this month.</p>
+
+        ${statsHtml}
+
+        <hr class="divider">
+
+        <div style="margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.5px;margin-bottom:12px;">WHAT'S NEW</div>
+          ${featuresHtml}
+        </div>
+
+        ${bugs > 0 ? `<div style="font-size:13px;color:#475569;margin-bottom:16px;">Plus <strong>${bugs} bug fix${bugs > 1 ? "es" : ""}</strong> shipped this month.</div>` : ""}
+
+        ${comingHtml ? `
+        <hr class="divider">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.5px;margin-bottom:10px;">COMING NEXT</div>
+          ${comingHtml}
+        </div>
+        ` : ""}
+
+        <div class="btn-row">
+          <a href="${cUrl}" class="btn btn-primary">Full Changelog →</a>
+          <a href="${base}" class="btn btn-gray">Open Dashboard</a>
+        </div>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from product updates</a></p>`),
+  };
+}
