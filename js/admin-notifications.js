@@ -2023,3 +2023,512 @@ function drillIntoCampaign(campaign) {
   var container = document.getElementById('admin-panel-email-cohorts');
   if (container) renderEmailCohortsTab(container);
 }
+
+// ═══════════════════════════════════════════════════════════
+// CADENCE OPTIMIZATION (Phase 69 Card 10)
+// Analyzes open/click rates by send hour, day of week, frequency.
+// Computes re-engagement tier win-back rates.
+// Surfaces recommendations and allows auto-adjust of thresholds.
+// ═══════════════════════════════════════════════════════════
+
+var _cadenceState = {
+  settings: null,
+  analysis: null,
+  loaded: false
+};
+
+async function loadCadenceTab() {
+  var container = document.getElementById('admin-panel-cadence');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Analyzing notification cadence…</div>';
+
+  try {
+    // Fetch cadence_settings
+    var { data: settings, error: sErr } = await sb
+      .from('cadence_settings')
+      .select('*')
+      .eq('id', 'global')
+      .single();
+    if (sErr) throw sErr;
+
+    // Fetch notification_log for analysis (90 days, email only, with engagement data)
+    var since = new Date();
+    since.setDate(since.getDate() - 90);
+    var { data: logs, error: lErr } = await sb
+      .from('notification_log')
+      .select('notification_type, status, created_at, delivered_at, opened_at, clicked_at, user_id, user_cohort, send_decision')
+      .eq('channel', 'email')
+      .eq('send_decision', 'sent')
+      .gte('created_at', since.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(10000);
+    if (lErr) throw lErr;
+
+    // Fetch re-engagement logs specifically
+    var { data: reengageLogs, error: rErr } = await sb
+      .from('notification_log')
+      .select('notification_type, status, opened_at, clicked_at, user_id, created_at')
+      .eq('channel', 'email')
+      .in('notification_type', ['reengagement_14d', 'reengagement_30d', 'reengagement_60d', 'inactive_reengagement'])
+      .gte('created_at', since.toISOString())
+      .limit(5000);
+
+    // Fetch last_seen data for re-engagement analysis
+    var { data: profiles, error: pErr } = await sb
+      .from('profiles')
+      .select('id, last_seen_at')
+      .not('last_seen_at', 'is', null)
+      .limit(5000);
+
+    _cadenceState.settings = settings;
+    _cadenceState.analysis = runCadenceAnalysis(logs || [], reengageLogs || [], profiles || []);
+    _cadenceState.loaded = true;
+
+    renderCadenceTab(container);
+    console.log('[Admin] Cadence optimization loaded: ' + (logs || []).length + ' email events analyzed');
+
+  } catch (e) {
+    console.error('[Admin] Cadence optimization error:', e);
+    container.innerHTML = '<div style="padding:24px;color:#ef4444;font-size:13px">Failed to load: ' + (e.message || e) + '</div>';
+  }
+}
+
+// ── Core analysis engine ──
+
+function runCadenceAnalysis(logs, reengageLogs, profiles) {
+  var analysis = {
+    byHour: {},      // hour -> { sent, opened, clicked }
+    byDow: {},       // dow -> { sent, opened, clicked }
+    byType: {},      // type -> { sent, opened, clicked, frequency_per_week }
+    reengagement: {  // tier -> { sent, opened (=winback) }
+      tier1: { sent: 0, opened: 0 },
+      tier2: { sent: 0, opened: 0 },
+      tier3: { sent: 0, opened: 0 }
+    },
+    totalSent: logs.length,
+    totalOpened: 0,
+    totalClicked: 0,
+    dateRange: { start: null, end: null },
+    topHours: [],
+    topDows: [],
+    recommendations: []
+  };
+
+  if (logs.length === 0) return analysis;
+
+  // Date range
+  var dates = logs.map(function(l) { return new Date(l.created_at); });
+  analysis.dateRange.start = new Date(Math.min.apply(null, dates));
+  analysis.dateRange.end = new Date(Math.max.apply(null, dates));
+  var weeksSpan = Math.max(1, (analysis.dateRange.end - analysis.dateRange.start) / (7 * 86400000));
+
+  // Initialize hours and days
+  for (var h = 0; h < 24; h++) analysis.byHour[h] = { sent: 0, opened: 0, clicked: 0 };
+  for (var d = 0; d < 7; d++) analysis.byDow[d] = { sent: 0, opened: 0, clicked: 0 };
+
+  // Analyze each log
+  logs.forEach(function(l) {
+    var dt = new Date(l.created_at);
+    var hour = dt.getUTCHours();
+    var dow = dt.getUTCDay();
+    var type = l.notification_type || 'unknown';
+    var wasOpened = !!(l.opened_at || l.status === 'opened' || l.status === 'clicked');
+    var wasClicked = !!(l.clicked_at || l.status === 'clicked');
+
+    // By hour
+    analysis.byHour[hour].sent++;
+    if (wasOpened) analysis.byHour[hour].opened++;
+    if (wasClicked) analysis.byHour[hour].clicked++;
+
+    // By day of week
+    analysis.byDow[dow].sent++;
+    if (wasOpened) analysis.byDow[dow].opened++;
+    if (wasClicked) analysis.byDow[dow].clicked++;
+
+    // By type
+    if (!analysis.byType[type]) analysis.byType[type] = { sent: 0, opened: 0, clicked: 0 };
+    analysis.byType[type].sent++;
+    if (wasOpened) analysis.byType[type].opened++;
+    if (wasClicked) analysis.byType[type].clicked++;
+
+    if (wasOpened) analysis.totalOpened++;
+    if (wasClicked) analysis.totalClicked++;
+  });
+
+  // Compute frequency per week for each type
+  Object.keys(analysis.byType).forEach(function(t) {
+    analysis.byType[t].frequency_per_week = +(analysis.byType[t].sent / weeksSpan).toFixed(1);
+  });
+
+  // Re-engagement analysis
+  (reengageLogs || []).forEach(function(l) {
+    var tier = null;
+    if (l.notification_type === 'reengagement_14d') tier = 'tier1';
+    else if (l.notification_type === 'reengagement_30d') tier = 'tier2';
+    else if (l.notification_type === 'reengagement_60d') tier = 'tier3';
+    else if (l.notification_type === 'inactive_reengagement') tier = 'tier2'; // default bucket
+    if (tier) {
+      analysis.reengagement[tier].sent++;
+      if (l.opened_at || l.status === 'opened' || l.status === 'clicked') {
+        analysis.reengagement[tier].opened++;
+      }
+    }
+  });
+
+  // Rank hours by open rate (minimum 5 sends to be statistically relevant)
+  analysis.topHours = Object.entries(analysis.byHour)
+    .filter(function(e) { return e[1].sent >= 5; })
+    .map(function(e) { return { hour: parseInt(e[0]), rate: e[1].opened / e[1].sent, sent: e[1].sent }; })
+    .sort(function(a, b) { return b.rate - a.rate; })
+    .slice(0, 5);
+
+  // Rank days by open rate
+  var dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  analysis.topDows = Object.entries(analysis.byDow)
+    .filter(function(e) { return e[1].sent >= 3; })
+    .map(function(e) { return { dow: parseInt(e[0]), name: dowNames[parseInt(e[0])], rate: e[1].opened / e[1].sent, sent: e[1].sent }; })
+    .sort(function(a, b) { return b.rate - a.rate; });
+
+  // Generate recommendations
+  if (analysis.topHours.length >= 2) {
+    var bestH = analysis.topHours[0];
+    var worstH = analysis.topHours[analysis.topHours.length - 1];
+    if (bestH.rate > worstH.rate * 1.3) {
+      analysis.recommendations.push({
+        type: 'send_time',
+        text: 'Best open rate at ' + bestH.hour + ':00 UTC (' + (bestH.rate * 100).toFixed(1) + '%) vs ' + worstH.hour + ':00 UTC (' + (worstH.rate * 100).toFixed(1) + '%). Shift sends toward ' + bestH.hour + ':00.',
+        impact: 'high'
+      });
+    }
+  }
+
+  if (analysis.topDows.length >= 2) {
+    var bestD = analysis.topDows[0];
+    var worstD = analysis.topDows[analysis.topDows.length - 1];
+    if (bestD.rate > worstD.rate * 1.2) {
+      analysis.recommendations.push({
+        type: 'send_day',
+        text: bestD.name + ' has highest open rate (' + (bestD.rate * 100).toFixed(1) + '%). ' + worstD.name + ' is lowest (' + (worstD.rate * 100).toFixed(1) + '%). Prioritize ' + bestD.name + '-' + analysis.topDows[Math.min(1, analysis.topDows.length - 1)].name + ' for non-urgent emails.',
+        impact: 'medium'
+      });
+    }
+  }
+
+  // Check over-frequency types
+  Object.entries(analysis.byType).forEach(function(e) {
+    if (e[1].frequency_per_week > 5 && e[1].opened / e[1].sent < 0.1) {
+      analysis.recommendations.push({
+        type: 'frequency',
+        text: e[0] + ' sends ' + e[1].frequency_per_week + 'x/week but only ' + (e[1].opened / e[1].sent * 100).toFixed(1) + '% open rate. Consider reducing frequency.',
+        impact: 'high'
+      });
+    }
+  });
+
+  // Re-engagement threshold recommendations
+  ['tier1', 'tier2', 'tier3'].forEach(function(tier) {
+    var data = analysis.reengagement[tier];
+    if (data.sent >= 10) {
+      var rate = data.opened / data.sent;
+      if (rate < 0.05) {
+        var label = tier === 'tier1' ? '14-day' : tier === 'tier2' ? '30-day' : '60-day';
+        analysis.recommendations.push({
+          type: 'reengagement',
+          text: label + ' re-engagement has only ' + (rate * 100).toFixed(1) + '% win-back rate (' + data.sent + ' sent). Consider shortening the threshold or changing the template.',
+          impact: 'medium'
+        });
+      }
+    }
+  });
+
+  if (analysis.totalSent < 100) {
+    analysis.recommendations.unshift({
+      type: 'data',
+      text: 'Only ' + analysis.totalSent + ' emails analyzed. Recommendations improve with 500+ emails. Current insights are directional only.',
+      impact: 'low'
+    });
+  }
+
+  return analysis;
+}
+
+// ── Render ──
+
+function renderCadenceTab(container) {
+  var s = _cadenceState.settings;
+  var a = _cadenceState.analysis;
+  if (!s || !a) return;
+
+  var html = '';
+
+  // Header
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">';
+  html += '<span style="font-size:15px;font-weight:600;color:var(--text)">Cadence Optimization</span>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<span style="font-size:11px;color:var(--text-faint)">' + a.totalSent + ' emails · ' + (a.dateRange.start ? a.dateRange.start.toLocaleDateString() : '?') + ' – ' + (a.dateRange.end ? a.dateRange.end.toLocaleDateString() : '?') + '</span>';
+  html += '<button onclick="rerunCadenceAnalysis()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--accent);cursor:pointer;font-family:JetBrains Mono,monospace">Re-analyze</button>';
+  html += '</div></div>';
+
+  // ── Stat cards ──
+  function pct(n, d) { return d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; }
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">';
+  var cards = [
+    { label: 'Emails Analyzed', value: a.totalSent, color: 'var(--accent)' },
+    { label: 'Overall Open Rate', value: pct(a.totalOpened, a.totalSent), color: '#a78bfa' },
+    { label: 'Overall Click Rate', value: pct(a.totalClicked, a.totalSent), color: '#f59e0b' },
+    { label: 'Best Hour (UTC)', value: a.topHours.length > 0 ? a.topHours[0].hour + ':00' : '—', color: 'var(--green)' },
+    { label: 'Best Day', value: a.topDows.length > 0 ? a.topDows[0].name : '—', color: 'var(--green)' }
+  ];
+  cards.forEach(function(c) {
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+      '<div style="font-size:22px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + c.color + '">' + c.value + '</div>' +
+      '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">' + c.label + '</div>' +
+    '</div>';
+  });
+  html += '</div>';
+
+  // ── Recommendations ──
+  if (a.recommendations.length > 0) {
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+    html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Recommendations</div>';
+    a.recommendations.forEach(function(r) {
+      var impactColor = r.impact === 'high' ? '#ef4444' : r.impact === 'medium' ? '#f59e0b' : 'var(--text-faint)';
+      var impactBg = r.impact === 'high' ? 'color-mix(in srgb, #ef4444 10%, transparent)' : r.impact === 'medium' ? 'color-mix(in srgb, #f59e0b 10%, transparent)' : 'var(--bg-card)';
+      html += '<div style="padding:8px 12px;border-radius:6px;margin-bottom:6px;background:' + impactBg + ';border-left:3px solid ' + impactColor + '">';
+      html += '<span style="font-size:10px;font-weight:600;text-transform:uppercase;color:' + impactColor + ';letter-spacing:0.5px">' + r.impact + ' · ' + r.type + '</span>';
+      html += '<div style="font-size:12px;color:var(--text);margin-top:4px;font-family:JetBrains Mono,monospace">' + r.text + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // ── Two-column: Send Hour Heatmap + Day of Week ──
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+
+  // Hour of day chart
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Open Rate by Hour (UTC)</div>';
+  var maxHourRate = Math.max.apply(null, Object.values(a.byHour).map(function(h) { return h.sent > 0 ? h.opened / h.sent : 0; }).concat([0.01]));
+  html += '<div style="display:flex;align-items:flex-end;gap:1px;height:100px">';
+  for (var h = 0; h < 24; h++) {
+    var hd = a.byHour[h];
+    var rate = hd.sent > 0 ? hd.opened / hd.sent : 0;
+    var barH = Math.max(0, Math.round(rate / maxHourRate * 90));
+    var isBest = a.topHours.length > 0 && a.topHours[0].hour === h;
+    var color = isBest ? 'var(--green)' : rate > maxHourRate * 0.7 ? '#a78bfa' : 'var(--accent)';
+    var opacity = hd.sent < 3 ? '0.3' : '0.7';
+    html += '<div title="' + h + ':00 UTC — ' + (rate * 100).toFixed(1) + '% open (' + hd.sent + ' sent)" style="flex:1;height:' + barH + 'px;background:' + color + ';border-radius:2px 2px 0 0;min-width:3px;opacity:' + opacity + ';transition:opacity 0.2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=' + opacity + '"></div>';
+  }
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:9px;color:var(--text-faint);font-family:JetBrains Mono,monospace"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>';
+  html += '</div>';
+
+  // Day of week chart
+  var dowNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var maxDowRate = Math.max.apply(null, Object.values(a.byDow).map(function(d) { return d.sent > 0 ? d.opened / d.sent : 0; }).concat([0.01]));
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Open Rate by Day of Week</div>';
+  for (var d = 0; d < 7; d++) {
+    var dd = a.byDow[d];
+    var rate = dd.sent > 0 ? dd.opened / dd.sent : 0;
+    var barW = Math.max(0, Math.round(rate / maxDowRate * 100));
+    var isBest = a.topDows.length > 0 && a.topDows[0].dow === d;
+    var color = isBest ? 'var(--green)' : '#a78bfa';
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
+    html += '<span style="width:30px;font-size:11px;color:var(--text-dim);font-family:JetBrains Mono,monospace;text-align:right">' + dowNames[d] + '</span>';
+    html += '<div style="flex:1;height:16px;background:var(--bg-card);border-radius:4px;overflow:hidden">';
+    html += '<div style="width:' + barW + '%;height:100%;background:' + color + ';border-radius:4px;opacity:0.8"></div>';
+    html += '</div>';
+    html += '<span style="width:45px;font-size:10px;color:var(--text-dim);font-family:JetBrains Mono,monospace;text-align:right">' + (rate * 100).toFixed(1) + '%</span>';
+    html += '<span style="width:30px;font-size:10px;color:var(--text-faint);font-family:JetBrains Mono,monospace;text-align:right">n=' + dd.sent + '</span>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; // end grid
+
+  // ── Per-type frequency table ──
+  var sortedTypes = Object.entries(a.byType).sort(function(a, b) { return b[1].sent - a[1].sent; });
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;overflow-x:auto">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Per-Campaign Frequency & Performance</div>';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:JetBrains Mono,monospace">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border)">';
+  html += '<th style="text-align:left;padding:5px 8px;color:var(--text-dim)">Campaign</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Sent</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Per Week</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Open %</th>';
+  html += '<th style="text-align:right;padding:5px 8px;color:var(--text-dim)">Click %</th>';
+  html += '<th style="text-align:left;padding:5px 8px;color:var(--text-dim)">Signal</th>';
+  html += '</tr></thead><tbody>';
+
+  sortedTypes.forEach(function(entry) {
+    var name = entry[0];
+    var t = entry[1];
+    var openRate = t.sent > 0 ? t.opened / t.sent : 0;
+    var clickRate = t.sent > 0 ? t.clicked / t.sent : 0;
+    var signal = '';
+    if (t.frequency_per_week > 5 && openRate < 0.1) signal = '<span style="color:#ef4444">⚠ Over-sending</span>';
+    else if (openRate > 0.3) signal = '<span style="color:var(--green)">✓ Strong</span>';
+    else if (openRate > 0.15) signal = '<span style="color:#f59e0b">○ OK</span>';
+    else if (t.sent >= 10) signal = '<span style="color:var(--text-faint)">△ Low engagement</span>';
+
+    html += '<tr style="border-bottom:1px solid var(--border)">';
+    html += '<td style="padding:5px 8px;color:var(--text)">' + name + '</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:var(--text)">' + t.sent + '</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:var(--text)">' + t.frequency_per_week + '</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:#a78bfa">' + (openRate * 100).toFixed(1) + '%</td>';
+    html += '<td style="text-align:right;padding:5px 8px;color:#f59e0b">' + (clickRate * 100).toFixed(1) + '%</td>';
+    html += '<td style="padding:5px 8px;font-size:10px">' + signal + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // ── Re-engagement thresholds ──
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px">Re-engagement Thresholds</div>';
+  html += '<label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);cursor:pointer">';
+  html += '<input type="checkbox" id="cadence-auto-adjust" ' + (s.auto_adjust_enabled ? 'checked' : '') + ' onchange="toggleCadenceAutoAdjust(this.checked)" style="accent-color:var(--accent)">';
+  html += 'Auto-adjust from data</label>';
+  html += '</div>';
+
+  var tiers = [
+    { key: 'tier1', label: 'Tier 1', days: s.reengagement_tier1_days, data: a.reengagement.tier1, type: 'reengagement_14d' },
+    { key: 'tier2', label: 'Tier 2', days: s.reengagement_tier2_days, data: a.reengagement.tier2, type: 'reengagement_30d' },
+    { key: 'tier3', label: 'Tier 3', days: s.reengagement_tier3_days, data: a.reengagement.tier3, type: 'reengagement_60d' }
+  ];
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">';
+  tiers.forEach(function(tier) {
+    var winback = tier.data.sent > 0 ? (tier.data.opened / tier.data.sent * 100).toFixed(1) : '—';
+    var winbackColor = tier.data.sent > 0 ? (tier.data.opened / tier.data.sent > 0.1 ? 'var(--green)' : tier.data.opened / tier.data.sent > 0.05 ? '#f59e0b' : '#ef4444') : 'var(--text-faint)';
+    html += '<div style="background:var(--bg-card);border-radius:8px;padding:12px;text-align:center">';
+    html += '<div style="font-size:12px;font-weight:600;color:var(--text)">' + tier.label + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-dim);margin:4px 0">';
+    html += '<input type="number" id="cadence-' + tier.key + '-days" value="' + tier.days + '" min="1" max="365" style="width:50px;text-align:center;font-size:13px;font-family:JetBrains Mono,monospace;border:1px solid var(--border);border-radius:4px;background:var(--bg-input);color:var(--text);padding:2px"> days inactive</div>';
+    html += '<div style="font-size:11px;color:var(--text-faint);margin-top:4px">Sends: ' + tier.data.sent + '</div>';
+    html += '<div style="font-size:16px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + winbackColor + ';margin-top:4px">' + winback + (winback !== '—' ? '%' : '') + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-faint);text-transform:uppercase">Win-back Rate</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Save button
+  html += '<div style="margin-top:12px;text-align:right">';
+  html += '<button onclick="saveCadenceSettings()" style="font-size:12px;padding:6px 16px;border-radius:6px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-family:JetBrains Mono,monospace">Save Thresholds</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // ── Current settings summary ──
+  html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  html += '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Current Optimized Settings</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;font-family:JetBrains Mono,monospace">';
+  html += '<div style="color:var(--text-dim)">Best send hours (UTC):</div><div style="color:var(--text)">' + s.best_send_hour_1 + ':00, ' + s.best_send_hour_2 + ':00, ' + s.best_send_hour_3 + ':00</div>';
+  html += '<div style="color:var(--text-dim)">Best send days:</div><div style="color:var(--text)">' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.best_send_dow_1] + ', ' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.best_send_dow_2] + ', ' + ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][s.best_send_dow_3] + '</div>';
+  html += '<div style="color:var(--text-dim)">Sample size:</div><div style="color:var(--text)">' + s.analysis_sample_size + ' emails</div>';
+  html += '<div style="color:var(--text-dim)">Last analyzed:</div><div style="color:var(--text)">' + (s.last_analyzed_at ? new Date(s.last_analyzed_at).toLocaleString() : 'Never') + '</div>';
+  html += '<div style="color:var(--text-dim)">Auto-adjust:</div><div style="color:' + (s.auto_adjust_enabled ? 'var(--green)' : 'var(--text-faint)') + '">' + (s.auto_adjust_enabled ? 'Enabled' : 'Disabled') + '</div>';
+  html += '</div>';
+
+  // Apply analysis button
+  html += '<div style="margin-top:12px;text-align:right">';
+  html += '<button onclick="applyCadenceAnalysis()" style="font-size:12px;padding:6px 16px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:JetBrains Mono,monospace">Apply Analysis → Settings</button>';
+  html += '</div>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ── Event handlers ──
+
+async function saveCadenceSettings() {
+  try {
+    var tier1 = parseInt(document.getElementById('cadence-tier1-days').value) || 14;
+    var tier2 = parseInt(document.getElementById('cadence-tier2-days').value) || 30;
+    var tier3 = parseInt(document.getElementById('cadence-tier3-days').value) || 60;
+
+    var { error } = await sb
+      .from('cadence_settings')
+      .update({
+        reengagement_tier1_days: tier1,
+        reengagement_tier2_days: tier2,
+        reengagement_tier3_days: tier3,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', 'global');
+
+    if (error) throw error;
+    _cadenceState.settings.reengagement_tier1_days = tier1;
+    _cadenceState.settings.reengagement_tier2_days = tier2;
+    _cadenceState.settings.reengagement_tier3_days = tier3;
+    if (typeof toastSuccess === 'function') toastSuccess('Thresholds saved');
+  } catch (e) {
+    console.error('[Cadence] Save error:', e);
+    if (typeof toastError === 'function') toastError('Save failed: ' + (e.message || e));
+  }
+}
+
+async function toggleCadenceAutoAdjust(enabled) {
+  try {
+    var { error } = await sb
+      .from('cadence_settings')
+      .update({ auto_adjust_enabled: enabled, updated_at: new Date().toISOString() })
+      .eq('id', 'global');
+    if (error) throw error;
+    _cadenceState.settings.auto_adjust_enabled = enabled;
+  } catch (e) {
+    console.error('[Cadence] Toggle error:', e);
+  }
+}
+
+async function applyCadenceAnalysis() {
+  var a = _cadenceState.analysis;
+  if (!a || a.totalSent === 0) return;
+
+  var updates = {
+    analysis_sample_size: a.totalSent,
+    analysis_window_days: 90,
+    last_analyzed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  // Apply best hours
+  if (a.topHours.length >= 1) updates.best_send_hour_1 = a.topHours[0].hour;
+  if (a.topHours.length >= 2) updates.best_send_hour_2 = a.topHours[1].hour;
+  if (a.topHours.length >= 3) updates.best_send_hour_3 = a.topHours[2].hour;
+
+  // Apply best days
+  if (a.topDows.length >= 1) updates.best_send_dow_1 = a.topDows[0].dow;
+  if (a.topDows.length >= 2) updates.best_send_dow_2 = a.topDows[1].dow;
+  if (a.topDows.length >= 3) updates.best_send_dow_3 = a.topDows[2].dow;
+
+  // Apply win-back rates
+  if (a.reengagement.tier1.sent > 0) updates.tier1_winback_rate = +(a.reengagement.tier1.opened / a.reengagement.tier1.sent).toFixed(4);
+  if (a.reengagement.tier2.sent > 0) updates.tier2_winback_rate = +(a.reengagement.tier2.opened / a.reengagement.tier2.sent).toFixed(4);
+  if (a.reengagement.tier3.sent > 0) updates.tier3_winback_rate = +(a.reengagement.tier3.opened / a.reengagement.tier3.sent).toFixed(4);
+
+  // Per-type frequency
+  var freqMap = {};
+  Object.entries(a.byType).forEach(function(e) {
+    freqMap[e[0]] = { per_week: e[1].frequency_per_week, open_rate: +(e[1].opened / Math.max(1, e[1].sent)).toFixed(4) };
+  });
+  updates.optimal_frequency = freqMap;
+
+  try {
+    var { error } = await sb.from('cadence_settings').update(updates).eq('id', 'global');
+    if (error) throw error;
+    Object.assign(_cadenceState.settings, updates);
+    var container = document.getElementById('admin-panel-cadence');
+    if (container) renderCadenceTab(container);
+    if (typeof toastSuccess === 'function') toastSuccess('Analysis applied to settings');
+  } catch (e) {
+    console.error('[Cadence] Apply error:', e);
+    if (typeof toastError === 'function') toastError('Apply failed: ' + (e.message || e));
+  }
+}
+
+async function rerunCadenceAnalysis() {
+  _cadenceState.loaded = false;
+  await loadCadenceTab();
+}
