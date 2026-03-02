@@ -1,3 +1,79 @@
+## v6.19 — Pod 2 Session 15: Re-engagement + Escalation Chain Hardening (2026-03-01)
+
+### Edge Functions — New (1 function)
+
+**re-engagement** — Tiered re-engagement email campaigns
+- Cron-triggered daily at 11:00 AM ET (16:00 UTC)
+- 3-tier inactivity detection: 14-day (gentle check-in), 30-day (urgency + FOMO), 60-day (final email)
+- Gathers context per user: missed job count, closed jobs, top matching companies, active filter names
+- Dedup: checks notification_log for recent sends within each tier window; skips higher tiers already sent
+- Skip logic: users with no filters AND no pipeline entries excluded (never set up)
+- Routes through send-notification pipeline (marketing classification, respects admin config + user opt-in)
+- Idempotency key: `{tier}_{user_id}_{date}` prevents duplicate sends per day
+
+### Edge Functions — Updated (2 functions)
+
+**escalation-checker** — Hardened to v2
+- NEW Phase 0: Dead letter sweep — pending actions older than 48h marked 'expired' (prevents permanent stuck state)
+- Idempotency: checks notification_log for duplicate SMS before sending; fixes orphaned status if SMS already sent
+- Batch limits: max 100 actions per phase per run to prevent timeout
+- Per-action error handling: one failure no longer aborts the entire sweep
+- Send verification: SMS only marked as 'escalated' if send-notification returns success
+- Dead letter range excluded from Phase 1 query to prevent double-processing
+
+**send-notification** — Classification map updated
+- Added reengagement_14d, reengagement_30d, reengagement_60d to MARKETING classification
+- All 3 types route through standard marketing gate: admin config → marketing opt-in → preferences → frequency cap → quiet hours
+
+### Database
+
+**notification_templates** — 3 rows seeded
+- reengagement_14d: 14-day gentle check-in (marketing, once_per_window)
+- reengagement_30d: 30-day urgency escalation (marketing, once_per_window)
+- reengagement_60d: 60-day final check-in (marketing, once_per_window, is_final_email flag)
+
+**admin_notification_config** — 3 rows seeded
+- All 3 re-engagement types enabled, A/B subject variants, frequency caps matching tier windows
+
+**notification_actions** — Schema hardening
+- Added UNIQUE constraint (user_id, job_id, action_type) for idempotency
+- 'expired' status value added for dead letter actions
+
+**RPC: get_inactive_users** — New function
+- Returns email-verified, non-banned users whose last_sign_in_at falls in a date range
+- Joins profiles for plan/cohort context
+- Limited to 500 users per call
+
+**pg_cron: reengagement-daily-check** — New schedule
+- Daily at 16:00 UTC (11:00 AM ET)
+- Calls re-engagement Edge Function via net.http_post
+
+### Frontend
+
+**js/admin-notifications.js** — Updated
+- Added reengagement_14d, reengagement_30d, reengagement_60d to account group and marketing classification
+
+### Deployment
+
+| Surface | Value | Status |
+|---------|-------|--------|
+| js/version.js | BJ_VERSION = 'v6.19' | ✅ Done |
+| dashboard.html | v6.19 comment | ✅ Done |
+| index.html | v6.19 comment | ✅ Done |
+| CHANGELOG.md | v6.19 entry (full) | ✅ Done |
+| Browser console | [BJ] Dashboard v6.19 loaded | ✅ Done |
+| re-engagement | Edge Function deployed (new) | ✅ Deployed |
+| escalation-checker | Edge Function updated (v2) | ✅ Deployed |
+| send-notification | Edge Function updated (v3+) | ✅ Deployed |
+| pg_cron | reengagement-daily-check (daily 16:00 UTC) | ✅ Scheduled |
+| notification_templates | 3 rows seeded | ✅ Seeded |
+| admin_notification_config | 3 rows seeded | ✅ Seeded |
+| get_inactive_users | RPC deployed | ✅ Created |
+| notification_actions | UNIQUE constraint added | ✅ Applied |
+| Git tag | v6.19 | ✅ Tagged |
+
+---
+
 ## v6.18 — Pod 2 Session 14: Billing + Payments Notifications (2026-03-01)
 
 ### Edge Functions — Updated (1 function)
