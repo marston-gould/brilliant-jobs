@@ -1,3 +1,23 @@
+## v6.26 — 10DLC SMS Compliance Language (2026-03-01)
+
+### Privacy Policy (`/privacy`)
+- **New Section 12: SMS/Text Messaging Privacy** — Added complete 10DLC-compliant SMS privacy disclosure covering: data collection scope (phone number for message delivery), third-party sharing prohibition for marketing/promotional purposes, Vonage service provider disclosure, opt-out (STOP) and help (HELP) instructions, and message frequency/data rates notice.
+- Renumbered Contact section from 12 → 13.
+- Updated "Last updated" to March 2026.
+
+### Terms of Service (`/terms`)
+- **New Section 15: SMS/Text Messaging Terms** — Added complete 10DLC-compliant SMS terms covering: consent scope (recurring automated texts for job matches, application updates, OTP, escalations), message frequency and data rates, opt-out/help instructions, carrier support disclaimer, SMS-not-required statement, and phone number ownership confirmation.
+- Renumbered Contact section from 15 → 16. Fixed malformed `<h2` tag on Contact heading.
+- Updated "Last updated" to March 2026.
+
+### Versioning
+- js/version.js: v6.25 → v6.26
+- dashboard.html comment: v6.25 → v6.26
+- privacy.html: Updated last-updated date
+- terms.html: Updated last-updated date
+
+---
+
 ## v6.25 — Cadence Optimization + Resend Webhook Fix (2026-03-02)
 
 ### Cadence Optimization Tab (Card 10)
