@@ -1,3 +1,44 @@
+## v6.23 — Phase 69 Session 3: Per-Filter Override Cascade + Notification Analytics (2026-03-01)
+
+### Edge Functions — Updated (1 function)
+
+**send-notification** — Upgraded to v6
+- Per-filter notification override cascade: notification_filter_overrides → notification_channels → notification_preferences → default
+- New `filter_name` field in NotificationRequest interface, passed through to cascade logic
+- Override and channel preferences logged in payload for audit trail
+- Cascade applies to both email and SMS channel decisions independently
+
+### Frontend
+
+**admin-notifications.js** — v6.23
+- New: Notification Analytics dashboard (Card 8) as admin tab
+- Stat cards: emails sent, delivery rate, open rate, click rate, bounce rate, SMS sent, SMS delivery rate, blocked count
+- Daily send volume bar chart (email) — CSS-based, no external charting lib
+- Daily send volume bar chart (SMS) — renders when SMS data exists
+- Top notification types breakdown with horizontal bars
+- Block reasons breakdown with horizontal bars
+- Classification breakdown (product, required transactional, configurable transactional, marketing)
+- 30-day lookback window, up to 5000 events
+
+**admin.js** — v6.23
+- Added `notif-analytics` tab init routing
+
+**dashboard.html** — v6.23
+- Added "Notif Analytics" admin tab button and panel container
+
+### Deployment
+
+| Surface | Value | Status |
+|---------|-------|--------|
+| js/version.js | v6.23 | Done |
+| dashboard.html | v6.23 | Done |
+| index.html | v6.23 | Done |
+| Browser console | v6.23 loaded | Done |
+| CHANGELOG.md | This entry | Done |
+| send-notification EF | v6 deployed | Done |
+| admin-notifications.js | v6.23 | Done |
+| admin.js | v6.23 | Done |
+
 ## v6.22 — Phase 69 Session 2: SMS Delivery Receipts + Admin Suppression UI (2026-03-01)
 
 ### Edge Functions — New (1 function)
