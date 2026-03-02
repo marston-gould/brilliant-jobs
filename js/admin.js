@@ -102,6 +102,7 @@ function switchAdminTab(tabId) {
       case 'templates': loadTemplatesTab(); break;
       case 'notif-analytics': loadNotifAnalyticsTab(); break;
       case 'email-cohorts': loadEmailCohortsTab(); break;
+      case 'cadence': loadCadenceTab(); break;
     }
   }
 }
