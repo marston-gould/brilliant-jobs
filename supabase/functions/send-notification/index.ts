@@ -45,6 +45,7 @@ const MARKETING = [
   "referral_nudge_referee", "referral_conversion", "referral_reward_earned",
   "referral_expiring_reward", "referral_milestone", "referral_periodic_summary",
   "inactive_reengagement",
+  "reengagement_14d", "reengagement_30d", "reengagement_60d",
   "monthly_product_update"
 ];
 MARKETING.forEach(t => CLASSIFICATION_MAP[t] = "marketing");
