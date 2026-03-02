@@ -101,6 +101,7 @@ function switchAdminTab(tabId) {
       case 'notifications': loadNotificationsTab(); break;
       case 'templates': loadTemplatesTab(); break;
       case 'notif-analytics': loadNotifAnalyticsTab(); break;
+      case 'email-cohorts': loadEmailCohortsTab(); break;
     }
   }
 }
