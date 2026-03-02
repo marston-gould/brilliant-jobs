@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.26';
+var BJ_VERSION = 'v6.27';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
