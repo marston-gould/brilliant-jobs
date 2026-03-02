@@ -1,3 +1,57 @@
+## v6.18 — Pod 2 Session 14: Billing + Payments Notifications (2026-03-01)
+
+### Edge Functions — Updated (1 function)
+
+**stripe-webhook** — Billing notification integration (v2)
+- Wired all 9 billing notification types through send-notification pipeline
+- subscription_confirm: fires on new subscription + renewal (required transactional)
+- credit_purchase_receipt: fires on credit pack purchase + auto-refill (required transactional)
+- payment_failed: dunning sequence with 4 escalation steps (update_payment → access_warning → last_chance → downgraded) (required transactional)
+- payment_recovered: fires when past_due subscription gets successful payment (required transactional)
+- plan_change_confirm: fires on tier upgrade/downgrade with features gained/lost (required transactional)
+- subscription_cancelled: fires on cancel_at_period_end or immediate deletion (required transactional)
+- invoice_generated: fires on new subscription + renewal invoices with PDF link (required transactional)
+- refund_processed: new charge.refunded handler (required transactional)
+- Auto-downgrade to free tier after final dunning step (attempt_count >= 4)
+
+### Edge Functions — New (1 function)
+
+**billing-notifications** — Subscription expiring reminders
+- Cron-triggered daily at 10:00 AM ET (15:00 UTC)
+- 7-day reminder: notifies users whose cancelled subscriptions expire in ~7 days
+- 1-day reminder: notifies users whose cancelled subscriptions expire in ~1 day
+- Dedup: checks notification_log to prevent duplicate reminders within 24h/12h windows
+- subscription_expiring classified as configurable transactional (user can adjust cadence)
+
+### Database — Cron Schedule
+
+**billing-expiring-check** — Daily at 15:00 UTC
+- Calls billing-notifications Edge Function to check for expiring subscriptions
+
+### Classification Map (no changes)
+- All 9 billing types already correctly classified in send-notification:
+  - Required transactional: subscription_confirm, credit_purchase_receipt, payment_failed, payment_recovered, plan_change_confirm, subscription_cancelled, invoice_generated, refund_processed
+  - Configurable transactional: subscription_expiring
+
+### Supabase — Deployed
+- stripe-webhook Edge Function updated (v2 with notification calls)
+- billing-notifications Edge Function deployed
+- 1 pg_cron schedule (billing-expiring-check: daily 15:00 UTC)
+- 9 notification_templates already seeded (Pod 1 v6.11 delivery)
+- 9 admin_notification_config rows already seeded (Pod 1 v6.11 delivery)
+
+### Version Bump
+- `js/version.js`: v6.17 → v6.18
+- `dashboard.html`: version comment v6.18
+- `index.html`: version comment v6.18
+- Browser console: `[BJ] Dashboard v6.18 loaded`
+
+### Notification System Progress
+- Pod 2 Sessions 1-13: ✅ Complete (v6.01–v6.17)
+- Pod 2 Session 14 (Billing/Payments): ✅ Complete (v6.18)
+- Pod 2 Session 15: Remaining (Re-engagement/Escalation Chain Hardening)
+- Pod 1: ✅ ALL COMPLETE (v6.01–v6.14)
+
 ## v6.17 — Pod 2 Session 13: Community, Feedback + Canny Integration (2026-03-01)
 
 ### Edge Functions — New (1 function)

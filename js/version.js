@@ -9,7 +9,7 @@
  * If this file doesn't load, the version simply doesn't display.
  * That's a signal something is broken — not something to paper over.
  */
-var BJ_VERSION = 'v6.17';
+var BJ_VERSION = 'v6.18';
 
 (function() {
   document.addEventListener('DOMContentLoaded', function() {
