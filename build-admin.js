@@ -1,7 +1,6 @@
 import { buildSync } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 
-// Admin page only needs: globals (sb, $, escapeHtml, toasts), admin.js, admin-notifications.js, admin-shell.js
 const jsFiles = [
   'js/version.js',
   'js/globals.js',
@@ -19,7 +18,9 @@ writeFileSync('dist/_tmp_admin.js', combined);
 buildSync({
   entryPoints: ['dist/_tmp_admin.js'],
   outfile: 'dist/admin.min.js',
-  minify: true,
+  minifySyntax: true,
+  minifyWhitespace: true,
+  minifyIdentifiers: false,
   sourcemap: true,
   target: 'es2020',
   bundle: false,
