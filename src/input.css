@@ -1329,6 +1329,38 @@
     /* Right-edge overflow prevention */
     .job-data-row:nth-child(n) .fraud-tooltip { left: auto; right: 0; transform: none; }
 
+    /* ─── Phase 3: Trust Banner (v6.32) ─── */
+    .trust-banner { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; border: 1px solid; }
+    .trust-banner--caution { background: hsla(var(--warm-hsl, 36, 100%, 50%), 0.08); border-color: hsla(var(--warm-hsl, 36, 100%, 50%), 0.25); color: var(--text-body); }
+    .trust-banner--suspicious { background: hsla(var(--red-hsl, 0, 85%, 60%), 0.08); border-color: hsla(var(--red-hsl, 0, 85%, 60%), 0.25); color: var(--text-body); }
+    .trust-banner-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .trust-banner-icon { font-size: 14px; }
+    .trust-banner-title { font-weight: 700; font-size: 12px; }
+    .trust-banner--caution .trust-banner-title { color: var(--warm); }
+    .trust-banner--suspicious .trust-banner-title { color: var(--red); }
+    .trust-banner-desc { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+    .trust-banner-signals { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+    .trust-banner-signal { font-size: 11px; }
+
+    /* ─── Phase 3: Fraud Interstitial Modal (v6.32) ─── */
+    .fraud-interstitial-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .fraud-interstitial-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 28px 32px; max-width: 460px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.25); }
+    .fraud-interstitial--caution .fraud-interstitial-header { color: var(--warm); }
+    .fraud-interstitial--suspicious .fraud-interstitial-header { color: var(--red); }
+    .fraud-interstitial-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .fraud-interstitial-icon { font-size: 22px; }
+    .fraud-interstitial-title { font-size: 18px; font-weight: 700; }
+    .fraud-interstitial-desc { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 16px; }
+    .fraud-interstitial-signals { display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px; padding: 10px 12px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border); }
+    .fraud-interstitial-signal { font-size: 12px; line-height: 1.4; }
+    .fraud-interstitial-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .fraud-interstitial-back { font-size: 13px; }
+    .fraud-interstitial-proceed-caution { background: var(--warm); color: #fff; border: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .fraud-interstitial-proceed-caution:hover { opacity: 0.85; }
+    .fraud-interstitial-proceed-suspicious { background: var(--red); color: #fff; border: none; padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .fraud-interstitial-proceed-suspicious:hover { opacity: 0.85; }
+
+
     .job-table .jt-salary { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
     .job-table .jt-days { font-family: var(--mono); font-size: 12px; }
     .job-table .jt-ghost { font-family: var(--mono); font-size: 12px; font-weight: 600; }
