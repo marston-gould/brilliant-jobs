@@ -1,7 +1,7 @@
 /* ───────────────────────────────────────────────────────────
    notification-center.js — Notification Center + Opt-In Modal
    Session 2+ of Notification System (Pod 2)
-   v6.00
+   v6.27
    
    Bridges user_notification_preferences + user_notification_state
    (Session 2 tables) with existing UI in panel-notifications
@@ -9,7 +9,7 @@
    Adds opt-in modal for first-login-after-verification flow.
    v5.98: Required transactional lock icons + enforcement
    v5.99: Standalone Notification Center page support
-   v6.00: Notification log wiring — load, filter, paginate, CSV export
+   v6.27: Notification log wiring — load, filter, paginate, CSV export
    ─────────────────────────────────────────────────────────── */
 
 // ═══════════════════════════════════════════════════════════
@@ -64,6 +64,7 @@ var ncState = null;  // user_notification_state row
 var ncPrefs = {};    // user_notification_preferences keyed by type
 
 async function ncLoadState() {
+  if (typeof sb === 'undefined') return;
   if (!currentUser) return;
   try {
     var { data, error } = await sb.from('user_notification_state')
@@ -83,6 +84,7 @@ async function ncLoadState() {
 }
 
 async function ncLoadPrefs() {
+  if (typeof sb === 'undefined') return;
   if (!currentUser) return;
   try {
     var { data } = await sb.from('user_notification_preferences')
@@ -188,6 +190,7 @@ function ncShowOptInModal() {
 }
 
 async function ncSaveOptInPreferences() {
+  if (typeof sb === 'undefined') return;
   var btn = document.getElementById('nc-optin-save');
   btn.disabled = true;
   btn.textContent = 'Saving...';
@@ -262,6 +265,7 @@ async function ncSaveOptInPreferences() {
 // Called by existing Save Preferences button in applications.js
 // ═══════════════════════════════════════════════════════════
 async function ncSyncFromUI() {
+  if (typeof sb === 'undefined') return;
   if (!currentUser) return;
   try {
     var rows = [];
@@ -313,6 +317,7 @@ function ncShowToast(msg, type) {
 var NC_SMS_ALLOWED = ['apply_alert','cv_score_approval','auth_pending_reminder','auth_pre_rewrite','pipeline_interview','interview_reminder','new_jobs_realtime'];
 
 async function ncToggleSmsForType(type, enabled) {
+  if (typeof sb === 'undefined') return;
   if (!currentUser) return;
   if (NC_SMS_ALLOWED.indexOf(type) === -1) {
     console.warn('[NC] SMS not allowed for type:', type);
@@ -404,6 +409,7 @@ function ncEnforceLockIcons() {
 // Called from UI when user's token has expired
 // ═══════════════════════════════════════════════════════════
 async function ncResendConfirmation() {
+  if (typeof sb === 'undefined') return;
   if (!currentUser) return;
   try {
     var session = await sb.auth.getSession();
@@ -480,7 +486,7 @@ async function initNotificationCenter() {
       if (ncBanner) ncBanner.style.display = 'none';
     }
   }, 1500);
-  console.log('[NC] Notification Center initialized (Session 2+, v6.00)');
+  console.log('[NC] Notification Center initialized (Session 2+, v6.27)');
 }
 
 // Hook into save buttons on both Applications panel and standalone Notification Center
@@ -530,6 +536,7 @@ var NC_LOG_PAGE_SIZE = 20;
 var ncLogCache = [];
 
 async function ncLoadNotificationLog(page) {
+  if (typeof sb === 'undefined') { console.warn('[NC] Supabase client not ready — skipping log load'); return; }
   var tbody = document.getElementById('nc-notif-log-body');
   if (!tbody) return;
 
