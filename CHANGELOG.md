@@ -1,3 +1,52 @@
+## v6.16 — Pod 2 Sessions 11-12: Referral System + Marketing/Credit Intelligence (2026-03-01)
+
+### Edge Functions — New (2 functions)
+
+**referral-lifecycle** — Full referral notification lifecycle
+- Event handlers: invite_sent, link_clicked, referee_signup, referee_activated, reward_applied
+- Cron handlers: nudge_check (daily 10AM ET), expiring_check (daily 9AM ET), periodic_summary (1st of month)
+- Milestone detection with configurable thresholds (3/5/10/25/50 referrals)
+- Suppression: max 2 nudges per referral, dedup on expiring reward + days_out combos
+- Calls send-notification for all 9 referral notification types
+
+**marketing-campaign** — Marketing, upgrade prompts, and credit intelligence
+- Admin-triggered campaigns: promo_trial, promo_feature_preview with cohort targeting + marketing opt-in enforcement
+- Usage limit detection: usage_upgrade_prompt at 80% free tier threshold, 1/week frequency cap
+- Credit intelligence: credit_burn_rate_alert (daily cron), credit_low_balance, credit_exhausted (event-driven)
+- Monthly crons: upgrade_roi_summary (60+ day free/starter accounts), credit_cost_comparison (spend > next tier)
+- Price lock: 3-email sequence (14/7/1 day before increase), separate marketing subdomain enforcement
+
+### SQL Seeds
+
+**v6.15-referral-notification-system.sql**
+- 9 admin_notification_config rows (referral lifecycle types)
+- 9 notification_templates rows (referral email templates, white theme, production status)
+- 3 pg_cron schedules (nudge check, expiring check, periodic summary)
+
+**v6.16-marketing-credit-intelligence.sql**
+- 9 admin_notification_config rows (upgrade/credit/promo types)
+- 9 notification_templates rows (marketing/credit templates, white + dark themes)
+- 3 pg_cron schedules (ROI summary, credit comparison, credit burn check)
+
+### Supabase — Deployed
+- 18 admin_notification_config rows seeded
+- 18 notification_templates rows seeded (all production status)
+- referral-lifecycle Edge Function deployed
+- marketing-campaign Edge Function deployed
+
+### Version Bump
+- `js/version.js`: v6.14 → v6.16
+- `dashboard.html`: version comment v6.16
+- `index.html`: version comment v6.16
+- Browser console: `[BJ] Dashboard v6.16 loaded`
+
+### Notification System Progress
+- Pod 2 Sessions 1-10: ✅ Complete (v6.01–v6.10)
+- Pod 2 Session 11 (Referral System): ✅ Complete (v6.16)
+- Pod 2 Session 12 (Marketing/Upgrade/Credit): ✅ Complete (v6.16)
+- Pod 2 Sessions 13-15: Remaining (Community/Feedback, Billing, Re-engagement/Escalation)
+- Pod 1: ✅ ALL COMPLETE (v6.01–v6.14)
+
 ## v6.14 — Pod 1 Session 15: Re-engagement / Escalation Copy Delivery (2026-03-01)
 
 ### Email Templates — New (3 functions)
