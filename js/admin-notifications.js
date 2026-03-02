@@ -1186,3 +1186,297 @@ async function loadNotifAnalyticsTab() {
     container.innerHTML = '<div class="admin-red">Failed to load analytics: ' + (e.message || e) + '</div>';
   }
 }
+
+// ═══════════════════════════════════════════════════════════
+// TEMPLATE PREVIEW + TEST SEND (Card 9 — Phase 69 Session 4)
+// ═══════════════════════════════════════════════════════════
+
+function refreshTemplatePreview() {
+  var iframe = document.getElementById('te-preview-iframe');
+  var empty = document.getElementById('te-preview-empty');
+  var channel = document.getElementById('te-channel').value;
+
+  if (channel === 'sms') {
+    // SMS preview — show text in a phone mockup
+    var smsBody = document.getElementById('te-sms').value || '';
+    iframe.srcdoc = '<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#e5e5ea;display:flex;justify-content:center;align-items:flex-start;min-height:100%">' +
+      '<div style="max-width:280px;background:#fff;border-radius:18px;padding:12px 16px;margin-top:20px;box-shadow:0 1px 3px rgba(0,0,0,0.12);font-size:14px;line-height:1.5;color:#1a1a1a">' +
+      smsBody.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') +
+      '<div style="font-size:10px;color:#8e8e93;margin-top:6px;text-align:right">Preview</div>' +
+      '</div></body></html>';
+    if (empty) empty.style.display = 'none';
+    return;
+  }
+
+  if (channel === 'in_app') {
+    var title = document.getElementById('te-inapp-title').value || '';
+    var body = document.getElementById('te-inapp-body').value || '';
+    var icon = document.getElementById('te-inapp-icon').value || '🔔';
+    iframe.srcdoc = '<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f1117">' +
+      '<div style="max-width:360px;background:#181a20;border:1px solid #2a2d35;border-radius:14px;padding:16px;display:flex;gap:12px;align-items:flex-start">' +
+      '<span style="font-size:24px">' + icon + '</span>' +
+      '<div><div style="font-size:14px;font-weight:600;color:#f0f1f3;margin-bottom:4px">' + title.replace(/</g, '&lt;') + '</div>' +
+      '<div style="font-size:13px;color:#94a3b8;line-height:1.4">' + body.replace(/</g, '&lt;').replace(/\n/g, '<br>') + '</div></div>' +
+      '</div></body></html>';
+    if (empty) empty.style.display = 'none';
+    return;
+  }
+
+  // Email preview — render HTML in iframe
+  var htmlContent = document.getElementById('te-html').value || '';
+  if (!htmlContent.trim()) {
+    if (empty) empty.style.display = 'flex';
+    iframe.srcdoc = '';
+    return;
+  }
+
+  // Replace template variables with sample data
+  var preview = htmlContent
+    .replace(/\{\{user\.first_name\}\}/g, 'Alex')
+    .replace(/\{\{user\.email\}\}/g, 'alex@example.com')
+    .replace(/\{\{company_name\}\}/g, 'Acme Corp')
+    .replace(/\{\{job_title\}\}/g, 'Senior Engineer')
+    .replace(/\{\{score\}\}/g, '87')
+    .replace(/\{\{dashboard_url\}\}/g, 'https://brilliantjobs.app/dashboard.html')
+    .replace(/\{\{unsubscribe_url\}\}/g, '#')
+    .replace(/\{\{[^}]+\}\}/g, '[sample]');
+
+  iframe.srcdoc = preview;
+  if (empty) empty.style.display = 'none';
+}
+
+async function testSendTemplate() {
+  var btn = document.getElementById('te-test-send-btn');
+  var status = document.getElementById('te-test-send-status');
+  var channel = document.getElementById('te-channel').value;
+  var notifType = document.getElementById('te-type').value;
+  var subject = document.getElementById('te-subject').value || 'Test: ' + notifType;
+  var html = document.getElementById('te-html').value || '';
+  var smsBody = document.getElementById('te-sms').value || '';
+
+  if (channel === 'email' && !html.trim()) {
+    status.textContent = 'No HTML body to send.';
+    status.style.color = '#ef4444';
+    return;
+  }
+  if (channel === 'sms' && !smsBody.trim()) {
+    status.textContent = 'No SMS body to send.';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  // Get current admin user
+  var user = null;
+  try { user = (await sb.auth.getUser()).data.user; } catch(e) {}
+  if (!user) {
+    status.textContent = 'Not logged in.';
+    status.style.color = '#ef4444';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending…';
+  status.textContent = '';
+
+  try {
+    // Replace template variables with real user data for test
+    var testSubject = '[TEST] ' + subject
+      .replace(/\{\{user\.first_name\}\}/g, user.email.split('@')[0])
+      .replace(/\{\{[^}]+\}\}/g, '[test]');
+
+    var testHtml = html
+      .replace(/\{\{user\.first_name\}\}/g, user.email.split('@')[0])
+      .replace(/\{\{user\.email\}\}/g, user.email)
+      .replace(/\{\{company_name\}\}/g, 'Test Company')
+      .replace(/\{\{job_title\}\}/g, 'Test Position')
+      .replace(/\{\{score\}\}/g, '85')
+      .replace(/\{\{dashboard_url\}\}/g, 'https://brilliantjobs.app/dashboard.html')
+      .replace(/\{\{[^}]+\}\}/g, '[test]');
+
+    var payload = {
+      user_id: user.id,
+      notification_type: notifType,
+      subject: testSubject,
+      html: testHtml,
+      text: 'Test notification from template editor',
+      force_channel: channel === 'sms' ? 'sms' : 'email',
+      idempotency_key: 'test-send-' + Date.now()
+    };
+
+    if (channel === 'sms') {
+      payload.sms_text = smsBody
+        .replace(/\{\{[^}]+\}\}/g, '[test]');
+    }
+
+    var res = await fetch(
+      (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/send-notification',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (window._bjServiceKey || window._bjAnonKey || '')
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    var result = await res.json();
+    if (result.email_sent || result.sms_sent) {
+      status.textContent = '✓ Test sent to ' + user.email + (result.sms_sent ? ' (SMS)' : ' (email)');
+      status.style.color = '#22c55e';
+    } else {
+      status.textContent = '✗ Send blocked: ' + (result.decision_reason || result.error || 'unknown');
+      status.style.color = '#ef4444';
+    }
+  } catch (e) {
+    status.textContent = '✗ Error: ' + (e.message || e);
+    status.style.color = '#ef4444';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✉ Test Send';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// WEB PUSH SUBSCRIPTION MANAGEMENT (Card 7 — Phase 69 Session 4)
+// ═══════════════════════════════════════════════════════════
+
+async function initPushToggle() {
+  var toggle = document.getElementById('notify-push');
+  if (!toggle) return;
+
+  // Check if push is supported
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toggle.disabled = true;
+    toggle.parentElement.title = 'Push notifications not supported in this browser';
+    return;
+  }
+
+  // Check current subscription status
+  try {
+    var reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (reg) {
+      var sub = await reg.pushManager.getSubscription();
+      toggle.checked = !!sub;
+    }
+  } catch (e) {
+    console.warn('[Push] Init check failed:', e);
+  }
+
+  toggle.addEventListener('change', async function() {
+    if (toggle.checked) {
+      await subscribeToPush();
+    } else {
+      await unsubscribeFromPush();
+    }
+  });
+}
+
+async function subscribeToPush() {
+  var toggle = document.getElementById('notify-push');
+  try {
+    // Register service worker
+    var reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    // Get VAPID public key from push-subscribe endpoint
+    var keyRes = await fetch(
+      (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/push-subscribe'
+    );
+    var keyData = await keyRes.json();
+    if (!keyData.vapid_public_key) throw new Error('No VAPID key');
+
+    // Convert VAPID key to Uint8Array
+    var vapidKey = urlBase64ToUint8Array(keyData.vapid_public_key);
+
+    // Subscribe to push
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidKey
+    });
+
+    // Send subscription to server
+    var session = await sb.auth.getSession();
+    var token = session.data.session?.access_token;
+    if (!token) throw new Error('Not authenticated');
+
+    var saveRes = await fetch(
+      (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/push-subscribe',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ subscription: sub.toJSON() })
+      }
+    );
+
+    var saveData = await saveRes.json();
+    if (saveData.ok) {
+      console.log('[Push] Subscribed successfully');
+      if (typeof toastSuccess === 'function') toastSuccess('Push notifications enabled');
+    } else {
+      throw new Error(saveData.error || 'Failed to save subscription');
+    }
+  } catch (e) {
+    console.error('[Push] Subscribe failed:', e);
+    if (toggle) toggle.checked = false;
+    if (e.name === 'NotAllowedError') {
+      if (typeof toastError === 'function') toastError('Push notifications blocked by browser. Check site permissions.');
+    } else {
+      if (typeof toastError === 'function') toastError('Failed to enable push: ' + (e.message || e));
+    }
+  }
+}
+
+async function unsubscribeFromPush() {
+  try {
+    var reg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (reg) {
+      var sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+
+        // Tell server
+        var session = await sb.auth.getSession();
+        var token = session.data.session?.access_token;
+        if (token) {
+          await fetch(
+            (window._bjSupabaseUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co') + '/functions/v1/push-subscribe',
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({ action: 'unsubscribe', endpoint: sub.endpoint })
+            }
+          );
+        }
+      }
+    }
+    console.log('[Push] Unsubscribed');
+    if (typeof toastSuccess === 'function') toastSuccess('Push notifications disabled');
+  } catch (e) {
+    console.error('[Push] Unsubscribe error:', e);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// Initialize push toggle when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPushToggle);
+} else {
+  initPushToggle();
+}
