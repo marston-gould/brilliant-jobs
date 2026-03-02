@@ -964,3 +964,225 @@ function escapeHtml(str) {
     '.admin-red{padding:12px;color:#ef4444;font-size:13px}';
   document.head.appendChild(style);
 })();
+
+// ═══════════════════════════════════════════════════════════
+// CARD 8: NOTIFICATION ANALYTICS DASHBOARD (Phase 69 Session 3)
+// ═══════════════════════════════════════════════════════════
+// Admin tab: send volume, delivery rate, open rate, click rate,
+// bounce rate, SMS delivery rate — powered by notification_log data
+// from Resend webhooks (Cards 1+2) and Vonage DLRs (Card 6).
+
+async function loadNotifAnalyticsTab() {
+  var container = document.getElementById('admin-panel-notif-analytics');
+  if (!container) return;
+  container.innerHTML = '<div class="admin-loading">Loading notification analytics…</div>';
+
+  try {
+    // Fetch notification_log data for the past 30 days
+    var since = new Date();
+    since.setDate(since.getDate() - 30);
+    var sinceISO = since.toISOString();
+
+    var { data: logs, error } = await sb
+      .from('notification_log')
+      .select('id, notification_type, channel, status, classification, send_decision, send_reason, created_at, sms_delivered_at, sms_failed_at')
+      .gte('created_at', sinceISO)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (error) throw error;
+    if (!logs || logs.length === 0) {
+      container.innerHTML = '<div style="padding:24px;color:var(--text-dim);font-size:13px;text-align:center">No notification data in the past 30 days. Send some notifications first.</div>';
+      return;
+    }
+
+    // ── Aggregate stats ──
+    var emailLogs = logs.filter(function(l) { return l.channel === 'email'; });
+    var smsLogs = logs.filter(function(l) { return l.channel === 'sms'; });
+
+    var emailSent = emailLogs.filter(function(l) { return l.send_decision === 'sent'; });
+    var emailBlocked = emailLogs.filter(function(l) { return l.send_decision === 'blocked'; });
+    var emailDelivered = emailLogs.filter(function(l) { return l.status === 'delivered' || l.status === 'opened' || l.status === 'clicked'; });
+    var emailOpened = emailLogs.filter(function(l) { return l.status === 'opened' || l.status === 'clicked'; });
+    var emailClicked = emailLogs.filter(function(l) { return l.status === 'clicked'; });
+    var emailBounced = emailLogs.filter(function(l) { return l.status === 'bounced' || l.status === 'failed'; });
+
+    var smsSent = smsLogs.filter(function(l) { return l.send_decision === 'sent'; });
+    var smsDelivered = smsLogs.filter(function(l) { return l.sms_delivered_at !== null; });
+    var smsFailed = smsLogs.filter(function(l) { return l.sms_failed_at !== null; });
+
+    function pct(num, denom) {
+      if (!denom || denom === 0) return '—';
+      return (num / denom * 100).toFixed(1) + '%';
+    }
+
+    // ── Daily volume for chart ──
+    var dailyVolume = {};
+    var dailyOpen = {};
+    var dailyClick = {};
+    var dailySms = {};
+    logs.forEach(function(l) {
+      var day = l.created_at.slice(0, 10);
+      if (!dailyVolume[day]) { dailyVolume[day] = 0; dailyOpen[day] = 0; dailyClick[day] = 0; dailySms[day] = 0; }
+      if (l.channel === 'email' && l.send_decision === 'sent') dailyVolume[day]++;
+      if (l.status === 'opened' || l.status === 'clicked') dailyOpen[day]++;
+      if (l.status === 'clicked') dailyClick[day]++;
+      if (l.channel === 'sms' && l.send_decision === 'sent') dailySms[day]++;
+    });
+
+    var days = Object.keys(dailyVolume).sort();
+    var maxVol = Math.max.apply(null, days.map(function(d) { return dailyVolume[d]; }).concat([1]));
+
+    // ── Block reason breakdown ──
+    var blockReasons = {};
+    emailBlocked.forEach(function(l) {
+      var reason = l.send_reason || 'unknown';
+      blockReasons[reason] = (blockReasons[reason] || 0) + 1;
+    });
+
+    // ── Type breakdown ──
+    var typeBreakdown = {};
+    emailSent.forEach(function(l) {
+      var t = l.notification_type || 'unknown';
+      typeBreakdown[t] = (typeBreakdown[t] || 0) + 1;
+    });
+    var topTypes = Object.entries(typeBreakdown).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 10);
+
+    // ── Build HTML ──
+    var html = '';
+
+    // Period selector
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
+      '<span style="font-size:15px;font-weight:600;color:var(--text)">Notification Analytics</span>' +
+      '<span style="font-size:12px;color:var(--text-faint)">Last 30 days · ' + logs.length + ' events</span>' +
+    '</div>';
+
+    // Stat cards row
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px">';
+    var cards = [
+      { label: 'Emails Sent', value: emailSent.length, color: 'var(--accent)' },
+      { label: 'Delivery Rate', value: pct(emailDelivered.length, emailSent.length), color: 'var(--green)' },
+      { label: 'Open Rate', value: pct(emailOpened.length, emailSent.length), color: '#a78bfa' },
+      { label: 'Click Rate', value: pct(emailClicked.length, emailSent.length), color: '#f59e0b' },
+      { label: 'Bounce Rate', value: pct(emailBounced.length, emailSent.length), color: 'var(--red)' },
+      { label: 'SMS Sent', value: smsSent.length, color: 'var(--accent)' },
+      { label: 'SMS Delivery', value: pct(smsDelivered.length, smsSent.length), color: 'var(--green)' },
+      { label: 'Blocked', value: emailBlocked.length, color: 'var(--text-faint)' }
+    ];
+    cards.forEach(function(c) {
+      html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">' +
+        '<div style="font-size:22px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + c.color + '">' + c.value + '</div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:4px;text-transform:uppercase;letter-spacing:0.5px">' + c.label + '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // Daily volume chart (CSS bar chart — no external lib needed)
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Daily Send Volume (Email)</div>' +
+      '<div style="display:flex;align-items:flex-end;gap:2px;height:120px">';
+    days.forEach(function(d) {
+      var h = Math.max(4, Math.round(dailyVolume[d] / maxVol * 110));
+      var title = d + ': ' + dailyVolume[d] + ' emails';
+      html += '<div title="' + title + '" style="flex:1;height:' + h + 'px;background:var(--accent);border-radius:3px 3px 0 0;min-width:4px;opacity:0.85;transition:opacity 0.2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.85"></div>';
+    });
+    html += '</div>' +
+      '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-faint);font-family:JetBrains Mono,monospace">' +
+        '<span>' + (days[0] || '') + '</span><span>' + (days[days.length - 1] || '') + '</span>' +
+      '</div>' +
+    '</div>';
+
+    // SMS volume chart
+    if (smsSent.length > 0) {
+      var maxSms = Math.max.apply(null, days.map(function(d) { return dailySms[d] || 0; }).concat([1]));
+      html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">Daily Send Volume (SMS)</div>' +
+        '<div style="display:flex;align-items:flex-end;gap:2px;height:80px">';
+      days.forEach(function(d) {
+        var sv = dailySms[d] || 0;
+        var h = sv === 0 ? 0 : Math.max(4, Math.round(sv / maxSms * 70));
+        var title = d + ': ' + sv + ' SMS';
+        html += '<div title="' + title + '" style="flex:1;height:' + h + 'px;background:#22c55e;border-radius:3px 3px 0 0;min-width:4px;opacity:0.85;transition:opacity 0.2s" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0.85"></div>';
+      });
+      html += '</div>' +
+        '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--text-faint);font-family:JetBrains Mono,monospace">' +
+          '<span>' + (days[0] || '') + '</span><span>' + (days[days.length - 1] || '') + '</span>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Two-column: Top types + Block reasons
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">';
+
+    // Top notification types
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Top Notification Types</div>';
+    if (topTypes.length > 0) {
+      var topMax = topTypes[0][1];
+      topTypes.forEach(function(entry) {
+        var barW = Math.max(8, Math.round(entry[1] / topMax * 100));
+        html += '<div style="margin-bottom:6px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">' +
+            '<span style="color:var(--text);font-family:JetBrains Mono,monospace">' + entry[0] + '</span>' +
+            '<span style="color:var(--text-dim)">' + entry[1] + '</span>' +
+          '</div>' +
+          '<div style="height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden">' +
+            '<div style="width:' + barW + '%;height:100%;background:var(--accent);border-radius:3px"></div>' +
+          '</div>' +
+        '</div>';
+      });
+    } else {
+      html += '<div style="color:var(--text-faint);font-size:12px">No data</div>';
+    }
+    html += '</div>';
+
+    // Block reasons
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Block Reasons</div>';
+    var blockEntries = Object.entries(blockReasons).sort(function(a, b) { return b[1] - a[1]; });
+    if (blockEntries.length > 0) {
+      var blockMax = blockEntries[0][1];
+      blockEntries.forEach(function(entry) {
+        var barW = Math.max(8, Math.round(entry[1] / blockMax * 100));
+        html += '<div style="margin-bottom:6px">' +
+          '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">' +
+            '<span style="color:var(--text);font-family:JetBrains Mono,monospace">' + entry[0] + '</span>' +
+            '<span style="color:var(--text-dim)">' + entry[1] + '</span>' +
+          '</div>' +
+          '<div style="height:6px;background:var(--bg-card);border-radius:3px;overflow:hidden">' +
+            '<div style="width:' + barW + '%;height:100%;background:#ef4444;border-radius:3px"></div>' +
+          '</div>' +
+        '</div>';
+      });
+    } else {
+      html += '<div style="color:var(--text-faint);font-size:12px">No blocked notifications</div>';
+    }
+    html += '</div></div>';
+
+    // Classification breakdown
+    var classBreakdown = {};
+    logs.forEach(function(l) {
+      var c = l.classification || 'unknown';
+      classBreakdown[c] = (classBreakdown[c] || 0) + 1;
+    });
+    html += '<div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">' +
+      '<div style="font-size:13px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Classification Breakdown</div>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap">';
+    var classColors = { product: 'var(--accent)', required_transactional: 'var(--green)', configurable_transactional: '#f59e0b', marketing: '#a78bfa', unknown: 'var(--text-faint)' };
+    Object.entries(classBreakdown).sort(function(a, b) { return b[1] - a[1]; }).forEach(function(entry) {
+      var color = classColors[entry[0]] || 'var(--text-dim)';
+      html += '<div style="text-align:center">' +
+        '<div style="font-size:20px;font-weight:700;font-family:JetBrains Mono,monospace;color:' + color + '">' + entry[1] + '</div>' +
+        '<div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.3px">' + entry[0].replace(/_/g, ' ') + '</div>' +
+      '</div>';
+    });
+    html += '</div></div>';
+
+    container.innerHTML = html;
+    console.log('[Admin] Notification analytics loaded: ' + logs.length + ' events');
+
+  } catch (e) {
+    console.error('[Admin] Notification analytics error:', e);
+    container.innerHTML = '<div class="admin-red">Failed to load analytics: ' + (e.message || e) + '</div>';
+  }
+}
