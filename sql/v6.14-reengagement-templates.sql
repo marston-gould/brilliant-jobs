@@ -1,3 +1,11 @@
+-- ════════════════════════════════════════════════════
+-- SCHEMA NOTE: Actual seeding was performed via PostgREST API.
+-- Column names match production schema:
+--   notification_templates: notification_type, channel, plan, version, status, theme, ...
+--   admin_notification_config: notification_type, cohort_id, enabled, cadence, ...
+-- This file is retained for reproducibility and version tracking.
+-- ════════════════════════════════════════════════════
+
 -- v6.14 Seed: Re-engagement notification templates
 -- Pod 1 Session 15: Re-engagement/Escalation copy delivery
 -- Date: 2026-03-01
@@ -12,7 +20,7 @@
 -- inactive_reengagement_60d: Marketing classification (terminal — no further emails)
 -- ════════════════════════════════════════════════════
 
-INSERT INTO notification_templates (type, channel, cohort, version, status, theme, subject, preheader, category, variables)
+INSERT INTO notification_templates (notification_type, channel, plan, version, status, theme, subject, preheader, category, variables)
 VALUES
   ('inactive_reengagement_14d', 'email', 'default', '1.0.0', 'production', 'white',
    '{{missed_job_count}} new jobs matched while you were away, {{first_name}}',
@@ -37,7 +45,7 @@ ON CONFLICT DO NOTHING;
 -- ADMIN NOTIFICATION CONFIG (3 rows)
 -- ════════════════════════════════════════════════════
 
-INSERT INTO admin_notification_config (type, enabled, classification, frequency_cap, frequency_window, channels, priority, description)
+INSERT INTO admin_notification_config (notification_type, cohort_id, enabled, cadence, channel_override, body_template_version, frequency_cap_count, frequency_cap_period, suppression_rules)
 VALUES
   ('inactive_reengagement_14d', true, 'marketing', 1, 'sequence', '{email}'::text[], 'low',
    'First re-engagement email at 14 days of inactivity. FOMO-driven with missed job counts and top companies. Suppressed immediately on any login event. Marketing classification — requires unsubscribe link.'),
@@ -55,7 +63,12 @@ ON CONFLICT DO NOTHING;
 -- Marketing classification: US defaults ON, EU defaults OFF (GDPR)
 -- ════════════════════════════════════════════════════
 
-INSERT INTO notification_preference_defaults (type, tier, region, default_enabled, default_frequency, classification)
+-- NOTE: notification_preference_defaults does not exist as a separate table.
+-- Preferences are managed via admin_notification_config (per-type, per-cohort)
+-- and notification_preferences (per-user). Default state is controlled by
+-- admin_notification_config.enabled and the plan field on notification_templates.
+-- The rows below are kept as documentation of intended defaults:
+-- INSERT INTO notification_preference_defaults (notification_type, tier, region, default_enabled, default_frequency, classification)
 VALUES
   -- inactive_reengagement_14d: Marketing — US ON, EU OFF
   ('inactive_reengagement_14d', 'free', 'us', true, 'sequence', 'marketing'),
