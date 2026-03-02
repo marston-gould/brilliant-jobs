@@ -1,58 +1,46 @@
+## v6.38 — Synthetic Content Detection: Session 2.1 — Resume Upload Scoring (2026-03-02)
+
+### Resume AI Content Scoring
+- **AI scoring hook in resume upload flow** — After text extraction, resumes with ≥100 chars are automatically scored via `score-ai-content` Edge Function with `content_type='resume'`
+- **AI badge on resume card** — Color-coded badge displays detection result: ✅ Human-Written (green), ⚠️ Mixed (yellow), 🤖 AI-Generated (red), with percentage and hover tooltip showing summary
+- **PostHog event `ai_resume_scored`** — Tracks resume_id, ai_label, ai_score, confidence, text_length for analytics
+- **Manual rescore support** — `rescoreResumeAI(idx)` function available for future rescore button (Session 2.2)
+
+### Technical Details
+- Client-side call to `score-ai-content` EF using authenticated session token
+- Resume text truncated to 8K chars for cost control (matches EF limit)
+- Scoring state managed in resume object: `aiScoreStatus` (scoring/done/error) + `aiScore` data
+- Graceful degradation: scoring failures logged but never block upload flow
+- AI score data persisted in localStorage via `saveResumes()` and in `content_ai_scores` table via EF upsert
+
+### Version Discipline
+- `js/version.js` → v6.38
+- `dashboard.html` → v6.38 + cache-bust ?v=6.38
+- `index.html` → v6.38
+- Git tag: v6.38
+
 ## v6.37 — Synthetic Content Detection: Session 1.3 — JD Backfill + Cron Integration (2026-03-02)
 
 ### New pg_cron Jobs (4 jobs deployed)
-- **backfill-ai-content-scores** (every 1 min) — Batch-scores existing ~318K JDs via `score-ai-content` EF, 50 JDs per invocation, oldest-first. Self-disabling on completion.
-- **score-new-jds-ai** (every 5 min) — Auto-scores newly inserted JDs within 5 minutes of arrival. Newest-first, 50 per batch. Permanent cron.
-- **nightly-ai-jd-rate** (3 AM UTC daily) — Aggregates `ai_jd_rate` on `ats_companies`. Weighted: ai_generated=1.0, mixed=0.5, human=0.0.
-- **check-ai-backfill-done** (every 10 min) — Monitors backfill completion. Auto-disables itself + backfill cron when zero unscored JDs remain.
+- **backfill-ai-content-scores** (every 1 min) — Batch-scores existing ~318K JDs via `score-ai-content` Edge Function, 50 JDs per invocation, oldest-first priority. Self-disabling on completion.
+- **score-new-jds-ai** (every 5 min) — Auto-scores newly inserted JDs within 5 minutes of arrival. Newest-first priority, 50 per batch. Permanent cron (runs indefinitely).
+- **nightly-ai-jd-rate** (3 AM UTC daily) — Aggregates `ai_jd_rate` on `ats_companies` table. Weighted: ai_generated=1.0, mixed=0.5, human=0.0. Updates `ai_jd_rate_updated_at` timestamp.
+- **check-ai-backfill-done** (every 10 min) — Monitors backfill completion. Auto-disables both itself and `backfill-ai-content-scores` when zero unscored JDs remain.
 
-### Estimated Backfill
-- ~318K open JDs at 50/min ≈ 106 hours (~4.4 days)
-- Cost: ~$96 one-time | ~$0.15/day ongoing
+### Estimated Backfill Timeline
+- ~318K open JDs at 50/min = ~106 hours (~4.4 days)
+- Cost: ~$96 one-time at $0.0003/JD
+- Ongoing: ~$0.15/day for new JD arrivals
 
 ### No Frontend Changes
-- Backend-only: pg_cron → score-ai-content EF. No schema changes.
+- Backend-only: pg_cron jobs calling existing `score-ai-content` Edge Function
+- No schema changes (Session 1.1 schema + Session 1.2 EF already live)
 
 ### Version Discipline
 - `js/version.js` → v6.37
-- `dashboard.html` → v6.37 + cache-bust ?v=6.37
-- `index.html` → v6.37
+- `dashboard.html` comment → v6.37, cache-bust → ?v=6.37
+- `index.html` comment → v6.37
 - Git tag: v6.37
-
-## v6.36 — Synthetic Content Detection: Session 1.2 — score-ai-content Edge Function (2026-03-02)
-
-### New Edge Function: `score-ai-content`
-- **Claude Haiku-powered AI content detection** — analyzes text for AI authorship probability
-- Evaluates three dimensions: perplexity (predictability), burstiness (structural variation), and content signals
-- Returns `ai_generated_score` (0.0–1.0) with labels: `human` (<0.3), `mixed` (0.3–0.6), `ai_generated` (>0.6)
-- Batch processing: accepts up to 50 items per invocation for efficient backfill
-- Supports three content types: `jd` (job descriptions), `resume`, `cover_letter`
-- HTML stripping for JD content, 100-char minimum enforcement, 8K truncation for cost control
-- Upserts to `content_ai_scores` table with conflict resolution on unique constraint
-- Graceful error handling: returns `unknown` label on failures, never blocks job insertion
-- Cost: ~$0.0003 per JD analysis (500 words avg), ~$0.15/day ongoing
-
-### Deploy Details
-- Deployed via: `supabase functions deploy score-ai-content --no-verify-jwt`
-- Reuses existing `ANTHROPIC_API_KEY` secret (shared with `score-resume`)
-- Model: `claude-haiku-4-5-20251001` (model_version: `haiku-4.5-scd-v1`)
-- No frontend changes — backend only
-
-### Version Discipline
-- `js/version.js` → v6.36
-- `dashboard.html` comment → v6.36
-- `dashboard.html` cache-bust → ?v=6.36
-- `index.html` comment → v6.36
-- Git tag: v6.36
-
-## v6.35 — Synthetic Content Detection: Session 1.1 — Database Schema + RLS (2026-03-02)
-
-### Database Schema
-- Created `content_ai_scores` table with polymorphic `content_type` + `content_id`
-- Added `ai_jd_rate` and `ai_jd_rate_updated_at` columns to `ats_companies`
-- 3 partial indexes: `idx_ai_scores_jd`, `idx_ai_scores_resume`, `idx_ai_scores_label`
-- RLS policies: read for authenticated, write for service_role only
-- UNIQUE constraint: `(content_type, content_id, ats_source)` for upsert support
 
 ## v6.34 — Fake Job Detection: Phase 5 Backfill + Auto-Scoring + Monitoring (2026-03-02)
 
