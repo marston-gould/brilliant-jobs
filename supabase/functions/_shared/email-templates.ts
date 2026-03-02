@@ -3494,3 +3494,196 @@ export function monthlyProductUpdateEmail(
     `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from product updates</a></p>`),
   };
 }
+
+// ═══════════════════════════════════════════════════════════
+// SESSION 15: RE-ENGAGEMENT SEQUENCE EMAILS (White Theme)
+// Pod 1 copy: PRODUCTION — Batch 11 delivered 2026-03-01
+// White theme design: APPROVED — v6.14
+// Marketing classification: unsubscribe required in all variants
+// Escalation: 14-day → 30-day → 60-day inactivity
+// Suppression: Stops immediately when user logs in (any auth event)
+// ═══════════════════════════════════════════════════════════
+
+export function reengagement14dEmail(
+  firstName?: string,
+  missedJobCount?: number,
+  topCompanies?: string[],
+  filterNames?: string[],
+  lastLoginDate?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const missed = missedJobCount ?? 0;
+  const companies = topCompanies || [];
+  const filters = filterNames || [];
+  const lastLogin = lastLoginDate || "a while ago";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const companiesHtml = companies.length > 0
+    ? companies.slice(0, 5).map(c => `<div style="display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;margin:3px 4px;font-size:12px;font-weight:600;color:#2563eb;">${c}</div>`).join("")
+    : "";
+
+  const filtersHtml = filters.length > 0
+    ? `<p class="text" style="font-size:13px;">Your saved searches: <strong>${filters.join(", ")}</strong></p>`
+    : "";
+
+  return {
+    subject: missed > 0
+      ? `${missed} new jobs matched while you were away, ${name}`
+      : `Your job search paused — here's what you're missing, ${name}`,
+    html: whiteBaseLayout("We Noticed You've Been Away", `
+      <div class="card">
+        <div class="card-title">${name}, your search is on pause.</div>
+        <p class="card-sub">It's been about two weeks since your last visit. The job market hasn't slowed down — here's what's been happening.</p>
+
+        ${missed > 0 ? `
+        <div class="highlight">
+          <div style="font-size:32px;font-weight:700;color:#2563eb;text-align:center;">${missed}</div>
+          <div style="font-size:13px;color:#475569;text-align:center;">new jobs matched your filters since ${lastLogin}</div>
+        </div>
+        ` : ""}
+
+        ${companiesHtml ? `
+        <div style="margin:16px 0;">
+          <div style="font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.5px;margin-bottom:8px;">ACTIVELY HIRING</div>
+          ${companiesHtml}
+        </div>
+        ` : ""}
+
+        ${filtersHtml}
+
+        <p class="text">New roles are being posted daily. The sooner you check in, the sooner you can act on the best matches before they fill.</p>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">See What You've Missed →</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">We'll keep monitoring your filters — but roles move fast.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from re-engagement emails</a></p>`),
+  };
+}
+
+export function reengagement30dEmail(
+  firstName?: string,
+  missedJobCount?: number,
+  closedJobCount?: number,
+  topCompanies?: string[],
+  filterNames?: string[],
+  avgSalaryRange?: string,
+  lastLoginDate?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const missed = missedJobCount ?? 0;
+  const closed = closedJobCount ?? 0;
+  const companies = topCompanies || [];
+  const filters = filterNames || [];
+  const salary = avgSalaryRange || "";
+  const lastLogin = lastLoginDate || "over a month ago";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  const companiesHtml = companies.length > 0
+    ? companies.slice(0, 5).map(c => `<div style="display:inline-block;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;margin:3px 4px;font-size:12px;font-weight:600;color:#2563eb;">${c}</div>`).join("")
+    : "";
+
+  return {
+    subject: missed > 0
+      ? `${name}, ${missed} jobs came and went — ${closed > 0 ? `${closed} already closed` : "some won't last"}`
+      : `A month away is a long time in this market, ${name}`,
+    html: whiteBaseLayout("Your Job Search Has Been Paused for 30 Days", `
+      <div class="card">
+        <div class="card-title">${name}, it's been a month.</div>
+        <p class="card-sub">Your filters are still running, but you haven't checked in since ${lastLogin}. Here's what the market looked like while you were away.</p>
+
+        <div style="display:flex;justify-content:space-around;text-align:center;margin:20px 0;">
+          ${missed > 0 ? `<div><div style="font-size:28px;font-weight:700;color:#2563eb;">${missed}</div><div style="font-size:11px;color:#94a3b8;">Jobs Matched</div></div>` : ""}
+          ${closed > 0 ? `<div><div style="font-size:28px;font-weight:700;color:#ef4444;">${closed}</div><div style="font-size:11px;color:#94a3b8;">Already Closed</div></div>` : ""}
+          ${salary ? `<div><div style="font-size:28px;font-weight:700;color:#22c55e;">${salary}</div><div style="font-size:11px;color:#94a3b8;">Avg Salary Range</div></div>` : ""}
+        </div>
+
+        ${companiesHtml ? `
+        <div style="margin:16px 0;">
+          <div style="font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.5px;margin-bottom:8px;">COMPANIES YOU MISSED</div>
+          ${companiesHtml}
+        </div>
+        ` : ""}
+
+        <div style="background:#fefce8;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0;">
+          <div style="font-size:13px;color:#92400e;">The average high-match listing stays open for 18 days. At 30 days away, you've already missed at least one full cycle of opportunities.</div>
+        </div>
+
+        <p class="text">Your account, filters, and resumes are exactly where you left them. One click and you're back.</p>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Resume Your Search →</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">If your search is on hold for a reason, no worries — we'll be here when you're ready.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from re-engagement emails</a></p>`),
+  };
+}
+
+export function reengagement60dEmail(
+  firstName?: string,
+  missedJobCount?: number,
+  closedJobCount?: number,
+  newCompaniesCount?: number,
+  marketTrend?: string,
+  filterNames?: string[],
+  lastLoginDate?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const missed = missedJobCount ?? 0;
+  const closed = closedJobCount ?? 0;
+  const newCompanies = newCompaniesCount ?? 0;
+  const trend = marketTrend || "Hiring volume is up across most sectors.";
+  const filters = filterNames || [];
+  const lastLogin = lastLoginDate || "two months ago";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: missed > 0
+      ? `${name}, ${missed} jobs have passed — is it time to come back?`
+      : `Two months is a long pause, ${name} — the market has shifted`,
+    html: whiteBaseLayout("It's Been 60 Days Since Your Last Visit", `
+      <div class="card">
+        <div class="card-title">${name}, we wanted to check in one last time.</div>
+        <p class="card-sub">It's been about two months since you last logged in. We've been quietly tracking opportunities for you this whole time.</p>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin:16px 0;">
+          <div style="font-size:11px;font-weight:700;color:#3b82f6;letter-spacing:0.5px;margin-bottom:14px;">YOUR 60-DAY SNAPSHOT</div>
+
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;">
+            <span style="font-size:13px;color:#64748b;">Jobs matched</span>
+            <span style="font-size:13px;font-weight:700;color:#1e293b;">${missed > 0 ? missed : "—"}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;">
+            <span style="font-size:13px;color:#64748b;">Already closed</span>
+            <span style="font-size:13px;font-weight:700;color:#ef4444;">${closed > 0 ? closed : "—"}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;">
+            <span style="font-size:13px;color:#64748b;">New companies hiring</span>
+            <span style="font-size:13px;font-weight:700;color:#1e293b;">${newCompanies > 0 ? newCompanies : "—"}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;">
+            <span style="font-size:13px;color:#64748b;">Market trend</span>
+            <span style="font-size:13px;font-weight:600;color:#1e293b;">${trend}</span>
+          </div>
+        </div>
+
+        ${filters.length > 0 ? `<p class="text" style="font-size:13px;">Your filters (<strong>${filters.join(", ")}</strong>) are still active and tracking.</p>` : ""}
+
+        <p class="text">Whether you're ready to dive back in or just want to see what's out there, everything is where you left it — filters, resumes, pipeline. Nothing's been touched.</p>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Pick Up Where You Left Off →</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">This is our last check-in. We won't email again unless you come back or update your preferences.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from re-engagement emails</a></p>`),
+  };
+}
