@@ -1,3 +1,35 @@
+## v6.25 — Cadence Optimization + Resend Webhook Fix (2026-03-02)
+
+### Cadence Optimization Tab (Card 10)
+- **Send Time Analysis**: Open/click rates by hour of day (UTC) with heatmap chart. Identifies top 3 send hours.
+- **Day of Week Analysis**: Open/click rates by day with horizontal bar chart. Ranks best/worst days.
+- **Per-Campaign Frequency Table**: Sends per week, open rate, click rate, and signal indicators (Strong/OK/Low engagement/Over-sending).
+- **Re-engagement Thresholds**: Editable Tier 1/2/3 day thresholds (default 14/30/60) with win-back rate display. Auto-adjust toggle writes optimized values from data.
+- **Recommendations Engine**: Auto-generated insights based on statistical patterns — best send window, day preferences, over-frequency warnings, low win-back alerts. Impact-rated (high/medium/low).
+- **Apply Analysis → Settings**: One-click writes computed optimal hours, days, win-back rates, and per-type frequency map to `cadence_settings` table.
+- **Database**: `cadence_settings` table with optimal send hours, DOW, re-engagement thresholds, per-type frequency JSONB, auto-adjust flag.
+
+### Resend Webhook Pipeline Fix
+- **Root cause**: Resend webhook was never configured — no webhook endpoint existed in Resend dashboard.
+- **Fix**: Created webhook via Resend API pointing to `resend-webhook` Edge Function. Events: sent, delivered, opened, clicked, bounced, complained.
+- **Signing secret**: `RESEND_WEBHOOK_SECRET` set in Supabase secrets, `resend-webhook` EF redeployed to pick up secret.
+- **Verified**: Test email sent → `delivered_at` populated by webhook within 45s.
+- **Impact**: `notification_log.delivered_at`, `opened_at`, `clicked_at` now populate for all future emails. Unblocks cadence optimization, email cohort analytics, and all engagement-based features.
+
+### Frontend
+- admin-notifications.js v6.25 (+509 lines): loadCadenceTab, runCadenceAnalysis, renderCadenceTab, saveCadenceSettings, applyCadenceAnalysis, toggleCadenceAutoAdjust
+- admin.js: cadence tab registered
+- dashboard.html: Cadence tab button + panel
+
+### Database
+- `cadence_settings` table (new)
+
+### Infrastructure
+- Resend webhook endpoint: `b9ba0944-bd27-4507-9033-06abaa6f05b9`
+- `resend-webhook` EF redeployed with signing secret
+
+---
+
 ## v6.25 — Email Cohort Analytics Tab (2026-03-01)
 
 ### New Admin Tab: Email Cohorts
