@@ -2528,6 +2528,7 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 
 | # | Card | Status | Notes |
 |---|------|--------|-------|
+| 10 | Cadence optimization | ✅ | Cadence admin tab. Send-time heatmap (hour, DOW), per-campaign frequency table, re-engagement threshold editor with win-back rates, recommendation engine, apply-to-settings. cadence_settings table. Resend webhook pipeline fixed. |
 | 11 | Email reporting by cohort | ✅ | Email Cohorts admin tab. Overview: aggregate per-campaign stats. Campaign Drilldown: zero-based cumulative curve (Day 0 = user receive date). Compare: same campaign across two cohorts with delta. 90-day window from notification_log. |
 
 ### Remaining Cards
@@ -2535,7 +2536,6 @@ Key deliverables: send-notification v4 with full classification + suppression, a
 | # | Card | Status | Blocked By |
 |---|------|--------|------------|
 | 5 | Vonage 10DLC registration | ⏳ In Process | Submitted 2026-03-01, pending Vonage approval (1–4 week window) |
-| 10 | Cadence optimization | Todo | 30+ days delivery data |
 
 ### Version Surfaces (v6.25)
 
