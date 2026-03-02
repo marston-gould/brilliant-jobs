@@ -1,3 +1,24 @@
+## v6.37 — Synthetic Content Detection: Session 1.3 — JD Backfill + Cron Integration (2026-03-02)
+
+### New pg_cron Jobs (4 jobs deployed)
+- **backfill-ai-content-scores** (every 1 min) — Batch-scores existing ~318K JDs via `score-ai-content` EF, 50 JDs per invocation, oldest-first. Self-disabling on completion.
+- **score-new-jds-ai** (every 5 min) — Auto-scores newly inserted JDs within 5 minutes of arrival. Newest-first, 50 per batch. Permanent cron.
+- **nightly-ai-jd-rate** (3 AM UTC daily) — Aggregates `ai_jd_rate` on `ats_companies`. Weighted: ai_generated=1.0, mixed=0.5, human=0.0.
+- **check-ai-backfill-done** (every 10 min) — Monitors backfill completion. Auto-disables itself + backfill cron when zero unscored JDs remain.
+
+### Estimated Backfill
+- ~318K open JDs at 50/min ≈ 106 hours (~4.4 days)
+- Cost: ~$96 one-time | ~$0.15/day ongoing
+
+### No Frontend Changes
+- Backend-only: pg_cron → score-ai-content EF. No schema changes.
+
+### Version Discipline
+- `js/version.js` → v6.37
+- `dashboard.html` → v6.37 + cache-bust ?v=6.37
+- `index.html` → v6.37
+- Git tag: v6.37
+
 ## v6.36 — Synthetic Content Detection: Session 1.2 — score-ai-content Edge Function (2026-03-02)
 
 ### New Edge Function: `score-ai-content`
