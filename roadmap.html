@@ -1700,6 +1700,7 @@ const features = [
   { s: 'done', n: 'JD backfill + auto-score cron pipeline', d: 'v6.37: 4 pg_cron jobs — backfill-ai-content-scores (1min, 50/batch, oldest-first, self-disabling), score-new-jds-ai (5min, newest-first), nightly-ai-jd-rate (3AM UTC), check-ai-backfill-done (10min auto-disable). ~318K JDs backfilling ~4.4 days at ~$96.', p: 72, e: 1 },
   { s: 'done', n: 'Resume upload AI scoring + card badge', d: 'v6.38: Hooked score-ai-content into resume upload flow (after text extraction, content_type=resume). AI badge on resume card — human (green), mixed (yellow), ai_generated (red) with percentage + hover tooltip. PostHog event ai_resume_scored. Manual rescore function for Session 2.2.', p: 72, e: 2 },
   { s: 'done', n: 'Resume rescore button + rate limiting + history', d: 'v6.39: Rescore button on resume card with 60s cooldown rate limiting. Score history tracking (max 5 entries) with previous-vs-current delta display. Button shows live countdown timer during cooldown. History persisted in localStorage.', p: 72, e: 1 },
+  { s: 'done', n: 'Cover letter inline AI scoring + badge + rescore', d: 'v6.40: AI scoring hook after cover letter generation via score-ai-content EF. AI detection badge on cover letter archive cards (human/mixed/ai_generated). Rescore button with 60s cooldown. Inline scoring badge in rewrite preview. PostHog events: ai_cover_letter_scored, ai_cover_letter_rescored.', p: 72, e: 2 },
 ];
 
 
