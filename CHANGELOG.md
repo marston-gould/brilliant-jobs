@@ -1,3 +1,27 @@
+## v6.32 — Fake Job Detection: Phase 3 Trust Banner + Apply Interstitial (2026-03-02)
+
+### Job Detail — Trust Banner
+- **Trust banner** above job description in snippet row for caution/suspicious jobs
+- Caution variant: amber border, "Review This Posting Carefully" with top 3 signals
+- Suspicious variant: red border, "High Fraud Risk Detected" with top 3 signals
+- Safe and unknown jobs: no banner rendered (clean view preserved)
+
+### Application Flow — Fraud Interstitial Modal
+- **Apply click intercepted** for caution/suspicious fraud-scored jobs
+- Two modal variants: ⚠️ caution (amber, "Proceed with Caution") and 🚩 suspicious (red, "High Fraud Risk")
+- Shows top 5 fraud signals with ✓/✗ indicators inside modal
+- "Go Back" returns to feed, "Continue Anyway" / "Proceed with Caution" opens apply URL
+- Overlay click (outside card) dismisses modal
+- Fraud data sourced from existing `_fraudScoreCache` (Phase 2 infrastructure)
+
+### Files Changed (6)
+1. `js/version.js` — v6.31 → v6.32
+2. `js/job-feed.js` — `trustBannerHtml()`, `showFraudInterstitial()`, `closeFraudInterstitial()`, snippet row trust banner
+3. `js/location.js` — `applyButton()` fraud interstitial gate for caution/suspicious jobs
+4. `src/input.css` — trust banner + interstitial modal CSS (~30 new rules)
+5. `dashboard.html` — v6.31 → v6.32 comment
+6. `index.html` — v6.31 → v6.32 comment
+
 ## v6.31 — Fake Job Detection: Phase 2 Feed Badges + Tooltips (2026-03-02)
 
 ### Jobs Feed UI — Fraud Badges
