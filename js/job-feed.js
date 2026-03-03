@@ -1563,6 +1563,17 @@ async function fetchAiJdScores(jobs) {
           topSignals: row.top_signals || [],
         };
       });
+      // PostHog: track AI score coverage for this batch (v6.49 — Session 5.1)
+      if (typeof posthog !== 'undefined') {
+        var labels = {};
+        data.forEach(function(row) { labels[row.ai_label] = (labels[row.ai_label] || 0) + 1; });
+        posthog.capture('ai_scores_fetched', {
+          requested: ids.length,
+          returned: data.length,
+          coverage_pct: ids.length > 0 ? Math.round((data.length / ids.length) * 100) : 0,
+          label_counts: labels
+        });
+      }
     }
   } catch (e) {
     console.warn('[BJ] AI JD score fetch failed:', e);
