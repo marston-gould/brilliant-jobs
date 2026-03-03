@@ -1405,7 +1405,8 @@ function isAiScoringExclusionActive() {
 
 function applyAiScoringExclusions(jobs) {
   if (!isAiScoringExclusionActive()) return jobs;
-  return jobs.map(function(j) {
+  var excludedCount = 0;
+  var result = jobs.map(function(j) {
     var info = _aiJdScoreCache[j.greenhouse_id];
     if (!info || !info.label) return j;
     var excluded = false;
@@ -1414,11 +1415,21 @@ function applyAiScoringExclusions(jobs) {
     if (excluded) {
       // Mark job as scoring-excluded (used by renderer to dim badge)
       j._aiScoringExcluded = true;
+      excludedCount++;
     } else {
       j._aiScoringExcluded = false;
     }
     return j;
   });
+  // PostHog: track exclusion impact on feed (v6.49 — Session 5.1)
+  if (excludedCount > 0 && typeof posthog !== 'undefined') {
+    posthog.capture('ai_scoring_exclusion_applied', {
+      excluded_count: excludedCount,
+      total_jobs: jobs.length,
+      prefs: Object.assign({}, _userAiScoringPrefsCache)
+    });
+  }
+  return result;
 }
 
 // Init trust filter UI
@@ -1552,6 +1563,17 @@ async function fetchAiJdScores(jobs) {
           topSignals: row.top_signals || [],
         };
       });
+      // PostHog: track AI score coverage for this batch (v6.49 — Session 5.1)
+      if (typeof posthog !== 'undefined') {
+        var labels = {};
+        data.forEach(function(row) { labels[row.ai_label] = (labels[row.ai_label] || 0) + 1; });
+        posthog.capture('ai_scores_fetched', {
+          requested: ids.length,
+          returned: data.length,
+          coverage_pct: ids.length > 0 ? Math.round((data.length / ids.length) * 100) : 0,
+          label_counts: labels
+        });
+      }
     }
   } catch (e) {
     console.warn('[BJ] AI JD score fetch failed:', e);
