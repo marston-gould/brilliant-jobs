@@ -203,7 +203,25 @@ async function fetchAndRenderStats() {
     var stats = aggregateStats(deduped);
     showStatsLoading(false);
     renderStatCards(stats);
-    renderTimeline(stats);
+
+    // A15 Session 3: When "All" filters selected, use MV data for source charts
+    var isAllMode = statsSelectedFilters.includes('__all__');
+    var mvSourceTotals = null, mvSourceTimeline = null;
+    if (isAllMode) {
+      try {
+        var mvResults = await Promise.all([fetchSourceTotalsFromMV(), fetchSourceBreakdownFromMV()]);
+        mvSourceTotals = mvResults[0];
+        mvSourceTimeline = mvResults[1];
+      } catch (e) { console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
+    }
+
+    // Use MV-powered source timeline when available, otherwise standard
+    if (mvSourceTimeline && mvSourceTimeline.length > 0) {
+      renderSourceTimelineFromMV(mvSourceTimeline);
+    } else {
+      renderTimeline(stats);
+    }
+
     renderSalaryDist(stats);
     renderSeniorityBars(stats);
     renderTopCompanies(stats);
@@ -212,7 +230,13 @@ async function fetchAndRenderStats() {
     renderGeoMap(stats, configs);
     renderSalaryByLevel(stats);
     renderIndustryBars(stats);
-    renderSourceBreakdown(stats);
+
+    // Use MV-powered source breakdown when available, otherwise standard
+    if (mvSourceTotals) {
+      renderSourceBreakdownFromMV(mvSourceTotals);
+    } else {
+      renderSourceBreakdown(stats);
+    }
     var notice = document.getElementById('stats-cap-notice');
     if (notice) {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
@@ -1022,6 +1046,104 @@ async function checkMVStaleness() {
     }
   } catch (e) { console.warn('[Stats] MV staleness check failed:', e.message); }
   return { fresh: false, ageStr: 'unknown', refreshedAt: null };
+}
+
+// ─── A15 S3: Source-Colored Stacked Timeline from MV ───
+function renderSourceTimelineFromMV(mvData) {
+  var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
+  var sourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
+
+  // Build { week: { source: count } } map
+  var weekMap = {}, sources = {};
+  for (var i = 0; i < mvData.length; i++) {
+    var r = mvData[i];
+    var wk = r.week; var src = r.ats_source || 'unknown';
+    if (!weekMap[wk]) weekMap[wk] = {};
+    weekMap[wk][src] = (weekMap[wk][src] || 0) + r.jobs_added;
+    sources[src] = true;
+  }
+
+  // Sort weeks, take last 13
+  var weeks = Object.keys(weekMap).sort();
+  if (weeks.length > 13) weeks = weeks.slice(weeks.length - 13);
+  var sourceList = Object.keys(sources).sort();
+
+  // Build stacked bar series
+  var series = sourceList.map(function(src) {
+    return {
+      name: src.charAt(0).toUpperCase() + src.slice(1),
+      type: 'bar', stack: 'total', barMaxWidth: 28,
+      data: weeks.map(function(wk) { return weekMap[wk][src] || 0; }),
+      itemStyle: { color: sourceColors[src] || '#475569', borderRadius: sourceList.indexOf(src) === sourceList.length - 1 ? [3,3,0,0] : [0,0,0,0] },
+      emphasis: { itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.15)' } }
+    };
+  });
+
+  // WTD detection: last week might be current incomplete week
+  var now = new Date();
+  var todayDay = now.getUTCDay();
+  var thisMonday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (todayDay === 0 ? 6 : todayDay - 1)));
+  var wtdKey = thisMonday.toISOString().slice(0, 10);
+  var hasWtd = todayDay !== 0 && weeks.indexOf(wtdKey) !== -1;
+
+  chart.setOption({
+    tooltip: Object.assign({ trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: function(params) {
+        var d = new Date(params[0].name);
+        var isWtd = hasWtd && params[0].name === wtdKey;
+        var header = '<b>' + (isWtd ? 'WTD: ' : 'Week of ') + d.toLocaleDateString('en-US', {month:'short',day:'numeric'}) + '</b>' + (isWtd ? ' (so far)' : '');
+        var total = 0;
+        var lines = params.filter(function(p){return p.value > 0;}).map(function(p) {
+          total += p.value;
+          return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + ';margin-right:4px;"></span>' + p.seriesName + ': ' + p.value.toLocaleString();
+        });
+        return header + '<br/>' + lines.join('<br/>') + '<br/><b>Total: ' + total.toLocaleString() + '</b>';
+      }
+    }, ttip()),
+    legend: { top: 0, textStyle: { fontFamily: _T.sans, fontSize: 11, color: _T.dim } },
+    grid: { top: 35, right: 20, bottom: 30, left: 50 },
+    xAxis: { type: 'category', data: weeks,
+      axisLabel: { color: _T.dim, fontFamily: _T.mono, fontSize: 10, interval: 0,
+        formatter: function(v) { var d = new Date(v); var label = d.toLocaleDateString('en-US', {month:'short',day:'numeric'}); return hasWtd && v === wtdKey ? label + '\n(WTD)' : label; } },
+      axisLine: STATS_THEME.axisLine },
+    yAxis: { type: 'value', axisLabel: STATS_THEME.axisLabel, splitLine: STATS_THEME.splitLine, minInterval: 1 },
+    series: series,
+    animation: true, animationDuration: 600
+  }, true);
+}
+
+// ─── A15 S3: Source Breakdown Donut from MV Totals ───
+function renderSourceBreakdownFromMV(mvTotals) {
+  var chart = getOrCreateChart('#chart-source'); if (!chart) return;
+  var sourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6', 'unknown':'#475569' };
+
+  var entries = Object.entries(mvTotals).sort(function(a,b) { return b[1].jobs - a[1].jobs; });
+  if (entries.length === 0) { emptyChart(chart, 'No source data'); return; }
+
+  var total = entries.reduce(function(a, e) { return a + e[1].jobs; }, 0);
+  chart.setOption({
+    graphic: [],
+    tooltip: Object.assign({ trigger: 'item',
+      formatter: function(p) {
+        var src = p.name.toLowerCase();
+        var entry = mvTotals[src];
+        var salaryPct = entry && entry.withSalary > 0 ? Math.round((entry.withSalary / entry.jobs) * 100) : 0;
+        return '<b>' + p.name + '</b><br/>' + p.value.toLocaleString() + ' jobs (' + ((p.value / total) * 100).toFixed(1) + '%)' +
+          (salaryPct > 0 ? '<br/>' + salaryPct + '% with salary data' : '');
+      }
+    }, ttip()),
+    series: [{
+      type: 'pie', radius: ['45%', '72%'], center: ['50%', '55%'],
+      data: entries.map(function(e, i) {
+        var name = e[0].charAt(0).toUpperCase() + e[0].slice(1);
+        return { name: name, value: e[1].jobs, itemStyle: { color: sourceColors[e[0]] || STATS_COLORS[i % STATS_COLORS.length] } };
+      }),
+      label: { fontSize: 11, fontFamily: _T.sans, color: _T.dim,
+        formatter: function(p) { return p.name + ' ' + ((p.value / total) * 100).toFixed(0) + '%'; } },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } },
+      animationType: 'scale', animationDuration: 600
+    }]
+  }, true);
 }
 
 // ─── Resize / Refresh ───
