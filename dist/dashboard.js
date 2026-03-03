@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.56';
+var BJ_VERSION = 'v6.61';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -655,7 +655,10 @@ var savedJobIds = safeReadLS('bj_saved_jobs', []);
 var appliedJobIds = safeReadLS('bj_applied_jobs', []);
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 20;
+var JOBS_PER_PAGE = 50;
+var MAX_FEED_ROWS = 500; // A14: hard cap — no query returns more than 500 rows to client
+var _feedLoadMoreOffset = 0; // A14: tracks how many rows loaded so far for Load More
+var _feedTotalCount = 0; // A14: total matching rows (from count: 'exact')
 
 // Resume state (populated fully in resumes.js)
 var resumes = safeReadLS('bj_resumes', []);
@@ -2181,29 +2184,34 @@ async function searchJobs(page = 0) {
     const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
 
     if (filtersToRun.length === 1) {
-      // Single filter — straightforward query with count + pagination
-      let query = sb.from('ats_jobs').select('*', { count: 'exact' });
-      query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
-      if (hiddenIds.length > 0) {
-        query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
-      }
-
-      // Multi-sort (skip 'level' — client-side only)
-      for (const s of jobSortStack) {
-        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
-        query = query.order(s.field, { ascending: s.asc });
-      }
-
-      const from = page * JOBS_PER_PAGE;
-      query = query.range(from, from + JOBS_PER_PAGE - 1);
-
-      const { data: jobs, error, count } = await query;
-      if (error) throw error;
-      allJobs = (jobs || []).map(j => ({ ...j, _filterNums: [{ num: filtersToRun[0]._filterNum || '', color: filtersToRun[0]._filterColor || '' }] }));
-      totalCount = count || 0;
+      // Single filter — A14 pagination: 500-row cap with Load More
+      const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
+      const feedResult = await cachedQuery(feedCacheKey, async function() {
+        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
+        if (hiddenIds.length > 0) {
+          query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
+        }
+        // Multi-sort (skip 'level' — client-side only)
+        for (const s of jobSortStack) {
+          if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
+          query = query.order(s.field, { ascending: s.asc });
+        }
+        // A14: page-based but capped at MAX_FEED_ROWS total
+        const from = page * JOBS_PER_PAGE;
+        if (from >= MAX_FEED_ROWS) return { data: [], count: 0, error: null };
+        const to = Math.min(from + JOBS_PER_PAGE - 1, MAX_FEED_ROWS - 1);
+        query = query.range(from, to);
+        return query;
+      }, { ttl: 180000 }); // 3-min TTL for feed queries
+      const jobs = feedResult.data || [];
+      allJobs = jobs.map(j => ({ ...j, _filterNums: [{ num: filtersToRun[0]._filterNum || '', color: filtersToRun[0]._filterColor || '' }] }));
+      totalCount = feedResult.count || 0;
+      _feedTotalCount = totalCount;
+      _feedLoadMoreOffset = (page + 1) * JOBS_PER_PAGE;
     } else {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
-      const perFilter = Math.ceil(200 / filtersToRun.length);
+      const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
         let q = sb.from('ats_jobs').select('*', { count: 'exact' });
         q = buildFilterQuery(sf, q, sf._locationIds);
@@ -2474,24 +2482,34 @@ async function updateJobStatsFromFilters(filters) {
         }
       }
 
-      // Company count — use count-only query instead of fetching 2000 rows (A14 fix)
-      const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
-      const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
-      let cq = sb.from('ats_jobs').select('company_slug', { count: 'exact' });
-      cq = buildFilterQuery(sfNoWhenFirst, cq, firstLocIds);
-      cq = excludeHidden(cq);
-      cq = cq.not('company_slug', 'is', null).limit(1);
-      // We need distinct count — PostgREST doesn't support COUNT(DISTINCT), so use a lighter approach:
-      // Fetch just distinct slugs with a reasonable cap
-      let cq2 = sb.from('ats_jobs').select('company_slug');
-      cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
-      cq2 = excludeHidden(cq2);
-      cq2 = cq2.not('company_slug', 'is', null).limit(1000);
-      const { data: coRows } = await cq2;
-      const uniqueCos = new Set();
-      if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+      // Company count — A14 v6.60: try MV data first, fallback to capped query
+      let companyCountVal = 0;
+      try {
+        // Try MV — instant, pre-aggregated
+        const { data: mvCounts } = await sb.from('mv_job_feed_counts').select('ats_source, job_count');
+        if (mvCounts && mvCounts.length > 0) {
+          // MV has total_companies via mv_landing_stats
+          const { data: mvLanding } = await sb.from('mv_landing_stats').select('total_companies').single();
+          companyCountVal = mvLanding ? mvLanding.total_companies : 0;
+        }
+      } catch(mvErr) {
+        console.warn('[BJ] MV company count fallback:', mvErr.message);
+      }
+      if (!companyCountVal) {
+        // Fallback: capped distinct slug query (max 500 rows, not 1000)
+        const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
+        const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
+        let cq2 = sb.from('ats_jobs').select('company_slug');
+        cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
+        cq2 = excludeHidden(cq2);
+        cq2 = cq2.not('company_slug', 'is', null).limit(500);
+        const { data: coRows } = await cq2;
+        const uniqueCos = new Set();
+        if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+        companyCountVal = uniqueCos.size;
+      }
 
-      return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: uniqueCos.size } };
+      return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: companyCountVal } };
     });
 
     if (cachedStats && cachedStats.data) {
@@ -3508,17 +3526,18 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
-  // Pagination row
-  const totalPages = Math.ceil(total / JOBS_PER_PAGE);
-  if (totalPages > 1) {
-    html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
-      <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
-        ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
-        <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>
-        ${page < totalPages - 1 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page + 1})">Next →</button>` : ''}
+  // A14 Pagination: Showing X of Y + Load More (capped at 500)
+  const showing = Math.min(jobs.length + page * JOBS_PER_PAGE, total);
+  const capped = Math.min(total, MAX_FEED_ROWS);
+  html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
+      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs${total > MAX_FEED_ROWS ? ' (limited to ' + MAX_FEED_ROWS.toLocaleString() + ')' : ''}</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${page > 0 ? '<button class="btn btn-sm btn-secondary" onclick="searchJobs(0)">↑ Back to top</button>' : ''}
+        ${showing < capped ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
       </div>
-    </td></tr>`;
-  }
+    </div>
+  </td></tr>`;
 
   tbody.innerHTML = html;
 
@@ -16690,8 +16709,35 @@ async function fetchAndRenderStats() {
     if (deduped.length === 0) { showEmptyState('no-results'); return; }
     var stats = aggregateStats(deduped);
     showStatsLoading(false);
-    renderStatCards(stats);
-    renderTimeline(stats);
+
+    // A15 Session 5: When "All" filters selected, use MV data for stat cards + source charts
+    var isAllMode = statsSelectedFilters.includes('__all__');
+    var mvSourceTotals = null, mvSourceTimeline = null, mvLandingStats = null;
+    if (isAllMode) {
+      try {
+        var mvResults = await Promise.all([fetchSourceTotalsFromMV(), fetchSourceBreakdownFromMV(), fetchLandingStatsFromMV()]);
+        mvSourceTotals = mvResults[0];
+        mvSourceTimeline = mvResults[1];
+        mvLandingStats = mvResults[2];
+      } catch (e) { console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
+    }
+
+    // A15 S5: Render stat cards from MV when in All mode (instant, no row aggregation)
+    if (mvLandingStats) {
+      renderStatCardsFromMV(mvLandingStats);
+      renderMVFreshnessNotice(mvLandingStats.refreshed_at);
+    } else {
+      renderStatCards(stats);
+      hideMVFreshnessNotice();
+    }
+
+    // Use MV-powered source timeline when available, otherwise standard
+    if (mvSourceTimeline && mvSourceTimeline.length > 0) {
+      renderSourceTimelineFromMV(mvSourceTimeline);
+    } else {
+      renderTimeline(stats);
+    }
+
     renderSalaryDist(stats);
     renderSeniorityBars(stats);
     renderTopCompanies(stats);
@@ -16700,7 +16746,13 @@ async function fetchAndRenderStats() {
     renderGeoMap(stats, configs);
     renderSalaryByLevel(stats);
     renderIndustryBars(stats);
-    renderSourceBreakdown(stats);
+
+    // Use MV-powered source breakdown when available, otherwise standard
+    if (mvSourceTotals) {
+      renderSourceBreakdownFromMV(mvSourceTotals);
+    } else {
+      renderSourceBreakdown(stats);
+    }
     var notice = document.getElementById('stats-cap-notice');
     if (notice) {
       if (anyCapped) { notice.textContent = 'Based on ' + deduped.length.toLocaleString() + ' most recent matches'; notice.style.display = ''; }
@@ -16912,6 +16964,9 @@ function renderStatCards(stats) {
   var fmtK = function(n) { if (n == null) return 'N/A'; return n >= 1000 ? ('$' + Math.round(n/1000) + 'K') : ('$' + fmt(n)); };
   setText('#sc-total', fmt(stats.total));
   setText('#sc-salary', fmtK(stats.medianSalary));
+  // Restore label in case it was changed by MV mode
+  var salaryLabel = document.querySelector('#sc-salary');
+  if (salaryLabel && salaryLabel.nextElementSibling) salaryLabel.nextElementSibling.textContent = 'Median Salary';
   setText('#sc-senior', stats.seniorPct + '%');
   setText('#sc-remote', stats.remotePct + '%');
   setText('#sc-companies', fmt(stats.companyCount));
@@ -17459,6 +17514,213 @@ function showEmptyState(reason) {
   ['#sc-total','#sc-salary','#sc-senior','#sc-remote','#sc-companies'].forEach(function(s){setText(s,'\u2014');});
   var el = document.getElementById('stats-empty');
   if (el) { el.textContent = msgs[reason]||msgs['error']; el.style.display = ''; }
+}
+
+// ─── A15 Session 2: MV-backed aggregate queries ───
+
+// Fetch source totals from mv_job_feed_counts (pre-aggregated, instant)
+async function fetchSourceTotalsFromMV() {
+  try {
+    var cKey = 'mv:source-totals';
+    var result = await cachedQuery(cKey, function() {
+      return sb.from('mv_job_feed_counts').select('ats_source,job_count,with_salary,refreshed_at');
+    }, { ttl: 600000 }); // 10 min — matches MV refresh cycle
+    if (result && result.data) {
+      var totals = {};
+      for (var i = 0; i < result.data.length; i++) {
+        var row = result.data[i];
+        var src = row.ats_source || 'unknown';
+        if (!totals[src]) totals[src] = { jobs: 0, withSalary: 0 };
+        totals[src].jobs += row.job_count;
+        totals[src].withSalary += row.with_salary;
+      }
+      return totals;
+    }
+  } catch (e) { console.warn('[Stats] MV source totals failed:', e.message); }
+  return null;
+}
+
+// Fetch weekly source breakdown from mv_source_breakdown (for timeline overlay)
+async function fetchSourceBreakdownFromMV() {
+  try {
+    var cKey = 'mv:source-breakdown';
+    var result = await cachedQuery(cKey, function() {
+      return sb.from('mv_source_breakdown').select('ats_source,week,jobs_added,companies,refreshed_at').order('week', { ascending: false });
+    }, { ttl: 600000 }); // 10 min
+    return (result && result.data) || null;
+  } catch (e) { console.warn('[Stats] MV source breakdown failed:', e.message); }
+  return null;
+}
+
+// A15 S5: Fetch landing stats from MV for stat cards (total_jobs, salary, remote, companies)
+async function fetchLandingStatsFromMV() {
+  try {
+    var cKey = 'mv:landing-stats';
+    var result = await cachedQuery(cKey, function() {
+      return sb.from('mv_landing_stats').select('*').single();
+    }, { ttl: 600000 }); // 10 min — matches MV refresh cycle
+    return (result && result.data) || null;
+  } catch (e) { console.warn('[Stats] MV landing stats failed:', e.message); }
+  return null;
+}
+
+// A15 S5: Render stat cards from materialized view data (no row aggregation needed)
+function renderStatCardsFromMV(mv) {
+  var fmt = function(n) { return n != null ? Number(n).toLocaleString() : '\u2014'; };
+  setText('#sc-total', fmt(mv.total_jobs));
+  // Salary % = jobs_with_salary / total_jobs (MV has count, not median)
+  var salaryPct = mv.total_jobs > 0 ? Math.round((mv.jobs_with_salary / mv.total_jobs) * 100) : 0;
+  setText('#sc-salary', salaryPct + '%');
+  // Update label to reflect the metric change
+  var salaryLabel = document.querySelector('#sc-salary');
+  if (salaryLabel && salaryLabel.nextElementSibling) salaryLabel.nextElementSibling.textContent = 'With Salary';
+  // Remote %
+  var remotePct = mv.total_jobs > 0 ? Math.round((mv.remote_jobs / mv.total_jobs) * 100) : 0;
+  setText('#sc-remote', remotePct + '%');
+  setText('#sc-companies', fmt(mv.total_companies));
+  // Senior % not available from MV — show dash
+  setText('#sc-senior', '\u2014');
+}
+
+// A15 S5: Show MV freshness badge
+function renderMVFreshnessNotice(refreshedAt) {
+  var el = document.getElementById('stats-mv-freshness');
+  if (!el) {
+    // Create badge dynamically if not in HTML
+    var container = document.getElementById('stats-filter-pills');
+    if (!container) return;
+    el = document.createElement('span');
+    el.id = 'stats-mv-freshness';
+    el.style.cssText = 'font-size:11px;color:var(--text-faint);font-family:var(--mono);margin-left:auto;padding:3px 8px;border:1px solid var(--border);border-radius:6px;white-space:nowrap;display:flex;align-items:center;gap:4px;';
+    container.appendChild(el);
+  }
+  if (refreshedAt) {
+    var minsAgo = Math.round((Date.now() - new Date(refreshedAt).getTime()) / 60000);
+    var fresh = minsAgo <= 15;
+    var ageStr = minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ' + (minsAgo % 60) + 'min ago';
+    el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:' + (fresh ? '#22c55e' : '#f59e0b') + ';display:inline-block"></span> Data ' + ageStr;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function hideMVFreshnessNotice() {
+  var el = document.getElementById('stats-mv-freshness');
+  if (el) el.style.display = 'none';
+}
+
+// Check MV freshness — returns { fresh: bool, age: string, refreshed_at: string }
+async function checkMVStaleness() {
+  try {
+    var result = await sb.from('mv_landing_stats').select('refreshed_at').single();
+    if (result && result.data) {
+      var refreshedAt = new Date(result.data.refreshed_at);
+      var ageMs = Date.now() - refreshedAt.getTime();
+      var ageMins = Math.round(ageMs / 60000);
+      var ageStr = ageMins < 60 ? ageMins + 'min ago' : Math.round(ageMins / 60) + 'h ' + (ageMins % 60) + 'min ago';
+      return { fresh: ageMins <= 15, ageMs: ageMs, ageStr: ageStr, refreshedAt: result.data.refreshed_at };
+    }
+  } catch (e) { console.warn('[Stats] MV staleness check failed:', e.message); }
+  return { fresh: false, ageStr: 'unknown', refreshedAt: null };
+}
+
+// ─── A15 S3: Source-Colored Stacked Timeline from MV ───
+function renderSourceTimelineFromMV(mvData) {
+  var chart = getOrCreateChart('#chart-timeline'); if (!chart) return;
+  var sourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
+
+  // Build { week: { source: count } } map
+  var weekMap = {}, sources = {};
+  for (var i = 0; i < mvData.length; i++) {
+    var r = mvData[i];
+    var wk = r.week; var src = r.ats_source || 'unknown';
+    if (!weekMap[wk]) weekMap[wk] = {};
+    weekMap[wk][src] = (weekMap[wk][src] || 0) + r.jobs_added;
+    sources[src] = true;
+  }
+
+  // Sort weeks, take last 13
+  var weeks = Object.keys(weekMap).sort();
+  if (weeks.length > 13) weeks = weeks.slice(weeks.length - 13);
+  var sourceList = Object.keys(sources).sort();
+
+  // Build stacked bar series
+  var series = sourceList.map(function(src) {
+    return {
+      name: src.charAt(0).toUpperCase() + src.slice(1),
+      type: 'bar', stack: 'total', barMaxWidth: 28,
+      data: weeks.map(function(wk) { return weekMap[wk][src] || 0; }),
+      itemStyle: { color: sourceColors[src] || '#475569', borderRadius: sourceList.indexOf(src) === sourceList.length - 1 ? [3,3,0,0] : [0,0,0,0] },
+      emphasis: { itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.15)' } }
+    };
+  });
+
+  // WTD detection: last week might be current incomplete week
+  var now = new Date();
+  var todayDay = now.getUTCDay();
+  var thisMonday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (todayDay === 0 ? 6 : todayDay - 1)));
+  var wtdKey = thisMonday.toISOString().slice(0, 10);
+  var hasWtd = todayDay !== 0 && weeks.indexOf(wtdKey) !== -1;
+
+  chart.setOption({
+    tooltip: Object.assign({ trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: function(params) {
+        var d = new Date(params[0].name);
+        var isWtd = hasWtd && params[0].name === wtdKey;
+        var header = '<b>' + (isWtd ? 'WTD: ' : 'Week of ') + d.toLocaleDateString('en-US', {month:'short',day:'numeric'}) + '</b>' + (isWtd ? ' (so far)' : '');
+        var total = 0;
+        var lines = params.filter(function(p){return p.value > 0;}).map(function(p) {
+          total += p.value;
+          return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + p.color + ';margin-right:4px;"></span>' + p.seriesName + ': ' + p.value.toLocaleString();
+        });
+        return header + '<br/>' + lines.join('<br/>') + '<br/><b>Total: ' + total.toLocaleString() + '</b>';
+      }
+    }, ttip()),
+    legend: { top: 0, textStyle: { fontFamily: _T.sans, fontSize: 11, color: _T.dim } },
+    grid: { top: 35, right: 20, bottom: 30, left: 50 },
+    xAxis: { type: 'category', data: weeks,
+      axisLabel: { color: _T.dim, fontFamily: _T.mono, fontSize: 10, interval: 0,
+        formatter: function(v) { var d = new Date(v); var label = d.toLocaleDateString('en-US', {month:'short',day:'numeric'}); return hasWtd && v === wtdKey ? label + '\n(WTD)' : label; } },
+      axisLine: STATS_THEME.axisLine },
+    yAxis: { type: 'value', axisLabel: STATS_THEME.axisLabel, splitLine: STATS_THEME.splitLine, minInterval: 1 },
+    series: series,
+    animation: true, animationDuration: 600
+  }, true);
+}
+
+// ─── A15 S3: Source Breakdown Donut from MV Totals ───
+function renderSourceBreakdownFromMV(mvTotals) {
+  var chart = getOrCreateChart('#chart-source'); if (!chart) return;
+  var sourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6', 'unknown':'#475569' };
+
+  var entries = Object.entries(mvTotals).sort(function(a,b) { return b[1].jobs - a[1].jobs; });
+  if (entries.length === 0) { emptyChart(chart, 'No source data'); return; }
+
+  var total = entries.reduce(function(a, e) { return a + e[1].jobs; }, 0);
+  chart.setOption({
+    graphic: [],
+    tooltip: Object.assign({ trigger: 'item',
+      formatter: function(p) {
+        var src = p.name.toLowerCase();
+        var entry = mvTotals[src];
+        var salaryPct = entry && entry.withSalary > 0 ? Math.round((entry.withSalary / entry.jobs) * 100) : 0;
+        return '<b>' + p.name + '</b><br/>' + p.value.toLocaleString() + ' jobs (' + ((p.value / total) * 100).toFixed(1) + '%)' +
+          (salaryPct > 0 ? '<br/>' + salaryPct + '% with salary data' : '');
+      }
+    }, ttip()),
+    series: [{
+      type: 'pie', radius: ['45%', '72%'], center: ['50%', '55%'],
+      data: entries.map(function(e, i) {
+        var name = e[0].charAt(0).toUpperCase() + e[0].slice(1);
+        return { name: name, value: e[1].jobs, itemStyle: { color: sourceColors[e[0]] || STATS_COLORS[i % STATS_COLORS.length] } };
+      }),
+      label: { fontSize: 11, fontFamily: _T.sans, color: _T.dim,
+        formatter: function(p) { return p.name + ' ' + ((p.value / total) * 100).toFixed(0) + '%'; } },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0,0,0,0.2)' } },
+      animationType: 'scale', animationDuration: 600
+    }]
+  }, true);
 }
 
 // ─── Resize / Refresh ───
