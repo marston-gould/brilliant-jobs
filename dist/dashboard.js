@@ -1716,17 +1716,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
     }
     if (tuning.usOnly) {
       query = query.or('loc_country.eq.US,loc_country.is.null');
-      // Exclude jobs where location string clearly indicates non-US country
-      // (needed because many jobs have loc_country=null but location like "remote, gb")
-      const nonUS = ['gb','uk','de','fr','au','ca','in','ie','nl','sg','jp','br','es','it','il','se','dk','no','fi','nz','at','ch','be','pl','cz','pt','hk','kr','mx','ae'];
-      for (const cc of nonUS) {
-        query = query.not('location', 'ilike', `%, ${cc}`);
-      }
-      // Also exclude full country names (many jobs use "City, Country" or "Country - Remote")
+      // Exclude non-US jobs using a single consolidated OR clause (v6.51 fix — 68 individual not.ilike params caused 500 errors)
+      const nonUSCodes = ['gb','uk','de','fr','au','ca','in','ie','nl','sg','jp','br','es','it','il','se','dk','no','fi','nz','at','ch','be','pl','cz','pt','hk','kr','mx','ae'];
       const nonUSNames = ['India','Germany','United Kingdom','France','Australia','Canada','Ukraine','Israel','Netherlands','Singapore','Ireland','Brazil','Spain','Italy','Japan','Korea','Sweden','Poland','Mexico','Argentina','Colombia','Philippines','Romania','Czech','Portugal','Hong Kong','Denmark','Norway','Finland','Austria','Switzerland','Belgium','Turkey','Thailand','Vietnam','Taiwan','Malaysia','New Zealand'];
-      for (const name of nonUSNames) {
-        query = query.not('location', 'ilike', `%${name}%`);
-      }
+      const exclClauses = nonUSCodes.map(cc => `location.ilike.%, ${cc}`).concat(nonUSNames.map(n => `location.ilike.%${n}%`));
+      query = query.not('or', `(${exclClauses.join(',')})`);
     }
     for (const pill of whnot) {
       for (const v of pill.values) {
