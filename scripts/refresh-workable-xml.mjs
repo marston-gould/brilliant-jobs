@@ -1,34 +1,33 @@
 #!/usr/bin/env node
 /**
- * refresh-workable-xml.mjs
- * ────────────────────────
+ * refresh-workable-xml.mjs  v2
+ * ────────────────────────────
  * Streaming pipeline to ingest Workable's global XML job feed.
  * 
  * Feed:  https://www.workable.com/boards/workable.xml
  * Size:  ~843 MB, ~151K jobs (as of 2026-03-02)
  * 
- * Architecture:
- *   1. Stream-download XML via fetch()
- *   2. SAX-parse <job> elements with sax-js (never holds full file in memory)
- *   3. Batch upsert to ats_jobs via Supabase REST API (500 jobs/batch)
- *   4. Discover new boards by resolving shortlink redirects (50/run cap)
- *   5. Mark jobs not seen in this cycle as closed
+ * v2 fixes:
+ *   - Download via curl to local file first (Cloudflare drops long streams)
+ *   - Dedup within batches to avoid "cannot affect row a second time"
+ *   - Graceful error handling on socket close
+ *   - Use readline for line-by-line processing of local file
  * 
  * Runs via GitHub Actions hourly, or manually via:
  *   node scripts/refresh-workable-xml.mjs
- * 
- * Environment:
- *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (required)
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createReadStream } from "fs";
+import { execSync } from "child_process";
+import { stat, unlink } from "fs/promises";
 
 // ─── Config ──────────────────────────────────────────────────────────
 const WORKABLE_XML_URL = "https://www.workable.com/boards/workable.xml";
-const BATCH_SIZE = 500;                // Jobs per upsert batch
-const MAX_REDIRECT_RESOLVES = 100;     // Board discovery cap per run
-const REDIRECT_CONCURRENCY = 5;        // Parallel redirect lookups
-const DOWNLOAD_TIMEOUT_MS = 600_000;   // 10 min max download
+const LOCAL_XML_PATH = "/tmp/workable-feed.xml";
+const BATCH_SIZE = 500;
+const MAX_REDIRECT_RESOLVES = 100;
+const REDIRECT_CONCURRENCY = 5;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -46,6 +45,7 @@ const stats = {
   jobsParsed: 0,
   jobsUpserted: 0,
   batchErrors: 0,
+  dedupSkipped: 0,
   boardsDiscovered: 0,
   boardsAlreadyKnown: 0,
   redirectErrors: 0,
@@ -54,12 +54,9 @@ const stats = {
   elapsedMs: 0,
 };
 
-// ─── XML Streaming Parser ────────────────────────────────────────────
-// Lightweight regex-based streaming parser since we can't use native
-// SAX in Node without extra deps. Processes chunks as they arrive.
+// ─── XML Parser Helpers ──────────────────────────────────────────────
 
 function extractCdata(xml, tag) {
-  // Handle both inline and multiline CDATA patterns
   const patterns = [
     new RegExp(`<${tag}>\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>\\s*</${tag}>`, "i"),
     new RegExp(`<${tag}>([^<]*)</${tag}>`, "i"),
@@ -104,7 +101,7 @@ function parseJobXml(xml) {
     else if (exp.includes("intern")) seniority = "intern";
   }
 
-  // Map jobtype to employment_type
+  // Map jobtype
   let employmentType = null;
   if (jobtype) {
     const jt = jobtype.toLowerCase();
@@ -112,13 +109,12 @@ function parseJobXml(xml) {
     else if (jt.includes("part")) employmentType = "part_time";
     else if (jt.includes("contract")) employmentType = "contract";
     else if (jt.includes("intern")) employmentType = "internship";
-    else if (jt.includes("temporary") || jt.includes("temp")) employmentType = "temporary";
+    else if (jt.includes("temp")) employmentType = "temporary";
   }
 
-  // Parse salary if present (rare but possible)
+  // Parse salary if present
   let salaryMin = null, salaryMax = null, salaryCurrency = null, salaryRate = null;
   if (salary) {
-    // Try common patterns: "$80,000 - $120,000", "€50k-€70k", etc.
     const salaryMatch = salary.match(
       /[\$€£]?\s*([\d,]+\.?\d*)\s*[kK]?\s*[-–to]+\s*[\$€£]?\s*([\d,]+\.?\d*)\s*[kK]?/
     );
@@ -129,8 +125,7 @@ function parseJobXml(xml) {
       if (min > 0 && max > 0) {
         salaryMin = min;
         salaryMax = max;
-        salaryCurrency = salary.includes("€") ? "EUR" :
-                         salary.includes("£") ? "GBP" : "USD";
+        salaryCurrency = salary.includes("€") ? "EUR" : salary.includes("£") ? "GBP" : "USD";
         salaryRate = (min < 200) ? "hr" : "yr";
       }
     }
@@ -139,7 +134,7 @@ function parseJobXml(xml) {
   return {
     greenhouse_id: referencenumber,
     ats_source: "workable",
-    company_slug: null, // filled during board discovery
+    company_slug: null,
     company_name: company,
     title,
     url: `https://apply.workable.com/j/${referencenumber}`,
@@ -162,32 +157,46 @@ function parseJobXml(xml) {
     employment_type: employmentType,
     extracted_seniority: seniority,
     jd_education: education || null,
-    // Temp fields for board discovery (not upserted)
     _referencenumber: referencenumber,
     _company: company,
     _website: website,
   };
 }
 
-// ─── Batch Upsert ────────────────────────────────────────────────────
+// ─── Batch Upsert (with dedup) ──────────────────────────────────────
 
 async function upsertBatch(jobs) {
+  // DEDUP: Keep only last occurrence per greenhouse_id within this batch
+  const seen = new Map();
+  for (const job of jobs) {
+    seen.set(job.greenhouse_id, job);
+  }
+  const deduped = Array.from(seen.values());
+  const skipped = jobs.length - deduped.length;
+  if (skipped > 0) stats.dedupSkipped += skipped;
+
   // Strip temp fields
-  const cleaned = jobs.map(({ _referencenumber, _company, _website, ...rest }) => rest);
+  const cleaned = deduped.map(({ _referencenumber, _company, _website, ...rest }) => rest);
 
-  const { error, count } = await sb
-    .from("ats_jobs")
-    .upsert(cleaned, {
-      onConflict: "greenhouse_id,ats_source",
-      ignoreDuplicates: false,
-    });
+  try {
+    const { error } = await sb
+      .from("ats_jobs")
+      .upsert(cleaned, {
+        onConflict: "greenhouse_id,ats_source",
+        ignoreDuplicates: false,
+      });
 
-  if (error) {
-    console.error(`  Upsert error: ${error.message}`);
+    if (error) {
+      console.error(`  Upsert error: ${error.message}`);
+      stats.batchErrors++;
+      return 0;
+    }
+    return cleaned.length;
+  } catch (e) {
+    console.error(`  Upsert exception: ${e.message}`);
     stats.batchErrors++;
     return 0;
   }
-  return cleaned.length;
 }
 
 // ─── Board Discovery ─────────────────────────────────────────────────
@@ -201,7 +210,6 @@ async function resolveSubdomain(referencenumber) {
     });
     const location = resp.headers.get("location");
     if (location) {
-      // Relative: /techfirefly/j/F44ED9E40A  or  absolute URL
       const match = location.match(/\/([^\/]+)\/j\//);
       if (match && match[1] !== "j") return match[1];
     }
@@ -212,30 +220,29 @@ async function resolveSubdomain(referencenumber) {
 }
 
 async function discoverBoards(newCompanies) {
-  // newCompanies: Map<companyName, {ref, website}>
   const entries = Array.from(newCompanies.entries()).slice(0, MAX_REDIRECT_RESOLVES);
   let discovered = 0;
 
-  // Check which companies we already have
-  const companyNames = entries.map(([name]) => name);
-  const { data: existing } = await sb
-    .from("ats_companies")
-    .select("company_name")
-    .eq("source", "workable")
-    .in("company_name", companyNames.slice(0, 200)); // PostgREST limit
+  // Check which companies we already know (batch in groups of 200)
+  const knownNames = new Set();
+  for (let i = 0; i < entries.length; i += 200) {
+    const chunk = entries.slice(i, i + 200).map(([name]) => name);
+    const { data: existing } = await sb
+      .from("ats_companies")
+      .select("company_name")
+      .eq("source", "workable")
+      .in("company_name", chunk);
+    (existing || []).forEach(e => knownNames.add(e.company_name));
+  }
 
-  const knownNames = new Set((existing || []).map(e => e.company_name));
-
-  // Filter to only unknown companies
   const toResolve = entries.filter(([name]) => !knownNames.has(name));
-  stats.boardsAlreadyKnown += entries.length - toResolve.length;
+  stats.boardsAlreadyKnown = entries.length - toResolve.length;
 
   console.log(`  Board discovery: ${toResolve.length} new companies to resolve (${knownNames.size} already known)`);
 
-  // Resolve in batches of REDIRECT_CONCURRENCY
   for (let i = 0; i < toResolve.length; i += REDIRECT_CONCURRENCY) {
     const batch = toResolve.slice(i, i + REDIRECT_CONCURRENCY);
-    const results = await Promise.allSettled(
+    await Promise.allSettled(
       batch.map(async ([name, { ref, website }]) => {
         const slug = await resolveSubdomain(ref);
         if (slug) {
@@ -249,9 +256,7 @@ async function discoverBoards(newCompanies) {
             is_active: true,
           }, { onConflict: "slug,source" });
           discovered++;
-          return slug;
         }
-        return null;
       })
     );
   }
@@ -260,110 +265,67 @@ async function discoverBoards(newCompanies) {
   return discovered;
 }
 
-// ─── Backfill company_slug on jobs ───────────────────────────────────
-
-async function backfillSlugs() {
-  // For jobs that have null company_slug, try to match via company_name
-  // This is a DB-side operation for efficiency
-  const { error } = await sb.rpc("exec_sql", {
-    query: `
-      UPDATE ats_jobs j
-      SET company_slug = c.slug
-      FROM ats_companies c
-      WHERE j.ats_source = 'workable'
-        AND j.company_slug IS NULL
-        AND c.source = 'workable'
-        AND c.company_name = j.company_name
-    `
-  });
-  if (error) console.error(`  Slug backfill error: ${error.message}`);
-}
-
 // ─── Mark Closed ─────────────────────────────────────────────────────
 
 async function markClosed(cycleStartedAt) {
-  // Jobs that haven't been seen since cycle start are no longer in the feed
-  const { error, count } = await sb.rpc("exec_sql", {
-    query: `
-      UPDATE ats_jobs
-      SET status = 'closed', closed_at = now()
-      WHERE ats_source = 'workable'
-        AND status = 'open'
-        AND updated_at < '${cycleStartedAt}'
-    `
-  });
-  if (error) {
-    console.error(`  Mark closed error: ${error.message}`);
-    return 0;
+  try {
+    const { error } = await sb.rpc("exec_sql", {
+      query: `
+        UPDATE ats_jobs
+        SET status = 'closed', closed_at = now()
+        WHERE ats_source = 'workable'
+          AND status = 'open'
+          AND updated_at < '${cycleStartedAt}'
+      `
+    });
+    if (error) {
+      console.error(`  Mark closed error: ${error.message}`);
+    }
+  } catch (e) {
+    console.error(`  Mark closed exception: ${e.message}`);
   }
-  // Can't easily get count from exec_sql, so query it
-  const { data } = await sb
-    .from("ats_jobs")
-    .select("greenhouse_id", { count: "exact", head: true })
-    .eq("ats_source", "workable")
-    .eq("status", "closed")
-    .gte("closed_at", cycleStartedAt);
-  return data?.length || 0;
 }
 
 // ─── Main Pipeline ───────────────────────────────────────────────────
 
 async function main() {
   const cycleStartedAt = new Date().toISOString();
-  console.log(`\n🔄 Workable XML Pipeline started at ${cycleStartedAt}`);
-  console.log(`   Feed: ${WORKABLE_XML_URL}`);
+  console.log(`\n🔄 Workable XML Pipeline v2 started at ${cycleStartedAt}`);
 
-  // 1. Stream-download and parse
-  console.log("\n📥 Downloading XML feed...");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
-
-  let response;
+  // ── Step 1: Download XML via curl (handles Cloudflare better than fetch) ──
+  console.log("\n📥 Downloading XML feed via curl...");
   try {
-    response = await fetch(WORKABLE_XML_URL, { signal: controller.signal });
+    execSync(
+      `curl -sS --max-time 600 --retry 2 --retry-delay 10 -o ${LOCAL_XML_PATH} "${WORKABLE_XML_URL}"`,
+      { stdio: "inherit", timeout: 660_000 }
+    );
   } catch (e) {
-    clearTimeout(timeout);
     console.error(`Download failed: ${e.message}`);
     process.exit(1);
   }
 
-  if (!response.ok || !response.body) {
-    clearTimeout(timeout);
-    console.error(`HTTP ${response.status}: ${response.statusText}`);
-    process.exit(1);
-  }
+  const fileStat = await stat(LOCAL_XML_PATH);
+  stats.xmlSizeBytes = fileStat.size;
+  console.log(`   Downloaded: ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB`);
 
-  const contentLength = response.headers.get("content-length");
-  if (contentLength) {
-    stats.xmlSizeBytes = parseInt(contentLength);
-    console.log(`   Size: ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB`);
-  }
-
-  // 2. Stream-parse
+  // ── Step 2: Stream-parse local file ──
   console.log("\n⚙️  Parsing and upserting...");
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
+
+  const stream = createReadStream(LOCAL_XML_PATH, { encoding: "utf8", highWaterMark: 1024 * 256 });
   let buffer = "";
   let batch = [];
-  let newCompanies = new Map(); // companyName → {ref, website}
-  let bytesRead = 0;
+  let newCompanies = new Map();
   let lastLog = Date.now();
 
   const JOB_START = "<job>";
   const JOB_END = "</job>";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const chunk = decoder.decode(value, { stream: true });
+  for await (const chunk of stream) {
     buffer += chunk;
-    bytesRead += value.byteLength;
 
     // Progress logging every 30s
     if (Date.now() - lastLog > 30_000) {
-      const pct = contentLength ? ((bytesRead / parseInt(contentLength)) * 100).toFixed(1) : "?";
-      console.log(`   Progress: ${pct}% | ${stats.jobsParsed} parsed | ${stats.jobsUpserted} upserted | ${stats.batchErrors} errors`);
+      console.log(`   Progress: ${stats.jobsParsed.toLocaleString()} parsed | ${stats.jobsUpserted.toLocaleString()} upserted | ${stats.batchErrors} errors | ${stats.dedupSkipped} dedup-skipped`);
       lastLog = Date.now();
     }
 
@@ -371,7 +333,7 @@ async function main() {
     let startIdx;
     while ((startIdx = buffer.indexOf(JOB_START)) !== -1) {
       const endIdx = buffer.indexOf(JOB_END, startIdx);
-      if (endIdx === -1) break; // Incomplete job, wait for more data
+      if (endIdx === -1) break;
 
       const jobXml = buffer.substring(startIdx + JOB_START.length, endIdx);
       buffer = buffer.substring(endIdx + JOB_END.length);
@@ -381,7 +343,6 @@ async function main() {
 
       stats.jobsParsed++;
 
-      // Track new companies for board discovery
       if (!newCompanies.has(job._company) && job._company) {
         newCompanies.set(job._company, {
           ref: job._referencenumber,
@@ -391,7 +352,6 @@ async function main() {
 
       batch.push(job);
 
-      // Flush batch
       if (batch.length >= BATCH_SIZE) {
         const upserted = await upsertBatch(batch);
         stats.jobsUpserted += upserted;
@@ -399,59 +359,61 @@ async function main() {
       }
     }
 
-    // Prevent buffer from growing unbounded (keep last 50KB for partial jobs)
-    if (buffer.length > 200_000 && buffer.indexOf(JOB_START) === -1) {
-      buffer = buffer.substring(buffer.length - 50_000);
+    // Prevent unbounded buffer growth
+    if (buffer.length > 500_000 && buffer.indexOf(JOB_START) === -1) {
+      buffer = buffer.substring(buffer.length - 100_000);
     }
   }
 
-  clearTimeout(timeout);
-
-  // Flush remaining batch
+  // Flush remaining
   if (batch.length > 0) {
     const upserted = await upsertBatch(batch);
     stats.jobsUpserted += upserted;
   }
 
-  console.log(`\n✅ Parse complete: ${stats.jobsParsed} jobs parsed, ${stats.jobsUpserted} upserted`);
+  console.log(`\n✅ Parse complete: ${stats.jobsParsed.toLocaleString()} jobs parsed, ${stats.jobsUpserted.toLocaleString()} upserted`);
   console.log(`   Unique companies in feed: ${newCompanies.size}`);
 
-  // 3. Board discovery
+  // ── Step 3: Board discovery ──
   console.log("\n🔍 Discovering new boards...");
   await discoverBoards(newCompanies);
   console.log(`   Discovered: ${stats.boardsDiscovered} new boards`);
 
-  // 4. Backfill slugs
-  console.log("\n🔗 Backfilling company slugs...");
-  await backfillSlugs();
-
-  // 5. Mark closed jobs
+  // ── Step 4: Mark closed jobs ──
   console.log("\n🗑️  Marking closed jobs...");
-  stats.jobsClosed = await markClosed(cycleStartedAt);
-  console.log(`   Closed: ${stats.jobsClosed} jobs`);
+  await markClosed(cycleStartedAt);
 
-  // 6. Summary
+  // ── Step 5: Cleanup ──
+  try { await unlink(LOCAL_XML_PATH); } catch {}
+
+  // ── Summary ──
   stats.elapsedMs = Date.now() - new Date(cycleStartedAt).getTime();
   console.log("\n" + "─".repeat(60));
   console.log("📊 Pipeline Summary");
   console.log("─".repeat(60));
-  console.log(`   XML Size:        ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB`);
-  console.log(`   Jobs Parsed:     ${stats.jobsParsed.toLocaleString()}`);
-  console.log(`   Jobs Upserted:   ${stats.jobsUpserted.toLocaleString()}`);
-  console.log(`   Batch Errors:    ${stats.batchErrors}`);
-  console.log(`   Boards Found:    ${stats.boardsDiscovered} new (${stats.boardsAlreadyKnown} already known)`);
-  console.log(`   Redirect Errors: ${stats.redirectErrors}`);
-  console.log(`   Jobs Closed:     ${stats.jobsClosed}`);
-  console.log(`   Elapsed:         ${(stats.elapsedMs / 1000).toFixed(1)}s`);
+  console.log(`   XML Size:         ${(stats.xmlSizeBytes / 1024 / 1024).toFixed(1)} MB`);
+  console.log(`   Jobs Parsed:      ${stats.jobsParsed.toLocaleString()}`);
+  console.log(`   Jobs Upserted:    ${stats.jobsUpserted.toLocaleString()}`);
+  console.log(`   Dedup Skipped:    ${stats.dedupSkipped.toLocaleString()}`);
+  console.log(`   Batch Errors:     ${stats.batchErrors}`);
+  console.log(`   Boards Found:     ${stats.boardsDiscovered} new (${stats.boardsAlreadyKnown} already known)`);
+  console.log(`   Redirect Errors:  ${stats.redirectErrors}`);
+  console.log(`   Elapsed:          ${(stats.elapsedMs / 1000).toFixed(1)}s`);
   console.log("─".repeat(60));
 
-  // Output for GitHub Actions
+  // GitHub Actions outputs
   if (process.env.GITHUB_OUTPUT) {
     const { appendFileSync } = await import("fs");
     appendFileSync(process.env.GITHUB_OUTPUT, `jobs_parsed=${stats.jobsParsed}\n`);
     appendFileSync(process.env.GITHUB_OUTPUT, `jobs_upserted=${stats.jobsUpserted}\n`);
     appendFileSync(process.env.GITHUB_OUTPUT, `boards_discovered=${stats.boardsDiscovered}\n`);
     appendFileSync(process.env.GITHUB_OUTPUT, `elapsed_ms=${stats.elapsedMs}\n`);
+  }
+
+  // Exit with error code if too many batch errors
+  if (stats.batchErrors > stats.jobsParsed * 0.1) {
+    console.error("\n⚠️  Too many batch errors (>10%), exiting with error");
+    process.exit(1);
   }
 }
 

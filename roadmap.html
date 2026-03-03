@@ -342,6 +342,55 @@
     .phase-group-body { overflow: hidden; }
     .phase-group.pg-collapsed .phase-group-body { max-height: 0 !important; overflow: hidden; opacity: 0; }
 
+
+    /* Card groups */
+    .group-tag {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 9px; font-weight: 700; padding: 1px 6px;
+      border-radius: 3px; margin-inline-start: 6px;
+      vertical-align: middle; letter-spacing: 0.4px;
+      text-transform: uppercase;
+      background: rgba(34,211,238,0.08); color: var(--cyan);
+      border: 1px solid rgba(34,211,238,0.15);
+    }
+
+    /* Handoff doc link */
+    .handoff-link {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600; color: var(--accent);
+      text-decoration: none; margin-top: 4px;
+      padding: 2px 8px; border-radius: 4px;
+      background: rgba(77,142,255,0.06);
+      border: 1px solid rgba(77,142,255,0.12);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .handoff-link:hover {
+      background: rgba(77,142,255,0.14);
+      border-color: rgba(77,142,255,0.25);
+      transform: translateY(-1px);
+    }
+    .handoff-link svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+    /* Group filter pills in filter bar */
+    .group-filter-bar {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      margin: 0 auto 12px; max-width: 780px;
+    }
+    .group-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 600; padding: 3px 10px;
+      border-radius: 5px; cursor: pointer; user-select: none;
+      transition: all 0.2s ease;
+      background: rgba(34,211,238,0.06); color: var(--cyan);
+      border: 1px solid rgba(34,211,238,0.12);
+      letter-spacing: 0.3px;
+    }
+    .group-pill:hover { background: rgba(34,211,238,0.14); transform: translateY(-1px); }
+    .group-pill.active { background: rgba(34,211,238,0.22); border-color: rgba(34,211,238,0.4); color: #67e8f9; }
+    .group-pill .gp-count { font-family: var(--mono); font-size: 9px; opacity: 0.7; }
+    .group-filter-bar.has-active .group-pill:not(.active) { opacity: 0.4; }
+    .group-filter-bar.has-active .group-pill:not(.active):hover { opacity: 0.7; }
     /* Footer */
     .footer {
       margin-top: 60px; padding-top: 32px; border-top: 1px solid var(--border);
@@ -390,6 +439,7 @@
 
   <div class="filter-bar" id="filter-bar"></div>
 
+  <div class="group-filter-bar" id="group-filter-bar"></div>
   <div id="roadmap"></div>
 
   <div class="footer">
@@ -1694,7 +1744,7 @@ const features = [
   { s: 'done', n: 'Trust banner + apply interstitial modals', d: 'v6.32: Color-coded trust banner above job description in detail view (green/amber/red). Application flow interstitial modal for caution (amber, Proceed with Caution) and suspicious (red, High Fraud Risk) jobs. Continue Anyway / Go Back buttons. Reads from _fraudScoreCache — no extra queries. New CSS: .trust-banner, .fraud-interstitial.', p: 71},
   { s: 'done', n: 'Feed filter/sort + PostHog analytics (7 events)', d: 'v6.33: Trust Level multi-select filter dropdown — filter by Verified, Caution, Suspicious, Unscored. All/None quick-select. Trust Score sort option (safest first). 7 PostHog events: fraud_badge_viewed, fraud_tooltip_opened, fraud_interstitial_shown, fraud_interstitial_proceed, fraud_interstitial_goback, fraud_filter_applied, fraud_sort_applied.', p: 71},
   { s: 'done', n: 'Backfill pg_cron + auto-score + monitoring', d: 'v6.34: backfill-fraud-scores pg_cron (every 1 min, 500 jobs/batch, ~30K/hr). score-new-jobs pg_cron (every 5 min, 100 unscored, permanent). fraud_scoring_coverage() RPC for monitoring (total_open, scored, unscored, coverage_pct, label_breakdown, avg_score, est_completion_minutes). Initial: 5,426 scored (1.7%), ~65% safe / ~35% caution / 0% suspicious. Full backfill ETA ~10.5h.', p: 71},
-  // Phase 72: Synthetic Content Detection (v6.35–v6.47) — March 2, 2026
+  // Phase 72: Synthetic Content Detection (v6.35–v6.48) — March 2, 2026
   { s: 'done', n: 'AI scoring DB schema + RLS policies', d: 'v6.35: content_ai_scores table with polymorphic content_type + content_id. Partial indexes for JD, resume, label queries. RLS: read for authenticated, write for service_role. UNIQUE constraint for upsert support. Added ai_jd_rate column to ats_companies.', p: 72, e: 1 },
   { s: 'done', n: 'score-ai-content Edge Function (Claude Haiku)', d: 'v6.36: AI content detection EF — perplexity (predictability), burstiness (structural variation), content signal analysis. Batch up to 50 items. Returns 0.0–1.0 score with human/mixed/ai_generated labels. Upserts to content_ai_scores. ~$0.0003/JD. Reuses existing ANTHROPIC_API_KEY.', p: 72, e: 1 },
   { s: 'done', n: 'JD backfill + auto-score cron pipeline', d: 'v6.37: 4 pg_cron jobs — backfill-ai-content-scores (1min, 50/batch, oldest-first, self-disabling), score-new-jds-ai (5min, newest-first), nightly-ai-jd-rate (3AM UTC), check-ai-backfill-done (10min auto-disable). ~318K JDs backfilling ~4.4 days at ~$96.', p: 72, e: 1 },
@@ -1707,7 +1757,10 @@ const features = [
   { s: 'done', n: 'Scoring exclusion toggles + AI filter helpers', d: 'v6.44: AI Content Preferences settings card with two toggle switches (Exclude Mixed Content, Exclude AI-Generated). Auto-save with 500ms debounce to profiles.ai_scoring_prefs JSONB. applyAiScoringExclusions pipeline function dims match score badges (opacity 0.3) for excluded labels. Cross-file reactivity via ai-scoring-prefs-changed custom event. Backfilled missing AI filter helper functions (getActiveAiLabels, isAiFilterActive, applyAiContentFilter, updateAiFilterUI). PostHog: ai_scoring_pref_changed. Frontend-only: js/job-feed.js + js/settings.js + dashboard.html.', p: 72, e: 2 },
   { s: 'done', n: 'Company Browser AI JD Rate column + detail breakdown', d: 'v6.45: AI JD Rate badge on company browser rows — color-coded percentage (<20% green, 20-50% amber, >50% red) from ats_companies.ai_jd_rate. Sort bar with Name/Jobs/AI JD Rate toggle (asc/desc). Click company name expands inline AI content breakdown panel with stacked bar and per-label counts from content_ai_scores. PostHog: ai_jd_rate_column_sorted. Frontend-only: js/browsers.js + dashboard.html.', p: 72, e: 2 },
   { s: 'done', n: 'E2E backfill fix + auto-fetch scoring', d: 'v6.47: Fixed score-ai-content EF to support auto-fetch mode when called by pg_cron with empty body. Created get_unscored_jds() RPC. Pipeline now producing scores autonomously — 26 scored in E2E test, 130K remaining for backfill. PostHog events verified.', p: 72, e: 1 },
+  { s: 'done', n: 'Scoring pipeline optimization + browsers.js column fixes', d: 'v6.48: Replaced NOT EXISTS subquery (timing out at 230K rows) with ai_scored_at tracking column + partial index. New get_unscored_jds_v3() RPC. Cron jobs rewritten. Fixed browsers.js: .select(label)→.select(ai_label), content_type jd mismatch. Pipeline verified: scores growing steadily.' },
   { s: 'done', n: 'Nightly Aggregation Verification + monitoring UI', d: 'v6.46: get_ai_aggregation_health() RPC — single-pass health check returning coverage %, label distribution, cron status, backfill status, latest timestamps. Company browser health panel with 6 stat cards (coverage %, JDs scored, companies rated, cron status, backfill status, last scored). Collapsible UI. PostHog: ai_aggregation_health_viewed. Verification confirms: 3 crons active (nightly-ai-jd-rate, backfill-ai-content-scores, score-new-jds-ai), 39K+ companies tracked, backfill pipeline operational.', p: 72, e: 1 },
+  { s: 'todo', n: 'Common Crawl board discovery pipeline', d: 'Use Common Crawl\'s columnar index (via AWS Athena or free index API) to extract all ATS board URLs without scraping. Query patterns: boards.greenhouse.io/*, jobs.lever.co/*, jobs.ashbyhq.com/*, apply.workable.com/*, *.recruitee.com/*. Extract unique company slugs, dedupe against ats_companies, bulk-insert net-new boards. Also query url_path LIKE \'%%/careers%%\' and \'%%/jobs%%\' across all domains to discover non-ATS career pages (Workday, iCIMS, Taleo, SmartRecruiters, etc.). Athena cost: <$1.50 max per full crawl scan. Free alternative: Common Crawl index API for ATS-specific queries. Replaces/supplements DataForSEO alphabet crawl for board discovery at zero marginal cost. Validated: all 4 major ATS platforms confirmed present in CC-MAIN-2025-08 crawl.', p: 73, e: '3h', g: 'inventory-expansion', h: '/docs/handoff-common-crawl.md' },
+
 ];
 
 
@@ -1744,6 +1797,34 @@ const filterLabels = {
 };
 
 let activeFilter = 'all';
+let activeGroup = null;
+
+function buildGroupBar() {
+  const groups = {};
+  features.forEach(f => {
+    if (f.g) {
+      if (!groups[f.g]) groups[f.g] = 0;
+      groups[f.g]++;
+    }
+  });
+  const bar = document.getElementById('group-filter-bar');
+  if (Object.keys(groups).length === 0) { bar.innerHTML = ''; return; }
+  const sorted = Object.entries(groups).sort((a, b) => b[1] - a[1]);
+  bar.innerHTML = sorted.map(([g, count]) =>
+    `<span class="group-pill${activeGroup === g ? ' active' : ''}" data-group="${g}">
+      ${g.replace(/-/g, ' ')}<span class="gp-count">${count}</span>
+    </span>`
+  ).join('');
+  if (activeGroup) bar.classList.add('has-active');
+  else bar.classList.remove('has-active');
+  bar.querySelectorAll('.group-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const g = pill.dataset.group;
+      activeGroup = (activeGroup === g) ? null : g;
+      render();
+    });
+  });
+}
 
 function getFilterGroup(f) {
   if (f.s === 'done') return 'done';
@@ -1788,6 +1869,9 @@ function render() {
     visible = features;
   } else {
     visible = features.filter(f => getFilterGroup(f) === activeFilter);
+  }
+  if (activeGroup) {
+    visible = visible.filter(f => f.g === activeGroup);
   }
 
   const done = visible.filter(f => f.s === 'done');
@@ -1938,11 +2022,14 @@ function render() {
         };
         const bTag = f.b && blockedMap[f.b] ? `<span class="blocked-tag ${blockedMap[f.b][0]}">${blockedMap[f.b][1]}</span>` : '';
         const eTag = f.e ? `<span class="estimate-tag">${f.e}</span>` : '';
+        const gTag = f.g ? `<span class="group-tag">${f.g.replace(/-/g, ' ')}</span>` : '';
+        const hLink = f.h ? `<a class="handoff-link" href="${f.h}" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>Handoff Doc</a>` : '';
         html += `<li class="feature-item" style="animation-delay:${i * 0.03}s">
           <div class="status-icon ${statusCls}">${statusIcon}</div>
           <div>
-            <div class="${nameCls}">${f.n}${bTag}${eTag}</div>
+            <div class="${nameCls}">${f.n}${bTag}${gTag}${eTag}</div>
             <div class="feature-detail">${f.d}</div>
+            ${hLink ? '<div>' + hLink + '</div>' : ''}
           </div>
         </li>
 `;
@@ -1967,6 +2054,7 @@ function render() {
   el.innerHTML = html;
 
   buildFilterBar();
+  buildGroupBar();
 }
 
 render();
