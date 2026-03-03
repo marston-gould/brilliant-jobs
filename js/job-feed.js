@@ -1367,7 +1367,7 @@ async function fetchFraudScores(jobs) {
 
 
 // ═══════════════════════════════════════════════════════════
-// AI CONTENT DETECTION — Session 3.1+3.2: Feed Card AI Badge + Tooltip Detail (v6.41-v6.42)
+// AI CONTENT DETECTION — Session 3.1: Feed Card AI Badge (v6.41)
 // ═══════════════════════════════════════════════════════════
 
 var _aiJdScoreCache = {};
@@ -1380,7 +1380,7 @@ async function fetchAiJdScores(jobs) {
   try {
     var { data, error } = await sb
       .from('content_ai_scores')
-      .select('content_id,ai_label,ai_generated_score,confidence,summary,perplexity_score,burstiness_score,top_signals')
+      .select('content_id,ai_label,ai_generated_score,confidence,summary,perplexity_score,burstiness_score')
       .eq('content_type', 'job_description')
       .in('content_id', ids);
     if (error) { console.warn('[BJ] AI JD score fetch error:', error); return; }
@@ -1393,7 +1393,6 @@ async function fetchAiJdScores(jobs) {
           summary: row.summary,
           perplexity: row.perplexity_score,
           burstiness: row.burstiness_score,
-          topSignals: row.top_signals,
         };
       });
     }
@@ -1407,9 +1406,9 @@ function aiJdBadgeHtml(jobId) {
   if (!info || !info.label) return '';
 
   var cfg = {
-    human: { icon: '✅', cls: 'ai-jd-badge--human', label: 'Human', tip: 'Likely human-written job description' },
-    mixed: { icon: '⚠️', cls: 'ai-jd-badge--mixed', label: 'Mixed', tip: 'May contain AI-generated content' },
-    ai_generated: { icon: '🤖', cls: 'ai-jd-badge--ai', label: 'AI', tip: 'Likely AI-generated job description' },
+    human: { icon: '✅', cls: 'ai-jd-badge--human', label: 'Human-Written', tip: 'Likely human-written job description' },
+    mixed: { icon: '⚠️', cls: 'ai-jd-badge--mixed', label: 'Mixed Content', tip: 'May contain AI-generated content' },
+    ai_generated: { icon: '🤖', cls: 'ai-jd-badge--ai', label: 'AI-Generated', tip: 'Likely AI-generated job description' },
   };
   var c = cfg[info.label];
   if (!c) return '';
@@ -1417,47 +1416,64 @@ function aiJdBadgeHtml(jobId) {
   var pct = info.score !== null && info.score !== undefined ? (info.score * 100).toFixed(0) + '%' : '';
   var summaryHtml = info.summary ? '<div class="ai-jd-tooltip-summary">' + escapeHtml(info.summary).substring(0, 200) + '</div>' : '';
 
-  // v6.42 — Session 3.2: Sub-score breakdown bars
-  var subsHtml = '';
-  var hasSubs = (info.perplexity !== null && info.perplexity !== undefined)
-             || (info.burstiness !== null && info.burstiness !== undefined);
-  if (hasSubs) {
-    subsHtml += '<div class="ai-jd-tooltip-subs">';
-    if (info.perplexity !== null && info.perplexity !== undefined) {
-      var ppx = (info.perplexity * 100).toFixed(0);
-      subsHtml += '<div class="ai-jd-sub-row"><span class="ai-jd-sub-label">Perplexity</span><span class="ai-jd-sub-val">' + ppx + '%</span><div class="ai-jd-sub-bar"><div class="ai-jd-sub-fill" style="width:' + ppx + '%;background:var(--accent)"></div></div></div>';
-    }
-    if (info.burstiness !== null && info.burstiness !== undefined) {
-      var bst = (info.burstiness * 100).toFixed(0);
-      subsHtml += '<div class="ai-jd-sub-row"><span class="ai-jd-sub-label">Burstiness</span><span class="ai-jd-sub-val">' + bst + '%</span><div class="ai-jd-sub-bar"><div class="ai-jd-sub-fill" style="width:' + bst + '%;background:var(--purple)"></div></div></div>';
-    }
-    if (info.confidence !== null && info.confidence !== undefined) {
-      var conf = (info.confidence * 100).toFixed(0);
-      subsHtml += '<div class="ai-jd-sub-row"><span class="ai-jd-sub-label">Confidence</span><span class="ai-jd-sub-val">' + conf + '%</span><div class="ai-jd-sub-bar"><div class="ai-jd-sub-fill" style="width:' + conf + '%;background:var(--green)"></div></div></div>';
-    }
-    subsHtml += '</div>';
+  // Signal breakdown bars (v6.42 — Session 3.2)
+  var signalBarsHtml = '';
+  if (info.perplexity !== null && info.perplexity !== undefined && info.burstiness !== null && info.burstiness !== undefined) {
+    var perpPct = (info.perplexity * 100).toFixed(0);
+    var burstPct = (info.burstiness * 100).toFixed(0);
+    // Content signal = derived from overall minus sub-scores (weighted)
+    var contentPct = pct ? parseInt(pct) : 0;
+    signalBarsHtml = '<div class="ai-jd-tooltip-signals">'
+      + '<div class="ai-jd-signal-row"><span class="ai-jd-signal-label">Predictability</span>'
+      + '<div class="ai-jd-signal-bar"><div class="ai-jd-signal-fill" style="width:' + (100 - perpPct) + '%;background:' + _aiSignalColor(100 - perpPct) + '"></div></div>'
+      + '<span class="ai-jd-signal-val">' + (100 - perpPct) + '%</span></div>'
+      + '<div class="ai-jd-signal-row"><span class="ai-jd-signal-label">Uniformity</span>'
+      + '<div class="ai-jd-signal-bar"><div class="ai-jd-signal-fill" style="width:' + (100 - burstPct) + '%;background:' + _aiSignalColor(100 - burstPct) + '"></div></div>'
+      + '<span class="ai-jd-signal-val">' + (100 - burstPct) + '%</span></div>'
+      + '<div class="ai-jd-signal-row"><span class="ai-jd-signal-label">Overall AI Score</span>'
+      + '<div class="ai-jd-signal-bar"><div class="ai-jd-signal-fill" style="width:' + contentPct + '%;background:' + _aiSignalColor(contentPct) + '"></div></div>'
+      + '<span class="ai-jd-signal-val">' + contentPct + '%</span></div>'
+      + '</div>';
   }
 
-  // v6.42 — Session 3.2: Top signals chips
-  var signalsHtml = '';
-  if (info.topSignals && Array.isArray(info.topSignals) && info.topSignals.length > 0) {
-    signalsHtml = '<div class="ai-jd-tooltip-signals">';
-    info.topSignals.slice(0, 4).forEach(function(sig) {
-      var sigLabel = typeof sig === 'string' ? sig : (sig.label || sig.name || String(sig));
-      signalsHtml += '<span class="ai-jd-signal-chip">' + escapeHtml(sigLabel).substring(0, 30) + '</span>';
-    });
-    signalsHtml += '</div>';
+  // Confidence indicator
+  var confHtml = '';
+  if (info.confidence !== null && info.confidence !== undefined) {
+    var confPct = (info.confidence * 100).toFixed(0);
+    var confLabel = confPct >= 80 ? 'High' : confPct >= 50 ? 'Medium' : 'Low';
+    var confCls = confPct >= 80 ? 'ai-jd-conf--high' : confPct >= 50 ? 'ai-jd-conf--med' : 'ai-jd-conf--low';
+    confHtml = '<div class="ai-jd-tooltip-conf ' + confCls + '">' + confLabel + ' confidence (' + confPct + '%)</div>';
   }
 
-  return '<span class="ai-jd-badge ' + c.cls + '" data-ai-jobid="' + escapeHtml(jobId) + '">'
+  return '<span class="ai-jd-badge ' + c.cls + '" data-ai-jobid="' + escapeHtml(jobId) + '" onclick="trackAiJdBadgeClick(\'' + escapeHtml(jobId) + '\')">'
     + c.icon
     + '<span class="ai-jd-tooltip">'
-    + '<div class="ai-jd-tooltip-title">' + c.tip + (pct ? ' (' + pct + ')' : '') + '</div>'
+    + '<div class="ai-jd-tooltip-title">' + c.label + (pct ? ' — ' + pct + ' AI' : '') + '</div>'
+    + confHtml
+    + signalBarsHtml
     + summaryHtml
-    + subsHtml
-    + signalsHtml
     + '</span>'
     + '</span>';
+}
+
+// Signal color helper: green (low AI) → yellow → red (high AI)
+function _aiSignalColor(pct) {
+  if (pct < 30) return 'var(--green, #22c55e)';
+  if (pct < 60) return 'var(--warm, #f59e0b)';
+  return 'var(--red, #ef4444)';
+}
+
+// PostHog tracking for AI badge clicks (v6.42 — Session 3.2)
+function trackAiJdBadgeClick(jobId) {
+  var info = _aiJdScoreCache[jobId];
+  if (typeof posthog !== 'undefined' && info) {
+    posthog.capture('ai_jd_badge_clicked', {
+      job_id: jobId,
+      ai_label: info.label,
+      ai_score: info.score,
+      confidence: info.confidence,
+    });
+  }
 }
 
 function fraudBadgeHtml(jobId) {
