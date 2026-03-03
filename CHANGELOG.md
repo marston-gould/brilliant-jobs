@@ -1,3 +1,28 @@
+## v6.52 Cron Cost Optimization Session 2 (2026-03-03)
+
+### Edge Function Changes
+- enrich-jd-ai v2: Filters by enrichment_priority IN (1,2) only Tier 1+2 jobs enriched via cron
+- enrich-jd-ai v2: Merged AI-content detection into enrichment prompt adds ai_content_score + ai_label
+- enrich-job-ondemand (NEW): On-demand enrichment for Tier 3 jobs enriches + scores in real-time
+
+### Cron Optimization
+- Disabled AI-content cron jobs #86 #87 #88
+- AI scoring piggybacked on enrichment zero additional cron invocations
+- Combined with Session 1 estimated savings 6-13.50 per day
+
+## v6.51 Cron Cost Optimization Session 1 (2026-03-02)
+
+### Database Schema
+- Added enrichment_priority column smallint DEFAULT 3 to ats_jobs
+- Created partial index idx_ats_jobs_enrich_priority
+- Created MV mv_active_filter_keywords
+- Created function assign_enrichment_priority
+- Updated refresh_materialized_views to chain MV refresh + priority assignment
+
+### Cron Schedule Changes
+- enrich-jd-ai-batch #49 every 2min to every 10min
+- discover-boards #55 every 6h to once daily 4AM UTC
+
 ## v6.50 — E2E QA + Acceptance Criteria — Synthetic Content Detection COMPLETE (2026-03-02)
 
 ### Session 5.2 (FINAL): End-to-End QA + Program Completion
