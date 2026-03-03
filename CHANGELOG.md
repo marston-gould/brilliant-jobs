@@ -1,3 +1,42 @@
+## v6.50 — E2E QA + Acceptance Criteria — Synthetic Content Detection COMPLETE (2026-03-02)
+
+### Session 5.2 (FINAL): End-to-End QA + Program Completion
+
+**Acceptance Criteria — ALL VERIFIED:**
+- ✅ `content_ai_scores` table exists with polymorphic schema, partial indexes, RLS policies
+- ✅ `score-ai-content` Edge Function operational (Claude Haiku) — JD, resume, cover letter scoring
+- ✅ Backfill + auto-score cron pipeline running (pg_cron: backfill-ai-content-scores, score-new-jds-ai)
+- ✅ Resume upload AI scoring + rescore button with 60s cooldown + history tracking
+- ✅ Cover letter inline AI scoring + badge + rescore
+- ✅ Feed card AI badge (human/mixed/ai_generated) with tooltip sub-score breakdown
+- ✅ Job detail AI content banner for mixed/ai_generated labels
+- ✅ Feed AI content filter (individual + batch toggle)
+- ✅ Scoring exclusion toggles in Settings (Exclude Mixed, Exclude AI-Generated)
+- ✅ Company Browser AI JD Rate column with sort + detail breakdown panel
+- ✅ Nightly aggregation verification + health monitoring RPC
+- ✅ Scoring pipeline optimization (ai_scored_at column, partial index, batch processing)
+- ✅ 11 PostHog events instrumented across all surfaces (resume, feed, detail, settings, company browser)
+- ✅ Console prints [BJ] v6.50 on page load
+- ✅ All version surfaces updated (version.js, dashboard.html, index.html)
+
+**Complete PostHog Event Map (11 events):**
+- `ai_resume_scored` (v6.38), `ai_jd_badge_clicked` (v6.41), `ai_content_banner_viewed` (v6.43)
+- `ai_filter_applied` (v6.43), `ai_scoring_pref_changed` (v6.44), `ai_jd_rate_column_sorted` (v6.45)
+- `ai_aggregation_health_viewed` (v6.46), `ai_company_detail_expanded` (v6.49)
+- `ai_label_distribution_viewed` (v6.49), `ai_scoring_exclusion_applied` (v6.49), `ai_scores_fetched` (v6.49)
+
+**Program Summary — Synthetic Content Detection (Phase 72):**
+- 14 sessions across 5 phases (DB → Edge Functions → UI → Analytics → QA)
+- Version span: v6.35–v6.50
+- Zero database changes in final session (frontend QA only)
+
+### Version Discipline
+- `js/version.js` → v6.50
+- `dashboard.html` → v6.50 + 5x cache-bust refs
+- `index.html` → v6.50
+- Console prints: [BJ] v6.50
+- Git tag: v6.50
+
 ## v6.49 — PostHog Event Instrumentation for Synthetic Content Detection (2026-03-02)
 
 ### Session 5.1: Comprehensive AI Content Analytics
