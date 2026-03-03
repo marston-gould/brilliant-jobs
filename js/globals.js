@@ -747,15 +747,41 @@ var _cacheHits = 0;
 var _cacheMisses = 0;
 var _cacheDebug = (typeof localStorage !== 'undefined' && localStorage.getItem('BJ_DEBUG_CACHE') === '1');
 
+// TTL tiers by key prefix (v6.55 A14 Session 2)
+// ref: = reference/lookup tables (rarely change) — 1 hour
+// feed: = job feed queries (change frequently) — 3 min
+// stats: = stats/analytics queries — 10 min
+// company: = company browser queries — 10 min
+// default = 5 min
+var CACHE_TTL_TIERS = {
+  'ref:': 3600000,     // 1 hour
+  'feed:': 180000,     // 3 min
+  'stats:': 600000,    // 10 min
+  'company:': 600000,  // 10 min
+  'pipeline:': 300000, // 5 min
+  'settings:': 600000  // 10 min
+};
+var CACHE_TTL_DEFAULT = 300000; // 5 min
+
+/** Resolve TTL from key prefix tier or explicit opt */
+function _resolveTTL(key, opts) {
+  if (opts && opts.ttl) return opts.ttl;
+  var prefixes = Object.keys(CACHE_TTL_TIERS);
+  for (var i = 0; i < prefixes.length; i++) {
+    if (key.indexOf(prefixes[i]) === 0) return CACHE_TTL_TIERS[prefixes[i]];
+  }
+  return CACHE_TTL_DEFAULT;
+}
+
 /**
  * Execute a Supabase query with in-memory caching.
- * @param {string} key - Unique cache key
+ * @param {string} key - Unique cache key (prefix determines TTL tier)
  * @param {function} queryFn - Function returning a Supabase query promise
- * @param {object} opts - { ttl: ms (default 5min), force: boolean }
+ * @param {object} opts - { ttl: ms (overrides tier), force: boolean }
  * @returns {Promise<{data: any, count: number|null, cached: boolean}>}
  */
 async function cachedQuery(key, queryFn, opts) {
-  var ttl = (opts && opts.ttl) || 300000; // 5 min default
+  var ttl = _resolveTTL(key, opts);
   var force = opts && opts.force;
   var entry = _queryCache[key];
 
@@ -814,15 +840,36 @@ function clearAllCaches() {
 function getCacheStats() {
   var keys = Object.keys(_queryCache);
   var now = Date.now();
+  var totalRows = 0;
+  var memEstimate = 0;
+  var entries = keys.map(function(k) {
+    var e = _queryCache[k];
+    var rows = e.data ? (Array.isArray(e.data) ? e.data.length : 1) : 0;
+    totalRows += rows;
+    var tierTTL = _resolveTTL(k, null);
+    var ageMs = now - e.ts;
+    var pctLife = Math.round((ageMs / tierTTL) * 100);
+    // rough memory estimate: JSON serialization length
+    try { memEstimate += JSON.stringify(e.data).length; } catch(x) {}
+    return {
+      key: k,
+      age: Math.round(ageMs / 1000) + 's',
+      ttl: Math.round(tierTTL / 1000) + 's',
+      pctLife: Math.min(pctLife, 100) + '%',
+      rows: rows,
+      stale: ageMs >= tierTTL
+    };
+  });
   return {
     entries: keys.length,
+    totalRows: totalRows,
+    memEstimateKB: Math.round(memEstimate / 1024),
     hits: _cacheHits,
     misses: _cacheMisses,
     hitRate: (_cacheHits + _cacheMisses) > 0 ? Math.round(_cacheHits / (_cacheHits + _cacheMisses) * 100) + '%' : 'N/A',
-    keys: keys.map(function(k) {
-      var e = _queryCache[k];
-      return { key: k, age: Math.round((now - e.ts) / 1000) + 's', rows: e.data ? (Array.isArray(e.data) ? e.data.length : 1) : 0 };
-    })
+    tiers: CACHE_TTL_TIERS,
+    defaultTTL: CACHE_TTL_DEFAULT,
+    keys: entries
   };
 }
 

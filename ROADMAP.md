@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-03-01
+**Last updated:** 2026-03-03
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.54
+**Current version:** v6.55
 
 ---
 
@@ -2605,11 +2605,15 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 73.3 | Version audit + roadmap sync | v6.53 | Done | Cache-bust audit across all pages. Roadmap entries for v6.51-v6.52. version.js added to hiring-trends + market-dynamics. |
 | 73.4 | Common Crawl board discovery pipeline | — | Todo | Use Common Crawl columnar index for ATS board discovery at zero marginal cost. |
 
-## Phase 74 — A14 Client-Side Cache Enhancement (v6.54)
+## Phase 74 — A14 Client-Side Cache Enhancement (v6.54–v6.55)
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
 | 74.1 | Enhanced cachedQuery | v6.54 | Done | Returns { data, count, cached }. Debug logging via BJ_DEBUG_CACHE. getCacheStats() diagnostic. |
 | 74.2 | Visibility timeout | v6.54 | Done | Clears all caches when tab hidden 5+ min. Prevents stale data on tab-back. |
 | 74.3 | Cache invalidation wiring | v6.54 | Done | Logout via clearAllCaches(). Filter save/delete triggers invalidateCache(). |
-| 74.4 | A15 server-side materialized views | — | Todo | pg_cron refreshed views for job feed + landing stats. Pair with pagination (500 row cap + Load More). |
+| 74.4 | Per-query TTL tiers | v6.55 | Done | _resolveTTL() by key prefix: ref: 1h, feed: 3min, stats/company: 10min, default 5min. |
+| 74.5 | Admin Cache Health tab | v6.55 | Done | Live panel: summary cards, TTL tier config, entries list w/ stale detection, Clear All. |
+| 74.6 | getCacheStats() enhancements | v6.55 | Done | Memory estimate (KB), TTL tier display, pct life, stale flag per entry. |
+| 74.7 | Admin version catch-up | v6.55 | Done | admin.html bumped from v6.27/v6.29 → v6.55. |
+| 74.8 | A15 server-side materialized views | — | Todo | pg_cron refreshed views for job feed + landing stats. Pair with pagination (500 row cap + Load More). |

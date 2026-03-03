@@ -1,3 +1,13 @@
+## v6.55 A14 Session 2: Cache Health Admin + TTL Tiers (2026-03-03)
+- Per-query TTL tiers: ref: 1h, feed: 3min, stats: 10min, company: 10min, default 5min
+- _resolveTTL() auto-resolves TTL from cache key prefix
+- getCacheStats() enhanced: memory estimate (KB), TTL tier, pct life, stale flag
+- Admin Console: new "Cache" tab with live cache health panel
+- Cache panel: summary cards (entries, hit rate, rows, memory), TTL tier config table, entries list with stale detection
+- Clear All button with confirmation in admin Cache tab
+- admin.html version catch-up: v6.27/v6.29 → v6.55
+- Version bump to v6.55 across all surfaces
+
 ## v6.54 A14: Client-Side Cache Enhancement (2026-03-03)
 - Enhanced cachedQuery: returns { data, count, cached } instead of raw data
 - Added debug logging (BJ_DEBUG_CACHE=1 in localStorage)

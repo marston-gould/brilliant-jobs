@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v6.27 -->
+<!-- Brilliant Jobs Admin Console v6.55 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,7 +11,7 @@
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=6.29">
+  <link rel="stylesheet" href="styles.css?v=6.55">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -264,6 +264,7 @@
             <button class="admin-tab" data-tab="notif-analytics">Notif Analytics</button>
             <button class="admin-tab" data-tab="email-cohorts">Email Cohorts</button>
             <button class="admin-tab" data-tab="cadence">Cadence</button>
+            <button class="admin-tab" data-tab="cache">Cache</button>
           </div>
 
           <div class="admin-panel" id="admin-panel-notifications">
@@ -621,8 +622,29 @@
             <div class="card" style="padding:0;overflow:hidden;"><div style="padding:12px 16px;border-bottom:1px solid var(--border);"><strong>Banned Referrers</strong></div><div style="overflow-x:auto;"><table class="admin-table" style="width:100%;"><thead><tr><th>User</th><th>Email</th><th>Referral Count</th><th>Actions</th></tr></thead><tbody id="ar-banned-body"></tbody></table></div><div id="ar-banned-empty" style="display:none;padding:16px;text-align:center;color:var(--text-faint);font-size:13px;">No banned referrers.</div></div>
           </div>
 
+          <div class="admin-panel" id="admin-panel-cache">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-entries">—</div><div class="stat-label">Cached Entries</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-hit-rate">—</div><div class="stat-label">Hit Rate</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-total-rows">—</div><div class="stat-label">Total Rows</div></div>
+              <div class="card" style="padding:14px;text-align:center;"><div class="stat-val" id="cache-mem-kb">—</div><div class="stat-label">Memory (KB)</div></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+              <button class="btn-secondary btn-sm" onclick="refreshCacheHealthPanel()" style="font-size:12px;">↻ Refresh</button>
+              <button class="btn-secondary btn-sm" onclick="if(confirm('Clear all caches?')){clearAllCaches();refreshCacheHealthPanel();}" style="font-size:12px;color:#ef4444;">✕ Clear All</button>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>TTL Tier Configuration</strong></div>
+              <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>Prefix</th><th>TTL</th></tr></thead><tbody id="cache-tier-body"></tbody></table></div>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>Cached Entries</strong><span style="font-size:11px;color:var(--text-faint);" id="cache-hits-misses"></span></div>
+              <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>Key</th><th>Age</th><th>TTL</th><th>Life %</th><th>Rows</th><th>Stale</th></tr></thead><tbody id="cache-entries-body"></tbody></table></div>
+              <div id="cache-empty" style="display:none;padding:20px;text-align:center;color:var(--text-faint);font-size:13px;">No cached entries. Navigate the dashboard to populate cache.</div>
+            </div>
+          </div>
+
         </div>
-      </div> <!-- end page-admin -->
     </div> <!-- end admin-content -->
 
     <!-- Footer -->
@@ -632,7 +654,7 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=6.29" defer></script>
+  <script src="dist/admin.min.js?v=6.55" defer></script>
 
   <!-- Cohort select-all inline handler -->
   <script>
