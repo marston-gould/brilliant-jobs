@@ -1,12 +1,8 @@
-// supabase/functions/enrich-jd-ai/index.ts
-// AI-powered JD enrichment using Claude Haiku
-// v2: Cron Cost Optimization Session 2
-// Changes:
-//   - Filters by enrichment_priority IN (1,2) only Tier 1+2 jobs
-//   - Merges AI-content detection into enrichment prompt (replaces score-ai-content crons)
-//   - Adds ai_content_score + ai_label to output
-//   - max_tokens 350 -> 400 for additional AI detection fields
-// Called by pg_cron #49 every 10 minutes
+// supabase/functions/enrich-job-ondemand/index.ts
+// On-demand JD enrichment for Tier 3 (low-priority) jobs
+// Called when a user views a job detail for an un-enriched Tier 3 job
+// Uses same enrichment logic as enrich-jd-ai but processes a single job
+// Cron Cost Optimization Step 10
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -16,11 +12,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const BATCH_SIZE = 50
-const CONCURRENCY = 5
 const MAX_CONTENT_CHARS = 6000
 const MODEL = 'claude-haiku-4-5-20251001'
-const WALL_TIME_MS = 120_000
 
 const SYSTEM_PROMPT = `Extract structured data from this job description. Return ONLY a JSON object:
 {
@@ -46,25 +39,71 @@ function stripHtml(html: string): string {
     .replace(/\s+/g, ' ').trim()
 }
 
-async function enrichJob(
-  job: { greenhouse_id: string; title: string; content: string },
-  apiKey: string,
-  supabase: any
-): Promise<{ ok: boolean; id: string; skills?: number }> {
-  const plainText = stripHtml(job.content).substring(0, MAX_CONTENT_CHARS)
-
-  if (plainText.length < 50) {
-    await supabase.from('ats_jobs').update({
-      jd_skills: [], jd_requirements: [], jd_education: null,
-      jd_seniority: null, jd_years_min: null, jd_years_max: null,
-      ai_content_score: null, ai_label: 'unknown',
-    }).eq('greenhouse_id', job.greenhouse_id)
-    return { ok: true, id: job.greenhouse_id, skills: 0 }
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
+    const { greenhouse_id } = await req.json()
+    if (!greenhouse_id) {
+      return new Response(
+        JSON.stringify({ error: 'greenhouse_id required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
+
+    const { data: job, error: fetchError } = await supabase
+      .from('ats_jobs')
+      .select('greenhouse_id, title, content, jd_skills')
+      .eq('greenhouse_id', greenhouse_id)
+      .single()
+
+    if (fetchError || !job) {
+      return new Response(
+        JSON.stringify({ error: 'Job not found', greenhouse_id }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Already enriched - return cached
+    if (job.jd_skills !== null) {
+      return new Response(
+        JSON.stringify({ ok: true, cached: true, greenhouse_id }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!job.content) {
+      return new Response(
+        JSON.stringify({ ok: true, skipped: true, reason: 'no_content', greenhouse_id }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const plainText = stripHtml(job.content).substring(0, MAX_CONTENT_CHARS)
+
+    if (plainText.length < 50) {
+      await supabase.from('ats_jobs').update({
+        jd_skills: [], jd_requirements: [], jd_education: null,
+        jd_seniority: null, jd_years_min: null, jd_years_max: null,
+        ai_content_score: null, ai_label: 'unknown',
+      }).eq('greenhouse_id', greenhouse_id)
+      return new Response(
+        JSON.stringify({ ok: true, skipped: true, reason: 'too_short', greenhouse_id }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15_000)
+    const timeout = setTimeout(() => controller.abort(), 20_000)
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -87,10 +126,6 @@ async function enrichJob(
 
     if (!response.ok) {
       const errText = await response.text()
-      if (response.status === 429) {
-        console.warn(`Rate limited on ${job.greenhouse_id}`)
-        return { ok: false, id: job.greenhouse_id }
-      }
       throw new Error(`API ${response.status}: ${errText.substring(0, 200)}`)
     }
 
@@ -122,100 +157,27 @@ async function enrichJob(
       ai_label: aiLabel,
     }
 
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('ats_jobs')
       .update(updateData)
-      .eq('greenhouse_id', job.greenhouse_id)
+      .eq('greenhouse_id', greenhouse_id)
 
-    if (error) throw error
-    return { ok: true, id: job.greenhouse_id, skills: skills.length }
-
-  } catch (e) {
-    console.error(`Failed ${job.greenhouse_id}:`, e.message)
-    if (!e.message?.includes('429')) {
-      await supabase.from('ats_jobs').update({
-        jd_skills: [], jd_requirements: [],
-      }).eq('greenhouse_id', job.greenhouse_id)
-    }
-    return { ok: false, id: job.greenhouse_id }
-  }
-}
-
-async function processWithConcurrency<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
-  const results: R[] = []
-  let idx = 0
-
-  async function worker() {
-    while (idx < items.length) {
-      const i = idx++
-      results[i] = await fn(items[i])
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()))
-  return results
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
-
-  const startTime = Date.now()
-
-  try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
-
-    // v2: Only enrich Tier 1 (user-relevant) and Tier 2 (high-value) jobs
-    // Tier 3 (on-demand) jobs use the enrich-job-ondemand endpoint
-    const { data: jobs, error: fetchError } = await supabase
-      .from('ats_jobs')
-      .select('greenhouse_id, title, content')
-      .not('content', 'is', null)
-      .is('jd_skills', null)
-      .eq('status', 'open')
-      .not('jd_extracted_at', 'is', null)
-      .in('enrichment_priority', [1, 2])
-      .order('enrichment_priority', { ascending: true })
-      .order('jd_extracted_at', { ascending: true })
-      .limit(BATCH_SIZE)
-
-    if (fetchError) throw fetchError
-    if (!jobs || jobs.length === 0) {
-      return new Response(
-        JSON.stringify({ ok: true, processed: 0, message: 'No Tier 1/2 jobs in enrichment queue' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    const results = await processWithConcurrency(jobs, CONCURRENCY, (job) => enrichJob(job, apiKey, supabase))
-
-    const processed = results.filter(r => r.ok).length
-    const errors = results.filter(r => !r.ok).length
-    const elapsed = Date.now() - startTime
+    if (updateError) throw updateError
 
     return new Response(
       JSON.stringify({
         ok: true,
-        processed,
-        errors,
-        batch_size: jobs.length,
-        elapsed_ms: elapsed,
-        rate: Math.round(processed / (elapsed / 1000) * 60) + '/min',
+        cached: false,
+        greenhouse_id,
+        skills: skills.length,
+        seniority: updateData.jd_seniority,
+        ai_label: aiLabel,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
+
   } catch (e) {
-    console.error('Fatal:', e)
+    console.error('On-demand enrichment failed:', e)
     return new Response(
       JSON.stringify({ error: e.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
