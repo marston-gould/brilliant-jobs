@@ -596,6 +596,7 @@ async function loadCompanyBrowser() {
 
     renderCompanyBrowserList();
     updateCbSelectedCount();
+    loadAiAggregationHealth();
   } catch (e) {
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Failed to load companies</div>';
   }
@@ -961,3 +962,129 @@ searchCompanies = async function(query) {
 
 // Collections loaded in init() after auth
 
+
+// ─── AI Aggregation Health Panel (v6.46 Session 4.3) ───
+
+async function loadAiAggregationHealth() {
+  const panel = document.getElementById('cb-ai-health-panel');
+  if (!panel) return;
+
+  // Only show for admin users (check for admin UI elements)
+  const isAdmin = !!document.getElementById('admin-panel') || !!document.querySelector('[data-admin]');
+  // Always show in company browser for transparency
+  panel.style.display = '';
+
+  try {
+    const { data, error } = await sb.rpc('get_ai_aggregation_health');
+    if (error) throw error;
+    if (!data) return;
+
+    const h = data;
+
+    // Coverage
+    const coverageEl = document.getElementById('ai-h-coverage');
+    if (coverageEl) {
+      const pct = h.coverage_pct || 0;
+      coverageEl.textContent = pct + '%';
+      coverageEl.style.color = pct > 80 ? 'var(--green)' : pct > 30 ? 'var(--amber,orange)' : 'var(--red)';
+    }
+
+    // Scored JDs
+    const scoredEl = document.getElementById('ai-h-scored');
+    if (scoredEl) {
+      scoredEl.textContent = (h.total_scores || 0).toLocaleString();
+    }
+
+    // Companies rated
+    const companiesEl = document.getElementById('ai-h-companies');
+    if (companiesEl) {
+      const rated = h.companies_with_rate || 0;
+      const total = h.total_companies || 0;
+      companiesEl.textContent = rated.toLocaleString() + ' / ' + total.toLocaleString();
+    }
+
+    // Cron status
+    const cronEl = document.getElementById('ai-h-cron');
+    if (cronEl) {
+      cronEl.textContent = h.cron_active ? '✅ Active' : '❌ Inactive';
+      cronEl.style.color = h.cron_active ? 'var(--green)' : 'var(--red)';
+    }
+
+    // Backfill status
+    const backfillEl = document.getElementById('ai-h-backfill');
+    if (backfillEl) {
+      backfillEl.textContent = h.backfill_active ? '🔄 Running' : '⏹ Stopped';
+      backfillEl.style.color = h.backfill_active ? 'var(--blue, #3b82f6)' : 'var(--text-dim)';
+    }
+
+    // Last scored
+    const lastEl = document.getElementById('ai-h-last-score');
+    if (lastEl) {
+      if (h.latest_score_at) {
+        const ago = timeAgo(new Date(h.latest_score_at));
+        lastEl.textContent = ago;
+      } else {
+        lastEl.textContent = 'Not yet';
+        lastEl.style.color = 'var(--text-dim)';
+      }
+    }
+
+    // Label distribution
+    const labelsEl = document.getElementById('cb-ai-health-labels');
+    if (labelsEl && h.label_distribution) {
+      const labels = h.label_distribution;
+      const total = Object.values(labels).reduce((s, v) => s + v, 0) || 0;
+      if (total > 0) {
+        labelsEl.innerHTML = Object.entries(labels).map(([label, count]) => {
+          const pct = ((count / total) * 100).toFixed(1);
+          const color = label === 'human' ? 'var(--green)' : label === 'mixed' ? 'var(--amber,orange)' : label === 'ai_generated' ? 'var(--red)' : 'var(--text-dim)';
+          const displayLabel = label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          return `<span style="font-size:11px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:3px;"></span>${displayLabel}: ${count.toLocaleString()} (${pct}%)</span>`;
+        }).join('');
+      } else {
+        labelsEl.innerHTML = '<span style="font-size:11px;color:var(--text-dim);">Backfill in progress — no scores yet</span>';
+      }
+    }
+
+    // PostHog tracking
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('ai_aggregation_health_viewed', {
+        coverage_pct: h.coverage_pct,
+        total_scores: h.total_scores,
+        cron_active: h.cron_active,
+        backfill_active: h.backfill_active
+      });
+    }
+
+  } catch (e) {
+    console.warn('[BJ] AI aggregation health check failed:', e.message);
+    panel.style.display = 'none';
+  }
+}
+
+// Simple time-ago helper
+function timeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  return days + 'd ago';
+}
+
+// Toggle handler for health panel
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtn = document.getElementById('cb-ai-health-toggle');
+  const body = document.getElementById('cb-ai-health-body');
+  const labels = document.getElementById('cb-ai-health-labels');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      const hidden = body.style.display === 'none';
+      body.style.display = hidden ? 'grid' : 'none';
+      if (labels) labels.style.display = hidden ? 'flex' : 'none';
+      toggleBtn.textContent = hidden ? 'Hide' : 'Show';
+    });
+  }
+});
