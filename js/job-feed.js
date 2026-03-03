@@ -899,6 +899,9 @@ async function searchJobs(page = 0) {
       }
     }
 
+    // Phase 72 Session 4.1: Apply AI scoring exclusions (dimmed badges, deprioritized)
+    currentJobs = applyAiScoringExclusions(currentJobs);
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger
@@ -1299,6 +1302,123 @@ function setAllTrustFilters(checked) {
     });
   }
   searchJobs(0);
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// AI CONTENT FILTER — Session 3.3 (v6.43) helper functions
+// ═══════════════════════════════════════════════════════════
+
+var _aiFilterLabels = new Set(['human', 'mixed', 'ai_generated', 'unscored']);
+
+function getActiveAiLabels() {
+  var labels = new Set();
+  document.querySelectorAll('.ai-filter-cb').forEach(function(cb) {
+    if (cb.checked) labels.add(cb.value);
+  });
+  return labels.size > 0 ? labels : _aiFilterLabels;
+}
+
+function isAiFilterActive() {
+  var cbs = document.querySelectorAll('.ai-filter-cb');
+  if (cbs.length === 0) return false;
+  var checked = 0;
+  cbs.forEach(function(cb) { if (cb.checked) checked++; });
+  return checked < cbs.length;
+}
+
+function applyAiContentFilter(jobs) {
+  if (!isAiFilterActive()) return jobs;
+  var labels = getActiveAiLabels();
+  return jobs.filter(function(j) {
+    var info = _aiJdScoreCache[j.greenhouse_id];
+    var label = 'unscored';
+    if (info && info.label) {
+      if (info.label === 'human_written') label = 'human';
+      else if (info.label === 'mixed_content') label = 'mixed';
+      else if (info.label === 'ai_generated') label = 'ai_generated';
+      else label = info.label;
+    }
+    return labels.has(label);
+  });
+}
+
+function updateAiFilterUI() {
+  var btn = document.getElementById('ai-filter-btn');
+  var countEl = document.getElementById('ai-filter-count');
+  if (!btn) return;
+  var active = isAiFilterActive();
+  if (active) {
+    var n = getActiveAiLabels().size;
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    if (countEl) { countEl.style.display = 'inline'; countEl.textContent = n; }
+  } else {
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text-faint)';
+    if (countEl) countEl.style.display = 'none';
+  }
+}
+
+function setAllAiFilters(checked) {
+  document.querySelectorAll('.ai-filter-cb').forEach(function(cb) { cb.checked = checked; });
+  updateAiFilterUI();
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('ai_filter_applied', {
+      labels: Array.from(getActiveAiLabels()),
+      action: checked ? 'select_all' : 'select_none'
+    });
+  }
+  searchJobs(0);
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI SCORING EXCLUSION — Session 4.1 (v6.44)
+// ═══════════════════════════════════════════════════════════
+
+// Cache for user AI scoring prefs (synced from settings.js)
+var _userAiScoringPrefsCache = { mixed_content: false, ai_generated: false };
+
+// Listen for pref changes from settings.js
+window.addEventListener('ai-scoring-prefs-changed', function(e) {
+  if (e.detail) _userAiScoringPrefsCache = e.detail;
+  // Re-render if on feed page
+  if (typeof searchJobs === 'function') searchJobs(0);
+});
+
+// Load prefs on startup (mirrors settings.js but for feed context)
+(function loadAiScoringPrefsForFeed() {
+  setTimeout(async function() {
+    try {
+      if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+      var resp = await sb.from('profiles').select('ai_scoring_prefs').eq('id', currentUser.id).single();
+      if (resp.data && resp.data.ai_scoring_prefs) {
+        _userAiScoringPrefsCache = resp.data.ai_scoring_prefs;
+      }
+    } catch (e) { /* silent — prefs default to no exclusions */ }
+  }, 1000);
+})();
+
+function isAiScoringExclusionActive() {
+  return _userAiScoringPrefsCache.mixed_content || _userAiScoringPrefsCache.ai_generated;
+}
+
+function applyAiScoringExclusions(jobs) {
+  if (!isAiScoringExclusionActive()) return jobs;
+  return jobs.map(function(j) {
+    var info = _aiJdScoreCache[j.greenhouse_id];
+    if (!info || !info.label) return j;
+    var excluded = false;
+    if (_userAiScoringPrefsCache.mixed_content && info.label === 'mixed_content') excluded = true;
+    if (_userAiScoringPrefsCache.ai_generated && info.label === 'ai_generated') excluded = true;
+    if (excluded) {
+      // Mark job as scoring-excluded (used by renderer to dim badge)
+      j._aiScoringExcluded = true;
+    } else {
+      j._aiScoringExcluded = false;
+    }
+    return j;
+  });
 }
 
 // Init trust filter UI
@@ -1877,7 +1997,7 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
-      <td class="jt-match">${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
+      <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
         ${saveBtn}${applyBtn}
       </div></td>
