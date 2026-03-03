@@ -800,8 +800,8 @@ function renderCompanyBrowserList() {
       row.after(panel);
       try {
         const { data, error } = await sb.from('content_ai_scores')
-          .select('label')
-          .eq('content_type', 'job_description')
+          .select('ai_label')
+          .eq('content_type', 'jd')
           .like('content_id', slug + '/%');
         if (error || !data || data.length === 0) {
           // Try alternate: get jobs for this company first
@@ -812,8 +812,8 @@ function renderCompanyBrowserList() {
           if (jobs && jobs.length > 0) {
             const jobIds = jobs.map(j => String(j.id));
             const { data: scores } = await sb.from('content_ai_scores')
-              .select('label')
-              .eq('content_type', 'job_description')
+              .select('ai_label')
+              .eq('content_type', 'jd')
               .in('content_id', jobIds);
             renderBreakdown(panel, scores || [], slug);
           } else {
@@ -836,7 +836,7 @@ function renderBreakdown(panel, scores, slug) {
     return;
   }
   const counts = { human: 0, mixed: 0, ai_generated: 0 };
-  scores.forEach(s => { if (counts[s.label] !== undefined) counts[s.label]++; });
+  scores.forEach(s => { if (counts[s.ai_label] !== undefined) counts[s.ai_label]++; });
   const total = scores.length;
   const pctH = total > 0 ? Math.round((counts.human / total) * 100) : 0;
   const pctM = total > 0 ? Math.round((counts.mixed / total) * 100) : 0;
