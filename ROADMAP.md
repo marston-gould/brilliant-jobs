@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-03
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.58
+**Current version:** v6.59
 
 ---
 
@@ -2636,3 +2636,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Admin: MV Health panel in Cache tab — staleness monitoring for all 7 MVs
 - Landing page: hardcoded fallbacks corrected to reflect live data
 - index.html cache-bust fixed (was stuck at v6.54)
+
+### 74.14 A15 Session 3: MV-Powered Stats Overview — v6.59
+- "All" filter mode: source breakdown donut powered by fetchSourceTotalsFromMV (pre-aggregated)
+- "All" filter mode: source-colored stacked bar timeline from fetchSourceBreakdownFromMV
+- Tooltip enrichment: salary data percentage per source from MV
+- Graceful fallback to row-based aggregation if MV fetch fails
