@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-01
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.22
+**Current version:** v6.53
 
 ---
 
@@ -2596,3 +2596,11 @@ Card 1 (test/activate) → Card 2 (cron) → Cards 3,4,5 (filters + feed)
 Card 7 (entitlements, independent) → Card 8 (freshness gating)
 ```
 
+## Phase 73 — Cron Cost Optimization + Common Crawl (v6.51-v6.53)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| 73.1 | Cron cost optimization Session 1 | v6.51 | Done | Reduced enrichment cron 12/hr to 1/hr (Tier 1+2 only). DataForSEO discovery 4/day to 1/day. enrichment_priority column. |
+| 73.2 | Cron cost optimization Session 2 | v6.52 | Done | Merged AI-content detection into enrichment prompt (eliminated crons 86-88). enrich-job-ondemand EF for Tier 3. |
+| 73.3 | Version audit + roadmap sync | v6.53 | Done | Cache-bust audit across all pages. Roadmap entries for v6.51-v6.52. version.js added to hiring-trends + market-dynamics. |
+| 73.4 | Common Crawl board discovery pipeline | — | Todo | Use Common Crawl columnar index for ATS board discovery at zero marginal cost. |
