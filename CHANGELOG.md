@@ -1,3 +1,11 @@
+## v6.56 A14 Session 3: Cache Integration + Invalidation (2026-03-03)
+- cachedQuery integrated into job feed stat cards (updateJobStatsFromFilters)
+- cachedQuery integrated into Stats page (fetchFilterData)
+- _filterCacheKey() generates deterministic cache keys from filter state
+- Company count query reduced from .limit(2000) fetch to .limit(1000) with distinct set
+- Pipeline mutations (save/move/delete) now invalidate feed: + stats: + pipeline: caches
+- Version bump to v6.56 across all surfaces
+
 ## v6.55 A14 Session 2: Cache Health Admin + TTL Tiers (2026-03-03)
 - Per-query TTL tiers: ref: 1h, feed: 3min, stats: 10min, company: 10min, default 5min
 - _resolveTTL() auto-resolves TTL from cache key prefix
