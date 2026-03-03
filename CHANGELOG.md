@@ -1,3 +1,26 @@
+## v6.42 — Synthetic Content Detection: Session 3.2 — Badge Tooltip + Hover Detail (2026-03-02)
+
+### Enhanced AI Badge Tooltip
+- **Signal breakdown bars** — Tooltip now shows individual detection signals: Predictability (inverted perplexity), Uniformity (inverted burstiness), and Overall AI Score as color-coded progress bars (green < 30%, yellow 30-60%, red > 60%)
+- **Confidence indicator** — Shows High/Medium/Low confidence level with percentage, color-coded to match confidence tier
+- **Richer tooltip layout** — Wider tooltip (240-300px), better spacing, summary section separated by border-top, monospaced signal values
+- **PostHog tracking** — `ai_jd_badge_clicked` event fires on badge click with job_id, ai_label, ai_score, confidence fields for engagement analytics
+
+### Technical Details
+- `fetchAiJdScores()` — Now fetches `perplexity_score` and `burstiness_score` columns from `content_ai_scores` in addition to existing fields
+- `_aiJdScoreCache` — Extended with `perplexity` and `burstiness` fields per job
+- `_aiSignalColor(pct)` — New helper returning CSS variable color based on AI signal percentage threshold
+- `trackAiJdBadgeClick(jobId)` — New function for PostHog event capture on badge interaction
+- New CSS classes: `.ai-jd-tooltip-conf`, `.ai-jd-conf--high/med/low`, `.ai-jd-tooltip-signals`, `.ai-jd-signal-row/label/bar/fill/val`
+- No Edge Function changes — reads existing columns already populated by `score-ai-content` EF (v6.36)
+- No database schema changes — uses existing `perplexity_score` and `burstiness_score` columns in `content_ai_scores`
+
+### Version Discipline
+- `js/version.js` → v6.42
+- `dashboard.html` → v6.42 + cache-bust ?v=6.42 (all script/CSS references)
+- `index.html` → v6.42
+- Git tag: v6.42
+
 ## v6.41 — Synthetic Content Detection: Session 3.1 — Feed Card AI Badge (2026-03-02)
 
 ### Feed Card AI Badge
