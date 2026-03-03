@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.40';
+var BJ_VERSION = 'v6.41';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -20,7 +20,6 @@ var BJ_VERSION = 'v6.40';
     populateVersion();
   }
 })();
-
 
 // === js/globals.js ===
 // ============================================================
@@ -2218,6 +2217,9 @@ async function searchJobs(page = 0) {
     // Fetch fraud scores for visible jobs
     await fetchFraudScores(currentJobs);
 
+    // Fetch AI JD scores for visible jobs (v6.41)
+    await fetchAiJdScores(currentJobs);
+
     // Phase 4: Apply trust level filter (client-side post-filter)
     if (isTrustFilterActive()) {
       currentJobs = applyTrustFilter(currentJobs);
@@ -2699,6 +2701,64 @@ async function fetchFraudScores(jobs) {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// AI CONTENT DETECTION — Session 3.1: Feed Card AI Badge (v6.41)
+// ═══════════════════════════════════════════════════════════
+
+var _aiJdScoreCache = {};
+
+async function fetchAiJdScores(jobs) {
+  var uncached = jobs.filter(function(j) { return !_aiJdScoreCache[j.greenhouse_id]; });
+  if (uncached.length === 0) return;
+
+  var ids = uncached.map(function(j) { return j.greenhouse_id; });
+  try {
+    var { data, error } = await sb
+      .from('content_ai_scores')
+      .select('content_id,ai_label,ai_generated_score,confidence,summary')
+      .eq('content_type', 'job_description')
+      .in('content_id', ids);
+    if (error) { console.warn('[BJ] AI JD score fetch error:', error); return; }
+    if (data) {
+      data.forEach(function(row) {
+        _aiJdScoreCache[row.content_id] = {
+          label: row.ai_label,
+          score: row.ai_generated_score,
+          confidence: row.confidence,
+          summary: row.summary,
+        };
+      });
+    }
+  } catch (e) {
+    console.warn('[BJ] AI JD score fetch failed:', e);
+  }
+}
+
+function aiJdBadgeHtml(jobId) {
+  var info = _aiJdScoreCache[jobId];
+  if (!info || !info.label) return '';
+
+  var cfg = {
+    human: { icon: '✅', cls: 'ai-jd-badge--human', label: 'Human', tip: 'Likely human-written job description' },
+    mixed: { icon: '⚠️', cls: 'ai-jd-badge--mixed', label: 'Mixed', tip: 'May contain AI-generated content' },
+    ai_generated: { icon: '🤖', cls: 'ai-jd-badge--ai', label: 'AI', tip: 'Likely AI-generated job description' },
+  };
+  var c = cfg[info.label];
+  if (!c) return '';
+
+  var pct = info.score !== null && info.score !== undefined ? (info.score * 100).toFixed(0) + '%' : '';
+  var summaryHtml = info.summary ? '<div class="ai-jd-tooltip-summary">' + escapeHtml(info.summary).substring(0, 200) + '</div>' : '';
+
+  return '<span class="ai-jd-badge ' + c.cls + '" data-ai-jobid="' + escapeHtml(jobId) + '">'
+    + c.icon
+    + '<span class="ai-jd-tooltip">'
+    + '<div class="ai-jd-tooltip-title">' + c.tip + (pct ? ' (' + pct + ')' : '') + '</div>'
+    + summaryHtml
+    + '</span>'
+    + '</span>';
+}
+
 function fraudBadgeHtml(jobId) {
   var info = _fraudScoreCache[jobId];
   if (!info || info.label === 'unknown') return '';
@@ -2965,9 +3025,12 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       job._fraudBadgeTracked = true;
     }
 
+    // AI JD detection badge (v6.41 — Session 3.1)
+    const aiJdBadge = aiJdBadgeHtml(job.greenhouse_id);
+
     html += `<tr class="job-data-row" data-jobid="${escapeHtml(job.greenhouse_id)}" data-level-rank="${levelInfo ? levelInfo.rank : 999}">
       <td style="padding:6px 4px;"><button class="job-action-btn hide-btn" onclick="hideJob('${escapeHtml(job.greenhouse_id)}', this)" style="padding:2px 6px;font-size:9px;" title="Hide this job — trains your exclusion filters to remove similar listings">✕</button></td>
-      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}</td>
+      <td class="jt-title">${filterBadges}<span class="job-title-link" data-jobid="${escapeHtml(job.greenhouse_id)}" title="${escapeHtml(job.title||'')}">${truncate(job.title, 55)}</span>${newBadge}${fraudBadge}${aiJdBadge}</td>
       <td class="jt-level">${levelCell}</td>
       <td class="jt-company">${truncate(cleanCompanyName(job.company_name), 30)}</td>
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
