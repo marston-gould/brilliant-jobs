@@ -1766,6 +1766,8 @@ const features = [
 
   { s: 'done', n: 'A14: Client-side cache enhancement (v6.54)', d: 'Enhanced cachedQuery to return { data, count, cached }. Debug logging (BJ_DEBUG_CACHE=1). getCacheStats() diagnostic. clearAllCaches(). Visibility timeout clears caches after 5min tab hidden. Cache invalidation on filter save/delete and logout.', p: 74, e: '2h' },
 
+  { s: 'done', n: 'A14 S2: Cache Health Admin + TTL Tiers (v6.55)', d: 'Per-query TTL tiers by key prefix (ref: 1h, feed: 3min, stats: 10min). Admin Cache tab with live health panel — summary cards, TTL tier config, entries list with stale detection, Clear All. getCacheStats() enhanced with memory estimate, pct life, stale flags. Admin version catch-up v6.27→v6.55.', p: 74, e: '2h' },
+
 ];
 
 

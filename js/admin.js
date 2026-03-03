@@ -103,6 +103,7 @@ function switchAdminTab(tabId) {
       case 'notif-analytics': loadNotifAnalyticsTab(); break;
       case 'email-cohorts': loadEmailCohortsTab(); break;
       case 'cadence': loadCadenceTab(); break;
+      case 'cache': refreshCacheHealthPanel(); break;
     }
   }
 }
@@ -3678,5 +3679,70 @@ function toggleMockAtsDetail(row) {
   var detail = row.nextElementSibling;
   if (detail && detail.classList.contains('mock-ats-detail')) {
     detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  }
+}
+
+// ─── Cache Health Tab (v6.55 A14 Session 2) ───
+
+function refreshCacheHealthPanel() {
+  var stats = (typeof getCacheStats === 'function') ? getCacheStats() : null;
+  if (!stats) {
+    var emptyEl = document.getElementById('cache-empty');
+    if (emptyEl) { emptyEl.style.display = ''; emptyEl.textContent = 'getCacheStats() not available — globals.js may not be loaded.'; }
+    return;
+  }
+
+  // Summary cards
+  var entriesEl = document.getElementById('cache-entries');
+  var hitRateEl = document.getElementById('cache-hit-rate');
+  var totalRowsEl = document.getElementById('cache-total-rows');
+  var memKbEl = document.getElementById('cache-mem-kb');
+  if (entriesEl) entriesEl.textContent = stats.entries;
+  if (hitRateEl) hitRateEl.textContent = stats.hitRate;
+  if (totalRowsEl) totalRowsEl.textContent = stats.totalRows.toLocaleString();
+  if (memKbEl) memKbEl.textContent = stats.memEstimateKB.toLocaleString();
+
+  // Hits/misses label
+  var hmEl = document.getElementById('cache-hits-misses');
+  if (hmEl) hmEl.textContent = stats.hits + ' hits / ' + stats.misses + ' misses';
+
+  // TTL tier table
+  var tierBody = document.getElementById('cache-tier-body');
+  if (tierBody && stats.tiers) {
+    var tierHtml = '';
+    var prefixes = Object.keys(stats.tiers);
+    for (var i = 0; i < prefixes.length; i++) {
+      var sec = Math.round(stats.tiers[prefixes[i]] / 1000);
+      var label = sec >= 3600 ? Math.round(sec / 3600) + 'h' : sec >= 60 ? Math.round(sec / 60) + 'min' : sec + 's';
+      tierHtml += '<tr><td><code>' + escapeHtml(prefixes[i]) + '</code></td><td>' + label + '</td></tr>';
+    }
+    tierHtml += '<tr><td><code>(default)</code></td><td>' + Math.round(stats.defaultTTL / 60000) + 'min</td></tr>';
+    tierBody.innerHTML = tierHtml;
+  }
+
+  // Entries table
+  var entriesBody = document.getElementById('cache-entries-body');
+  var emptyMsg = document.getElementById('cache-empty');
+  if (entriesBody) {
+    if (stats.keys.length === 0) {
+      entriesBody.innerHTML = '';
+      if (emptyMsg) emptyMsg.style.display = '';
+    } else {
+      if (emptyMsg) emptyMsg.style.display = 'none';
+      var html = '';
+      for (var j = 0; j < stats.keys.length; j++) {
+        var k = stats.keys[j];
+        var staleClass = k.stale ? ' style="color:#ef4444;font-weight:600"' : '';
+        html += '<tr>';
+        html += '<td><code style="font-size:12px">' + escapeHtml(k.key) + '</code></td>';
+        html += '<td>' + k.age + '</td>';
+        html += '<td>' + k.ttl + '</td>';
+        html += '<td>' + k.pctLife + '</td>';
+        html += '<td>' + k.rows.toLocaleString() + '</td>';
+        html += '<td' + staleClass + '>' + (k.stale ? 'Yes' : '—') + '</td>';
+        html += '</tr>';
+      }
+      entriesBody.innerHTML = html;
+    }
   }
 }

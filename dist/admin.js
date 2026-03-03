@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.26';
+var BJ_VERSION = 'v6.55';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -371,7 +371,7 @@ function _clearSensitiveData() {
     localStorage.removeItem(key);
   });
   // Clear any cached query data
-  _queryCache = {};
+  clearAllCaches();
 }
 
 // Auth
@@ -759,38 +759,78 @@ function _handleStorageFull(failedKey) {
 // ============================================================
 // CACHED QUERY — in-memory cache with TTL (v3.84)
 // ============================================================
-// Usage: const data = await cachedQuery('companies', () => sb.from('ats_companies').select('slug, name, job_count, source'), { ttl: 300000 });
+// ============================================================
+// IN-MEMORY QUERY CACHE (A14 — v6.54)
+// ============================================================
+// cachedQuery wraps Supabase queries with TTL-based caching.
+// Returns { data, count, cached } — cached=true means result came from cache.
+// Debug: set BJ_DEBUG_CACHE=1 in localStorage to see cache hit/miss logs.
+// Usage: const { data, cached } = await cachedQuery('companies', () => sb.from('ats_companies').select('slug,name'), { ttl: 300000 });
 
 var _queryCache = {};
+var _cacheHits = 0;
+var _cacheMisses = 0;
+var _cacheDebug = (typeof localStorage !== 'undefined' && localStorage.getItem('BJ_DEBUG_CACHE') === '1');
+
+// TTL tiers by key prefix (v6.55 A14 Session 2)
+// ref: = reference/lookup tables (rarely change) — 1 hour
+// feed: = job feed queries (change frequently) — 3 min
+// stats: = stats/analytics queries — 10 min
+// company: = company browser queries — 10 min
+// default = 5 min
+var CACHE_TTL_TIERS = {
+  'ref:': 3600000,     // 1 hour
+  'feed:': 180000,     // 3 min
+  'stats:': 600000,    // 10 min
+  'company:': 600000,  // 10 min
+  'pipeline:': 300000, // 5 min
+  'settings:': 600000  // 10 min
+};
+var CACHE_TTL_DEFAULT = 300000; // 5 min
+
+/** Resolve TTL from key prefix tier or explicit opt */
+function _resolveTTL(key, opts) {
+  if (opts && opts.ttl) return opts.ttl;
+  var prefixes = Object.keys(CACHE_TTL_TIERS);
+  for (var i = 0; i < prefixes.length; i++) {
+    if (key.indexOf(prefixes[i]) === 0) return CACHE_TTL_TIERS[prefixes[i]];
+  }
+  return CACHE_TTL_DEFAULT;
+}
 
 /**
  * Execute a Supabase query with in-memory caching.
- * @param {string} key - Unique cache key
- * @param {function} queryFn - Function that returns a Supabase query promise
- * @param {object} opts - { ttl: ms (default 5 min), force: boolean }
- * @returns {Promise<any>} Cached or fresh data
+ * @param {string} key - Unique cache key (prefix determines TTL tier)
+ * @param {function} queryFn - Function returning a Supabase query promise
+ * @param {object} opts - { ttl: ms (overrides tier), force: boolean }
+ * @returns {Promise<{data: any, count: number|null, cached: boolean}>}
  */
 async function cachedQuery(key, queryFn, opts) {
-  var ttl = (opts && opts.ttl) || 300000; // 5 min default
+  var ttl = _resolveTTL(key, opts);
   var force = opts && opts.force;
   var entry = _queryCache[key];
 
   if (!force && entry && Date.now() - entry.ts < ttl) {
-    return entry.data;
+    _cacheHits++;
+    if (_cacheDebug) console.log('[cache] HIT', key, '(' + Math.round((Date.now() - entry.ts)/1000) + 's old)');
+    return { data: entry.data, count: entry.count, cached: true };
   }
 
   try {
     var result = await queryFn();
     if (result.error) {
       console.warn('[cachedQuery] Error for', key, result.error.message);
-      // Return stale cache if available
-      return entry ? entry.data : null;
+      if (entry) return { data: entry.data, count: entry.count, cached: true };
+      return { data: null, count: null, cached: false };
     }
     _queryCache[key] = { data: result.data, ts: Date.now(), count: result.count };
-    return result.data;
+    _cacheMisses++;
+    if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
+    return { data: result.data, count: result.count, cached: false };
   } catch (e) {
     console.warn('[cachedQuery] Failed for', key, e.message);
-    return entry ? entry.data : null;
+    if (entry) return { data: entry.data, count: entry.count, cached: true };
+    return { data: null, count: null, cached: false };
   }
 }
 
@@ -805,6 +845,77 @@ function invalidateCache(keyOrPrefix) {
   if (!keyOrPrefix) { _queryCache = {}; return; }
   Object.keys(_queryCache).forEach(function(k) {
     if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
+  });
+  if (_cacheDebug) console.log('[cache] Invalidated', keyOrPrefix || 'ALL');
+}
+
+/** Clear ALL app caches — query cache + stats cache (if present) */
+function clearAllCaches() {
+  _queryCache = {};
+  _cacheHits = 0;
+  _cacheMisses = 0;
+  // Clear stats module cache if it exists
+  if (typeof statsCache !== 'undefined') {
+    Object.keys(statsCache).forEach(function(k) { delete statsCache[k]; });
+  }
+  if (_cacheDebug) console.log('[cache] All caches cleared');
+}
+
+/** Get cache diagnostics — call from console: getCacheStats() */
+function getCacheStats() {
+  var keys = Object.keys(_queryCache);
+  var now = Date.now();
+  var totalRows = 0;
+  var memEstimate = 0;
+  var entries = keys.map(function(k) {
+    var e = _queryCache[k];
+    var rows = e.data ? (Array.isArray(e.data) ? e.data.length : 1) : 0;
+    totalRows += rows;
+    var tierTTL = _resolveTTL(k, null);
+    var ageMs = now - e.ts;
+    var pctLife = Math.round((ageMs / tierTTL) * 100);
+    // rough memory estimate: JSON serialization length
+    try { memEstimate += JSON.stringify(e.data).length; } catch(x) {}
+    return {
+      key: k,
+      age: Math.round(ageMs / 1000) + 's',
+      ttl: Math.round(tierTTL / 1000) + 's',
+      pctLife: Math.min(pctLife, 100) + '%',
+      rows: rows,
+      stale: ageMs >= tierTTL
+    };
+  });
+  return {
+    entries: keys.length,
+    totalRows: totalRows,
+    memEstimateKB: Math.round(memEstimate / 1024),
+    hits: _cacheHits,
+    misses: _cacheMisses,
+    hitRate: (_cacheHits + _cacheMisses) > 0 ? Math.round(_cacheHits / (_cacheHits + _cacheMisses) * 100) + '%' : 'N/A',
+    tiers: CACHE_TTL_TIERS,
+    defaultTTL: CACHE_TTL_DEFAULT,
+    keys: entries
+  };
+}
+
+// ============================================================
+// VISIBILITY-BASED CACHE TIMEOUT (A14)
+// ============================================================
+// Clear caches when tab has been hidden for 5+ minutes to prevent stale data
+var _visibilityHiddenAt = null;
+var VISIBILITY_CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      _visibilityHiddenAt = Date.now();
+    } else if (_visibilityHiddenAt && Date.now() - _visibilityHiddenAt >= VISIBILITY_CACHE_TIMEOUT) {
+      clearAllCaches();
+      if (_cacheDebug) console.log('[cache] Cleared after', Math.round((Date.now() - _visibilityHiddenAt) / 60000), 'min hidden');
+      _visibilityHiddenAt = null;
+    } else {
+      _visibilityHiddenAt = null;
+    }
   });
 }
 
@@ -1068,6 +1179,7 @@ function switchAdminTab(tabId) {
       case 'notif-analytics': loadNotifAnalyticsTab(); break;
       case 'email-cohorts': loadEmailCohortsTab(); break;
       case 'cadence': loadCadenceTab(); break;
+      case 'cache': refreshCacheHealthPanel(); break;
     }
   }
 }
@@ -4643,6 +4755,71 @@ function toggleMockAtsDetail(row) {
   var detail = row.nextElementSibling;
   if (detail && detail.classList.contains('mock-ats-detail')) {
     detail.style.display = detail.style.display === 'none' ? '' : 'none';
+  }
+}
+
+// ─── Cache Health Tab (v6.55 A14 Session 2) ───
+
+function refreshCacheHealthPanel() {
+  var stats = (typeof getCacheStats === 'function') ? getCacheStats() : null;
+  if (!stats) {
+    var emptyEl = document.getElementById('cache-empty');
+    if (emptyEl) { emptyEl.style.display = ''; emptyEl.textContent = 'getCacheStats() not available — globals.js may not be loaded.'; }
+    return;
+  }
+
+  // Summary cards
+  var entriesEl = document.getElementById('cache-entries');
+  var hitRateEl = document.getElementById('cache-hit-rate');
+  var totalRowsEl = document.getElementById('cache-total-rows');
+  var memKbEl = document.getElementById('cache-mem-kb');
+  if (entriesEl) entriesEl.textContent = stats.entries;
+  if (hitRateEl) hitRateEl.textContent = stats.hitRate;
+  if (totalRowsEl) totalRowsEl.textContent = stats.totalRows.toLocaleString();
+  if (memKbEl) memKbEl.textContent = stats.memEstimateKB.toLocaleString();
+
+  // Hits/misses label
+  var hmEl = document.getElementById('cache-hits-misses');
+  if (hmEl) hmEl.textContent = stats.hits + ' hits / ' + stats.misses + ' misses';
+
+  // TTL tier table
+  var tierBody = document.getElementById('cache-tier-body');
+  if (tierBody && stats.tiers) {
+    var tierHtml = '';
+    var prefixes = Object.keys(stats.tiers);
+    for (var i = 0; i < prefixes.length; i++) {
+      var sec = Math.round(stats.tiers[prefixes[i]] / 1000);
+      var label = sec >= 3600 ? Math.round(sec / 3600) + 'h' : sec >= 60 ? Math.round(sec / 60) + 'min' : sec + 's';
+      tierHtml += '<tr><td><code>' + escapeHtml(prefixes[i]) + '</code></td><td>' + label + '</td></tr>';
+    }
+    tierHtml += '<tr><td><code>(default)</code></td><td>' + Math.round(stats.defaultTTL / 60000) + 'min</td></tr>';
+    tierBody.innerHTML = tierHtml;
+  }
+
+  // Entries table
+  var entriesBody = document.getElementById('cache-entries-body');
+  var emptyMsg = document.getElementById('cache-empty');
+  if (entriesBody) {
+    if (stats.keys.length === 0) {
+      entriesBody.innerHTML = '';
+      if (emptyMsg) emptyMsg.style.display = '';
+    } else {
+      if (emptyMsg) emptyMsg.style.display = 'none';
+      var html = '';
+      for (var j = 0; j < stats.keys.length; j++) {
+        var k = stats.keys[j];
+        var staleClass = k.stale ? ' style="color:#ef4444;font-weight:600"' : '';
+        html += '<tr>';
+        html += '<td><code style="font-size:12px">' + escapeHtml(k.key) + '</code></td>';
+        html += '<td>' + k.age + '</td>';
+        html += '<td>' + k.ttl + '</td>';
+        html += '<td>' + k.pctLife + '</td>';
+        html += '<td>' + k.rows.toLocaleString() + '</td>';
+        html += '<td' + staleClass + '>' + (k.stale ? 'Yes' : '—') + '</td>';
+        html += '</tr>';
+      }
+      entriesBody.innerHTML = html;
+    }
   }
 }
 
