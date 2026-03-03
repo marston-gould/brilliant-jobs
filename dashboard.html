@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v6.43 -->
+<!-- Brilliant Jobs Dashboard v6.44 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,19 +11,19 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=6.43"></script>
-  <script src="/js/notification-center.js?v=6.43"></script>
+  <script src="/js/version.js?v=6.44"></script>
+  <script src="/js/notification-center.js?v=6.44"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=6.43" defer></script>
-  <script src="js/canny.js?v=6.43" defer></script>
+  <script src="dist/dashboard.min.js?v=6.44" defer></script>
+  <script src="js/canny.js?v=6.44" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=6.43">
+  <link rel="stylesheet" href="styles.css?v=6.44">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -2700,6 +2700,33 @@
               <button class="btn btn-secondary btn-sm" id="st-export">Export Data</button>
             </div>
           </div>
+          <div class="card" id="ai-prefs-card">
+            <div class="card-title">AI Content Preferences</div>
+            <div class="card-sub">Control how AI-generated content affects your job match scores and recommendations.</div>
+            <div class="ai-prefs-section">
+              <div class="ai-prefs-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">Exclude Mixed Content</div>
+                  <div style="font-size:11px;color:var(--text-faint);">Jobs with partially AI-written descriptions won&rsquo;t affect your match scores</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ai-pref-mixed" data-ai-label="mixed_content">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <div class="ai-prefs-toggle" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">Exclude AI-Generated</div>
+                  <div style="font-size:11px;color:var(--text-faint);">Jobs with fully AI-written descriptions won&rsquo;t affect your match scores</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ai-pref-ai-generated" data-ai-label="ai_generated">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
