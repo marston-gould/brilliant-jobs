@@ -1,0 +1,56 @@
+name: Workable XML Pipeline
+
+on:
+  schedule:
+    # Hourly at :15 past (offset from other crons)
+    - cron: '15 * * * *'
+  workflow_dispatch:
+    inputs:
+      skip_close:
+        description: 'Skip marking jobs as closed (for testing)'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: workable-xml-pipeline
+  cancel-in-progress: false  # Let running pipeline finish
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  ingest:
+    name: Ingest Workable XML Feed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/refresh-workable-xml.mjs
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js
+
+      - name: Run pipeline
+        id: pipeline
+        run: node scripts/refresh-workable-xml.mjs
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Workable XML Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Jobs Parsed | ${{ steps.pipeline.outputs.jobs_parsed || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Jobs Upserted | ${{ steps.pipeline.outputs.jobs_upserted || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Boards Discovered | ${{ steps.pipeline.outputs.boards_discovered || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Elapsed | ${{ steps.pipeline.outputs.elapsed_ms || 'N/A' }}ms |" >> $GITHUB_STEP_SUMMARY
