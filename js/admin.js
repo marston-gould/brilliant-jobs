@@ -212,10 +212,12 @@ async function loadBoardHealth() {
     }
 
     // Load feed health charts
-    loadFeedHealthCharts();
-    // Load discovery pipeline + auto-apply stats
-    loadDiscoveryPipelineStats();
-    loadAutoApplyStats();
+    loadFeedHealthCharts().catch(function(e) { console.warn('[Admin] Feed health charts failed:', e.message); });
+    // Load discovery pipeline + auto-apply stats (isolated to prevent cascading failures)
+    loadDiscoveryPipelineStats().catch(function(e) { console.warn('[Admin] Discovery pipeline stats failed:', e.message); });
+    loadAutoApplyStats().catch(function(e) { console.warn('[Admin] Auto-apply stats failed:', e.message); });
+    // A15 S5: Show MV staleness in feed health header
+    loadMVStalenessIndicator().catch(function(e) { console.warn('[Admin] MV staleness check failed:', e.message); });
   } catch (err) {
     console.error('[Admin] loadBoardHealth error:', err); toastError('Failed to load board health');
   }
@@ -592,6 +594,29 @@ async function loadRefreshCycle() {
     }
   } catch (err) {
     console.error('[Admin] loadRefreshCycle error:', err); toastWarning('Refresh cycle data failed to load');
+  }
+}
+
+// A15 S5: MV staleness indicator in feed health header
+async function loadMVStalenessIndicator() {
+  var result = await sb.from('mv_landing_stats').select('refreshed_at').single();
+  if (!result || !result.data) return;
+  var refreshedAt = new Date(result.data.refreshed_at);
+  var minsAgo = Math.round((Date.now() - refreshedAt.getTime()) / 60000);
+  var fresh = minsAgo <= 15;
+  var ageStr = minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ' + (minsAgo % 60) + 'min ago';
+  var healthEl = document.getElementById('admin-health');
+  if (healthEl) {
+    var badge = document.getElementById('admin-mv-stale');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.id = 'admin-mv-stale';
+      badge.style.cssText = 'margin-left:12px;font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:4px;border:1px solid var(--border);';
+      healthEl.appendChild(badge);
+    }
+    badge.style.background = fresh ? 'var(--bg-input)' : 'rgba(245,158,11,0.1)';
+    badge.style.color = fresh ? 'var(--text-faint)' : '#f59e0b';
+    badge.textContent = 'MV: ' + ageStr + (fresh ? '' : ' ⚠ STALE');
   }
 }
 

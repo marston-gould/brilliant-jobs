@@ -202,17 +202,26 @@ async function fetchAndRenderStats() {
     if (deduped.length === 0) { showEmptyState('no-results'); return; }
     var stats = aggregateStats(deduped);
     showStatsLoading(false);
-    renderStatCards(stats);
 
-    // A15 Session 3: When "All" filters selected, use MV data for source charts
+    // A15 Session 5: When "All" filters selected, use MV data for stat cards + source charts
     var isAllMode = statsSelectedFilters.includes('__all__');
-    var mvSourceTotals = null, mvSourceTimeline = null;
+    var mvSourceTotals = null, mvSourceTimeline = null, mvLandingStats = null;
     if (isAllMode) {
       try {
-        var mvResults = await Promise.all([fetchSourceTotalsFromMV(), fetchSourceBreakdownFromMV()]);
+        var mvResults = await Promise.all([fetchSourceTotalsFromMV(), fetchSourceBreakdownFromMV(), fetchLandingStatsFromMV()]);
         mvSourceTotals = mvResults[0];
         mvSourceTimeline = mvResults[1];
+        mvLandingStats = mvResults[2];
       } catch (e) { console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
+    }
+
+    // A15 S5: Render stat cards from MV when in All mode (instant, no row aggregation)
+    if (mvLandingStats) {
+      renderStatCardsFromMV(mvLandingStats);
+      renderMVFreshnessNotice(mvLandingStats.refreshed_at);
+    } else {
+      renderStatCards(stats);
+      hideMVFreshnessNotice();
     }
 
     // Use MV-powered source timeline when available, otherwise standard
@@ -448,6 +457,9 @@ function renderStatCards(stats) {
   var fmtK = function(n) { if (n == null) return 'N/A'; return n >= 1000 ? ('$' + Math.round(n/1000) + 'K') : ('$' + fmt(n)); };
   setText('#sc-total', fmt(stats.total));
   setText('#sc-salary', fmtK(stats.medianSalary));
+  // Restore label in case it was changed by MV mode
+  var salaryLabel = document.querySelector('#sc-salary');
+  if (salaryLabel && salaryLabel.nextElementSibling) salaryLabel.nextElementSibling.textContent = 'Median Salary';
   setText('#sc-senior', stats.seniorPct + '%');
   setText('#sc-remote', stats.remotePct + '%');
   setText('#sc-companies', fmt(stats.companyCount));
@@ -1031,6 +1043,64 @@ async function fetchSourceBreakdownFromMV() {
     return (result && result.data) || null;
   } catch (e) { console.warn('[Stats] MV source breakdown failed:', e.message); }
   return null;
+}
+
+// A15 S5: Fetch landing stats from MV for stat cards (total_jobs, salary, remote, companies)
+async function fetchLandingStatsFromMV() {
+  try {
+    var cKey = 'mv:landing-stats';
+    var result = await cachedQuery(cKey, function() {
+      return sb.from('mv_landing_stats').select('*').single();
+    }, { ttl: 600000 }); // 10 min — matches MV refresh cycle
+    return (result && result.data) || null;
+  } catch (e) { console.warn('[Stats] MV landing stats failed:', e.message); }
+  return null;
+}
+
+// A15 S5: Render stat cards from materialized view data (no row aggregation needed)
+function renderStatCardsFromMV(mv) {
+  var fmt = function(n) { return n != null ? Number(n).toLocaleString() : '\u2014'; };
+  setText('#sc-total', fmt(mv.total_jobs));
+  // Salary % = jobs_with_salary / total_jobs (MV has count, not median)
+  var salaryPct = mv.total_jobs > 0 ? Math.round((mv.jobs_with_salary / mv.total_jobs) * 100) : 0;
+  setText('#sc-salary', salaryPct + '%');
+  // Update label to reflect the metric change
+  var salaryLabel = document.querySelector('#sc-salary');
+  if (salaryLabel && salaryLabel.nextElementSibling) salaryLabel.nextElementSibling.textContent = 'With Salary';
+  // Remote %
+  var remotePct = mv.total_jobs > 0 ? Math.round((mv.remote_jobs / mv.total_jobs) * 100) : 0;
+  setText('#sc-remote', remotePct + '%');
+  setText('#sc-companies', fmt(mv.total_companies));
+  // Senior % not available from MV — show dash
+  setText('#sc-senior', '\u2014');
+}
+
+// A15 S5: Show MV freshness badge
+function renderMVFreshnessNotice(refreshedAt) {
+  var el = document.getElementById('stats-mv-freshness');
+  if (!el) {
+    // Create badge dynamically if not in HTML
+    var container = document.getElementById('stats-filter-pills');
+    if (!container) return;
+    el = document.createElement('span');
+    el.id = 'stats-mv-freshness';
+    el.style.cssText = 'font-size:11px;color:var(--text-faint);font-family:var(--mono);margin-left:auto;padding:3px 8px;border:1px solid var(--border);border-radius:6px;white-space:nowrap;display:flex;align-items:center;gap:4px;';
+    container.appendChild(el);
+  }
+  if (refreshedAt) {
+    var minsAgo = Math.round((Date.now() - new Date(refreshedAt).getTime()) / 60000);
+    var fresh = minsAgo <= 15;
+    var ageStr = minsAgo < 60 ? minsAgo + 'min ago' : Math.round(minsAgo / 60) + 'h ' + (minsAgo % 60) + 'min ago';
+    el.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:' + (fresh ? '#22c55e' : '#f59e0b') + ';display:inline-block"></span> Data ' + ageStr;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function hideMVFreshnessNotice() {
+  var el = document.getElementById('stats-mv-freshness');
+  if (el) el.style.display = 'none';
 }
 
 // Check MV freshness — returns { fresh: bool, age: string, refreshed_at: string }
