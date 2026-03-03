@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Landing Page v6.57 -->
+<!-- Brilliant Jobs Landing Page v6.58 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -19,7 +19,7 @@
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preconnect" href="https://qojhagupdnbtomfoxnsf.supabase.co">
-  <script src="/js/version.js?v=6.54"></script>
+  <script src="/js/version.js?v=6.58"></script>
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -861,7 +861,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <section class="hero segment-new">
     <div class="hero-label"><span class="dot"></span> Now in private beta</div>
     <h1>The job search<br>for people who are<br><span class="accent">done with job boards.</span></h1>
-    <p class="hero-sub"><span id="lp-hero-jobs">320,000+</span> real jobs from <span id="lp-hero-companies">39,000+</span> company career pages. Salary data they don't want you to see. And the first public record of which companies actually respond.</p>
+    <p class="hero-sub"><span id="lp-hero-jobs">400,000+</span> real jobs from <span id="lp-hero-companies">8,700+</span> company career pages. Salary data they don't want you to see. And the first public record of which companies actually respond.</p>
     <div class="hero-ctas">
       <button class="btn btn-primary" id="hero-signup-btn">Start Free</button>
       <button class="btn btn-ghost" id="hero-preview-btn">See Jobs in Your Field ↓</button>
@@ -872,7 +872,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   <section class="hero segment-returning">
     <div class="hero-label"><span class="dot"></span> Welcome back</div>
     <h1 data-merch-field="h1">See what's new<br><span class="accent">since your last visit.</span></h1>
-    <p class="hero-sub" data-merch-field="sub">Jump right into exploring <span id="lp-hero-jobs-ret">320,000+</span> jobs from real company career pages — with salary data and ghost rate tracking.</p>
+    <p class="hero-sub" data-merch-field="sub">Jump right into exploring <span id="lp-hero-jobs-ret">400,000+</span> jobs from real company career pages — with salary data and ghost rate tracking.</p>
     <div class="hero-ctas">
       <button class="btn btn-primary" id="hero-signup-ret" onclick="if(window.posthog&&window._merchContentId)posthog.capture('merch_content_click',{element_id:window._merchElementId,content_id:window._merchContentId,page_url:'/',action:'signup'})">Start Free</button>
       <button class="btn btn-ghost" id="hero-preview-ret">Search Jobs ↓</button>
@@ -1812,8 +1812,8 @@ document.addEventListener('DOMContentLoaded', function() {
         applyStats(stats);
       } catch (e) {
         console.log('[BJ] Stats fetch error:', e.message);
-        document.getElementById('lp-active-jobs').textContent = '280,000+';
-        document.getElementById('lp-companies').textContent = '39,000+';
+        document.getElementById('lp-active-jobs').textContent = '400,000+';
+        document.getElementById('lp-companies').textContent = '8,700+';
         document.getElementById('lp-metros').textContent = '199';
         document.querySelectorAll('.stat-num').forEach(el => {
           el.classList.remove('loading'); el.classList.add('loaded');

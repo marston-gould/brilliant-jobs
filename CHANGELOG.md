@@ -1,3 +1,13 @@
+## v6.58 A15 Session 2: MV Client Integration + Staleness Monitoring (2026-03-03)
+- Stats page: fetchSourceTotalsFromMV() reads pre-aggregated source counts from mv_job_feed_counts
+- Stats page: fetchSourceBreakdownFromMV() reads weekly breakdown from mv_source_breakdown
+- Stats page: checkMVStaleness() verifies MV freshness (>15 min = stale)
+- Admin Cache tab: MV Health panel shows staleness status for all 7 materialized views
+- Landing page: hardcoded fallbacks updated from stale 39,000+/280,000+ to accurate 8,700+/400,000+
+- Landing page: hero subtitle numbers now reflect live data from get_landing_stats RPC
+- index.html version.js cache-bust fixed (was stuck at v6.54)
+- Version bump to v6.58 across all surfaces
+
 ## v6.57 A15 Session 1: Server-Side Materialized Views (2026-03-03)
 - mv_landing_stats rebuilt: added remote_jobs, latest_job_date, refreshed_at; filtered to status='open'
 - mv_job_feed_counts created: per-source/loc_type/loc_country aggregates with salary ranges
