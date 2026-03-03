@@ -1768,6 +1768,8 @@ const features = [
 
   { s: 'done', n: 'A14 S2: Cache Health Admin + TTL Tiers (v6.55)', d: 'Per-query TTL tiers by key prefix (ref: 1h, feed: 3min, stats: 10min). Admin Cache tab with live health panel — summary cards, TTL tier config, entries list with stale detection, Clear All. getCacheStats() enhanced with memory estimate, pct life, stale flags. Admin version catch-up v6.27→v6.55.', p: 74, e: '2h' },
   { s: 'done', n: 'A14 S3: Cache Integration + Invalidation (v6.57)', d: 'cachedQuery integrated into feed stat cards and Stats page fetchFilterData. Deterministic _filterCacheKey from filter state. Company count query reduced from .limit(2000) to .limit(1000) with distinct set. Pipeline mutations (save/move/delete) now invalidate feed:/stats:/pipeline: caches.', p: 74, e: '1.5h' },
+  { s: 'done', n: 'A15 S1: Server-Side Materialized Views (v6.57)', d: 'Rebuilt mv_landing_stats with remote_jobs, latest_job_date, refreshed_at. Created mv_job_feed_counts and mv_source_breakdown. Unique indexes for CONCURRENTLY refresh. pg_cron 2h→10min. get_landing_stats RPC reads from MV.', p: 74, e: '2h' },
+  { s: 'done', n: 'A15 S2: MV Client Integration + Staleness (v6.58)', d: 'Stats page MV-backed source totals and weekly breakdown functions. Admin MV Health panel — staleness monitoring for all 7 MVs. Landing page hardcoded fallbacks corrected. index.html cache-bust fixed.', p: 74, e: '1.5h' },
 
 ];
 

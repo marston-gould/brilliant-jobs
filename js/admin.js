@@ -3745,4 +3745,44 @@ function refreshCacheHealthPanel() {
       entriesBody.innerHTML = html;
     }
   }
+
+  // A15 Session 2: MV staleness panel
+  loadMVStalenessPanel();
+}
+
+// ─── MV Staleness Panel (v6.58 A15 Session 2) ───
+async function loadMVStalenessPanel() {
+  var panel = document.getElementById('mv-staleness-body');
+  if (!panel) return;
+  try {
+    var views = ['mv_landing_stats', 'mv_job_feed_counts', 'mv_source_breakdown', 'mv_jobs_by_source', 'mv_jobs_by_day', 'mv_active_filter_keywords', 'mv_top_companies'];
+    var html = '';
+    for (var i = 0; i < views.length; i++) {
+      var vName = views[i];
+      try {
+        var res = await sb.from(vName).select('refreshed_at').limit(1);
+        if (res.data && res.data.length > 0) {
+          var refreshedAt = new Date(res.data[0].refreshed_at);
+          var ageMs = Date.now() - refreshedAt.getTime();
+          var ageMins = Math.round(ageMs / 60000);
+          var ageStr = ageMins < 60 ? ageMins + 'min' : Math.floor(ageMins / 60) + 'h ' + (ageMins % 60) + 'min';
+          var fresh = ageMins <= 15;
+          var statusBadge = fresh
+            ? '<span style="color:#22c55e;font-weight:600">OK</span>'
+            : '<span style="color:#ef4444;font-weight:600">STALE</span>';
+          html += '<tr><td><code style="font-size:12px">' + vName + '</code></td>';
+          html += '<td>' + ageStr + '</td>';
+          html += '<td>' + statusBadge + '</td>';
+          html += '<td style="font-size:11px;color:var(--text-faint)">' + refreshedAt.toLocaleTimeString() + '</td></tr>';
+        } else {
+          html += '<tr><td><code style="font-size:12px">' + vName + '</code></td><td>—</td><td><span style="color:#f59e0b">NO DATA</span></td><td>—</td></tr>';
+        }
+      } catch (e) {
+        html += '<tr><td><code style="font-size:12px">' + vName + '</code></td><td>—</td><td><span style="color:#ef4444">ERROR</span></td><td style="font-size:11px">' + escapeHtml(e.message || 'unknown') + '</td></tr>';
+      }
+    }
+    panel.innerHTML = html;
+  } catch (e) {
+    panel.innerHTML = '<tr><td colspan="4" style="color:#ef4444">Failed to check MV staleness: ' + escapeHtml(e.message) + '</td></tr>';
+  }
 }

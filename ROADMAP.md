@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-03
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.57
+**Current version:** v6.58
 
 ---
 
@@ -2630,3 +2630,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - refresh_materialized_views() updated to include new MVs
 - pg_cron schedule: 2h → 10min (matches refresh-jobs cycle)
 - get_landing_stats RPC reads from mv_landing_stats (no more full table scan)
+
+### 74.13 A15 Session 2: MV Client Integration — v6.58
+- Stats page: MV-backed source totals and weekly breakdown functions
+- Admin: MV Health panel in Cache tab — staleness monitoring for all 7 MVs
+- Landing page: hardcoded fallbacks corrected to reflect live data
+- index.html cache-bust fixed (was stuck at v6.54)
