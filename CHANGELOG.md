@@ -1,3 +1,28 @@
+## v6.41 — Synthetic Content Detection: Session 3.1 — Feed Card AI Badge (2026-03-02)
+
+### Feed Card AI Badge
+- **AI detection badge on job feed cards** — Shows AI authorship level for each job description directly on the feed table. Color-coded badge: ✅ Human-Written (green/low opacity), ⚠️ Mixed (yellow/medium opacity), 🤖 AI-Generated (red/full opacity)
+- **Hover tooltip with details** — Tooltip shows confidence percentage and AI detection summary (max 200 chars), matching fraud badge tooltip pattern
+- **Batch score fetching** — Scores fetched from `content_ai_scores` table with `content_type='job_description'` alongside fraud score fetch. Cached in `_aiJdScoreCache` to prevent redundant queries on pagination
+- **CSS badge styles** — Added `.ai-jd-badge` styles to `src/input.css` matching fraud badge patterns: relative positioning, hover tooltip, overflow prevention, color-coded tooltip titles
+
+### Technical Details
+- `fetchAiJdScores(jobs)` — async function querying `content_ai_scores` for uncached job IDs, populates `_aiJdScoreCache`
+- `aiJdBadgeHtml(jobId)` — returns badge HTML with emoji icon + hover tooltip or empty string if no score
+- `_aiJdScoreCache` — object map keyed by job `greenhouse_id`, stores label/score/confidence/summary
+- Badge placed after fraud badge in feed row: `${newBadge}${fraudBadge}${aiJdBadge}`
+- No Edge Function changes — reads from `content_ai_scores` populated by JD backfill cron (v6.37)
+- No database schema changes — uses existing polymorphic `content_ai_scores` table (v6.35)
+
+### Bug Fix
+- **Cache-bust alignment** — Fixed `dashboard.html` cache-bust parameters that were still at `?v=6.39` (should have been `?v=6.40` in Session 2.3). All now set to `?v=6.41`
+
+### Version Discipline
+- `js/version.js` → v6.41
+- `dashboard.html` → v6.41 + cache-bust ?v=6.41 (all script/CSS references)
+- `index.html` → v6.41
+- Git tag: v6.41
+
 ## v6.40 — Synthetic Content Detection: Session 2.3 — Cover Letter Inline Scoring (2026-03-02)
 
 ### Cover Letter AI Scoring
