@@ -973,6 +973,57 @@ function showEmptyState(reason) {
   if (el) { el.textContent = msgs[reason]||msgs['error']; el.style.display = ''; }
 }
 
+// ─── A15 Session 2: MV-backed aggregate queries ───
+
+// Fetch source totals from mv_job_feed_counts (pre-aggregated, instant)
+async function fetchSourceTotalsFromMV() {
+  try {
+    var cKey = 'mv:source-totals';
+    var result = await cachedQuery(cKey, function() {
+      return sb.from('mv_job_feed_counts').select('ats_source,job_count,with_salary,refreshed_at');
+    }, { ttl: 600000 }); // 10 min — matches MV refresh cycle
+    if (result && result.data) {
+      var totals = {};
+      for (var i = 0; i < result.data.length; i++) {
+        var row = result.data[i];
+        var src = row.ats_source || 'unknown';
+        if (!totals[src]) totals[src] = { jobs: 0, withSalary: 0 };
+        totals[src].jobs += row.job_count;
+        totals[src].withSalary += row.with_salary;
+      }
+      return totals;
+    }
+  } catch (e) { console.warn('[Stats] MV source totals failed:', e.message); }
+  return null;
+}
+
+// Fetch weekly source breakdown from mv_source_breakdown (for timeline overlay)
+async function fetchSourceBreakdownFromMV() {
+  try {
+    var cKey = 'mv:source-breakdown';
+    var result = await cachedQuery(cKey, function() {
+      return sb.from('mv_source_breakdown').select('ats_source,week,jobs_added,companies,refreshed_at').order('week', { ascending: false });
+    }, { ttl: 600000 }); // 10 min
+    return (result && result.data) || null;
+  } catch (e) { console.warn('[Stats] MV source breakdown failed:', e.message); }
+  return null;
+}
+
+// Check MV freshness — returns { fresh: bool, age: string, refreshed_at: string }
+async function checkMVStaleness() {
+  try {
+    var result = await sb.from('mv_landing_stats').select('refreshed_at').single();
+    if (result && result.data) {
+      var refreshedAt = new Date(result.data.refreshed_at);
+      var ageMs = Date.now() - refreshedAt.getTime();
+      var ageMins = Math.round(ageMs / 60000);
+      var ageStr = ageMins < 60 ? ageMins + 'min ago' : Math.round(ageMins / 60) + 'h ' + (ageMins % 60) + 'min ago';
+      return { fresh: ageMins <= 15, ageMs: ageMs, ageStr: ageStr, refreshedAt: result.data.refreshed_at };
+    }
+  } catch (e) { console.warn('[Stats] MV staleness check failed:', e.message); }
+  return { fresh: false, ageStr: 'unknown', refreshedAt: null };
+}
+
 // ─── Resize / Refresh ───
 function statsResizeAll() { Object.values(statsCharts).forEach(function(c){ if(c&&!c.isDisposed()) c.resize(); }); }
 function refreshStatsCharts() {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v6.57 -->
+<!-- Brilliant Jobs Admin Console v6.58 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -641,6 +641,11 @@
               <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>Cached Entries</strong><span style="font-size:11px;color:var(--text-faint);" id="cache-hits-misses"></span></div>
               <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>Key</th><th>Age</th><th>TTL</th><th>Life %</th><th>Rows</th><th>Stale</th></tr></thead><tbody id="cache-entries-body"></tbody></table></div>
               <div id="cache-empty" style="display:none;padding:20px;text-align:center;color:var(--text-faint);font-size:13px;">No cached entries. Navigate the dashboard to populate cache.</div>
+            <!-- A15 Session 2: Materialized View Staleness -->
+            <div class="card" style="margin-top:16px;">
+              <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;"><strong>Materialized View Health</strong><span style="font-size:11px;color:var(--text-faint);">Stale = &gt;15 min since refresh</span></div>
+              <div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr><th>View</th><th>Age</th><th>Status</th><th>Last Refresh</th></tr></thead><tbody id="mv-staleness-body"><tr><td colspan="4" style="text-align:center;color:var(--text-faint);font-size:13px;padding:12px;">Loading...</td></tr></tbody></table></div>
+            </div>
             </div>
           </div>
 
@@ -654,7 +659,7 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=6.57" defer></script>
+  <script src="dist/admin.min.js?v=6.58" defer></script>
 
   <!-- Cohort select-all inline handler -->
   <script>
