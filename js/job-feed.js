@@ -1367,7 +1367,7 @@ async function fetchFraudScores(jobs) {
 
 
 // ═══════════════════════════════════════════════════════════
-// AI CONTENT DETECTION — Session 3.1: Feed Card AI Badge (v6.41)
+// AI CONTENT DETECTION — Session 3.1+3.2: Feed Card AI Badge + Tooltip Detail (v6.41-v6.42)
 // ═══════════════════════════════════════════════════════════
 
 var _aiJdScoreCache = {};
@@ -1380,7 +1380,7 @@ async function fetchAiJdScores(jobs) {
   try {
     var { data, error } = await sb
       .from('content_ai_scores')
-      .select('content_id,ai_label,ai_generated_score,confidence,summary')
+      .select('content_id,ai_label,ai_generated_score,confidence,summary,perplexity_score,burstiness_score,top_signals')
       .eq('content_type', 'job_description')
       .in('content_id', ids);
     if (error) { console.warn('[BJ] AI JD score fetch error:', error); return; }
@@ -1391,6 +1391,9 @@ async function fetchAiJdScores(jobs) {
           score: row.ai_generated_score,
           confidence: row.confidence,
           summary: row.summary,
+          perplexity: row.perplexity_score,
+          burstiness: row.burstiness_score,
+          topSignals: row.top_signals,
         };
       });
     }
@@ -1414,11 +1417,45 @@ function aiJdBadgeHtml(jobId) {
   var pct = info.score !== null && info.score !== undefined ? (info.score * 100).toFixed(0) + '%' : '';
   var summaryHtml = info.summary ? '<div class="ai-jd-tooltip-summary">' + escapeHtml(info.summary).substring(0, 200) + '</div>' : '';
 
+  // v6.42 — Session 3.2: Sub-score breakdown bars
+  var subsHtml = '';
+  var hasSubs = (info.perplexity !== null && info.perplexity !== undefined)
+             || (info.burstiness !== null && info.burstiness !== undefined);
+  if (hasSubs) {
+    subsHtml += '<div class="ai-jd-tooltip-subs">';
+    if (info.perplexity !== null && info.perplexity !== undefined) {
+      var ppx = (info.perplexity * 100).toFixed(0);
+      subsHtml += '<div class="ai-jd-sub-row"><span class="ai-jd-sub-label">Perplexity</span><span class="ai-jd-sub-val">' + ppx + '%</span><div class="ai-jd-sub-bar"><div class="ai-jd-sub-fill" style="width:' + ppx + '%;background:var(--accent)"></div></div></div>';
+    }
+    if (info.burstiness !== null && info.burstiness !== undefined) {
+      var bst = (info.burstiness * 100).toFixed(0);
+      subsHtml += '<div class="ai-jd-sub-row"><span class="ai-jd-sub-label">Burstiness</span><span class="ai-jd-sub-val">' + bst + '%</span><div class="ai-jd-sub-bar"><div class="ai-jd-sub-fill" style="width:' + bst + '%;background:var(--purple)"></div></div></div>';
+    }
+    if (info.confidence !== null && info.confidence !== undefined) {
+      var conf = (info.confidence * 100).toFixed(0);
+      subsHtml += '<div class="ai-jd-sub-row"><span class="ai-jd-sub-label">Confidence</span><span class="ai-jd-sub-val">' + conf + '%</span><div class="ai-jd-sub-bar"><div class="ai-jd-sub-fill" style="width:' + conf + '%;background:var(--green)"></div></div></div>';
+    }
+    subsHtml += '</div>';
+  }
+
+  // v6.42 — Session 3.2: Top signals chips
+  var signalsHtml = '';
+  if (info.topSignals && Array.isArray(info.topSignals) && info.topSignals.length > 0) {
+    signalsHtml = '<div class="ai-jd-tooltip-signals">';
+    info.topSignals.slice(0, 4).forEach(function(sig) {
+      var sigLabel = typeof sig === 'string' ? sig : (sig.label || sig.name || String(sig));
+      signalsHtml += '<span class="ai-jd-signal-chip">' + escapeHtml(sigLabel).substring(0, 30) + '</span>';
+    });
+    signalsHtml += '</div>';
+  }
+
   return '<span class="ai-jd-badge ' + c.cls + '" data-ai-jobid="' + escapeHtml(jobId) + '">'
     + c.icon
     + '<span class="ai-jd-tooltip">'
     + '<div class="ai-jd-tooltip-title">' + c.tip + (pct ? ' (' + pct + ')' : '') + '</div>'
     + summaryHtml
+    + subsHtml
+    + signalsHtml
     + '</span>'
     + '</span>';
 }
