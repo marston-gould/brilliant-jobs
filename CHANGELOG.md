@@ -1,3 +1,13 @@
+## v6.54 A14: Client-Side Cache Enhancement (2026-03-03)
+- Enhanced cachedQuery: returns { data, count, cached } instead of raw data
+- Added debug logging (BJ_DEBUG_CACHE=1 in localStorage)
+- Added getCacheStats() console diagnostic
+- Added clearAllCaches() — clears query cache + stats cache
+- Visibility-based timeout: caches cleared when tab hidden 5+ min
+- Cache invalidation wired to filter save/delete
+- Logout clears all caches via clearAllCaches()
+- Version bump to v6.54 across all surfaces
+
 ## v6.53 Version Audit + Roadmap Sync (2026-03-03)
 - Cache-bust audit: all pages bumped to ?v=6.53
 - Added version.js to hiring-trends and market-dynamics
