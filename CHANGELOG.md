@@ -1,3 +1,13 @@
+## v6.60 A14 Session 4: Feed Pagination + Cache Wiring (2026-03-03)
+- Job feed: 500-row hard cap (MAX_FEED_ROWS) — no query returns more than 500 rows to client
+- Job feed: "Load more jobs" replaces Prev/Next pagination — appends next page, "Back to top" button
+- Job feed: main queries now wrapped in cachedQuery() with 3-min TTL for instant filter re-toggles
+- Job feed: JOBS_PER_PAGE bumped from 20 to 50 for better UX density
+- Company count: now reads from mv_landing_stats (total_companies) with fallback to capped 500-row query
+- Multi-filter merge: per-filter row cap now derived from MAX_FEED_ROWS (was hardcoded 200)
+- Feed state tracking: _feedTotalCount + _feedLoadMoreOffset globals for Load More continuity
+- Version bump to v6.60 across all surfaces
+
 ## v6.59 A15 Session 3: MV-Powered Stats Overview (2026-03-03)
 - Stats page: "All" filter mode now uses fetchSourceTotalsFromMV() for source breakdown (pre-aggregated from mv_job_feed_counts)
 - Stats page: "All" filter mode renders source-colored stacked bar timeline from fetchSourceBreakdownFromMV() (mv_source_breakdown)

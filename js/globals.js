@@ -630,7 +630,10 @@ var savedJobIds = safeReadLS('bj_saved_jobs', []);
 var appliedJobIds = safeReadLS('bj_applied_jobs', []);
 var searchTimeout = null;
 var currentJobPage = 0;
-var JOBS_PER_PAGE = 20;
+var JOBS_PER_PAGE = 50;
+var MAX_FEED_ROWS = 500; // A14: hard cap — no query returns more than 500 rows to client
+var _feedLoadMoreOffset = 0; // A14: tracks how many rows loaded so far for Load More
+var _feedTotalCount = 0; // A14: total matching rows (from count: 'exact')
 
 // Resume state (populated fully in resumes.js)
 var resumes = safeReadLS('bj_resumes', []);
