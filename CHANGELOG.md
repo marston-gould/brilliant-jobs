@@ -1,3 +1,11 @@
+## v6.53 Version Audit + Roadmap Sync (2026-03-03)
+- Cache-bust audit: all pages bumped to ?v=6.53
+- Added version.js to hiring-trends and market-dynamics
+- Added cache-bust to jobs-by-industry and compare
+- roadmap.html: Phase 73 cron cost optimization cards
+- ROADMAP.md: Phase 73 section + version update
+- Rebuilt dist/dashboard.min.js
+
 ## v6.52 Cron Cost Optimization Session 2 (2026-03-03)
 
 ### Edge Function Changes
