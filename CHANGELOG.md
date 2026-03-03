@@ -1,3 +1,29 @@
+## v6.49 — PostHog Event Instrumentation for Synthetic Content Detection (2026-03-02)
+
+### Session 5.1: Comprehensive AI Content Analytics
+
+**New PostHog Events:**
+- **`ai_company_detail_expanded`** — Fires when user expands a company's AI content breakdown panel in company browser. Captures `company_slug` for per-company engagement tracking
+- **`ai_label_distribution_viewed`** — Fires when breakdown chart renders with label data. Captures `company_slug`, `total_scored`, `pct_human`, `pct_mixed`, `pct_ai_generated` for content quality distribution analysis
+- **`ai_scoring_exclusion_applied`** — Fires when user's scoring exclusion preferences actively modify feed results. Captures `excluded_count`, `total_jobs`, `prefs` object for exclusion impact measurement
+- **`ai_scores_fetched`** — Fires per batch when AI JD scores are loaded from `content_ai_scores`. Captures `requested`, `returned`, `coverage_pct`, `label_counts` for pipeline health monitoring
+
+**Existing Events (unchanged, verified):**
+- `ai_filter_applied` — individual + batch filter changes with `toggled_label`, `toggled_to`, `action` properties
+- `ai_jd_badge_clicked` — feed card badge clicks
+- `ai_content_banner_viewed` — job detail banner impressions
+- `ai_scoring_pref_changed` — settings exclusion toggle changes
+- `ai_jd_rate_column_sorted` — company browser sort actions
+- `ai_aggregation_health_viewed` — pipeline health panel loads
+- `ai_resume_scored` — resume AI scoring completions
+
+### Version Discipline
+- `js/version.js` → v6.49
+- `dashboard.html` → v6.49 + 5x cache-bust refs
+- `index.html` → v6.49
+- Console prints: [BJ] v6.49
+- Git tag: v6.49
+
 ## v6.48 — Scoring Pipeline Optimization + browsers.js Column Fixes (2026-03-02)
 
 ### Critical Fix — Scoring Pipeline Timeout Resolution
