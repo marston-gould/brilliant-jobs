@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.55';
+var BJ_VERSION = 'v6.56';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -859,6 +859,21 @@ function clearAllCaches() {
     Object.keys(statsCache).forEach(function(k) { delete statsCache[k]; });
   }
   if (_cacheDebug) console.log('[cache] All caches cleared');
+}
+
+/** Generate a deterministic cache key from filter state (A14 Session 3) */
+function _filterCacheKey(prefix, sf) {
+  var parts = [];
+  ['whatPills','wherePills','whenPills','whoPills','payPills','whatNotPills','whereNotPills','whoNotPills'].forEach(function(k) {
+    var arr = sf[k] || sf.pills && k === 'whatPills' && sf.pills || [];
+    if (arr.length > 0) parts.push(k + ':' + JSON.stringify(arr));
+  });
+  if (sf.includeRemote) parts.push('remote:1');
+  if (sf.includeNoSalary) parts.push('nosalary:1');
+  var tuning = safeReadLS('bj_tuning', {});
+  if (tuning.usOnly) parts.push('us:1');
+  if (tuning.locationExcludes) parts.push('locexcl:' + JSON.stringify(tuning.locationExcludes));
+  return prefix + ':' + btoa(parts.join('|')).slice(0, 64);
 }
 
 /** Get cache diagnostics — call from console: getCacheStats() */

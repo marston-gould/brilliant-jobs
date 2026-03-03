@@ -966,57 +966,77 @@ async function updateJobStatsFromFilters(filters) {
     // Parallelize all stats queries across all filters (N+1 fix v3.82)
     // Before: N filters × 3 sequential queries = 3N round-trips
     // After: all queries fired in parallel = 1 round-trip (effectively)
-    const statsPromises = effectiveFilters.flatMap(sf => {
-      const locIds = sf._statsLocationIds || null;
+    // A14 Session 3: wrap stats queries in cachedQuery for repeat filter toggles
+    const _statsCacheKey = 'stats:feed:' + effectiveFilters.map(sf => _filterCacheKey('', sf)).join('+');
+    const cachedStats = await cachedQuery(_statsCacheKey, async function() {
+      const _statsPromises = effectiveFilters.flatMap(sf => {
+        const locIds = sf._statsLocationIds || null;
 
-      // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
-      // This prevents TOTAL < NEW TODAY which is mathematically impossible
-      const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
-      let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q = buildFilterQuery(sfNoWhen, q, locIds);
-      q = excludeHidden(q);
+        // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
+        // This prevents TOTAL < NEW TODAY which is mathematically impossible
+        const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
+        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        q = buildFilterQuery(sfNoWhen, q, locIds);
+        q = excludeHidden(q);
 
-      // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
-      let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q2 = buildFilterQuery(sfNoWhen, q2, locIds);
-      q2 = excludeHidden(q2);
-      q2 = q2.gte('first_seen_at', last24h.toISOString());
+        // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
+        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        q2 = buildFilterQuery(sfNoWhen, q2, locIds);
+        q2 = excludeHidden(q2);
+        q2 = q2.gte('first_seen_at', last24h.toISOString());
 
-      const promises = [
-        q.then(r => ({ type: 'total', count: r.count || 0 })),
-        q2.then(r => ({ type: 'today', count: r.count || 0 })),
-      ];
+        const promises = [
+          q.then(r => ({ type: 'total', count: r.count || 0 })),
+          q2.then(r => ({ type: 'today', count: r.count || 0 })),
+        ];
 
-      if (lastViewDate) {
-        let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-        qLogin = buildFilterQuery(sf, qLogin, locIds);
-        qLogin = excludeHidden(qLogin);
-        qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
-        promises.push(qLogin.then(r => ({ type: 'login', count: r.count || 0 })));
+        if (lastViewDate) {
+          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          qLogin = buildFilterQuery(sf, qLogin, locIds);
+          qLogin = excludeHidden(qLogin);
+          qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
+          promises.push(qLogin.then(r => ({ type: 'login', count: r.count || 0 })));
+        }
+
+        return promises;
+      });
+
+      const _statsResults = await Promise.allSettled(_statsPromises);
+      let _total = 0, _todayCount = 0, _newSinceLoginCount = 0;
+      for (const r of _statsResults) {
+        if (r.status === 'fulfilled') {
+          if (r.value.type === 'total') _total += r.value.count;
+          else if (r.value.type === 'today') _todayCount += r.value.count;
+          else if (r.value.type === 'login') _newSinceLoginCount += r.value.count;
+        }
       }
 
-      return promises;
+      // Company count — use count-only query instead of fetching 2000 rows (A14 fix)
+      const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
+      const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
+      let cq = sb.from('ats_jobs').select('company_slug', { count: 'exact' });
+      cq = buildFilterQuery(sfNoWhenFirst, cq, firstLocIds);
+      cq = excludeHidden(cq);
+      cq = cq.not('company_slug', 'is', null).limit(1);
+      // We need distinct count — PostgREST doesn't support COUNT(DISTINCT), so use a lighter approach:
+      // Fetch just distinct slugs with a reasonable cap
+      let cq2 = sb.from('ats_jobs').select('company_slug');
+      cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
+      cq2 = excludeHidden(cq2);
+      cq2 = cq2.not('company_slug', 'is', null).limit(1000);
+      const { data: coRows } = await cq2;
+      const uniqueCos = new Set();
+      if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+
+      return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: uniqueCos.size } };
     });
 
-    const statsResults = await Promise.allSettled(statsPromises);
-    for (const r of statsResults) {
-      if (r.status === 'fulfilled') {
-        if (r.value.type === 'total') total += r.value.count;
-        else if (r.value.type === 'today') todayCount += r.value.count;
-        else if (r.value.type === 'login') newSinceLoginCount += r.value.count;
-      }
+    if (cachedStats && cachedStats.data) {
+      total = cachedStats.data.total;
+      todayCount = cachedStats.data.todayCount;
+      newSinceLoginCount = cachedStats.data.newSinceLoginCount;
+      companyCount = cachedStats.data.companyCount;
     }
-
-    // Company count — distinct company_slugs from matching jobs
-    const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
-    let cq = sb.from('ats_jobs').select('company_slug');
-    cq = buildFilterQuery(effectiveFilters[0], cq, firstLocIds);
-    cq = excludeHidden(cq);
-    cq = cq.limit(2000);
-    const { data: coRows } = await cq;
-    const uniqueCos = new Set();
-    if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
-    companyCount = uniqueCos.size;
 
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {

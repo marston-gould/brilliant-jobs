@@ -190,6 +190,8 @@ async function savePipelineEntry(jobId, meta) {
     if (data) {
       var isNew = !meta._dbId;
       meta._dbId = data.id;
+      // A14 Session 3: invalidate feed/stats caches after pipeline mutation
+      if (typeof invalidateCache === 'function') { invalidateCache('feed:'); invalidateCache('stats:'); invalidateCache('pipeline:'); }
       if (isNew && typeof posthog !== 'undefined') {
         posthog.capture('pipeline_entry_created', {
           job_id: jobId,
@@ -411,6 +413,9 @@ async function unsaveFromPipeline(jobId) {
         .eq('job_id', jobId);
     } catch (e) { console.error('[BJ] Pipeline delete error:', e); toastError('Failed to remove pipeline entry'); }
   }
+
+  // A14 Session 3: invalidate feed/stats caches after pipeline removal
+  if (typeof invalidateCache === 'function') { invalidateCache('feed:'); invalidateCache('stats:'); invalidateCache('pipeline:'); }
 
   // Update legacy arrays
   const idx = savedJobIds.indexOf(jobId);

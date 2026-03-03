@@ -231,15 +231,19 @@ async function fetchFilterData(sf) {
   try {
     var tuning = safeReadLS('bj_tuning', {});
     var locIds = await getLocationMatchIds(sf.wherePills || [], sf.whereNotPills || [], tuning, sf.includeRemote);
-    var base = sb.from('ats_jobs').select(STATS_COLUMNS);
-    var q = buildFilterQuery(sf, base, locIds);
-    // Exclude user-hidden jobs to match feed counts
-    var hiddenIds = safeReadLS('bj_hidden', []);
-    if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
-    q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
-    var res = await q;
-    if (res.error) { console.error('[Stats] Query error:', res.error); toastWarning('Stats query failed'); return []; }
-    return res.data || [];
+    // A14 Session 3: wrap stats data queries in cachedQuery
+    var cKey = _filterCacheKey('stats:page', sf);
+    var cResult = await cachedQuery(cKey, function() {
+      var base = sb.from('ats_jobs').select(STATS_COLUMNS);
+      var q = buildFilterQuery(sf, base, locIds);
+      // Exclude user-hidden jobs to match feed counts
+      var hiddenIds = safeReadLS('bj_hidden', []);
+      if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
+      q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
+      return q;
+    });
+    if (cResult && cResult.error) { console.error('[Stats] Query error:', cResult.error); toastWarning('Stats query failed'); return []; }
+    return (cResult && cResult.data) || [];
   } catch (e) { console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
 }
 

@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.55';
+var BJ_VERSION = 'v6.56';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -859,6 +859,21 @@ function clearAllCaches() {
     Object.keys(statsCache).forEach(function(k) { delete statsCache[k]; });
   }
   if (_cacheDebug) console.log('[cache] All caches cleared');
+}
+
+/** Generate a deterministic cache key from filter state (A14 Session 3) */
+function _filterCacheKey(prefix, sf) {
+  var parts = [];
+  ['whatPills','wherePills','whenPills','whoPills','payPills','whatNotPills','whereNotPills','whoNotPills'].forEach(function(k) {
+    var arr = sf[k] || sf.pills && k === 'whatPills' && sf.pills || [];
+    if (arr.length > 0) parts.push(k + ':' + JSON.stringify(arr));
+  });
+  if (sf.includeRemote) parts.push('remote:1');
+  if (sf.includeNoSalary) parts.push('nosalary:1');
+  var tuning = safeReadLS('bj_tuning', {});
+  if (tuning.usOnly) parts.push('us:1');
+  if (tuning.locationExcludes) parts.push('locexcl:' + JSON.stringify(tuning.locationExcludes));
+  return prefix + ':' + btoa(parts.join('|')).slice(0, 64);
 }
 
 /** Get cache diagnostics — call from console: getCacheStats() */
@@ -2414,57 +2429,77 @@ async function updateJobStatsFromFilters(filters) {
     // Parallelize all stats queries across all filters (N+1 fix v3.82)
     // Before: N filters × 3 sequential queries = 3N round-trips
     // After: all queries fired in parallel = 1 round-trip (effectively)
-    const statsPromises = effectiveFilters.flatMap(sf => {
-      const locIds = sf._statsLocationIds || null;
+    // A14 Session 3: wrap stats queries in cachedQuery for repeat filter toggles
+    const _statsCacheKey = 'stats:feed:' + effectiveFilters.map(sf => _filterCacheKey('', sf)).join('+');
+    const cachedStats = await cachedQuery(_statsCacheKey, async function() {
+      const _statsPromises = effectiveFilters.flatMap(sf => {
+        const locIds = sf._statsLocationIds || null;
 
-      // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
-      // This prevents TOTAL < NEW TODAY which is mathematically impossible
-      const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
-      let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q = buildFilterQuery(sfNoWhen, q, locIds);
-      q = excludeHidden(q);
+        // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
+        // This prevents TOTAL < NEW TODAY which is mathematically impossible
+        const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
+        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        q = buildFilterQuery(sfNoWhen, q, locIds);
+        q = excludeHidden(q);
 
-      // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
-      let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-      q2 = buildFilterQuery(sfNoWhen, q2, locIds);
-      q2 = excludeHidden(q2);
-      q2 = q2.gte('first_seen_at', last24h.toISOString());
+        // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
+        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        q2 = buildFilterQuery(sfNoWhen, q2, locIds);
+        q2 = excludeHidden(q2);
+        q2 = q2.gte('first_seen_at', last24h.toISOString());
 
-      const promises = [
-        q.then(r => ({ type: 'total', count: r.count || 0 })),
-        q2.then(r => ({ type: 'today', count: r.count || 0 })),
-      ];
+        const promises = [
+          q.then(r => ({ type: 'total', count: r.count || 0 })),
+          q2.then(r => ({ type: 'today', count: r.count || 0 })),
+        ];
 
-      if (lastViewDate) {
-        let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
-        qLogin = buildFilterQuery(sf, qLogin, locIds);
-        qLogin = excludeHidden(qLogin);
-        qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
-        promises.push(qLogin.then(r => ({ type: 'login', count: r.count || 0 })));
+        if (lastViewDate) {
+          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          qLogin = buildFilterQuery(sf, qLogin, locIds);
+          qLogin = excludeHidden(qLogin);
+          qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
+          promises.push(qLogin.then(r => ({ type: 'login', count: r.count || 0 })));
+        }
+
+        return promises;
+      });
+
+      const _statsResults = await Promise.allSettled(_statsPromises);
+      let _total = 0, _todayCount = 0, _newSinceLoginCount = 0;
+      for (const r of _statsResults) {
+        if (r.status === 'fulfilled') {
+          if (r.value.type === 'total') _total += r.value.count;
+          else if (r.value.type === 'today') _todayCount += r.value.count;
+          else if (r.value.type === 'login') _newSinceLoginCount += r.value.count;
+        }
       }
 
-      return promises;
+      // Company count — use count-only query instead of fetching 2000 rows (A14 fix)
+      const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
+      const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
+      let cq = sb.from('ats_jobs').select('company_slug', { count: 'exact' });
+      cq = buildFilterQuery(sfNoWhenFirst, cq, firstLocIds);
+      cq = excludeHidden(cq);
+      cq = cq.not('company_slug', 'is', null).limit(1);
+      // We need distinct count — PostgREST doesn't support COUNT(DISTINCT), so use a lighter approach:
+      // Fetch just distinct slugs with a reasonable cap
+      let cq2 = sb.from('ats_jobs').select('company_slug');
+      cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
+      cq2 = excludeHidden(cq2);
+      cq2 = cq2.not('company_slug', 'is', null).limit(1000);
+      const { data: coRows } = await cq2;
+      const uniqueCos = new Set();
+      if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+
+      return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: uniqueCos.size } };
     });
 
-    const statsResults = await Promise.allSettled(statsPromises);
-    for (const r of statsResults) {
-      if (r.status === 'fulfilled') {
-        if (r.value.type === 'total') total += r.value.count;
-        else if (r.value.type === 'today') todayCount += r.value.count;
-        else if (r.value.type === 'login') newSinceLoginCount += r.value.count;
-      }
+    if (cachedStats && cachedStats.data) {
+      total = cachedStats.data.total;
+      todayCount = cachedStats.data.todayCount;
+      newSinceLoginCount = cachedStats.data.newSinceLoginCount;
+      companyCount = cachedStats.data.companyCount;
     }
-
-    // Company count — distinct company_slugs from matching jobs
-    const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
-    let cq = sb.from('ats_jobs').select('company_slug');
-    cq = buildFilterQuery(effectiveFilters[0], cq, firstLocIds);
-    cq = excludeHidden(cq);
-    cq = cq.limit(2000);
-    const { data: coRows } = await cq;
-    const uniqueCos = new Set();
-    if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
-    companyCount = uniqueCos.size;
 
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
@@ -11144,6 +11179,8 @@ async function savePipelineEntry(jobId, meta) {
     if (data) {
       var isNew = !meta._dbId;
       meta._dbId = data.id;
+      // A14 Session 3: invalidate feed/stats caches after pipeline mutation
+      if (typeof invalidateCache === 'function') { invalidateCache('feed:'); invalidateCache('stats:'); invalidateCache('pipeline:'); }
       if (isNew && typeof posthog !== 'undefined') {
         posthog.capture('pipeline_entry_created', {
           job_id: jobId,
@@ -11365,6 +11402,9 @@ async function unsaveFromPipeline(jobId) {
         .eq('job_id', jobId);
     } catch (e) { console.error('[BJ] Pipeline delete error:', e); toastError('Failed to remove pipeline entry'); }
   }
+
+  // A14 Session 3: invalidate feed/stats caches after pipeline removal
+  if (typeof invalidateCache === 'function') { invalidateCache('feed:'); invalidateCache('stats:'); invalidateCache('pipeline:'); }
 
   // Update legacy arrays
   const idx = savedJobIds.indexOf(jobId);
@@ -16679,15 +16719,19 @@ async function fetchFilterData(sf) {
   try {
     var tuning = safeReadLS('bj_tuning', {});
     var locIds = await getLocationMatchIds(sf.wherePills || [], sf.whereNotPills || [], tuning, sf.includeRemote);
-    var base = sb.from('ats_jobs').select(STATS_COLUMNS);
-    var q = buildFilterQuery(sf, base, locIds);
-    // Exclude user-hidden jobs to match feed counts
-    var hiddenIds = safeReadLS('bj_hidden', []);
-    if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
-    q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
-    var res = await q;
-    if (res.error) { console.error('[Stats] Query error:', res.error); toastWarning('Stats query failed'); return []; }
-    return res.data || [];
+    // A14 Session 3: wrap stats data queries in cachedQuery
+    var cKey = _filterCacheKey('stats:page', sf);
+    var cResult = await cachedQuery(cKey, function() {
+      var base = sb.from('ats_jobs').select(STATS_COLUMNS);
+      var q = buildFilterQuery(sf, base, locIds);
+      // Exclude user-hidden jobs to match feed counts
+      var hiddenIds = safeReadLS('bj_hidden', []);
+      if (hiddenIds.length > 0) { q = q.not('greenhouse_id', 'in', '(' + hiddenIds.join(',') + ')'); }
+      q = q.order('first_seen_at', { ascending: false }).limit(STATS_ROW_CAP);
+      return q;
+    });
+    if (cResult && cResult.error) { console.error('[Stats] Query error:', cResult.error); toastWarning('Stats query failed'); return []; }
+    return (cResult && cResult.data) || [];
   } catch (e) { console.error('[Stats] fetchFilterData:', e); toastWarning('Stats data failed to load'); return []; }
 }
 
