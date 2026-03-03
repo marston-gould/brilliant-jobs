@@ -1,3 +1,23 @@
+## v6.47 — Synthetic Content Detection: E2E Fix — AI Scoring Backfill Pipeline (2026-03-02)
+
+### Critical Fix — Auto-Fetch Backfill Mode
+- **score-ai-content Edge Function upgraded** — Added auto-fetch mode: when called with empty body (as pg_cron does), EF now self-serves by querying `get_unscored_jds()` RPC to fetch unscored open JDs, scoring them via Claude Haiku, and upserting results to `content_ai_scores`. Previously, cron calls with `{}` returned 400 error, leaving the entire backfill pipeline non-functional with 0 scores despite 123K+ eligible JDs
+- **`get_unscored_jds()` RPC created** — PostgreSQL function with LEFT JOIN anti-pattern to efficiently find unscored JDs. Supports backfill (oldest first) and new (newest first) modes. 30s statement timeout
+- **E2E verification complete** — 26 JDs scored and inserted. Backfill cron (job 79, every 1 min) now producing scores autonomously. ~130K JDs remaining, ~87h ETA
+
+### PostHog Events Verified
+- `ai_aggregation_health_viewed` — fires when health panel opens
+- `ai_jd_rate_column_sorted` — fires on company browser sort
+
+### Version Discipline
+- `js/version.js` → v6.47
+- `dashboard.html` → v6.47 + cache-bust ?v=6.47
+- `index.html` → v6.47
+- Console prints: [BJ] v6.47
+- Git tag: v6.47
+- `CHANGELOG.md` updated
+- `roadmap.html` Phase 72 updated
+
 ## v6.46 — Synthetic Content Detection: Session 4.3 — Nightly Aggregation Verification (2026-03-02)
 
 ### Backend — Aggregation Health RPC
