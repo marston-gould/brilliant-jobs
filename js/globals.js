@@ -346,7 +346,7 @@ function _clearSensitiveData() {
     localStorage.removeItem(key);
   });
   // Clear any cached query data
-  _queryCache = {};
+  clearAllCaches();
 }
 
 // Auth
@@ -734,16 +734,25 @@ function _handleStorageFull(failedKey) {
 // ============================================================
 // CACHED QUERY — in-memory cache with TTL (v3.84)
 // ============================================================
-// Usage: const data = await cachedQuery('companies', () => sb.from('ats_companies').select('slug, name, job_count, source'), { ttl: 300000 });
+// ============================================================
+// IN-MEMORY QUERY CACHE (A14 — v6.54)
+// ============================================================
+// cachedQuery wraps Supabase queries with TTL-based caching.
+// Returns { data, count, cached } — cached=true means result came from cache.
+// Debug: set BJ_DEBUG_CACHE=1 in localStorage to see cache hit/miss logs.
+// Usage: const { data, cached } = await cachedQuery('companies', () => sb.from('ats_companies').select('slug,name'), { ttl: 300000 });
 
 var _queryCache = {};
+var _cacheHits = 0;
+var _cacheMisses = 0;
+var _cacheDebug = (typeof localStorage !== 'undefined' && localStorage.getItem('BJ_DEBUG_CACHE') === '1');
 
 /**
  * Execute a Supabase query with in-memory caching.
  * @param {string} key - Unique cache key
- * @param {function} queryFn - Function that returns a Supabase query promise
- * @param {object} opts - { ttl: ms (default 5 min), force: boolean }
- * @returns {Promise<any>} Cached or fresh data
+ * @param {function} queryFn - Function returning a Supabase query promise
+ * @param {object} opts - { ttl: ms (default 5min), force: boolean }
+ * @returns {Promise<{data: any, count: number|null, cached: boolean}>}
  */
 async function cachedQuery(key, queryFn, opts) {
   var ttl = (opts && opts.ttl) || 300000; // 5 min default
@@ -751,21 +760,26 @@ async function cachedQuery(key, queryFn, opts) {
   var entry = _queryCache[key];
 
   if (!force && entry && Date.now() - entry.ts < ttl) {
-    return entry.data;
+    _cacheHits++;
+    if (_cacheDebug) console.log('[cache] HIT', key, '(' + Math.round((Date.now() - entry.ts)/1000) + 's old)');
+    return { data: entry.data, count: entry.count, cached: true };
   }
 
   try {
     var result = await queryFn();
     if (result.error) {
       console.warn('[cachedQuery] Error for', key, result.error.message);
-      // Return stale cache if available
-      return entry ? entry.data : null;
+      if (entry) return { data: entry.data, count: entry.count, cached: true };
+      return { data: null, count: null, cached: false };
     }
     _queryCache[key] = { data: result.data, ts: Date.now(), count: result.count };
-    return result.data;
+    _cacheMisses++;
+    if (_cacheDebug) console.log('[cache] MISS', key, '(' + (result.data ? result.data.length : 0) + ' rows)');
+    return { data: result.data, count: result.count, cached: false };
   } catch (e) {
     console.warn('[cachedQuery] Failed for', key, e.message);
-    return entry ? entry.data : null;
+    if (entry) return { data: entry.data, count: entry.count, cached: true };
+    return { data: null, count: null, cached: false };
   }
 }
 
@@ -780,6 +794,56 @@ function invalidateCache(keyOrPrefix) {
   if (!keyOrPrefix) { _queryCache = {}; return; }
   Object.keys(_queryCache).forEach(function(k) {
     if (k === keyOrPrefix || k.startsWith(keyOrPrefix + ':')) delete _queryCache[k];
+  });
+  if (_cacheDebug) console.log('[cache] Invalidated', keyOrPrefix || 'ALL');
+}
+
+/** Clear ALL app caches — query cache + stats cache (if present) */
+function clearAllCaches() {
+  _queryCache = {};
+  _cacheHits = 0;
+  _cacheMisses = 0;
+  // Clear stats module cache if it exists
+  if (typeof statsCache !== 'undefined') {
+    Object.keys(statsCache).forEach(function(k) { delete statsCache[k]; });
+  }
+  if (_cacheDebug) console.log('[cache] All caches cleared');
+}
+
+/** Get cache diagnostics — call from console: getCacheStats() */
+function getCacheStats() {
+  var keys = Object.keys(_queryCache);
+  var now = Date.now();
+  return {
+    entries: keys.length,
+    hits: _cacheHits,
+    misses: _cacheMisses,
+    hitRate: (_cacheHits + _cacheMisses) > 0 ? Math.round(_cacheHits / (_cacheHits + _cacheMisses) * 100) + '%' : 'N/A',
+    keys: keys.map(function(k) {
+      var e = _queryCache[k];
+      return { key: k, age: Math.round((now - e.ts) / 1000) + 's', rows: e.data ? (Array.isArray(e.data) ? e.data.length : 1) : 0 };
+    })
+  };
+}
+
+// ============================================================
+// VISIBILITY-BASED CACHE TIMEOUT (A14)
+// ============================================================
+// Clear caches when tab has been hidden for 5+ minutes to prevent stale data
+var _visibilityHiddenAt = null;
+var VISIBILITY_CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      _visibilityHiddenAt = Date.now();
+    } else if (_visibilityHiddenAt && Date.now() - _visibilityHiddenAt >= VISIBILITY_CACHE_TIMEOUT) {
+      clearAllCaches();
+      if (_cacheDebug) console.log('[cache] Cleared after', Math.round((Date.now() - _visibilityHiddenAt) / 60000), 'min hidden');
+      _visibilityHiddenAt = null;
+    } else {
+      _visibilityHiddenAt = null;
+    }
   });
 }
 

@@ -842,8 +842,7 @@ window.createFilterFromProfile = function() {
   // Add to saved filters
   savedFilters.push(newFilter);
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
-  
-  // Update onboarding step
+  invalidateCache(); // A14: clear query caches when filters change
   updateOnboardingStep(2);
 
   // v6.04: Mark onboarding milestone

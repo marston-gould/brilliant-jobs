@@ -571,9 +571,10 @@ async function loadCompanyBrowser() {
 
   try {
     // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)
-    let allData = await cachedQuery('ref:companies:list', function() {
+    let cacheResult = await cachedQuery('ref:companies:list', function() {
       return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').order('name');
-    }, { ttl: 600000 }) || [];
+    }, { ttl: 600000 });
+    let allData = (cacheResult && cacheResult.data) || [];
 
     // Load ghost stats for companies that have data
     let ghostStats = {};

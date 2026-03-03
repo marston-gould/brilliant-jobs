@@ -883,6 +883,7 @@ $('#sf-delete-selected').addEventListener('click', () => {
   // Delete in reverse order to preserve indices
   checked.sort((a, b) => b - a).forEach(idx => savedFilters.splice(idx, 1));
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+  invalidateCache(); // A14: clear query caches when filters change
   $('#sf-select-all').checked = false;
   $('#sf-delete-selected').style.display = 'none';
   renderSavedFilters();
@@ -1096,6 +1097,7 @@ function renderSavedFilters() {
       e.stopPropagation();
       savedFilters.splice(parseInt(el.dataset.delidx), 1);
       saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
+      invalidateCache(); // A14: clear query caches when filters change
       renderSavedFilters();
       updateSfActiveCount();
       if (savedFilters.length === 0 || $$('.sf-item-check:checked').length === 0) {
