@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 /**
- * refresh-workable-xml.mjs  v2
+ * refresh-workable-xml.mjs  v3
  * ────────────────────────────
  * Streaming pipeline to ingest Workable's global XML job feed.
  * 
  * Feed:  https://www.workable.com/boards/workable.xml
  * Size:  ~843 MB, ~151K jobs (as of 2026-03-02)
  * 
+ * v3 changes:
+ *   - Bump MAX_REDIRECT_RESOLVES to 3000, concurrency to 15
+ *   - Fix board discovery to check existing slugs (not just company_name)
+ *   - Progress logging during redirect resolution
+ *
  * v2 fixes:
  *   - Download via curl to local file first (Cloudflare drops long streams)
  *   - Dedup within batches to avoid "cannot affect row a second time"
@@ -26,8 +31,8 @@ import { stat, unlink } from "fs/promises";
 const WORKABLE_XML_URL = "https://www.workable.com/boards/workable.xml";
 const LOCAL_XML_PATH = "/tmp/workable-feed.xml";
 const BATCH_SIZE = 500;
-const MAX_REDIRECT_RESOLVES = 100;
-const REDIRECT_CONCURRENCY = 5;
+const MAX_REDIRECT_RESOLVES = 3000;
+const REDIRECT_CONCURRENCY = 15;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -223,42 +228,58 @@ async function discoverBoards(newCompanies) {
   const entries = Array.from(newCompanies.entries()).slice(0, MAX_REDIRECT_RESOLVES);
   let discovered = 0;
 
-  // Check which companies we already know (batch in groups of 200)
+  // Load ALL known Workable slugs upfront (fast — just slugs)
+  const knownSlugs = new Set();
   const knownNames = new Set();
-  for (let i = 0; i < entries.length; i += 200) {
-    const chunk = entries.slice(i, i + 200).map(([name]) => name);
-    const { data: existing } = await sb
+  let offset = 0;
+  while (true) {
+    const { data } = await sb
       .from("ats_companies")
-      .select("company_name")
+      .select("slug,company_name")
       .eq("source", "workable")
-      .in("company_name", chunk);
-    (existing || []).forEach(e => knownNames.add(e.company_name));
+      .range(offset, offset + 999);
+    if (!data || data.length === 0) break;
+    data.forEach(r => {
+      knownSlugs.add(r.slug);
+      if (r.company_name) knownNames.add(r.company_name);
+    });
+    offset += data.length;
+    if (data.length < 1000) break;
   }
+  console.log(`  Loaded ${knownSlugs.size} known slugs, ${knownNames.size} known company names`);
 
+  // Filter out companies we already know by name
   const toResolve = entries.filter(([name]) => !knownNames.has(name));
   stats.boardsAlreadyKnown = entries.length - toResolve.length;
 
-  console.log(`  Board discovery: ${toResolve.length} new companies to resolve (${knownNames.size} already known)`);
+  console.log(`  Board discovery: ${toResolve.length} new companies to resolve (${stats.boardsAlreadyKnown} already known by name)`);
 
+  let resolved = 0;
+  let skippedKnownSlug = 0;
   for (let i = 0; i < toResolve.length; i += REDIRECT_CONCURRENCY) {
     const batch = toResolve.slice(i, i + REDIRECT_CONCURRENCY);
     await Promise.allSettled(
       batch.map(async ([name, { ref, website }]) => {
         const slug = await resolveSubdomain(ref);
-        if (slug) {
-          await sb.from("ats_companies").upsert({
-            slug,
-            source: "workable",
-            company_name: name,
-            board_url: `https://apply.workable.com/${slug}/`,
-            website: website || null,
-            last_checked: new Date().toISOString(),
-            is_active: true,
-          }, { onConflict: "slug,source" });
-          discovered++;
-        }
+        if (!slug) return;
+        resolved++;
+        if (knownSlugs.has(slug)) { skippedKnownSlug++; return; }
+        await sb.from("ats_companies").upsert({
+          slug,
+          source: "workable",
+          company_name: name,
+          board_url: `https://apply.workable.com/${slug}/`,
+          website: website || null,
+          last_checked: new Date().toISOString(),
+          is_active: true,
+        }, { onConflict: "slug,source" });
+        knownSlugs.add(slug);
+        discovered++;
       })
     );
+    if ((i + REDIRECT_CONCURRENCY) % 150 === 0) {
+      console.log(`    Resolving... ${resolved}/${toResolve.length} done, ${discovered} new, ${skippedKnownSlug} already had slug`);
+    }
   }
 
   stats.boardsDiscovered = discovered;
@@ -421,3 +442,4 @@ main().catch(err => {
   console.error("Pipeline failed:", err);
   process.exit(1);
 });
+
