@@ -205,6 +205,7 @@ $$('#sort-dropdown .sort-opt').forEach(opt => {
 
 // Close dropdown on outside click
 document.addEventListener('click', (e) => {
+  if (!e.target || e.target.nodeType !== 1) return;
   if (!e.target.closest('.sort-add-wrap')) {
     $('#sort-dropdown').style.display = 'none';
   }

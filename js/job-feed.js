@@ -1488,6 +1488,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // PostHog: fraud_tooltip_opened — delegated mouseenter on badge
   document.addEventListener('mouseenter', function(e) {
+    if (!e.target || e.target.nodeType !== 1) return;
     var badge = e.target.closest('.fraud-badge');
     if (!badge) return;
     var jobId = badge.dataset.fraudJobid || badge.getAttribute('data-fraud-jobid');
@@ -2147,4 +2148,3 @@ async function backgroundEnrichSalary() {
     if (typeof computeVisibleJobScores === 'function') computeVisibleJobScores();
   }
 }
-

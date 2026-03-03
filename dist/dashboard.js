@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.41';
+var BJ_VERSION = 'v6.51';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -20,6 +20,7 @@ var BJ_VERSION = 'v6.41';
     populateVersion();
   }
 })();
+
 
 // === js/globals.js ===
 // ============================================================
@@ -2226,6 +2227,18 @@ async function searchJobs(page = 0) {
       totalCount = currentJobs.length;
     }
 
+    // Phase 72 Session 3.3: Apply AI content filter (client-side post-filter)
+    if (isAiFilterActive()) {
+      currentJobs = applyAiContentFilter(currentJobs);
+      totalCount = currentJobs.length;
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('ai_filter_applied', { active_labels: Array.from(getActiveAiLabels()) });
+      }
+    }
+
+    // Phase 72 Session 4.1: Apply AI scoring exclusions (dimmed badges, deprioritized)
+    currentJobs = applyAiScoringExclusions(currentJobs);
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger
@@ -2628,6 +2641,134 @@ function setAllTrustFilters(checked) {
   searchJobs(0);
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// AI CONTENT FILTER — Session 3.3 (v6.43) helper functions
+// ═══════════════════════════════════════════════════════════
+
+var _aiFilterLabels = new Set(['human', 'mixed', 'ai_generated', 'unscored']);
+
+function getActiveAiLabels() {
+  var labels = new Set();
+  document.querySelectorAll('.ai-filter-cb').forEach(function(cb) {
+    if (cb.checked) labels.add(cb.value);
+  });
+  return labels.size > 0 ? labels : _aiFilterLabels;
+}
+
+function isAiFilterActive() {
+  var cbs = document.querySelectorAll('.ai-filter-cb');
+  if (cbs.length === 0) return false;
+  var checked = 0;
+  cbs.forEach(function(cb) { if (cb.checked) checked++; });
+  return checked < cbs.length;
+}
+
+function applyAiContentFilter(jobs) {
+  if (!isAiFilterActive()) return jobs;
+  var labels = getActiveAiLabels();
+  return jobs.filter(function(j) {
+    var info = _aiJdScoreCache[j.greenhouse_id];
+    var label = 'unscored';
+    if (info && info.label) {
+      if (info.label === 'human_written') label = 'human';
+      else if (info.label === 'mixed_content') label = 'mixed';
+      else if (info.label === 'ai_generated') label = 'ai_generated';
+      else label = info.label;
+    }
+    return labels.has(label);
+  });
+}
+
+function updateAiFilterUI() {
+  var btn = document.getElementById('ai-filter-btn');
+  var countEl = document.getElementById('ai-filter-count');
+  if (!btn) return;
+  var active = isAiFilterActive();
+  if (active) {
+    var n = getActiveAiLabels().size;
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    if (countEl) { countEl.style.display = 'inline'; countEl.textContent = n; }
+  } else {
+    btn.style.borderColor = 'var(--border)';
+    btn.style.color = 'var(--text-faint)';
+    if (countEl) countEl.style.display = 'none';
+  }
+}
+
+function setAllAiFilters(checked) {
+  document.querySelectorAll('.ai-filter-cb').forEach(function(cb) { cb.checked = checked; });
+  updateAiFilterUI();
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('ai_filter_applied', {
+      labels: Array.from(getActiveAiLabels()),
+      action: checked ? 'select_all' : 'select_none'
+    });
+  }
+  searchJobs(0);
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI SCORING EXCLUSION — Session 4.1 (v6.44)
+// ═══════════════════════════════════════════════════════════
+
+// Cache for user AI scoring prefs (synced from settings.js)
+var _userAiScoringPrefsCache = { mixed_content: false, ai_generated: false };
+
+// Listen for pref changes from settings.js
+window.addEventListener('ai-scoring-prefs-changed', function(e) {
+  if (e.detail) _userAiScoringPrefsCache = e.detail;
+  // Re-render if on feed page
+  if (typeof searchJobs === 'function') searchJobs(0);
+});
+
+// Load prefs on startup (mirrors settings.js but for feed context)
+(function loadAiScoringPrefsForFeed() {
+  setTimeout(async function() {
+    try {
+      if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
+      var resp = await sb.from('profiles').select('ai_scoring_prefs').eq('id', currentUser.id).single();
+      if (resp.data && resp.data.ai_scoring_prefs) {
+        _userAiScoringPrefsCache = resp.data.ai_scoring_prefs;
+      }
+    } catch (e) { /* silent — prefs default to no exclusions */ }
+  }, 1000);
+})();
+
+function isAiScoringExclusionActive() {
+  return _userAiScoringPrefsCache.mixed_content || _userAiScoringPrefsCache.ai_generated;
+}
+
+function applyAiScoringExclusions(jobs) {
+  if (!isAiScoringExclusionActive()) return jobs;
+  var excludedCount = 0;
+  var result = jobs.map(function(j) {
+    var info = _aiJdScoreCache[j.greenhouse_id];
+    if (!info || !info.label) return j;
+    var excluded = false;
+    if (_userAiScoringPrefsCache.mixed_content && info.label === 'mixed_content') excluded = true;
+    if (_userAiScoringPrefsCache.ai_generated && info.label === 'ai_generated') excluded = true;
+    if (excluded) {
+      // Mark job as scoring-excluded (used by renderer to dim badge)
+      j._aiScoringExcluded = true;
+      excludedCount++;
+    } else {
+      j._aiScoringExcluded = false;
+    }
+    return j;
+  });
+  // PostHog: track exclusion impact on feed (v6.49 — Session 5.1)
+  if (excludedCount > 0 && typeof posthog !== 'undefined') {
+    posthog.capture('ai_scoring_exclusion_applied', {
+      excluded_count: excludedCount,
+      total_jobs: jobs.length,
+      prefs: Object.assign({}, _userAiScoringPrefsCache)
+    });
+  }
+  return result;
+}
+
 // Init trust filter UI
 document.addEventListener('DOMContentLoaded', function() {
   var btn = document.getElementById('trust-filter-btn');
@@ -2655,8 +2796,36 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+
+  // Init AI content filter UI (v6.43 — Session 3.3)
+  var aiBtn = document.getElementById('ai-filter-btn');
+  var aiDd = document.getElementById('ai-filter-dropdown');
+  if (aiBtn && aiDd) {
+    aiBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      aiDd.style.display = aiDd.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', function(e) {
+      if (!aiDd.contains(e.target) && e.target !== aiBtn) aiDd.style.display = 'none';
+    });
+    aiDd.querySelectorAll('.ai-filter-cb').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        updateAiFilterUI();
+        if (typeof posthog !== 'undefined') {
+          posthog.capture('ai_filter_applied', {
+            labels: Array.from(getActiveAiLabels()),
+            toggled_label: cb.value,
+            toggled_to: cb.checked
+          });
+        }
+        searchJobs(0);
+      });
+    });
+  }
+
   // PostHog: fraud_tooltip_opened — delegated mouseenter on badge
   document.addEventListener('mouseenter', function(e) {
+    if (!e.target || e.target.nodeType !== 1) return;
     var badge = e.target.closest('.fraud-badge');
     if (!badge) return;
     var jobId = badge.dataset.fraudJobid || badge.getAttribute('data-fraud-jobid');
@@ -2716,7 +2885,7 @@ async function fetchAiJdScores(jobs) {
   try {
     var { data, error } = await sb
       .from('content_ai_scores')
-      .select('content_id,ai_label,ai_generated_score,confidence,summary')
+      .select('content_id,ai_label,ai_generated_score,confidence,summary,perplexity_score,burstiness_score,top_signals')
       .eq('content_type', 'job_description')
       .in('content_id', ids);
     if (error) { console.warn('[BJ] AI JD score fetch error:', error); return; }
@@ -2727,8 +2896,22 @@ async function fetchAiJdScores(jobs) {
           score: row.ai_generated_score,
           confidence: row.confidence,
           summary: row.summary,
+          perplexity: row.perplexity_score,
+          burstiness: row.burstiness_score,
+          topSignals: row.top_signals || [],
         };
       });
+      // PostHog: track AI score coverage for this batch (v6.49 — Session 5.1)
+      if (typeof posthog !== 'undefined') {
+        var labels = {};
+        data.forEach(function(row) { labels[row.ai_label] = (labels[row.ai_label] || 0) + 1; });
+        posthog.capture('ai_scores_fetched', {
+          requested: ids.length,
+          returned: data.length,
+          coverage_pct: ids.length > 0 ? Math.round((data.length / ids.length) * 100) : 0,
+          label_counts: labels
+        });
+      }
     }
   } catch (e) {
     console.warn('[BJ] AI JD score fetch failed:', e);
@@ -2740,9 +2923,9 @@ function aiJdBadgeHtml(jobId) {
   if (!info || !info.label) return '';
 
   var cfg = {
-    human: { icon: '✅', cls: 'ai-jd-badge--human', label: 'Human', tip: 'Likely human-written job description' },
-    mixed: { icon: '⚠️', cls: 'ai-jd-badge--mixed', label: 'Mixed', tip: 'May contain AI-generated content' },
-    ai_generated: { icon: '🤖', cls: 'ai-jd-badge--ai', label: 'AI', tip: 'Likely AI-generated job description' },
+    human: { icon: '✅', cls: 'ai-jd-badge--human', label: 'Human-Written', tip: 'Likely human-written job description' },
+    mixed: { icon: '⚠️', cls: 'ai-jd-badge--mixed', label: 'Mixed Content', tip: 'May contain AI-generated content' },
+    ai_generated: { icon: '🤖', cls: 'ai-jd-badge--ai', label: 'AI-Generated', tip: 'Likely AI-generated job description' },
   };
   var c = cfg[info.label];
   if (!c) return '';
@@ -2750,13 +2933,151 @@ function aiJdBadgeHtml(jobId) {
   var pct = info.score !== null && info.score !== undefined ? (info.score * 100).toFixed(0) + '%' : '';
   var summaryHtml = info.summary ? '<div class="ai-jd-tooltip-summary">' + escapeHtml(info.summary).substring(0, 200) + '</div>' : '';
 
-  return '<span class="ai-jd-badge ' + c.cls + '" data-ai-jobid="' + escapeHtml(jobId) + '">'
+  // Signal breakdown bars (v6.42 — Session 3.2)
+  var signalBarsHtml = '';
+  if (info.perplexity !== null && info.perplexity !== undefined && info.burstiness !== null && info.burstiness !== undefined) {
+    var perpPct = (info.perplexity * 100).toFixed(0);
+    var burstPct = (info.burstiness * 100).toFixed(0);
+    // Content signal = derived from overall minus sub-scores (weighted)
+    var contentPct = pct ? parseInt(pct) : 0;
+    signalBarsHtml = '<div class="ai-jd-tooltip-signals">'
+      + '<div class="ai-jd-signal-row"><span class="ai-jd-signal-label">Predictability</span>'
+      + '<div class="ai-jd-signal-bar"><div class="ai-jd-signal-fill" style="width:' + (100 - perpPct) + '%;background:' + _aiSignalColor(100 - perpPct) + '"></div></div>'
+      + '<span class="ai-jd-signal-val">' + (100 - perpPct) + '%</span></div>'
+      + '<div class="ai-jd-signal-row"><span class="ai-jd-signal-label">Uniformity</span>'
+      + '<div class="ai-jd-signal-bar"><div class="ai-jd-signal-fill" style="width:' + (100 - burstPct) + '%;background:' + _aiSignalColor(100 - burstPct) + '"></div></div>'
+      + '<span class="ai-jd-signal-val">' + (100 - burstPct) + '%</span></div>'
+      + '<div class="ai-jd-signal-row"><span class="ai-jd-signal-label">Overall AI Score</span>'
+      + '<div class="ai-jd-signal-bar"><div class="ai-jd-signal-fill" style="width:' + contentPct + '%;background:' + _aiSignalColor(contentPct) + '"></div></div>'
+      + '<span class="ai-jd-signal-val">' + contentPct + '%</span></div>'
+      + '</div>';
+  }
+
+  // Confidence indicator
+  var confHtml = '';
+  if (info.confidence !== null && info.confidence !== undefined) {
+    var confPct = (info.confidence * 100).toFixed(0);
+    var confLabel = confPct >= 80 ? 'High' : confPct >= 50 ? 'Medium' : 'Low';
+    var confCls = confPct >= 80 ? 'ai-jd-conf--high' : confPct >= 50 ? 'ai-jd-conf--med' : 'ai-jd-conf--low';
+    confHtml = '<div class="ai-jd-tooltip-conf ' + confCls + '">' + confLabel + ' confidence (' + confPct + '%)</div>';
+  }
+
+  return '<span class="ai-jd-badge ' + c.cls + '" data-ai-jobid="' + escapeHtml(jobId) + '" onclick="trackAiJdBadgeClick(\'' + escapeHtml(jobId) + '\')">'
     + c.icon
     + '<span class="ai-jd-tooltip">'
-    + '<div class="ai-jd-tooltip-title">' + c.tip + (pct ? ' (' + pct + ')' : '') + '</div>'
+    + '<div class="ai-jd-tooltip-title">' + c.label + (pct ? ' — ' + pct + ' AI' : '') + '</div>'
+    + confHtml
+    + signalBarsHtml
     + summaryHtml
     + '</span>'
     + '</span>';
+}
+
+// Signal color helper: green (low AI) → yellow → red (high AI)
+function _aiSignalColor(pct) {
+  if (pct < 30) return 'var(--green, #22c55e)';
+  if (pct < 60) return 'var(--warm, #f59e0b)';
+  return 'var(--red, #ef4444)';
+}
+
+// PostHog tracking for AI badge clicks (v6.42 — Session 3.2)
+function trackAiJdBadgeClick(jobId) {
+  var info = _aiJdScoreCache[jobId];
+  if (typeof posthog !== 'undefined' && info) {
+    posthog.capture('ai_jd_badge_clicked', {
+      job_id: jobId,
+      ai_label: info.label,
+      ai_score: info.score,
+      confidence: info.confidence,
+    });
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// AI CONTENT DETECTION BANNER — Job Detail / Snippet Row
+// v6.43 — Session 3.3: Full-width banner in job detail area
+// ═══════════════════════════════════════════════════════════
+
+function aiContentBannerHtml(jobId) {
+  var info = _aiJdScoreCache[jobId];
+  if (!info || !info.label) return '';
+  // Only show banner for mixed/ai_generated (human is benign, same pattern as trustBannerHtml)
+  if (info.label === 'human') return '';
+
+  var cfg = {
+    mixed: {
+      cls: 'ai-banner--mixed',
+      icon: '⚠️',
+      title: 'Mixed AI Content Detected',
+      desc: 'This job description appears to contain a mix of human-written and AI-generated content.',
+    },
+    ai_generated: {
+      cls: 'ai-banner--ai',
+      icon: '🤖',
+      title: 'AI-Generated Content Detected',
+      desc: 'This job description was likely generated by AI. Review role details and requirements carefully.',
+    },
+  };
+  var c = cfg[info.label];
+  if (!c) return '';
+
+  var pct = info.score !== null && info.score !== undefined ? (info.score * 100).toFixed(0) + '% AI' : '';
+
+  // Full sub-score bars (not truncated like tooltip)
+  var subsHtml = '';
+  if (info.perplexity !== null && info.perplexity !== undefined && info.burstiness !== null && info.burstiness !== undefined) {
+    var perpVal = (100 - (info.perplexity * 100)).toFixed(0);
+    var burstVal = (100 - (info.burstiness * 100)).toFixed(0);
+    var confVal = info.confidence !== null ? (info.confidence * 100).toFixed(0) : null;
+    subsHtml = '<div class="ai-banner-subs">'
+      + '<div class="ai-banner-sub"><span class="ai-banner-sub-label">Predictability</span>'
+      + '<div class="ai-banner-sub-bar"><div class="ai-banner-sub-fill" style="width:' + perpVal + '%;background:' + _aiSignalColor(parseInt(perpVal)) + '"></div></div>'
+      + '<span class="ai-banner-sub-val">' + perpVal + '%</span></div>'
+      + '<div class="ai-banner-sub"><span class="ai-banner-sub-label">Uniformity</span>'
+      + '<div class="ai-banner-sub-bar"><div class="ai-banner-sub-fill" style="width:' + burstVal + '%;background:' + _aiSignalColor(parseInt(burstVal)) + '"></div></div>'
+      + '<span class="ai-banner-sub-val">' + burstVal + '%</span></div>';
+    if (confVal !== null) {
+      subsHtml += '<div class="ai-banner-sub"><span class="ai-banner-sub-label">Confidence</span>'
+        + '<div class="ai-banner-sub-bar"><div class="ai-banner-sub-fill" style="width:' + confVal + '%;background:var(--accent,#6366f1)"></div></div>'
+        + '<span class="ai-banner-sub-val">' + confVal + '%</span></div>';
+    }
+    subsHtml += '</div>';
+  }
+
+  // Full summary (not truncated)
+  var summaryHtml = info.summary ? '<div class="ai-banner-summary">' + escapeHtml(info.summary) + '</div>' : '';
+
+  // Top signals chips
+  var signalsHtml = '';
+  var signals = info.topSignals;
+  if (signals && signals.length > 0) {
+    var chips = signals.slice(0, 6).map(function(s) {
+      var label = typeof s === 'string' ? s : (s.label || s.name || '');
+      return label ? '<span class="ai-banner-signal-chip">' + escapeHtml(label.substring(0, 40)) + '</span>' : '';
+    }).filter(Boolean).join('');
+    if (chips) signalsHtml = '<div class="ai-banner-signals">' + chips + '</div>';
+  }
+
+  // PostHog event
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('ai_content_banner_viewed', {
+      job_id: jobId,
+      ai_label: info.label,
+      ai_score: info.score,
+    });
+  }
+
+  return '<div class="ai-banner ' + c.cls + '">'
+    + '<div class="ai-banner-header">'
+    + '<span class="ai-banner-icon">' + c.icon + '</span>'
+    + '<span class="ai-banner-title">' + c.title + (pct ? ' — ' + pct : '') + '</span>'
+    + '</div>'
+    + '<div class="ai-banner-desc">' + c.desc + '</div>'
+    + subsHtml
+    + signalsHtml
+    + summaryHtml
+    + '</div>';
 }
 
 function fraudBadgeHtml(jobId) {
@@ -3036,12 +3357,12 @@ function renderJobRows(jobs, total, page, filtersToRun) {
       <td class="jt-loc" title="${escapeHtml(job.location||'')}">${truncate(formatLocation(job.location, job.loc_display, activeNegLocs), 35)}</td>
       <td class="jt-salary">${formatSalaryCell(job)}</td>
       <td class="jt-days" style="${daysClass}">${daysStr}</td>
-      <td class="jt-match">${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
+      <td class="jt-match"${job._aiScoringExcluded ? ' style="opacity:0.3;" title="Match score excluded per your AI content preferences"' : ''}>${typeof matchBadgeWithBoost==='function'?matchBadgeWithBoost(jobMatchScores[job.greenhouse_id],job.greenhouse_id,job.title,job.company_name):matchBadge(jobMatchScores[job.greenhouse_id])}</td>
       <td><div style="white-space:nowrap;display:flex;gap:4px;align-items:center;">
         ${saveBtn}${applyBtn}
       </div></td>
     </tr>
-    <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
+    <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
   // Pagination row
@@ -3164,7 +3485,6 @@ async function backgroundEnrichSalary() {
     if (typeof computeVisibleJobScores === 'function') computeVisibleJobScores();
   }
 }
-
 
 
 // === js/sort-bar.js ===
@@ -3375,6 +3695,7 @@ $$('#sort-dropdown .sort-opt').forEach(opt => {
 
 // Close dropdown on outside click
 document.addEventListener('click', (e) => {
+  if (!e.target || e.target.nodeType !== 1) return;
   if (!e.target.closest('.sort-add-wrap')) {
     $('#sort-dropdown').style.display = 'none';
   }
@@ -3650,6 +3971,7 @@ if (qbInputDept) {
 }
 
 } // end sort-bar guard
+
 
 // === js/keywords.js ===
 // ============================================================
@@ -8203,6 +8525,29 @@ $('#cb-search').addEventListener('input', () => {
   cbSearchTimeout = setTimeout(renderCompanyBrowserList, 150);
 });
 
+// Sort by column (v6.45)
+let cbSortField = 'name';
+let cbSortDir = 'asc';
+
+document.querySelectorAll('#cb-sort-bar .cb-sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const field = btn.dataset.sort;
+    if (cbSortField === field) {
+      cbSortDir = cbSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      cbSortField = field;
+      cbSortDir = field === 'name' ? 'asc' : 'desc'; // numeric fields default desc
+    }
+    document.querySelectorAll('#cb-sort-bar .cb-sort-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.sort === cbSortField);
+      b.style.background = b.dataset.sort === cbSortField ? 'var(--bg-card-hover)' : 'none';
+    });
+    // PostHog tracking
+    if (typeof posthog !== 'undefined') posthog.capture('ai_jd_rate_column_sorted', { direction: cbSortDir, field: cbSortField, company_count: cbAllCompanies.length });
+    renderCompanyBrowserList();
+  });
+});
+
 // Save collection button
 $('#cb-save-btn').addEventListener('click', async () => {
   const name = $('#cb-collection-name').value.trim();
@@ -8254,7 +8599,7 @@ async function loadCompanyBrowser() {
   try {
     // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)
     let allData = await cachedQuery('ref:companies:list', function() {
-      return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+      return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').order('name');
     }, { ttl: 600000 }) || [];
 
     // Load ghost stats for companies that have data
@@ -8272,11 +8617,13 @@ async function loadCompanyBrowser() {
       source: c.source || 'greenhouse',
       ghostRate: ghostStats[c.slug]?.ghost_rate || null,
       avgResponseDays: ghostStats[c.slug]?.avg_response_days || null,
-      ghostApps: ghostStats[c.slug]?.total_applications || 0
+      ghostApps: ghostStats[c.slug]?.total_applications || 0,
+      aiJdRate: c.ai_jd_rate != null ? c.ai_jd_rate : null
     })).sort((a, b) => a.name.localeCompare(b.name));
 
     renderCompanyBrowserList();
     updateCbSelectedCount();
+    loadAiAggregationHealth();
   } catch (e) {
     list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Failed to load companies</div>';
   }
@@ -8296,6 +8643,20 @@ function renderCompanyBrowserList() {
     filtered = filtered.filter(c => cbSelections[c.slug] === 'include');
   } else if (filterMode === 'excluded') {
     filtered = filtered.filter(c => cbSelections[c.slug] === 'exclude');
+  }
+
+  // Apply sort (v6.45)
+  const dir = cbSortDir === 'asc' ? 1 : -1;
+  if (cbSortField === 'jobs') {
+    filtered = [...filtered].sort((a, b) => (a.jobs - b.jobs) * dir);
+  } else if (cbSortField === 'ai_jd_rate') {
+    filtered = [...filtered].sort((a, b) => {
+      const aVal = a.aiJdRate != null ? a.aiJdRate : -1;
+      const bVal = b.aiJdRate != null ? b.aiJdRate : -1;
+      return (aVal - bVal) * dir;
+    });
+  } else {
+    filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name) * dir);
   }
 
   // Group by first letter
@@ -8397,6 +8758,7 @@ function renderCompanyBrowserList() {
           <div class="cb-name">${c.name}</div>
           <div class="cb-jobs">${c.jobs > 0 ? c.jobs + ' jobs' : ''}</div>
           ${c.ghostRate !== null && c.ghostApps >= 5 ? `<div class="cb-ghost-rate" title="Ghost rate: ${Math.round(c.ghostRate * 100)}% (${c.ghostApps} applications tracked)" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;${c.ghostRate >= 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.ghostRate >= 0.25 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.ghostRate * 100)}% ghost</div>` : ''}
+          ${c.aiJdRate !== null ? `<div class="cb-ai-jd-rate" title="${Math.round(c.aiJdRate * 100)}% of this company's JDs appear AI-generated" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;cursor:default;${c.aiJdRate > 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.aiJdRate >= 0.2 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.aiJdRate * 100)}% AI</div>` : ''}
           <div class="cb-source-badge" style="background:rgba(99,102,241,0.1);color:#6366f1;">${c.source}</div>
         </div>`;
       }).join('')}
@@ -8440,6 +8802,98 @@ function renderCompanyBrowserList() {
       row.querySelector('.cb-toggle').click();
     });
   });
+
+  // Click on company name = expand AI content breakdown (v6.45)
+  list.querySelectorAll('.cb-name').forEach(nameEl => {
+    nameEl.style.cursor = 'pointer';
+    nameEl.style.textDecoration = 'underline';
+    nameEl.style.textDecorationColor = 'var(--border)';
+    nameEl.addEventListener('click', async (e) => {
+      e.stopPropagation(); // prevent row toggle
+      const row = nameEl.closest('.cb-company-row');
+      const slug = row.dataset.slug;
+      const existing = row.nextElementSibling;
+      if (existing && existing.classList.contains('cb-detail-panel')) {
+        existing.remove();
+        return;
+      }
+      // Remove any other open detail panels
+      list.querySelectorAll('.cb-detail-panel').forEach(p => p.remove());
+      // Create detail panel
+      const panel = document.createElement('div');
+      panel.className = 'cb-detail-panel';
+      panel.style.cssText = 'padding:12px 16px 12px 44px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin:4px 0 8px;font-size:12px;color:var(--text-dim);';
+      panel.innerHTML = '<div style="color:var(--text-faint);">Loading AI content breakdown…</div>';
+      row.after(panel);
+      // PostHog: track company AI detail expansion (v6.49 — Session 5.1)
+      if (typeof posthog !== 'undefined') posthog.capture('ai_company_detail_expanded', { company_slug: slug });
+      try {
+        const { data, error } = await sb.from('content_ai_scores')
+          .select('ai_label')
+          .eq('content_type', 'jd')
+          .like('content_id', slug + '/%');
+        if (error || !data || data.length === 0) {
+          // Try alternate: get jobs for this company first
+          const { data: jobs } = await sb.from('ats_jobs')
+            .select('id')
+            .eq('company_slug', slug)
+            .limit(500);
+          if (jobs && jobs.length > 0) {
+            const jobIds = jobs.map(j => String(j.id));
+            const { data: scores } = await sb.from('content_ai_scores')
+              .select('ai_label')
+              .eq('content_type', 'jd')
+              .in('content_id', jobIds);
+            renderBreakdown(panel, scores || [], slug);
+          } else {
+            panel.innerHTML = '<div style="color:var(--text-faint);">No scored job descriptions found for this company.</div>';
+          }
+        } else {
+          renderBreakdown(panel, data, slug);
+        }
+      } catch (err) {
+        panel.innerHTML = '<div style="color:var(--red);">Failed to load AI breakdown.</div>';
+      }
+    });
+  });
+}
+
+// Render AI content breakdown in company detail panel (v6.45)
+function renderBreakdown(panel, scores, slug) {
+  if (!scores || scores.length === 0) {
+    panel.innerHTML = '<div style="color:var(--text-faint);">No scored job descriptions found for this company.</div>';
+    return;
+  }
+  const counts = { human: 0, mixed: 0, ai_generated: 0 };
+  scores.forEach(s => { if (counts[s.label] !== undefined) counts[s.label]++; });
+  const total = scores.length;
+  const pctH = total > 0 ? Math.round((counts.human / total) * 100) : 0;
+  const pctM = total > 0 ? Math.round((counts.mixed / total) * 100) : 0;
+  const pctA = total > 0 ? Math.round((counts.ai_generated / total) * 100) : 0;
+
+  panel.innerHTML = `
+    <div style="font-weight:600;margin-bottom:8px;color:var(--text);">AI Content Breakdown <span style="font-weight:400;color:var(--text-faint);">(${total} scored JDs)</span></div>
+    <div style="display:flex;height:14px;border-radius:4px;overflow:hidden;margin-bottom:8px;">
+      ${pctH > 0 ? `<div style="width:${pctH}%;background:#48bb78;" title="Human: ${counts.human}"></div>` : ''}
+      ${pctM > 0 ? `<div style="width:${pctM}%;background:#f59e0b;" title="Mixed: ${counts.mixed}"></div>` : ''}
+      ${pctA > 0 ? `<div style="width:${pctA}%;background:#f56565;" title="AI-Generated: ${counts.ai_generated}"></div>` : ''}
+    </div>
+    <div style="display:flex;gap:16px;">
+      <span style="color:#48bb78;">● Human: ${counts.human} (${pctH}%)</span>
+      <span style="color:#f59e0b;">● Mixed: ${counts.mixed} (${pctM}%)</span>
+      <span style="color:#f56565;">● AI-Generated: ${counts.ai_generated} (${pctA}%)</span>
+    </div>
+  `;
+  // PostHog: track breakdown render with label distribution (v6.49 — Session 5.1)
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('ai_label_distribution_viewed', {
+      company_slug: slug,
+      total_scored: total,
+      pct_human: pctH,
+      pct_mixed: pctM,
+      pct_ai_generated: pctA
+    });
+  }
 }
 
 function updateCbSelectedCount() {
@@ -8547,6 +9001,132 @@ searchCompanies = async function(query) {
 
 // Collections loaded in init() after auth
 
+
+// ─── AI Aggregation Health Panel (v6.46 Session 4.3) ───
+
+async function loadAiAggregationHealth() {
+  const panel = document.getElementById('cb-ai-health-panel');
+  if (!panel) return;
+
+  // Only show for admin users (check for admin UI elements)
+  const isAdmin = !!document.getElementById('admin-panel') || !!document.querySelector('[data-admin]');
+  // Always show in company browser for transparency
+  panel.style.display = '';
+
+  try {
+    const { data, error } = await sb.rpc('get_ai_aggregation_health');
+    if (error) throw error;
+    if (!data) return;
+
+    const h = data;
+
+    // Coverage
+    const coverageEl = document.getElementById('ai-h-coverage');
+    if (coverageEl) {
+      const pct = h.coverage_pct || 0;
+      coverageEl.textContent = pct + '%';
+      coverageEl.style.color = pct > 80 ? 'var(--green)' : pct > 30 ? 'var(--amber,orange)' : 'var(--red)';
+    }
+
+    // Scored JDs
+    const scoredEl = document.getElementById('ai-h-scored');
+    if (scoredEl) {
+      scoredEl.textContent = (h.total_scores || 0).toLocaleString();
+    }
+
+    // Companies rated
+    const companiesEl = document.getElementById('ai-h-companies');
+    if (companiesEl) {
+      const rated = h.companies_with_rate || 0;
+      const total = h.total_companies || 0;
+      companiesEl.textContent = rated.toLocaleString() + ' / ' + total.toLocaleString();
+    }
+
+    // Cron status
+    const cronEl = document.getElementById('ai-h-cron');
+    if (cronEl) {
+      cronEl.textContent = h.cron_active ? '✅ Active' : '❌ Inactive';
+      cronEl.style.color = h.cron_active ? 'var(--green)' : 'var(--red)';
+    }
+
+    // Backfill status
+    const backfillEl = document.getElementById('ai-h-backfill');
+    if (backfillEl) {
+      backfillEl.textContent = h.backfill_active ? '🔄 Running' : '⏹ Stopped';
+      backfillEl.style.color = h.backfill_active ? 'var(--blue, #3b82f6)' : 'var(--text-dim)';
+    }
+
+    // Last scored
+    const lastEl = document.getElementById('ai-h-last-score');
+    if (lastEl) {
+      if (h.latest_score_at) {
+        const ago = timeAgo(new Date(h.latest_score_at));
+        lastEl.textContent = ago;
+      } else {
+        lastEl.textContent = 'Not yet';
+        lastEl.style.color = 'var(--text-dim)';
+      }
+    }
+
+    // Label distribution
+    const labelsEl = document.getElementById('cb-ai-health-labels');
+    if (labelsEl && h.label_distribution) {
+      const labels = h.label_distribution;
+      const total = Object.values(labels).reduce((s, v) => s + v, 0) || 0;
+      if (total > 0) {
+        labelsEl.innerHTML = Object.entries(labels).map(([label, count]) => {
+          const pct = ((count / total) * 100).toFixed(1);
+          const color = label === 'human' ? 'var(--green)' : label === 'mixed' ? 'var(--amber,orange)' : label === 'ai_generated' ? 'var(--red)' : 'var(--text-dim)';
+          const displayLabel = label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          return `<span style="font-size:11px;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:3px;"></span>${displayLabel}: ${count.toLocaleString()} (${pct}%)</span>`;
+        }).join('');
+      } else {
+        labelsEl.innerHTML = '<span style="font-size:11px;color:var(--text-dim);">Backfill in progress — no scores yet</span>';
+      }
+    }
+
+    // PostHog tracking
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('ai_aggregation_health_viewed', {
+        coverage_pct: h.coverage_pct,
+        total_scores: h.total_scores,
+        cron_active: h.cron_active,
+        backfill_active: h.backfill_active
+      });
+    }
+
+  } catch (e) {
+    console.warn('[BJ] AI aggregation health check failed:', e.message);
+    panel.style.display = 'none';
+  }
+}
+
+// Simple time-ago helper
+function timeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
+  return days + 'd ago';
+}
+
+// Toggle handler for health panel
+document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtn = document.getElementById('cb-ai-health-toggle');
+  const body = document.getElementById('cb-ai-health-body');
+  const labels = document.getElementById('cb-ai-health-labels');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      const hidden = body.style.display === 'none';
+      body.style.display = hidden ? 'grid' : 'none';
+      if (labels) labels.style.display = hidden ? 'flex' : 'none';
+      toggleBtn.textContent = hidden ? 'Hide' : 'Show';
+    });
+  }
+});
 
 
 // === js/location.js ===
@@ -15518,6 +16098,74 @@ $('#logout-btn').addEventListener('click', async () => {
   await sb.auth.signOut();
   window.location.href = '/';
 });
+
+
+// ---- AI Scoring Preferences (v6.44 Session 4.1) ----
+var _userAiScoringPrefs = { mixed_content: false, ai_generated: false };
+var _aiPrefsDebounceTimer = null;
+
+async function loadAiScoringPrefs() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { data, error } = await sb
+      .from('profiles')
+      .select('ai_scoring_prefs')
+      .eq('id', currentUser.id)
+      .single();
+    if (error) { console.warn('[BJ] AI prefs load error:', error.message); return; }
+    if (data && data.ai_scoring_prefs) {
+      _userAiScoringPrefs = data.ai_scoring_prefs;
+    }
+    // Sync UI toggles
+    var mixedEl = document.getElementById('ai-pref-mixed');
+    var aiGenEl = document.getElementById('ai-pref-ai-generated');
+    if (mixedEl) mixedEl.checked = !!_userAiScoringPrefs.mixed_content;
+    if (aiGenEl) aiGenEl.checked = !!_userAiScoringPrefs.ai_generated;
+  } catch (e) {
+    console.warn('[BJ] AI prefs load exception:', e);
+  }
+}
+
+async function saveAiScoringPrefs() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { error } = await sb
+      .from('profiles')
+      .update({ ai_scoring_prefs: _userAiScoringPrefs })
+      .eq('id', currentUser.id);
+    if (error) throw error;
+    if (typeof showToast === 'function') showToast('AI scoring preferences updated', { type: 'success' });
+  } catch (e) {
+    console.error('[BJ] AI prefs save error:', e);
+    if (typeof showToast === 'function') showToast('Failed to save AI preferences', { type: 'error' });
+  }
+}
+
+function initAiScoringPrefs() {
+  loadAiScoringPrefs();
+  document.querySelectorAll('#ai-pref-mixed, #ai-pref-ai-generated').forEach(function(toggle) {
+    toggle.addEventListener('change', function() {
+      var label = this.dataset.aiLabel;
+      _userAiScoringPrefs[label] = this.checked;
+      // Debounce save
+      if (_aiPrefsDebounceTimer) clearTimeout(_aiPrefsDebounceTimer);
+      _aiPrefsDebounceTimer = setTimeout(function() { saveAiScoringPrefs(); }, 500);
+      // PostHog
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('ai_scoring_pref_changed', { label: label, excluded: _userAiScoringPrefs[label], source: 'settings' });
+      }
+      // Dispatch event so job-feed.js can react
+      window.dispatchEvent(new CustomEvent('ai-scoring-prefs-changed', { detail: _userAiScoringPrefs }));
+    });
+  });
+}
+
+// Auto-init when DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(initAiScoringPrefs, 500); });
+} else {
+  setTimeout(initAiScoringPrefs, 500);
+}
 
 // ---- Feedback Modal ----
 let fbType = 'bug';
