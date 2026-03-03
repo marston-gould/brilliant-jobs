@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-03
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.61
+**Current version:** v6.62
 
 ---
 
@@ -2655,3 +2655,8 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Stats page: MV freshness badge in filter pills bar
 - Admin: MV staleness indicator in Feed Health tab
 - Admin: Error boundaries on discovery/auto-apply/chart loaders to prevent cascading failures
+
+### 74.17 A15 Session 6: Source Pill Counts — v6.62
+- Stats page: Per-ATS-source job count chips from mv_job_feed_counts in filter bar (All mode)
+- Job feed: Source breakdown chips in hero stats bar
+- Compact formatting, tooltips with salary coverage
