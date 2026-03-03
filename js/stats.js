@@ -111,6 +111,60 @@ function renderFilterPills() {
 
 function persistFilterSelection() { localStorage.setItem('bj_stats_filters', JSON.stringify(statsSelectedFilters)); }
 
+// ─── A15 S6 v6.62: Source pill counts from mv_job_feed_counts ───
+// Shows per-ATS-source job counts as small chips in the stats filter bar (All mode only)
+var _sourceCountsRendered = false;
+var _sourcePillColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
+var _sourcePillLabels = { 'greenhouse':'Greenhouse', 'lever':'Lever', 'ashby':'Ashby', 'workable':'Workable', 'recruitee':'Recruitee', 'usajobs':'USAJobs' };
+
+async function renderSourceCountPills() {
+  var container = document.getElementById('stats-filter-pills');
+  if (!container) return;
+  // Remove old source pills
+  var oldPills = container.querySelectorAll('.stats-source-pill');
+  for (var i = 0; i < oldPills.length; i++) oldPills[i].remove();
+  // Only show in All mode
+  if (!statsSelectedFilters.includes('__all__')) { _sourceCountsRendered = false; return; }
+
+  var totals = await fetchSourceTotalsFromMV();
+  if (!totals) return;
+
+  // Sort sources by job count descending
+  var sources = Object.keys(totals).sort(function(a, b) { return totals[b].jobs - totals[a].jobs; });
+
+  // Insert a separator dot before source pills
+  var sep = document.createElement('span');
+  sep.className = 'stats-source-pill';
+  sep.style.cssText = 'width:3px;height:3px;border-radius:50%;background:var(--border);margin:0 2px;align-self:center;';
+  // Insert before MV freshness badge if it exists, else append
+  var freshBadge = document.getElementById('stats-mv-freshness');
+  if (freshBadge) container.insertBefore(sep, freshBadge);
+  else container.appendChild(sep);
+
+  for (var s = 0; s < sources.length; s++) {
+    var src = sources[s];
+    var count = totals[src].jobs;
+    if (count === 0) continue;
+    var chip = document.createElement('span');
+    chip.className = 'stats-source-pill';
+    chip.title = (_sourcePillLabels[src] || src) + ': ' + count.toLocaleString() + ' jobs (' + totals[src].withSalary.toLocaleString() + ' with salary)';
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-family:var(--mono);color:var(--text-dim);border:1px solid var(--border);background:var(--bg-card);cursor:default;white-space:nowrap;';
+    var dot = document.createElement('span');
+    dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:' + (_sourcePillColors[src] || '#475569') + ';flex-shrink:0;';
+    chip.appendChild(dot);
+    chip.appendChild(document.createTextNode((_sourcePillLabels[src] || src) + ' ' + _formatCompact(count)));
+    if (freshBadge) container.insertBefore(chip, freshBadge);
+    else container.appendChild(chip);
+  }
+  _sourceCountsRendered = true;
+}
+
+function _formatCompact(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
 function initCompareToggle() {
   var sel = document.getElementById('stats-compare-toggle');
   if (!sel) return;
@@ -223,6 +277,9 @@ async function fetchAndRenderStats() {
       renderStatCards(stats);
       hideMVFreshnessNotice();
     }
+
+    // A15 S6 v6.62: Render source count pills from MV (All mode)
+    renderSourceCountPills();
 
     // Use MV-powered source timeline when available, otherwise standard
     if (mvSourceTimeline && mvSourceTimeline.length > 0) {

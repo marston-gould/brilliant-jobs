@@ -1,3 +1,11 @@
+## v6.62 A15 Session 6: Source Pill Counts from mv_job_feed_counts (2026-03-03)
+- Stats page: Per-ATS-source job count chips in filter bar (All mode) — Greenhouse, Lever, Ashby, Workable, Recruitee, USAJobs counts from MV
+- Job feed: Source breakdown chips in hero stats bar — compact per-source counts with colored dots
+- Both read from mv_job_feed_counts with 10-min cache TTL (matches MV refresh cycle)
+- Compact number formatting (e.g. 39.6K instead of 39,643)
+- Hover tooltips show full counts + salary coverage per source
+- Version v6.62 across all 7+ surfaces + SEO/data lab cache-bust params
+
 ## v6.61 A15 Session 5: MV-Powered Stat Cards + Staleness Indicators (2026-03-03)
 - Stats page: "All" mode stat cards now render from mv_landing_stats — no 5000-row client aggregation
 - Stats page: MV freshness badge shows "Data X min ago" with green/amber dot in filter pills bar
