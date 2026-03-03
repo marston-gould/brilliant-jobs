@@ -1701,6 +1701,7 @@ const features = [
   { s: 'done', n: 'Resume upload AI scoring + card badge', d: 'v6.38: Hooked score-ai-content into resume upload flow (after text extraction, content_type=resume). AI badge on resume card — human (green), mixed (yellow), ai_generated (red) with percentage + hover tooltip. PostHog event ai_resume_scored. Manual rescore function for Session 2.2.', p: 72, e: 2 },
   { s: 'done', n: 'Resume rescore button + rate limiting + history', d: 'v6.39: Rescore button on resume card with 60s cooldown rate limiting. Score history tracking (max 5 entries) with previous-vs-current delta display. Button shows live countdown timer during cooldown. History persisted in localStorage.', p: 72, e: 1 },
   { s: 'done', n: 'Cover letter inline AI scoring + badge + rescore', d: 'v6.40: AI scoring hook after cover letter generation via score-ai-content EF. AI detection badge on cover letter archive cards (human/mixed/ai_generated). Rescore button with 60s cooldown. Inline scoring badge in rewrite preview. PostHog events: ai_cover_letter_scored, ai_cover_letter_rescored.', p: 72, e: 2 },
+  { s: 'done', n: 'Feed card AI badge for job descriptions', d: 'v6.41: AI detection badge on job feed cards — shows AI authorship level (human/mixed/ai_generated) for each job description. Color-coded badge with hover tooltip showing confidence score and summary. Batch fetch from content_ai_scores table (content_type=job_description). CSS styles matching fraud badge pattern.', p: 72, e: 1 },
 ];
 
 

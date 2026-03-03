@@ -1329,6 +1329,21 @@
     /* Right-edge overflow prevention */
     .job-data-row:nth-child(n) .fraud-tooltip { left: auto; right: 0; transform: none; }
 
+    /* ─── AI Content Detection: Feed Card Badge (v6.41, Session 3.1) ─── */
+    .ai-jd-badge { position: relative; display: inline-flex; align-items: center; margin-inline-start: 4px; font-size: 10px; cursor: help; vertical-align: middle; line-height: 1; }
+    .ai-jd-badge--human { opacity: 0.65; }
+    .ai-jd-badge--mixed { opacity: 0.85; }
+    .ai-jd-badge--ai { opacity: 1; }
+    .ai-jd-tooltip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; min-width: 200px; max-width: 260px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1000; font-size: 11px; color: var(--text-body); white-space: normal; text-align: left; }
+    .ai-jd-badge:hover .ai-jd-tooltip { display: block; }
+    .ai-jd-tooltip-title { font-weight: 700; font-size: 12px; margin-bottom: 4px; }
+    .ai-jd-badge--human .ai-jd-tooltip-title { color: var(--green); }
+    .ai-jd-badge--mixed .ai-jd-tooltip-title { color: var(--warm); }
+    .ai-jd-badge--ai .ai-jd-tooltip-title { color: var(--red); }
+    .ai-jd-tooltip-summary { font-size: 11px; line-height: 1.4; color: var(--text-dim); margin-top: 4px; }
+    /* Right-edge overflow prevention */
+    .job-data-row:nth-child(n) .ai-jd-tooltip { left: auto; right: 0; transform: none; }
+
     /* ─── Phase 3: Trust Banner (v6.32) ─── */
     .trust-banner { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; border: 1px solid; }
     .trust-banner--caution { background: hsla(var(--warm-hsl, 36, 100%, 50%), 0.08); border-color: hsla(var(--warm-hsl, 36, 100%, 50%), 0.25); color: var(--text-body); }
