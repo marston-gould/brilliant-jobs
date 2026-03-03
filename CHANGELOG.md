@@ -1,3 +1,32 @@
+## v6.47 — Synthetic Content Detection: Session 4.3 E2E Fixes (2026-03-02)
+
+### Backend — Scoring Pipeline Performance Fix
+- **`ai_scored_at` column on `ats_jobs`** — New nullable timestamptz column tracking when each JD was scored. Eliminates the N+1 NOT EXISTS subquery (230K rows) that was causing 30s statement timeouts across all three AI scoring cron jobs
+- **Partial index `idx_ats_jobs_unscored_ai`** — Covers `(created_at ASC) WHERE status = 'open' AND content IS NOT NULL AND ai_scored_at IS NULL`. Query time drops from 30s+ timeout to <100ms
+- **Replaced 3 pg_cron jobs** — `backfill-ai-content-scores` (every 1min), `score-new-jds-ai` (every 5min), and `check-ai-backfill-done` (every 10min) all updated to use `ai_scored_at IS NULL` instead of `NOT EXISTS` subquery
+- **`score-ai-content` Edge Function v2** — Now stamps `ai_scored_at` on `ats_jobs` after successful scoring, keeping the tracking column in sync
+- **`get_unscored_jds_v3()` RPC** — Optimized fallback RPC for manual batch scoring using the new column
+
+### Frontend — Column Naming Fixes
+- **browsers.js company detail** — Fixed column name mismatch: `.select('label')` → `.select('ai_label')` and `content_type = 'job_description'` → `content_type = 'jd'`. Company browser AI content breakdown panel now renders correctly
+- **renderBreakdown()** — Fixed `s.label` → `s.ai_label` in label counting logic
+
+### E2E Verification Results
+- Score-ai-content EF: ✅ 1 item scored in 2.7s (ai_generated, 0.82 score, 0.85 confidence)
+- ai_scored_at stamp: ✅ Confirmed on e2e test row
+- Cron pipeline: ✅ Scores growing (215 → 220 in 70s)
+- Backfill cron: ✅ No more statement timeouts
+- PostHog event `ai_aggregation_health_viewed`: ✅ Already deployed in v6.46
+
+### Version Discipline
+- `js/version.js` → v6.47
+- `dashboard.html` → v6.47 + cache-bust ?v=6.47 (all script/CSS references)
+- `index.html` → v6.47
+- Console prints: [BJ] v6.47
+- Git tag: v6.47
+- `CHANGELOG.md` updated
+- `roadmap.html` Phase 72 updated
+
 ## v6.46 — Synthetic Content Detection: Session 4.3 — Nightly Aggregation Verification (2026-03-02)
 
 ### Backend — Aggregation Health RPC
