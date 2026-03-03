@@ -285,6 +285,12 @@ async function upsertResults(
       errors++;
     } else {
       inserted++;
+      // Stamp ai_scored_at on ats_jobs for fast backfill tracking (v6.47)
+      if (r.content_type === 'jd') {
+        await sb.from('ats_jobs')
+          .update({ ai_scored_at: new Date().toISOString() })
+          .eq('greenhouse_id', r.content_id);
+      }
     }
   }
 
