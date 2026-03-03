@@ -1,3 +1,12 @@
+## v6.61 A15 Session 5: MV-Powered Stat Cards + Staleness Indicators (2026-03-03)
+- Stats page: "All" mode stat cards now render from mv_landing_stats — no 5000-row client aggregation
+- Stats page: MV freshness badge shows "Data X min ago" with green/amber dot in filter pills bar
+- Stats page: "With Salary" label replaces "Median Salary" in All mode (MV has count, not median)
+- Stats page: Stat card labels auto-restore when switching between All and per-filter mode
+- Admin: MV staleness indicator in Feed Health tab header (green/amber, "STALE" after 15 min)
+- Admin: Error boundaries on loadDiscoveryPipelineStats, loadAutoApplyStats, loadFeedHealthCharts — prevents cascading tab failures
+- Version bump to v6.61 across all surfaces
+
 ## v6.60 A14 Session 4: Feed Pagination + Cache Wiring (2026-03-03)
 - Job feed: 500-row hard cap (MAX_FEED_ROWS) — no query returns more than 500 rows to client
 - Job feed: "Load more jobs" replaces Prev/Next pagination — appends next page, "Back to top" button

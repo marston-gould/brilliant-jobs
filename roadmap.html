@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=6.60"></script>
+  <script src="/js/version.js?v=6.61"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1772,6 +1772,7 @@ const features = [
   { s: 'done', n: 'A15 S2: MV Client Integration + Staleness (v6.58)', d: 'Stats page MV-backed source totals and weekly breakdown functions. Admin MV Health panel — staleness monitoring for all 7 MVs. Landing page hardcoded fallbacks corrected. index.html cache-bust fixed.', p: 74, e: '1.5h' },
   { s: 'done', n: 'A15 S3: MV-Powered Stats Overview (v6.59)', d: 'All-filters mode: source breakdown donut from fetchSourceTotalsFromMV (pre-aggregated). Source-colored stacked bar timeline from fetchSourceBreakdownFromMV. Tooltip shows salary data % per source. Graceful fallback to row aggregation.', p: 74, e: '1h' },
   { s: 'done', n: 'A14 S4: Feed Pagination + Cache Wiring (v6.60)', d: 'Job feed: 500-row hard cap (MAX_FEED_ROWS). Load More replaces Prev/Next pagination — 50 rows/page. Main feed queries wrapped in cachedQuery (3-min TTL). Company count from mv_landing_stats. Multi-filter merge cap from MAX_FEED_ROWS.', p: 74, e: '1.5h' },
+  { s: 'done', n: 'A15 S5: MV-Powered Stat Cards + Staleness (v6.61)', d: 'Stats page All mode: stat cards from mv_landing_stats (no row aggregation). MV freshness badge. Admin MV staleness indicator. Error boundaries in admin feed health tab.', p: 74, e: '1h' },
 
 ];
 

@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-03
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.59
+**Current version:** v6.61
 
 ---
 
@@ -2649,3 +2649,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Main feed queries wrapped in cachedQuery() (3-min TTL) for instant filter re-toggles
 - Company count reads from mv_landing_stats instead of fetching 1000 slugs
 - Multi-filter merge cap derived from MAX_FEED_ROWS (was hardcoded 200)
+
+### 74.16 A15 Session 5: MV-Powered Stat Cards + Staleness — v6.61
+- Stats page: "All" mode stat cards from mv_landing_stats (no 5000-row aggregation)
+- Stats page: MV freshness badge in filter pills bar
+- Admin: MV staleness indicator in Feed Health tab
+- Admin: Error boundaries on discovery/auto-apply/chart loaders to prevent cascading failures
