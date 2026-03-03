@@ -1073,7 +1073,7 @@ const features = [
   // Feb 20 2026 — Stats Redesign Sprint (v2.68–v2.77)
   { s: 'done', n: 'v2.68: Stats page launch', d: 'Initial ECharts stats integration with inline chart heights. Only init when page visible. Robust chart container lookup.', p: 2 },
   { s: 'done', n: 'v2.69–v2.71: Stats chart iterations', d: 'Replaced ATS Source chart with Location Breakdown donut. Added seniority % donut, salary donut. Discrete bar timeline + work-type breakdown. Smarter company threshold.', p: 2 },
-    72: 'Synthetic Content Detection (v6.35–)',
+    72: 'Synthetic Content Detection (v6.35–v6.42)',
   { s: 'done', n: 'v2.72–v2.73: Pill styling + seniority fix', d: 'Inline pill styles via style.cssText (bypass CSS loading issues). DEFAULT_LEVEL_HIERARCHY with keywords. Removed getJobLevel stub that overwrote tuning.js implementation.', p: 2 },
   { s: 'done', n: 'v2.74–v2.75: Salary Ladder + Industry charts', d: 'Added C6 Salary by Level + C8 Industry charts. Light theme fix. Lower salary-by-level threshold from 3 to 1. Injected style element for filter pills.', p: 2 },
   { s: 'done', n: 'v2.76–v2.77: Complete stats redesign per Pod 1 brief', d: 'Bar charts for salary + seniority (replaced donuts). CSS design system classes. Continuous 12-week timeline. Pill-dot indicators. Compare dropdown (hidden). Dark tooltips for light theme.', p: 2 },
@@ -1702,6 +1702,7 @@ const features = [
   { s: 'done', n: 'Resume rescore button + rate limiting + history', d: 'v6.39: Rescore button on resume card with 60s cooldown rate limiting. Score history tracking (max 5 entries) with previous-vs-current delta display. Button shows live countdown timer during cooldown. History persisted in localStorage.', p: 72, e: 1 },
   { s: 'done', n: 'Cover letter inline AI scoring + badge + rescore', d: 'v6.40: AI scoring hook after cover letter generation via score-ai-content EF. AI detection badge on cover letter archive cards (human/mixed/ai_generated). Rescore button with 60s cooldown. Inline scoring badge in rewrite preview. PostHog events: ai_cover_letter_scored, ai_cover_letter_rescored.', p: 72, e: 2 },
   { s: 'done', n: 'Feed card AI badge for job descriptions', d: 'v6.41: AI detection badge on job feed cards — shows AI authorship level (human/mixed/ai_generated) for each job description. Color-coded badge with hover tooltip showing confidence score and summary. Batch fetch from content_ai_scores table (content_type=job_description). CSS styles matching fraud badge pattern.', p: 72, e: 1 },
+  { s: 'done', n: 'AI badge tooltip + hover detail', d: 'v6.42: Enhanced AI detection tooltip with perplexity/burstiness/confidence sub-score breakdown bars and top content signal chips. Expanded data fetch to include perplexity_score, burstiness_score, top_signals from content_ai_scores. Tooltip max-width increased to 300px. Graceful degradation when sub-scores unavailable. Frontend-only: js/job-feed.js + styles.css.', p: 72 },
 ];
 
 

@@ -1,3 +1,19 @@
+## v6.42 — Synthetic Content Detection: Session 3.2 — Badge Tooltip + Hover Detail (2026-03-02)
+
+### Enhanced AI Badge Tooltip
+- **Sub-score breakdown bars** — Expanded tooltip now shows perplexity, burstiness, and confidence sub-scores as visual progress bars with percentage values. Perplexity (blue), burstiness (purple), confidence (green)
+- **Top content signals** — If `top_signals` JSONB data is available from `content_ai_scores`, up to 4 signal chips are displayed below the sub-scores (e.g., "formulaic structure", "low variance")
+- **Expanded data fetch** — `fetchAiJdScores()` now queries `perplexity_score`, `burstiness_score`, and `top_signals` alongside existing fields. All cached in `_aiJdScoreCache`
+- **Tooltip width increase** — Expanded from 260px to 300px max-width to accommodate sub-score bars without overflow
+- **CSS additions** — `.ai-jd-tooltip-subs`, `.ai-jd-sub-row`, `.ai-jd-sub-bar`, `.ai-jd-sub-fill` for progress bars; `.ai-jd-tooltip-signals`, `.ai-jd-signal-chip` for signal pills
+
+### Technical Details
+- `aiJdBadgeHtml(jobId)` — enhanced with conditional sub-score rendering; gracefully degrades if perplexity/burstiness are null
+- `_aiJdScoreCache` — now stores `perplexity`, `burstiness`, `topSignals` per job
+- No Edge Function changes — reads existing `content_ai_scores` columns populated by Session 1.2 EF
+- No database schema changes — `perplexity_score`, `burstiness_score`, `top_signals` columns exist since v6.35
+- Frontend-only change: `js/job-feed.js` + `styles.css`
+
 ## v6.41 — Synthetic Content Detection: Session 3.1 — Feed Card AI Badge (2026-03-02)
 
 ### Feed Card AI Badge
