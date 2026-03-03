@@ -1,3 +1,27 @@
+## v6.44 — Synthetic Content Detection: Session 4.1 — Scoring Exclusion Toggles (2026-03-02)
+
+### AI Scoring Preferences (Settings Panel)
+- **New Settings card: AI Content Preferences** — Two toggle switches added to Settings page allowing users to exclude AI-flagged jobs from match scoring. Toggle 1: Exclude Mixed Content. Toggle 2: Exclude AI-Generated. Uses existing `.toggle-switch` UI pattern matching notification/privacy settings
+- **Auto-save with debounce** — Preferences auto-save on toggle change with 500ms debounce. Toast confirmation: "AI scoring preferences updated". Stored in `profiles.ai_scoring_prefs` JSONB column via Supabase client-side update
+- **PostHog event** — `ai_scoring_pref_changed` fires on each toggle change (label, excluded, source: 'settings')
+
+### Scoring Pipeline Integration
+- **`applyAiScoringExclusions(jobs, prefs)` pipeline function** — Applied after `applyAiContentFilter()` and before `renderJobRows()`. Excluded jobs still appear in feed (visibility unchanged) but match score badge is dimmed (opacity 0.3) with tooltip: "Match score excluded per your AI content preferences"
+- **Cross-file reactivity** — Settings changes dispatch `ai-scoring-prefs-changed` custom event. Job feed listens and triggers re-render. Prefs cached in `_userAiScoringPrefsCache` on load, refreshed on settings change
+- **Graceful fallback** — If prefs not set or load error, defaults to no exclusions (include all). Human-written jobs always included in scoring
+
+### AI Content Filter Helpers (v6.43 backfill)
+- **Defined missing helper functions** — `getActiveAiLabels()`, `isAiFilterActive()`, `applyAiContentFilter()`, `updateAiFilterUI()`, `setAllAiFilters()` — these were called but undefined in v6.43; now properly defined mirroring Trust Level filter pattern
+
+### Version Discipline
+- `js/version.js` → v6.44
+- `dashboard.html` → v6.44 + cache-bust ?v=6.44 (all script/CSS references)
+- `index.html` → v6.44
+- Console prints: [BJ] v6.44
+- Git tag: v6.44
+- `CHANGELOG.md` updated
+- `roadmap.html` Phase 72 updated
+
 ## v6.43 — Synthetic Content Detection: Session 3.3 — Job Detail Banner + Feed Filters (2026-03-02)
 
 ### AI Content Detection Banner (Job Detail)

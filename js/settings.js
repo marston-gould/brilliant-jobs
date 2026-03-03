@@ -33,6 +33,74 @@ $('#logout-btn').addEventListener('click', async () => {
   window.location.href = '/';
 });
 
+
+// ---- AI Scoring Preferences (v6.44 Session 4.1) ----
+var _userAiScoringPrefs = { mixed_content: false, ai_generated: false };
+var _aiPrefsDebounceTimer = null;
+
+async function loadAiScoringPrefs() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { data, error } = await sb
+      .from('profiles')
+      .select('ai_scoring_prefs')
+      .eq('id', currentUser.id)
+      .single();
+    if (error) { console.warn('[BJ] AI prefs load error:', error.message); return; }
+    if (data && data.ai_scoring_prefs) {
+      _userAiScoringPrefs = data.ai_scoring_prefs;
+    }
+    // Sync UI toggles
+    var mixedEl = document.getElementById('ai-pref-mixed');
+    var aiGenEl = document.getElementById('ai-pref-ai-generated');
+    if (mixedEl) mixedEl.checked = !!_userAiScoringPrefs.mixed_content;
+    if (aiGenEl) aiGenEl.checked = !!_userAiScoringPrefs.ai_generated;
+  } catch (e) {
+    console.warn('[BJ] AI prefs load exception:', e);
+  }
+}
+
+async function saveAiScoringPrefs() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { error } = await sb
+      .from('profiles')
+      .update({ ai_scoring_prefs: _userAiScoringPrefs })
+      .eq('id', currentUser.id);
+    if (error) throw error;
+    if (typeof showToast === 'function') showToast('AI scoring preferences updated', { type: 'success' });
+  } catch (e) {
+    console.error('[BJ] AI prefs save error:', e);
+    if (typeof showToast === 'function') showToast('Failed to save AI preferences', { type: 'error' });
+  }
+}
+
+function initAiScoringPrefs() {
+  loadAiScoringPrefs();
+  document.querySelectorAll('#ai-pref-mixed, #ai-pref-ai-generated').forEach(function(toggle) {
+    toggle.addEventListener('change', function() {
+      var label = this.dataset.aiLabel;
+      _userAiScoringPrefs[label] = this.checked;
+      // Debounce save
+      if (_aiPrefsDebounceTimer) clearTimeout(_aiPrefsDebounceTimer);
+      _aiPrefsDebounceTimer = setTimeout(function() { saveAiScoringPrefs(); }, 500);
+      // PostHog
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('ai_scoring_pref_changed', { label: label, excluded: _userAiScoringPrefs[label], source: 'settings' });
+      }
+      // Dispatch event so job-feed.js can react
+      window.dispatchEvent(new CustomEvent('ai-scoring-prefs-changed', { detail: _userAiScoringPrefs }));
+    });
+  });
+}
+
+// Auto-init when DOM ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(initAiScoringPrefs, 500); });
+} else {
+  setTimeout(initAiScoringPrefs, 500);
+}
+
 // ---- Feedback Modal ----
 let fbType = 'bug';
 let fbFiles = []; // array of { file, dataUrl }
