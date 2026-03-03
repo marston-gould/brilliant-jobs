@@ -1,3 +1,11 @@
+## v6.59 A15 Session 3: MV-Powered Stats Overview (2026-03-03)
+- Stats page: "All" filter mode now uses fetchSourceTotalsFromMV() for source breakdown (pre-aggregated from mv_job_feed_counts)
+- Stats page: "All" filter mode renders source-colored stacked bar timeline from fetchSourceBreakdownFromMV() (mv_source_breakdown)
+- Source breakdown donut tooltip now shows salary data percentage per source (from MV)
+- Source timeline shows per-ATS stacked bars with WTD detection + legend
+- MV data fetched in parallel (Promise.all) with graceful fallback to row-based aggregation
+- Version bump to v6.59 across all surfaces
+
 ## v6.58 A15 Session 2: MV Client Integration + Staleness Monitoring (2026-03-03)
 - Stats page: fetchSourceTotalsFromMV() reads pre-aggregated source counts from mv_job_feed_counts
 - Stats page: fetchSourceBreakdownFromMV() reads weekly breakdown from mv_source_breakdown
