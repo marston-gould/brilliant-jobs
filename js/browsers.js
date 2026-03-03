@@ -498,6 +498,29 @@ $('#cb-search').addEventListener('input', () => {
   cbSearchTimeout = setTimeout(renderCompanyBrowserList, 150);
 });
 
+// Sort by column (v6.45)
+let cbSortField = 'name';
+let cbSortDir = 'asc';
+
+document.querySelectorAll('#cb-sort-bar .cb-sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const field = btn.dataset.sort;
+    if (cbSortField === field) {
+      cbSortDir = cbSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      cbSortField = field;
+      cbSortDir = field === 'name' ? 'asc' : 'desc'; // numeric fields default desc
+    }
+    document.querySelectorAll('#cb-sort-bar .cb-sort-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.sort === cbSortField);
+      b.style.background = b.dataset.sort === cbSortField ? 'var(--bg-card-hover)' : 'none';
+    });
+    // PostHog tracking
+    if (typeof posthog !== 'undefined') posthog.capture('ai_jd_rate_column_sorted', { direction: cbSortDir, field: cbSortField, company_count: cbAllCompanies.length });
+    renderCompanyBrowserList();
+  });
+});
+
 // Save collection button
 $('#cb-save-btn').addEventListener('click', async () => {
   const name = $('#cb-collection-name').value.trim();
@@ -549,7 +572,7 @@ async function loadCompanyBrowser() {
   try {
     // Load all companies from ats_companies — uses cachedQuery (v3.84, pre-warmed)
     let allData = await cachedQuery('ref:companies:list', function() {
-      return sb.from('ats_companies').select('slug, name, job_count, source').order('name');
+      return sb.from('ats_companies').select('slug, name, job_count, source, ai_jd_rate').order('name');
     }, { ttl: 600000 }) || [];
 
     // Load ghost stats for companies that have data
@@ -567,7 +590,8 @@ async function loadCompanyBrowser() {
       source: c.source || 'greenhouse',
       ghostRate: ghostStats[c.slug]?.ghost_rate || null,
       avgResponseDays: ghostStats[c.slug]?.avg_response_days || null,
-      ghostApps: ghostStats[c.slug]?.total_applications || 0
+      ghostApps: ghostStats[c.slug]?.total_applications || 0,
+      aiJdRate: c.ai_jd_rate != null ? c.ai_jd_rate : null
     })).sort((a, b) => a.name.localeCompare(b.name));
 
     renderCompanyBrowserList();
@@ -591,6 +615,20 @@ function renderCompanyBrowserList() {
     filtered = filtered.filter(c => cbSelections[c.slug] === 'include');
   } else if (filterMode === 'excluded') {
     filtered = filtered.filter(c => cbSelections[c.slug] === 'exclude');
+  }
+
+  // Apply sort (v6.45)
+  const dir = cbSortDir === 'asc' ? 1 : -1;
+  if (cbSortField === 'jobs') {
+    filtered = [...filtered].sort((a, b) => (a.jobs - b.jobs) * dir);
+  } else if (cbSortField === 'ai_jd_rate') {
+    filtered = [...filtered].sort((a, b) => {
+      const aVal = a.aiJdRate != null ? a.aiJdRate : -1;
+      const bVal = b.aiJdRate != null ? b.aiJdRate : -1;
+      return (aVal - bVal) * dir;
+    });
+  } else {
+    filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name) * dir);
   }
 
   // Group by first letter
@@ -692,6 +730,7 @@ function renderCompanyBrowserList() {
           <div class="cb-name">${c.name}</div>
           <div class="cb-jobs">${c.jobs > 0 ? c.jobs + ' jobs' : ''}</div>
           ${c.ghostRate !== null && c.ghostApps >= 5 ? `<div class="cb-ghost-rate" title="Ghost rate: ${Math.round(c.ghostRate * 100)}% (${c.ghostApps} applications tracked)" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;${c.ghostRate >= 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.ghostRate >= 0.25 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.ghostRate * 100)}% ghost</div>` : ''}
+          ${c.aiJdRate !== null ? `<div class="cb-ai-jd-rate" title="${Math.round(c.aiJdRate * 100)}% of this company's JDs appear AI-generated" style="font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;cursor:default;${c.aiJdRate > 0.5 ? 'background:rgba(245,101,101,0.15);color:#f56565;' : c.aiJdRate >= 0.2 ? 'background:rgba(245,158,11,0.15);color:#f59e0b;' : 'background:rgba(72,187,120,0.15);color:#48bb78;'}">${Math.round(c.aiJdRate * 100)}% AI</div>` : ''}
           <div class="cb-source-badge" style="background:rgba(99,102,241,0.1);color:#6366f1;">${c.source}</div>
         </div>`;
       }).join('')}
@@ -735,6 +774,86 @@ function renderCompanyBrowserList() {
       row.querySelector('.cb-toggle').click();
     });
   });
+
+  // Click on company name = expand AI content breakdown (v6.45)
+  list.querySelectorAll('.cb-name').forEach(nameEl => {
+    nameEl.style.cursor = 'pointer';
+    nameEl.style.textDecoration = 'underline';
+    nameEl.style.textDecorationColor = 'var(--border)';
+    nameEl.addEventListener('click', async (e) => {
+      e.stopPropagation(); // prevent row toggle
+      const row = nameEl.closest('.cb-company-row');
+      const slug = row.dataset.slug;
+      const existing = row.nextElementSibling;
+      if (existing && existing.classList.contains('cb-detail-panel')) {
+        existing.remove();
+        return;
+      }
+      // Remove any other open detail panels
+      list.querySelectorAll('.cb-detail-panel').forEach(p => p.remove());
+      // Create detail panel
+      const panel = document.createElement('div');
+      panel.className = 'cb-detail-panel';
+      panel.style.cssText = 'padding:12px 16px 12px 44px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin:4px 0 8px;font-size:12px;color:var(--text-dim);';
+      panel.innerHTML = '<div style="color:var(--text-faint);">Loading AI content breakdown…</div>';
+      row.after(panel);
+      try {
+        const { data, error } = await sb.from('content_ai_scores')
+          .select('label')
+          .eq('content_type', 'job_description')
+          .like('content_id', slug + '/%');
+        if (error || !data || data.length === 0) {
+          // Try alternate: get jobs for this company first
+          const { data: jobs } = await sb.from('ats_jobs')
+            .select('id')
+            .eq('company_slug', slug)
+            .limit(500);
+          if (jobs && jobs.length > 0) {
+            const jobIds = jobs.map(j => String(j.id));
+            const { data: scores } = await sb.from('content_ai_scores')
+              .select('label')
+              .eq('content_type', 'job_description')
+              .in('content_id', jobIds);
+            renderBreakdown(panel, scores || [], slug);
+          } else {
+            panel.innerHTML = '<div style="color:var(--text-faint);">No scored job descriptions found for this company.</div>';
+          }
+        } else {
+          renderBreakdown(panel, data, slug);
+        }
+      } catch (err) {
+        panel.innerHTML = '<div style="color:var(--red);">Failed to load AI breakdown.</div>';
+      }
+    });
+  });
+}
+
+// Render AI content breakdown in company detail panel (v6.45)
+function renderBreakdown(panel, scores, slug) {
+  if (!scores || scores.length === 0) {
+    panel.innerHTML = '<div style="color:var(--text-faint);">No scored job descriptions found for this company.</div>';
+    return;
+  }
+  const counts = { human: 0, mixed: 0, ai_generated: 0 };
+  scores.forEach(s => { if (counts[s.label] !== undefined) counts[s.label]++; });
+  const total = scores.length;
+  const pctH = total > 0 ? Math.round((counts.human / total) * 100) : 0;
+  const pctM = total > 0 ? Math.round((counts.mixed / total) * 100) : 0;
+  const pctA = total > 0 ? Math.round((counts.ai_generated / total) * 100) : 0;
+
+  panel.innerHTML = `
+    <div style="font-weight:600;margin-bottom:8px;color:var(--text);">AI Content Breakdown <span style="font-weight:400;color:var(--text-faint);">(${total} scored JDs)</span></div>
+    <div style="display:flex;height:14px;border-radius:4px;overflow:hidden;margin-bottom:8px;">
+      ${pctH > 0 ? `<div style="width:${pctH}%;background:#48bb78;" title="Human: ${counts.human}"></div>` : ''}
+      ${pctM > 0 ? `<div style="width:${pctM}%;background:#f59e0b;" title="Mixed: ${counts.mixed}"></div>` : ''}
+      ${pctA > 0 ? `<div style="width:${pctA}%;background:#f56565;" title="AI-Generated: ${counts.ai_generated}"></div>` : ''}
+    </div>
+    <div style="display:flex;gap:16px;">
+      <span style="color:#48bb78;">● Human: ${counts.human} (${pctH}%)</span>
+      <span style="color:#f59e0b;">● Mixed: ${counts.mixed} (${pctM}%)</span>
+      <span style="color:#f56565;">● AI-Generated: ${counts.ai_generated} (${pctA}%)</span>
+    </div>
+  `;
 }
 
 function updateCbSelectedCount() {
