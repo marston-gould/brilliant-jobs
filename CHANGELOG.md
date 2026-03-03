@@ -1,3 +1,14 @@
+## v6.57 A15 Session 1: Server-Side Materialized Views (2026-03-03)
+- mv_landing_stats rebuilt: added remote_jobs, latest_job_date, refreshed_at; filtered to status='open'
+- mv_job_feed_counts created: per-source/loc_type/loc_country aggregates with salary ranges
+- mv_source_breakdown created: weekly time-dimension source analytics (6-month window)
+- Unique indexes on all 3 new/rebuilt MVs for CONCURRENTLY refresh support
+- refresh_materialized_views() updated to include new MVs
+- pg_cron schedule updated from every 2h to every 10min (matches refresh-jobs cycle)
+- get_landing_stats RPC rewritten to read from mv_landing_stats (eliminates full ats_companies scan)
+- SELECT grants on all MVs to anon + authenticated roles
+- Version bump to v6.57 across all surfaces
+
 ## v6.56 A14 Session 3: Cache Integration + Invalidation (2026-03-03)
 - cachedQuery integrated into job feed stat cards (updateJobStatsFromFilters)
 - cachedQuery integrated into Stats page (fetchFilterData)

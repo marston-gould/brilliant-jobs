@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-03
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.56
+**Current version:** v6.57
 
 ---
 
@@ -2616,8 +2616,17 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 74.5 | Admin Cache Health tab | v6.55 | Done | Live panel: summary cards, TTL tier config, entries list w/ stale detection, Clear All. |
 | 74.6 | getCacheStats() enhancements | v6.55 | Done | Memory estimate (KB), TTL tier display, pct life, stale flag per entry. |
 | 74.7 | Admin version catch-up | v6.55 | Done | admin.html bumped from v6.27/v6.29 → v6.55. |
-| 74.8 | Cache integration: feed stats | v6.56 | Done | updateJobStatsFromFilters wrapped in cachedQuery with deterministic _filterCacheKey. |
-| 74.9 | Cache integration: Stats page | v6.56 | Done | fetchFilterData wrapped in cachedQuery with stats:page: prefix. |
-| 74.10 | Company count optimization | v6.56 | Done | Reduced from .limit(2000) fetch to .limit(1000) with distinct set dedup. |
-| 74.11 | Pipeline cache invalidation | v6.56 | Done | savePipelineEntry + unsaveFromPipeline invalidate feed:/stats:/pipeline: caches. |
+| 74.8 | Cache integration: feed stats | v6.57 | Done | updateJobStatsFromFilters wrapped in cachedQuery with deterministic _filterCacheKey. |
+| 74.9 | Cache integration: Stats page | v6.57 | Done | fetchFilterData wrapped in cachedQuery with stats:page: prefix. |
+| 74.10 | Company count optimization | v6.57 | Done | Reduced from .limit(2000) fetch to .limit(1000) with distinct set dedup. |
+| 74.11 | Pipeline cache invalidation | v6.57 | Done | savePipelineEntry + unsaveFromPipeline invalidate feed:/stats:/pipeline: caches. |
 | 74.8 | A15 server-side materialized views | — | Todo | pg_cron refreshed views for job feed + landing stats. Pair with pagination (500 row cap + Load More). |
+
+### 74.12 A15: Server-Side Materialized Views — v6.57
+- Rebuilt mv_landing_stats with remote_jobs, latest_job_date, refreshed_at
+- Created mv_job_feed_counts (per-source/loc_type/loc_country aggregates)
+- Created mv_source_breakdown (weekly time-dimension, 6-month window)
+- Unique indexes for CONCURRENTLY refresh on all 3 MVs
+- refresh_materialized_views() updated to include new MVs
+- pg_cron schedule: 2h → 10min (matches refresh-jobs cycle)
+- get_landing_stats RPC reads from mv_landing_stats (no more full table scan)
