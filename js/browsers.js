@@ -800,8 +800,8 @@ function renderCompanyBrowserList() {
       row.after(panel);
       try {
         const { data, error } = await sb.from('content_ai_scores')
-          .select('label')
-          .eq('content_type', 'job_description')
+          .select('ai_label')
+          .eq('content_type', 'jd')
           .like('content_id', slug + '/%');
         if (error || !data || data.length === 0) {
           // Try alternate: get jobs for this company first
@@ -812,8 +812,8 @@ function renderCompanyBrowserList() {
           if (jobs && jobs.length > 0) {
             const jobIds = jobs.map(j => String(j.id));
             const { data: scores } = await sb.from('content_ai_scores')
-              .select('label')
-              .eq('content_type', 'job_description')
+              .select('ai_label')
+              .eq('content_type', 'jd')
               .in('content_id', jobIds);
             renderBreakdown(panel, scores || [], slug);
           } else {
