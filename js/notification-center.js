@@ -54,7 +54,7 @@ function ncGetCategory(type) {
 
 function ncGetUserLabel(type) {
   // Convert snake_case to readable label
-  return type.replace(/_/g, ' ').replace(/\w/g, function(c) { return c.toUpperCase(); });
+  return type.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -577,7 +577,7 @@ async function ncLoadNotificationLog(page) {
       tbody.innerHTML = rows.map(function(row) {
         var ts = new Date(row.created_at);
         var timeStr = ts.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + ts.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        var typeLabel = (row.notification_type || '').replace(/_/g, ' ').replace(/\w/g, function(c) { return c.toUpperCase(); });
+        var typeLabel = (row.notification_type || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
         var channelIcon = row.channel === 'sms' ? '💬' : row.channel === 'in_app' ? '🔔' : '✉️';
         var statusClass = row.status === 'sent' || row.status === 'delivered' ? 'color:var(--green)' :
           row.status === 'failed' ? 'color:var(--red)' :
@@ -647,8 +647,7 @@ function ncExportLogCSV() {
     ].join(','));
   });
 
-  var blob = new Blob([csvRows.join('
-')], { type: 'text/csv' });
+  var blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -657,3 +656,5 @@ function ncExportLogCSV() {
   URL.revokeObjectURL(url);
   ncShowToast('Notification log exported (' + ncLogCache.length + ' rows).', 'success');
 }
+
+
