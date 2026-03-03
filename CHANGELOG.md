@@ -1,3 +1,31 @@
+## v6.43 — Synthetic Content Detection: Session 3.3 — Job Detail Banner + Feed Filters (2026-03-02)
+
+### AI Content Detection Banner (Job Detail)
+- **Full-width AI content banner in snippet row** — When a job description is classified as mixed or AI-generated, a color-coded banner appears in the expanded preview row (matching the trustBannerHtml pattern). Mixed content shows amber, AI-generated shows red
+- **Full sub-score breakdown** — Banner displays untruncated perplexity (Predictability), burstiness (Uniformity), and confidence progress bars with color-coded fills (green/yellow/red based on thresholds)
+- **Top content signals** — Up to 6 signal chips from `top_signals` JSONB column rendered below sub-scores (supports string arrays and object arrays with .label or .name)
+- **Full summary text** — Complete AI detection summary displayed without truncation (tooltip limited to 200 chars, banner shows all)
+- **PostHog event** — `ai_content_banner_viewed` fires when banner renders (tracks job_id, ai_label, ai_score)
+
+### Feed-Level AI Content Filter
+- **AI Content filter dropdown** — New filter button (🤖 AI Content) alongside existing Trust Level filter. Checkbox multi-select for Human-Written, Mixed Content, AI-Generated, and Unscored labels
+- **Client-side post-filter** — `applyAiContentFilter(jobs)` applied after trust filter in render pipeline. Jobs without AI scores treated as "unscored"
+- **All/None quick-select buttons** — Matching Trust Level filter UX pattern
+- **Active filter indicator** — Button border + count badge highlight when filter is active (not all checked)
+- **PostHog event** — `ai_filter_applied` fires on each checkbox change with active labels array
+
+### Expanded Data Fetch
+- **Added `top_signals` to AI score query** — `fetchAiJdScores()` now selects `top_signals` alongside existing 7 fields from `content_ai_scores`. Cached in `_aiJdScoreCache.topSignals` per job
+
+### Version Discipline
+- `js/version.js` → v6.43
+- `dashboard.html` → v6.43 + cache-bust ?v=6.43 (all script/CSS references)
+- `index.html` → v6.43
+- Console prints: [BJ] v6.43
+- Git tag: v6.43
+- `CHANGELOG.md` updated
+- `roadmap.html` Phase 72 updated
+
 ## v6.42 — Synthetic Content Detection: Session 3.2 — Badge Tooltip + Hover Detail (2026-03-02)
 
 ### Enhanced AI Badge Tooltip
