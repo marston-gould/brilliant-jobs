@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-01
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.53
+**Current version:** v6.54
 
 ---
 
@@ -2604,3 +2604,12 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 73.2 | Cron cost optimization Session 2 | v6.52 | Done | Merged AI-content detection into enrichment prompt (eliminated crons 86-88). enrich-job-ondemand EF for Tier 3. |
 | 73.3 | Version audit + roadmap sync | v6.53 | Done | Cache-bust audit across all pages. Roadmap entries for v6.51-v6.52. version.js added to hiring-trends + market-dynamics. |
 | 73.4 | Common Crawl board discovery pipeline | — | Todo | Use Common Crawl columnar index for ATS board discovery at zero marginal cost. |
+
+## Phase 74 — A14 Client-Side Cache Enhancement (v6.54)
+
+| # | Item | Version | Status | Notes |
+|---|------|---------|--------|-------|
+| 74.1 | Enhanced cachedQuery | v6.54 | Done | Returns { data, count, cached }. Debug logging via BJ_DEBUG_CACHE. getCacheStats() diagnostic. |
+| 74.2 | Visibility timeout | v6.54 | Done | Clears all caches when tab hidden 5+ min. Prevents stale data on tab-back. |
+| 74.3 | Cache invalidation wiring | v6.54 | Done | Logout via clearAllCaches(). Filter save/delete triggers invalidateCache(). |
+| 74.4 | A15 server-side materialized views | — | Todo | pg_cron refreshed views for job feed + landing stats. Pair with pagination (500 row cap + Load More). |

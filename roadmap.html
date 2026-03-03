@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=6.53"></script>
+  <script src="/js/version.js?v=6.54"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1763,6 +1763,8 @@ const features = [
   { s: 'done', n: 'Cron cost optimization Session 1 (v6.51)', d: 'Reduced enrichment cron from 12/hr to 1/hr (Tier 1+2 only). Removed DataForSEO discovery cron 55 (4/day to 1/day). Added enrichment_priority column. Estimated savings 6-13.50 per day.', p: 73, e: '2h' },
   { s: 'done', n: 'Cron cost optimization Session 2 (v6.52)', d: 'Merged AI-content detection into enrichment prompt (eliminated 3 dedicated crons 86-88). Created enrich-job-ondemand EF for Tier 3 real-time enrichment.', p: 73, e: '2h' },
   { s: 'todo', n: 'Common Crawl board discovery pipeline', d: 'Use Common Crawl\'s columnar index (via AWS Athena or free index API) to extract all ATS board URLs without scraping. Query patterns: boards.greenhouse.io/*, jobs.lever.co/*, jobs.ashbyhq.com/*, apply.workable.com/*, *.recruitee.com/*. Extract unique company slugs, dedupe against ats_companies, bulk-insert net-new boards. Also query url_path LIKE \'%%/careers%%\' and \'%%/jobs%%\' across all domains to discover non-ATS career pages (Workday, iCIMS, Taleo, SmartRecruiters, etc.). Athena cost: <$1.50 max per full crawl scan. Free alternative: Common Crawl index API for ATS-specific queries. Replaces/supplements DataForSEO alphabet crawl for board discovery at zero marginal cost. Validated: all 4 major ATS platforms confirmed present in CC-MAIN-2025-08 crawl.', p: 73, e: '3h', g: 'inventory-expansion', h: '/docs/handoff-common-crawl.md' },
+
+  { s: 'done', n: 'A14: Client-side cache enhancement (v6.54)', d: 'Enhanced cachedQuery to return { data, count, cached }. Debug logging (BJ_DEBUG_CACHE=1). getCacheStats() diagnostic. clearAllCaches(). Visibility timeout clears caches after 5min tab hidden. Cache invalidation on filter save/delete and logout.', p: 74, e: '2h' },
 
 ];
 
