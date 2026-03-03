@@ -1,3 +1,22 @@
+## v6.48 — Scoring Pipeline Optimization + browsers.js Column Fixes (2026-03-02)
+
+### Critical Fix — Scoring Pipeline Timeout Resolution
+- **`ai_scored_at` tracking column** — Added to `ats_jobs` to replace expensive `NOT EXISTS` subquery across 230K+ rows. Partial index `idx_ats_jobs_unscored` on `(id) WHERE ai_scored_at IS NULL AND status = 'open' AND raw_description IS NOT NULL` enables instant unscored JD lookups
+- **`get_unscored_jds_v3()` RPC** — New optimized PostgreSQL function using `ai_scored_at IS NULL` filter instead of LEFT JOIN anti-pattern. Returns batch of 50 unscored JDs in <100ms vs previous 30s+ timeout
+- **Cron jobs rewritten** — Both `backfill-ai-content-scores` (job 79) and `score-new-jds-ai` (job 80) now use `ai_scored_at IS NULL` predicate. Pipeline verified: scores growing steadily (84 → 220+ during testing)
+- **`score-ai-content` Edge Function patched** — Stamps `ai_scored_at = now()` on `ats_jobs` after successful scoring, closing the tracking loop
+
+### Bug Fix — browsers.js Column Mismatch
+- **`.select('label')` → `.select('ai_label')`** — Company detail panel was querying non-existent column from `content_ai_scores`. Fixed to use actual column name `ai_label`
+- **`content_type = 'job_description'` → `content_type = 'jd'`** — Filter was using wrong enum value. Fixed to match actual stored values, so company AI content breakdown now returns real data
+
+### Version Discipline
+- `js/version.js` → v6.48
+- `dashboard.html` → v6.48 + cache-bust
+- `index.html` → v6.48
+- Console prints: [BJ] v6.48
+- Git tag: v6.48
+
 ## v6.47 — Synthetic Content Detection: E2E Fix — AI Scoring Backfill Pipeline (2026-03-02)
 
 ### Critical Fix — Auto-Fetch Backfill Mode
