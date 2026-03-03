@@ -1,7 +1,12 @@
 // supabase/functions/enrich-jd-ai/index.ts
 // AI-powered JD enrichment using Claude Haiku
-// Extracts: jd_skills, jd_requirements, jd_education, jd_seniority, jd_years_min, jd_years_max
-// Called by pg_cron every 2 minutes, processes batch with concurrency
+// v2: Cron Cost Optimization Session 2
+// Changes:
+//   - Filters by enrichment_priority IN (1,2) only Tier 1+2 jobs
+//   - Merges AI-content detection into enrichment prompt (replaces score-ai-content crons)
+//   - Adds ai_content_score + ai_label to output
+//   - max_tokens 350 -> 400 for additional AI detection fields
+// Called by pg_cron #49 every 10 minutes
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -12,10 +17,10 @@ const corsHeaders = {
 }
 
 const BATCH_SIZE = 50
-const CONCURRENCY = 5 // Process 10 jobs in parallel
+const CONCURRENCY = 5
 const MAX_CONTENT_CHARS = 6000
 const MODEL = 'claude-haiku-4-5-20251001'
-const WALL_TIME_MS = 120_000 // Stop accepting new work after 120s
+const WALL_TIME_MS = 120_000
 
 const SYSTEM_PROMPT = `Extract structured data from this job description. Return ONLY a JSON object:
 {
@@ -24,8 +29,11 @@ const SYSTEM_PROMPT = `Extract structured data from this job description. Return
   "education": "bachelors", // one of: high_school, associates, bachelors, masters, phd, professional, or null
   "seniority": "mid", // one of: intern, entry, junior, mid, senior, lead, principal, director, vp, executive, or null
   "years_min": 3, // integer or null
-  "years_max": 5 // integer or null
+  "years_max": 5, // integer or null
+  "ai_content_score": 0.35, // float 0.0-1.0: probability this JD was AI-generated (0=human, 1=AI)
+  "ai_label": "human" // one of: human (<0.3), mixed (0.3-0.7), ai_generated (>0.7)
 }
+AI detection signals: uniform sentence length, lack of specific details, generic qualifications, formulaic structure, absence of company voice/personality, overuse of buzzwords without substance.
 No markdown. No explanation. JSON only.`
 
 function stripHtml(html: string): string {
@@ -45,18 +53,18 @@ async function enrichJob(
 ): Promise<{ ok: boolean; id: string; skills?: number }> {
   const plainText = stripHtml(job.content).substring(0, MAX_CONTENT_CHARS)
 
-  // Skip very short content
   if (plainText.length < 50) {
     await supabase.from('ats_jobs').update({
       jd_skills: [], jd_requirements: [], jd_education: null,
       jd_seniority: null, jd_years_min: null, jd_years_max: null,
+      ai_content_score: null, ai_label: 'unknown',
     }).eq('greenhouse_id', job.greenhouse_id)
     return { ok: true, id: job.greenhouse_id, skills: 0 }
   }
 
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15_000) // 15s timeout per call
+    const timeout = setTimeout(() => controller.abort(), 15_000)
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -68,7 +76,7 @@ async function enrichJob(
       },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 350,
+        max_tokens: 400,
         temperature: 0,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: `Title: ${job.title}\n\n${plainText}` }],
@@ -79,7 +87,6 @@ async function enrichJob(
 
     if (!response.ok) {
       const errText = await response.text()
-      // Rate limited — don't mark as failed, just skip
       if (response.status === 429) {
         console.warn(`Rate limited on ${job.greenhouse_id}`)
         return { ok: false, id: job.greenhouse_id }
@@ -92,11 +99,17 @@ async function enrichJob(
     const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const parsed = JSON.parse(clean)
 
-    // Validate and normalize
     const skills = Array.isArray(parsed.skills) ? parsed.skills.filter((s: any) => typeof s === 'string').map((s: string) => s.toLowerCase()).slice(0, 15) : []
     const requirements = Array.isArray(parsed.requirements) ? parsed.requirements.filter((r: any) => typeof r === 'string').slice(0, 8) : []
     const validEdu = ['high_school', 'associates', 'bachelors', 'masters', 'phd', 'professional']
     const validSen = ['intern', 'entry', 'junior', 'mid', 'senior', 'lead', 'principal', 'director', 'vp', 'executive']
+    const validAiLabel = ['human', 'mixed', 'ai_generated']
+
+    const rawAiScore = typeof parsed.ai_content_score === 'number' ? parsed.ai_content_score : null
+    const aiScore = rawAiScore !== null ? Math.max(0, Math.min(1, rawAiScore)) : null
+    const aiLabel = validAiLabel.includes(parsed.ai_label) ? parsed.ai_label : (
+      aiScore !== null ? (aiScore < 0.3 ? 'human' : aiScore > 0.7 ? 'ai_generated' : 'mixed') : null
+    )
 
     const updateData = {
       jd_skills: skills,
@@ -105,6 +118,8 @@ async function enrichJob(
       jd_seniority: validSen.includes(parsed.seniority) ? parsed.seniority : null,
       jd_years_min: Number.isInteger(parsed.years_min) && parsed.years_min >= 0 ? parsed.years_min : null,
       jd_years_max: Number.isInteger(parsed.years_max) && parsed.years_max >= 0 ? parsed.years_max : null,
+      ai_content_score: aiScore,
+      ai_label: aiLabel,
     }
 
     const { error } = await supabase
@@ -117,7 +132,6 @@ async function enrichJob(
 
   } catch (e) {
     console.error(`Failed ${job.greenhouse_id}:`, e.message)
-    // Mark with empty arrays on parse/validation errors so we don't retry
     if (!e.message?.includes('429')) {
       await supabase.from('ats_jobs').update({
         jd_skills: [], jd_requirements: [],
@@ -127,7 +141,6 @@ async function enrichJob(
   }
 }
 
-// Process array in chunks with concurrency limit
 async function processWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
@@ -162,7 +175,8 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set')
 
-    // Fetch batch: have content + jd_extracted_at, but missing jd_skills
+    // v2: Only enrich Tier 1 (user-relevant) and Tier 2 (high-value) jobs
+    // Tier 3 (on-demand) jobs use the enrich-job-ondemand endpoint
     const { data: jobs, error: fetchError } = await supabase
       .from('ats_jobs')
       .select('greenhouse_id, title, content')
@@ -170,13 +184,15 @@ serve(async (req) => {
       .is('jd_skills', null)
       .eq('status', 'open')
       .not('jd_extracted_at', 'is', null)
+      .in('enrichment_priority', [1, 2])
+      .order('enrichment_priority', { ascending: true })
       .order('jd_extracted_at', { ascending: true })
       .limit(BATCH_SIZE)
 
     if (fetchError) throw fetchError
     if (!jobs || jobs.length === 0) {
       return new Response(
-        JSON.stringify({ ok: true, processed: 0, message: 'Backfill complete — no jobs remaining' }),
+        JSON.stringify({ ok: true, processed: 0, message: 'No Tier 1/2 jobs in enrichment queue' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
