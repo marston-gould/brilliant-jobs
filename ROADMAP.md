@@ -2642,3 +2642,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - "All" filter mode: source-colored stacked bar timeline from fetchSourceBreakdownFromMV
 - Tooltip enrichment: salary data percentage per source from MV
 - Graceful fallback to row-based aggregation if MV fetch fails
+
+### 74.15 A14 Session 4: Feed Pagination + Cache Wiring — v6.60
+- Job feed: 500-row hard cap (MAX_FEED_ROWS) per A14 spec — no unbounded client queries
+- Job feed: Load More replaces Prev/Next pagination — 50 rows per page, "Load more jobs" button
+- Main feed queries wrapped in cachedQuery() (3-min TTL) for instant filter re-toggles
+- Company count reads from mv_landing_stats instead of fetching 1000 slugs
+- Multi-filter merge cap derived from MAX_FEED_ROWS (was hardcoded 200)

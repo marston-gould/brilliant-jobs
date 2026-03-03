@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=6.54"></script>
+  <script src="/js/version.js?v=6.60"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -1771,6 +1771,7 @@ const features = [
   { s: 'done', n: 'A15 S1: Server-Side Materialized Views (v6.57)', d: 'Rebuilt mv_landing_stats with remote_jobs, latest_job_date, refreshed_at. Created mv_job_feed_counts and mv_source_breakdown. Unique indexes for CONCURRENTLY refresh. pg_cron 2h→10min. get_landing_stats RPC reads from MV.', p: 74, e: '2h' },
   { s: 'done', n: 'A15 S2: MV Client Integration + Staleness (v6.58)', d: 'Stats page MV-backed source totals and weekly breakdown functions. Admin MV Health panel — staleness monitoring for all 7 MVs. Landing page hardcoded fallbacks corrected. index.html cache-bust fixed.', p: 74, e: '1.5h' },
   { s: 'done', n: 'A15 S3: MV-Powered Stats Overview (v6.59)', d: 'All-filters mode: source breakdown donut from fetchSourceTotalsFromMV (pre-aggregated). Source-colored stacked bar timeline from fetchSourceBreakdownFromMV. Tooltip shows salary data % per source. Graceful fallback to row aggregation.', p: 74, e: '1h' },
+  { s: 'done', n: 'A14 S4: Feed Pagination + Cache Wiring (v6.60)', d: 'Job feed: 500-row hard cap (MAX_FEED_ROWS). Load More replaces Prev/Next pagination — 50 rows/page. Main feed queries wrapped in cachedQuery (3-min TTL). Company count from mv_landing_stats. Multi-filter merge cap from MAX_FEED_ROWS.', p: 74, e: '1.5h' },
 
 ];
 

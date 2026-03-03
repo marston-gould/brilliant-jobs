@@ -718,29 +718,34 @@ async function searchJobs(page = 0) {
     const searchTerms = [...jdTerms, ...whatTerms].join(' ').trim();
 
     if (filtersToRun.length === 1) {
-      // Single filter — straightforward query with count + pagination
-      let query = sb.from('ats_jobs').select('*', { count: 'exact' });
-      query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
-      if (hiddenIds.length > 0) {
-        query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
-      }
-
-      // Multi-sort (skip 'level' — client-side only)
-      for (const s of jobSortStack) {
-        if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
-        query = query.order(s.field, { ascending: s.asc });
-      }
-
-      const from = page * JOBS_PER_PAGE;
-      query = query.range(from, from + JOBS_PER_PAGE - 1);
-
-      const { data: jobs, error, count } = await query;
-      if (error) throw error;
-      allJobs = (jobs || []).map(j => ({ ...j, _filterNums: [{ num: filtersToRun[0]._filterNum || '', color: filtersToRun[0]._filterColor || '' }] }));
-      totalCount = count || 0;
+      // Single filter — A14 pagination: 500-row cap with Load More
+      const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
+      const feedResult = await cachedQuery(feedCacheKey, async function() {
+        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
+        if (hiddenIds.length > 0) {
+          query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
+        }
+        // Multi-sort (skip 'level' — client-side only)
+        for (const s of jobSortStack) {
+          if (s.field === 'level' || s.field === 'match' || s.field === 'relevance') continue;
+          query = query.order(s.field, { ascending: s.asc });
+        }
+        // A14: page-based but capped at MAX_FEED_ROWS total
+        const from = page * JOBS_PER_PAGE;
+        if (from >= MAX_FEED_ROWS) return { data: [], count: 0, error: null };
+        const to = Math.min(from + JOBS_PER_PAGE - 1, MAX_FEED_ROWS - 1);
+        query = query.range(from, to);
+        return query;
+      }, { ttl: 180000 }); // 3-min TTL for feed queries
+      const jobs = feedResult.data || [];
+      allJobs = jobs.map(j => ({ ...j, _filterNums: [{ num: filtersToRun[0]._filterNum || '', color: filtersToRun[0]._filterColor || '' }] }));
+      totalCount = feedResult.count || 0;
+      _feedTotalCount = totalCount;
+      _feedLoadMoreOffset = (page + 1) * JOBS_PER_PAGE;
     } else {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
-      const perFilter = Math.ceil(200 / filtersToRun.length);
+      const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
         let q = sb.from('ats_jobs').select('*', { count: 'exact' });
         q = buildFilterQuery(sf, q, sf._locationIds);
@@ -1011,24 +1016,34 @@ async function updateJobStatsFromFilters(filters) {
         }
       }
 
-      // Company count — use count-only query instead of fetching 2000 rows (A14 fix)
-      const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
-      const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
-      let cq = sb.from('ats_jobs').select('company_slug', { count: 'exact' });
-      cq = buildFilterQuery(sfNoWhenFirst, cq, firstLocIds);
-      cq = excludeHidden(cq);
-      cq = cq.not('company_slug', 'is', null).limit(1);
-      // We need distinct count — PostgREST doesn't support COUNT(DISTINCT), so use a lighter approach:
-      // Fetch just distinct slugs with a reasonable cap
-      let cq2 = sb.from('ats_jobs').select('company_slug');
-      cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
-      cq2 = excludeHidden(cq2);
-      cq2 = cq2.not('company_slug', 'is', null).limit(1000);
-      const { data: coRows } = await cq2;
-      const uniqueCos = new Set();
-      if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+      // Company count — A14 v6.60: try MV data first, fallback to capped query
+      let companyCountVal = 0;
+      try {
+        // Try MV — instant, pre-aggregated
+        const { data: mvCounts } = await sb.from('mv_job_feed_counts').select('ats_source, job_count');
+        if (mvCounts && mvCounts.length > 0) {
+          // MV has total_companies via mv_landing_stats
+          const { data: mvLanding } = await sb.from('mv_landing_stats').select('total_companies').single();
+          companyCountVal = mvLanding ? mvLanding.total_companies : 0;
+        }
+      } catch(mvErr) {
+        console.warn('[BJ] MV company count fallback:', mvErr.message);
+      }
+      if (!companyCountVal) {
+        // Fallback: capped distinct slug query (max 500 rows, not 1000)
+        const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
+        const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
+        let cq2 = sb.from('ats_jobs').select('company_slug');
+        cq2 = buildFilterQuery(sfNoWhenFirst, cq2, firstLocIds);
+        cq2 = excludeHidden(cq2);
+        cq2 = cq2.not('company_slug', 'is', null).limit(500);
+        const { data: coRows } = await cq2;
+        const uniqueCos = new Set();
+        if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
+        companyCountVal = uniqueCos.size;
+      }
 
-      return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: uniqueCos.size } };
+      return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: companyCountVal } };
     });
 
     if (cachedStats && cachedStats.data) {
@@ -2045,17 +2060,18 @@ function renderJobRows(jobs, total, page, filtersToRun) {
     <tr class="job-snippet-row"><td></td><td colspan="7">${trustBannerHtml(job.greenhouse_id)}${aiContentBannerHtml(job.greenhouse_id)}<span class="job-snippet-text" data-preview-id="${job.greenhouse_id}"></span></td><td></td></tr>`;
   }
 
-  // Pagination row
-  const totalPages = Math.ceil(total / JOBS_PER_PAGE);
-  if (totalPages > 1) {
-    html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
-      <div style="display:flex;justify-content:center;align-items:center;gap:12px;">
-        ${page > 0 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page - 1})">← Prev</button>` : ''}
-        <span style="font-size:12px;color:var(--text-faint);">Page ${page + 1} of ${totalPages.toLocaleString()} (${total.toLocaleString()} jobs)</span>
-        ${page < totalPages - 1 ? `<button class="btn btn-sm btn-secondary" onclick="searchJobs(${page + 1})">Next →</button>` : ''}
+  // A14 Pagination: Showing X of Y + Load More (capped at 500)
+  const showing = Math.min(jobs.length + page * JOBS_PER_PAGE, total);
+  const capped = Math.min(total, MAX_FEED_ROWS);
+  html += `<tr><td colspan="9" style="text-align:center;padding:16px;">
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;">
+      <span style="font-size:12px;color:var(--text-faint);">Showing ${showing.toLocaleString()} of ${total.toLocaleString()} jobs${total > MAX_FEED_ROWS ? ' (limited to ' + MAX_FEED_ROWS.toLocaleString() + ')' : ''}</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${page > 0 ? '<button class="btn btn-sm btn-secondary" onclick="searchJobs(0)">↑ Back to top</button>' : ''}
+        ${showing < capped ? '<button class="btn btn-sm btn-primary" onclick="searchJobs(' + (page + 1) + ')" style="font-weight:600;">Load more jobs</button>' : ''}
       </div>
-    </td></tr>`;
-  }
+    </div>
+  </td></tr>`;
 
   tbody.innerHTML = html;
 
