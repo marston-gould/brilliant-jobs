@@ -309,14 +309,72 @@ serve(async (req) => {
     const sb = createClient(SB_URL, SB_KEY);
 
     // Parse body
-    const body = await req.json();
-    const { items } = body;
+    const body = await req.json().catch(() => ({}));
+    let { items, mode } = body;
 
+    // ─── AUTO-FETCH MODE ───
+    // When called with empty body or mode='backfill', automatically fetch unscored JDs
+    // This enables pg_cron to call the EF with {} and have it self-serve
     if (!items || !Array.isArray(items) || items.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Missing or empty items array. Each item needs: content_type, content_id, text' }),
-        { status: 400, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-      );
+      console.log('[score-ai-content] No items provided — entering auto-fetch mode');
+
+      const batchSize = body.batch_size || 25; // Conservative default for cron
+      const fetchMode = mode || 'backfill'; // backfill (oldest first) or new (newest first)
+
+      // Fetch unscored open JDs with content
+      const orderDir = fetchMode === 'new' ? 'desc' : 'asc';
+      const { data: unscoredJobs, error: fetchErr } = await sb
+        .from('ats_jobs')
+        .select('greenhouse_id, content, ats_source')
+        .eq('status', 'open')
+        .not('content', 'is', null)
+        .not('greenhouse_id', 'in',
+          sb.from('content_ai_scores')
+            .select('content_id')
+            .eq('content_type', 'jd')
+        )
+        .order('created_at', { ascending: fetchMode !== 'new' })
+        .limit(batchSize);
+
+      // Fallback: if the subquery approach fails, use a raw RPC or simpler query
+      let jobsToScore = unscoredJobs;
+      if (fetchErr || !unscoredJobs || unscoredJobs.length === 0) {
+        console.log('[score-ai-content] Subquery fetch failed or empty, trying LEFT JOIN approach via RPC');
+        // Use a simpler approach: fetch jobs not in content_ai_scores
+        const { data: rpcJobs, error: rpcErr } = await sb.rpc('get_unscored_jds', { p_limit: batchSize, p_mode: fetchMode });
+        if (rpcErr || !rpcJobs || rpcJobs.length === 0) {
+          const elapsedMs = Date.now() - startTime;
+          return new Response(
+            JSON.stringify({
+              mode: 'auto-fetch',
+              message: rpcErr ? `Fetch error: ${rpcErr.message}` : 'No unscored JDs remaining — backfill complete',
+              elapsed_ms: elapsedMs,
+            }),
+            { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+          );
+        }
+        jobsToScore = rpcJobs;
+      }
+
+      // Convert fetched jobs to BatchItems
+      items = jobsToScore
+        .filter((j: any) => j.content && j.content.length >= MIN_TEXT_LENGTH)
+        .map((j: any) => ({
+          content_type: 'jd',
+          content_id: j.greenhouse_id,
+          ats_source: j.ats_source || null,
+          text: j.content,
+        }));
+
+      if (items.length === 0) {
+        const elapsedMs = Date.now() - startTime;
+        return new Response(
+          JSON.stringify({ mode: 'auto-fetch', message: 'All fetched JDs too short for scoring', elapsed_ms: elapsedMs }),
+          { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[score-ai-content] Auto-fetched ${items.length} unscored JDs for scoring`);
     }
 
     if (items.length > MAX_BATCH_SIZE) {
