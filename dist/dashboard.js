@@ -1715,12 +1715,15 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       }
     }
     if (tuning.usOnly) {
+      // v6.51: Use loc_country for US filtering (92%+ coverage, uses index, single param)
+      // Include US + NULL (ungeocoded jobs) in one clause
       query = query.or('loc_country.eq.US,loc_country.is.null');
-      // Exclude non-US jobs using a single consolidated OR clause (v6.51 fix — 68 individual not.ilike params caused 500 errors)
-      const nonUSCodes = ['gb','uk','de','fr','au','ca','in','ie','nl','sg','jp','br','es','it','il','se','dk','no','fi','nz','at','ch','be','pl','cz','pt','hk','kr','mx','ae'];
-      const nonUSNames = ['India','Germany','United Kingdom','France','Australia','Canada','Ukraine','Israel','Netherlands','Singapore','Ireland','Brazil','Spain','Italy','Japan','Korea','Sweden','Poland','Mexico','Argentina','Colombia','Philippines','Romania','Czech','Portugal','Hong Kong','Denmark','Norway','Finland','Austria','Switzerland','Belgium','Turkey','Thailand','Vietnam','Taiwan','Malaysia','New Zealand'];
-      const exclClauses = nonUSCodes.map(cc => `location.ilike.%, ${cc}`).concat(nonUSNames.map(n => `location.ilike.%${n}%`));
-      query = query.not('or', `(${exclClauses.join(',')})`);
+      // For NULL loc_country rows, exclude obvious non-US via location string
+      // Keep this minimal — only high-frequency false positives to stay within PostgREST URL limits
+      query = query.not('loc_country', 'eq', 'CA');
+      query = query.not('location', 'ilike', '%Canada%');
+      query = query.not('location', 'ilike', '%, BC%');
+      query = query.not('location', 'ilike', '%British Columbia%');
     }
     for (const pill of whnot) {
       for (const v of pill.values) {
