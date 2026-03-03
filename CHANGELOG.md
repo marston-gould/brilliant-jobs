@@ -1,3 +1,23 @@
+## v6.45 — Synthetic Content Detection: Session 4.2 — Company Browser AI JD Rate (2026-03-02)
+
+### Company Browser — AI JD Rate Column
+- **AI JD Rate badge on company rows** — New inline badge showing percentage of each company's job descriptions classified as AI-generated or mixed content. Data sourced from `ats_companies.ai_jd_rate` (populated by nightly-ai-jd-rate pg_cron from v6.37). Color-coded: <20% green, 20–50% amber, >50% red. Tooltip: "X% of this company's JDs appear AI-generated". Shows "---" if not yet computed
+- **Sort bar with AI JD Rate option** — New sort bar in company browser with Name, Jobs, and AI JD Rate sort buttons. Click toggles ascending/descending. Non-alphabetical fields default to descending on first click
+- **PostHog event** — `ai_jd_rate_column_sorted` fires on sort with direction, field, and company_count properties
+
+### Company Detail — AI Content Breakdown
+- **Expandable inline detail panel** — Click any company name in the browser to expand an inline AI content breakdown. Shows stacked bar chart with human (green), mixed (amber), and AI-generated (red) segments. Displays per-label counts and percentages from `content_ai_scores` table
+- **Query pattern** — Fetches scored JDs by company_slug lookup via `ats_jobs` → `content_ai_scores` join. Graceful fallback if no scored JDs exist
+
+### Version Discipline
+- `js/version.js` → v6.45
+- `dashboard.html` → v6.45 + cache-bust ?v=6.45 (all script/CSS references)
+- `index.html` → v6.45
+- Console prints: [BJ] v6.45
+- Git tag: v6.45
+- `CHANGELOG.md` updated
+- `roadmap.html` Phase 72 updated
+
 ## v6.44 — Synthetic Content Detection: Session 4.1 — Scoring Exclusion Toggles (2026-03-02)
 
 ### AI Scoring Preferences (Settings Panel)
