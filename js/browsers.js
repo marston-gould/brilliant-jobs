@@ -798,6 +798,8 @@ function renderCompanyBrowserList() {
       panel.style.cssText = 'padding:12px 16px 12px 44px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin:4px 0 8px;font-size:12px;color:var(--text-dim);';
       panel.innerHTML = '<div style="color:var(--text-faint);">Loading AI content breakdown…</div>';
       row.after(panel);
+      // PostHog: track company AI detail expansion (v6.49 — Session 5.1)
+      if (typeof posthog !== 'undefined') posthog.capture('ai_company_detail_expanded', { company_slug: slug });
       try {
         const { data, error } = await sb.from('content_ai_scores')
           .select('ai_label')
@@ -855,6 +857,16 @@ function renderBreakdown(panel, scores, slug) {
       <span style="color:#f56565;">● AI-Generated: ${counts.ai_generated} (${pctA}%)</span>
     </div>
   `;
+  // PostHog: track breakdown render with label distribution (v6.49 — Session 5.1)
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('ai_label_distribution_viewed', {
+      company_slug: slug,
+      total_scored: total,
+      pct_human: pctH,
+      pct_mixed: pctM,
+      pct_ai_generated: pctA
+    });
+  }
 }
 
 function updateCbSelectedCount() {
