@@ -1,3 +1,33 @@
+## v6.46 — Synthetic Content Detection: Session 4.3 — Nightly Aggregation Verification (2026-03-02)
+
+### Backend — Aggregation Health RPC
+- **`get_ai_aggregation_health()` RPC** — New PostgreSQL function providing a comprehensive health check of the AI content scoring pipeline. Returns: total companies, companies with rate, coverage percentage, total scores, label distribution, latest score timestamp, latest rate update, average AI JD rate, rate distribution (green/amber/red buckets), cron status, and backfill status
+- **Optimized single-pass query** — All ats_companies stats computed in one aggregate query with FILTER clauses to avoid N+1 pattern. 30-second statement timeout as safety net
+
+### Frontend — Aggregation Health Panel
+- **Company browser health panel** — New monitoring panel at the top of the company browser showing real-time pipeline health: scoring coverage %, JDs scored count, companies rated count, nightly cron status, backfill status, and last scored timestamp
+- **Label distribution display** — Color-coded breakdown of human/mixed/AI-generated labels with counts and percentages. Shows "Backfill in progress" message when no scores exist yet
+- **Collapsible UI** — Toggle button to show/hide the health panel. Panel auto-loads when company browser opens
+- **PostHog event** — `ai_aggregation_health_viewed` fires with coverage_pct, total_scores, cron_active, backfill_active properties
+
+### Verification Results (as of deploy)
+- Total companies: 39,643
+- Companies with AI JD rate: 0 (backfill in progress)
+- Content AI scores: 0 (backfill cron active, scoring Edge Function deployed)
+- Nightly `nightly-ai-jd-rate` cron: ✅ Active (runs 0 3 * * *)
+- Backfill `backfill-ai-content-scores` cron: ✅ Active (runs */1 * * * *)
+- `score-new-jds-ai` cron: ✅ Active (runs */5 * * * *)
+
+### Version Discipline
+- `js/version.js` → v6.46
+- `dashboard.html` → v6.46 + cache-bust ?v=6.46 (all script/CSS references)
+- `index.html` → v6.46
+- Console prints: [BJ] v6.46
+- Git tag: v6.46
+- `CHANGELOG.md` updated
+- `roadmap.html` Phase 72 updated
+
+
 ## v6.45 — Synthetic Content Detection: Session 4.2 — Company Browser AI JD Rate (2026-03-02)
 
 ### Company Browser — AI JD Rate Column
