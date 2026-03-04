@@ -1,3 +1,25 @@
+## v6.95 — 2026-03-04
+
+### Overlay Pipeline Session 1: Pipeline Table Migration + Backfill
+
+**DB (Supabase)**
+- New `pipeline` table with 32-column schema: source_url, stage, entry_source, activity_log (jsonb[]), fraud/AI/match score columns, feed-linkage columns (job_id_ref, ats_source_ref), migration tracking
+- `pipeline_entry_source` enum: manual | auto_apply | overlay | gmail_detected | calendar_detected | import
+- `pipeline_stage` enum: saved | applied | phone_screen | interview | offer | rejected | withdrawn | posting_closed
+- UNIQUE constraint (user_id, source_url) for dedup
+- 6 indexes: user+stage, user+entry_source, source_url, company_name, updated_at DESC, user+updated_at DESC
+- RLS: user CRUD own rows, admin read-all
+- updated_at trigger
+- `overlay_analytics` table for toolbar funnel tracking
+- Backfill: 2 pending_applications rows → pipeline table (entry_source='auto_apply')
+
+**Frontend**
+- New `js/pipeline-migration.js` module: migrates bj_pipeline localStorage → Supabase pipeline table on first load
+
+**Infra**
+- Migration SQL committed to `supabase/migrations/20260304_unified_pipeline.sql`
+- Handoff doc at `docs/specs/OVERLAY_PIPELINE_SESSION1_HANDOFF.md`
+
 ## v6.94 — 2026-03-04
 
 ### Admin IA v2 · Session 10 — Business Ops Suite
