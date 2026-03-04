@@ -19,6 +19,11 @@ const PL_STAGE_LABELS = {
 let _pipelineCache = {};
 let _pipelineLoaded = false;
 
+// Overlay Pipeline S2: new pipeline table cache, keyed by source_url
+// Dual-write: all pipeline mutations write to both user_pipeline and pipeline tables
+let _newPipelineCache = {};   // { [source_url]: { id, stage, entry_source, activity_log, ... } }
+let _newPipelineLoaded = false;
+
 // ── Pipeline Signals (Phase A) ─────────────────────────────────
 // Pending signals keyed by pipeline_entry_id
 let _pendingSignals = {};
@@ -148,6 +153,82 @@ async function loadPipelineFromSupabase() {
     // Fallback: try localStorage if Supabase fails
     _pipelineCache = safeReadLS('bj_pipeline_meta', {});
   }
+}
+
+
+// ── Overlay Pipeline S2: Load new pipeline table into memory ──────────────
+async function loadNewPipelineFromSupabase() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('pipeline')
+      .select('id, source_url, source_platform, job_title, company_name, location, stage, entry_source, activity_log, match_score, fraud_score, ai_content_score, job_id_ref, ats_source_ref, applied_at, created_at, updated_at')
+      .eq('user_id', currentUser.id)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    _newPipelineCache = {};
+    (data || []).forEach(row => {
+      _newPipelineCache[row.source_url] = row;
+    });
+    _newPipelineLoaded = true;
+    console.log('[BJ] New pipeline table loaded:', data?.length || 0, 'entries');
+  } catch (e) {
+    console.warn('[BJ] New pipeline load error (non-fatal):', e);
+  }
+}
+
+// ── Overlay Pipeline S2: Write to new pipeline table ─────────────────────
+// Called on every pipeline mutation — dual-write alongside user_pipeline
+// entry: { source_url, job_title, company_name, stage, entry_source, activity_log_entry?, ... }
+async function saveToNewPipeline(entry) {
+  if (!currentUser?.id || !entry?.source_url) return;
+  const now = new Date().toISOString();
+  const existing = _newPipelineCache[entry.source_url];
+
+  // Build activity log entry for this action
+  const logEntry = {
+    action: entry._activity_action || 'stage_updated',
+    timestamp: now,
+    detail: { stage: entry.stage, source: entry.entry_source || 'manual' }
+  };
+  const existingLog = existing?.activity_log || [];
+  const newLog = [...existingLog, logEntry];
+
+  const row = {
+    user_id: currentUser.id,
+    source_url: entry.source_url,
+    source_platform: entry.source_platform || existing?.source_platform || 'unknown',
+    job_title: entry.job_title || existing?.job_title || 'Unknown Title',
+    company_name: entry.company_name || existing?.company_name || 'Unknown Company',
+    location: entry.location || existing?.location || null,
+    stage: entry.stage || existing?.stage || 'saved',
+    stage_changed_at: now,
+    entry_source: entry.entry_source || existing?.entry_source || 'manual',
+    activity_log: newLog,
+    job_id_ref: entry.job_id_ref || existing?.job_id_ref || null,
+    ats_source_ref: entry.ats_source_ref || existing?.ats_source_ref || null,
+    match_score: entry.match_score ?? existing?.match_score ?? null,
+    fraud_score: entry.fraud_score ?? existing?.fraud_score ?? null,
+    ai_content_score: entry.ai_content_score ?? existing?.ai_content_score ?? null,
+    applied_at: entry.applied_at || existing?.applied_at || null,
+    updated_at: now
+  };
+
+  try {
+    const { data, error } = await sb.from('pipeline')
+      .upsert(row, { onConflict: 'user_id,source_url' })
+      .select('id')
+      .single();
+    if (error) throw error;
+    // Update local cache
+    _newPipelineCache[entry.source_url] = { ...row, id: data?.id || existing?.id };
+  } catch (e) {
+    console.warn('[BJ] New pipeline write error (non-fatal):', e);
+  }
+}
+
+// ── Overlay Pipeline S2: Get new pipeline row by source_url ──────────────
+function getNewPipelineEntry(sourceUrl) {
+  return _newPipelineCache[sourceUrl] || null;
 }
 
 // ── Save single pipeline entry to Supabase (replaces savePipelineMeta) ──
