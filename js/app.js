@@ -990,4 +990,3 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) {}
 }
-
