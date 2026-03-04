@@ -1,3 +1,9 @@
+## v6.83 — 2026-03-04
+### Phase 16 Session 6: Hired / Off-Market Auto-Pause
+- **settings.js:** autoHirePause(jobTitle) — async function; queries profiles.passive_mode; sets passive_mode = false in DB; updates in-memory _passiveMode flag, toggle UI, passive-settings-panel, search-mode-label; shows congrats toast: "Congrats! Passive mode paused — you can re-activate anytime in Settings" (only if passive was on); PostHog: passive_auto_paused_hired with job_title, was_passive
+- **pipeline.js:** hired block hook — after m.hiredAt = now, calls autoHirePause(m.title) if function exists (Phase 16 S6 guard)
+- **job-intelligence EF:** hired guard — before passive high-bar alert processing, queries user_pipeline for stage=hired + hired_at in last 30 days; if found, skips passive alert for that user and logs; prevents spam to users who have already accepted a role
+
 ## v6.82 — 2026-03-04
 ### Phase 16 Session 5: Resume-First Filter Bootstrap
 - **settings.js:** bootstrapFiltersFromResume() — on passive mode toggle ON with no active filters, calls extract-resume-profile EF with user's latest resume_texts row; builds up to 3 job filters from top titles (whatPills from title tokens, includeRemote from profile.remote_preference); persists to bj_saved_filters localStorage, calls setSavedFilters() if available; shows toast: 'We created N filter(s) based on your resume to get started'; guards: passiveMode ON, no existing filters, resume_text exists
