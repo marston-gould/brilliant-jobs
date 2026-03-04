@@ -1,3 +1,19 @@
+## v6.64 Chat Mode Session 2: Mode Toggle + Chat Panel UI (2026-03-03)
+- UI: Search mode toggle bar (Filters / Chat) with 200ms crossfade at top of Jobs Feed
+- UI: Chat panel component — header with message counter, scrollable conversation area, auto-resizing textarea, Send button
+- UI: Chat bubbles (user=blue, assistant=card) with basic markdown bold support
+- UI: Typing indicator with animated dots during Edge Function call
+- UI: Filter extraction banner — shows count of filters derived from conversation
+- UI: Rate limit banner with amber warning, remaining count, reset timer, upgrade CTA
+- UI: Empty state with example prompts for first-time users
+- JS: ChatSession class with 20-message cap and conversation history management
+- JS: Client-side off-topic/injection blocking (Layer 1 — regex patterns for prompt injection, off-topic requests)
+- JS: Wire to chat-job-search Edge Function with auth, error handling, rate limit 429 handling
+- JS: Chat filter extraction → applyChatFilters() triggers debouncedSearchJobs() with _chatFilterOverride
+- JS: chat.js added to build.js bundle pipeline
+- CSS: Full chat panel styles — mode toggle, chat bubbles, typing indicator, input row, banners
+- Version v6.64 across all surfaces
+
 ## v6.63 Chat Mode Session 1: Schema + Edge Functions (2026-03-03)
 - DB: Created saved_prompts table (UUID PK, user_id FK, name, color_index, conversation JSONB, derived_filters JSONB, is_active) with RLS
 - DB: Created chat_usage table (rate limiting — user_id + message_at) with RLS
