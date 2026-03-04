@@ -13,6 +13,11 @@ const jsFiles = [
   'js/admin-signals.js',
   'js/admin-feed-health.js',
   'js/admin-cache-health.js',
+  'js/admin-seo.js',
+  'js/admin-merch.js',
+  'js/admin-referrals.js',
+  'js/admin-content.js',
+  'js/admin-enrichment.js',
   'js/admin-shell.js',
 ];
 

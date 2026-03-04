@@ -1,5 +1,22 @@
 ## v6.89 — 2026-03-04
 
+### Admin IA v2 · Session 6 — SEO, Merch, Referrals, Content, Enrichment file extraction
+
+**Extracted from admin.js into dedicated files:**
+- `js/admin-seo.js` — SEO / Data Coverage sub-page (1490 lines): 9-tool SEO dashboard, date range pickers, charts, sync controls, side panel, DataForSEO fetch
+- `js/admin-merch.js` — Merchandising sub-page (599 lines): master-detail Placements → Rules → Content Entries CRUD, bulk import modal
+- `js/admin-referrals.js` — Referrals admin sub-page (218 lines): fraud review queue, reward clawback, ban management
+- `js/admin-content.js` — Content Editorial Engine sub-page (172 lines): story status management, detect/generate triggers, preview panel
+- `js/admin-enrichment.js` — Enrichment Coverage Dashboard (381 lines): coverage %, gates, platform breakdown chart, refresh schedule
+
+**Updated:**
+- `js/admin.js` — trimmed to 1084 lines (core nav/sidebar/routing only); header updated to v6.89
+- `build-admin.js` — 12 → 17 files; bundle: 448KB raw → 341KB minified
+- `admin.html` — version bumped to v6.89
+- `dist/admin.min.js` — rebuilt with all 17 source files
+
+## v6.89 — 2026-03-04
+
 ### Admin IA v2 · Session 5 — Signals, Feed Health, Cache Health
 
 **New files:**
