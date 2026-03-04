@@ -1,3 +1,9 @@
+## v7.05 — 2026-03-04
+
+### Overlay Analytics Drilldown Fix
+
+- **dashboard.html** — Fixed `#oa-drilldown-link` placement: moved from `#pl-view-overlay` (Pipeline page) into `#stats-tab-content-overlay` (Stats page Overlay Analytics tab) where `overlay-analytics.js` expects it. The "View Overlay Pipeline Entries →" button now renders correctly in the Stats → Overlay Analytics tab.
+
 ## v7.04 — 2026-03-04
 
 ### Overlay Pipeline S10: Polish + Dashboard Pipeline Tab Integration
