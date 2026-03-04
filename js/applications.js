@@ -581,13 +581,31 @@ $('#notif-save-escalation')?.addEventListener('click', async () => {
 function populateOverrideFilterSelect() {
   const sel = $('#override-filter-select');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Select a saved filter...</option>';
+  sel.innerHTML = '<option value="">Select a saved filter or prompt...</option>';
+  // Saved filters
   savedFilters.forEach(f => {
     sel.innerHTML += `<option value="${escapeHtml(f.name)}">${escapeHtml(f.name)}</option>`;
   });
+  // Session 5: Saved prompts with derived_filters
+  if (typeof _savedPrompts !== 'undefined' && _savedPrompts && _savedPrompts.length > 0) {
+    var hasPrompts = _savedPrompts.some(p => p.derived_filters && Object.keys(p.derived_filters).length > 0);
+    if (hasPrompts) {
+      sel.innerHTML += '<option disabled>── Chat Prompts ──</option>';
+      _savedPrompts.forEach(p => {
+        if (p.derived_filters && Object.keys(p.derived_filters).length > 0) {
+          sel.innerHTML += `<option value="prompt:${escapeHtml(p.id)}" data-prompt-id="${escapeHtml(p.id)}">💬 ${escapeHtml(p.name)}</option>`;
+        }
+      });
+    }
+  }
 }
 populateOverrideFilterSelect();
 
+
+// Session 5: Refresh override dropdown when saved prompts update
+function refreshOverrideFilterSelectWithPrompts() {
+  populateOverrideFilterSelect();
+}
 $('#override-filter-select')?.addEventListener('change', async (e) => {
   const filterName = e.target.value;
   if (!filterName) {
