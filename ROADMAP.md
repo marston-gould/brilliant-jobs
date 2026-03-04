@@ -2697,3 +2697,30 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Content: editorial queue, detect/generate actions, click-to-preview story panel
 - Merchandising: placements→rules→content CRUD, bulk import, cohort targeting
 - Referrals: referral admin stats and management
+
+### 74.23 Admin IA v2 S7: Ghost, Templates, Revenue, Feedback — v6.91
+- admin-ghost.js: Ghost Monitor sub-page — company ghost rate table, apply-to-response rate, last application timestamps
+- admin-templates.js: Notification Templates sub-page — template preview, category filter, enable/disable toggle
+- admin-revenue.js: Revenue sub-page — MRR stat cards, subscription table, plan distribution, cohort breakdown
+- admin-feedback.js: Feedback sub-page — Canny link, feedback log from user_feedback table
+
+### 74.24 Admin IA v2 S8: Stripe Customer Mgmt + Subscription Analytics — v6.92
+- admin-stripe.js: Stripe Customer Management sub-page — customer search, plan + status, recent charges table
+- admin-subscription.js: Subscription Analytics sub-page — MRR/ARR cards, churn stat, cohort conversion table, plan distribution ECharts donut
+
+### 74.25 Admin IA v2 S9: Notification Analytics Suite — v6.93
+- admin-notif-analytics.js: 4 sub-page implementations (676 lines)
+- notif-analytics: delivery funnel (Sent→Delivered→Opened→Clicked), channel breakdown, top 20 types table, send volume ECharts bar, 7d/30d/90d toggle
+- email-cohorts: per-cohort email opt-in stats, opt-in rate, unsubscribed count, recent 30d email log
+- cadence: summary cards (total configs, enabled, active channels, freq-capped), searchable/filterable config table, send volume by category chart
+- notif-log: paginated live log (50/page), channel/status/type filters, total record count
+
+### 74.26 Admin IA v2 S10: Business Ops Suite — v6.94
+- admin-biz-ops.js: 5 sub-page implementations (669 lines)
+- paid: spend log manual entry by platform/date/amount, stat cards (total/MTD/platforms/CAC), Google Ads + Meta Ads links
+- social: post log by platform/date/engagements, stat cards (posts/MTD/total engagements/avg engagement)
+- analytics: live DAU/WAU/MAU from profiles.last_seen_at, signups ECharts bar chart with period toggle, user funnel ECharts funnel chart
+- costs: vendor cost tracker (Vercel/Supabase/DataForSEO/Cloudflare/Resend/Vonage/Anthropic), monthly trend ECharts bar chart, MoM change card
+- forecasting: configurable growth rate/ARPU/churn, MRR + paid users ECharts dual-axis projection, 6/12/24 month horizons
+- build-admin.js: 24 → 25 source files
+
