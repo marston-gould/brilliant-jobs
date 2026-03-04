@@ -1,8 +1,9 @@
 // ============================================================
-// CHAT MODE — Conversational Job Search (Session 4)
+// CHAT MODE — Conversational Job Search (Session 5)
 // Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync + Saved Prompts
 // Wires to chat-job-search, filter-to-prompt, prompt-to-filter Edge Functions
 // Saved prompts: Save/Load with Supabase persistence + derived_filters auto-update
+// Session 5: System Integration — prompts as first-class filters, notifications, auto-apply, match %
 // ============================================================
 
 // --- State ---
@@ -1199,7 +1200,7 @@ async function loadSavedPromptsFromDB() {
     if (!session.data.session) return;
 
     var token = session.data.session.access_token;
-    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?select=id,name,color_index,conversation,derived_filters,is_active,created_at,updated_at&order=updated_at.desc&limit=50', {
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?select=id,name,color_index,conversation,derived_filters,is_active,resume_id,created_at,updated_at&order=updated_at.desc&limit=50', {
       headers: {
         'Authorization': 'Bearer ' + token,
         'apikey': SUPABASE_KEY
@@ -1331,6 +1332,91 @@ function renderSavedPromptsInFilterSelector() {
     container.appendChild(item);
   });
 }
+
+
+// ============================================================
+// SESSION 5: System Integration
+// Prompts integrated with job feed, notifications, auto-apply, match %
+// ============================================================
+
+// --- Session 5: Prompt resume assignment ---
+// Track which resume is assigned to a prompt (for auto-apply + match %)
+function assignResumeToPrompt(promptId, resumeId) {
+  if (!promptId || !currentUser) return;
+  var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+  if (!prompt) return;
+
+  prompt.resume_id = resumeId;
+
+  // Persist to Supabase
+  fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + promptId, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + (sb.auth.session()?.access_token || SUPABASE_ANON_KEY),
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ resume_id: resumeId })
+  }).then(function(resp) {
+    if (resp.ok) {
+      console.log('[BJ] Resume assigned to prompt:', promptId, '->', resumeId);
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('chat_prompt_resume_assigned', { prompt_id: promptId, resume_id: resumeId });
+      }
+    }
+  }).catch(function(err) {
+    console.error('[BJ] Prompt resume assignment failed:', err);
+  });
+}
+
+// --- Session 5: Prompt → Saved Filter interoperability ---
+// Convert a saved prompt's derived_filters to the same shape searchJobs() consumes
+// This is called by job-feed.js getCheckedSavedPromptFilters() via the global promptDerivedToFilterObj()
+
+// --- Session 5: Register prompts with notification system ---
+// After prompts load, refresh the notification override dropdown to include them
+function integratePromptsWithNotifications() {
+  if (typeof refreshOverrideFilterSelectWithPrompts === 'function') {
+    refreshOverrideFilterSelectWithPrompts();
+  }
+}
+
+// --- Session 5: Register prompts with auto-apply system ---
+// Prompts with resume assignments and derived_filters participate in auto-apply matching
+function getPromptAutoApplyConfigs() {
+  if (!_savedPrompts || _savedPrompts.length === 0) return [];
+  return _savedPrompts.filter(function(p) {
+    return p.derived_filters && Object.keys(p.derived_filters).length > 0 && p.resume_id;
+  }).map(function(p) {
+    return {
+      type: 'prompt',
+      id: p.id,
+      name: p.name,
+      derived_filters: p.derived_filters,
+      resume_id: p.resume_id,
+      color_index: p.color_index
+    };
+  });
+}
+
+// --- Session 5: Hook into prompt lifecycle ---
+// After loading prompts from DB, run system integrations
+var _origLoadSavedPromptsFromDB = loadSavedPromptsFromDB;
+loadSavedPromptsFromDB = async function() {
+  await _origLoadSavedPromptsFromDB();
+  // Run integrations after prompts are loaded
+  integratePromptsWithNotifications();
+  // Recompute match scores if jobs are loaded
+  if (typeof computeVisibleJobScores === 'function') {
+    computeVisibleJobScores();
+  }
+};
+
+// --- Session 5: Expose prompt configs for auto-apply Edge Function consumption ---
+// The auto-apply system checks both saved filters and saved prompts
+window._getPromptAutoApplyConfigs = getPromptAutoApplyConfigs;
+window._assignResumeToPrompt = assignResumeToPrompt;
 
 // --- Initialize on page load ---
 if (document.readyState === 'loading') {
