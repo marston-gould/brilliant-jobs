@@ -3558,6 +3558,9 @@ export function reengagement14dEmail(
           <a href="${base}" class="btn btn-primary">See What You've Missed →</a>
         </div>
 
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">Taking a break? Keep your data safe for <a href="${STORAGE_FEE_URL}" style="color:#3b82f6;">$5/year</a> — even if you don't log in.</p>
+
         <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">We'll keep monitoring your filters — but roles move fast.</p>
       </div>
     `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from re-engagement emails</a></p>`),
@@ -3618,6 +3621,9 @@ export function reengagement30dEmail(
         <div class="btn-row">
           <a href="${base}" class="btn btn-primary">Resume Your Search →</a>
         </div>
+
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">Done searching for now? Pay <a href="${STORAGE_FEE_URL}" style="color:#3b82f6;">$5/year</a> to keep your filters, resumes, and pipeline safe while you're away.</p>
 
         <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">If your search is on hold for a reason, no worries — we'll be here when you're ready.</p>
       </div>
@@ -3682,8 +3688,116 @@ export function reengagement60dEmail(
           <a href="${base}" class="btn btn-primary">Pick Up Where You Left Off →</a>
         </div>
 
-        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">This is our last check-in. We won't email again unless you come back or update your preferences.</p>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin:12px 0;text-align:center;">
+          <span style="font-size:12px;color:#1e293b;">⏰ Your account will be archived in <strong>30 days</strong> if you don't log in. Keep your data safe for <a href="${STORAGE_FEE_URL}" style="color:#3b82f6;font-weight:600;">$5/year</a>.</span>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">This is our last check-in before the archive countdown begins.</p>
       </div>
     `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from re-engagement emails</a></p>`),
+  };
+}
+
+// ─── v6.77: Archive Warning + Storage Fee Templates ───
+
+const STORAGE_FEE_URL = "https://brilliantjobs.app/dashboard.html#storage-fee";
+
+export function reengagement90dEmail(
+  firstName?: string,
+  missedJobCount?: number,
+  closedJobCount?: number,
+  filterNames?: string[],
+  lastLoginDate?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const missed = missedJobCount ?? 0;
+  const closed = closedJobCount ?? 0;
+  const filters = filterNames || [];
+  const lastLogin = lastLoginDate || "three months ago";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Final notice: Your Brilliant Jobs account will be archived tomorrow`,
+    html: whiteBaseLayout("Your Account Will Be Archived Tomorrow", `
+      <div class="card">
+        <div class="card-title">⚠️ ${name}, this is your final notice.</div>
+        <p class="card-sub">It's been 90 days since you last logged in. Tomorrow, your account will be moved to archive status.</p>
+
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:20px;margin:16px 0;">
+          <div style="font-size:13px;font-weight:700;color:#dc2626;margin-bottom:8px;">What happens when your account is archived:</div>
+          <ul style="margin:0;padding-left:18px;font-size:13px;color:#1e293b;line-height:1.8;">
+            <li>Your filters, pipeline, and resumes become <strong>read-only</strong></li>
+            <li>Job matching and notifications are <strong>paused</strong></li>
+            <li>Your data is preserved for <strong>90 days</strong>, then scheduled for deletion</li>
+          </ul>
+        </div>
+
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:20px;margin:16px 0;">
+          <div style="font-size:13px;font-weight:700;color:#16a34a;margin-bottom:8px;">Two ways to keep your account active:</div>
+          <div style="display:flex;gap:12px;margin-top:12px;">
+            <div style="flex:1;text-align:center;padding:12px;background:white;border-radius:8px;border:1px solid #e2e8f0;">
+              <div style="font-size:20px;font-weight:800;color:#1e293b;">Free</div>
+              <div style="font-size:12px;color:#64748b;margin-top:4px;">Just log in</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:8px;">Resets the 90-day clock</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:12px;background:white;border-radius:8px;border:2px solid #3b82f6;">
+              <div style="font-size:20px;font-weight:800;color:#3b82f6;">$5<span style="font-size:12px;font-weight:400;">/yr</span></div>
+              <div style="font-size:12px;color:#64748b;margin-top:4px;">Storage fee</div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:8px;">Keep data safe while away</div>
+            </div>
+          </div>
+        </div>
+
+        ${missed > 0 ? `<p class="text" style="font-size:13px;">While you were away, <strong>${missed} jobs</strong> matched your filters${closed > 0 ? ` and <strong>${closed}</strong> have already closed` : ""}.</p>` : ""}
+        ${filters.length > 0 ? `<p class="text" style="font-size:13px;">Your filters (<strong>${filters.join(", ")}</strong>) are still active — for now.</p>` : ""}
+
+        <div class="btn-row" style="gap:12px;">
+          <a href="${base}" class="btn btn-primary">Log In Now →</a>
+          <a href="${STORAGE_FEE_URL}" class="btn" style="display:inline-block;padding:12px 24px;background:#f1f5f9;color:#1e293b;border-radius:8px;font-weight:600;text-decoration:none;font-size:13px;">Pay $5/yr Storage Fee</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#dc2626;text-align:center;font-weight:600;margin-top:16px;">Archive happens automatically tomorrow. No action needed to archive — just don't log in.</p>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from re-engagement emails</a></p>`),
+  };
+}
+
+export function archiveConfirmationEmail(
+  firstName?: string,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const base = dashboardUrl || DASHBOARD_URL;
+
+  return {
+    subject: `Your Brilliant Jobs account has been archived`,
+    html: whiteBaseLayout("Account Archived", `
+      <div class="card">
+        <div class="card-title">${name}, your account has been archived.</div>
+        <p class="card-sub">After 91 days of inactivity, your account has been moved to archive status.</p>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;margin:16px 0;">
+          <div style="font-size:13px;font-weight:700;color:#3b82f6;margin-bottom:12px;">What this means:</div>
+          <ul style="margin:0;padding-left:18px;font-size:13px;color:#1e293b;line-height:1.8;">
+            <li>Your data (filters, resumes, pipeline) is <strong>preserved for 90 days</strong></li>
+            <li>Job matching and notifications are <strong>paused</strong></li>
+            <li>Log in anytime to <strong>fully reactivate</strong> your account instantly</li>
+          </ul>
+        </div>
+
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:16px 0;text-align:center;">
+          <div style="font-size:13px;color:#1e293b;"><strong>Not ready to come back yet?</strong></div>
+          <div style="font-size:13px;color:#64748b;margin-top:4px;">Pay <strong>$5/year</strong> to keep your data safe indefinitely — even while archived.</div>
+          <a href="${STORAGE_FEE_URL}" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#3b82f6;color:white;border-radius:8px;font-weight:600;text-decoration:none;font-size:13px;">Pay $5/yr Storage Fee →</a>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">Reactivate My Account →</a>
+        </div>
+
+        <p class="text" style="font-size:12px;color:#94a3b8;text-align:center;">After 90 days in archive without reactivation or storage payment, your data will be permanently deleted.</p>
+      </div>
+    `, ``),
   };
 }
