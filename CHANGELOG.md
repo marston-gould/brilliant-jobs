@@ -1,3 +1,22 @@
+## v6.97 — 2026-03-04
+
+### Overlay Pipeline Session 3: AutoTracker → Unified Pipeline Dual-Write
+
+**Extension (extension/utils/autoTracker.js)**
+- v3.10.0: Dual-write to new `pipeline` table on every autoTracker write
+- `_writeToNewPipeline()`: non-blocking write to `pipeline` table alongside existing `pending_applications` write
+- Dedup by `source_url` using `(user_id, source_url)` unique constraint
+- Stage logic: `submit_detected` → `stage='saved'`; `submitted_confirmed` → advances to `stage='applied'`
+- Activity log append on every write — preserves full tracking history
+- `entry_source='auto_apply'` on all autoTracker writes
+- Zero regression risk: `pending_applications` write path completely unchanged
+
+**Versioning**
+- js/version.js → v6.97
+- js/app.js console log → v6.97
+- dashboard.html cache-bust params → v6.97
+- index.html → v6.97
+
 ## v6.96 — 2026-03-04
 
 ### Overlay Pipeline Session 2: Dashboard Pipeline JS Wiring + localStorage Migration
