@@ -1,6 +1,6 @@
 // supabase/functions/validate-signup/index.ts
 // Deploy: supabase functions deploy validate-signup --no-verify-jwt
-// v6.75 — Added DataForSEO SERP-based LinkedIn profile verification
+// v6.76 — Added competitor employer blocklist + DataForSEO SERP profile verification
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { fetchWithRetry, TIMEOUT_CONFIGS } from '../_shared/resilience.ts'
@@ -122,10 +122,10 @@ serve(async (req) => {
 
     // ─── CHECK 3: Fetch LinkedIn and match name ───
     let linkedinName = ''
+    let linkedinTitle = '' // Full title: "Name - Role at Company | LinkedIn"
     let fetchSuccess = false
 
     try {
-      // A6: LinkedIn validation with timeout + retry via shared resilience module
       const res = await fetchWithRetry(liUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -141,8 +141,8 @@ serve(async (req) => {
         // Try <title> tag: "Jane Smith - Director at Stripe | LinkedIn"
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
         if (titleMatch) {
-          const titleText = titleMatch[1]
-          linkedinName = titleText
+          linkedinTitle = titleMatch[1].trim()
+          linkedinName = linkedinTitle
             .split(/\s+[-\u2013|]\s+/)[0]
             .replace(/\s*\(.*?\)\s*/g, '')
             .trim()
@@ -152,7 +152,8 @@ serve(async (req) => {
         if (!linkedinName) {
           const ogMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
           if (ogMatch) {
-            linkedinName = ogMatch[1].split(/\s+[-\u2013|]\s+/)[0].trim()
+            linkedinTitle = ogMatch[1].trim()
+            linkedinName = linkedinTitle.split(/\s+[-\u2013|]\s+/)[0].trim()
           }
         }
 
@@ -161,6 +162,7 @@ serve(async (req) => {
 
       result.checks.linkedin_fetch = fetchSuccess
       result.checks.linkedin_name = linkedinName || null
+      result.checks.linkedin_title_raw = linkedinTitle || null
 
     } catch (e) {
       result.checks.linkedin_fetch = false
@@ -180,17 +182,48 @@ serve(async (req) => {
     result.checks.linkedin_name_parsed = linkedinName
 
     // ─── CHECK 4: DataForSEO SERP verification ───
-    // Cross-reference: search Google for this person's name on linkedin.com/in
-    // Confirms profile is real, indexed, and URL matches what they gave us
     const dfsSerpResult = await verifyProfileViaSERP(formName, liUrl)
     result.checks.dataforseo = dfsSerpResult
 
+    // ─── CHECK 5: Competitor employer blocklist ───
+    // Extract employer from LinkedIn title and/or SERP title
+    // Title format: "Name - Role at Company | LinkedIn"
+    // SERP title format: "Name - Role | Company ..."
+    const employerSources: string[] = []
+
+    if (linkedinTitle) {
+      const employer = extractEmployerFromTitle(linkedinTitle)
+      if (employer) employerSources.push(employer)
+    }
+
+    if (dfsSerpResult.serp_title) {
+      const serpEmployer = extractEmployerFromTitle(dfsSerpResult.serp_title)
+      if (serpEmployer) employerSources.push(serpEmployer)
+    }
+
+    // Deduplicate employer candidates
+    const uniqueEmployers = [...new Set(employerSources.map(e => e.toLowerCase()))]
+      .map(lower => employerSources.find(e => e.toLowerCase() === lower)!)
+
+    // Load blocklist from database
+    const blocklistResult = await checkCompetitorBlocklist(supabase, uniqueEmployers)
+    result.checks.employer_blocklist = {
+      employers_detected: uniqueEmployers,
+      blocked: blocklistResult.blocked,
+      matched_company: blocklistResult.matched_company,
+      matched_category: blocklistResult.matched_category,
+    }
+
+    // ─── Hard block on competitor employer ───
+    if (blocklistResult.blocked) {
+      result.approved = false
+      result.reason = `Blocked: current/recent employer "${blocklistResult.matched_company}" is on competitor blocklist (${blocklistResult.matched_category})`
+      await updateProfile(supabase, profile_id, false, result)
+      return respond(result)
+    }
+
     // ─── DECISION ───
-    // DataForSEO verification is an additional trust signal, not a hard gate.
-    // If SERP confirms the profile URL, it's strong evidence of legitimacy.
-    // If SERP can't find it, it's a soft negative (new/private profiles won't index).
     const serpConfirmed = dfsSerpResult.verified === true
-    const serpFailed = dfsSerpResult.verified === false && dfsSerpResult.error == null
 
     if (nameMatch && !timingSuspicious) {
       result.approved = true
@@ -207,8 +240,6 @@ serve(async (req) => {
       await updateProfile(supabase, profile_id, true, result)
 
     } else if (serpConfirmed && !timingSuspicious && !fetchSuccess) {
-      // LinkedIn direct fetch failed but SERP confirms the profile exists
-      // and URL matches — approve on SERP evidence alone
       result.approved = true
       result.reason = 'Auto-approved: SERP-verified profile (LinkedIn fetch failed)'
       await updateProfile(supabase, profile_id, true, result)
@@ -218,6 +249,7 @@ serve(async (req) => {
       await updateProfile(supabase, profile_id, false, result)
 
     } else if (!nameMatch && fetchSuccess) {
+      const serpFailed = dfsSerpResult.verified === false && dfsSerpResult.error == null
       result.reason = serpFailed
         ? 'Name mismatch + profile not found in Google index'
         : 'Name mismatch between form and LinkedIn profile'
@@ -244,6 +276,163 @@ serve(async (req) => {
 })
 
 
+// ─── Employer Extraction ───
+
+/**
+ * Extract employer name from a LinkedIn-style title string.
+ * Handles multiple formats:
+ *   "Jane Smith - Director at Stripe | LinkedIn"
+ *   "Jane Smith - Director | Stripe | LinkedIn"
+ *   "Jane Smith - Stripe | LinkedIn"
+ *   "Jane Smith - Sr. Salesforce Administrator | Zillow Group ..."
+ */
+function extractEmployerFromTitle(title: string): string | null {
+  // Strip trailing "| LinkedIn", "- LinkedIn", "..."
+  let cleaned = title
+    .replace(/\s*[|\u2013-]\s*LinkedIn\s*$/i, '')
+    .replace(/\s*\.{3,}\s*$/, '')
+    .trim()
+
+  // Pattern 1: "Name - Role at Company"
+  const atMatch = cleaned.match(/\s+at\s+(.+)$/i)
+  if (atMatch) {
+    return atMatch[1].trim()
+  }
+
+  // Pattern 2: "Name - Role | Company" or "Name - Company"
+  // After stripping LinkedIn, split on " - " then on " | "
+  const dashParts = cleaned.split(/\s+[-\u2013]\s+/)
+  if (dashParts.length >= 2) {
+    // Everything after the name (first segment)
+    const afterName = dashParts.slice(1).join(' - ')
+
+    // Check for pipe separator: "Role | Company"
+    const pipeParts = afterName.split(/\s*\|\s*/)
+    if (pipeParts.length >= 2) {
+      // Last pipe segment is usually the company
+      return pipeParts[pipeParts.length - 1].trim()
+    }
+
+    // If "at" is in the segment: "Director at Stripe"
+    const atInner = afterName.match(/\s+at\s+(.+)$/i)
+    if (atInner) {
+      return atInner[1].trim()
+    }
+
+    // Single segment after name with no role indicators — might be company name
+    // Only use if it looks like a company (no common role words)
+    const roleWords = /^(ceo|cto|cfo|coo|vp|director|manager|engineer|analyst|consultant|specialist|coordinator|lead|head|chief|senior|sr|jr|junior|intern|founder|co-founder|partner|associate|principal)/i
+    if (!roleWords.test(afterName.trim())) {
+      return afterName.trim()
+    }
+  }
+
+  return null
+}
+
+
+// ─── Competitor Blocklist Check ───
+
+interface BlocklistResult {
+  blocked: boolean
+  matched_company: string | null
+  matched_category: string | null
+}
+
+async function checkCompetitorBlocklist(
+  supabase: any,
+  employers: string[]
+): Promise<BlocklistResult> {
+  if (employers.length === 0) {
+    return { blocked: false, matched_company: null, matched_category: null }
+  }
+
+  try {
+    // Fetch active blocklist entries
+    const { data: blocklist, error } = await supabase
+      .from('competitor_blocklist')
+      .select('company_name, aliases, category')
+      .eq('active', true)
+
+    if (error || !blocklist || blocklist.length === 0) {
+      return { blocked: false, matched_company: null, matched_category: null }
+    }
+
+    // Check each detected employer against the blocklist
+    for (const employer of employers) {
+      const employerLower = employer.toLowerCase().trim()
+
+      for (const entry of blocklist) {
+        // Match against company_name
+        if (fuzzyCompanyMatch(employerLower, entry.company_name.toLowerCase())) {
+          return {
+            blocked: true,
+            matched_company: entry.company_name,
+            matched_category: entry.category,
+          }
+        }
+
+        // Match against aliases
+        if (entry.aliases && Array.isArray(entry.aliases)) {
+          for (const alias of entry.aliases) {
+            if (fuzzyCompanyMatch(employerLower, alias.toLowerCase())) {
+              return {
+                blocked: true,
+                matched_company: entry.company_name,
+                matched_category: entry.category,
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return { blocked: false, matched_company: null, matched_category: null }
+
+  } catch (e) {
+    console.error('Blocklist check error:', e)
+    // Fail open — don't block signups if blocklist check fails
+    return { blocked: false, matched_company: null, matched_category: null }
+  }
+}
+
+/**
+ * Fuzzy company name matching.
+ * Handles variations like "Greenhouse Software" matching "Greenhouse",
+ * "Career Builder" matching "CareerBuilder", etc.
+ */
+function fuzzyCompanyMatch(detected: string, blocked: string): boolean {
+  // Exact match
+  if (detected === blocked) return true
+
+  // Normalize: strip common suffixes, punctuation, spacing
+  const normalize = (s: string) => s
+    .replace(/[,.'"\-]/g, '')
+    .replace(/\s+(inc|llc|ltd|corp|corporation|co|company|software|technologies|group|labs|hq)\.?\s*$/i, '')
+    .replace(/\s+/g, '')
+    .toLowerCase()
+
+  const normDetected = normalize(detected)
+  const normBlocked = normalize(blocked)
+
+  if (normDetected === normBlocked) return true
+
+  // Substring containment for multi-word companies
+  // e.g. "Greenhouse Software" contains "greenhouse"
+  if (normDetected.includes(normBlocked) || normBlocked.includes(normDetected)) return true
+
+  // Word-level: all words of the shorter exist in the longer
+  const wordsDetected = detected.toLowerCase().split(/\s+/)
+  const wordsBlocked = blocked.toLowerCase().split(/\s+/)
+  const shorter = wordsDetected.length <= wordsBlocked.length ? wordsDetected : wordsBlocked
+  const longer = wordsDetected.length <= wordsBlocked.length ? wordsBlocked : wordsDetected
+  const allFound = shorter.every(w => longer.some(lw => lw.includes(w) || w.includes(lw)))
+  if (allFound && shorter.length >= 1) return true
+
+  return false
+}
+
+
 // ─── DataForSEO SERP Profile Verification ───
 
 interface SERPVerificationResult {
@@ -263,7 +452,6 @@ async function verifyProfileViaSERP(
   const login = Deno.env.get('DATAFORSEO_LOGIN')
   const apiKey = Deno.env.get('DATAFORSEO_API_KEY')
 
-  // Graceful skip if creds not configured
   if (!login || !apiKey) {
     return {
       verified: false,
@@ -291,8 +479,6 @@ async function verifyProfileViaSERP(
 
   try {
     const authHeader = 'Basic ' + btoa(`${login}:${apiKey}`)
-
-    // Search: "Full Name" site:linkedin.com/in
     const keyword = `"${name}" site:linkedin.com/in`
 
     const res = await fetchWithRetry(
@@ -305,7 +491,7 @@ async function verifyProfileViaSERP(
         },
         body: JSON.stringify([{
           keyword,
-          location_code: 2840,  // US
+          location_code: 2840,
           language_code: 'en',
           depth: 10,
         }]),
@@ -331,10 +517,8 @@ async function verifyProfileViaSERP(
     const items = taskResult?.items || []
     const organicItems = items.filter((i: any) => i.type === 'organic')
 
-    // Normalize the signup LinkedIn URL for comparison
     const normalizedSignupUrl = normalizeLinkedInUrl(linkedinUrl)
 
-    // Check if any organic result matches the provided LinkedIn URL
     let urlMatch = false
     let matchedUrl: string | null = null
     let matchedTitle: string | null = null
@@ -349,7 +533,7 @@ async function verifyProfileViaSERP(
       }
     }
 
-    // If no exact URL match, check if any result contains the slug
+    // Fallback: slug match
     if (!urlMatch && organicItems.length > 0) {
       const slug = extractLinkedInSlug(linkedinUrl)
       if (slug) {
@@ -389,11 +573,6 @@ async function verifyProfileViaSERP(
   }
 }
 
-/**
- * Normalize a LinkedIn /in/ URL to a canonical form for comparison.
- * Strips protocol, www, trailing slash, query params, fragments.
- * Returns: "linkedin.com/in/slug"
- */
 function normalizeLinkedInUrl(url: string): string {
   return url
     .toLowerCase()
@@ -404,10 +583,6 @@ function normalizeLinkedInUrl(url: string): string {
     .replace(/\/+$/, '')
 }
 
-/**
- * Extract the slug from a LinkedIn /in/ URL.
- * e.g., "https://www.linkedin.com/in/marston" → "marston"
- */
 function extractLinkedInSlug(url: string): string | null {
   const match = url.match(/linkedin\.com\/in\/([a-zA-Z0-9\-_%]+)/i)
   return match ? match[1].toLowerCase() : null
