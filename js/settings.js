@@ -419,3 +419,92 @@ if (document.readyState === 'loading') {
 } else {
   setTimeout(initPassiveMode, 600);
 }
+
+// ---- Passive Frequency Presets (v6.79 Phase 16 Session 2) ----
+var PASSIVE_PRESETS = {
+  slam_dunk: {
+    label: 'Slam-dunk only',
+    description: '1–2 alerts/month · 90%+ match required',
+    score_floor: 90,
+    frequency_preset: 'slam_dunk'
+  },
+  high_bar: {
+    label: 'High bar',
+    description: '1–2 alerts/week · 85%+ match required',
+    score_floor: 85,
+    frequency_preset: 'high_bar'
+  },
+  curated_daily: {
+    label: 'Curated daily',
+    description: 'Daily digest · 80%+ match required',
+    score_floor: 80,
+    frequency_preset: 'curated_daily'
+  }
+};
+
+function syncPassivePresetUI() {
+  var preset = (_passiveConfig.frequency_preset) || 'high_bar';
+  var cards = document.querySelectorAll('.passive-preset-card');
+  cards.forEach(function(card) {
+    var p = card.getAttribute('data-preset');
+    if (p === preset) {
+      card.classList.add('selected');
+      card.style.borderColor = 'var(--accent)';
+      card.style.background = 'var(--bg-hover)';
+    } else {
+      card.classList.remove('selected');
+      card.style.borderColor = 'var(--border)';
+      card.style.background = 'var(--bg-card)';
+    }
+  });
+  // Update score floor to match preset when passive UI loads
+  var presetDef = PASSIVE_PRESETS[preset];
+  if (presetDef) {
+    _passiveConfig.match_score_floor = presetDef.score_floor;
+    _passiveConfig.score_floor = presetDef.score_floor;
+    var scoreSlider = document.getElementById('passive-score-floor');
+    var scoreDisplay = document.getElementById('passive-score-display');
+    if (scoreSlider) scoreSlider.value = presetDef.score_floor;
+    if (scoreDisplay) scoreDisplay.textContent = presetDef.score_floor + '%';
+  }
+}
+
+function selectPassivePreset(presetKey) {
+  var presetDef = PASSIVE_PRESETS[presetKey];
+  if (!presetDef) return;
+  _passiveConfig.frequency_preset = presetDef.frequency_preset;
+  _passiveConfig.match_score_floor = presetDef.score_floor;
+  _passiveConfig.score_floor = presetDef.score_floor;
+  syncPassivePresetUI();
+  debounceSavePassiveConfig();
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('passive_frequency_changed', { preset: presetKey, score_floor: presetDef.score_floor });
+  }
+}
+
+function initPassivePresets() {
+  var cards = document.querySelectorAll('.passive-preset-card');
+  cards.forEach(function(card) {
+    card.addEventListener('click', function() {
+      var preset = this.getAttribute('data-preset');
+      if (preset) selectPassivePreset(preset);
+    });
+  });
+  // Extend syncPassiveUI to also sync presets
+  var origSyncPassiveUI = syncPassiveUI;
+  syncPassiveUI = function() {
+    origSyncPassiveUI();
+    syncPassivePresetUI();
+  };
+  // Sync on init if passive already loaded
+  syncPassivePresetUI();
+}
+
+// Wire initPassivePresets after passive mode init
+(function() {
+  var origInitPassiveMode = initPassiveMode;
+  initPassiveMode = function() {
+    origInitPassiveMode();
+    setTimeout(initPassivePresets, 100);
+  };
+})();

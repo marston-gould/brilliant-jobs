@@ -1,3 +1,12 @@
+## v6.79 Phase 16 Session 2 — Passive Alert Frequency Control (2026-03-04)
+- Feat: Three passive frequency preset cards in Settings UI (Slam-dunk only, High bar, Curated daily)
+- Feat: Each preset writes to profiles.passive_config.frequency_preset + score_floor (90/85/80%)
+- Feat: send-notification Edge Function passive gate checks passive_config.score_floor before send
+- Feat: Frequency cap tracking: passive_notifications_sent_today/week/month columns in profiles
+- Feat: AI JD quality gate: if ai_generated AND ai_jd_rate < 0.5, auto-skip even if match clears threshold
+- Feat: PostHog: passive_frequency_changed event with preset name and score_floor
+- Chore: Version bump v6.78 → v6.79
+
 ## v6.78 Phase 16 Session 1 — Passive Mode Toggle + Threshold Config (2026-03-03)
 - Feat: profiles.passive_mode (boolean, default false) + profiles.passive_config (jsonb) columns added
 - Feat: passive_config schema: match_score_floor, min_salary, required_remote, required_level, target_companies, active_filters, frequency_preset, score_floor

@@ -1,4 +1,4 @@
-// send-notification Edge Function — v7 (Phase 69 Session 4: Web Push channel)
+// send-notification Edge Function — v8 (Phase 16 Session 2: Passive gate) (Phase 69 Session 4: Web Push channel)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → override cascade → frequency cap → quiet hours
 // Override cascade: notification_filter_overrides → notification_channels → notification_preferences → default
@@ -811,6 +811,86 @@ async function logNotification(
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// PASSIVE MODE GATE (Phase 16 Session 2)
+// Checks if a new_jobs notification should be suppressed by passive mode rules.
+// Returns { skip: true, reason: string } to suppress, { skip: false } to allow.
+// ═══════════════════════════════════════════════════════════
+async function checkPassiveGate(
+  userId: string,
+  notificationType: string,
+  payload: Record<string, unknown>
+): Promise<{ skip: boolean; reason?: string }> {
+  // Only gate job notification types
+  const PASSIVE_GATED_TYPES = new Set([
+    "new_jobs_daily", "new_jobs_realtime", "apply_alert"
+  ]);
+  if (!PASSIVE_GATED_TYPES.has(notificationType)) {
+    return { skip: false };
+  }
+
+  try {
+    // Load user passive config
+    const { data: profile } = await sb
+      .from("profiles")
+      .select("passive_mode, passive_config, passive_notifications_sent_today, passive_notifications_sent_week, passive_notifications_sent_month")
+      .eq("id", userId)
+      .single();
+
+    if (!profile?.passive_mode) {
+      return { skip: false }; // Not in passive mode, allow all
+    }
+
+    const cfg = profile.passive_config || {};
+    const scoreFloor = cfg.score_floor || cfg.match_score_floor || 85;
+    const preset = cfg.frequency_preset || "high_bar";
+
+    // Check match score from payload
+    const matchScore = typeof payload?.match_score === "number" ? payload.match_score : 100;
+    if (matchScore < scoreFloor) {
+      console.log(`[passive-gate] Skipping: match_score ${matchScore} < floor ${scoreFloor} (preset: ${preset})`);
+      return { skip: true, reason: `match_score_below_floor:${scoreFloor}` };
+    }
+
+    // AI JD quality gate: skip if ai_generated AND ai_jd_rate < 0.5
+    if (payload?.ai_generated === true || payload?.is_ai_generated === true) {
+      const aiJdRate = typeof payload?.ai_jd_rate === "number" ? payload.ai_jd_rate : 1.0;
+      if (aiJdRate < 0.5) {
+        console.log(`[passive-gate] Skipping: AI-generated JD with quality ${aiJdRate} < 0.5`);
+        return { skip: true, reason: `ai_jd_quality_gate:${aiJdRate}` };
+      }
+    }
+
+    // Frequency cap enforcement by preset
+    const sentToday = profile.passive_notifications_sent_today || 0;
+    const sentWeek = profile.passive_notifications_sent_week || 0;
+    const sentMonth = profile.passive_notifications_sent_month || 0;
+
+    if (preset === "slam_dunk" && sentMonth >= 2) {
+      return { skip: true, reason: "frequency_cap:slam_dunk:monthly_2" };
+    }
+    if (preset === "high_bar" && sentWeek >= 2) {
+      return { skip: true, reason: "frequency_cap:high_bar:weekly_2" };
+    }
+    // curated_daily: no cap beyond daily — handled by normal daily digest flow
+
+    // Track send — increment counters
+    const now = new Date().toISOString();
+    await sb.from("profiles").update({
+      passive_notifications_sent_today: sentToday + 1,
+      passive_notifications_sent_week: sentWeek + 1,
+      passive_notifications_sent_month: sentMonth + 1,
+    }).eq("id", userId);
+
+    return { skip: false };
+  } catch (e) {
+    // Fail open — do not suppress if gate errors
+    console.warn("[passive-gate] Error in passive gate check, failing open:", e);
+    return { skip: false };
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
 // MAIN HANDLER
 // ═══════════════════════════════════════════════════════════
@@ -900,6 +980,22 @@ serve(async (req: Request) => {
         email_sent: false, sms_sent: false, held_for_quiet_hours: false,
         classification, decision: "blocked",
         decision_reason: `suppressed: ${activeSuppression.type}`
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+
+    // 3a. Passive mode gate (Phase 16 Session 2)
+    const passiveCheck = await checkPassiveGate(user_id, notification_type, body.payload || {});
+    if (passiveCheck.skip) {
+      console.log(`[send-notification] Passive gate blocked ${notification_type} for ${user_id}: ${passiveCheck.reason}`);
+      await logNotification(
+        user_id, notification_type, "email",
+        "blocked", body, classification,
+        "blocked", `passive_gate:${passiveCheck.reason}`
+      );
+      return new Response(JSON.stringify({
+        email_sent: false, sms_sent: false, push_sent: false,
+        held_for_quiet_hours: false, classification,
+        decision: "blocked", decision_reason: passiveCheck.reason
       }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
 
