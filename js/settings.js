@@ -665,3 +665,135 @@ function initPassiveSnooze() {
     });
   }
 })();
+
+
+// ═══════════════════════════════════════════════════════════
+// RESUME-FIRST FILTER BOOTSTRAP (Phase 16 Session 5 — v6.82)
+// On passive mode ON with no active filters, auto-bootstrap
+// 1-3 job filters from resume profile via extract-resume-profile EF.
+// ═══════════════════════════════════════════════════════════
+
+async function bootstrapFiltersFromResume() {
+  try {
+    // Guard: only run when passive mode is being turned ON
+    if (!_passiveMode) return;
+
+    // Guard: skip if user already has 1+ saved filters
+    var existingFilters = safeReadLS('bj_saved_filters', []);
+    if (existingFilters.length > 0) return;
+
+    // Guard: need a resume text to work from
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { data: resumeRows, error: rtErr } = await sb
+      .from('resume_texts')
+      .select('extracted_text, source_filename')
+      .eq('user_id', currentUser.id)
+      .order('extracted_at', { ascending: false })
+      .limit(1);
+    if (rtErr || !resumeRows || resumeRows.length === 0) return;
+
+    var resumeText = resumeRows[0].extracted_text;
+    if (!resumeText || resumeText.length < 50) return;
+
+    // Call extract-resume-profile EF
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+
+    var resp = await fetch(
+      'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/extract-resume-profile',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          'apikey': typeof SUPABASE_KEY !== 'undefined' ? SUPABASE_KEY : ''
+        },
+        body: JSON.stringify({ resume_text: resumeText })
+      }
+    );
+    if (!resp.ok) { console.warn('[BJ] extract-resume-profile failed:', resp.status); return; }
+    var result = await resp.json();
+    var profile = result.profile;
+    if (!profile || !profile.titles || profile.titles.length === 0) return;
+
+    // Build up to 3 filters from top titles
+    var newFilters = [];
+    var titles = profile.titles.slice(0, 3);
+    titles.forEach(function(title, idx) {
+      // Build whatPills from title keywords (split and deduplicate)
+      var titleWords = title.split(/\s+/).filter(function(w) {
+        return w.length > 2 && !/^(and|the|of|in|at|for|to|a|an)$/i.test(w);
+      });
+      var filter = {
+        name: title,
+        whatPills: titleWords,
+        wherePills: [],
+        whenPills: [],
+        whoPills: [],
+        payPills: [],
+        whatNotPills: [],
+        whereNotPills: [],
+        whoNotPills: [],
+        includeRemote: !!profile.remote_preference && profile.remote_preference === 'remote',
+        includeNoSalary: true,
+        _bootstrapped: true,
+        _bootstrappedAt: new Date().toISOString()
+      };
+      newFilters.push(filter);
+    });
+
+    if (newFilters.length === 0) return;
+
+    // Persist to localStorage
+    saveUserData('bj_saved_filters', JSON.stringify(newFilters));
+    savedFilters = newFilters;
+
+    // Reflect in in-memory state if state.js setSavedFilters exists
+    if (typeof setSavedFilters === 'function') {
+      setSavedFilters(newFilters);
+    }
+
+    // Show toast
+    var filterNames = newFilters.map(function(f) { return f.name; }).join(', ');
+    if (typeof showToast === 'function') {
+      showToast(
+        'We created ' + newFilters.length + ' filter' + (newFilters.length > 1 ? 's' : '') +
+        ' based on your resume to get started.',
+        { type: 'info' }
+      );
+    }
+
+    // PostHog
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('passive_resume_bootstrap', {
+        filters_created: newFilters.length,
+        titles: titles,
+        seniority: profile.seniority || null,
+        remote_preference: profile.remote_preference || null
+      });
+    }
+
+    console.log('[BJ] Passive bootstrap: created ' + newFilters.length + ' filter(s) from resume —', titles.join(', '));
+  } catch (e) {
+    console.warn('[BJ] bootstrapFiltersFromResume exception:', e);
+  }
+}
+
+// Hook: call bootstrap whenever passive mode is toggled ON
+(function() {
+  var origInitPassiveMode3 = initPassiveMode;
+  initPassiveMode = function() {
+    origInitPassiveMode3();
+    // Extend the main toggle listener to trigger bootstrap on ON
+    var toggle = document.getElementById('passive-mode-toggle');
+    if (toggle) {
+      toggle.addEventListener('change', function() {
+        if (this.checked) {
+          // Small delay so savePassiveMode() completes first
+          setTimeout(bootstrapFiltersFromResume, 300);
+        }
+      });
+    }
+  };
+})();
