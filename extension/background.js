@@ -6,6 +6,7 @@
 // v2.17.0: Extension heartbeat for disconnect detection (v6.08)
 // v2.18.0: Overlay Pipeline S4 — toolbar message handlers (v6.98)
 // v2.19.0: Overlay Pipeline S5 — pipeline-write Edge Function integration (v6.99)
+// v2.20.0: Overlay Pipeline S6 — match-score-overlay EF integration (v7.00)
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
@@ -1313,6 +1314,43 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       } catch (e) {
         console.warn('[BJ Toolbar] Save error:', e.message);
         sendResponse({ success: false, error: e.message });
+      }
+    })();
+    return true;
+  }
+
+  // bj:toolbar:matchScore — fetch/compute match score for toolbar badge (S6)
+  // Calls match-score-overlay Edge Function. Returns { score, label, source }.
+  if (msg.type === 'bj:toolbar:matchScore') {
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) {
+          sendResponse({ ok: false, score: null, label: null });
+          return;
+        }
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        const resp = await fetch(`${SB_URL}/functions/v1/match-score-overlay`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ source_url: msg.payload?.source_url }),
+        });
+        if (resp.ok) {
+          const result = await resp.json();
+          console.log('[BJ Toolbar] matchScore:', result.score, result.label, '(' + result.source + ')');
+          sendResponse({ ok: true, score: result.score, label: result.label, source: result.source });
+        } else {
+          const err = await resp.text();
+          console.warn('[BJ Toolbar] matchScore failed:', resp.status, err);
+          sendResponse({ ok: false, score: null, label: null });
+        }
+      } catch (e) {
+        console.warn('[BJ Toolbar] matchScore error:', e.message);
+        sendResponse({ ok: false, score: null, label: null });
       }
     })();
     return true;

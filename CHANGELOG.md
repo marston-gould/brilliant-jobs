@@ -1,3 +1,11 @@
+## v7.00 — 2026-03-04
+
+### Overlay Pipeline S6: Match Score Overlay Badge
+
+- **NEW** `supabase/functions/match-score-overlay/index.ts` — Server-side Edge Function that computes 0-100 match score between user's default resume and a job's description. Checks pipeline cache first; falls back to ats_jobs lookup + Claude Haiku scoring. Persists score to pipeline.match_score + pipeline.match_label.
+- **extension/background.js v2.20.0** — `bj:toolbar:matchScore` handler added. Calls match-score-overlay EF with source_url, returns { score, label, source }.
+- **extension/toolbar-overlay.js v1.1.0** — Match score badge injected into toolbar after build. Badge loads async and fades in on response. Color-coded: green (strong ≥75), amber (good 50–74), orange (fair 25–49), red (low <25). Hidden silently if no resume or no JD found.
+
 ## v6.99 — 2026-03-04
 
 ### Overlay Pipeline S5: pipeline-write Edge Function

@@ -1,5 +1,5 @@
-// [BJ] Dashboard v6.94 loaded
-console.log('[BJ] Dashboard v6.99 loaded');
+// [BJ] Dashboard v7.00 loaded
+console.log('[BJ] Dashboard v7.00 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
