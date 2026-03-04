@@ -1,3 +1,11 @@
+## v6.74 Chat Mode Session 12: CI/CD Build Pipeline Automation (2026-03-03)
+- Feat: CI/CD CSS rebuild — deploy.yml auto-rebuilds styles.css on src/input.css or tailwind.config.js changes
+- Feat: CI/CD JS bundle rebuild — deploy.yml auto-rebuilds dist/dashboard.min.js on js/ or build.js changes
+- Feat: Both rebuild jobs auto-commit rebuilt assets back to main branch
+- Feat: Chat Mode card added to roadmap.html (Search Intelligence / UX Innovation)
+- Chore: Version bumped v6.73 → v6.74 across all surfaces per VERSION_METHODOLOGY
+- Scope: deploy.yml enhanced + 13 HTML files + version.js + CHANGELOG + roadmap — build pipeline hardening
+
 ## v6.73 Chat Mode Session 11: Post-Launch Optimization (2026-03-03)
 - Feat: Cache buster automation script (scripts/bump-version.sh) — auto-updates ALL ?v= params across all HTML files
 - Feat: Enhanced pre-commit hook (v2) — global cache buster scan prevents Session 7/9/10-type drift
