@@ -3801,3 +3801,64 @@ export function archiveConfirmationEmail(
     `, ``),
   };
 }
+
+
+
+// ---- Passive High-Bar Alert ----
+export function passiveHighBarAlertEmail(
+  firstName: string | undefined,
+  jobTitle: string,
+  companyName: string,
+  matchScore: number,
+  salaryDisplay: string | undefined,
+  ghostScore: number | undefined,
+  dashboardUrl?: string
+): { subject: string; html: string } {
+  const name = firstName || "there";
+  const base = dashboardUrl || DASHBOARD_URL;
+  const scoreColor = matchScore >= 90 ? "#22c55e" : matchScore >= 80 ? "#3b82f6" : "#f59e0b";
+  const ghostDisplay = typeof ghostScore === "number"
+    ? `${Math.round(ghostScore * 100)}%`
+    : "—";
+
+  return {
+    subject: `This one is worth your time.`,
+    html: baseLayout("A Job Worth Your Time", `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">${jobTitle}</div>
+            <div style="font-size:14px;color:#64748b;">${companyName}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:28px;font-weight:800;color:${scoreColor};line-height:1;">${matchScore}%</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;">match</div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <div style="margin:16px 0;">
+          ${salaryDisplay ? `
+          <div class="detail-row">
+            <span class="detail-label">Salary</span>
+            <span class="detail-value salary">${salaryDisplay}</span>
+          </div>` : ""}
+          <div class="detail-row">
+            <span class="detail-label">Company response rate</span>
+            <span class="detail-value">${ghostDisplay}</span>
+          </div>
+        </div>
+
+        <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:10px;padding:14px 16px;margin:16px 0;">
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">Why you're seeing this in Passive Mode</div>
+          <div style="font-size:13px;color:#f0f1f3;line-height:1.5;">This job cleared every threshold you set — match score, salary floor, and quality filters. You told us to only interrupt you for the real ones.</div>
+        </div>
+
+        <div class="btn-row">
+          <a href="${base}" class="btn btn-primary">View Job →</a>
+        </div>
+      </div>
+    `, `<p><a href="{{unsubscribe_url}}" style="color:#94a3b8;font-size:11px;">Unsubscribe from passive job alerts</a></p>`)
+  };
+}
