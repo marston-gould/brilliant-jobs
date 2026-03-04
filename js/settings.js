@@ -508,3 +508,160 @@ function initPassivePresets() {
     setTimeout(initPassivePresets, 100);
   };
 })();
+
+// ═══════════════════════════════════════════════════════════
+// PASSIVE SNOOZE CONTROLS (Phase 16 Session 3 — v6.80)
+// Snooze & Conditional Wake for passive mode
+// ═══════════════════════════════════════════════════════════
+
+var SNOOZE_OPTIONS = [
+  { value: '1w',  label: '1 week',      days: 7   },
+  { value: '2w',  label: '2 weeks',     days: 14  },
+  { value: '1m',  label: '1 month',     days: 30  },
+  { value: 'indef', label: 'Indefinitely', days: 36500 }
+];
+
+function getSnoozeUntilDate(optionValue) {
+  var opt = SNOOZE_OPTIONS.find(function(o) { return o.value === optionValue; });
+  if (!opt) return null;
+  var d = new Date();
+  d.setDate(d.getDate() + opt.days);
+  return d.toISOString();
+}
+
+function formatSnoozeDate(isoString) {
+  if (!isoString) return '';
+  var d = new Date(isoString);
+  // Check for indefinite (far future)
+  if (d.getFullYear() > new Date().getFullYear() + 50) return 'indefinitely';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function isCurrentlySnoozed() {
+  if (!_passiveConfig) return false;
+  var snoozeUntil = _passiveConfig.snoozed_until;
+  if (!snoozeUntil) return false;
+  return new Date(snoozeUntil) > new Date();
+}
+
+function getSnoozedUntilValue() {
+  if (!_passiveConfig) return null;
+  return _passiveConfig.snoozed_until || null;
+}
+
+function syncSnoozeUI() {
+  var badge = document.getElementById('passive-snooze-badge');
+  var resumeBtn = document.getElementById('passive-snooze-resume-btn');
+  var snoozePanel = document.getElementById('passive-snooze-panel');
+
+  if (!badge) return;
+
+  var snoozed = isCurrentlySnoozed();
+  var snoozeUntil = getSnoozedUntilValue();
+
+  if (snoozed && snoozeUntil) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = 'Paused until ' + formatSnoozeDate(snoozeUntil);
+    if (resumeBtn) resumeBtn.style.display = 'inline-block';
+    if (snoozePanel) snoozePanel.style.display = 'none';
+  } else {
+    badge.style.display = 'none';
+    if (resumeBtn) resumeBtn.style.display = 'none';
+    // Don't show snooze panel — only shown when user clicks snooze button
+  }
+}
+
+function activateSnooze(durationValue) {
+  if (!_passiveConfig) return;
+  var until = getSnoozeUntilDate(durationValue);
+  if (!until) return;
+
+  _passiveConfig.snoozed_until = until;
+  syncSnoozeUI();
+  debounceSavePassiveConfig();
+
+  var opt = SNOOZE_OPTIONS.find(function(o) { return o.value === durationValue; });
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('passive_snoozed', {
+      duration: durationValue,
+      expires_at: until
+    });
+  }
+  // Hide snooze panel after activating
+  var snoozePanel = document.getElementById('passive-snooze-panel');
+  if (snoozePanel) snoozePanel.style.display = 'none';
+}
+
+function clearSnooze() {
+  if (!_passiveConfig) return;
+  delete _passiveConfig.snoozed_until;
+  syncSnoozeUI();
+  debounceSavePassiveConfig();
+
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('passive_woken_manually');
+  }
+}
+
+function conditionalWakeCheck() {
+  // If passive mode is on AND snoozed AND user activates a filter → auto-wake
+  if (!_passiveConfig || !isCurrentlySnoozed()) return;
+  clearSnooze();
+  // Show a brief toast if possible
+  if (typeof showToast === 'function') {
+    showToast('Passive mode resumed — you activated a filter.', 'info');
+  }
+}
+
+function initPassiveSnooze() {
+  var snoozeToggleBtn = document.getElementById('passive-snooze-btn');
+  var snoozePanel = document.getElementById('passive-snooze-panel');
+  var resumeBtn = document.getElementById('passive-snooze-resume-btn');
+
+  if (snoozeToggleBtn && snoozePanel) {
+    snoozeToggleBtn.addEventListener('click', function() {
+      var isVisible = snoozePanel.style.display !== 'none';
+      snoozePanel.style.display = isVisible ? 'none' : 'block';
+    });
+  }
+
+  // Wire duration selector buttons
+  var durationBtns = document.querySelectorAll('.passive-snooze-duration-btn');
+  durationBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var dur = this.getAttribute('data-duration');
+      if (dur) activateSnooze(dur);
+    });
+  });
+
+  // Resume/clear snooze button
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', function() {
+      clearSnooze();
+    });
+  }
+
+  syncSnoozeUI();
+}
+
+// Extend initPassiveMode to also init snooze
+(function() {
+  var origInitPassiveMode2 = initPassiveMode;
+  initPassiveMode = function() {
+    origInitPassiveMode2();
+    setTimeout(initPassiveSnooze, 150);
+  };
+})();
+
+// Conditional wake: hook into filter activation
+(function() {
+  if (typeof window._conditionalWakeHooked === 'undefined') {
+    window._conditionalWakeHooked = true;
+    // Watch for filter activation events dispatched from filters.js
+    document.addEventListener('bj:filter-activated', function() {
+      if (_passiveConfig && _passiveConfig.passive_mode) {
+        conditionalWakeCheck();
+      }
+    });
+  }
+})();
