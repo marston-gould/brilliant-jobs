@@ -1,9 +1,10 @@
-// re-engagement Edge Function — v1 (Session 15, v6.19)
+// re-engagement Edge Function — v2 (v6.77, archive status feature)
 // Cron-triggered daily at 11:00 AM ET (16:00 UTC).
-// Checks profiles.last_sign_in_at for inactive users at three thresholds:
-//   14 days → reengagement_14d (gentle check-in)
-//   30 days → reengagement_30d (urgency + FOMO)
-//   60 days → reengagement_60d (final check-in, last email)
+// Checks profiles.last_sign_in_at for inactive users at four thresholds:
+//   14 days → reengagement_14d (gentle check-in + $5/yr storage mention)
+//   30 days → reengagement_30d (urgency + FOMO + $5/yr storage mention)
+//   60 days → reengagement_60d (final check-in + archive countdown warning)
+//   90 days → reengagement_90d (FINAL NOTICE — account archives tomorrow)
 // Sends via send-notification pipeline (marketing classification).
 // Dedup: checks notification_log for recent sends within each tier window.
 // Respects: admin config, user opt-in (marketing), frequency caps, quiet hours.
@@ -15,6 +16,7 @@ import {
   reengagement14dEmail,
   reengagement30dEmail,
   reengagement60dEmail,
+  reengagement90dEmail,
 } from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -30,6 +32,7 @@ const TIERS = [
   { name: "reengagement_14d", daysMin: 13, daysMax: 16, dedupDays: 14, buildEmail: reengagement14dEmail },
   { name: "reengagement_30d", daysMin: 28, daysMax: 33, dedupDays: 30, buildEmail: reengagement30dEmail },
   { name: "reengagement_60d", daysMin: 58, daysMax: 65, dedupDays: 60, buildEmail: reengagement60dEmail },
+  { name: "reengagement_90d", daysMin: 89, daysMax: 91, dedupDays: 30, buildEmail: reengagement90dEmail },
 ] as const;
 
 interface UserRow {
@@ -62,7 +65,7 @@ serve(async (req: Request) => {
     });
   }
 
-  const results = { sent_14d: 0, sent_30d: 0, sent_60d: 0, skipped_dedup: 0, skipped_nofilter: 0, errors: 0 };
+  const results = { sent_14d: 0, sent_30d: 0, sent_60d: 0, sent_90d: 0, skipped_dedup: 0, skipped_nofilter: 0, errors: 0 };
 
   try {
     // ─────────────────────────────────────────────────────────────
@@ -217,7 +220,7 @@ serve(async (req: Request) => {
               lastLoginFormatted,
               DASHBOARD_URL
             );
-          } else {
+          } else if (tier.name === "reengagement_60d") {
             // 60d — get new companies count
             const { count: newCompaniesCount } = await sb
               .from("ats_companies")
@@ -230,6 +233,18 @@ serve(async (req: Request) => {
               closedCount ?? 0,
               newCompaniesCount ?? 0,
               undefined, // marketTrend
+              filterNames,
+              lastLoginFormatted,
+              DASHBOARD_URL
+            );
+          }
+
+          // 90d — final archive warning
+          if (tier.name === "reengagement_90d") {
+            emailContent = (reengagement90dEmail as Function)(
+              firstName,
+              matchedCount ?? 0,
+              closedCount ?? 0,
               filterNames,
               lastLoginFormatted,
               DASHBOARD_URL
@@ -294,3 +309,4 @@ serve(async (req: Request) => {
     );
   }
 });
+
