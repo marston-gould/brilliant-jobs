@@ -1,3 +1,14 @@
+## v6.75 DataForSEO Profile Verification (2026-03-03)
+- Feat: DataForSEO SERP-based LinkedIn profile verification in validate-signup Edge Function
+- Feat: Google site:linkedin.com/in search cross-references signup LinkedIn URL for legitimacy
+- Feat: URL-match and slug-match verification against SERP organic results
+- Feat: SERP verification acts as approval rescue when LinkedIn direct fetch fails
+- Feat: Full verification result stored in profiles.validation_result.checks.dataforseo
+- Chore: DATAFORSEO_LOGIN and DATAFORSEO_API_KEY secrets added to Supabase Edge Functions
+- Chore: Version bumped v6.74 → v6.75 across all surfaces per VERSION_METHODOLOGY
+- Cost: ~$0.01 per signup verification via DataForSEO SERP API (Standard method)
+- Scope: validate-signup Edge Function enhanced + Supabase secrets + version surfaces
+
 ## v6.74 Chat Mode Session 12: CI/CD Build Pipeline Automation (2026-03-03)
 - Feat: CI/CD CSS rebuild — deploy.yml auto-rebuilds styles.css on src/input.css or tailwind.config.js changes
 - Feat: CI/CD JS bundle rebuild — deploy.yml auto-rebuilds dist/dashboard.min.js on js/ or build.js changes
