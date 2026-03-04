@@ -4,7 +4,9 @@
 // 2. Company hiring surges — companies the user applied to posted 3+ new roles today
 // 3. Network matches — connections at companies with new roles matching filters
 // 4. Connection moved — a connection started at a company matching user's filters
+// 5. Passive high-bar alerts — jobs clearing all passive thresholds; max 1 email/day per user
 // Sends individual emails for high-priority items, batches lower-priority into daily digest.
+// Phase 16 Session 4: passive high-bar alert trigger added.
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
@@ -54,6 +56,7 @@ serve(async (req: Request) => {
   let ghostsSent = 0;
   let surgesSent = 0;
   let networkSent = 0;
+  let passiveAlertsSent = 0;
 
   try {
     // Get all users with notification preferences
@@ -269,7 +272,85 @@ serve(async (req: Request) => {
       }
     }
 
-    const summary = { ghostsSent, surgesSent, networkSent, checked_at: now.toISOString() };
+
+      // ================================================================
+      // 4. PASSIVE HIGH-BAR ALERTS (Phase 16 Session 4)
+      // Jobs that clear ALL passive thresholds for users in passive mode.
+      // Max 1 email/day enforced via passive_notifications_sent_today.
+      // ================================================================
+      const { data: passiveProfile } = await sb
+        .from("profiles")
+        .select("passive_mode, passive_config, passive_notifications_sent_today, passive_snoozed_until")
+        .eq("id", userId)
+        .single();
+
+      if (passiveProfile?.passive_mode) {
+        // Check daily cap: if already sent today, skip
+        const sentToday = passiveProfile.passive_notifications_sent_today || 0;
+        const isSnoozed = passiveProfile.passive_snoozed_until &&
+          new Date(passiveProfile.passive_snoozed_until) > new Date();
+
+        if (!isSnoozed && sentToday < 1) {
+          const cfg = passiveProfile.passive_config || {};
+          const scoreFloor = cfg.score_floor || cfg.match_score_floor || 85;
+          const minSalary = cfg.min_salary || null;
+          const requiredRemote = cfg.required_remote || false;
+          const requiredLevel = cfg.required_level || null;
+
+          // Query for jobs posted/seen today that clear match_score floor
+          let query = sb
+            .from("ats_jobs")
+            .select("id, title, company_name, salary_min, salary_max, remote, seniority_level, match_score, ai_jd_rate, ghost_score")
+            .gte("first_seen_at", yesterday)
+            .eq("status", "open")
+            .gte("match_score", scoreFloor)
+            .order("match_score", { ascending: false })
+            .limit(1);
+
+          if (minSalary) query = query.gte("salary_min", minSalary);
+          if (requiredRemote) query = query.eq("remote", true);
+          if (requiredLevel) query = query.eq("seniority_level", requiredLevel);
+
+          const { data: qualifyingJobs } = await query;
+
+          if (qualifyingJobs && qualifyingJobs.length > 0) {
+            const job = qualifyingJobs[0];
+
+            // Build salary display
+            let salaryDisplay: string | undefined;
+            if (job.salary_min && job.salary_max) {
+              salaryDisplay = `$${Math.round(job.salary_min / 1000)}k – $${Math.round(job.salary_max / 1000)}k`;
+            } else if (job.salary_min) {
+              salaryDisplay = `$${Math.round(job.salary_min / 1000)}k+`;
+            }
+
+            // Fetch user first name for personalization
+            const { data: profileName } = await sb
+              .from("profiles")
+              .select("first_name")
+              .eq("id", userId)
+              .single();
+
+            await sendNotification({
+              user_id: userId,
+              notification_type: "passive_high_bar_alert",
+              force_channel: "email",
+              payload: {
+                first_name: profileName?.first_name,
+                job_title: job.title,
+                company_name: job.company_name,
+                match_score: job.match_score,
+                salary_display: salaryDisplay,
+                ghost_score: job.ghost_score,
+              },
+            });
+
+            passiveAlertsSent++;
+          }
+        }
+      }
+
+    const summary = { ghostsSent, surgesSent, networkSent, passiveAlertsSent, checked_at: now.toISOString() };
     console.log("[job-intelligence] Complete:", summary);
 
     return new Response(JSON.stringify(summary), {
@@ -284,4 +365,5 @@ serve(async (req: Request) => {
     );
   }
 });
+
 
