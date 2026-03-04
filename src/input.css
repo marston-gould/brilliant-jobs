@@ -2891,11 +2891,12 @@
     .smt-btn {
       display:flex;align-items:center;gap:5px;padding:6px 14px;font-size:12px;font-weight:600;
       color:var(--text-faint);background:transparent;border:none;border-radius:6px;cursor:pointer;
-      transition:all 0.15s;font-family:inherit;
+      transition:all 0.2s cubic-bezier(0.4,0,0.2,1);font-family:inherit;
     }
     .smt-btn:hover { color:var(--text-dim); }
     .smt-btn.active {
       background:var(--accent);color:#fff;box-shadow:0 1px 3px rgba(59,130,246,0.3);
+      transform:scale(1.02);
     }
     .smt-btn.active svg { stroke:#fff; }
 
@@ -2937,6 +2938,11 @@
     .chat-bubble {
       max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.55;
       word-wrap:break-word;
+      animation:chat-bubble-in 0.25s ease-out both;
+    }
+    @keyframes chat-bubble-in {
+      from { opacity:0;transform:translateY(8px) scale(0.97); }
+      to { opacity:1;transform:translateY(0) scale(1); }
     }
     .chat-bubble-user {
       align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px;
@@ -3020,6 +3026,33 @@
       font-family:inherit;transition:all 0.15s;
     }
     .chat-sync-dismiss:hover { color:var(--text-dim);border-color:var(--text-faint); }
+
+    /* Session 6: Error state */
+    .chat-bubble-error {
+      align-self:flex-start;background:rgba(239,68,68,0.08);color:var(--red);
+      border:1px solid rgba(239,68,68,0.2);border-bottom-left-radius:4px;
+      font-size:12px;
+    }
+
+    /* Session 6: Sending state pulse on send button */
+    .chat-send-btn.sending {
+      animation:chat-send-pulse 1s ease-in-out infinite;pointer-events:none;
+    }
+    @keyframes chat-send-pulse {
+      0%,100% { opacity:0.6; }
+      50% { opacity:1; }
+    }
+
+    /* Session 6: Empty state entrance */
+    .chat-empty {
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:32px 20px;flex:1;
+      animation:chat-empty-fade 0.4s ease-out both;
+    }
+    @keyframes chat-empty-fade {
+      from { opacity:0;transform:translateY(12px); }
+      to { opacity:1;transform:translateY(0); }
+    }
 
     /* Auto-generated prompt styling (Session 3) */
     .chat-input[data-auto-generated="true"] {
