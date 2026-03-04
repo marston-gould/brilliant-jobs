@@ -1,3 +1,19 @@
+## v6.67 Chat Mode Session 5: System Integration (2026-03-03)
+- JS: promptDerivedToFilterObj() converts saved prompt derived_filters to saved-filter-compatible objects for searchJobs()
+- JS: getCheckedSavedPromptFilters() collects checked prompt filters from filter selector UI
+- JS: searchJobs() now merges saved filters + prompt-derived filters into filtersToRun (no downstream system distinguishes origin)
+- JS: _chatFilterOverride consumed as proper filter object via promptDerivedToFilterObj() (was raw, now structured)
+- JS: Notification filter override dropdown includes saved prompts with derived_filters (prompt:id values, separator)
+- JS: refreshOverrideFilterSelectWithPrompts() called after prompt load for dynamic dropdown refresh
+- JS: computeJobMatchScore() falls back to prompt resume assignments when no saved filter resume found
+- JS: assignResumeToPrompt() persists resume_id on saved_prompts via PATCH + PostHog event
+- JS: getPromptAutoApplyConfigs() exposes prompt+resume pairs for auto-apply system consumption
+- JS: loadSavedPromptsFromDB() hook runs integratePromptsWithNotifications() + recomputes match scores after load
+- JS: Window globals _getPromptAutoApplyConfigs, _assignResumeToPrompt exposed for cross-module access
+- DB: Added resume_id column to saved_prompts table (text, nullable)
+- Integration: Saved prompts fully interchangeable with saved filters across job feed, notifications, auto-apply, and match %
+- Version v6.67 across all surfaces
+
 ## v6.66 Chat Mode Session 4: Saved Prompts + Persistence (2026-03-03)
 - JS: Save Prompt dialog — name input, 10-color palette, derived filters preview
 - JS: Save wires to upsert saved_prompts table via Supabase PostgREST (POST for new, PATCH for update)
