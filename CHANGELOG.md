@@ -1,3 +1,13 @@
+## v7.03 — 2026-03-04
+
+### Overlay Pipeline S9: overlay_analytics Instrumentation + Analytics Sub-Page
+
+- **extension/toolbar-overlay.js v1.4.0** — Added 3 new analytics instrumentation points: `picker_opened` (fires when stage picker dropdown opens), `match_score_viewed` (fires when match score badge renders with a score), `toolbar_dismissed` (fires on SPA navigation when toolbar is removed).
+- **js/overlay-analytics.js (new)** — Overlay Analytics sub-page module. Reads from `overlay_analytics` table via PostgREST (RLS-scoped to current user). Renders 5 stat cards (Total Events, Job Pages Viewed, Jobs Saved, View→Save Rate, Stage Advances) plus 3 ECharts visualizations: Event Volume Over Time (stacked bar), Action Funnel (funnel chart), Events by Platform (donut). Extends `switchStatsTab()` to support `overlay` tab without modifying `resume-metrics.js`.
+- **Stats page** — Added third tab "Overlay Analytics" to Stats page tab row. Tab content container `#stats-tab-content-overlay` appended after resume tab.
+- **No new Edge Function** — reads directly from `overlay_analytics` via PostgREST anon key (RLS filters to current user session).
+- **No DB migration** — `overlay_analytics` table and all action_type values already exist.
+
 ## v7.02 — 2026-03-04
 
 ### Overlay Pipeline S8: Save/Apply CTA + Stage Picker
