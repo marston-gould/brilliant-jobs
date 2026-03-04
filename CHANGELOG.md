@@ -1,3 +1,19 @@
+## v6.90 — 2026-03-04
+
+### Admin IA v2 · Session 6 — Enrichment, SEO, Content, Merchandising, Referrals
+
+**Bundle expansion (12 → 17 files):**
+- `js/admin-enrichment.js` — Enrichment Coverage Dashboard: salary/location/department/country coverage stat cards, color-coded by threshold, gate indicators, ECharts coverage-by-platform bar chart, platform breakdown table, content freshness schedule. RPC: `get_enrichment_coverage`
+- `js/admin-seo.js` — Full 9-tool SEO dashboard: GSC, PSI, Cloudflare, YLT, CrUX charts. URL + date range filters. Sync All + Export Report actions. Indexing, DataForSEO, Knowledge Graph side panels
+- `js/admin-content.js` — Editorial Queue: content_stories table, status/category filters, detect + generate actions, click-to-preview story panel with headline/lede/body/meta
+- `js/admin-merch.js` — Merchandising manager: placements sidebar, rules per placement, content entries table, add/edit modals, bulk import, cohort targeting, toggle active
+- `js/admin-referrals.js` — Referrals admin: referral stats and management
+
+**Updated:**
+- `build-admin.js` — 12 → 17 files (added enrichment, seo, content, merch, referrals)
+- Version bumped v6.89 → v6.90: version.js, dashboard.html, index.html, admin.html, admin-shell.js, admin.js
+
+
 ## v6.89 — 2026-03-04
 
 ### Admin IA v2 · Session 6 — SEO, Merch, Referrals, Content, Enrichment file extraction

@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.89 — S6: SEO, Merch, Referrals, Content, Enrichment extracted
+   v6.90 — S6: SEO, Merch, Referrals, Content, Enrichment extracted
    4 sections: Operations, Growth, Audience, Business
    27 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
