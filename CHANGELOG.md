@@ -1,3 +1,9 @@
+## v6.84 — 2026-03-04
+### Admin Console IA v2 — Session 1: Navigation Shell + Migration
+- **admin.html:** Replaced flat 5→20 tab bar with two-level sidebar navigation (210px fixed left sidebar, 4 collapsible section groups: Operations, Growth, Audience, Business). Added `.admin-layout` flex container, `.admin-sidebar`, `.admin-main` content area, breadcrumb trail, page title. All 17 sub-pages routed through sidebar. Empty state panels added for future pages (Companies, Jobs, Email, Paid, Social, Analytics, Costs, Forecasting). Mobile-responsive: sidebar collapses to full-width on ≤768px.
+- **admin.js:** New ADMIN_SUBPAGE_MAP (17 entries) + ADMIN_SECTIONS (4 groups). New functions: `initAdminNav()`, `navigateAdminSubpage(key)`, `_buildAdminSidebar()`, `_loadAdminNavState()`, `_saveAdminNavState()`. Sidebar collapse/expand states persist to `localStorage('bj_admin_state')`. Active sub-page persists across sessions. Lazy initialization preserved — data only fetches on first view. Legacy `switchAdminTab()` bridged to `navigateAdminSubpage()`. Existing tabs (Feed Health, SEO, Cohorts, Entitlements, Users, Revenue, Ghost, Feedback, Merch, Signals, Content, Enrichment, Referrals, Notifications, Templates, Notif Analytics, Email Cohorts, Cadence, Cache) all migrated to sidebar routing with zero regression.
+- **admin-shell.js:** Version comment updated to v6.84
+
 ## v6.83 — 2026-03-04
 ### Phase 16 Session 6: Hired / Off-Market Auto-Pause
 - **settings.js:** autoHirePause(jobTitle) — async function; queries profiles.passive_mode; sets passive_mode = false in DB; updates in-memory _passiveMode flag, toggle UI, passive-settings-panel, search-mode-label; shows congrats toast: "Congrats! Passive mode paused — you can re-activate anytime in Settings" (only if passive was on); PostHog: passive_auto_paused_hired with job_title, was_passive
