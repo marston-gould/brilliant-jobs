@@ -604,15 +604,102 @@ function getCheckedSavedFilters() {
   }).filter(Boolean);
 }
 
+
+// --- Session 5: Convert saved prompt derived_filters to a saved-filter-compatible object ---
+function promptDerivedToFilterObj(derived, promptName, promptColor) {
+  // derived_filters shape: { keywords:[], locations:[], salary_min:N, salary_max:N, level:'', remote:bool, companies:[], excludeCompanies:[] }
+  if (!derived || typeof derived !== 'object') return null;
+
+  var whatPills = [];
+  if (derived.keywords && derived.keywords.length > 0) {
+    derived.keywords.forEach(function(kw) {
+      whatPills.push({ values: [kw] });
+    });
+  }
+
+  var wherePills = [];
+  if (derived.locations && derived.locations.length > 0) {
+    derived.locations.forEach(function(loc) {
+      wherePills.push({ values: [loc] });
+    });
+  }
+
+  var whoPills = [];
+  if (derived.companies && derived.companies.length > 0) {
+    derived.companies.forEach(function(co) {
+      whoPills.push({ values: [co] });
+    });
+  }
+
+  var whoNotPills = [];
+  if (derived.excludeCompanies && derived.excludeCompanies.length > 0) {
+    derived.excludeCompanies.forEach(function(co) {
+      whoNotPills.push({ values: [co] });
+    });
+  }
+
+  var payPills = [];
+  if (derived.salary_min || derived.salary_max) {
+    var payVal = '';
+    if (derived.salary_min && derived.salary_max) {
+      payVal = '$' + (derived.salary_min / 1000) + 'K - $' + (derived.salary_max / 1000) + 'K';
+    } else if (derived.salary_min) {
+      payVal = '>$' + (derived.salary_min / 1000) + 'K';
+    } else {
+      payVal = '<$' + (derived.salary_max / 1000) + 'K';
+    }
+    payPills.push({ values: [payVal], min: derived.salary_min || 0, max: derived.salary_max || 999999 });
+  }
+
+  return {
+    name: promptName || 'Chat Prompt',
+    whatPills: whatPills,
+    wherePills: wherePills,
+    whenPills: [],
+    whoPills: whoPills,
+    whatNotPills: [],
+    whereNotPills: [],
+    whoNotPills: whoNotPills,
+    payPills: payPills,
+    includeNoSalary: !derived.salary_min && !derived.salary_max,
+    includeRemote: !!derived.remote,
+    _isPromptDerived: true,
+    _promptName: promptName || 'Chat Prompt',
+    _filterNum: promptColor || '',
+    _filterColor: promptColor || '',
+  };
+}
+
+// Get checked saved prompts from filter selector (Session 5)
+function getCheckedSavedPromptFilters() {
+  var checks = document.querySelectorAll('.sf-prompt-check:checked');
+  var results = [];
+  if (!checks || checks.length === 0) return results;
+  if (typeof _savedPrompts === 'undefined' || !_savedPrompts) return results;
+
+  checks.forEach(function(cb) {
+    var promptId = cb.dataset.promptId;
+    var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+    if (prompt && prompt.derived_filters && Object.keys(prompt.derived_filters).length > 0) {
+      var PROMPT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
+      var color = PROMPT_COLORS[prompt.color_index || 0] || '#3b82f6';
+      var filterObj = promptDerivedToFilterObj(prompt.derived_filters, prompt.name, color);
+      if (filterObj) results.push(filterObj);
+    }
+  });
+  return results;
+}
+
 // Main search: OR across all checked saved filters
 async function searchJobs(page = 0) {
   currentJobPage = page;
   const tbody = $('#job-table-body');
   const checked = getCheckedSavedFilters();
+  const checkedPrompts = getCheckedSavedPromptFilters(); // Session 5: prompt-derived filters
   const hasBuilderPills = allPills() > 0;
 
   // If nothing is driving the search, show prompt but with global stats
-  if (checked.length === 0 && !hasBuilderPills) {
+  if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
@@ -639,8 +726,8 @@ async function searchJobs(page = 0) {
   try {
     // Build list of filters to run
     let filtersToRun = [];
-    if (checked.length > 0) {
-      filtersToRun = checked;
+    if (checked.length > 0 || checkedPrompts.length > 0) {
+      filtersToRun = [...checked, ...checkedPrompts]; // Session 5: merge saved filters + prompt-derived
     } else if (hasBuilderPills) {
       filtersToRun = [{
         whatPills: JSON.parse(JSON.stringify(whatPills)),
@@ -666,6 +753,15 @@ async function searchJobs(page = 0) {
         'who=', (sf.whoPills || []).flatMap(p => p.values),
       );
     });
+    // Session 5: _chatFilterOverride from live chat conversation -> inject as filter
+    if (filtersToRun.length === 0 && window._chatFilterOverride) {
+      var overrideFilter = promptDerivedToFilterObj(window._chatFilterOverride, 'Live Chat', '#3b82f6');
+      if (overrideFilter) {
+        filtersToRun = [overrideFilter];
+        window._chatFilterOverride = null; // consume once
+      }
+    }
+
     const hasRealCriteria = filtersToRun.some(sf => {
       const w = sf.whatPills || sf.pills || [];
       const wh = sf.wherePills || [];

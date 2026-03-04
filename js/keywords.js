@@ -319,6 +319,33 @@ function computeJobMatchScore(job) {
       if (resume) break;
     }
   }
+  // Session 5: If no resume found via saved filter, check prompt-derived filter assignments
+  if (!resume && typeof _savedPrompts !== 'undefined' && _savedPrompts) {
+    for (var pi = 0; pi < _savedPrompts.length; pi++) {
+      var prompt = _savedPrompts[pi];
+      if (!prompt.derived_filters || !prompt.resume_id) continue;
+      // Check if prompt's derived_filters match this job's filter context
+      var promptFilterName = prompt.name;
+      for (var pri = 0; pri < resumes.length; pri++) {
+        if (!resumes[pri].archived && resumes[pri].id === prompt.resume_id && resumes[pri].keywords && resumes[pri].keywords.length > 0) {
+          resume = resumes[pri];
+          matchedFilterName = promptFilterName;
+          break;
+        }
+      }
+      if (resume) break;
+      // Also check by filter name in resume's filterIds
+      for (var pri2 = 0; pri2 < resumes.length; pri2++) {
+        if (!resumes[pri2].archived && (resumes[pri2].filterIds || []).includes(promptFilterName) && resumes[pri2].keywords && resumes[pri2].keywords.length > 0) {
+          resume = resumes[pri2];
+          matchedFilterName = promptFilterName;
+          break;
+        }
+      }
+      if (resume) break;
+    }
+  }
+
   if (!resume || !resume.keywords || !resume.keywords.length) return null;
 
   var text = stripHtmlToText(job.content);
