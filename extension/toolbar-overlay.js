@@ -3,6 +3,7 @@
 // v1.1.0 / v7.00: Overlay Pipeline S6 — Match Score Badge
 // v1.2.0 / v7.01: Overlay Pipeline S7 — Fraud + AI Content Score Indicators
 // v1.3.0 / v7.02: Overlay Pipeline S8 — Save/Apply CTA + Stage Picker
+// v1.4.0 / v7.03: Overlay Pipeline S9 — Analytics Instrumentation (picker_opened, match_score_viewed, toolbar_dismissed)
 //
 // Injected by contentScript.js on job listing pages across:
 // LinkedIn (/jobs/view/*), Greenhouse, Lever, Ashby, Workable, Recruitee, Indeed
@@ -554,6 +555,17 @@
         chevron.addEventListener('click', (e) => {
           e.stopPropagation();
           if (dd) dd.classList.toggle('open');
+          // S9: instrument picker_opened
+          if (dd && dd.classList.contains('open')) {
+            chrome.runtime.sendMessage({
+              type: 'bj:toolbar:analytics',
+              payload: {
+                action_type: 'picker_opened',
+                source_platform: meta.platform,
+                url_hash: hashUrl(meta.url),
+              }
+            });
+          }
         });
       }
 
@@ -717,6 +729,17 @@
 
       badge.textContent = score + ' match';
       badge.className = 'bj-tb-score bj-score-' + label + ' loaded';
+
+      // S9: instrument match_score_viewed
+      chrome.runtime.sendMessage({
+        type: 'bj:toolbar:analytics',
+        payload: {
+          action_type: 'match_score_viewed',
+          source_platform: null,
+          url_hash: null,
+          meta: { score: score, label: label },
+        }
+      });
     });
   }
 
@@ -758,7 +781,18 @@
     if (cur !== _lastUrl) {
       _lastUrl = cur;
       const old = document.getElementById(TOOLBAR_ID);
-      if (old) old.remove();
+      if (old) {
+        // S9: instrument toolbar_dismissed on SPA nav
+        chrome.runtime.sendMessage({
+          type: 'bj:toolbar:analytics',
+          payload: {
+            action_type: 'toolbar_dismissed',
+            source_platform: null,
+            url_hash: null,
+          }
+        });
+        old.remove();
+      }
       setTimeout(init, 900);
     }
   });
