@@ -1,5 +1,5 @@
-// [BJ] Dashboard v7.03 loaded
-console.log('[BJ] Dashboard v7.03 loaded');
+// [BJ] Dashboard v7.04 loaded
+console.log('[BJ] Dashboard v7.04 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
@@ -996,5 +996,6 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) {}
 }
+
 
 

@@ -2,7 +2,7 @@
 // Overlay Pipeline S9: overlay_analytics sub-page
 // Reads from overlay_analytics table via PostgREST (anon key, RLS-scoped to current user)
 // Renders inside Stats page as a third tab: "Overlay Analytics"
-// v7.03
+// v7.04
 
 var _oaCharts = {};
 var _oaInitialized = false;
@@ -119,6 +119,12 @@ function _oaRender(rows) {
       '<div class="stat-card"><div class="stat-val" style="color:#a855f7">' + totalStageChanges + '</div><div class="stat-label">Stage Advances</div></div>';
   }
 
+  // S10: Drill-down link to Pipeline Overlay tab
+  var drilldownEl = document.getElementById('oa-drilldown-link');
+  if (drilldownEl) {
+    drilldownEl.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="if(typeof drillDownToOverlayPipeline===\'function\')drillDownToOverlayPipeline()" style="font-size:11px;margin-bottom:4px;">View Overlay Pipeline Entries →</button>';
+  }
+
   // --- Build charts container ---
   var container = document.getElementById('oa-charts-grid');
   if (!container) return;
@@ -224,3 +230,4 @@ function _oaRenderEmpty(msg) {
 window.addEventListener('resize', function() {
   Object.values(_oaCharts).forEach(function(c) { if (c && !c.isDisposed()) c.resize(); });
 });
+

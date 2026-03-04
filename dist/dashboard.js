@@ -1,8 +1,7 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.85';
+var BJ_VERSION = 'v7.03';
 (function() {
   function populateVersion() {
-    // Populate all .bj-version elements
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
       el.textContent = BJ_VERSION;
     });
@@ -11193,6 +11192,13 @@ const PL_STAGE_LABELS = {
 let _pipelineCache = {};
 let _pipelineLoaded = false;
 
+// Overlay Pipeline S2: new pipeline table cache, keyed by source_url
+// Dual-write: all pipeline mutations write to both user_pipeline and pipeline tables
+let _newPipelineCache = {};   // { [source_url]: { id, stage, entry_source, activity_log, ... } }
+window._newPipelineCache = _newPipelineCache; // S10: expose for pipeline-overlay-tab
+let _newPipelineLoaded = false;
+window._newPipelineLoaded = false; // S10: expose for pipeline-overlay-tab
+
 // ── Pipeline Signals (Phase A) ─────────────────────────────────
 // Pending signals keyed by pipeline_entry_id
 let _pendingSignals = {};
@@ -11322,6 +11328,84 @@ async function loadPipelineFromSupabase() {
     // Fallback: try localStorage if Supabase fails
     _pipelineCache = safeReadLS('bj_pipeline_meta', {});
   }
+}
+
+
+// ── Overlay Pipeline S2: Load new pipeline table into memory ──────────────
+async function loadNewPipelineFromSupabase() {
+  if (!currentUser?.id) return;
+  try {
+    const { data, error } = await sb.from('pipeline')
+      .select('id, source_url, source_platform, job_title, company_name, location, stage, entry_source, activity_log, match_score, fraud_score, ai_content_score, job_id_ref, ats_source_ref, applied_at, created_at, updated_at')
+      .eq('user_id', currentUser.id)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    _newPipelineCache = {};
+    (data || []).forEach(row => {
+      _newPipelineCache[row.source_url] = row;
+    });
+    _newPipelineLoaded = true;
+    window._newPipelineLoaded = true;
+    console.log('[BJ] New pipeline table loaded:', data?.length || 0, 'entries');
+  } catch (e) {
+    console.warn('[BJ] New pipeline load error (non-fatal):', e);
+  }
+}
+
+// ── Overlay Pipeline S2: Write to new pipeline table ─────────────────────
+// Called on every pipeline mutation — dual-write alongside user_pipeline
+// entry: { source_url, job_title, company_name, stage, entry_source, activity_log_entry?, ... }
+async function saveToNewPipeline(entry) {
+  if (!currentUser?.id || !entry?.source_url) return;
+  const now = new Date().toISOString();
+  const existing = _newPipelineCache[entry.source_url];
+
+  // Build activity log entry for this action
+  const logEntry = {
+    action: entry._activity_action || 'stage_updated',
+    timestamp: now,
+    detail: { stage: entry.stage, source: entry.entry_source || 'manual' }
+  };
+  const existingLog = existing?.activity_log || [];
+  const newLog = [...existingLog, logEntry];
+
+  const row = {
+    user_id: currentUser.id,
+    source_url: entry.source_url,
+    source_platform: entry.source_platform || existing?.source_platform || 'unknown',
+    job_title: entry.job_title || existing?.job_title || 'Unknown Title',
+    company_name: entry.company_name || existing?.company_name || 'Unknown Company',
+    location: entry.location || existing?.location || null,
+    stage: entry.stage || existing?.stage || 'saved',
+    stage_changed_at: now,
+    entry_source: entry.entry_source || existing?.entry_source || 'manual',
+    activity_log: newLog,
+    job_id_ref: entry.job_id_ref || existing?.job_id_ref || null,
+    ats_source_ref: entry.ats_source_ref || existing?.ats_source_ref || null,
+    match_score: entry.match_score ?? existing?.match_score ?? null,
+    fraud_score: entry.fraud_score ?? existing?.fraud_score ?? null,
+    ai_content_score: entry.ai_content_score ?? existing?.ai_content_score ?? null,
+    applied_at: entry.applied_at || existing?.applied_at || null,
+    updated_at: now
+  };
+
+  try {
+    const { data, error } = await sb.from('pipeline')
+      .upsert(row, { onConflict: 'user_id,source_url' })
+      .select('id')
+      .single();
+    if (error) throw error;
+    // Update local cache
+    _newPipelineCache[entry.source_url] = { ...row, id: data?.id || existing?.id };
+    window._newPipelineCache = _newPipelineCache; // keep window ref in sync
+  } catch (e) {
+    console.warn('[BJ] New pipeline write error (non-fatal):', e);
+  }
+}
+
+// ── Overlay Pipeline S2: Get new pipeline row by source_url ──────────────
+function getNewPipelineEntry(sourceUrl) {
+  return _newPipelineCache[sourceUrl] || null;
 }
 
 // ── Save single pipeline entry to Supabase (replaces savePipelineMeta) ──
@@ -11475,6 +11559,7 @@ async function migratePipelineToSupabase() {
 async function initPipeline() {
   await migratePipelineToSupabase();
   await loadPipelineFromSupabase();
+  await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
   await loadPendingSignals();
 }
 
@@ -12351,6 +12436,7 @@ async function loadRecruiterContacts() {
     return {};
   }
 }
+
 
 
 // === js/tuning.js ===
@@ -21078,6 +21164,397 @@ window.addEventListener('resize', function() {
 })();
 
 
+// === js/overlay-analytics.js ===
+// === js/overlay-analytics.js ===
+// Overlay Pipeline S9: overlay_analytics sub-page
+// Reads from overlay_analytics table via PostgREST (anon key, RLS-scoped to current user)
+// Renders inside Stats page as a third tab: "Overlay Analytics"
+// v7.04
+
+var _oaCharts = {};
+var _oaInitialized = false;
+
+// ── Tab integration ──────────────────────────────────────────────────────────
+// Extends switchStatsTab to support 'overlay' tab
+(function() {
+  var _origSwitch = window.switchStatsTab;
+  window.switchStatsTab = function(tab) {
+    var overlayContent = document.getElementById('stats-tab-content-overlay');
+    var overlayBtn = document.getElementById('stats-tab-overlay');
+
+    if (tab === 'overlay') {
+      // Hide market + resume content
+      var marketContent = document.getElementById('stats-tab-content-market');
+      var resumeContent = document.getElementById('stats-tab-content-resume');
+      if (marketContent) marketContent.style.display = 'none';
+      if (resumeContent) resumeContent.style.display = 'none';
+      document.querySelectorAll('.stats-tab-toggle').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      if (overlayContent) overlayContent.style.display = '';
+      if (overlayBtn) overlayBtn.classList.add('active');
+      initOverlayAnalyticsTab();
+      return;
+    }
+
+    // For market/resume: hide overlay tab
+    if (overlayContent) overlayContent.style.display = 'none';
+    if (overlayBtn) overlayBtn.classList.remove('active');
+
+    if (_origSwitch) _origSwitch(tab);
+  };
+})();
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+function initOverlayAnalyticsTab() {
+  if (_oaInitialized) { _oaRefreshCharts(); return; }
+  _oaInitialized = true;
+  _oaLoadData();
+}
+
+// ── Data fetch ───────────────────────────────────────────────────────────────
+function _oaLoadData() {
+  var userId = window._currentUserId || (window.sb && window.sb.auth && window.sb.auth.getSession && null);
+  var anonKey = window.SUPABASE_ANON_KEY || window._sbAnonKey || '';
+  var sbUrl = window.SUPABASE_URL || window._sbUrl || 'https://qojhagupdnbtomfoxnsf.supabase.co';
+
+  // Show loading state
+  var container = document.getElementById('oa-charts-grid');
+  if (container) container.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-faint);font-size:13px;">Loading overlay analytics…</div>';
+
+  // Fetch last 30 days of events via PostgREST (RLS filters to current user)
+  var since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  var url = sbUrl + '/rest/v1/overlay_analytics?select=action_type,source_platform,created_at,meta&created_at=gte.' + since + '&order=created_at.asc&limit=5000';
+
+  fetch(url, {
+    headers: {
+      'apikey': anonKey,
+      'Authorization': 'Bearer ' + (window._sbAccessToken || anonKey),
+      'Content-Type': 'application/json',
+    }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      _oaRenderEmpty();
+      return;
+    }
+    _oaRender(rows);
+  })
+  .catch(function(err) {
+    console.warn('[BJ] overlay-analytics fetch error:', err);
+    _oaRenderEmpty('Could not load data.');
+  });
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function _oaRender(rows) {
+  // --- Aggregate ---
+  var byAction = {};
+  var byPlatform = {};
+  var byDay = {};
+  var funnelOrder = ['result_viewed','save_completed','stage_changed','picker_opened','match_score_viewed'];
+
+  rows.forEach(function(r) {
+    var a = r.action_type || 'unknown';
+    byAction[a] = (byAction[a] || 0) + 1;
+
+    var p = r.source_platform || 'unknown';
+    byPlatform[p] = (byPlatform[p] || 0) + 1;
+
+    var day = (r.created_at || '').substring(0, 10);
+    if (day) {
+      if (!byDay[day]) byDay[day] = {};
+      byDay[day][a] = (byDay[day][a] || 0) + 1;
+    }
+  });
+
+  // --- Stat cards ---
+  var totalEvents = rows.length;
+  var totalSaves = byAction['save_completed'] || 0;
+  var totalViews = byAction['result_viewed'] || 0;
+  var saveRate = totalViews > 0 ? Math.round((totalSaves / totalViews) * 100) : 0;
+  var totalStageChanges = byAction['stage_changed'] || 0;
+
+  var cardsEl = document.getElementById('oa-stat-cards');
+  if (cardsEl) {
+    cardsEl.innerHTML =
+      '<div class="stat-card"><div class="stat-val" style="color:var(--accent)">' + totalEvents + '</div><div class="stat-label">Total Events (30d)</div></div>' +
+      '<div class="stat-card"><div class="stat-val">' + totalViews + '</div><div class="stat-label">Job Pages Viewed</div></div>' +
+      '<div class="stat-card"><div class="stat-val" style="color:#22c55e">' + totalSaves + '</div><div class="stat-label">Jobs Saved</div></div>' +
+      '<div class="stat-card"><div class="stat-val">' + saveRate + '%</div><div class="stat-label">View→Save Rate</div></div>' +
+      '<div class="stat-card"><div class="stat-val" style="color:#a855f7">' + totalStageChanges + '</div><div class="stat-label">Stage Advances</div></div>';
+  }
+
+  // S10: Drill-down link to Pipeline Overlay tab
+  var drilldownEl = document.getElementById('oa-drilldown-link');
+  if (drilldownEl) {
+    drilldownEl.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="if(typeof drillDownToOverlayPipeline===\'function\')drillDownToOverlayPipeline()" style="font-size:11px;margin-bottom:4px;">View Overlay Pipeline Entries →</button>';
+  }
+
+  // --- Build charts container ---
+  var container = document.getElementById('oa-charts-grid');
+  if (!container) return;
+  container.innerHTML =
+    '<div class="stats-chart-card full"><div class="stats-chart-title">Event Volume Over Time</div><div class="ec" id="oa-chart-timeline" style="width:100%;height:280px;"></div></div>' +
+    '<div class="stats-chart-card"><div class="stats-chart-title">Action Funnel</div><div class="ec" id="oa-chart-funnel" style="width:100%;height:300px;"></div></div>' +
+    '<div class="stats-chart-card"><div class="stats-chart-title">Events by Platform</div><div class="ec" id="oa-chart-platform" style="width:100%;height:300px;"></div></div>';
+
+  // Give DOM a tick to settle
+  setTimeout(function() { _oaRenderCharts(byAction, byPlatform, byDay, funnelOrder); }, 50);
+}
+
+function _oaRenderCharts(byAction, byPlatform, byDay, funnelOrder) {
+  if (typeof echarts === 'undefined') return;
+
+  var COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#06b6d4','#a855f7'];
+  var tooltipStyle = { backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1, textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } };
+  var axisLabel = { color: 'hsl(228,11%,41%)', fontFamily: 'JetBrains Mono', fontSize: 10 };
+
+  // --- Timeline chart ---
+  var days = Object.keys(byDay).sort();
+  var actionTypes = Object.keys(byAction);
+  var timelineEl = document.getElementById('oa-chart-timeline');
+  if (timelineEl) {
+    var tc = _oaCharts['timeline'];
+    if (!tc || tc.isDisposed()) tc = echarts.init(timelineEl);
+    _oaCharts['timeline'] = tc;
+    tc.setOption({
+      tooltip: Object.assign({ trigger: 'axis', axisPointer: { type: 'shadow' } }, tooltipStyle),
+      legend: { data: actionTypes, bottom: 0, textStyle: { color: 'hsl(228,11%,41%)', fontSize: 10, fontFamily: 'Outfit' } },
+      grid: { top: 20, bottom: 60, left: 40, right: 20, containLabel: true },
+      xAxis: { type: 'category', data: days, axisLabel: axisLabel, axisLine: { lineStyle: { color: 'hsl(228,16%,91%)' } } },
+      yAxis: { type: 'value', axisLabel: axisLabel, splitLine: { lineStyle: { color: 'hsl(228,16%,93%)' } } },
+      series: actionTypes.map(function(a, i) {
+        return {
+          name: a,
+          type: 'bar',
+          stack: 'total',
+          data: days.map(function(d) { return (byDay[d] && byDay[d][a]) || 0; }),
+          itemStyle: { color: COLORS[i % COLORS.length] }
+        };
+      })
+    });
+  }
+
+  // --- Funnel chart ---
+  var funnelEl = document.getElementById('oa-chart-funnel');
+  if (funnelEl) {
+    var fc = _oaCharts['funnel'];
+    if (!fc || fc.isDisposed()) fc = echarts.init(funnelEl);
+    _oaCharts['funnel'] = fc;
+    var funnelData = funnelOrder.map(function(a) {
+      return { name: a.replace(/_/g,' '), value: byAction[a] || 0 };
+    }).filter(function(d) { return d.value > 0; });
+    fc.setOption({
+      tooltip: Object.assign({ trigger: 'item', formatter: '{b}: {c}' }, tooltipStyle),
+      series: [{
+        type: 'funnel',
+        left: '10%', width: '80%',
+        sort: 'none',
+        data: funnelData,
+        label: { position: 'inside', color: '#fff', fontFamily: 'JetBrains Mono', fontSize: 11 },
+        itemStyle: { borderWidth: 0 },
+        color: COLORS
+      }]
+    });
+  }
+
+  // --- Platform chart ---
+  var platEl = document.getElementById('oa-chart-platform');
+  if (platEl) {
+    var pc = _oaCharts['platform'];
+    if (!pc || pc.isDisposed()) pc = echarts.init(platEl);
+    _oaCharts['platform'] = pc;
+    var platData = Object.keys(byPlatform).map(function(p) {
+      return { name: p, value: byPlatform[p] };
+    }).sort(function(a,b) { return b.value - a.value; });
+    pc.setOption({
+      tooltip: Object.assign({ trigger: 'item', formatter: '{b}: {c} ({d}%)' }, tooltipStyle),
+      series: [{
+        type: 'pie',
+        radius: ['40%','70%'],
+        data: platData,
+        label: { color: 'hsl(228,11%,41%)', fontFamily: 'Outfit', fontSize: 11 },
+        color: COLORS
+      }]
+    });
+  }
+}
+
+function _oaRefreshCharts() {
+  _oaLoadData();
+}
+
+function _oaRenderEmpty(msg) {
+  var container = document.getElementById('oa-charts-grid');
+  if (container) container.innerHTML = '<div style="padding:48px 20px;text-align:center;color:var(--text-faint);font-size:13px;">' + (msg || 'No overlay analytics data yet. Install the extension and browse some jobs to get started.') + '</div>';
+  var cardsEl = document.getElementById('oa-stat-cards');
+  if (cardsEl) cardsEl.innerHTML = '';
+}
+
+// Resize handler
+window.addEventListener('resize', function() {
+  Object.values(_oaCharts).forEach(function(c) { if (c && !c.isDisposed()) c.resize(); });
+});
+
+
+
+// === js/pipeline-overlay-tab.js ===
+// === js/pipeline-overlay-tab.js ===
+// Overlay Pipeline S10: Overlay entries tab in Pipeline page
+// Reads from _newPipelineCache (pipeline table, keyed by source_url)
+// Rendered inside #page-pipeline as a second view alongside legacy user_pipeline entries
+// v7.04
+
+(function() {
+
+var _overlayTabInit = false;
+
+// ── Expose toggle function ────────────────────────────────────
+window.switchPipelineView = function(view) {
+  var legacyEl = document.getElementById('pl-view-legacy');
+  var overlayEl = document.getElementById('pl-view-overlay');
+  var btnLegacy = document.getElementById('pl-view-btn-legacy');
+  var btnOverlay = document.getElementById('pl-view-btn-overlay');
+  if (!legacyEl || !overlayEl) return;
+  if (view === 'overlay') {
+    legacyEl.style.display = 'none';
+    overlayEl.style.display = '';
+    if (btnLegacy) { btnLegacy.classList.remove('active'); }
+    if (btnOverlay) { btnOverlay.classList.add('active'); }
+    renderOverlayPipelineTab();
+  } else {
+    overlayEl.style.display = 'none';
+    legacyEl.style.display = '';
+    if (btnLegacy) { btnLegacy.classList.add('active'); }
+    if (btnOverlay) { btnOverlay.classList.remove('active'); }
+  }
+};
+
+// ── Main render ───────────────────────────────────────────────
+window.renderOverlayPipelineTab = async function() {
+  var container = document.getElementById('pl-overlay-stages');
+  if (!container) return;
+
+  // Ensure data is loaded
+  if (typeof loadNewPipelineFromSupabase === 'function' && !window._newPipelineLoaded) {
+    await loadNewPipelineFromSupabase();
+  }
+
+  var cache = window._newPipelineCache || {};
+  var entries = Object.values(cache);
+
+  if (entries.length === 0) {
+    container.innerHTML = '<div class="pl-stage-empty" style="padding:32px 0;text-align:center;color:var(--text-faint);font-size:13px;">No overlay pipeline entries yet.<br><span style="font-size:12px;margin-top:6px;display:block;">Save jobs using the Brilliant Jobs toolbar extension to populate this view.</span></div>';
+    _renderOverlayStats([], container);
+    return;
+  }
+
+  // Sort: most recently updated first
+  entries.sort(function(a, b) {
+    return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at);
+  });
+
+  // Group by stage
+  var PL_OV_STAGES = ['saved','applied','interview','offer','rejected','archived'];
+  var PL_OV_LABELS = { saved:'Saved', applied:'Applied', interview:'Interview', offer:'Offer', rejected:'Rejected/Ghosted', archived:'Archived' };
+  var stageMap = {};
+  PL_OV_STAGES.forEach(function(s) { stageMap[s] = []; });
+  entries.forEach(function(e) {
+    var s = e.stage || 'saved';
+    if (!stageMap[s]) stageMap[s] = [];
+    stageMap[s].push(e);
+  });
+
+  _renderOverlayStats(entries, container);
+
+  var html = '';
+  PL_OV_STAGES.forEach(function(stage) {
+    var jobs = stageMap[stage];
+    if (jobs.length === 0) return;
+    html += '<div class="pl-stage-section" data-stage="' + stage + '">';
+    html += '<div class="pl-stage-header" onclick="this.closest(\'.pl-stage-section\').classList.toggle(\'collapsed\')">';
+    html += '<svg class="pl-stage-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>';
+    html += '<span class="pl-stage-name">' + (PL_OV_LABELS[stage] || stage) + '</span>';
+    html += '<span class="pl-stage-count">' + jobs.length + '</span>';
+    html += '</div>';
+    html += '<div class="pl-stage-body">';
+    html += '<table class="pl-table"><thead><tr>';
+    html += '<th>Title</th><th>Company</th><th>Platform</th><th>Source</th><th>Match</th><th>Fraud</th><th>AI</th><th>Saved</th><th>Applied</th><th>Activity</th>';
+    html += '</tr></thead><tbody>';
+    jobs.forEach(function(e) {
+      var title = e.job_title || 'Unknown';
+      var company = e.company_name || '';
+      var platform = e.source_platform || '—';
+      var entrySource = e.entry_source || '—';
+      var matchScore = typeof e.match_score === 'number' ? e.match_score + '%' : '—';
+      var matchColor = typeof e.match_score === 'number' ? (e.match_score >= 70 ? 'color:var(--green);' : e.match_score >= 40 ? 'color:var(--warm);' : 'color:var(--red);') : '';
+      var fraudScore = typeof e.fraud_score === 'number' ? e.fraud_score : null;
+      var fraudHtml = fraudScore !== null ? (fraudScore >= 60 ? '<span style="color:var(--red);font-weight:600;">🛡 ' + fraudScore + '</span>' : '<span style="color:var(--text-faint);">' + fraudScore + '</span>') : '<span style="color:var(--text-faint);">—</span>';
+      var aiScore = typeof e.ai_content_score === 'number' ? e.ai_content_score : null;
+      var aiHtml = aiScore !== null ? (aiScore >= 0.7 ? '<span style="color:var(--warm);font-weight:600;">⚠ ' + Math.round(aiScore * 100) + '%</span>' : '<span style="color:var(--text-faint);">' + Math.round(aiScore * 100) + '%</span>') : '<span style="color:var(--text-faint);">—</span>';
+      var savedAt = e.created_at ? new Date(e.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
+      var appliedAt = e.applied_at ? new Date(e.applied_at).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '—';
+      var lastActivity = e.updated_at ? _ovRelTime(e.updated_at) : '—';
+      var sourceUrl = e.source_url || '';
+      var titleLink = sourceUrl ? '<a href="' + sourceUrl + '" target="_blank" rel="noopener" class="pl-title" style="color:var(--accent);text-decoration:none;" title="' + title + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</a>' : '<span class="pl-title" title="' + title + '">' + (title.length > 35 ? title.slice(0,35) + '…' : title) + '</span>';
+      html += '<tr>';
+      html += '<td>' + titleLink + '</td>';
+      html += '<td class="pl-company" title="' + company + '">' + (company.length > 20 ? company.slice(0,20) + '…' : company) + '</td>';
+      html += '<td><span style="font-size:11px;background:var(--accent-dim);color:var(--accent);padding:2px 6px;border-radius:4px;">' + platform + '</span></td>';
+      html += '<td style="font-size:11px;color:var(--text-dim);">' + entrySource + '</td>';
+      html += '<td class="pl-match" style="' + matchColor + '">' + matchScore + '</td>';
+      html += '<td>' + fraudHtml + '</td>';
+      html += '<td>' + aiHtml + '</td>';
+      html += '<td class="pl-date">' + savedAt + '</td>';
+      html += '<td class="pl-date">' + appliedAt + '</td>';
+      html += '<td class="pl-date" style="font-size:11px;color:var(--text-dim);">' + lastActivity + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '</div></div>';
+  });
+
+  container.innerHTML = html;
+};
+
+// ── Stat cards ────────────────────────────────────────────────
+function _renderOverlayStats(entries, container) {
+  var statsEl = document.getElementById('pl-overlay-stats');
+  if (!statsEl) return;
+  var total = entries.length;
+  var applied = entries.filter(function(e) { return ['applied','interview','offer'].includes(e.stage); }).length;
+  var withScore = entries.filter(function(e) { return typeof e.match_score === 'number'; });
+  var avgScore = withScore.length ? Math.round(withScore.reduce(function(a,e) { return a + e.match_score; }, 0) / withScore.length) : null;
+  var flagged = entries.filter(function(e) { return e.fraud_score >= 60 || e.ai_content_score >= 0.7; }).length;
+  statsEl.innerHTML =
+    '<div class="stat-card"><div class="stat-val">' + total + '</div><div class="stat-label">Overlay Entries</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + applied + '</div><div class="stat-label">Applied+</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + (avgScore !== null ? avgScore + '%' : '—') + '</div><div class="stat-label">Avg Match</div></div>' +
+    '<div class="stat-card"><div class="stat-val">' + flagged + '</div><div class="stat-label">Flagged Jobs</div></div>';
+}
+
+// ── Relative time helper ──────────────────────────────────────
+function _ovRelTime(iso) {
+  var diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return Math.floor(diff / 86400000) + 'd ago';
+}
+
+// ── Drill-down from overlay analytics → pipeline overlay tab ─
+window.drillDownToOverlayPipeline = function() {
+  if (typeof showPage === 'function') showPage('pipeline');
+  setTimeout(function() {
+    if (typeof switchPipelineView === 'function') switchPipelineView('overlay');
+  }, 150);
+};
+
+})();
+
+
 // === js/tier-gating.js ===
 // === Tier Gating Module ===
 // Phase 7: Reusable tier gate component for Archive + Metrics feature gating
@@ -24524,6 +25001,8 @@ function updateApplySettingsVisibility(mode) {
 
 
 // === js/app.js ===
+// [BJ] Dashboard v7.04 loaded
+console.log('[BJ] Dashboard v7.04 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
@@ -24770,6 +25249,12 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
   if (typeof initPipeline === 'function') await initPipeline();
+  // Overlay Pipeline S2: migrate localStorage pipeline → new pipeline table (one-time)
+  if (typeof PipelineMigration !== 'undefined' && !PipelineMigration.hasRun()) {
+    PipelineMigration.run(window._sb || sb, currentUser.id).catch(function(e) {
+      console.warn('[BJ] pipeline-migration failed:', e);
+    });
+  }
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)
@@ -25514,3 +25999,6 @@ async function processReferralAttribution(user) {
     sessionStorage.removeItem('bj_referral_source');
   } catch(e) {}
 }
+
+
+

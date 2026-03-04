@@ -22,7 +22,9 @@ let _pipelineLoaded = false;
 // Overlay Pipeline S2: new pipeline table cache, keyed by source_url
 // Dual-write: all pipeline mutations write to both user_pipeline and pipeline tables
 let _newPipelineCache = {};   // { [source_url]: { id, stage, entry_source, activity_log, ... } }
+window._newPipelineCache = _newPipelineCache; // S10: expose for pipeline-overlay-tab
 let _newPipelineLoaded = false;
+window._newPipelineLoaded = false; // S10: expose for pipeline-overlay-tab
 
 // ── Pipeline Signals (Phase A) ─────────────────────────────────
 // Pending signals keyed by pipeline_entry_id
@@ -170,6 +172,7 @@ async function loadNewPipelineFromSupabase() {
       _newPipelineCache[row.source_url] = row;
     });
     _newPipelineLoaded = true;
+    window._newPipelineLoaded = true;
     console.log('[BJ] New pipeline table loaded:', data?.length || 0, 'entries');
   } catch (e) {
     console.warn('[BJ] New pipeline load error (non-fatal):', e);
@@ -221,6 +224,7 @@ async function saveToNewPipeline(entry) {
     if (error) throw error;
     // Update local cache
     _newPipelineCache[entry.source_url] = { ...row, id: data?.id || existing?.id };
+    window._newPipelineCache = _newPipelineCache; // keep window ref in sync
   } catch (e) {
     console.warn('[BJ] New pipeline write error (non-fatal):', e);
   }
@@ -382,6 +386,7 @@ async function migratePipelineToSupabase() {
 async function initPipeline() {
   await migratePipelineToSupabase();
   await loadPipelineFromSupabase();
+  await loadNewPipelineFromSupabase(); // S10: wire overlay pipeline load on init
   await loadPendingSignals();
 }
 
@@ -1258,3 +1263,4 @@ async function loadRecruiterContacts() {
     return {};
   }
 }
+
