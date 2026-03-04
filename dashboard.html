@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v6.79 -->
+<!-- Brilliant Jobs Dashboard v6.80 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,19 +11,19 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v6.79"></script>
-  <script src="/js/notification-center.js?v=v6.79"></script>
+  <script src="/js/version.js?v=v6.80"></script>
+  <script src="/js/notification-center.js?v=v6.80"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v6.79" defer></script>
-  <script src="js/canny.js?v=v6.79" defer></script>
+  <script src="dist/dashboard.min.js?v=v6.80" defer></script>
+  <script src="js/canny.js?v=v6.80" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v6.79">
+  <link rel="stylesheet" href="styles.css?v=v6.80">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -2823,6 +2823,7 @@
             <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
               <span>Job Search Mode</span>
               <span id="passive-mode-badge" class="passive-mode-badge active" style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:var(--green);color:#fff;letter-spacing:.5px;">Active</span>
+              <span id="passive-snooze-badge" style="display:none;font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:var(--warm);color:#fff;letter-spacing:.5px;margin-left:6px;"></span>
             </div>
             <div class="card-sub">Active mode shows all matching jobs. Passive mode only alerts you on exceptional matches — no daily digests, no noise.</div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
@@ -2874,7 +2875,7 @@
                 </div>
               </div>
 
-              <!-- Frequency Presets (v6.79 Phase 16 S2) -->
+              <!-- Frequency Presets (v6.80 Phase 16 S2) -->
               <div style="margin-top:18px;">
                 <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Alert Frequency</div>
                 <div style="display:flex;flex-direction:column;gap:8px;" id="passive-preset-container">
@@ -2907,6 +2908,24 @@
                   </div>
                 </div>
                 <div style="font-size:11px;color:var(--text-faint);margin-top:8px;">AI-generated job descriptions scoring below 50% quality are automatically skipped regardless of match score.</div>
+              </div>
+              <!-- Snooze Controls (v6.80 Phase 16 S3) -->
+              <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <div style="font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;">Snooze Alerts</div>
+                  <button id="passive-snooze-resume-btn" style="display:none;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;">Resume now</button>
+                </div>
+                <div style="font-size:13px;color:var(--text-faint);margin-bottom:10px;">Pause all passive alerts temporarily without turning off passive mode.</div>
+                <button id="passive-snooze-btn" style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:6px;background:var(--bg-input);color:var(--text);border:1px solid var(--border);cursor:pointer;">Pause passive alerts&hellip;</button>
+                <div id="passive-snooze-panel" style="display:none;margin-top:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;">
+                  <div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px;">Pause for how long?</div>
+                  <div style="display:flex;flex-direction:column;gap:6px;">
+                    <button class="passive-snooze-duration-btn" data-duration="1w" style="text-align:left;font-size:13px;padding:8px 12px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);cursor:pointer;">1 week</button>
+                    <button class="passive-snooze-duration-btn" data-duration="2w" style="text-align:left;font-size:13px;padding:8px 12px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);cursor:pointer;">2 weeks</button>
+                    <button class="passive-snooze-duration-btn" data-duration="1m" style="text-align:left;font-size:13px;padding:8px 12px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);cursor:pointer;">1 month</button>
+                    <button class="passive-snooze-duration-btn" data-duration="indef" style="text-align:left;font-size:13px;padding:8px 12px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);cursor:pointer;">Indefinitely</button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

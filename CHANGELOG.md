@@ -1,3 +1,13 @@
+## v6.80 — 2026-03-04
+### Phase 16 Session 3: Snooze & Conditional Wake
+- **Supabase migration:** profiles.passive_snoozed_until (timestamptz, nullable) added
+- **send-notification v9:** snooze check added to checkPassiveGate() — if passive_snoozed_until > now(), skip notification; fail-open on DB error
+- **settings.js:** SNOOZE_OPTIONS config, activateSnooze(), clearSnooze(), syncSnoozeUI(), conditionalWakeCheck(), initPassiveSnooze() — 157 lines appended
+- **dashboard.html:** Snooze Controls section in #passive-threshold-panel — Pause button + duration picker (1w/2w/1m/indefinitely); passive-snooze-badge in card header showing paused-until date; Resume now button
+- **Conditional wake:** bj:filter-activated event listener auto-clears snooze when user activates a filter in passive mode
+- **PostHog events:** passive_snoozed (duration, expires_at), passive_woken_manually
+- **Version bumped:** v6.79 → v6.80 (all 7 surfaces)
+
 ## v6.79 Phase 16 Session 2 — Passive Alert Frequency Control (2026-03-04)
 - Feat: Three passive frequency preset cards in Settings UI (Slam-dunk only, High bar, Curated daily)
 - Feat: Each preset writes to profiles.passive_config.frequency_preset + score_floor (90/85/80%)
