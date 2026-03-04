@@ -1,3 +1,13 @@
+## v6.63 Chat Mode Session 1: Schema + Edge Functions (2026-03-03)
+- DB: Created saved_prompts table (UUID PK, user_id FK, name, color_index, conversation JSONB, derived_filters JSONB, is_active) with RLS
+- DB: Created chat_usage table (rate limiting — user_id + message_at) with RLS
+- DB: Created chat_analytics table (event_type + event_data JSONB) with RLS
+- Edge Function: chat-job-search — Claude Haiku integration with job-search-only system prompt, 3-layer injection protection, <filters> block extraction/validation, tier-based rate limiting (Free 10/30, Starter 30/100, Pro 100/500), graceful error handling
+- Edge Function: filter-to-prompt — converts structured filter JSON to natural language prompt via Haiku with fallback
+- Edge Function: prompt-to-filter — extracts structured filter JSON from conversation history via Haiku with validation
+- All functions: CORS configured for brilliantjobs.app, auth gate via Supabase JWT, service role for DB ops
+- Version v6.63 across all surfaces
+
 ## v6.62 A15 Session 6: Source Pill Counts from mv_job_feed_counts (2026-03-03)
 - Stats page: Per-ATS-source job count chips in filter bar (All mode) — Greenhouse, Lever, Ashby, Workable, Recruitee, USAJobs counts from MV
 - Job feed: Source breakdown chips in hero stats bar — compact per-source counts with colored dots
