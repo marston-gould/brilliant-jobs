@@ -1,6 +1,9 @@
-# C4: CI/CD pipeline for Supabase migrations
-# Runs on push to main when migration files change
-# Also deploys Edge Functions when their code changes
+# Brilliant Jobs — CI/CD Pipeline
+# Runs on push to main:
+#   - Supabase migrations (when migration files change)
+#   - Edge Function deploys (when function code changes)
+#   - Tailwind CSS rebuild (when src/input.css or tailwind.config.js change)
+#   - JS bundle rebuild (when js/ files change)
 
 name: Deploy
 
@@ -10,6 +13,10 @@ on:
     paths:
       - 'supabase/migrations/**'
       - 'supabase/functions/**'
+      - 'src/input.css'
+      - 'tailwind.config.js'
+      - 'js/**'
+      - 'build.js'
 
 jobs:
   migrate:
@@ -44,3 +51,53 @@ jobs:
           done
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+  rebuild-css:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'src/input.css') ||
+      contains(github.event.head_commit.modified, 'tailwind.config.js')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx tailwindcss -i src/input.css -o styles.css --minify
+      - name: Commit rebuilt CSS
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet styles.css; then
+            echo "No CSS changes detected"
+          else
+            git add styles.css
+            git commit -m "ci: rebuild styles.css from input.css changes"
+            git push
+          fi
+
+  rebuild-js:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'js/') ||
+      contains(github.event.head_commit.modified, 'build.js')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: node build.js
+      - name: Commit rebuilt JS bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet dist/; then
+            echo "No JS bundle changes detected"
+          else
+            git add dist/dashboard.js dist/dashboard.min.js dist/dashboard.min.js.map
+            git commit -m "ci: rebuild dashboard bundle from js/ changes"
+            git push
+          fi
