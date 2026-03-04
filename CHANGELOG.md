@@ -1,3 +1,16 @@
+## v6.68 Chat Mode Session 6: PostHog + Polish + Release (2026-03-03)
+- PostHog: All 11 chat events instrumented (chat_mode_toggled, chat_message_sent, chat_filters_extracted, chat_filters_applied, chat_rate_limited, chat_prompt_auto_generated, chat_to_filter_sync, chat_prompt_saved, chat_prompt_loaded, chat_prompt_deleted, chat_prompt_resume_assigned)
+- PostHog: Renamed search_mode_toggled → chat_mode_toggled per event catalog spec
+- Security: Enhanced injection hardening — 10 additional adversarial patterns (DAN, memory wipe, instruction override, token injection, code injection, prompt extraction, prompt leak, roleplay, system prompt extraction)
+- UI: Micro-animation on chat bubbles (slide-up entrance via chat-bubble-in keyframe)
+- UI: Smoother mode toggle transition (cubic-bezier easing, scale transform on active state)
+- UI: Send button pulse animation during sending state (.chat-send-btn.sending)
+- UI: Error state styling for failed messages (.chat-bubble-error)
+- UI: Empty state entrance animation (fade-up on chat-empty)
+- DB: pg_cron job chat_usage_cleanup — DELETE rows > 48h old, runs every 6h (0 */6 * * *)
+- CSS: Session 6 polish additions in src/input.css
+- Version: v6.67 → v6.68 across all 6 surfaces per VERSION_METHODOLOGY
+
 ## v6.67 Chat Mode Session 5: System Integration (2026-03-03)
 - JS: promptDerivedToFilterObj() converts saved prompt derived_filters to saved-filter-compatible objects for searchJobs()
 - JS: getCheckedSavedPromptFilters() collects checked prompt filters from filter selector UI

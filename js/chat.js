@@ -27,6 +27,17 @@ var _chatBlockedPatterns = [
   /translate\s+.+\s+to\s/i,
   /system\s*prompt/i,
   /<\/?[a-z]+>/i,  // HTML injection
+  // Session 6: Enhanced injection hardening (10 adversarial vectors)
+  /\bDAN\b.*\bmode\b/i,                    // DAN jailbreak
+  /do\s+anything\s+now/i,                   // DAN variant
+  /forget\s+(everything|your|all)/i,        // Memory wipe attacks
+  /new\s+instructions?\s*:/i,               // Instruction override
+  /\[system\]|\[INST\]|\<\|im_start\|/i,   // Token injection
+  /base64|atob|eval\s*\(/i,                 // Code injection
+  /\brepeat\s+(after|back|everything)/i,    // Prompt extraction
+  /what\s+(were|are)\s+your\s+(instructions|rules|prompt)/i, // Prompt leak
+  /\broleplay\b|\bcharacter\b.*\bplay\b/i,  // Roleplay jailbreak
+  /reveal\s+(your|the)\s+(system|initial|original)/i, // System prompt extraction
 ];
 
 // --- Rate limit tiers ---
@@ -190,7 +201,7 @@ function setSearchMode(mode) {
 
   // PostHog event
   if (window.posthog) {
-    try { posthog.capture('search_mode_toggled', { mode: mode }); } catch(e) {}
+    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) {}
   }
 }
 
@@ -481,6 +492,11 @@ function _applySyncedFilters(filters) {
   }
 
   // Trigger job feed refresh
+  // PostHog: chat_filters_applied
+  if (window.posthog) {
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+  }
+
   if (typeof debouncedSearchJobs === 'function') {
     debouncedSearchJobs();
   }
@@ -525,11 +541,20 @@ async function sendChatMessage() {
   // Add user message
   _chatSession.addMessage('user', text);
   appendChatBubble('user', text);
+
+  // PostHog: chat_message_sent
+  if (window.posthog) {
+    try { posthog.capture('chat_message_sent', { tier: getUserTier(), msg_count: _chatSession.messageCount, has_filters: !!window._chatFilterOverride }); } catch(e) {}
+  }
   updateChatCounter();
 
   // Show typing indicator
   showTypingIndicator(true);
   _chatSending = true;
+
+  // Session 6: Visual sending state on button
+  var sendBtn = document.getElementById('chat-send-btn');
+  if (sendBtn) sendBtn.classList.add('sending');
 
   try {
     var session = await sb.auth.getSession();
@@ -578,6 +603,11 @@ async function sendChatMessage() {
     var assistantText = data.response || data.text || '';
     var extractedFilters = data.filters || null;
 
+    // PostHog: chat_filters_extracted
+    if (extractedFilters && Object.keys(extractedFilters).length > 0 && window.posthog) {
+      try { posthog.capture('chat_filters_extracted', { filter_count: Object.keys(extractedFilters).length, keywords: (extractedFilters.keywords || []).join(',') }); } catch(e) {}
+    }
+
     // Add assistant message
     _chatSession.addMessage('assistant', assistantText, extractedFilters);
     appendChatBubble('assistant', assistantText);
@@ -605,6 +635,10 @@ async function sendChatMessage() {
   }
 
   _chatSending = false;
+
+  // Session 6: Remove sending state
+  var sendBtnEnd = document.getElementById('chat-send-btn');
+  if (sendBtnEnd) sendBtnEnd.classList.remove('sending');
 }
 
 // --- Apply extracted filters to job feed ---
@@ -640,6 +674,11 @@ function applyChatFilters(filters) {
   window._chatFilterOverride = filters;
 
   // Trigger refresh
+  // PostHog: chat_filters_applied
+  if (window.posthog) {
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+  }
+
   if (typeof debouncedSearchJobs === 'function') {
     debouncedSearchJobs();
   }
@@ -751,6 +790,10 @@ function showChatRateLimit(data) {
     banner.innerHTML += '<a href="#" class="chat-rate-upgrade" onclick="event.preventDefault();document.querySelector(\'[data-page=billing]\')?.click();">Upgrade for more →</a>';
   }
 
+  // PostHog: chat_rate_limited
+  if (window.posthog) {
+    try { posthog.capture('chat_rate_limited', { limit_type: (data && data.limit_type) || 'daily', tier: getUserTier() }); } catch(e) {}
+  }
   banner.style.display = 'block';
 }
 
