@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + init for standalone /admin page
-   v6.85 — IA v2 S2 block pages (Companies, Jobs, Email)
+   v6.86 — IA v2 S2 block pages (Companies, Jobs, Email)
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check
@@ -86,3 +86,4 @@
     }
   });
 })();
+
