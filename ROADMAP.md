@@ -2690,11 +2690,10 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Cache Health sub-page: monitoring alerts, MV row counts, major_job_cache table (admin-cache-health.js)
 - Signals sub-page: pipeline_signals + signal_patterns, ECharts charts (admin-signals.js)
 
-### 74.22 Admin IA v2 S6: Enrichment, SEO, Content, Merchandising, Referrals — v6.90
+### 74.22 Admin IA v2 S6: Enrichment, SEO, Content, Merchandising, Referrals — v6.93
 - Bundle expanded 12 → 17 files: admin-enrichment.js, admin-seo.js, admin-content.js, admin-merch.js, admin-referrals.js wired into build-admin.js
 - Enrichment: coverage % stat cards, gate indicators, platform breakdown chart, refresh schedule
 - SEO: 9-tool dashboard (GSC, PSI, CF, YLT, CrUX), URL+date filters, Sync All, Export Report
 - Content: editorial queue, detect/generate actions, click-to-preview story panel
 - Merchandising: placements→rules→content CRUD, bulk import, cohort targeting
 - Referrals: referral admin stats and management
-

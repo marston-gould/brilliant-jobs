@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v6.74"></script>
+  <script src="/js/version.js?v=v6.93"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -475,7 +475,7 @@ const features = [
   { s: 'done', n: 'Greenhouse job scraper — 110,000+ jobs stored', d: 'Full metadata: title, location, department, URL, updated_at, last_seen', p: 2 },
   { s: 'done', n: 'Jobs Feed — 5-row filter builder', d: 'What / Where / When / Who / How Much with pill-based inputs and OR syntax', p: 2 },
   { s: 'done', n: 'Filter builder — edit individual tags in OR groups', d: 'Each value within a multi-value OR group pill now has its own × remove button. Click × on any individual term to remove just that term without destroying the entire group. If the last value is removed, the pill disappears. Clicking the pill text still opens the add-OR input as before. Per-value styling: subtle background highlight on hover, red × on hover.', p: 2 },
-  { s: 'done', n: 'Filter builder — word boundary matching for keywords', d: 'Replaced ilike prefix matching (title.ilike.geo%) with PostgreSQL word boundary regex (title.imatch.\\\\mgeo\\\\M). Prevents \"geo\" from matching \"geospatial\", \"search\" from matching \"researcher\", etc. Uses case-insensitive POSIX regex via PostgREST imatch operator. FTS (search_vector.wfts) kept as OR fallback for stemming. WHAT NOT exclusions intentionally kept as ilike substring matching (broader is better for exclusions).', p: 2 },
+  { s: 'done', n: 'Filter builder — word boundary matching for keywords', d: 'Replaced ilike prefix matching (title.ilike.geo%) with PostgreSQL word boundary regex (title.imatch.\\mgeo\\M). Prevents \"geo\" from matching \"geospatial\", \"search\" from matching \"researcher\", etc. Uses case-insensitive POSIX regex via PostgREST imatch operator. FTS (search_vector.wfts) kept as OR fallback for stemming. WHAT NOT exclusions intentionally kept as ilike substring matching (broader is better for exclusions).', p: 2 },
   { s: 'done', n: 'Saved filters with checkboxes and job count columns', d: '24H / 7D / 30D counts, mini-pills, search, select-all, delete', p: 2 },
   { s: 'done', n: 'Salary filter with auto-formatting', d: 'Min/max boxes, interprets 80 as $80k, displays as inline pill', p: 2 },
   { s: 'done', n: 'Pill auto-commit on Enter/Tab/blur', d: 'OR syntax ("or term" adds to last pill), backspace removes last pill', p: 2 },
@@ -550,7 +550,7 @@ const features = [
   { s: 'done', n: 'Fix: Vancouver BC in Portland filter', d: 'Country disambiguation excludes Canadian locations from US location searches', p: 2 },
   { s: 'done', n: 'Salary rate detection (hourly/weekly/monthly)', d: 'Parser detects context around matches — tags as yr/hr/wk/mo/day/session/visit with per-rate sanity bounds. Feed shows $77-$96/hr, $2,500/wk etc.', p: 2 },
   { s: 'done', n: 'Fix: franchise commission false positives', d: 'Parser rejects franchise disclosure documents (FDD earnings claims, Item 19 references) — no more $165K commission amounts in salary column', p: 2 },
-  { s: 'done', n: 'Fix: EUR false positive from "entrepreneurial"', d: 'Currency detection now uses word boundaries (\\b) — prevents substrings like entr-EUR-preneurial from triggering non-USD currency', p: 2 },
+  { s: 'done', n: 'Fix: EUR false positive from "entrepreneurial"', d: 'Currency detection now uses word boundaries (\b) — prevents substrings like entr-EUR-preneurial from triggering non-USD currency', p: 2 },
   { s: 'done', n: 'Fix: DE state/country disambiguation', d: 'City-level exclusion lists for 14 ambiguous ISO codes (DE→Munich/Berlin/Hamburg, IN→Mumbai/Delhi, GA→Tbilisi, etc.) filter out foreign jobs from US state searches', p: 2 },
   { s: 'done', n: 'Fix: double currency symbol display', d: 'Replaced prefix+$ concatenation with unified symbol map (CA$, AU$, £, €, $) — no more €$43k or CA $120k', p: 2 },
   { s: 'done', n: 'Removed loc_state from generic ilike fallback', d: 'State filtering only goes through proper state pill resolution — prevents loc_state.ilike.%DE% matching Berlin, DE', p: 2 },
@@ -1795,7 +1795,7 @@ const features = [
 { s: 'done', n: 'Admin IA v2 S3 — Action Bars + Paginated Tables — v6.86', d: 'v6.86. admin-blocks.js: shared utility file with _adminActionBar, _adminPagedTable, _fmtSalary, _fmtLocation. Companies + Jobs pages: search/filter action bars, 50-row paginated tables with prev/next. 2 new RPCs: get_admin_companies_list, get_admin_jobs_list (paginated jsonb, SECURITY DEFINER). 39,643 companies / 401,317 jobs verified live.', p: 1, e: '1h'},
 { s: 'done', n: 'Admin IA v2 S4 — Detail Panels + ECharts Charts — v6.89', d: 'v6.89. Click-to-expand detail rows on Companies + Jobs tables with lazy RPC loading. Company detail: board URL, PDL match, HTTP status, enrichment rate. Job detail: JD preview (600 chars), skills pills, enrichment fields, AI scores, salary breakdown. ECharts line chart (daily job volume, 7d). ECharts horizontal bar chart (email delivery funnel). 2 new RPCs: get_admin_company_detail, get_admin_job_detail.', p: 1, e: '1h'},
 { s: 'done', n: 'Admin IA v2 S5 — Notifications Log, Feed Health, Cache Health, Signals — v6.88–v6.89', d: 'v6.88–v6.89. Notifications Log viewer: paginated notification_log table, search by type/company/subject, status + channel filters, click-to-expand rows with full detail. New RPC: get_admin_notification_log. Feed Health sub-page: platform breakdown, 7d ECharts chart, refresh log. Cache Health sub-page: monitoring alerts, MV row counts, major_job_cache table. Signals sub-page: pipeline_signals + signal_patterns, ECharts charts, recent signals table. 3 new dedicated JS files: admin-feed-health.js, admin-cache-health.js, admin-signals.js.', p: 1, e: '3h'},
-{ s: 'done', n: 'Admin IA v2 S6 — Enrichment, SEO, Content, Merchandising, Referrals — v6.90', d: 'v6.90. Admin bundle expanded from 12 to 17 files by wiring pre-built S6 modules into build-admin.js. Enrichment: coverage stat cards (salary/location/dept/country), color-coded by threshold, gate indicators, ECharts platform bar chart, refresh schedule table. SEO: 9-tool dashboard (GSC, PSI, Cloudflare, YLT, CrUX), URL+date filters, Sync All + Export. Content: editorial queue with detect/generate actions, click-to-preview story panel. Merchandising: placements→rules→content CRUD, bulk import, cohort targeting. Referrals: admin stats + management.', p: 1, e: '1h'},
+{ s: 'done', n: 'Admin IA v2 S6 — Enrichment, SEO, Content, Merchandising, Referrals — v6.93', d: 'v6.93. Admin bundle expanded from 12 to 17 files by wiring pre-built S6 modules into build-admin.js. Enrichment: coverage stat cards (salary/location/dept/country), color-coded by threshold, gate indicators, ECharts platform bar chart, refresh schedule table. SEO: 9-tool dashboard (GSC, PSI, Cloudflare, YLT, CrUX), URL+date filters, Sync All + Export. Content: editorial queue with detect/generate actions, click-to-preview story panel. Merchandising: placements→rules→content CRUD, bulk import, cohort targeting. Referrals: admin stats + management.', p: 1, e: '1h'},
 { s: 'done', n: 'Intelligence Features — Pod 1 Design + Handoff', d: 'React design artifact and Pod 2 handoff doc for Fake Job Detection UI, AI-Written Content Detection UI, and Chat Interface toggle for job feed. Queued for Pod 2 implementation.', p: 1, e: '6h'},
 ];
 
@@ -2103,10 +2103,3 @@ render();
 
 </body>
 </html>
-
-
-
-
-
-
-

@@ -1,3 +1,22 @@
+## v6.93 — 2026-03-04
+
+### Admin IA v2 · Session 9 — Notification Analytics Suite
+
+**New file:**
+- `js/admin-notif-analytics.js` — 4 sub-page implementations (676 lines)
+
+**Sub-pages implemented:**
+- `notif-analytics` — Delivery funnel, channel breakdown, top types table, send volume chart; period toggle 7d/30d/90d
+- `email-cohorts` — Per-cohort opt-in stats, cohort table, recent 30d email log; Resend dashboard link
+- `cadence` — Config summary cards, searchable/filterable config table, send volume by category chart
+- `notif-log` — Paginated live log viewer (50/page), filters by channel/status/type, total record count
+
+**Updated:**
+- `build-admin.js` — 23 → 24 source files
+- `js/version.js` — v6.93
+- `js/app.js` — `[BJ] Dashboard v6.93 loaded`
+- `dashboard.html`, `admin.html`, `index.html` — v6.93
+
 ## v6.92 — 2026-03-04
 
 ### Admin IA v2 · Session 8 — Stripe & Subscription Management
@@ -2433,4 +2452,3 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
-

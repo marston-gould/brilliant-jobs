@@ -24,10 +24,14 @@ const jsFiles = [
   'js/admin-templates.js',
   'js/admin-revenue.js',
   'js/admin-feedback.js',
+  'js/admin-notif-analytics.js',
   'js/admin-shell.js',
 ];
 
-const combined = jsFiles.map(f => '// === ' + f + ' ===\n' + readFileSync(f, 'utf-8')).join('\n\n');
+const combined = jsFiles.map(f => '// === ' + f + ' ===
+' + readFileSync(f, 'utf-8')).join('
+
+');
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/admin.js', combined);
