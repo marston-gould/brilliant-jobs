@@ -266,3 +266,156 @@ $('#feedback-btn').addEventListener('click', openFeedback);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && $('#feedback-overlay').classList.contains('open')) closeFeedback();
 });
+
+
+// ---- Passive Mode (v6.78 Phase 16 Session 1) ----
+var _passiveMode = false;
+var _passiveConfig = {
+  match_score_floor: 85,
+  min_salary: null,
+  required_remote: false,
+  required_level: null,
+  target_companies: [],
+  active_filters: [],
+  frequency_preset: 'high_bar',
+  score_floor: 85
+};
+var _passiveDebounceTimer = null;
+
+async function loadPassiveMode() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { data, error } = await sb
+      .from('profiles')
+      .select('passive_mode, passive_config')
+      .eq('id', currentUser.id)
+      .single();
+    if (error) { console.warn('[BJ] Passive mode load error:', error.message); return; }
+    if (data) {
+      _passiveMode = !!data.passive_mode;
+      if (data.passive_config) _passiveConfig = Object.assign(_passiveConfig, data.passive_config);
+    }
+    syncPassiveUI();
+  } catch (e) { console.warn('[BJ] Passive mode load exception:', e); }
+}
+
+function syncPassiveUI() {
+  var toggle = document.getElementById('passive-mode-toggle');
+  var panel = document.getElementById('passive-threshold-panel');
+  var badge = document.getElementById('passive-mode-badge');
+  if (toggle) toggle.checked = _passiveMode;
+  if (panel) panel.style.display = _passiveMode ? 'block' : 'none';
+  if (badge) { badge.textContent = _passiveMode ? 'Passive' : 'Active'; badge.className = 'passive-mode-badge ' + (_passiveMode ? 'passive' : 'active'); }
+  // Sync threshold inputs
+  var scoreSlider = document.getElementById('passive-score-floor');
+  var scoreDisplay = document.getElementById('passive-score-display');
+  var salaryInput = document.getElementById('passive-min-salary');
+  var remoteToggle = document.getElementById('passive-required-remote');
+  var levelSelect = document.getElementById('passive-required-level');
+  if (scoreSlider) { scoreSlider.value = _passiveConfig.match_score_floor || 85; }
+  if (scoreDisplay) { scoreDisplay.textContent = (_passiveConfig.match_score_floor || 85) + '%'; }
+  if (salaryInput) { salaryInput.value = _passiveConfig.min_salary || ''; }
+  if (remoteToggle) { remoteToggle.checked = !!_passiveConfig.required_remote; }
+  if (levelSelect) { levelSelect.value = _passiveConfig.required_level || ''; }
+}
+
+async function savePassiveMode() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { error } = await sb
+      .from('profiles')
+      .update({ passive_mode: _passiveMode, passive_config: _passiveConfig })
+      .eq('id', currentUser.id);
+    if (error) throw error;
+    // Suppress daily digest when passive ON
+    await syncPassiveNotificationChannels();
+    if (typeof showToast === 'function') showToast('Mode saved', { type: 'success' });
+  } catch (e) {
+    console.error('[BJ] Passive mode save error:', e);
+    if (typeof showToast === 'function') showToast('Failed to save passive mode', { type: 'error' });
+  }
+}
+
+async function syncPassiveNotificationChannels() {
+  try {
+    if (!currentUser) return;
+    // When passive ON: suppress new_jobs_daily by setting frequency = 'none'
+    // When passive OFF: restore to 'daily'
+    var freq = _passiveMode ? 'none' : 'daily';
+    await sb.from('notification_channels')
+      .upsert({ user_id: currentUser.id, notification_type: 'new_jobs_daily', frequency: freq }, { onConflict: 'user_id,notification_type' });
+  } catch (e) { console.warn('[BJ] Passive notification channel sync error:', e); }
+}
+
+function debounceSavePassiveConfig() {
+  if (_passiveDebounceTimer) clearTimeout(_passiveDebounceTimer);
+  _passiveDebounceTimer = setTimeout(function() { savePassiveMode(); }, 500);
+}
+
+function initPassiveMode() {
+  loadPassiveMode();
+
+  // Main toggle
+  var toggle = document.getElementById('passive-mode-toggle');
+  if (toggle) {
+    toggle.addEventListener('change', function() {
+      _passiveMode = this.checked;
+      syncPassiveUI();
+      savePassiveMode();
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('passive_mode_toggled', { enabled: _passiveMode, config: _passiveConfig, source: 'settings' });
+      }
+    });
+  }
+
+  // Score floor slider
+  var scoreSlider = document.getElementById('passive-score-floor');
+  var scoreDisplay = document.getElementById('passive-score-display');
+  if (scoreSlider) {
+    scoreSlider.addEventListener('input', function() {
+      var val = parseInt(this.value, 10);
+      _passiveConfig.match_score_floor = val;
+      _passiveConfig.score_floor = val;
+      if (scoreDisplay) scoreDisplay.textContent = val + '%';
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'score_floor', value: val });
+      debounceSavePassiveConfig();
+    });
+  }
+
+  // Min salary
+  var salaryInput = document.getElementById('passive-min-salary');
+  if (salaryInput) {
+    salaryInput.addEventListener('input', function() {
+      _passiveConfig.min_salary = this.value ? parseInt(this.value, 10) : null;
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'min_salary', value: _passiveConfig.min_salary });
+      debounceSavePassiveConfig();
+    });
+  }
+
+  // Remote toggle
+  var remoteToggle = document.getElementById('passive-required-remote');
+  if (remoteToggle) {
+    remoteToggle.addEventListener('change', function() {
+      _passiveConfig.required_remote = this.checked;
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'required_remote', value: this.checked });
+      debounceSavePassiveConfig();
+    });
+  }
+
+  // Level select
+  var levelSelect = document.getElementById('passive-required-level');
+  if (levelSelect) {
+    levelSelect.addEventListener('change', function() {
+      _passiveConfig.required_level = this.value || null;
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'required_level', value: this.value });
+      debounceSavePassiveConfig();
+    });
+  }
+}
+
+// Auto-init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(initPassiveMode, 600); });
+} else {
+  setTimeout(initPassiveMode, 600);
+}
