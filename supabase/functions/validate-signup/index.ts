@@ -1,8 +1,9 @@
 // supabase/functions/validate-signup/index.ts
 // Deploy: supabase functions deploy validate-signup --no-verify-jwt
+// v6.75 — Added DataForSEO SERP-based LinkedIn profile verification
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { fetchWithRetry } from '../_shared/resilience.ts'
+import { fetchWithRetry, TIMEOUT_CONFIGS } from '../_shared/resilience.ts'
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
 const corsHeaders = {
@@ -178,23 +179,48 @@ serve(async (req) => {
     result.checks.form_name = formName
     result.checks.linkedin_name_parsed = linkedinName
 
+    // ─── CHECK 4: DataForSEO SERP verification ───
+    // Cross-reference: search Google for this person's name on linkedin.com/in
+    // Confirms profile is real, indexed, and URL matches what they gave us
+    const dfsSerpResult = await verifyProfileViaSERP(formName, liUrl)
+    result.checks.dataforseo = dfsSerpResult
+
     // ─── DECISION ───
+    // DataForSEO verification is an additional trust signal, not a hard gate.
+    // If SERP confirms the profile URL, it's strong evidence of legitimacy.
+    // If SERP can't find it, it's a soft negative (new/private profiles won't index).
+    const serpConfirmed = dfsSerpResult.verified === true
+    const serpFailed = dfsSerpResult.verified === false && dfsSerpResult.error == null
+
     if (nameMatch && !timingSuspicious) {
       result.approved = true
-      result.reason = 'Auto-approved: name match + normal timing'
+      result.reason = serpConfirmed
+        ? 'Auto-approved: name match + normal timing + SERP-verified'
+        : 'Auto-approved: name match + normal timing'
       await updateProfile(supabase, profile_id, true, result)
 
     } else if (nameMatch && timingBorderline) {
       result.approved = true
-      result.reason = 'Auto-approved: name match, borderline timing'
+      result.reason = serpConfirmed
+        ? 'Auto-approved: name match + borderline timing + SERP-verified'
+        : 'Auto-approved: name match, borderline timing'
       await updateProfile(supabase, profile_id, true, result)
 
-    } else if (!fetchSuccess) {
-      result.reason = 'LinkedIn fetch failed — cannot verify name'
+    } else if (serpConfirmed && !timingSuspicious && !fetchSuccess) {
+      // LinkedIn direct fetch failed but SERP confirms the profile exists
+      // and URL matches — approve on SERP evidence alone
+      result.approved = true
+      result.reason = 'Auto-approved: SERP-verified profile (LinkedIn fetch failed)'
+      await updateProfile(supabase, profile_id, true, result)
+
+    } else if (!fetchSuccess && !serpConfirmed) {
+      result.reason = 'LinkedIn fetch failed and SERP could not verify profile'
       await updateProfile(supabase, profile_id, false, result)
 
     } else if (!nameMatch && fetchSuccess) {
-      result.reason = 'Name mismatch between form and LinkedIn profile'
+      result.reason = serpFailed
+        ? 'Name mismatch + profile not found in Google index'
+        : 'Name mismatch between form and LinkedIn profile'
       await updateProfile(supabase, profile_id, false, result)
 
     } else if (timingSuspicious) {
@@ -216,6 +242,176 @@ serve(async (req) => {
     )
   }
 })
+
+
+// ─── DataForSEO SERP Profile Verification ───
+
+interface SERPVerificationResult {
+  verified: boolean
+  url_match: boolean | null
+  serp_url: string | null
+  serp_title: string | null
+  organic_count: number
+  cost: number | null
+  error: string | null
+}
+
+async function verifyProfileViaSERP(
+  fullName: string,
+  linkedinUrl: string
+): Promise<SERPVerificationResult> {
+  const login = Deno.env.get('DATAFORSEO_LOGIN')
+  const apiKey = Deno.env.get('DATAFORSEO_API_KEY')
+
+  // Graceful skip if creds not configured
+  if (!login || !apiKey) {
+    return {
+      verified: false,
+      url_match: null,
+      serp_url: null,
+      serp_title: null,
+      organic_count: 0,
+      cost: null,
+      error: 'DATAFORSEO credentials not configured',
+    }
+  }
+
+  const name = fullName.trim()
+  if (!name) {
+    return {
+      verified: false,
+      url_match: null,
+      serp_url: null,
+      serp_title: null,
+      organic_count: 0,
+      cost: null,
+      error: 'No name provided for SERP verification',
+    }
+  }
+
+  try {
+    const authHeader = 'Basic ' + btoa(`${login}:${apiKey}`)
+
+    // Search: "Full Name" site:linkedin.com/in
+    const keyword = `"${name}" site:linkedin.com/in`
+
+    const res = await fetchWithRetry(
+      'https://api.dataforseo.com/v3/serp/google/organic/live/advanced',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([{
+          keyword,
+          location_code: 2840,  // US
+          language_code: 'en',
+          depth: 10,
+        }]),
+      },
+      TIMEOUT_CONFIGS.dataforseo
+    )
+
+    if (!res.ok) {
+      return {
+        verified: false,
+        url_match: null,
+        serp_url: null,
+        serp_title: null,
+        organic_count: 0,
+        cost: null,
+        error: `DataForSEO HTTP ${res.status}`,
+      }
+    }
+
+    const data = await res.json()
+    const task = data?.tasks?.[0]
+    const taskResult = task?.result?.[0]
+    const items = taskResult?.items || []
+    const organicItems = items.filter((i: any) => i.type === 'organic')
+
+    // Normalize the signup LinkedIn URL for comparison
+    const normalizedSignupUrl = normalizeLinkedInUrl(linkedinUrl)
+
+    // Check if any organic result matches the provided LinkedIn URL
+    let urlMatch = false
+    let matchedUrl: string | null = null
+    let matchedTitle: string | null = null
+
+    for (const item of organicItems) {
+      const serpUrl = normalizeLinkedInUrl(item.url || '')
+      if (serpUrl === normalizedSignupUrl) {
+        urlMatch = true
+        matchedUrl = item.url
+        matchedTitle = item.title
+        break
+      }
+    }
+
+    // If no exact URL match, check if any result contains the slug
+    if (!urlMatch && organicItems.length > 0) {
+      const slug = extractLinkedInSlug(linkedinUrl)
+      if (slug) {
+        for (const item of organicItems) {
+          const itemSlug = extractLinkedInSlug(item.url || '')
+          if (itemSlug && itemSlug === slug) {
+            urlMatch = true
+            matchedUrl = item.url
+            matchedTitle = item.title
+            break
+          }
+        }
+      }
+    }
+
+    return {
+      verified: urlMatch,
+      url_match: urlMatch,
+      serp_url: matchedUrl || (organicItems[0]?.url || null),
+      serp_title: matchedTitle || (organicItems[0]?.title || null),
+      organic_count: organicItems.length,
+      cost: data?.cost || task?.cost || null,
+      error: null,
+    }
+
+  } catch (e) {
+    console.error('DataForSEO SERP verification error:', e)
+    return {
+      verified: false,
+      url_match: null,
+      serp_url: null,
+      serp_title: null,
+      organic_count: 0,
+      cost: null,
+      error: e.message || 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Normalize a LinkedIn /in/ URL to a canonical form for comparison.
+ * Strips protocol, www, trailing slash, query params, fragments.
+ * Returns: "linkedin.com/in/slug"
+ */
+function normalizeLinkedInUrl(url: string): string {
+  return url
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .replace(/\?.*$/, '')
+    .replace(/#.*$/, '')
+    .replace(/\/+$/, '')
+}
+
+/**
+ * Extract the slug from a LinkedIn /in/ URL.
+ * e.g., "https://www.linkedin.com/in/marston" → "marston"
+ */
+function extractLinkedInSlug(url: string): string | null {
+  const match = url.match(/linkedin\.com\/in\/([a-zA-Z0-9\-_%]+)/i)
+  return match ? match[1].toLowerCase() : null
+}
 
 
 // ─── HELPERS ───
