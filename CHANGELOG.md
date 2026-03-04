@@ -1,3 +1,17 @@
+## v6.77 Archive Status for Inactive Users (2026-03-03)
+- Feat: 4-stage inactivity email sequence: 14d, 30d, 60d, 90d — each with $5/yr storage fee CTA
+- Feat: 90d email = final archive warning ("your account will be archived tomorrow")
+- Feat: archive-inactive Edge Function — auto-archives accounts at 91 days of inactivity
+- Feat: Archive confirmation email with reactivation + $5/yr storage fee options
+- Feat: profiles.archived_at, archive_storage_paid_until, archive_reason columns added
+- Feat: Storage fee ($5/yr) preserves data indefinitely while archived; skips archive if paid
+- Feat: Reactivation = any login clears archived_at, restores full access instantly
+- Feat: pg_cron schedule: archive-inactive-daily at 17:00 UTC (12 PM ET)
+- Feat: Updated 14d, 30d, 60d email templates with $5/yr storage fee mention
+- Feat: 60d email now includes "account will be archived in 30 days" countdown
+- Chore: Version bumped v6.76 → v6.77 across all surfaces per VERSION_METHODOLOGY
+- Scope: 2 Edge Functions (re-engagement v2 + archive-inactive) + email templates + DB schema + pg_cron
+
 ## v6.76 Competitor Employer Blocklist (2026-03-03)
 - Feat: competitor_blocklist table — admin-editable list of blocked employer companies
 - Feat: 24 companies seeded across 4 categories: competitor, ats_vendor, data_vendor, job_board
