@@ -1,5 +1,5 @@
 // [BJ] Dashboard v6.94 loaded
-console.log('[BJ] Dashboard v6.94 loaded');
+console.log('[BJ] Dashboard v6.96 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
@@ -246,6 +246,12 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   }
   // Initialize Supabase pipeline (migrate localStorage → Supabase on first run)
   if (typeof initPipeline === 'function') await initPipeline();
+  // Overlay Pipeline S2: migrate localStorage pipeline → new pipeline table (one-time)
+  if (typeof PipelineMigration !== 'undefined' && !PipelineMigration.hasRun()) {
+    PipelineMigration.run(window._sb || sb, currentUser.id).catch(function(e) {
+      console.warn('[BJ] pipeline-migration failed:', e);
+    });
+  }
   // Trigger sparkle flourish
   setTimeout(() => { $('#nav-brand').classList.add('sparkle-active'); }, 100);
   // Initialize billing (credit balance, pricing, payment return check)

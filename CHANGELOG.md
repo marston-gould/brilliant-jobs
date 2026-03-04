@@ -1,3 +1,31 @@
+## v6.96 — 2026-03-04
+
+### Overlay Pipeline Session 2: Dashboard Pipeline JS Wiring + localStorage Migration
+
+**Frontend (js/pipeline-migration.js)**
+- Fixed: stripped accidental CHANGELOG append from pipeline-migration.js (S1 deploy artifact)
+- Clean module now served correctly to dashboard
+
+**Frontend (js/pipeline.js)**
+- `loadNewPipelineFromSupabase()`: loads new `pipeline` table into `_newPipelineCache` (keyed by source_url) on init
+- `saveToNewPipeline()`: writes to new `pipeline` table with full schema (stage, entry_source, activity_log append, score columns)
+- `getNewPipelineEntry(sourceUrl)`: lookup helper for overlay toolbar (S4+)
+- `initPipeline()`: now calls `loadNewPipelineFromSupabase()` in parallel (non-blocking)
+- `savePipelineEntry()`: dual-write — every user_pipeline write also writes to new `pipeline` table when source_url is available
+- All existing user_pipeline reads/writes preserved — zero regression risk
+
+**Frontend (js/app.js)**
+- Console log updated: `[BJ] Dashboard v6.96 loaded`
+- `PipelineMigration.run()` wired after `initPipeline()` — fires on first load if flag not set
+
+**Frontend (dashboard.html)**
+- Added `<script src="/js/pipeline-migration.js?v=v6.96">` include
+- All cache-bust params bumped to v6.96
+
+**Versioning**
+- js/version.js → v6.96
+- index.html → v6.96
+
 ## v6.95 — 2026-03-04
 
 ### Overlay Pipeline Session 1: Pipeline Table Migration + Backfill
