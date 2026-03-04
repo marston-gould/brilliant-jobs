@@ -1,3 +1,19 @@
+## v6.92 — 2026-03-04
+
+### Admin IA v2 · Session 8 — Stripe & Subscription Management
+
+**Bundle expansion (21 → 23 files):**
+- `js/admin-stripe.js` — Stripe Customer Management: customer search by email/Stripe ID, customer detail panel (subscription info, billing history), plan override, cancel-at-EOT stub, recent subscribers table
+- `js/admin-subscription.js` — Subscription Analytics: MRR/ARR/ARPU stat cards, churn rate, plan breakdown with visual bars, revenue/day ECharts chart (90d from billing_events), new subs log, churn events log, period toggle (7d/30d/90d)
+
+**New sub-pages wired in admin.js subPageMap:**
+- `stripe` (business section) → `loadStripeTab()`
+- `subscription` (business section) → `loadSubscriptionTab()`
+
+**Versioning:**
+- All surfaces bumped v6.91 → v6.92
+- `js/app.js` console print added: `[BJ] Dashboard v6.92 loaded`
+
 ## v6.91 — 2026-03-04
 
 ### Admin IA v2 · Session 7 — Ghost, Templates, Revenue, Feedback
