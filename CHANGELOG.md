@@ -1,3 +1,32 @@
+## v6.98 — 2026-03-04
+
+### Overlay Pipeline Session 4: Toolbar Shell
+
+**Extension (extension/toolbar-overlay.js)** — NEW FILE
+- Persistent bottom toolbar injected on job listing pages: LinkedIn (/jobs/view/*), Greenhouse, Lever, Ashby, Workable, Recruitee, Indeed
+- Parses job title + company from page DOM per platform
+- Checks pipeline state via background.js message relay → Supabase REST
+- Renders Save button (unsaved) or stage badge (already in pipeline)
+- Save writes to pipeline table: entry_source='overlay', stage='saved'
+- SPA navigation support via MutationObserver (LinkedIn/Indeed URL changes)
+- Logs result_viewed + save_completed events to overlay_analytics table
+- Dismiss button to hide toolbar per page
+
+**Extension (extension/background.js)** — v2.18.0
+- bj:toolbar:getEntry handler: looks up pipeline row by source_url
+- bj:toolbar:save handler: upserts to pipeline table with entry_source='overlay'
+- bj:toolbar:analytics handler: logs to overlay_analytics (best-effort)
+
+**Extension (extension/contentScript.js)**
+- Injects toolbar-overlay.js on all ATS + LinkedIn + Indeed pages
+
+**Extension (extension/manifest.json)** — v2.18.0
+- toolbar-overlay.js added to web_accessible_resources
+
+**Versioning**
+- js/version.js → v6.98 | js/app.js console → v6.98
+- dashboard.html ?v= params → v6.98 | index.html → v6.98
+
 ## v6.97 — 2026-03-04
 
 ### Overlay Pipeline Session 3: AutoTracker → Unified Pipeline Dual-Write
