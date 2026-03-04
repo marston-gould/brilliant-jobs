@@ -1,3 +1,12 @@
+## v7.08 — 2026-03-04
+
+### Rejection Gap Analysis — Phase B (Insight Surfacing Wiring)
+
+- **js/app.js** — Wired `renderGapInsights()` call into Resumes tab show handler. Gap insights section now auto-loads whenever the user navigates to the Resumes tab (AC #8, #9).
+- **js/pipeline.js** — Wired `triggerGapAnalysis()` into `movePipelineStage()`. When a pipeline entry moves to `rejected` or `archived` (ghosted), the edge function is invoked with the job ID, resume used, and outcome. Completes the data collection loop (AC #3).
+- **PostHog events** — All 4 gap analysis events now fire in correct contexts: `gap_analysis_triggered` and `gap_analysis_completed` (edge function on outcome mark), `gap_insights_viewed` (Resumes tab load), `gap_term_clicked` (pill click) (AC #10).
+- **Version bump** — All surfaces updated to v7.08: version.js, app.js console, dashboard.html comment + cache-bust params, index.html comment + cache-bust params.
+
 ## v7.07 — 2026-03-04
 
 ### Rejection Gap Analysis — Phase A (Data Collection)

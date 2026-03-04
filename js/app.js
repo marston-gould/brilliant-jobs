@@ -1,5 +1,5 @@
-// [BJ] Dashboard v7.07 loaded
-console.log('[BJ] Dashboard v7.07 loaded');
+// [BJ] Dashboard v7.08 loaded
+console.log('[BJ] Dashboard v7.08 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
@@ -360,6 +360,8 @@ $$('.nav-item').forEach(item => {
       if (activeCount === 0 && typeof reconcileResumeArchive === 'function' && typeof currentUser !== 'undefined' && currentUser) {
         reconcileResumeArchive();
       }
+      // v7.08: Load gap insights when Resumes tab is shown
+      if (typeof renderGapInsights === 'function') renderGapInsights();
     }
     // Close help panel on page switch
     const hp = $('#page-help-panel'); if (hp) hp.style.display = 'none';
