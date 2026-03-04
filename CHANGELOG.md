@@ -1,3 +1,12 @@
+## v6.88 --- 2026-03-04
+### Admin IA v2 --- Session 5: Notifications Log + Complete S5 Sub-Pages
+- **Notifications Log (new sub-page):** Added `notif-log` sub-page under Growth → Notif Log. Paginated viewer of `notification_log` table with search (type/company/subject), status filter (sent/delivered/opened/clicked/failed/bounced/complained), channel filter (email/sms), and 50 rows per page. Click-to-expand rows show full detail: classification, send decision, send reason, template version, message ID, cohort, job ID, delivered/opened/clicked/bounced timestamps. Pagination prev/next with row count.
+- **Database:** New SECURITY DEFINER RPC `get_admin_notification_log(p_search, p_status, p_channel, p_type, p_offset, p_limit)` → jsonb `{total, offset, limit, rows[]}`. Filters by notification_type/company_name/subject ILIKE, status, channel. Returns 20 fields per row ordered by `created_at DESC`.
+- **admin-notifications.js:** Added `loadNotifLogTab()`, `_renderNotifLog()`, `toggleNotifLogDetail()`, `notifLogFilter()` (debounced 300ms), `notifLogPage()`. State in `_notifLogState` (search, status, channel, type, offset, limit, total).
+- **admin.js:** Added `notif-log` entry to `ADMIN_SUBPAGE_MAP` under Growth section, init calls `loadNotifLogTab()`.
+- **admin.html:** Added `admin-panel-notif-log` div. Version bumped to v6.88.
+- **Note:** Feed Health, Cache Health, and Signals sub-pages were already fully implemented (verified in repo audit). S5 primary deliverable is the Notifications Log viewer.
+
 ## v6.87 — 2026-03-04
 ### Admin Console IA v2 — Session 4: Detail Panels + ECharts Charts
 - **admin-blocks.js:** Added _adminDetailPanel() helper (key-value grid sections with auto-skip of empty values). Added _wireExpandableRows() helper — wires click-to-expand behavior on table rows with lazy detail loading, chevron indicator, and row-level state. _adminPagedTable() extended with expandable:true option that adds expand-row TR/TD pairs and chevron column.
