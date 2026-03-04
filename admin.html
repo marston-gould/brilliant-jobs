@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v6.74 -->
+<!-- Brilliant Jobs Admin Console v6.84 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,7 +11,7 @@
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=v6.74">
+  <link rel="stylesheet" href="styles.css?v=v6.84">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -191,6 +191,133 @@
       font-size: 20px;
     }
 
+
+    /* ─── Admin IA v2: Sidebar Navigation ─── */
+    .admin-layout {
+      display: flex;
+      min-height: calc(100vh - 57px);
+    }
+    .admin-sidebar {
+      width: 210px;
+      min-width: 210px;
+      background: var(--bg-card);
+      border-inline-end: 1px solid var(--border);
+      overflow-y: auto;
+      position: sticky;
+      top: 57px;
+      height: calc(100vh - 57px);
+      padding: 12px 0;
+    }
+    .admin-sidebar-section {
+      margin-bottom: 4px;
+    }
+    .admin-sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.15s;
+    }
+    .admin-sidebar-header:hover {
+      color: var(--text);
+    }
+    .admin-sidebar-chevron {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      transition: transform 0.15s;
+      color: var(--text-faint);
+    }
+    .admin-sidebar-section.expanded .admin-sidebar-chevron {
+      transform: rotate(90deg);
+    }
+    .admin-sidebar-items {
+      display: none;
+      padding: 0 0 4px 0;
+    }
+    .admin-sidebar-section.expanded .admin-sidebar-items {
+      display: block;
+    }
+    .admin-sidebar-item {
+      display: block;
+      padding: 7px 16px 7px 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+      cursor: pointer;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .admin-sidebar-item:hover {
+      color: var(--text);
+      background: rgba(59, 130, 246, 0.04);
+    }
+    .admin-sidebar-item.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(59, 130, 246, 0.08);
+      font-weight: 500;
+    }
+    .admin-sidebar-item.disabled {
+      color: var(--text-faint);
+      opacity: 0.4;
+      cursor: default;
+    }
+    .admin-sidebar-item.disabled:hover {
+      background: none;
+      color: var(--text-faint);
+    }
+    .admin-main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 32px;
+      min-width: 0;
+    }
+    .admin-breadcrumb {
+      font-size: 12px;
+      color: var(--text-faint);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 8px;
+    }
+    .admin-page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .admin-empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      text-align: center;
+    }
+    .admin-empty-state-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+    .admin-empty-state-desc {
+      font-size: 13px;
+      color: var(--text-faint);
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    @media (max-width: 768px) {
+      .admin-layout { flex-direction: column; }
+      .admin-sidebar { width: 100%; min-width: 100%; height: auto; position: static; border-inline-end: none; border-bottom: 1px solid var(--border); }
+      .admin-main { padding: 16px; }
+    }
+
     @media (max-width: 768px) {
       .admin-content { padding: 16px; }
       .admin-tab, .admin-period-btn { min-height: 44px; padding: 8px 16px !important; }
@@ -234,38 +361,19 @@
     </div>
 
     <!-- Admin Content -->
-    <div class="admin-content">
-      <div class="page active" id="page-admin">
-        <div class="page-header">
-          <h2>Admin Console</h2>
-          <p>System health, cohorts, users, SEO coverage, and revenue</p>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <a href="/roadmap.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Roadmap ↗</a>
-            <a href="/parkinglot.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Parking Lot ↗</a>
-          </div>
+    <div class="admin-layout" id="admin-layout">
+      <!-- Sidebar Navigation -->
+      <nav class="admin-sidebar" id="admin-sidebar"></nav>
+
+      <!-- Main Content Area -->
+      <div class="admin-main">
+        <div class="admin-breadcrumb" id="admin-breadcrumb">Operations > Feed Health</div>
+        <div class="admin-page-title" id="admin-page-title">Feed Health</div>
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <a href="/roadmap.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Roadmap ↗</a>
+          <a href="/parkinglot.html" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;padding:3px 10px;border:1px solid var(--border);border-radius:4px;font-family:var(--mono)">Parking Lot ↗</a>
         </div>
-        <div class="page-body">
-          <div id="admin-tabs" style="display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap">
-            <button class="admin-tab active" data-tab="feed-health">Feed Health</button>
-            <button class="admin-tab" data-tab="seo">SEO</button>
-            <button class="admin-tab" data-tab="cohorts">Cohorts</button>
-            <button class="admin-tab" data-tab="entitlements">Entitlements</button>
-            <button class="admin-tab" data-tab="users">Users</button>
-            <button class="admin-tab" data-tab="revenue">Revenue</button>
-            <button class="admin-tab" data-tab="ghost">Ghost</button>
-            <button class="admin-tab" data-tab="feedback">Feedback</button>
-            <button class="admin-tab" data-tab="merch">Merchandising</button>
-            <button class="admin-tab" data-tab="signals">Signals</button>
-              <button class="admin-tab" data-tab="content">Content</button>
-              <button class="admin-tab" data-tab="enrichment">Enrichment</button>
-            <button class="admin-tab" data-tab="referrals">Referrals</button>
-            <button class="admin-tab" data-tab="notifications">Notifications</button>
-            <button class="admin-tab" data-tab="templates">Templates</button>
-            <button class="admin-tab" data-tab="notif-analytics">Notif Analytics</button>
-            <button class="admin-tab" data-tab="email-cohorts">Email Cohorts</button>
-            <button class="admin-tab" data-tab="cadence">Cadence</button>
-            <button class="admin-tab" data-tab="cache">Cache</button>
-          </div>
+        <div class="page-body" id="page-admin">
 
           <div class="admin-panel" id="admin-panel-notifications">
             <div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px">Loading notification configs…</div>
@@ -649,8 +757,35 @@
             </div>
           </div>
 
+          <!-- Future sub-pages: Empty States -->
+          <div class="admin-panel" id="admin-panel-companies">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Companies</div><div class="admin-empty-state-desc">Board management, company metadata, and PDL enrichment status. Coming in Session 2.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-jobs">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Jobs</div><div class="admin-empty-state-desc">Job inventory stats, data quality metrics, ghost detection, and dedup health. Coming in Session 2.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-email">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Email</div><div class="admin-empty-state-desc">Notification performance, deliverability, and template preview. Coming in Session 2.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-paid">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Paid</div><div class="admin-empty-state-desc">Ad spend, CPA, attribution, and ROAS tracking. Coming soon.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-social">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Social</div><div class="admin-empty-state-desc">Channel performance, publishing queue, and engagement metrics. Coming soon.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-analytics">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Analytics</div><div class="admin-empty-state-desc">Web analytics, bot traffic, and funnel visualization. Coming soon.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-costs">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Costs</div><div class="admin-empty-state-desc">Infrastructure spend, API costs, and margin tracking. Coming soon.</div></div>
+          </div>
+          <div class="admin-panel" id="admin-panel-forecasting">
+            <div class="admin-empty-state"><div class="admin-empty-state-title">Forecasting</div><div class="admin-empty-state-desc">Projection models, scenario planning, and runway calculation. Coming soon.</div></div>
+          </div>
+
         </div>
-    </div> <!-- end admin-content -->
+      </div> <!-- end admin-main -->
+    </div> <!-- end admin-layout -->
 
     <!-- Footer -->
     <div style="text-align:center;padding:24px;font-size:11px;color:var(--text-faint);font-family:'JetBrains Mono',monospace">
@@ -659,7 +794,7 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v6.74" defer></script>
+  <script src="dist/admin.min.js?v=v6.84" defer></script>
 
   <!-- Cohort select-all inline handler -->
   <script>
