@@ -1,3 +1,14 @@
+## v7.06 — 2026-03-04
+
+### Referral Outreach Templates (Part 1 of 2)
+
+- **js/referral-outreach.js (new)** — Referral Outreach module. Two template types (LinkedIn DM, Email) auto-populated with job title, company, connection name, and optional custom context. `openReferralOutreachModal(jobId)` resolves job from `allJobs` cache. Channel switcher (LinkedIn / Email) re-renders template live. `renderReferralTemplate()` rebuilds body and subject on every input keystroke. `sendReferralTemplate()` copies full message to clipboard and deep-links to LinkedIn Messaging or `mailto:` client. Subject line row hidden for LinkedIn, shown for Email.
+- **js/keywords.js** — Added "Request Referral" button to job modal footer (after Hide, before Close). Calls `openReferralOutreachModal(window._modalJobId)`. Styled with accent-adjacent color (`#7c9ef7`) to distinguish from pipeline actions.
+- **dashboard.html** — Added `#referral-outreach-modal` overlay with: channel tab switcher, Your Name / Their Name inputs, optional shared context field, subject line row (email only), pre-filled scrollable textarea, Copy + Open action button. `.ro-channel-tab.active` CSS injected.
+- **build.js** — `referral-outreach.js` added to `jsFiles` after `referrals.js` (30 files total).
+- **PostHog events:** `referral_template_opened` (on modal open, with job_id/company/title), `referral_template_sent` (on copy+send, with channel, has_their_name, has_custom_context).
+- **Part 2 (Referral Tracking)** — data model, status tracking, Referrals log view — scoped in feature brief, pending Pod 2 handoff.
+
 ## v7.05 — 2026-03-04
 
 ### Overlay Analytics Drilldown Fix

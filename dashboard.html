@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v7.05 -->
+<!-- Brilliant Jobs Dashboard v7.06 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,20 +11,20 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v7.05"></script>
-  <script src="/js/pipeline-migration.js?v=v7.05"></script>
-  <script src="/js/notification-center.js?v=v7.05"></script>
+  <script src="/js/version.js?v=v7.06"></script>
+  <script src="/js/pipeline-migration.js?v=v7.06"></script>
+  <script src="/js/notification-center.js?v=v7.06"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v7.05" defer></script>
-  <script src="js/canny.js?v=v7.05" defer></script>
+  <script src="dist/dashboard.min.js?v=v7.06" defer></script>
+  <script src="js/canny.js?v=v7.06" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v7.05">
+  <link rel="stylesheet" href="styles.css?v=v7.06">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -51,7 +51,15 @@
   @keyframes microFadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes microFadeOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(8px)}}
   @media(max-width:480px){.micro-survey-card.micro-survey-toast{inset-inline-start:12px;inset-inline-end:12px;width:auto}}
-  </style>
+  
+  /* Referral outreach channel tabs — v7.06 */
+  .ro-channel-tab.active {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+    font-weight: 600;
+  }
+</style>
   <style>
     .admin-tab{padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:14px;font-family:"JetBrains Mono",monospace;cursor:pointer;transition:all .2s}
     .admin-tab:hover{border-color:var(--accent);color:var(--text)}
@@ -3383,6 +3391,78 @@
         <div style="text-align:center;padding:40px;color:var(--text-faint);">Loading job details…</div>
       </div>
       <div class="job-modal-footer" id="job-modal-footer"></div>
+    </div>
+  </div>
+
+
+  <!-- Referral Outreach Modal — v7.06 -->
+  <div class="job-modal-overlay" id="referral-outreach-modal" style="display:none;" onclick="closeReferralOutreachModal(event)">
+    <div class="job-modal" onclick="event.stopPropagation()" style="max-width:580px;">
+      <div class="job-modal-header">
+        <div class="job-modal-title-wrap">
+          <h3 class="job-modal-title">Request a Referral</h3>
+          <div class="job-modal-meta" id="ro-job-label" style="font-size:12px;color:var(--text-dim);"></div>
+        </div>
+        <div class="job-modal-actions">
+          <button class="job-modal-close" onclick="_closeReferralModal()">&times;</button>
+        </div>
+      </div>
+      <div class="job-modal-body" style="padding:20px;">
+        <!-- Channel selector -->
+        <div style="display:flex;gap:8px;margin-bottom:18px;">
+          <button class="ro-channel-tab active" data-channel="linkedin" onclick="switchReferralChannel('linkedin')"
+            style="flex:1;padding:7px 0;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;transition:all .15s;">
+            LinkedIn DM
+          </button>
+          <button class="ro-channel-tab" data-channel="email" onclick="switchReferralChannel('email')"
+            style="flex:1;padding:7px 0;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;transition:all .15s;">
+            Email
+          </button>
+        </div>
+        <!-- Fields -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Your Name</label>
+            <input id="ro-your-name" type="text" placeholder="Your Name"
+              style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input,var(--bg-card));color:var(--text);box-sizing:border-box;"
+              oninput="renderReferralTemplate()">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Their Name</label>
+            <input id="ro-their-name" type="text" placeholder="Connection's Name"
+              style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input,var(--bg-card));color:var(--text);box-sizing:border-box;"
+              oninput="renderReferralTemplate()">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">
+            Shared context <span style="color:var(--text-faint);">(optional — mutual connection, past interaction, etc.)</span>
+          </label>
+          <input id="ro-custom-context" type="text" placeholder="e.g. We met at SaaStr last year, or We connected through Jane Smith"
+            style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input,var(--bg-card));color:var(--text);box-sizing:border-box;"
+            oninput="renderReferralTemplate()">
+        </div>
+        <!-- Subject line (email only) -->
+        <div id="ro-subject-row" style="margin-bottom:12px;display:none;">
+          <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Subject line</label>
+          <input id="ro-template-subject" type="text" readonly
+            style="width:100%;padding:7px 10px;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--bg-input,var(--bg-card));color:var(--text);box-sizing:border-box;cursor:default;">
+        </div>
+        <!-- Template body -->
+        <div>
+          <label style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">Message preview</label>
+          <textarea id="ro-template-body" rows="10"
+            style="width:100%;padding:10px;font-size:13px;line-height:1.55;border:1px solid var(--border);border-radius:6px;background:var(--bg-input,var(--bg-card));color:var(--text);box-sizing:border-box;resize:vertical;font-family:inherit;"></textarea>
+        </div>
+        <p style="font-size:11px;color:var(--text-faint);margin:8px 0 0;">
+          Template is pre-filled from the job — edit anything before sending.
+        </p>
+      </div>
+      <div class="job-modal-footer" style="justify-content:flex-end;gap:8px;">
+        <button class="btn btn-sm" onclick="_closeReferralModal()"
+          style="background:var(--bg-card-hover);color:var(--text-dim);border:1px solid var(--border);">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="ro-send-btn" onclick="sendReferralTemplate()">Copy + Open LinkedIn</button>
+      </div>
     </div>
   </div>
 

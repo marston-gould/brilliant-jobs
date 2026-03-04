@@ -30,6 +30,7 @@ const jsFiles = [
   'js/apply-workflow.js',
   'js/fingerprint.js',
   'js/referrals.js',
+  'js/referral-outreach.js',
   'js/app.js',
 ];
 
