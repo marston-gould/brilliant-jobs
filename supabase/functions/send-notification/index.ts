@@ -1,4 +1,4 @@
-// send-notification Edge Function — v8 (Phase 16 Session 2: Passive gate) (Phase 69 Session 4: Web Push channel)
+// send-notification Edge Function — v9 (Phase 16 Session 3: Passive snooze check) (Phase 69 Session 4: Web Push channel)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → override cascade → frequency cap → quiet hours
 // Override cascade: notification_filter_overrides → notification_channels → notification_preferences → default
@@ -834,13 +834,20 @@ async function checkPassiveGate(
     // Load user passive config
     const { data: profile } = await sb
       .from("profiles")
-      .select("passive_mode, passive_config, passive_notifications_sent_today, passive_notifications_sent_week, passive_notifications_sent_month")
+      .select("passive_mode, passive_config, passive_notifications_sent_today, passive_notifications_sent_week, passive_notifications_sent_month, passive_snoozed_until")
       .eq("id", userId)
       .single();
 
     if (!profile?.passive_mode) {
       return { skip: false }; // Not in passive mode, allow all
     }
+    // Snooze gate: if passive_snoozed_until is in the future, skip all passive notifications
+    if (profile.passive_snoozed_until && new Date(profile.passive_snoozed_until) > new Date()) {
+      console.log(`[passive-gate] Skipping: snoozed until ${profile.passive_snoozed_until}`);
+      return { skip: true, reason: `snoozed_until:${profile.passive_snoozed_until}` };
+    }
+
+
 
     const cfg = profile.passive_config || {};
     const scoreFloor = cfg.score_floor || cfg.match_score_floor || 85;
