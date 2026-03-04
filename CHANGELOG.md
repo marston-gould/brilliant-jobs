@@ -1,3 +1,17 @@
+## v6.65 Chat Mode Session 3: Bidirectional Sync (2026-03-03)
+- JS: Filter→Chat sync — on toggle to Chat with active filter pills, calls filter-to-prompt Edge Function and pre-fills chat input (does NOT auto-send)
+- JS: data-auto-generated attribute tracking for PostHog (auto_generated → modified → scrapped lifecycle)
+- JS: Chat→Filter sync — on toggle to Filters with active conversation, calls prompt-to-filter Edge Function, shows confirmation banner
+- JS: Confirmation banner with extracted filter summary, Accept/Dismiss buttons, PostHog events (chat_to_filter_sync)
+- JS: _collectBuilderFilters() reads live pill arrays (whatPills, wherePills, whoPills, whatNotPills, payPills) into Edge Function format
+- JS: _applySyncedFilters() populates pill arrays from extracted filters and triggers renderAllPills() + debouncedSearchJobs()
+- JS: Edge case handling — empty filters, empty conversation, partial extraction, duplicate sync prevention via filter hash
+- JS: PostHog events wired — chat_prompt_auto_generated, chat_prompt_modified, chat_prompt_scrapped, chat_to_filter_sync
+- UI: Chat sync confirmation banner (blue theme) with filter summary, Apply/Dismiss actions
+- UI: Auto-generated prompt visual indicator (blue border highlight on chat input)
+- CSS: .chat-sync-banner, .chat-sync-accept, .chat-sync-dismiss, .chat-input[data-auto-generated] styles
+- Version v6.65 across all surfaces
+
 ## v6.64 Chat Mode Session 2: Mode Toggle + Chat Panel UI (2026-03-03)
 - UI: Search mode toggle bar (Filters / Chat) with 200ms crossfade at top of Jobs Feed
 - UI: Chat panel component — header with message counter, scrollable conversation area, auto-resizing textarea, Send button
