@@ -1,7 +1,6 @@
 /* ───────────────────────────────────────────────────────────
-   admin-companies.js — Companies Sub-page (Admin IA v2 S3)
-   v6.86 — Stats + action bar + paginated company table
-   Helpers moved to admin-blocks.js
+   admin-companies.js — Companies Sub-page (Admin IA v2)
+   v6.87 — S4: click-to-expand company detail panels
    ─────────────────────────────────────────────────────────── */
 
 var _companyListState = { search: '', platform: '', sort: 'boards_desc', offset: 0, limit: 50 };
@@ -86,7 +85,7 @@ function renderCompaniesPage(panel, d) {
 
   // ── Action Bar + Paginated Company List ──
   html += '<div class="admin-block" style="margin-top:16px;">';
-  html += '<div class="admin-block-title">All Companies</div>';
+  html += '<div class="admin-block-title">All Companies <span style="font-size:11px;font-weight:400;color:var(--text-faint);">— click row to expand</span></div>';
 
   var platforms = [];
   (d.by_platform || []).forEach(function(p) { platforms.push(p.source); });
@@ -115,13 +114,12 @@ function renderCompaniesPage(panel, d) {
   html += '</tr></thead><tbody>';
 
   (d.recently_discovered || []).forEach(function(c) {
-    var ago = _timeAgo(c.created_at);
     html += '<tr>';
     html += '<td style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(c.slug) + '</td>';
     html += '<td>' + _escHtml(c.name || '—') + '</td>';
     html += '<td style="text-transform:capitalize;">' + _escHtml(c.source) + '</td>';
     html += '<td style="text-align:right">' + (c.job_count || 0) + '</td>';
-    html += '<td style="color:var(--text-faint);font-size:12px;">' + ago + '</td>';
+    html += '<td style="color:var(--text-faint);font-size:12px;">' + _timeAgo(c.created_at) + '</td>';
     html += '</tr>';
   });
 
@@ -129,7 +127,6 @@ function renderCompaniesPage(panel, d) {
 
   panel.innerHTML = html;
 
-  // Wire action bar events
   _wireCompanyListEvents();
   _fetchCompanyList();
 }
@@ -207,7 +204,8 @@ function _renderCompanyTable(target, data) {
     rows: data.rows,
     total: data.total,
     offset: data.offset,
-    limit: data.limit
+    limit: data.limit,
+    expandable: true
   });
 
   // Wire pagination
@@ -220,5 +218,69 @@ function _renderCompanyTable(target, data) {
   if (next) next.addEventListener('click', function() {
     _companyListState.offset += _companyListState.limit;
     _fetchCompanyList();
+  });
+
+  // Wire expand rows
+  _wireExpandableRows({
+    tableId: 'co-paged',
+    rows: data.rows,
+    loadDetail: function(row, panelEl) {
+      _loadCompanyDetailPanel(row, panelEl);
+    }
+  });
+}
+
+function _loadCompanyDetailPanel(row, panelEl) {
+  panelEl.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Loading detail…</span>';
+
+  sb.rpc('get_admin_company_detail', { p_slug: row.slug, p_source: row.source }).then(function(res) {
+    if (res.error || !res.data) {
+      panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Error loading detail</span>';
+      return;
+    }
+    var d = res.data;
+    var boardUrl = d.board_url;
+    var boardLink = boardUrl ? '<a href="' + _escHtml(boardUrl) + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + _escHtml(boardUrl) + '</a>' : '—';
+    var websiteLink = d.website ? '<a href="' + _escHtml(d.website) + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + _escHtml(d.website) + '</a>' : '—';
+    var linkedinLink = d.linkedin_url ? '<a href="' + _escHtml(d.linkedin_url) + '" target="_blank" style="color:var(--accent);text-decoration:none;">LinkedIn</a>' : '—';
+
+    panelEl.innerHTML = _adminDetailPanel([
+      {
+        title: 'Board',
+        rows: [
+          { label: 'Board URL', value: boardLink },
+          { label: 'ATS Source', value: d.source },
+          { label: 'Discovered Via', value: d.discovered_via || '—' },
+          { label: 'Last Scraped', value: _timeAgo(d.last_refresh_at) },
+          { label: 'Last HTTP', value: d.last_http_status ? String(d.last_http_status) : '—' },
+          { label: 'First Seen', value: _timeAgo(d.created_at) },
+          { label: 'Last Checked', value: _timeAgo(d.last_checked) }
+        ]
+      },
+      {
+        title: 'Company Info',
+        rows: [
+          { label: 'Website', value: websiteLink },
+          { label: 'LinkedIn', value: linkedinLink },
+          { label: 'Industry', value: d.industry ? d.industry.charAt(0).toUpperCase() + d.industry.slice(1) : '—' },
+          { label: 'Employees', value: d.employee_size || '—' },
+          { label: 'Location', value: [d.locality, d.region, d.country].filter(Boolean).join(', ') || '—' },
+          { label: 'Founded', value: d.founded ? String(d.founded) : '—' },
+          { label: 'Staffing Agency', value: d.is_staffing_agency ? 'Yes' : 'No' }
+        ]
+      },
+      {
+        title: 'PDL & Enrichment',
+        rows: [
+          { label: 'PDL Matched', value: d.pdl_matched ? '✓ Yes (ID: ' + d.ref_company_id + ')' : 'No' },
+          { label: 'JD AI Rate', value: d.ai_jd_rate != null ? (Math.round(d.ai_jd_rate * 100) + '%') : '—' },
+          { label: 'JD Rate Updated', value: _timeAgo(d.ai_jd_rate_updated_at) },
+          { label: 'Open Jobs', value: fmtAdminNum(d.open_jobs) },
+          { label: 'Total Jobs', value: fmtAdminNum(d.job_count) }
+        ]
+      }
+    ]);
+  }).catch(function(e) {
+    panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Failed: ' + e.message + '</span>';
   });
 }

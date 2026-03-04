@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
-   admin-email.js — Email Sub-page (Admin IA v2 S2)
-   v6.85 — Notification performance, deliverability, log
+   admin-email.js — Email Sub-page (Admin IA v2)
+   v6.87 — S4: delivery funnel ECharts bar chart
    ─────────────────────────────────────────────────────────── */
 
 function loadAdminEmail() {
@@ -23,7 +23,6 @@ function loadAdminEmail() {
 function renderEmailPage(panel, d) {
   var html = '';
 
-  // ── Status breakdown for stat cards ──
   var statusMap = {};
   (d.by_status || []).forEach(function(s) { statusMap[s.status] = s.cnt; });
   var sent = statusMap['sent'] || 0;
@@ -37,6 +36,12 @@ function renderEmailPage(panel, d) {
   html += _adminStatCard('Delivered', fmtAdminNum(delivered), d.total_sent ? Math.round((delivered / d.total_sent) * 100) + '%' : '');
   html += _adminStatCard('Failed', fmtAdminNum(failed), failed > 0 ? 'alert' : '');
   html += _adminStatCard('Blocked', fmtAdminNum(blocked), '');
+  html += '</div>';
+
+  // ── Delivery Funnel ECharts Chart ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Delivery Funnel</div>';
+  html += '<div id="admin-email-funnel-chart" style="width:100%;height:200px;"></div>';
   html += '</div>';
 
   // ── Channel Split ──
@@ -97,4 +102,67 @@ function renderEmailPage(panel, d) {
   html += '</tbody></table></div></div>';
 
   panel.innerHTML = html;
+
+  // Render delivery funnel chart
+  _renderEmailFunnelChart({ sent: sent, delivered: delivered, failed: failed, blocked: blocked, total: d.total_sent });
+}
+
+function _renderEmailFunnelChart(data) {
+  if (typeof echarts === 'undefined') return;
+  var el = document.getElementById('admin-email-funnel-chart');
+  if (!el) return;
+  var chart = echarts.init(el, null, { renderer: 'svg' });
+
+  var stages = [
+    { name: 'Total Sent', value: data.total, color: 'var(--accent)' },
+    { name: 'Sent', value: data.sent, color: '#6366f1' },
+    { name: 'Delivered', value: data.delivered, color: 'var(--green)' },
+    { name: 'Failed', value: data.failed, color: 'var(--red)' },
+    { name: 'Blocked', value: data.blocked, color: 'var(--warm)' }
+  ];
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'none' },
+      backgroundColor: 'var(--bg-card)',
+      borderColor: 'var(--border)',
+      textStyle: { color: 'var(--text)', fontSize: 12 },
+      formatter: function(params) {
+        return params[0].name + ': <b>' + params[0].value.toLocaleString() + '</b>';
+      }
+    },
+    grid: { top: 8, right: 16, bottom: 40, left: 80 },
+    xAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'var(--border)', type: 'dashed' } },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11, formatter: function(v) { return v >= 1000 ? Math.round(v/1000) + 'K' : v; } }
+    },
+    yAxis: {
+      type: 'category',
+      data: stages.map(function(s) { return s.name; }),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11 }
+    },
+    series: [{
+      type: 'bar',
+      data: stages.map(function(s) {
+        return { value: s.value, itemStyle: { color: s.color, borderRadius: [0, 4, 4, 0] } };
+      }),
+      label: {
+        show: true,
+        position: 'right',
+        color: 'var(--text-faint)',
+        fontSize: 11,
+        formatter: function(params) { return params.value.toLocaleString(); }
+      },
+      barMaxWidth: 28
+    }]
+  });
+
+  window.addEventListener('resize', function() { chart.resize(); });
 }

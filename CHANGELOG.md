@@ -1,3 +1,13 @@
+## v6.87 — 2026-03-04
+### Admin Console IA v2 — Session 4: Detail Panels + ECharts Charts
+- **admin-blocks.js:** Added _adminDetailPanel() helper (key-value grid sections with auto-skip of empty values). Added _wireExpandableRows() helper — wires click-to-expand behavior on table rows with lazy detail loading, chevron indicator, and row-level state. _adminPagedTable() extended with expandable:true option that adds expand-row TR/TD pairs and chevron column.
+- **admin-companies.js:** Companies table rows now click-to-expand. Calls new get_admin_company_detail(slug, source) RPC on first expand. Detail panel shows 3 sections: Board (Board URL, ATS source, discovered via, last scraped, HTTP status, first seen), Company Info (website, LinkedIn, industry, employee count, location, founded, staffing flag), PDL & Enrichment (PDL match + ID, AI JD rate, open/total jobs).
+- **admin-jobs.js:** Jobs table rows now click-to-expand. Calls new get_admin_job_detail(id, source) RPC on first expand. Detail panel shows Job Info (ID, platform, status, department, category, employment type, apply + posting links), Enrichment (JD enriched status, extracted at, priority, seniority, education, experience range, AI score + label), Salary (range, rate, currency, raw). Skills pills rendered below panels (jd_skills or extracted_skills, max 12). 600-char JD content preview with fade-out mask.
+- **admin-jobs.js:** ECharts line chart for New Jobs (Last 7 Days) from daily_new_7d data — smooth area line, green fill, KB-formatted Y-axis labels, tooltip with job count.
+- **admin-email.js:** ECharts horizontal bar chart for delivery funnel (Total Sent → Sent → Delivered → Failed → Blocked) — per-stage color coding, value labels, responsive resize.
+- **admin.html:** New CSS: .admin-detail-panel (expand panel container), .expand-chevron (rotate indicator), hover state wires accent color. Version bumped to v6.87.
+- **Database:** 2 new SECURITY DEFINER RPCs: get_admin_company_detail(slug, source) → full company detail jsonb; get_admin_job_detail(id, source) → full job detail jsonb with content_preview (600 chars), jd_skills, extracted_skills, enrichment fields.
+
 ## v6.86 — 2026-03-04
 ### Admin Console IA v2 — Session 3: Shared Utilities + Action Bars + Paginated Tables
 - **admin-blocks.js (NEW):** Shared admin utility file — extracted _adminStatCard(), _escHtml(), _timeAgo() from admin-companies.js. New helpers: _adminActionBar() (search + platform filter + status filter + sort dropdown), _adminPagedTable() (paginated table with prev/next + page info + column renderers), _fmtSalary() (salary range formatter), _fmtLocation() (city/state/country formatter).

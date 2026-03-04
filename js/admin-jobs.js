@@ -1,7 +1,6 @@
 /* ───────────────────────────────────────────────────────────
-   admin-jobs.js — Jobs Sub-page (Admin IA v2 S3)
-   v6.86 — Stats + action bar + paginated job table
-   Helpers moved to admin-blocks.js
+   admin-jobs.js — Jobs Sub-page (Admin IA v2)
+   v6.87 — S4: click-to-expand job detail panels + daily volume ECharts line chart
    ─────────────────────────────────────────────────────────── */
 
 var _jobListState = { search: '', platform: '', status: 'open', sort: 'newest', offset: 0, limit: 50 };
@@ -66,6 +65,12 @@ function renderJobsPage(panel, d) {
 
   html += '</tbody></table></div></div>';
 
+  // ── Daily Volume ECharts Line Chart ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">New Jobs — Last 7 Days</div>';
+  html += '<div id="admin-jobs-daily-chart" style="width:100%;height:220px;"></div>';
+  html += '</div>';
+
   // ── Age Distribution ──
   html += '<div class="admin-block" style="margin-top:16px;">';
   html += '<div class="admin-block-title">Open Job Age Distribution</div>';
@@ -83,30 +88,9 @@ function renderJobsPage(panel, d) {
 
   html += '</div></div>';
 
-  // ── Daily New Jobs (7d) ──
-  html += '<div class="admin-block" style="margin-top:16px;">';
-  html += '<div class="admin-block-title">New Jobs (Last 7 Days)</div>';
-  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
-  html += '<th>Date</th><th style="text-align:right">New Jobs</th><th>Bar</th>';
-  html += '</tr></thead><tbody>';
-
-  var maxDaily = 0;
-  (d.daily_new_7d || []).forEach(function(row) { if (row.cnt > maxDaily) maxDaily = row.cnt; });
-
-  (d.daily_new_7d || []).forEach(function(row) {
-    var barW = maxDaily ? Math.round((row.cnt / maxDaily) * 100) : 0;
-    html += '<tr>';
-    html += '<td>' + row.day + '</td>';
-    html += '<td style="text-align:right">' + fmtAdminNum(row.cnt) + '</td>';
-    html += '<td style="width:50%;"><div style="background:var(--green);height:6px;border-radius:3px;width:' + barW + '%;opacity:0.7;"></div></td>';
-    html += '</tr>';
-  });
-
-  html += '</tbody></table></div></div>';
-
   // ── Action Bar + Paginated Job List ──
   html += '<div class="admin-block" style="margin-top:16px;">';
-  html += '<div class="admin-block-title">All Jobs</div>';
+  html += '<div class="admin-block-title">All Jobs <span style="font-size:11px;font-weight:400;color:var(--text-faint);">— click row to expand</span></div>';
 
   html += _adminActionBar({
     id: 'job-list',
@@ -133,9 +117,66 @@ function renderJobsPage(panel, d) {
 
   panel.innerHTML = html;
 
-  // Wire events
+  // Render ECharts daily line chart
+  _renderJobsDailyChart(d.daily_new_7d || []);
+
   _wireJobListEvents();
   _fetchJobList();
+}
+
+function _renderJobsDailyChart(dailyData) {
+  if (typeof echarts === 'undefined') return;
+  var el = document.getElementById('admin-jobs-daily-chart');
+  if (!el) return;
+  var chart = echarts.init(el, null, { renderer: 'svg' });
+
+  var dates = dailyData.map(function(r) { return r.day; });
+  var counts = dailyData.map(function(r) { return r.cnt; });
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'var(--bg-card)',
+      borderColor: 'var(--border)',
+      textStyle: { color: 'var(--text)', fontSize: 12 },
+      formatter: function(params) {
+        return params[0].name + '<br/><b>' + params[0].value.toLocaleString() + '</b> new jobs';
+      }
+    },
+    grid: { top: 16, right: 16, bottom: 40, left: 60 },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      axisLine: { lineStyle: { color: 'var(--border)' } },
+      axisTick: { show: false },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'var(--border)', type: 'dashed' } },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11, formatter: function(v) { return v >= 1000 ? Math.round(v/1000) + 'K' : v; } }
+    },
+    series: [{
+      type: 'line',
+      data: counts,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { color: 'var(--green)', width: 2 },
+      itemStyle: { color: 'var(--green)' },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: 'rgba(34,197,94,0.25)' },
+          { offset: 1, color: 'rgba(34,197,94,0.02)' }
+        ]
+      }}
+    }]
+  });
+
+  window.addEventListener('resize', function() { chart.resize(); });
 }
 
 function _wireJobListEvents() {
@@ -222,7 +263,8 @@ function _renderJobTable(target, data) {
     rows: data.rows,
     total: data.total,
     offset: data.offset,
-    limit: data.limit
+    limit: data.limit,
+    expandable: true
   });
 
   // Wire pagination
@@ -235,5 +277,99 @@ function _renderJobTable(target, data) {
   if (next) next.addEventListener('click', function() {
     _jobListState.offset += _jobListState.limit;
     _fetchJobList();
+  });
+
+  // Wire expand rows
+  _wireExpandableRows({
+    tableId: 'job-paged',
+    rows: data.rows,
+    loadDetail: function(row, panelEl) {
+      _loadJobDetailPanel(row, panelEl);
+    }
+  });
+}
+
+function _loadJobDetailPanel(row, panelEl) {
+  panelEl.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Loading detail…</span>';
+
+  sb.rpc('get_admin_job_detail', { p_id: row.greenhouse_id, p_source: row.ats_source }).then(function(res) {
+    if (res.error || !res.data) {
+      panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Error loading detail</span>';
+      return;
+    }
+    var d = res.data;
+
+    var applyLink = d.apply_url ? '<a href="' + _escHtml(d.apply_url) + '" target="_blank" style="color:var(--accent);text-decoration:none;">Apply Link</a>' : '—';
+    var jobLink = d.url ? '<a href="' + _escHtml(d.url) + '" target="_blank" style="color:var(--accent);text-decoration:none;">Job Posting</a>' : '—';
+
+    var skills = [];
+    if (d.jd_skills && d.jd_skills.length) skills = d.jd_skills;
+    else if (d.extracted_skills && d.extracted_skills.length) skills = d.extracted_skills;
+    var skillsHtml = skills.length
+      ? skills.slice(0, 12).map(function(s) {
+          return '<span style="display:inline-block;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;margin:2px;">' + _escHtml(s) + '</span>';
+        }).join(' ')
+      : '—';
+
+    var contentPreview = d.content_preview
+      ? '<div style="max-height:120px;overflow:hidden;font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:8px;-webkit-mask-image:linear-gradient(to bottom, black 60%, transparent 100%);">' + _escHtml(d.content_preview) + '</div>'
+      : '';
+
+    var detailHtml = _adminDetailPanel([
+      {
+        title: 'Job Info',
+        rows: [
+          { label: 'ID', value: d.greenhouse_id, mono: true },
+          { label: 'Platform', value: d.ats_source },
+          { label: 'Status', value: d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—' },
+          { label: 'Department', value: d.department || '—' },
+          { label: 'Category', value: d.job_cat || '—' },
+          { label: 'Employment', value: d.employment_type || '—' },
+          { label: 'Apply', value: applyLink },
+          { label: 'Posting', value: jobLink }
+        ]
+      },
+      {
+        title: 'Enrichment',
+        rows: [
+          { label: 'JD Enriched', value: d.jd_enriched ? '✓ Yes' : '✗ No' },
+          { label: 'Enriched At', value: _timeAgo(d.jd_extracted_at) },
+          { label: 'Priority', value: d.enrichment_priority != null ? String(d.enrichment_priority) : '—' },
+          { label: 'Seniority', value: (d.jd_seniority || d.extracted_seniority || '—') },
+          { label: 'Education', value: d.jd_education || '—' },
+          { label: 'Experience', value: (d.jd_years_min || d.jd_years_max) ? (d.jd_years_min || '?') + '–' + (d.jd_years_max || '?') + ' yrs' : '—' },
+          { label: 'AI Score', value: d.ai_content_score != null ? d.ai_content_score.toFixed(2) : '—' },
+          { label: 'AI Label', value: d.ai_label || '—' },
+          { label: 'AI Scored', value: _timeAgo(d.ai_scored_at) }
+        ]
+      },
+      {
+        title: 'Salary',
+        rows: [
+          { label: 'Range', value: _fmtSalary(d.salary_min, d.salary_max, d.salary_currency) },
+          { label: 'Rate', value: d.salary_rate || '—' },
+          { label: 'Currency', value: d.salary_currency || '—' },
+          { label: 'Raw', value: d.salary_raw || '—' }
+        ]
+      }
+    ]);
+
+    // Skills row + JD preview appended below panels
+    var extra = '';
+    extra += '<div style="margin-top:12px;">';
+    extra += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:6px;">Skills</div>';
+    extra += skillsHtml;
+    extra += '</div>';
+
+    if (contentPreview) {
+      extra += '<div style="margin-top:12px;">';
+      extra += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:4px;">JD Preview</div>';
+      extra += contentPreview;
+      extra += '</div>';
+    }
+
+    panelEl.innerHTML = detailHtml + extra;
+  }).catch(function(e) {
+    panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Failed: ' + e.message + '</span>';
   });
 }
