@@ -1,3 +1,21 @@
+## v6.94 — 2026-03-04
+
+### Admin IA v2 · Session 10 — Business Ops Suite
+
+**New file:**
+- `js/admin-biz-ops.js` — 5 sub-page implementations (669 lines)
+
+**Sub-pages implemented:**
+- `paid` — Paid acquisition tracker: spend log (manual entry), stat cards (total/MTD/platforms/CAC), Google Ads + Meta Ads quick links
+- `social` — Social post log: post entries by platform, engagement tracking, stat cards (total posts/MTD/total engagements/avg engagement)
+- `analytics` — User analytics overview: live profile counts (DAU/WAU/MAU), signups over time ECharts bar chart, user funnel ECharts funnel chart, period toggle 30d/90d/180d
+- `costs` — Vendor cost tracker: manual monthly entries, per-vendor breakdown, MoM change stat card, 12-month trend ECharts bar chart
+- `forecasting` — Revenue projection: configurable growth/ARPU/churn assumptions, MRR + paid users forecast ECharts dual-axis line chart, 6/12/24 month horizons
+
+**Updated:**
+- `build-admin.js` — 24 → 25 source files
+
+
 ## v6.93 — 2026-03-04
 
 ### Admin IA v2 · Session 9 — Notification Analytics Suite
