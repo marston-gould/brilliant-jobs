@@ -1,9 +1,9 @@
 /**
  * pipeline-migration.js
- * Brilliant Jobs v6.95 — Overlay Pipeline Session 1
+ * Brilliant Jobs v6.96 — Overlay Pipeline Session 2
  *
  * Migrates localStorage pipeline data to Supabase pipeline table.
- * Runs on first dashboard load, sets a version flag to prevent re-run.
+ * Runs on first dashboard load after auth init, sets a version flag to prevent re-run.
  *
  * localStorage keys migrated: bj_pipeline, bj_applied_jobs, bj_applied_dates,
  *   bj_pipeline_meta, bj_app_queue, bj_app_history
@@ -19,25 +19,15 @@ var PipelineMigration = (function () {
   var APPLIED_DATES_KEY = 'bj_applied_dates';
   var PIPELINE_META_KEY = 'bj_pipeline_meta';
 
-  /**
-   * Returns true if this migration version has already run.
-   */
   function hasRun() {
     var flag = localStorage.getItem(MIGRATION_FLAG_KEY + MIGRATION_VERSION);
     return flag === 'done';
   }
 
-  /**
-   * Mark migration as complete for this version.
-   */
   function markComplete() {
     localStorage.setItem(MIGRATION_FLAG_KEY + MIGRATION_VERSION, 'done');
   }
 
-  /**
-   * Parse and normalize a raw localStorage pipeline entry into
-   * a pipeline table row shape.
-   */
   function normalizeEntry(raw, appliedDates, userId) {
     var url = raw.job_url || raw.url || raw.source_url || null;
     if (!url) return null;
@@ -79,22 +69,12 @@ var PipelineMigration = (function () {
     };
   }
 
-  /**
-   * Write a single entry to the pipeline table via PostgREST.
-   * On conflict (user_id, source_url): skip (DO NOTHING).
-   */
   function writeEntry(entry, supabaseClient) {
     return supabaseClient
       .from('pipeline')
       .upsert(entry, { onConflict: 'user_id,source_url', ignoreDuplicates: true });
   }
 
-  /**
-   * Main migration function. Call after auth session is confirmed.
-   * @param {object} supabaseClient - initialized supabase client
-   * @param {string} userId - auth.uid()
-   * @returns {Promise<{migrated: number, skipped: number, errors: number}>}
-   */
   async function run(supabaseClient, userId) {
     if (hasRun()) {
       return { migrated: 0, skipped: 0, errors: 0, alreadyDone: true };
@@ -141,10 +121,8 @@ var PipelineMigration = (function () {
       }
     }
 
-    // Mark complete regardless — don't re-run partial migrations
     markComplete();
 
-    // Clear localStorage keys after successful migration
     if (errors === 0) {
       localStorage.removeItem(PIPELINE_LS_KEY);
       localStorage.removeItem(APPLIED_DATES_KEY);
