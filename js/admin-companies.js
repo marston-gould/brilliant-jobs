@@ -1,7 +1,10 @@
 /* ───────────────────────────────────────────────────────────
-   admin-companies.js — Companies Sub-page (Admin IA v2 S2)
-   v6.85 — Board inventory, platform breakdown, industry mix
+   admin-companies.js — Companies Sub-page (Admin IA v2 S3)
+   v6.86 — Stats + action bar + paginated company table
+   Helpers moved to admin-blocks.js
    ─────────────────────────────────────────────────────────── */
+
+var _companyListState = { search: '', platform: '', sort: 'boards_desc', offset: 0, limit: 50 };
 
 function loadAdminCompanies() {
   var panel = document.getElementById('admin-panel-companies');
@@ -81,6 +84,29 @@ function renderCompaniesPage(panel, d) {
 
   html += '</tbody></table></div></div>';
 
+  // ── Action Bar + Paginated Company List ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">All Companies</div>';
+
+  var platforms = [];
+  (d.by_platform || []).forEach(function(p) { platforms.push(p.source); });
+
+  html += _adminActionBar({
+    id: 'co-list',
+    placeholder: 'Search by slug or name…',
+    platforms: platforms,
+    sorts: [
+      { value: 'boards_desc', label: 'Newest First' },
+      { value: 'boards_asc', label: 'Oldest First' },
+      { value: 'name_asc', label: 'Name A–Z' },
+      { value: 'name_desc', label: 'Name Z–A' }
+    ],
+    defaultSort: 'boards_desc'
+  });
+
+  html += '<div id="co-list-table">Loading…</div>';
+  html += '</div>';
+
   // ── Recently Discovered ──
   html += '<div class="admin-block" style="margin-top:16px;">';
   html += '<div class="admin-block-title">Recently Discovered</div>';
@@ -102,34 +128,97 @@ function renderCompaniesPage(panel, d) {
   html += '</tbody></table></div></div>';
 
   panel.innerHTML = html;
+
+  // Wire action bar events
+  _wireCompanyListEvents();
+  _fetchCompanyList();
 }
 
-// ── Reusable Stat Card ──
-function _adminStatCard(label, value, sub) {
-  return '<div class="admin-stat-card">' +
-    '<div class="admin-stat-value">' + value + '</div>' +
-    '<div class="admin-stat-label">' + label + '</div>' +
-    (sub ? '<div class="admin-stat-sub">' + sub + '</div>' : '') +
-    '</div>';
+function _wireCompanyListEvents() {
+  var searchEl = document.getElementById('co-list-search');
+  var platEl = document.getElementById('co-list-platform');
+  var sortEl = document.getElementById('co-list-sort');
+  var debounce = null;
+
+  if (searchEl) searchEl.addEventListener('input', function() {
+    clearTimeout(debounce);
+    debounce = setTimeout(function() {
+      _companyListState.search = searchEl.value.trim();
+      _companyListState.offset = 0;
+      _fetchCompanyList();
+    }, 300);
+  });
+
+  if (platEl) platEl.addEventListener('change', function() {
+    _companyListState.platform = platEl.value;
+    _companyListState.offset = 0;
+    _fetchCompanyList();
+  });
+
+  if (sortEl) sortEl.addEventListener('change', function() {
+    _companyListState.sort = sortEl.value;
+    _companyListState.offset = 0;
+    _fetchCompanyList();
+  });
 }
 
-// ── HTML escape ──
-function _escHtml(s) {
-  if (!s) return '';
-  var d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+function _fetchCompanyList() {
+  var target = document.getElementById('co-list-table');
+  if (!target) return;
+  target.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">Loading…</div>';
+
+  var params = {
+    p_search: _companyListState.search || null,
+    p_platform: _companyListState.platform || null,
+    p_sort: _companyListState.sort,
+    p_offset: _companyListState.offset,
+    p_limit: _companyListState.limit
+  };
+
+  sb.rpc('get_admin_companies_list', params).then(function(res) {
+    if (res.error) {
+      target.innerHTML = '<div style="color:var(--red);padding:12px;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    _renderCompanyTable(target, res.data);
+  }).catch(function(e) {
+    target.innerHTML = '<div style="color:var(--red);padding:12px;">Failed: ' + e.message + '</div>';
+  });
 }
 
-// ── Time ago ──
-function _timeAgo(dateStr) {
-  if (!dateStr) return '—';
-  var diff = Date.now() - new Date(dateStr).getTime();
-  var mins = Math.floor(diff / 60000);
-  if (mins < 60) return mins + 'm ago';
-  var hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + 'h ago';
-  var days = Math.floor(hrs / 24);
-  if (days < 30) return days + 'd ago';
-  return Math.floor(days / 30) + 'mo ago';
+function _renderCompanyTable(target, data) {
+  var columns = [
+    { key: 'slug', label: 'Slug', render: function(r) { return '<span style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(r.slug) + '</span>'; } },
+    { key: 'name', label: 'Name', render: function(r) { return _escHtml(r.name || '—'); } },
+    { key: 'source', label: 'Platform', render: function(r) { return '<span style="text-transform:capitalize;">' + _escHtml(r.source) + '</span>'; } },
+    { key: 'is_active', label: 'Status', render: function(r) {
+      var color = r.is_active ? 'var(--green)' : 'var(--text-faint)';
+      return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + (r.is_active ? 'Active' : 'Inactive');
+    }},
+    { key: 'open_jobs', label: 'Open Jobs', align: 'right', render: function(r) { return fmtAdminNum(r.open_jobs); } },
+    { key: 'total_jobs', label: 'Total Jobs', align: 'right', render: function(r) { return fmtAdminNum(r.total_jobs); } },
+    { key: 'industry', label: 'Industry', render: function(r) { return '<span style="text-transform:capitalize;font-size:12px;">' + _escHtml(r.industry || '—') + '</span>'; } },
+    { key: 'last_checked', label: 'Last Check', render: function(r) { return '<span style="font-size:12px;color:var(--text-faint);">' + _timeAgo(r.last_checked) + '</span>'; } }
+  ];
+
+  target.innerHTML = _adminPagedTable({
+    id: 'co-paged',
+    columns: columns,
+    rows: data.rows,
+    total: data.total,
+    offset: data.offset,
+    limit: data.limit
+  });
+
+  // Wire pagination
+  var prev = document.getElementById('co-paged-prev');
+  var next = document.getElementById('co-paged-next');
+  if (prev) prev.addEventListener('click', function() {
+    _companyListState.offset = Math.max(0, _companyListState.offset - _companyListState.limit);
+    _fetchCompanyList();
+  });
+  if (next) next.addEventListener('click', function() {
+    _companyListState.offset += _companyListState.limit;
+    _fetchCompanyList();
+  });
 }

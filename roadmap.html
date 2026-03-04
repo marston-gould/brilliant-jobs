@@ -1785,7 +1785,7 @@ const features = [
 { s: 'done', n: 'Version audit + roadmap sync (v6.53)', d: 'Comprehensive audit of all version surfaces. Synchronized roadmap.html with completed work across 50+ versions. Established version discipline baseline for VERSION_METHODOLOGY.', p: 1, e: '2h'},
 { s: 'done', n: 'Cron cost optimization (v6.51–v6.52)', d: 'Two-session optimization of pg_cron jobs. Reduced Supabase compute costs by consolidating overlapping cron schedules, disabling unused jobs, and optimizing Edge Function execution patterns.', p: 1, e: '4h'},
 { s: 'done', n: 'Admin Console IA Redesign — Pod 1 Handoff', d: 'Formal handoff spec (Admin-Console-IA-Redesign-Handoff.docx) for Pod 2. Two-level navigation: fixed left sidebar with 4 section groups (Operations, Growth, Audience, Business) and 17 sub-pages. 6 composable content block primitives replacing flat 5-tab layout. Desktop-only. Pod 2 build pending.', p: 1, e: '4h'},
-{ s: 'done', n: 'Admin IA v2 S2 — Block System + Pages — v6.85', d: 'v6.85. 3 new admin sub-pages: Companies (board inventory, platform breakdown, top industries, recently discovered), Jobs (inventory stats, enrichment %, age distribution, daily new 7d), Email (delivery stats, channel split, type breakdown, recent sends log). 3 new SECURITY DEFINER RPCs (get_admin_companies, get_admin_jobs, get_admin_email). 3 new JS files added to build-admin.js. Reusable block CSS: .admin-stat-row, .admin-stat-card, .admin-block, .admin-age-bucket. Session 2 empty states removed.', p: 1, e: '4h'},
+{ s: 'done', n: 'Admin IA v2 S2 — Block System + Pages — v6.86', d: 'v6.86. 3 new admin sub-pages: Companies (board inventory, platform breakdown, top industries, recently discovered), Jobs (inventory stats, enrichment %, age distribution, daily new 7d), Email (delivery stats, channel split, type breakdown, recent sends log). 3 new SECURITY DEFINER RPCs (get_admin_companies, get_admin_jobs, get_admin_email). 3 new JS files added to build-admin.js. Reusable block CSS: .admin-stat-row, .admin-stat-card, .admin-block, .admin-age-bucket. Session 2 empty states removed.', p: 1, e: '4h'},
 { s: 'done', n: 'A15 S6: Source Pill Counts from mv_job_feed_counts (v6.62)', d: 'Stats page pill counts powered by mv_job_feed_counts materialized view instead of client-side counting. Accurate ATS source distribution.', p: 1, e: '2h'},
 { s: 'todo', n: 'PostHog chat mode dashboard', d: 'Create PostHog dashboard for all 16 chat events (13 original + 3 Session 11). Funnels: toggle → message → filters applied, saved prompt adoption, rate limit frequency by tier. Latency percentile charts (p50, p95, p99). Tooltip conversion: shown → dismissed by method.', p: 1, e: '2h'},
 { s: 'todo', n: 'Edge Function cost monitoring', d: 'Monitor Anthropic API costs via chat_edge_function_latency volume. PostHog alerts for p95 > 2000ms. Response caching for repeated filter extraction patterns.', p: 1, e: '2h'},
@@ -2099,6 +2099,7 @@ render();
 
 </body>
 </html>
+
 
 
 

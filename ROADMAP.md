@@ -2660,3 +2660,4 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Stats page: Per-ATS-source job count chips from mv_job_feed_counts in filter bar (All mode)
 - Job feed: Source breakdown chips in hero stats bar
 - Compact formatting, tooltips with salary coverage
+

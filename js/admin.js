@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.85 — Sidebar replaces flat tab bar + S2 block pages
+   v6.86 — S3 action bars + paginated tables + shared blocks
    4 sections: Operations, Growth, Audience, Business
    17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
@@ -3938,3 +3938,4 @@ async function loadMVStalenessPanel() {
     panel.innerHTML = '<tr><td colspan="4" style="color:#ef4444">Failed to check MV staleness: ' + escapeHtml(e.message) + '</td></tr>';
   }
 }
+
