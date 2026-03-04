@@ -1,3 +1,9 @@
+## v6.82 — 2026-03-04
+### Phase 16 Session 5: Resume-First Filter Bootstrap
+- **settings.js:** bootstrapFiltersFromResume() — on passive mode toggle ON with no active filters, calls extract-resume-profile EF with user's latest resume_texts row; builds up to 3 job filters from top titles (whatPills from title tokens, includeRemote from profile.remote_preference); persists to bj_saved_filters localStorage, calls setSavedFilters() if available; shows toast: 'We created N filter(s) based on your resume to get started'; guards: passiveMode ON, no existing filters, resume_text exists
+- **settings.js:** initPassiveMode hook — extends toggle change listener to call bootstrapFiltersFromResume with 300ms delay on toggle ON
+- PostHog: passive_resume_bootstrap event with filters_created, titles, seniority, remote_preference
+
 ## v6.81 — 2026-03-04
 ### Phase 16 Session 4: Passive High-Bar Alerts
 - **email-templates.ts:** passiveHighBarAlertEmail() — subject "This one is worth your time.", body with match %, salary, ghost score, passive mode explanation
