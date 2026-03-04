@@ -1,3 +1,13 @@
+## v7.07 — 2026-03-04
+
+### Rejection Gap Analysis — Phase A (Data Collection)
+
+- **DB: application_gaps table** — New table with schema: id, user_id, job_id, resume_id, outcome (ghosted|rejected), jd_ngrams (jsonb), resume_ngrams (jsonb), gap_terms (jsonb), created_at. RLS: users own their rows. Index on (user_id, created_at DESC).
+- **DB: get_gap_insights RPC** — Aggregates top gap terms per user over rolling 90-day window via jsonb_array_elements_text. SECURITY DEFINER, granted to anon + authenticated.
+- **Edge Function: analyze-application-gap** — Triggered when outcome is marked ghosted/rejected. Fetches JD text from ats_jobs, resume text from resume_texts/resumes. Extracts 1-gram + 2-gram tokens, filters stopwords, computes set difference. Inserts row into application_gaps. Fires PostHog events: gap_analysis_triggered, gap_analysis_completed.
+- **js/resumes.js** — Added gap analysis module: triggerGapAnalysis() (invokes edge function on outcome mark), renderGapInsights() (fetches top terms, renders pattern pill UI, 5-record threshold gate), onGapTermClick() (PostHog event + toast, placeholder for future keyword injection).
+- **dashboard.html** — New "Skills gaps spotted across your recent applications" collapsible card on Resumes page (id: gap-insights-section). Shows top 10 gap term pills with frequency counts; placeholder when < 5 records.
+
 ## v7.06 — 2026-03-04
 
 ### Referral Outreach Templates (Part 1 of 2)

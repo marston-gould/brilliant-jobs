@@ -1484,3 +1484,121 @@ window.launchRewriteInterview = function(idx) {
     showToast('Rewrite module not loaded. Please refresh the page.', { type: 'error' });
   }
 };
+
+// ============================================================
+// REJECTION GAP ANALYSIS — v7.07
+// Phase A: Data collection trigger
+// Phase B: Insight surfacing on Resumes page
+// ============================================================
+
+/**
+ * triggerGapAnalysis — called when user marks application ghosted or rejected.
+ * Invokes analyze-application-gap edge function.
+ * @param {string} jobId - ats_jobs greenhouse_id or composite key
+ * @param {string|null} resumeId - resume_archive resume_id (uuid)
+ * @param {string} outcome - 'ghosted' or 'rejected'
+ */
+window.triggerGapAnalysis = async function(jobId, resumeId, outcome) {
+  if (!currentUser) return;
+  if (!['ghosted', 'rejected'].includes(outcome)) return;
+
+  try {
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+
+    var resp = await fetch(
+      'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/analyze-application-gap',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+        },
+        body: JSON.stringify({ job_id: jobId, resume_id: resumeId, outcome: outcome }),
+      }
+    );
+
+    var result = await resp.json();
+    if (result.ok) {
+      console.log('[BJ] Gap analysis recorded — ' + (result.gap_term_count || 0) + ' gap terms');
+    }
+  } catch (e) {
+    console.warn('[BJ] Gap analysis error (non-fatal):', e.message);
+  }
+};
+
+/**
+ * renderGapInsights — loads and renders the Patterns section on the Resumes page.
+ * Shows top gap terms if user has >= 5 records; placeholder otherwise.
+ */
+window.renderGapInsights = async function() {
+  var container = document.getElementById('gap-insights-section');
+  if (!container) return;
+  if (!currentUser) { container.style.display = 'none'; return; }
+
+  try {
+    // Fire PostHog view event
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('gap_insights_viewed', { user_id: currentUser.id });
+    }
+
+    var { data: rows, error } = await sb.rpc('get_gap_insights', {
+      p_user_id: currentUser.id,
+      p_days: 90,
+      p_limit: 10,
+    });
+
+    if (error) throw new Error(error.message);
+
+    // Check total gap record count for threshold gate
+    var { count: totalCount } = await sb
+      .from('application_gaps')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id);
+
+    var contentEl = document.getElementById('gap-insights-content');
+    if (!contentEl) return;
+
+    if (!totalCount || totalCount < 5) {
+      contentEl.innerHTML = '<p style="color:var(--text-faint);font-size:12px;margin:0;">Apply to more jobs and mark outcomes to unlock pattern analysis. (' + (totalCount || 0) + '/5 applications recorded)</p>';
+      container.style.display = '';
+      return;
+    }
+
+    if (!rows || rows.length === 0) {
+      contentEl.innerHTML = '<p style="color:var(--text-faint);font-size:12px;margin:0;">No gap patterns detected yet. Keep marking application outcomes.</p>';
+      container.style.display = '';
+      return;
+    }
+
+    // Render top terms
+    var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+    rows.forEach(function(row) {
+      html += '<div onclick="window.onGapTermClick(' + JSON.stringify(row.term) + ')" style="cursor:pointer;background:var(--bg-input);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--text-dim);transition:border-color 0.15s;" title="Click to add to keyword suggestions">' +
+        '<span style="color:var(--text);">' + row.term + '</span>' +
+        '<span style="color:var(--text-faint);margin-left:6px;">×' + row.frequency + '</span>' +
+        '</div>';
+    });
+    html += '</div>';
+
+    contentEl.innerHTML = html;
+    container.style.display = '';
+
+  } catch (e) {
+    console.warn('[BJ] renderGapInsights error:', e.message);
+  }
+};
+
+/**
+ * onGapTermClick — placeholder for future click-to-add resume keyword injection.
+ */
+window.onGapTermClick = function(term) {
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('gap_term_clicked', { term: term, user_id: currentUser && currentUser.id });
+  }
+  // Future: inject term into resume keyword suggestions editor
+  if (typeof showToast === 'function') {
+    showToast('"' + term + '" noted — resume keyword injection coming soon.', { duration: 2500 });
+  }
+};
