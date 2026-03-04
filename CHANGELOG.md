@@ -1,3 +1,13 @@
+## v6.76 Competitor Employer Blocklist (2026-03-03)
+- Feat: competitor_blocklist table — admin-editable list of blocked employer companies
+- Feat: 24 companies seeded across 4 categories: competitor, ats_vendor, data_vendor, job_board
+- Feat: Employer extraction from LinkedIn title and DataForSEO SERP title (multiple format patterns)
+- Feat: Fuzzy company name matching (normalized, substring, word-level) against blocklist + aliases
+- Feat: Hard block on signup if detected employer matches blocklist — stored in validation_result
+- Feat: Jobscan added to blocklist (competitor category)
+- Chore: Version bumped v6.75 → v6.76 across all surfaces per VERSION_METHODOLOGY
+- Scope: validate-signup Edge Function + competitor_blocklist table + seed data
+
 ## v6.75 DataForSEO Profile Verification (2026-03-03)
 - Feat: DataForSEO SERP-based LinkedIn profile verification in validate-signup Edge Function
 - Feat: Google site:linkedin.com/in search cross-references signup LinkedIn URL for legitimacy
