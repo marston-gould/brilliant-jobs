@@ -754,7 +754,7 @@ const features = [
   { s: 'done', n: '[GH] Location normalization', d: 'Ran normalize_job_locations() on all 116K rows + manual cleanup SQL. lat/lng populated for 20K jobs from ref_city_radius.', p: 10 },
   { s: 'done', n: '[GH] Alphabet crawl expansion', d: 'DataForSEO alphabet crawl for Greenhouse-specific boards. Got through letters a-s before Task Handed errors. 78 new boards discovered.', p: 10 },
   { s: 'done', n: '[GH] TheirStack board discovery — NOT NEEDED', d: 'Removed. Already have 10,019 boards across 5 ATS platforms. TheirStack import unnecessary.', p: 10 },
-  { s: 'todo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', b: 'needs-extension', p: 10, b: 'deferred', e: '2h'},
+  { s: 'wontdo', n: '[GH] Board discovery from LinkedIn outbound links', d: 'During profile scanning, capture outbound links to boards.greenhouse.io', b: 'needs-extension', p: 10, b: 'deferred', e: '2h'},
 
   // ── Lever (ACTIVE — 1,154 boards, scraping live) ──
   { s: 'done', n: '[LV] Board discovery', d: 'DataForSEO alphabet crawl: 1,154 Lever boards discovered. All imported to ats_companies with source=lever.', p: 10 },
@@ -801,7 +801,7 @@ const features = [
   // ── Future Sources ──
   { s: 'done', n: '[IND] Indeed RSS — DEPRECATED', d: 'Removed. Indeed deprecated their RSS feed. No longer viable as a data source.', p: 10 },
   { s: 'done', n: '[USJ] USAJobs API integration', d: 'refresh-usajobs Edge Function live (v3.80-v4.09). 6th job source. ~10K federal listings. Propagated to landing, data lab, Feed Health, stats. Standard platform in admin console.', p: 10 },
-  { s: 'todo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', b: 'post-launch', p: 10, b: 'deferred', e: '4h'},
+  { s: 'wontdo', n: '[GJ] DataForSEO Google Jobs API', d: 'Fallback discovery for companies on closed ATS platforms (Workday, iCIMS).', b: 'post-launch', p: 10, b: 'deferred', e: '4h'},
   { s: 'done', n: 'Cross-source job deduplication', d: 'Normalize title + company + location hash for dedup across all sources.', p: 10 },
   { s: 'done', n: 'Auto-apply form-fill automation', d: 'v5.36-v5.42+v5.75: Browser-fill submission chain complete for 13 ATS platforms. Per-platform handlers: Greenhouse (token-aware), Lever (DOM fill), Ashby (React-aware), Workable (widget detection), Recruitee (iframe handling), LinkedIn Easy Apply (multi-step), Indeed (anti-bot sim), Workday (section navigation), iCIMS (v5.75), Taleo/Oracle (v5.75), SmartRecruiters (v5.75), Avature (v5.75), generic fallback (heuristic field matching). AI question answering via Claude Haiku (50/day) for custom fields. Multilingual label detection (FR/ES/DE/IT). Human-simulation typing with bezier cursor paths. 3-layer code obfuscation. Implemented via browser-fill rather than API — formal ATS partnerships provide API path for future.', p: 10 },
 
