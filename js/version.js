@@ -1,4 +1,4 @@
-var BJ_VERSION = 'v6.66';
+var BJ_VERSION = 'v6.67';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
