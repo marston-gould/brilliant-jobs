@@ -44,6 +44,7 @@ var ADMIN_SUBPAGE_MAP = {
   'notif-analytics':{ section: 'growth',      label: 'Notif Analytics', init: function(){ loadNotifAnalyticsTab(); } },
   'email-cohorts':  { section: 'growth',      label: 'Email Cohorts',  init: function(){ loadEmailCohortsTab(); } },
   'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
+  'notif-log':      { section: 'growth',      label: 'Notif Log',      init: function(){ loadNotifLogTab(); } },
   'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
   'paid':           { section: 'growth',      label: 'Paid',           init: null },
   'social':         { section: 'growth',      label: 'Social',         init: null },

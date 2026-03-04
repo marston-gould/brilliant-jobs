@@ -2532,3 +2532,169 @@ async function rerunCadenceAnalysis() {
   _cadenceState.loaded = false;
   await loadCadenceTab();
 }
+
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION LOG VIEWER (S5 — v6.88)
+// Paginated viewer of notification_log with search + filters
+// ═══════════════════════════════════════════════════════════
+
+var _notifLogState = {
+  search: '',
+  status: '',
+  channel: '',
+  type: '',
+  offset: 0,
+  limit: 50,
+  total: 0
+};
+
+async function loadNotifLogTab() {
+  _notifLogState.offset = 0;
+  await _renderNotifLog();
+}
+
+async function _renderNotifLog() {
+  var container = document.getElementById('admin-panel-notif-log');
+  if (!container) return;
+
+  var isFirst = _notifLogState.offset === 0;
+  if (isFirst) {
+    container.innerHTML = '<div class="admin-loading">Loading notification log…</div>';
+  }
+
+  try {
+    var result = await sb.rpc('get_admin_notification_log', {
+      p_search:  _notifLogState.search  || null,
+      p_status:  _notifLogState.status  || null,
+      p_channel: _notifLogState.channel || null,
+      p_type:    _notifLogState.type    || null,
+      p_offset:  _notifLogState.offset,
+      p_limit:   _notifLogState.limit
+    });
+    if (result.error) throw result.error;
+    var d = result.data || {};
+    var rows = d.rows || [];
+    _notifLogState.total = d.total || 0;
+
+    var statusOptions = ['', 'sent', 'delivered', 'opened', 'clicked', 'failed', 'bounced', 'complained'];
+    var channelOptions = ['', 'email', 'sms'];
+
+    // Action bar
+    var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">';
+    html += '<input type="text" id="notif-log-search" placeholder="Search type / company / subject…" value="' + _escHtml(_notifLogState.search) + '" oninput="notifLogFilter()" style="flex:1;min-width:200px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;font-family:var(--mono)">';
+    html += '<select id="notif-log-status" onchange="notifLogFilter()" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">';
+    statusOptions.forEach(function(s) {
+      html += '<option value="' + s + '"' + (_notifLogState.status === s ? ' selected' : '') + '>' + (s || 'All Statuses') + '</option>';
+    });
+    html += '</select>';
+    html += '<select id="notif-log-channel" onchange="notifLogFilter()" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">';
+    channelOptions.forEach(function(ch) {
+      html += '<option value="' + ch + '"' + (_notifLogState.channel === ch ? ' selected' : '') + '>' + (ch || 'All Channels') + '</option>';
+    });
+    html += '</select>';
+    html += '<span style="font-size:12px;color:var(--text-dim);font-family:var(--mono);white-space:nowrap">' + _notifLogState.total.toLocaleString() + ' rows</span>';
+    html += '</div>';
+
+    // Table
+    html += '<div style="overflow-x:auto">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)">';
+    html += '<thead><tr style="border-bottom:2px solid var(--border);text-align:left">';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Time</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Type</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Channel</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Status</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">User</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Company</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Subject</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Plan</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Decision</th>';
+    html += '</tr></thead><tbody id="notif-log-body">';
+
+    rows.forEach(function(r) {
+      var statusColor = r.status === 'delivered' || r.status === 'opened' || r.status === 'clicked' ? '#22c55e'
+        : r.status === 'failed' || r.status === 'bounced' || r.status === 'complained' ? '#ef4444'
+        : r.status === 'sent' ? '#a78bfa' : 'var(--text-dim)';
+      var dt = r.created_at ? new Date(r.created_at) : null;
+      var dateStr = dt ? (dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '—';
+      var openDot = r.opened_at ? ' <span style="color:#22c55e" title="Opened">●</span>' : '';
+      var clickDot = r.clicked_at ? ' <span style="color:#f59e0b" title="Clicked">●</span>' : '';
+
+      html += '<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="toggleNotifLogDetail(this,\'' + r.id + '\')">';
+      html += '<td style="padding:5px 8px;color:var(--text-faint);white-space:nowrap">' + dateStr + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text)">' + _escHtml(r.notification_type || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim)">' + _escHtml(r.channel || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:' + statusColor + ';font-weight:600">' + _escHtml(r.status || '—') + openDot + clickDot + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-faint);font-size:10px">' + (r.user_id ? r.user_id.substring(0,8) + '…' : '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text)">' + _escHtml(r.company_name || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escHtml(r.subject || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim)">' + _escHtml(r.user_plan || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim)">' + _escHtml(r.send_decision || '—') + '</td>';
+      html += '</tr>';
+      // Detail row (hidden)
+      html += '<tr id="notif-log-detail-' + r.id + '" style="display:none"><td colspan="9" style="padding:0 8px 12px 8px">';
+      html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">';
+      var fields = [
+        ['Classification', r.classification],['Send Reason', r.send_reason],['Template v', r.template_version],
+        ['Message ID', r.message_id ? r.message_id.substring(0,24)+'…' : null],
+        ['Cohort', r.user_cohort],['Job ID', r.job_id],
+        ['Delivered', r.delivered_at ? new Date(r.delivered_at).toLocaleString() : null],
+        ['Opened', r.opened_at ? new Date(r.opened_at).toLocaleString() : null],
+        ['Clicked', r.clicked_at ? new Date(r.clicked_at).toLocaleString() : null],
+        ['Bounced', r.bounced_at ? new Date(r.bounced_at).toLocaleString() + (r.bounce_type ? ' ('+r.bounce_type+')' : '') : null]
+      ];
+      fields.forEach(function(f) {
+        if (!f[1]) return;
+        html += '<div><span style="color:var(--text-faint)">' + f[0] + ':</span> <span style="color:var(--text)">' + _escHtml(String(f[1])) + '</span></div>';
+      });
+      html += '</div></td></tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    // Pagination
+    var hasMore = (_notifLogState.offset + rows.length) < _notifLogState.total;
+    if (_notifLogState.offset > 0 || hasMore) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">';
+      html += '<span style="font-size:12px;color:var(--text-dim);font-family:var(--mono)">';
+      html += (_notifLogState.offset + 1) + '–' + (_notifLogState.offset + rows.length) + ' of ' + _notifLogState.total.toLocaleString();
+      html += '</span><div style="display:flex;gap:8px">';
+      if (_notifLogState.offset > 0) {
+        html += '<button onclick="notifLogPage(-1)" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--mono)">← Prev</button>';
+      }
+      if (hasMore) {
+        html += '<button onclick="notifLogPage(1)" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--mono)">Next →</button>';
+      }
+      html += '</div></div>';
+    }
+
+    container.innerHTML = html;
+
+  } catch (e) {
+    console.error('[Admin] Notif log error:', e);
+    var container2 = document.getElementById('admin-panel-notif-log');
+    if (container2) container2.innerHTML = '<div style="color:#ef4444;padding:16px">Failed to load notification log: ' + _escHtml(e.message || String(e)) + '</div>';
+  }
+}
+
+function toggleNotifLogDetail(row, id) {
+  var detail = document.getElementById('notif-log-detail-' + id);
+  if (!detail) return;
+  detail.style.display = detail.style.display === 'none' ? '' : 'none';
+}
+
+var _notifLogTimer = null;
+function notifLogFilter() {
+  clearTimeout(_notifLogTimer);
+  _notifLogTimer = setTimeout(function() {
+    _notifLogState.search  = (document.getElementById('notif-log-search')  || {}).value || '';
+    _notifLogState.status  = (document.getElementById('notif-log-status')  || {}).value || '';
+    _notifLogState.channel = (document.getElementById('notif-log-channel') || {}).value || '';
+    _notifLogState.offset  = 0;
+    _renderNotifLog();
+  }, 300);
+}
+
+function notifLogPage(dir) {
+  _notifLogState.offset = Math.max(0, _notifLogState.offset + (dir * _notifLogState.limit));
+  _renderNotifLog();
+}
