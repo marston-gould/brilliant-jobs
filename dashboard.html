@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v6.77 -->
+<!-- Brilliant Jobs Dashboard v6.78 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,19 +11,19 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v6.77"></script>
-  <script src="/js/notification-center.js?v=v6.77"></script>
+  <script src="/js/version.js?v=v6.78"></script>
+  <script src="/js/notification-center.js?v=v6.78"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v6.77" defer></script>
-  <script src="js/canny.js?v=v6.77" defer></script>
+  <script src="dist/dashboard.min.js?v=v6.78" defer></script>
+  <script src="js/canny.js?v=v6.78" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v6.77">
+  <link rel="stylesheet" href="styles.css?v=v6.78">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -2818,7 +2818,64 @@
                 </label>
               </div>
             </div>
+
+          <div class="card" id="passive-mode-card">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+              <span>Job Search Mode</span>
+              <span id="passive-mode-badge" class="passive-mode-badge active" style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;background:var(--green);color:#fff;letter-spacing:.5px;">Active</span>
+            </div>
+            <div class="card-sub">Active mode shows all matching jobs. Passive mode only alerts you on exceptional matches — no daily digests, no noise.</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);">
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">Passive Mode</div>
+                <div style="font-size:11px;color:var(--text-faint);">Only notify me on high-bar matches. Suppress daily digests.</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="passive-mode-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div id="passive-threshold-panel" style="display:none;margin-top:12px;">
+              <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Threshold Settings</div>
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <label style="font-size:13px;color:var(--text);">Minimum Match Score</label>
+                    <span id="passive-score-display" style="font-size:13px;font-weight:700;color:var(--accent);">85%</span>
+                  </div>
+                  <input type="range" id="passive-score-floor" min="70" max="95" step="5" value="85" style="width:100%;accent-color:var(--accent);">
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-faint);margin-top:3px;"><span>70%</span><span>95%</span></div>
+                </div>
+                <div>
+                  <label style="font-size:13px;color:var(--text);display:block;margin-bottom:6px;">Minimum Salary</label>
+                  <input type="number" id="passive-min-salary" placeholder="e.g. 120000" step="10000" style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;">
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+                  <div>
+                    <div style="font-size:13px;color:var(--text);">Remote Only</div>
+                    <div style="font-size:11px;color:var(--text-faint);">Only alert on fully remote positions</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="passive-required-remote">
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+                <div>
+                  <label style="font-size:13px;color:var(--text);display:block;margin-bottom:6px;">Minimum Level</label>
+                  <select id="passive-required-level" style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;">
+                    <option value="">Any level</option>
+                    <option value="senior">Senior</option>
+                    <option value="lead">Lead</option>
+                    <option value="manager">Manager</option>
+                    <option value="director">Director</option>
+                    <option value="vp">VP</option>
+                    <option value="c_suite">C-Suite</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
+
 
         </div>
       </div>
