@@ -1,3 +1,14 @@
+## v7.04 — 2026-03-04
+
+### Overlay Pipeline S10: Polish + Dashboard Pipeline Tab Integration
+
+- **js/pipeline-overlay-tab.js (new)** — Overlay Pipeline tab module. Renders entries from the `pipeline` table (overlay-sourced jobs) in a new "Overlay Pipeline" view inside the Pipeline page. 4 stat cards (Overlay Entries, Applied+, Avg Match, Flagged Jobs). Stage-grouped table with title, company, platform, source, match score, fraud score, AI content score, saved/applied dates, last activity. Title links out to source URL. Collapsible stage sections.
+- **Pipeline page** — Added view toggle (Legacy Pipeline / Overlay Pipeline) to switch between `user_pipeline` legacy entries and new `pipeline` table entries. Both views persist independently.
+- **pipeline.js** — `initPipeline()` now calls `loadNewPipelineFromSupabase()` to pre-load overlay cache on init. Exposes `window._newPipelineCache` and `window._newPipelineLoaded` for the new module.
+- **overlay-analytics.js** — Added `drillDownToOverlayPipeline()` drill-down link in the Overlay Analytics stats tab. Clicking "View Overlay Pipeline Entries →" navigates to Pipeline page and auto-switches to Overlay view.
+- **build.js** — `pipeline-overlay-tab.js` added to `jsFiles` bundle array after `overlay-analytics.js` (29 files total).
+- **Overlay Pipeline workstream COMPLETE** — All 10 sessions shipped (v6.95–v7.04).
+
 ## v7.03 — 2026-03-04
 
 ### Overlay Pipeline S9: overlay_analytics Instrumentation + Analytics Sub-Page
@@ -2611,5 +2622,6 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
+
 
 

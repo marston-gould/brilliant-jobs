@@ -24,6 +24,7 @@ const jsFiles = [
   'js/resume-archive.js',
   'js/resume-metrics.js',
   'js/overlay-analytics.js',
+  'js/pipeline-overlay-tab.js',
   'js/tier-gating.js',
   'js/chat.js',
   'js/apply-workflow.js',
@@ -59,3 +60,4 @@ const origSize = combined.length;
 const minSize = readFileSync('dist/dashboard.min.js', 'utf-8').length;
 console.log(`✅ dist/dashboard.min.js`);
 console.log(`   ${jsFiles.length} files → ${(origSize/1024).toFixed(1)}KB → ${(minSize/1024).toFixed(1)}KB minified (${((1-minSize/origSize)*100).toFixed(0)}% smaller)`);
+
