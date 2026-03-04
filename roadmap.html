@@ -1703,7 +1703,7 @@ const features = [
   { s: 'done', n: 'Run filter-fcd.py locally against FCD dataset', d: 'Run python3 scripts/filter-fcd.py /path/to/free_company_dataset.json on local machine. Streams 10 GB JSON, filters by non-null industry, extracts linkedin_slug + domain. Output: filtered-companies.json.', b: 'pre-launch', p: 41, e: '6h'},
   { s: 'todo', n: 'Check output size + upload to Storage', d: 'ls -lh filtered-companies.json — if >50 MB, create ref_fcd_companies table instead (EF reads via LIMIT/OFFSET). If ≤50 MB, upload with: bash scripts/upload-fcd-filtered.sh filtered-companies.json', b: 'pre-launch', p: 41, e: '4h'},
   { s: 'done', n: 'Test enrich-fcd-batch + activate cron', d: 'POST to /functions/v1/enrich-fcd-batch with service role key. Verify matches are written correctly. Then activate: SELECT cron.alter_job(63, active := true). Pipeline goes live on next Sunday 3 AM UTC run.', b: 'pre-launch', p: 41, e: '6h'},
-  { s: 'todo', n: 'Email template theme toggle (dark ↔ white)', d: 'Extract hardcoded hex colors in baseLayout + Batch 6 helpers (statCard, dataTable, urgencyBadge) into a theme object at top of email-templates.ts. Single variable flips all 59 templates between dark and white. ~20 color tokens across 6 helper functions. 30 min effort.', p: 5, e: '6h'},
+  { s: 'done', n: 'Email template theme toggle (dark ↔ white)', d: 'Extracted 20 color tokens into EmailThemeTokens interface with dark/white THEMES object at top of email-templates.ts. Single EMAIL_THEME constant flips all 91 exported templates. Unified baseLayout (whiteBaseLayout now alias). Theme-aware helpers: statCard, dataTable, urgencyBadge, deltaSpan, proBadge, sectionHeading. ~250 inline hex refs replaced with T.* tokens. getThemeTokens() exported for per-template overrides. Zero visual change at default dark.', p: 5, e: '6h'},
 
   // Phase 68: Notification System Complete (v6.01–v6.19) — 15 Pod 2 Sessions ✅ COMPLETE
   { s: 'done', n: 'Double opt-in email confirmation flow', d: 'confirm-email + resend-confirmation Edge Functions. Sends verification email on signup. Blocks non-transactional notifications until email verified. Resend integration with branded template. user_notification_state tracks confirmation.', p: 68 },
@@ -2098,6 +2098,7 @@ render();
 
 </body>
 </html>
+
 
 
 
