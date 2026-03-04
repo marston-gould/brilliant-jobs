@@ -1,3 +1,18 @@
+## v6.91 — 2026-03-04
+
+### Admin IA v2 · Session 7 — Ghost, Templates, Revenue, Feedback
+
+**Bundle expansion (17 → 21 files):**
+- `js/admin-ghost.js` — Ghost Detection: inactivity window selector (7d/30d/60d/90d), ghost/active stat cards, cohort breakdown, age-bucket analysis, re-engagement panel, CSV export
+- `js/admin-templates.js` — Notification Templates: master-detail browser, 5 built-in templates, create/edit modal, variable support, send-test stub, status toggle, Supabase upsert with fallback
+- `js/admin-revenue.js` — Revenue & Billing: subscription breakdown by plan, estimated MRR, new subs count, billing events log, period toggle (7d/30d/90d)
+- `js/admin-feedback.js` — Feedback (Canny): top posts by score, status breakdown, votes/comments table, board links, graceful error handling
+
+**Updated:**
+- `build-admin.js` — 17 → 21 files
+- `js/version.js` — v6.91
+- `admin.html`, `dashboard.html`, `index.html` — v6.91
+
 ## v6.90 — 2026-03-04
 
 ### Admin IA v2 · Session 6 — Enrichment, SEO, Content, Merchandising, Referrals
