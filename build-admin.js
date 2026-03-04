@@ -18,6 +18,10 @@ const jsFiles = [
   'js/admin-content.js',
   'js/admin-merch.js',
   'js/admin-referrals.js',
+  'js/admin-ghost.js',
+  'js/admin-templates.js',
+  'js/admin-revenue.js',
+  'js/admin-feedback.js',
   'js/admin-shell.js',
 ];
 
