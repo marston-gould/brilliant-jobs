@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v6.78 -->
+<!-- Brilliant Jobs Dashboard v6.79 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,19 +11,19 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v6.78"></script>
-  <script src="/js/notification-center.js?v=v6.78"></script>
+  <script src="/js/version.js?v=v6.79"></script>
+  <script src="/js/notification-center.js?v=v6.79"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v6.78" defer></script>
-  <script src="js/canny.js?v=v6.78" defer></script>
+  <script src="dist/dashboard.min.js?v=v6.79" defer></script>
+  <script src="js/canny.js?v=v6.79" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v6.78">
+  <link rel="stylesheet" href="styles.css?v=v6.79">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -2872,6 +2872,41 @@
                     <option value="c_suite">C-Suite</option>
                   </select>
                 </div>
+              </div>
+
+              <!-- Frequency Presets (v6.79 Phase 16 S2) -->
+              <div style="margin-top:18px;">
+                <div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;">Alert Frequency</div>
+                <div style="display:flex;flex-direction:column;gap:8px;" id="passive-preset-container">
+                  <div class="passive-preset-card" data-preset="slam_dunk" style="border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;background:var(--bg-card);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div>
+                        <div style="font-size:13px;font-weight:600;color:var(--text);">Slam-dunk only</div>
+                        <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">1–2 alerts/month &middot; 90%+ match required</div>
+                      </div>
+                      <div class="passive-preset-check" data-for="slam_dunk" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;"></div>
+                    </div>
+                  </div>
+                  <div class="passive-preset-card selected" data-preset="high_bar" style="border:1.5px solid var(--accent);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;background:var(--bg-hover);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div>
+                        <div style="font-size:13px;font-weight:600;color:var(--text);">High bar</div>
+                        <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">1–2 alerts/week &middot; 85%+ match required</div>
+                      </div>
+                      <div class="passive-preset-check" data-for="high_bar" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);background:var(--accent);flex-shrink:0;"></div>
+                    </div>
+                  </div>
+                  <div class="passive-preset-card" data-preset="curated_daily" style="border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s;background:var(--bg-card);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div>
+                        <div style="font-size:13px;font-weight:600;color:var(--text);">Curated daily</div>
+                        <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">Daily digest &middot; 80%+ match required</div>
+                      </div>
+                      <div class="passive-preset-check" data-for="curated_daily" style="width:16px;height:16px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;"></div>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size:11px;color:var(--text-faint);margin-top:8px;">AI-generated job descriptions scoring below 50% quality are automatically skipped regardless of match score.</div>
               </div>
             </div>
           </div>
