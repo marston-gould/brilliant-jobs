@@ -285,6 +285,20 @@ serve(async (req: Request) => {
         .single();
 
       if (passiveProfile?.passive_mode) {
+        // Phase 16 S6: skip passive alerts if user was hired in the last 30 days
+        const { data: recentHire } = await sb
+          .from("user_pipeline")
+          .select("hired_at")
+          .eq("user_id", userId)
+          .eq("stage", "hired")
+          .gte("hired_at", new Date(now.getTime() - 30 * 24 * 3600000).toISOString())
+          .limit(1)
+          .single();
+
+        if (recentHire) {
+          console.log("[job-intelligence] Skipping passive alert — user hired in last 30 days:", userId);
+        } else {
+
         // Check daily cap: if already sent today, skip
         const sentToday = passiveProfile.passive_notifications_sent_today || 0;
         const isSnoozed = passiveProfile.passive_snoozed_until &&
@@ -348,6 +362,7 @@ serve(async (req: Request) => {
             passiveAlertsSent++;
           }
         }
+        } // end hired guard else
       }
 
     const summary = { ghostsSent, surgesSent, networkSent, passiveAlertsSent, checked_at: now.toISOString() };
