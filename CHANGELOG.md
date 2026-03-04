@@ -1,3 +1,11 @@
+## v6.81 — 2026-03-04
+### Phase 16 Session 4: Passive High-Bar Alerts
+- **email-templates.ts:** passiveHighBarAlertEmail() — subject "This one is worth your time.", body with match %, salary, ghost score, passive mode explanation
+- **send-notification v10:** import passiveHighBarAlertEmail; passive_high_bar_alert added to PASSIVE_GATED_TYPES; pre-send template build for passive_high_bar_alert notification_type using payload fields (first_name, job_title, company_name, match_score, salary_display, ghost_score)
+- **job-intelligence:** Phase 5 — passive high-bar alert trigger: for users in passive_mode, queries ats_jobs with match_score ≥ floor, min_salary, remote, seniority gates; max 1 email/day (passive_notifications_sent_today < 1 guard); passiveAlertsSent counter in summary; fail-open if profile fetch fails
+- **PostHog:** passive_high_bar_alert fires via existing send-notification notification_log flow
+- **Version bumped:** v6.80 → v6.81 (all 8 surfaces)
+
 ## v6.80 — 2026-03-04
 ### Phase 16 Session 3: Snooze & Conditional Wake
 - **Supabase migration:** profiles.passive_snoozed_until (timestamptz, nullable) added

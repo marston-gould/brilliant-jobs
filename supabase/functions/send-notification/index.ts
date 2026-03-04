@@ -1,4 +1,4 @@
-// send-notification Edge Function — v9 (Phase 16 Session 3: Passive snooze check) (Phase 69 Session 4: Web Push channel)
+// send-notification Edge Function — v10 (Phase 16 Session 4: Passive high-bar alert send path) (Phase 69 Session 4: Web Push channel)
 // Core notification sender with classification-based send gates.
 // Checks: admin config → classification → double opt-in → override cascade → frequency cap → quiet hours
 // Override cascade: notification_filter_overrides → notification_channels → notification_preferences → default
@@ -9,6 +9,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 import { fetchWithRetry, TIMEOUT_CONFIGS } from "../_shared/resilience.ts";
+import { passiveHighBarAlertEmail } from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -824,7 +825,7 @@ async function checkPassiveGate(
 ): Promise<{ skip: boolean; reason?: string }> {
   // Only gate job notification types
   const PASSIVE_GATED_TYPES = new Set([
-    "new_jobs_daily", "new_jobs_realtime", "apply_alert"
+    "new_jobs_daily", "new_jobs_realtime", "apply_alert", "passive_high_bar_alert"
   ]);
   if (!PASSIVE_GATED_TYPES.has(notificationType)) {
     return { skip: false };
@@ -953,6 +954,21 @@ serve(async (req: Request) => {
     let subject = body.subject;
     let html = body.html;
     let smsText = body.sms_text;
+
+    // Passive high-bar alert: build email from template function
+    if (notification_type === "passive_high_bar_alert" && (!subject || !html)) {
+      const p = body.payload || {};
+      const builtEmail = passiveHighBarAlertEmail(
+        p.first_name as string | undefined,
+        (p.job_title as string) || "A matching role",
+        (p.company_name as string) || "A company",
+        typeof p.match_score === "number" ? p.match_score : 85,
+        p.salary_display as string | undefined,
+        typeof p.ghost_score === "number" ? p.ghost_score : undefined,
+      );
+      subject = subject || builtEmail.subject;
+      html = html || builtEmail.html;
+    }
 
     if (!subject || !html) {
       const tmpl = await resolveTemplate(notification_type, "email", body.user_cohort);
@@ -1200,3 +1216,4 @@ serve(async (req: Request) => {
     );
   }
 });
+
