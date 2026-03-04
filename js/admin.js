@@ -56,6 +56,8 @@ var ADMIN_SUBPAGE_MAP = {
   'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
   // ── Business ──
   'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
+  'stripe':         { section: 'business',    label: 'Stripe',         init: function(){ loadStripeTab(); } },
+  'subscription':   { section: 'business',    label: 'Subscriptions',  init: function(){ loadSubscriptionTab(); } },
   'costs':          { section: 'business',    label: 'Costs',          init: null },
   'forecasting':    { section: 'business',    label: 'Forecasting',    init: null }
 };
