@@ -1,7 +1,8 @@
 // ============================================================
-// CHAT MODE — Conversational Job Search (Session 3)
-// Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync
+// CHAT MODE — Conversational Job Search (Session 4)
+// Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync + Saved Prompts
 // Wires to chat-job-search, filter-to-prompt, prompt-to-filter Edge Functions
+// Saved prompts: Save/Load with Supabase persistence + derived_filters auto-update
 // ============================================================
 
 // --- State ---
@@ -101,6 +102,9 @@ function initChatMode() {
     chatSendBtn.addEventListener('click', sendChatMessage);
   }
 
+  // Init saved prompts (Session 4)
+  initSavedPrompts();
+
   // Clear chat button
   var clearBtn = document.getElementById('chat-clear-btn');
   if (clearBtn) {
@@ -116,8 +120,10 @@ function initChatMode() {
       _chatSession.clear();
       _chatMessages = [];
       _chatLastSyncedFilterHash = null;
+      _currentPromptId = null;
       renderChatMessages();
       updateChatCounter();
+      updateLoadedPromptIndicator();
       // Hide sync banner if visible
       var syncBanner = document.getElementById('chat-sync-banner');
       if (syncBanner) syncBanner.style.display = 'none';
@@ -586,6 +592,11 @@ async function sendChatMessage() {
       applyChatFilters(extractedFilters);
     }
 
+    // Session 4: Update derived_filters in saved prompt on every conversation update
+    if (_currentPromptId) {
+      updateDerivedFilters();
+    }
+
   } catch (err) {
     showTypingIndicator(false);
     console.error('[BJ] Chat error:', err);
@@ -740,6 +751,585 @@ function showChatRateLimit(data) {
   }
 
   banner.style.display = 'block';
+}
+
+
+// ============================================================
+// SESSION 4: Saved Prompts + Persistence
+// Save/load chat prompts to Supabase, derived_filters update on every send
+// ============================================================
+
+// --- Saved Prompts State ---
+var _savedPrompts = []; // { id, name, color_index, conversation, derived_filters, is_active, created_at }
+var _saveDialogOpen = false;
+var _loadDropdownOpen = false;
+var _currentPromptId = null; // ID of the currently loaded prompt (null = unsaved)
+
+// 10-color palette for prompts
+var PROMPT_COLORS = [
+  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#06b6d4'
+];
+
+// --- Init Save/Load buttons ---
+function initSavedPrompts() {
+  // Save button in header
+  var saveBtn = document.getElementById('chat-save-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openSaveDialog();
+    });
+  }
+
+  // Load button in header
+  var loadBtn = document.getElementById('chat-load-btn');
+  if (loadBtn) {
+    loadBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleLoadDropdown();
+    });
+  }
+
+  // Close load dropdown on outside click
+  document.addEventListener('click', function(e) {
+    if (_loadDropdownOpen) {
+      var dropdown = document.getElementById('chat-load-dropdown');
+      var loadBtn = document.getElementById('chat-load-btn');
+      if (dropdown && !dropdown.contains(e.target) && loadBtn && !loadBtn.contains(e.target)) {
+        closeLoadDropdown();
+      }
+    }
+  });
+
+  // Load saved prompts from Supabase
+  loadSavedPromptsFromDB();
+}
+
+// --- Save Dialog ---
+function openSaveDialog() {
+  if (_chatSession.messages.length === 0) {
+    if (typeof showToast === 'function') showToast('Start a conversation first', 'info');
+    return;
+  }
+
+  var dialog = document.getElementById('chat-save-dialog');
+  if (!dialog) return;
+
+  // Pre-fill name if editing existing
+  var nameInput = dialog.querySelector('#save-prompt-name');
+  if (nameInput) {
+    if (_currentPromptId) {
+      var existing = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+      if (existing) nameInput.value = existing.name;
+    } else {
+      nameInput.value = '';
+    }
+  }
+
+  // Render color palette
+  var paletteEl = dialog.querySelector('#save-prompt-palette');
+  if (paletteEl) {
+    paletteEl.innerHTML = '';
+    var selectedIdx = 0;
+    if (_currentPromptId) {
+      var existing = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+      if (existing) selectedIdx = existing.color_index || 0;
+    }
+    PROMPT_COLORS.forEach(function(color, idx) {
+      var swatch = document.createElement('button');
+      swatch.className = 'save-color-swatch' + (idx === selectedIdx ? ' active' : '');
+      swatch.style.background = color;
+      swatch.setAttribute('data-color-idx', idx);
+      swatch.addEventListener('click', function() {
+        paletteEl.querySelectorAll('.save-color-swatch').forEach(function(s) { s.classList.remove('active'); });
+        swatch.classList.add('active');
+      });
+      paletteEl.appendChild(swatch);
+    });
+  }
+
+  // Show derived filters preview
+  renderDerivedFiltersPreview(dialog);
+
+  dialog.style.display = 'flex';
+  _saveDialogOpen = true;
+  if (nameInput) nameInput.focus();
+
+  // Bind save action
+  var confirmBtn = dialog.querySelector('#save-prompt-confirm');
+  var cancelBtn = dialog.querySelector('#save-prompt-cancel');
+
+  // Clone and replace to remove old listeners
+  if (confirmBtn) {
+    var newConfirm = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    newConfirm.addEventListener('click', executeSavePrompt);
+  }
+  if (cancelBtn) {
+    var newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+    newCancel.addEventListener('click', closeSaveDialog);
+  }
+}
+
+function closeSaveDialog() {
+  var dialog = document.getElementById('chat-save-dialog');
+  if (dialog) dialog.style.display = 'none';
+  _saveDialogOpen = false;
+}
+
+function renderDerivedFiltersPreview(dialog) {
+  var previewEl = dialog.querySelector('#save-prompt-filters-preview');
+  if (!previewEl) return;
+
+  // Get last extracted filters from conversation
+  var lastFilters = null;
+  for (var i = _chatSession.messages.length - 1; i >= 0; i--) {
+    if (_chatSession.messages[i].filters) {
+      lastFilters = _chatSession.messages[i].filters;
+      break;
+    }
+  }
+
+  if (!lastFilters || Object.keys(lastFilters).length === 0) {
+    previewEl.innerHTML = '<span class="save-filters-empty">No filters extracted yet — send a message to generate filters</span>';
+    return;
+  }
+
+  var parts = [];
+  if (lastFilters.keywords && lastFilters.keywords.length) parts.push('<span class="sfp-tag">' + lastFilters.keywords.map(escapeHtml).join('</span><span class="sfp-tag">') + '</span>');
+  if (lastFilters.locations && lastFilters.locations.length) parts.push('<span class="sfp-tag sfp-loc">' + lastFilters.locations.map(escapeHtml).join('</span><span class="sfp-tag sfp-loc">') + '</span>');
+  if (lastFilters.level) parts.push('<span class="sfp-tag sfp-level">' + escapeHtml(lastFilters.level) + '</span>');
+  if (lastFilters.salary_min || lastFilters.salary_max) {
+    var sal = '';
+    if (lastFilters.salary_min) sal += '$' + Math.round(lastFilters.salary_min/1000) + 'k';
+    if (lastFilters.salary_min && lastFilters.salary_max) sal += '-';
+    if (lastFilters.salary_max) sal += '$' + Math.round(lastFilters.salary_max/1000) + 'k';
+    if (lastFilters.salary_min && !lastFilters.salary_max) sal += '+';
+    parts.push('<span class="sfp-tag sfp-sal">' + sal + '</span>');
+  }
+  if (lastFilters.remote) parts.push('<span class="sfp-tag sfp-type">Remote</span>');
+
+  previewEl.innerHTML = parts.length > 0 ? parts.join('') : '<span class="save-filters-empty">No structured filters detected</span>';
+}
+
+async function executeSavePrompt() {
+  var dialog = document.getElementById('chat-save-dialog');
+  if (!dialog) return;
+
+  var nameInput = dialog.querySelector('#save-prompt-name');
+  var name = nameInput ? nameInput.value.trim() : '';
+  if (!name) {
+    nameInput.style.borderColor = 'var(--red)';
+    nameInput.focus();
+    return;
+  }
+  if (name.length > 60) {
+    if (typeof showToast === 'function') showToast('Name too long (max 60 characters)', 'error');
+    return;
+  }
+
+  // Get selected color
+  var activeSwatch = dialog.querySelector('.save-color-swatch.active');
+  var colorIndex = activeSwatch ? parseInt(activeSwatch.getAttribute('data-color-idx')) : 0;
+
+  // Get derived filters from last assistant message
+  var derivedFilters = {};
+  for (var i = _chatSession.messages.length - 1; i >= 0; i--) {
+    if (_chatSession.messages[i].filters) {
+      derivedFilters = _chatSession.messages[i].filters;
+      break;
+    }
+  }
+
+  var conversation = _chatSession.getHistory();
+
+  // Disable button
+  var confirmBtn = dialog.querySelector('#save-prompt-confirm');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Saving...'; }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) {
+      if (typeof showToast === 'function') showToast('Please sign in', 'error');
+      return;
+    }
+
+    var token = session.data.session.access_token;
+    var userId = session.data.session.user.id;
+    var body = {
+      user_id: userId,
+      name: name,
+      color_index: colorIndex,
+      conversation: conversation,
+      derived_filters: derivedFilters,
+      is_active: true
+    };
+
+    var method = 'POST';
+    var url = SUPABASE_URL + '/rest/v1/saved_prompts';
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'apikey': SUPABASE_KEY,
+      'Prefer': 'return=representation'
+    };
+
+    // If updating existing prompt
+    if (_currentPromptId) {
+      url += '?id=eq.' + _currentPromptId;
+      method = 'PATCH';
+      delete body.user_id; // Don't update user_id
+    }
+
+    var resp = await fetch(url, {
+      method: method,
+      headers: headers,
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      var errData = null;
+      try { errData = await resp.json(); } catch(e) {}
+      console.error('[BJ] Save prompt error:', errData);
+      if (typeof showToast === 'function') showToast('Failed to save prompt', 'error');
+      return;
+    }
+
+    var saved = await resp.json();
+    if (Array.isArray(saved) && saved.length > 0) {
+      _currentPromptId = saved[0].id;
+    }
+
+    // Refresh saved prompts list
+    await loadSavedPromptsFromDB();
+
+    closeSaveDialog();
+    if (typeof showToast === 'function') showToast('Prompt saved: ' + name, 'success');
+
+    // Update header to show loaded prompt name
+    updateLoadedPromptIndicator();
+
+    // PostHog
+    if (window.posthog) {
+      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) {}
+    }
+
+  } catch (err) {
+    console.error('[BJ] Save prompt error:', err);
+    if (typeof showToast === 'function') showToast('Save failed', 'error');
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Save'; }
+  }
+}
+
+// --- Load Dropdown ---
+function toggleLoadDropdown() {
+  if (_loadDropdownOpen) {
+    closeLoadDropdown();
+  } else {
+    openLoadDropdown();
+  }
+}
+
+function openLoadDropdown() {
+  var dropdown = document.getElementById('chat-load-dropdown');
+  if (!dropdown) return;
+
+  // Render prompt list
+  renderLoadDropdownItems(dropdown);
+
+  dropdown.style.display = 'block';
+  _loadDropdownOpen = true;
+}
+
+function closeLoadDropdown() {
+  var dropdown = document.getElementById('chat-load-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  _loadDropdownOpen = false;
+}
+
+function renderLoadDropdownItems(dropdown) {
+  if (!dropdown) return;
+
+  if (_savedPrompts.length === 0) {
+    dropdown.innerHTML = '<div class="cld-empty">No saved prompts yet</div>';
+    return;
+  }
+
+  var html = '';
+  _savedPrompts.forEach(function(prompt) {
+    var color = PROMPT_COLORS[prompt.color_index || 0];
+    var isLoaded = prompt.id === _currentPromptId;
+    var filterCount = prompt.derived_filters ? Object.keys(prompt.derived_filters).length : 0;
+    var timeAgo = _timeAgo(prompt.updated_at || prompt.created_at);
+
+    html += '<div class="cld-item' + (isLoaded ? ' cld-item-active' : '') + '" data-prompt-id="' + prompt.id + '">' +
+      '<div class="cld-item-color" style="background:' + color + ';"></div>' +
+      '<div class="cld-item-info">' +
+        '<div class="cld-item-name">' + escapeHtml(prompt.name) + '</div>' +
+        '<div class="cld-item-meta">' + filterCount + ' filter' + (filterCount !== 1 ? 's' : '') + ' · ' + timeAgo + '</div>' +
+      '</div>' +
+      '<div class="cld-item-actions">' +
+        '<button class="cld-delete-btn" data-prompt-id="' + prompt.id + '" title="Delete">' +
+          '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+  });
+
+  dropdown.innerHTML = html;
+
+  // Bind click handlers
+  dropdown.querySelectorAll('.cld-item').forEach(function(item) {
+    item.addEventListener('click', function(e) {
+      if (e.target.closest('.cld-delete-btn')) return;
+      var promptId = item.getAttribute('data-prompt-id');
+      loadPrompt(promptId);
+      closeLoadDropdown();
+    });
+  });
+
+  dropdown.querySelectorAll('.cld-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var promptId = btn.getAttribute('data-prompt-id');
+      deletePrompt(promptId);
+    });
+  });
+}
+
+function _timeAgo(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  var now = new Date();
+  var diffMs = now - d;
+  var diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return diffMin + 'm ago';
+  var diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return diffHr + 'h ago';
+  var diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return diffDay + 'd ago';
+  return d.toLocaleDateString();
+}
+
+// --- Load prompt into chat session ---
+async function loadPrompt(promptId) {
+  var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+  if (!prompt) return;
+
+  // Clear current session
+  _chatSession.clear();
+  _chatMessages = [];
+  _chatLastSyncedFilterHash = null;
+
+  // Restore conversation
+  if (prompt.conversation && Array.isArray(prompt.conversation)) {
+    prompt.conversation.forEach(function(msg) {
+      _chatSession.addMessage(msg.role, msg.content, null);
+    });
+  }
+
+  _currentPromptId = promptId;
+  renderChatMessages();
+  updateChatCounter();
+  updateLoadedPromptIndicator();
+
+  // If derived_filters exist, apply to job feed
+  if (prompt.derived_filters && Object.keys(prompt.derived_filters).length > 0) {
+    applyChatFilters(prompt.derived_filters);
+  }
+
+  if (typeof showToast === 'function') showToast('Loaded: ' + prompt.name, 'success');
+
+  // PostHog
+  if (window.posthog) {
+    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) {}
+  }
+}
+
+// --- Delete prompt ---
+async function deletePrompt(promptId) {
+  if (!confirm('Delete this saved prompt?')) return;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + promptId, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      }
+    });
+
+    if (resp.ok) {
+      // If we deleted the currently loaded prompt, clear reference
+      if (_currentPromptId === promptId) {
+        _currentPromptId = null;
+        updateLoadedPromptIndicator();
+      }
+
+      await loadSavedPromptsFromDB();
+      renderLoadDropdownItems(document.getElementById('chat-load-dropdown'));
+
+      if (typeof showToast === 'function') showToast('Prompt deleted', 'success');
+
+      // Also remove from filter selector
+      renderSavedPromptsInFilterSelector();
+
+      // PostHog
+      if (window.posthog) {
+        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) {}
+      }
+    }
+  } catch (err) {
+    console.error('[BJ] Delete prompt error:', err);
+  }
+}
+
+// --- Load saved prompts from DB ---
+async function loadSavedPromptsFromDB() {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?select=id,name,color_index,conversation,derived_filters,is_active,created_at,updated_at&order=updated_at.desc&limit=50', {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      }
+    });
+
+    if (resp.ok) {
+      _savedPrompts = await resp.json();
+      // Update filter selector
+      renderSavedPromptsInFilterSelector();
+    }
+  } catch (err) {
+    console.error('[BJ] Load saved prompts error:', err);
+  }
+}
+
+// --- Update derived_filters on every conversation message ---
+async function updateDerivedFilters() {
+  if (!_currentPromptId) return; // Only update if we have a saved prompt loaded
+  if (_chatSession.messages.length === 0) return;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var token = session.data.session.access_token;
+
+    // Call prompt-to-filter to re-extract
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/prompt-to-filter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ conversation: _chatSession.getHistory() })
+    });
+
+    if (!resp.ok) return;
+
+    var data = await resp.json();
+    var filters = data.filters;
+    if (!filters || typeof filters !== 'object') return;
+
+    // Update the saved prompt in DB
+    await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + _currentPromptId, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        derived_filters: filters,
+        conversation: _chatSession.getHistory()
+      })
+    });
+
+    // Update local cache
+    var cached = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+    if (cached) {
+      cached.derived_filters = filters;
+      cached.conversation = _chatSession.getHistory();
+    }
+
+  } catch (err) {
+    console.error('[BJ] Update derived_filters error:', err);
+  }
+}
+
+// --- Show loaded prompt name in header ---
+function updateLoadedPromptIndicator() {
+  var indicator = document.getElementById('chat-loaded-prompt');
+  if (!indicator) return;
+
+  if (_currentPromptId) {
+    var prompt = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+    if (prompt) {
+      var color = PROMPT_COLORS[prompt.color_index || 0];
+      indicator.innerHTML = '<span class="clp-dot" style="background:' + color + ';"></span>' +
+        '<span class="clp-name">' + escapeHtml(prompt.name) + '</span>';
+      indicator.style.display = 'flex';
+      return;
+    }
+  }
+  indicator.style.display = 'none';
+}
+
+// --- Add saved prompts to filter selector ---
+function renderSavedPromptsInFilterSelector() {
+  var container = document.getElementById('sf-list');
+  if (!container) return;
+
+  // Remove existing chat prompt items
+  container.querySelectorAll('.sf-item-prompt').forEach(function(el) { el.remove(); });
+
+  if (_savedPrompts.length === 0) return;
+
+  // Add a separator before chat prompts
+  var sep = document.createElement('div');
+  sep.className = 'sf-item-prompt sf-prompt-separator';
+  sep.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.5;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<span style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Chat Prompts</span>';
+  container.appendChild(sep);
+
+  // Add each saved prompt as a filter selector item
+  _savedPrompts.forEach(function(prompt) {
+    var color = PROMPT_COLORS[prompt.color_index || 0];
+    var filterCount = prompt.derived_filters ? Object.keys(prompt.derived_filters).length : 0;
+
+    var item = document.createElement('div');
+    item.className = 'sf-item sf-item-prompt';
+    item.setAttribute('data-prompt-id', prompt.id);
+
+    item.innerHTML =
+      '<div class="sf-item-left">' +
+        '<div class="sf-color-dot" style="background:' + color + ';"></div>' +
+        '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="' + color + '" stroke-width="2" style="flex-shrink:0;margin-right:4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        '<span class="sf-name">' + escapeHtml(prompt.name) + '</span>' +
+        '<span class="sf-count">' + filterCount + '</span>' +
+      '</div>';
+
+    item.addEventListener('click', function() {
+      // Switch to chat mode and load this prompt
+      setSearchMode('chat');
+      setTimeout(function() { loadPrompt(prompt.id); }, 300);
+    });
+
+    container.appendChild(item);
+  });
 }
 
 // --- Initialize on page load ---
