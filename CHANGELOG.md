@@ -1,3 +1,8 @@
+## v6.78 Roadmap Cleanup — ATS Discovery (2026-03-03)
+- Chore: [GH] Board discovery from LinkedIn outbound links → wontdo (Common Crawl supersedes, 14.6K GH boards already discovered)
+- Chore: [GJ] DataForSEO Google Jobs API → wontdo (Common Crawl career page URL queries replace at zero cost)
+- Chore: Version bumped v6.77 → v6.78 across all surfaces per VERSION_METHODOLOGY
+
 ## v6.77 Archive Status for Inactive Users (2026-03-03)
 - Feat: 4-stage inactivity email sequence: 14d, 30d, 60d, 90d — each with $5/yr storage fee CTA
 - Feat: 90d email = final archive warning ("your account will be archived tomorrow")
