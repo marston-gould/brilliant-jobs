@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v6.65 -->
+<!-- Brilliant Jobs Dashboard v6.66 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -794,9 +794,21 @@
                 <span class="chat-msg-counter" id="chat-msg-counter">0/10</span>
                 <span class="chat-remaining" id="chat-remaining" style="display:none;"></span>
               </div>
-              <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-              </button>
+              <div class="chat-header-actions">
+                <span class="chat-loaded-prompt" id="chat-loaded-prompt" style="display:none;"></span>
+                <button class="chat-save-btn" id="chat-save-btn" title="Save prompt">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                </button>
+                <div style="position:relative;">
+                  <button class="chat-load-btn" id="chat-load-btn" title="Load saved prompt">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  </button>
+                  <div class="chat-load-dropdown" id="chat-load-dropdown" style="display:none;"></div>
+                </div>
+                <button class="chat-clear-btn" id="chat-clear-btn" title="Clear conversation">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                </button>
+              </div>
             </div>
             <div class="chat-filter-banner" id="chat-filter-banner" style="display:none;"></div>
             <div class="chat-rate-banner" id="chat-rate-banner" style="display:none;"></div>
@@ -817,6 +829,30 @@
               <button class="chat-send-btn" id="chat-send-btn" title="Send">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </button>
+            </div>
+
+            <!-- Save Prompt Dialog (Session 4) -->
+            <div class="chat-save-dialog" id="chat-save-dialog" style="display:none;">
+              <div class="csd-overlay" onclick="closeSaveDialog()"></div>
+              <div class="csd-content">
+                <div class="csd-title">Save Prompt</div>
+                <div class="csd-field">
+                  <label class="csd-label">Name</label>
+                  <input type="text" id="save-prompt-name" class="csd-input" placeholder="e.g. Senior PM in Austin" maxlength="60">
+                </div>
+                <div class="csd-field">
+                  <label class="csd-label">Color</label>
+                  <div class="csd-palette" id="save-prompt-palette"></div>
+                </div>
+                <div class="csd-field">
+                  <label class="csd-label">Derived Filters</label>
+                  <div class="csd-filters-preview" id="save-prompt-filters-preview"></div>
+                </div>
+                <div class="csd-actions">
+                  <button class="csd-btn csd-btn-cancel" id="save-prompt-cancel">Cancel</button>
+                  <button class="csd-btn csd-btn-save" id="save-prompt-confirm">Save</button>
+                </div>
+              </div>
             </div>
           </div>
 

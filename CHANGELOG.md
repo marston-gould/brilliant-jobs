@@ -1,3 +1,23 @@
+## v6.66 Chat Mode Session 4: Saved Prompts + Persistence (2026-03-03)
+- JS: Save Prompt dialog — name input, 10-color palette, derived filters preview
+- JS: Save wires to upsert saved_prompts table via Supabase PostgREST (POST for new, PATCH for update)
+- JS: Load Prompt dropdown in chat header — shows all saved prompts with color dots, filter counts, time-ago
+- JS: Delete prompt with confirmation, removes from DB + filter selector + clears if currently loaded
+- JS: loadPrompt() restores full conversation into ChatSession, applies derived_filters to job feed
+- JS: updateDerivedFilters() re-extracts on every conversation update via prompt-to-filter Edge Function
+- JS: Saved prompts appear in filter selector (sf-list) with chat icon distinction and separator
+- JS: Clicking a prompt in filter selector switches to Chat mode and loads the prompt
+- JS: _currentPromptId tracking — loaded prompt indicator with color dot + name in header
+- JS: Clear chat also resets _currentPromptId and loaded prompt indicator
+- UI: Save dialog overlay with name field, color palette swatches, derived filters tag preview
+- UI: Load dropdown (positioned below load button) with prompt list, delete action, active state
+- UI: Loaded prompt indicator (color dot + name) in chat header
+- UI: Chat prompt items in filter selector with separator and chat bubble icon
+- CSS: ~80 new declarations — save dialog, load dropdown, color swatches, filter preview tags, prompt indicators
+- DB: saved_prompts RLS policy (users CRUD own), updated_at trigger
+- PostHog: chat_prompt_saved, chat_prompt_loaded, chat_prompt_deleted events
+- Version v6.66 across all surfaces
+
 ## v6.65 Chat Mode Session 3: Bidirectional Sync (2026-03-03)
 - JS: Filter→Chat sync — on toggle to Chat with active filter pills, calls filter-to-prompt Edge Function and pre-fills chat input (does NOT auto-send)
 - JS: data-auto-generated attribute tracking for PostHog (auto_generated → modified → scrapped lifecycle)
