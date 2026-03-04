@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + init for standalone /admin page
-   v6.87 — IA v2 S2 block pages (Companies, Jobs, Email)
+   v6.88 — Admin IA v2 S5: Notif Log sub-page
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check
