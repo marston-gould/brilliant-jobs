@@ -117,6 +117,56 @@ function initChatMode() {
   // Init saved prompts (Session 4)
   initSavedPrompts();
 
+  // Session 11: Onboarding tooltip for chat mode toggle
+  // Shows once per user, dismissed on click or after first chat toggle
+  if (!localStorage.getItem('bj_chat_tooltip_dismissed')) {
+    var chatBtn = toggle.querySelector('[data-mode="chat"]');
+    if (chatBtn) {
+      var tooltip = document.createElement('div');
+      tooltip.id = 'chat-onboarding-tooltip';
+      tooltip.className = 'chat-onboarding-tooltip';
+      tooltip.innerHTML = '<span class="tooltip-arrow"></span>' +
+        '<strong>New: Chat Search</strong><br>' +
+        'Describe what you\'re looking for in plain English and we\'ll find matching jobs.' +
+        '<button class="tooltip-dismiss" aria-label="Dismiss">Got it</button>';
+      tooltip.style.cssText = 'position:absolute;top:calc(100% + 8px);right:0;z-index:1000;' +
+        'background:#1a1a2e;color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;' +
+        'line-height:1.4;width:240px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+      // Arrow style
+      var arrowStyle = document.createElement('style');
+      arrowStyle.textContent = '.chat-onboarding-tooltip .tooltip-arrow{position:absolute;top:-6px;right:24px;' +
+        'width:12px;height:12px;background:#1a1a2e;transform:rotate(45deg);}' +
+        '.chat-onboarding-tooltip .tooltip-dismiss{display:block;margin-top:8px;padding:4px 12px;' +
+        'background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;}' +
+        '.chat-onboarding-tooltip .tooltip-dismiss:hover{background:rgba(255,255,255,0.25);}';
+      document.head.appendChild(arrowStyle);
+
+      // Position relative to toggle
+      toggle.style.position = 'relative';
+      toggle.appendChild(tooltip);
+
+      var dismissTooltip = function() {
+        if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+        localStorage.setItem('bj_chat_tooltip_dismissed', '1');
+      };
+      tooltip.querySelector('.tooltip-dismiss').addEventListener('click', dismissTooltip);
+      // Also dismiss on first toggle to chat
+      chatBtn.addEventListener('click', dismissTooltip, { once: true });
+      // Auto-dismiss after 10 seconds
+      setTimeout(function() {
+        if (tooltip.parentNode) dismissTooltip();
+      }, 10000);
+
+      // PostHog: track tooltip impression and dismissal
+      if (window.posthog) {
+        try { posthog.capture('chat_onboarding_tooltip_shown'); } catch(e) {}
+        tooltip.querySelector('.tooltip-dismiss').addEventListener('click', function() {
+          try { posthog.capture('chat_onboarding_tooltip_dismissed', { method: 'button' }); } catch(e) {}
+        });
+      }
+    }
+  }
+
   // Clear chat button
   var clearBtn = document.getElementById('chat-clear-btn');
   if (clearBtn) {
@@ -566,6 +616,7 @@ async function sendChatMessage() {
     }
 
     var token = session.data.session.access_token;
+    var _chatFetchStart = performance.now();
     var resp = await fetch(SUPABASE_URL + '/functions/v1/chat-job-search', {
       method: 'POST',
       headers: {
@@ -578,8 +629,25 @@ async function sendChatMessage() {
         tier: getUserTier()
       })
     });
+    var _chatLatencyMs = Math.round(performance.now() - _chatFetchStart);
 
     showTypingIndicator(false);
+
+    // Session 11: PostHog latency tracking for Edge Function performance monitoring
+    if (window.posthog) {
+      try {
+        posthog.capture('chat_edge_function_latency', {
+          latency_ms: _chatLatencyMs,
+          status: resp.status,
+          tier: getUserTier(),
+          message_count: _chatSession.messages.length,
+          p95_target_ms: 2000
+        });
+      } catch(e) {}
+    }
+    if (_chatLatencyMs > 2000) {
+      console.warn('[BJ] Chat edge function slow: ' + _chatLatencyMs + 'ms (p95 target: 2000ms)');
+    }
 
     if (resp.status === 429) {
       var rateLimitData = null;
