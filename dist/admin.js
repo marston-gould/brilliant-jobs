@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.85';
+var BJ_VERSION = 'v6.86';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
@@ -13,8 +13,6 @@ var BJ_VERSION = 'v6.85';
     populateVersion();
   }
 })();
-
-
 
 // === js/globals.js ===
 // ============================================================
@@ -1084,11 +1082,10 @@ async function safeQuery(queryFn, opts) {
   }
 }
 
-
 // === js/admin.js ===
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.85 — Sidebar replaces flat tab bar + S2 block pages
+   v6.86 — S3 action bars + paginated tables + shared blocks
    4 sections: Operations, Growth, Audience, Business
    17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
@@ -5028,11 +5025,169 @@ async function loadMVStalenessPanel() {
 }
 
 
+// === js/admin-blocks.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-blocks.js — Shared Admin Block Components (IA v2 S3)
+   v6.86 — Extracted from admin-companies.js + new utilities
+   ─────────────────────────────────────────────────────────── */
+
+// ── Reusable Stat Card ──
+function _adminStatCard(label, value, sub) {
+  return '<div class="admin-stat-card">' +
+    '<div class="admin-stat-value">' + value + '</div>' +
+    '<div class="admin-stat-label">' + label + '</div>' +
+    (sub ? '<div class="admin-stat-sub">' + sub + '</div>' : '') +
+    '</div>';
+}
+
+// ── HTML escape ──
+function _escHtml(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Time ago ──
+function _timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  var diff = Date.now() - new Date(dateStr).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  if (days < 30) return days + 'd ago';
+  return Math.floor(days / 30) + 'mo ago';
+}
+
+// ── Action Bar (search + platform filter + sort) ──
+function _adminActionBar(opts) {
+  // opts: { id, placeholder, platforms, sorts, defaultSort, statusOptions }
+  var id = opts.id;
+  var html = '<div class="admin-action-bar">';
+
+  // Search input
+  html += '<div class="admin-search-wrap">';
+  html += '<input type="text" id="' + id + '-search" class="admin-search-input" placeholder="' + (opts.placeholder || 'Search…') + '" />';
+  html += '</div>';
+
+  // Platform filter
+  if (opts.platforms) {
+    html += '<select id="' + id + '-platform" class="admin-select">';
+    html += '<option value="">All Platforms</option>';
+    opts.platforms.forEach(function(p) {
+      html += '<option value="' + p + '" style="text-transform:capitalize">' + p.charAt(0).toUpperCase() + p.slice(1) + '</option>';
+    });
+    html += '</select>';
+  }
+
+  // Status filter
+  if (opts.statusOptions) {
+    html += '<select id="' + id + '-status" class="admin-select">';
+    opts.statusOptions.forEach(function(s) {
+      html += '<option value="' + s.value + '"' + (s.selected ? ' selected' : '') + '>' + s.label + '</option>';
+    });
+    html += '</select>';
+  }
+
+  // Sort
+  if (opts.sorts) {
+    html += '<select id="' + id + '-sort" class="admin-select">';
+    opts.sorts.forEach(function(s) {
+      html += '<option value="' + s.value + '"' + (s.value === opts.defaultSort ? ' selected' : '') + '>' + s.label + '</option>';
+    });
+    html += '</select>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ── Paginated Table Renderer ──
+function _adminPagedTable(opts) {
+  // opts: { id, columns:[{key,label,align,width,render}], rows, total, offset, limit, onPage }
+  var id = opts.id;
+  var html = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+
+  opts.columns.forEach(function(col) {
+    var style = '';
+    if (col.align) style += 'text-align:' + col.align + ';';
+    if (col.width) style += 'width:' + col.width + ';';
+    html += '<th' + (style ? ' style="' + style + '"' : '') + '>' + col.label + '</th>';
+  });
+
+  html += '</tr></thead><tbody>';
+
+  if (!opts.rows || opts.rows.length === 0) {
+    html += '<tr><td colspan="' + opts.columns.length + '" style="text-align:center;color:var(--text-faint);padding:24px;">No results found</td></tr>';
+  } else {
+    opts.rows.forEach(function(row) {
+      html += '<tr>';
+      opts.columns.forEach(function(col) {
+        var style = col.align ? 'text-align:' + col.align + ';' : '';
+        var val = col.render ? col.render(row) : _escHtml(String(row[col.key] || '—'));
+        html += '<td style="' + style + '">' + val + '</td>';
+      });
+      html += '</tr>';
+    });
+  }
+
+  html += '</tbody></table></div>';
+
+  // Pagination footer
+  var total = opts.total || 0;
+  var offset = opts.offset || 0;
+  var limit = opts.limit || 50;
+  var page = Math.floor(offset / limit) + 1;
+  var totalPages = Math.ceil(total / limit);
+
+  if (totalPages > 1) {
+    html += '<div class="admin-pager">';
+    html += '<span class="admin-pager-info">Showing ' + (offset + 1) + '–' + Math.min(offset + limit, total) + ' of ' + fmtAdminNum(total) + '</span>';
+    html += '<div class="admin-pager-btns">';
+    html += '<button class="admin-pager-btn" id="' + id + '-prev"' + (page <= 1 ? ' disabled' : '') + '>&laquo; Prev</button>';
+    html += '<span class="admin-pager-page">Page ' + page + ' / ' + totalPages + '</span>';
+    html += '<button class="admin-pager-btn" id="' + id + '-next"' + (page >= totalPages ? ' disabled' : '') + '>Next &raquo;</button>';
+    html += '</div></div>';
+  } else if (total > 0) {
+    html += '<div class="admin-pager"><span class="admin-pager-info">' + fmtAdminNum(total) + ' total</span></div>';
+  }
+
+  return html;
+}
+
+// ── Salary formatter ──
+function _fmtSalary(min, max, currency) {
+  if (!min && !max) return '—';
+  var c = (currency || 'USD').toUpperCase();
+  var sym = c === 'USD' ? '$' : c === 'EUR' ? '€' : c === 'GBP' ? '£' : c + ' ';
+  function fmt(n) {
+    if (n >= 1000) return sym + Math.round(n / 1000) + 'K';
+    return sym + n;
+  }
+  if (min && max) return fmt(min) + '–' + fmt(max);
+  if (min) return fmt(min) + '+';
+  return 'Up to ' + fmt(max);
+}
+
+// ── Location formatter ──
+function _fmtLocation(city, state, country) {
+  var parts = [];
+  if (city) parts.push(city);
+  if (state) parts.push(state);
+  if (country && country !== 'US' && country !== 'USA') parts.push(country);
+  return parts.length ? parts.join(', ') : '—';
+}
+
 // === js/admin-companies.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-companies.js — Companies Sub-page (Admin IA v2 S2)
-   v6.85 — Board inventory, platform breakdown, industry mix
+   admin-companies.js — Companies Sub-page (Admin IA v2 S3)
+   v6.86 — Stats + action bar + paginated company table
+   Helpers moved to admin-blocks.js
    ─────────────────────────────────────────────────────────── */
+
+var _companyListState = { search: '', platform: '', sort: 'boards_desc', offset: 0, limit: 50 };
 
 function loadAdminCompanies() {
   var panel = document.getElementById('admin-panel-companies');
@@ -5112,6 +5267,29 @@ function renderCompaniesPage(panel, d) {
 
   html += '</tbody></table></div></div>';
 
+  // ── Action Bar + Paginated Company List ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">All Companies</div>';
+
+  var platforms = [];
+  (d.by_platform || []).forEach(function(p) { platforms.push(p.source); });
+
+  html += _adminActionBar({
+    id: 'co-list',
+    placeholder: 'Search by slug or name…',
+    platforms: platforms,
+    sorts: [
+      { value: 'boards_desc', label: 'Newest First' },
+      { value: 'boards_asc', label: 'Oldest First' },
+      { value: 'name_asc', label: 'Name A–Z' },
+      { value: 'name_desc', label: 'Name Z–A' }
+    ],
+    defaultSort: 'boards_desc'
+  });
+
+  html += '<div id="co-list-table">Loading…</div>';
+  html += '</div>';
+
   // ── Recently Discovered ──
   html += '<div class="admin-block" style="margin-top:16px;">';
   html += '<div class="admin-block-title">Recently Discovered</div>';
@@ -5133,44 +5311,109 @@ function renderCompaniesPage(panel, d) {
   html += '</tbody></table></div></div>';
 
   panel.innerHTML = html;
+
+  // Wire action bar events
+  _wireCompanyListEvents();
+  _fetchCompanyList();
 }
 
-// ── Reusable Stat Card ──
-function _adminStatCard(label, value, sub) {
-  return '<div class="admin-stat-card">' +
-    '<div class="admin-stat-value">' + value + '</div>' +
-    '<div class="admin-stat-label">' + label + '</div>' +
-    (sub ? '<div class="admin-stat-sub">' + sub + '</div>' : '') +
-    '</div>';
+function _wireCompanyListEvents() {
+  var searchEl = document.getElementById('co-list-search');
+  var platEl = document.getElementById('co-list-platform');
+  var sortEl = document.getElementById('co-list-sort');
+  var debounce = null;
+
+  if (searchEl) searchEl.addEventListener('input', function() {
+    clearTimeout(debounce);
+    debounce = setTimeout(function() {
+      _companyListState.search = searchEl.value.trim();
+      _companyListState.offset = 0;
+      _fetchCompanyList();
+    }, 300);
+  });
+
+  if (platEl) platEl.addEventListener('change', function() {
+    _companyListState.platform = platEl.value;
+    _companyListState.offset = 0;
+    _fetchCompanyList();
+  });
+
+  if (sortEl) sortEl.addEventListener('change', function() {
+    _companyListState.sort = sortEl.value;
+    _companyListState.offset = 0;
+    _fetchCompanyList();
+  });
 }
 
-// ── HTML escape ──
-function _escHtml(s) {
-  if (!s) return '';
-  var d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+function _fetchCompanyList() {
+  var target = document.getElementById('co-list-table');
+  if (!target) return;
+  target.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">Loading…</div>';
+
+  var params = {
+    p_search: _companyListState.search || null,
+    p_platform: _companyListState.platform || null,
+    p_sort: _companyListState.sort,
+    p_offset: _companyListState.offset,
+    p_limit: _companyListState.limit
+  };
+
+  sb.rpc('get_admin_companies_list', params).then(function(res) {
+    if (res.error) {
+      target.innerHTML = '<div style="color:var(--red);padding:12px;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    _renderCompanyTable(target, res.data);
+  }).catch(function(e) {
+    target.innerHTML = '<div style="color:var(--red);padding:12px;">Failed: ' + e.message + '</div>';
+  });
 }
 
-// ── Time ago ──
-function _timeAgo(dateStr) {
-  if (!dateStr) return '—';
-  var diff = Date.now() - new Date(dateStr).getTime();
-  var mins = Math.floor(diff / 60000);
-  if (mins < 60) return mins + 'm ago';
-  var hrs = Math.floor(mins / 60);
-  if (hrs < 24) return hrs + 'h ago';
-  var days = Math.floor(hrs / 24);
-  if (days < 30) return days + 'd ago';
-  return Math.floor(days / 30) + 'mo ago';
-}
+function _renderCompanyTable(target, data) {
+  var columns = [
+    { key: 'slug', label: 'Slug', render: function(r) { return '<span style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(r.slug) + '</span>'; } },
+    { key: 'name', label: 'Name', render: function(r) { return _escHtml(r.name || '—'); } },
+    { key: 'source', label: 'Platform', render: function(r) { return '<span style="text-transform:capitalize;">' + _escHtml(r.source) + '</span>'; } },
+    { key: 'is_active', label: 'Status', render: function(r) {
+      var color = r.is_active ? 'var(--green)' : 'var(--text-faint)';
+      return '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;"></span>' + (r.is_active ? 'Active' : 'Inactive');
+    }},
+    { key: 'open_jobs', label: 'Open Jobs', align: 'right', render: function(r) { return fmtAdminNum(r.open_jobs); } },
+    { key: 'total_jobs', label: 'Total Jobs', align: 'right', render: function(r) { return fmtAdminNum(r.total_jobs); } },
+    { key: 'industry', label: 'Industry', render: function(r) { return '<span style="text-transform:capitalize;font-size:12px;">' + _escHtml(r.industry || '—') + '</span>'; } },
+    { key: 'last_checked', label: 'Last Check', render: function(r) { return '<span style="font-size:12px;color:var(--text-faint);">' + _timeAgo(r.last_checked) + '</span>'; } }
+  ];
 
+  target.innerHTML = _adminPagedTable({
+    id: 'co-paged',
+    columns: columns,
+    rows: data.rows,
+    total: data.total,
+    offset: data.offset,
+    limit: data.limit
+  });
+
+  // Wire pagination
+  var prev = document.getElementById('co-paged-prev');
+  var next = document.getElementById('co-paged-next');
+  if (prev) prev.addEventListener('click', function() {
+    _companyListState.offset = Math.max(0, _companyListState.offset - _companyListState.limit);
+    _fetchCompanyList();
+  });
+  if (next) next.addEventListener('click', function() {
+    _companyListState.offset += _companyListState.limit;
+    _fetchCompanyList();
+  });
+}
 
 // === js/admin-jobs.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-jobs.js — Jobs Sub-page (Admin IA v2 S2)
-   v6.85 — Job inventory, enrichment stats, age distribution
+   admin-jobs.js — Jobs Sub-page (Admin IA v2 S3)
+   v6.86 — Stats + action bar + paginated job table
+   Helpers moved to admin-blocks.js
    ─────────────────────────────────────────────────────────── */
+
+var _jobListState = { search: '', platform: '', status: 'open', sort: 'newest', offset: 0, limit: 50 };
 
 function loadAdminJobs() {
   var panel = document.getElementById('admin-panel-jobs');
@@ -5216,7 +5459,9 @@ function renderJobsPage(panel, d) {
   html += '<th>Platform</th><th style="text-align:right">Total</th><th style="text-align:right">Open</th><th style="text-align:right">Enriched</th><th style="text-align:right">With Salary</th><th style="text-align:right">Remote</th>';
   html += '</tr></thead><tbody>';
 
+  var platforms = [];
   (d.by_platform || []).forEach(function(p) {
+    platforms.push(p.ats_source);
     var ePct = p.total ? Math.round((p.enriched / p.total) * 100) : 0;
     html += '<tr>';
     html += '<td style="font-weight:600;text-transform:capitalize;">' + _escHtml(p.ats_source) + '</td>';
@@ -5268,9 +5513,139 @@ function renderJobsPage(panel, d) {
 
   html += '</tbody></table></div></div>';
 
+  // ── Action Bar + Paginated Job List ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">All Jobs</div>';
+
+  html += _adminActionBar({
+    id: 'job-list',
+    placeholder: 'Search by title or company…',
+    platforms: platforms,
+    statusOptions: [
+      { value: 'open', label: 'Open', selected: true },
+      { value: 'closed', label: 'Closed' },
+      { value: '', label: 'All Status' }
+    ],
+    sorts: [
+      { value: 'newest', label: 'Newest First' },
+      { value: 'oldest', label: 'Oldest First' },
+      { value: 'title_asc', label: 'Title A–Z' },
+      { value: 'title_desc', label: 'Title Z–A' },
+      { value: 'company_asc', label: 'Company A–Z' },
+      { value: 'company_desc', label: 'Company Z–A' }
+    ],
+    defaultSort: 'newest'
+  });
+
+  html += '<div id="job-list-table">Loading…</div>';
+  html += '</div>';
+
   panel.innerHTML = html;
+
+  // Wire events
+  _wireJobListEvents();
+  _fetchJobList();
 }
 
+function _wireJobListEvents() {
+  var searchEl = document.getElementById('job-list-search');
+  var platEl = document.getElementById('job-list-platform');
+  var statusEl = document.getElementById('job-list-status');
+  var sortEl = document.getElementById('job-list-sort');
+  var debounce = null;
+
+  if (searchEl) searchEl.addEventListener('input', function() {
+    clearTimeout(debounce);
+    debounce = setTimeout(function() {
+      _jobListState.search = searchEl.value.trim();
+      _jobListState.offset = 0;
+      _fetchJobList();
+    }, 300);
+  });
+
+  if (platEl) platEl.addEventListener('change', function() {
+    _jobListState.platform = platEl.value;
+    _jobListState.offset = 0;
+    _fetchJobList();
+  });
+
+  if (statusEl) statusEl.addEventListener('change', function() {
+    _jobListState.status = statusEl.value;
+    _jobListState.offset = 0;
+    _fetchJobList();
+  });
+
+  if (sortEl) sortEl.addEventListener('change', function() {
+    _jobListState.sort = sortEl.value;
+    _jobListState.offset = 0;
+    _fetchJobList();
+  });
+}
+
+function _fetchJobList() {
+  var target = document.getElementById('job-list-table');
+  if (!target) return;
+  target.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-faint);font-size:13px;">Loading…</div>';
+
+  var params = {
+    p_search: _jobListState.search || null,
+    p_platform: _jobListState.platform || null,
+    p_status: _jobListState.status || null,
+    p_sort: _jobListState.sort,
+    p_offset: _jobListState.offset,
+    p_limit: _jobListState.limit
+  };
+
+  sb.rpc('get_admin_jobs_list', params).then(function(res) {
+    if (res.error) {
+      target.innerHTML = '<div style="color:var(--red);padding:12px;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    _renderJobTable(target, res.data);
+  }).catch(function(e) {
+    target.innerHTML = '<div style="color:var(--red);padding:12px;">Failed: ' + e.message + '</div>';
+  });
+}
+
+function _renderJobTable(target, data) {
+  var columns = [
+    { key: 'title', label: 'Title', render: function(r) { return '<span style="font-weight:500;">' + _escHtml(r.title || '—') + '</span>'; } },
+    { key: 'company_slug', label: 'Company', render: function(r) { return '<span style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(r.company_slug) + '</span>'; } },
+    { key: 'ats_source', label: 'Platform', render: function(r) { return '<span style="text-transform:capitalize;font-size:12px;">' + _escHtml(r.ats_source) + '</span>'; } },
+    { key: 'location', label: 'Location', render: function(r) {
+      if (r.is_remote) return '<span style="color:var(--green);font-size:12px;">Remote</span>';
+      return '<span style="font-size:12px;">' + _escHtml(_fmtLocation(r.loc_city, r.loc_state, r.loc_country)) + '</span>';
+    }},
+    { key: 'salary', label: 'Salary', align: 'right', render: function(r) {
+      return '<span style="font-size:12px;">' + _fmtSalary(r.salary_min, r.salary_max, r.salary_currency) + '</span>';
+    }},
+    { key: 'ai_seniority_level', label: 'Level', render: function(r) {
+      return '<span style="font-size:12px;text-transform:capitalize;">' + _escHtml(r.ai_seniority_level || '—') + '</span>';
+    }},
+    { key: 'first_seen_at', label: 'Seen', render: function(r) { return '<span style="font-size:12px;color:var(--text-faint);">' + _timeAgo(r.first_seen_at) + '</span>'; } }
+  ];
+
+  target.innerHTML = _adminPagedTable({
+    id: 'job-paged',
+    columns: columns,
+    rows: data.rows,
+    total: data.total,
+    offset: data.offset,
+    limit: data.limit
+  });
+
+  // Wire pagination
+  var prev = document.getElementById('job-paged-prev');
+  var next = document.getElementById('job-paged-next');
+  if (prev) prev.addEventListener('click', function() {
+    _jobListState.offset = Math.max(0, _jobListState.offset - _jobListState.limit);
+    _fetchJobList();
+  });
+  if (next) next.addEventListener('click', function() {
+    _jobListState.offset += _jobListState.limit;
+    _fetchJobList();
+  });
+}
 
 // === js/admin-email.js ===
 /* ───────────────────────────────────────────────────────────
@@ -5373,7 +5748,6 @@ function renderEmailPage(panel, d) {
 
   panel.innerHTML = html;
 }
-
 
 // === js/admin-notifications.js ===
 /* ───────────────────────────────────────────────────────────
@@ -7911,11 +8285,10 @@ async function rerunCadenceAnalysis() {
   await loadCadenceTab();
 }
 
-
 // === js/admin-shell.js ===
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + init for standalone /admin page
-   v6.85 — IA v2 S2 block pages (Companies, Jobs, Email)
+   v6.86 — IA v2 S2 block pages (Companies, Jobs, Email)
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check
@@ -8001,3 +8374,5 @@ async function rerunCadenceAnalysis() {
     }
   });
 })();
+
+
