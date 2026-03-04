@@ -3028,6 +3028,120 @@
     }
 
 
+
+    /* ─── Chat Mode Session 4: Saved Prompts UI ─── */
+
+    /* Header actions group */
+    .chat-header-actions { display:flex;align-items:center;gap:6px; }
+
+    /* Save / Load buttons */
+    .chat-save-btn, .chat-load-btn {
+      display:flex;align-items:center;justify-content:center;width:28px;height:28px;
+      border-radius:6px;border:1px solid var(--border);background:transparent;
+      cursor:pointer;color:var(--text-faint);transition:all 0.15s;
+    }
+    .chat-save-btn:hover, .chat-load-btn:hover {
+      background:rgba(59,130,246,0.08);color:var(--accent);border-color:var(--accent);
+    }
+
+    /* Loaded prompt indicator */
+    .chat-loaded-prompt {
+      display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim);
+      max-width:140px;overflow:hidden;
+    }
+    .clp-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0; }
+    .clp-name { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+
+    /* Load dropdown */
+    .chat-load-dropdown {
+      position:absolute;top:calc(100% + 6px);right:0;z-index:70;
+      min-width:240px;max-width:320px;max-height:300px;overflow-y:auto;
+      background:var(--bg-card);border:1px solid var(--border);border-radius:10px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.25);
+    }
+    .cld-empty {
+      padding:16px;text-align:center;font-size:12px;color:var(--text-faint);
+    }
+    .cld-item {
+      display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;
+      transition:background 0.1s;border-bottom:1px solid rgba(255,255,255,0.04);
+    }
+    .cld-item:last-child { border-bottom:none; }
+    .cld-item:hover { background:rgba(59,130,246,0.06); }
+    .cld-item-active { background:rgba(59,130,246,0.08); }
+    .cld-item-color { width:8px;height:8px;border-radius:50%;flex-shrink:0; }
+    .cld-item-info { flex:1;min-width:0; }
+    .cld-item-name { font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+    .cld-item-meta { font-size:10px;color:var(--text-faint);margin-top:1px; }
+    .cld-item-actions { flex-shrink:0; }
+    .cld-delete-btn {
+      display:flex;align-items:center;justify-content:center;width:22px;height:22px;
+      border:none;background:transparent;cursor:pointer;border-radius:4px;
+      color:var(--text-faint);transition:all 0.15s;
+    }
+    .cld-delete-btn:hover { background:rgba(239,68,68,0.15);color:var(--red); }
+
+    /* Save dialog */
+    .chat-save-dialog {
+      position:absolute;inset:0;z-index:80;display:flex;
+      align-items:center;justify-content:center;
+    }
+    .csd-overlay { position:absolute;inset:0;background:rgba(0,0,0,0.4);border-radius:12px; }
+    .csd-content {
+      position:relative;z-index:1;background:var(--bg-card);border:1px solid var(--border);
+      border-radius:12px;padding:20px;width:300px;max-width:90%;
+      box-shadow:0 8px 32px rgba(0,0,0,0.3);
+    }
+    .csd-title { font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px; }
+    .csd-field { margin-bottom:14px; }
+    .csd-label { display:block;font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px; }
+    .csd-input {
+      width:100%;padding:8px 10px;font-size:13px;font-family:inherit;
+      background:var(--bg);border:1px solid var(--border);border-radius:6px;
+      color:var(--text);outline:none;transition:border-color 0.15s;box-sizing:border-box;
+    }
+    .csd-input:focus { border-color:var(--accent); }
+    .csd-palette { display:flex;gap:6px;flex-wrap:wrap; }
+    .save-color-swatch {
+      width:24px;height:24px;border-radius:50%;border:2px solid transparent;
+      cursor:pointer;transition:all 0.15s;
+    }
+    .save-color-swatch.active { border-color:#fff;box-shadow:0 0 0 2px var(--accent); }
+    .save-color-swatch:hover { transform:scale(1.15); }
+    .csd-filters-preview {
+      display:flex;flex-wrap:wrap;gap:4px;min-height:24px;
+    }
+    .sfp-tag {
+      display:inline-flex;padding:2px 8px;font-size:10px;font-weight:500;
+      border-radius:4px;background:rgba(59,130,246,0.1);color:var(--accent);
+    }
+    .sfp-loc { background:rgba(34,197,94,0.1);color:var(--green); }
+    .sfp-level { background:rgba(139,92,246,0.1);color:#8b5cf6; }
+    .sfp-sal { background:rgba(245,158,11,0.1);color:var(--warm); }
+    .sfp-type { background:rgba(20,184,166,0.1);color:#14b8a6; }
+    .save-filters-empty { font-size:11px;color:var(--text-faint);font-style:italic; }
+    .csd-actions { display:flex;gap:8px;justify-content:flex-end;margin-top:18px; }
+    .csd-btn {
+      padding:7px 16px;font-size:12px;font-weight:600;font-family:inherit;
+      border-radius:6px;cursor:pointer;transition:all 0.15s;
+    }
+    .csd-btn-cancel {
+      background:transparent;color:var(--text-faint);border:1px solid var(--border);
+    }
+    .csd-btn-cancel:hover { color:var(--text-dim);border-color:var(--text-faint); }
+    .csd-btn-save {
+      background:var(--accent);color:#fff;border:none;
+    }
+    .csd-btn-save:hover { background:#2563eb; }
+    .csd-btn-save:disabled { opacity:0.5;cursor:not-allowed; }
+
+    /* Filter selector: chat prompt items */
+    .sf-prompt-separator {
+      display:flex;align-items:center;gap:6px;padding:10px 14px 6px;
+      border-top:1px solid var(--border);margin-top:4px;
+    }
+    .sf-item-prompt .sf-item-left { display:flex;align-items:center;gap:6px; }
+
     /* Mobile responsive for modals */
     @media (max-width: 600px) {
       .sg-modal { width:95%;max-width:none; }
