@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Admin Console v6.84 -->
+<!-- Brilliant Jobs Admin Console v6.85 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,7 +11,7 @@
   <title>Brilliant Jobs — Admin Console</title>
   <script src="/js/vendor/supabase.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=v6.84">
+  <link rel="stylesheet" href="styles.css?v=v6.85">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -291,6 +291,81 @@
       font-weight: 700;
       color: var(--text);
       margin-bottom: 20px;
+    }
+    /* ── Reusable Block Components (S2) ── */
+    .admin-stat-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .admin-stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      min-width: 110px;
+      flex: 1;
+    }
+    .admin-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+    .admin-stat-label {
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .admin-stat-sub {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 2px;
+    }
+    .admin-block {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .admin-block-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .admin-age-bucket {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+      flex: 1;
+    }
+    .admin-age-bar {
+      width: 32px;
+      background: var(--accent);
+      border-radius: 4px 4px 0 0;
+      opacity: 0.7;
+      margin-bottom: 6px;
+    }
+    .admin-age-count {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .admin-age-label {
+      font-size: 11px;
+      color: var(--text-faint);
+      margin-top: 2px;
+    }
+    .admin-age-pct {
+      font-size: 10px;
+      color: var(--text-faint);
     }
     .admin-empty-state {
       display: flex;
@@ -759,13 +834,10 @@
 
           <!-- Future sub-pages: Empty States -->
           <div class="admin-panel" id="admin-panel-companies">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Companies</div><div class="admin-empty-state-desc">Board management, company metadata, and PDL enrichment status. Coming in Session 2.</div></div>
           </div>
           <div class="admin-panel" id="admin-panel-jobs">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Jobs</div><div class="admin-empty-state-desc">Job inventory stats, data quality metrics, ghost detection, and dedup health. Coming in Session 2.</div></div>
           </div>
           <div class="admin-panel" id="admin-panel-email">
-            <div class="admin-empty-state"><div class="admin-empty-state-title">Email</div><div class="admin-empty-state-desc">Notification performance, deliverability, and template preview. Coming in Session 2.</div></div>
           </div>
           <div class="admin-panel" id="admin-panel-paid">
             <div class="admin-empty-state"><div class="admin-empty-state-title">Paid</div><div class="admin-empty-state-desc">Ad spend, CPA, attribution, and ROAS tracking. Coming soon.</div></div>
@@ -794,7 +866,7 @@
   </div> <!-- end admin-shell -->
 
   <!-- JS: Admin bundle loads globals, admin.js, admin-notifications.js -->
-  <script src="dist/admin.min.js?v=v6.84" defer></script>
+  <script src="dist/admin.min.js?v=v6.85" defer></script>
 
   <!-- Cohort select-all inline handler -->
   <script>

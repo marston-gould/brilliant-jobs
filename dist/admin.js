@@ -1,25 +1,19 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.61';
+var BJ_VERSION = 'v6.85';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
       el.textContent = BJ_VERSION;
     });
-    // Populate all .bj-year elements
-    var year = new Date().getFullYear();
-    document.querySelectorAll(".bj-year").forEach(function(el) {
-      el.textContent = year;
-    });
-    // Console log
-    console.log("[BJ] " + BJ_VERSION);
   }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", populateVersion);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', populateVersion);
   } else {
     populateVersion();
   }
 })();
+
 
 
 // === js/globals.js ===
@@ -1093,15 +1087,13 @@ async function safeQuery(queryFn, opts) {
 
 // === js/admin.js ===
 /* ───────────────────────────────────────────────────────────
-   admin.js — Tabbed Admin Console
-   Tab 1: Feed Health (existing)
-   Tab 2: Cohorts
-   Tab 3: Users + Sessions
-   Tab 4: SEO / Data Coverage
-   Tab 5: Revenue
+   admin.js — Admin Console with Sidebar Navigation (IA v2)
+   v6.85 — Sidebar replaces flat tab bar + S2 block pages
+   4 sections: Operations, Growth, Audience, Business
+   17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
-// ─── Admin access gate ───
+// ─── Admin access gate (dashboard nav-item visibility) ───
 function checkAdminAccess() {
   if (typeof sb === 'undefined') { console.warn('[Admin] No sb client'); return; }
   sb.auth.getUser().then(function(res) {
@@ -1117,38 +1109,199 @@ function checkAdminAccess() {
   }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
 }
 
-// ─── Tab state ───
-var adminActiveTab = localStorage.getItem('bj_admin_tab') || 'feed-health';
+// ═══════════════════════════════════════════════════════════
+// ADMIN SUBPAGE MAP — 17 sub-pages across 4 sections
+// ═══════════════════════════════════════════════════════════
+
+var ADMIN_SUBPAGE_MAP = {
+  // ── Operations ──
+  'feed-health':    { section: 'operations',  label: 'Feed Health',    init: function(){ loadBoardHealth(); } },
+  'enrichment':     { section: 'operations',  label: 'Enrichment',     init: function(){ loadEnrichmentTab(); } },
+  'companies':      { section: 'operations',  label: 'Companies',      init: function(){ loadAdminCompanies(); } },
+  'jobs':           { section: 'operations',  label: 'Jobs',           init: function(){ loadAdminJobs(); } },
+  'ghost':          { section: 'operations',  label: 'Ghost Detection',init: function(){ loadGhostTab(); } },
+  'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
+  'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
+  // ── Growth ──
+  'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
+  'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
+  'email':          { section: 'growth',      label: 'Email',          init: function(){ loadAdminEmail(); } },
+  'merch':          { section: 'growth',      label: 'Merchandising',  init: function(){ loadMerchTab(); } },
+  'notifications':  { section: 'growth',      label: 'Notifications',  init: function(){ loadNotificationsTab(); } },
+  'templates':      { section: 'growth',      label: 'Templates',      init: function(){ loadTemplatesTab(); } },
+  'notif-analytics':{ section: 'growth',      label: 'Notif Analytics', init: function(){ loadNotifAnalyticsTab(); } },
+  'email-cohorts':  { section: 'growth',      label: 'Email Cohorts',  init: function(){ loadEmailCohortsTab(); } },
+  'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
+  'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
+  'paid':           { section: 'growth',      label: 'Paid',           init: null },
+  'social':         { section: 'growth',      label: 'Social',         init: null },
+  'analytics':      { section: 'growth',      label: 'Analytics',      init: null },
+  // ── Audience ──
+  'cohorts':        { section: 'audience',    label: 'Cohorts',        init: function(){ loadCohortTab(); } },
+  'entitlements':   { section: 'audience',    label: 'Entitlements',   init: function(){ loadEntitlementsTab(); } },
+  'users':          { section: 'audience',    label: 'Users',          init: function(){ loadUsersTab(); } },
+  'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
+  // ── Business ──
+  'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
+  'costs':          { section: 'business',    label: 'Costs',          init: null },
+  'forecasting':    { section: 'business',    label: 'Forecasting',    init: null }
+};
+
+var ADMIN_SECTIONS = [
+  { key: 'operations', label: 'Operations',  icon: '⚙' },
+  { key: 'growth',     label: 'Growth',      icon: '📈' },
+  { key: 'audience',   label: 'Audience',    icon: '👥' },
+  { key: 'business',   label: 'Business',    icon: '💰' }
+];
+
+// ─── Nav state ───
+var _adminNavState = null; // { active, collapsed: {} }
 var _adminTabInit = {};
 var adminPeriod = parseInt(localStorage.getItem('bj_admin_period')) || 168;
+// Keep legacy alias for any code referencing adminActiveTab
+var adminActiveTab = 'feed-health';
 
-function initAdminPage() {
-  var page = document.getElementById('page-admin');
-  if (!page || !page.classList.contains('active')) {
-    console.log('[Admin] page not active, skipping');
-    return;
+function _loadAdminNavState() {
+  try {
+    var raw = localStorage.getItem('bj_admin_state');
+    if (raw) { _adminNavState = JSON.parse(raw); }
+  } catch(e) {}
+  if (!_adminNavState) {
+    _adminNavState = { active: 'feed-health', collapsed: {} };
   }
-  // Guard: don't load data until user is authenticated
-  if (typeof currentUser === 'undefined' || !currentUser) {
-    console.log('[Admin] waiting for auth, deferring load');
-    _adminTabInit = {}; // reset so it reloads when auth is ready
-    return;
-  }
-  console.log('[Admin] initAdminPage called');
-  initAdminTabs();
+  adminActiveTab = _adminNavState.active || 'feed-health';
 }
 
-function initAdminTabs() {
-  var tabBar = document.getElementById('admin-tabs');
-  if (!tabBar) return;
+function _saveAdminNavState() {
+  try {
+    localStorage.setItem('bj_admin_state', JSON.stringify(_adminNavState));
+    // Keep legacy key in sync
+    localStorage.setItem('bj_admin_tab', _adminNavState.active);
+  } catch(e) {}
+}
 
-  tabBar.addEventListener('click', function(e) {
-    var btn = e.target.closest('.admin-tab');
-    if (!btn || btn.classList.contains('disabled')) return;
-    switchAdminTab(btn.dataset.tab);
+// ─── Build Sidebar ───
+function _buildAdminSidebar() {
+  var sidebar = document.getElementById('admin-sidebar');
+  if (!sidebar) return;
+
+  var html = '';
+  ADMIN_SECTIONS.forEach(function(sec) {
+    var isCollapsed = _adminNavState.collapsed[sec.key];
+    var expandedClass = isCollapsed ? '' : ' expanded';
+
+    html += '<div class="admin-sidebar-section' + expandedClass + '" data-section="' + sec.key + '">';
+    html += '<div class="admin-sidebar-header" data-section-toggle="' + sec.key + '">';
+    html += '<span>' + sec.label + '</span>';
+    html += '<svg class="admin-sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+    html += '</div>';
+    html += '<div class="admin-sidebar-items">';
+
+    // Get sub-pages in this section (ordered by ADMIN_SUBPAGE_MAP insertion order)
+    Object.keys(ADMIN_SUBPAGE_MAP).forEach(function(key) {
+      var sp = ADMIN_SUBPAGE_MAP[key];
+      if (sp.section !== sec.key) return;
+      var isDisabled = sp.init === null && !document.getElementById('admin-panel-' + key);
+      var cls = 'admin-sidebar-item';
+      if (isDisabled) cls += ' disabled';
+      html += '<div class="' + cls + '" data-subpage="' + key + '">' + sp.label + '</div>';
+    });
+
+    html += '</div></div>';
   });
 
-  // Period toggle for Revenue tab
+  sidebar.innerHTML = html;
+
+  // Wire section toggle
+  sidebar.querySelectorAll('[data-section-toggle]').forEach(function(hdr) {
+    hdr.addEventListener('click', function() {
+      var secKey = this.getAttribute('data-section-toggle');
+      var secEl = sidebar.querySelector('[data-section="' + secKey + '"]');
+      if (!secEl) return;
+      secEl.classList.toggle('expanded');
+      _adminNavState.collapsed[secKey] = !secEl.classList.contains('expanded');
+      _saveAdminNavState();
+    });
+  });
+
+  // Wire sub-page clicks
+  sidebar.querySelectorAll('[data-subpage]').forEach(function(item) {
+    item.addEventListener('click', function() {
+      if (this.classList.contains('disabled')) return;
+      var key = this.getAttribute('data-subpage');
+      if (key === _adminNavState.active) return; // don't re-init
+      navigateAdminSubpage(key);
+    });
+  });
+}
+
+// ─── Navigate to sub-page ───
+function navigateAdminSubpage(key) {
+  var sp = ADMIN_SUBPAGE_MAP[key];
+  if (!sp) return;
+
+  // Update active state in sidebar
+  var sidebar = document.getElementById('admin-sidebar');
+  if (sidebar) {
+    sidebar.querySelectorAll('.admin-sidebar-item').forEach(function(item) {
+      item.classList.toggle('active', item.getAttribute('data-subpage') === key);
+    });
+    // Ensure parent section is expanded
+    var secEl = sidebar.querySelector('[data-section="' + sp.section + '"]');
+    if (secEl && !secEl.classList.contains('expanded')) {
+      secEl.classList.add('expanded');
+      _adminNavState.collapsed[sp.section] = false;
+    }
+  }
+
+  // Update breadcrumb + title
+  var sectionLabel = '';
+  ADMIN_SECTIONS.forEach(function(s) { if (s.key === sp.section) sectionLabel = s.label; });
+  var bc = document.getElementById('admin-breadcrumb');
+  if (bc) bc.textContent = sectionLabel + ' > ' + sp.label;
+  var title = document.getElementById('admin-page-title');
+  if (title) title.textContent = sp.label;
+
+  // Show correct panel, hide all others
+  document.querySelectorAll('.admin-panel').forEach(function(p) {
+    p.classList.remove('active');
+  });
+  var panel = document.getElementById('admin-panel-' + key);
+  if (panel) panel.classList.add('active');
+
+  // Persist
+  _adminNavState.active = key;
+  adminActiveTab = key;
+  _saveAdminNavState();
+
+  // Lazy-init
+  if (!_adminTabInit[key] && sp.init) {
+    _adminTabInit[key] = true;
+    sp.init();
+  }
+}
+
+// ─── Init ───
+function initAdminPage() {
+  var page = document.getElementById('page-admin');
+  if (!page) {
+    console.log('[Admin] page-admin not found, skipping');
+    return;
+  }
+  if (typeof currentUser === 'undefined' || !currentUser) {
+    console.log('[Admin] waiting for auth, deferring load');
+    _adminTabInit = {};
+    return;
+  }
+  console.log('[Admin] initAdminPage called — IA v2 sidebar');
+  initAdminNav();
+}
+
+function initAdminNav() {
+  _loadAdminNavState();
+  _buildAdminSidebar();
+
+  // Period toggle for Revenue tab (keep existing wiring)
   var revPeriod = document.getElementById('admin-rev-period');
   if (revPeriod) {
     revPeriod.addEventListener('click', function(e) {
@@ -1161,45 +1314,13 @@ function initAdminTabs() {
     });
   }
 
-  switchAdminTab(adminActiveTab);
+  // Navigate to persisted sub-page
+  navigateAdminSubpage(_adminNavState.active);
 }
 
+// Legacy compat: switchAdminTab still works
 function switchAdminTab(tabId) {
-  document.querySelectorAll('.admin-tab').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.tab === tabId);
-  });
-  document.querySelectorAll('.admin-panel').forEach(function(p) {
-    p.classList.toggle('active', p.id === 'admin-panel-' + tabId);
-  });
-  adminActiveTab = tabId;
-  localStorage.setItem('bj_admin_tab', tabId);
-
-  if (!_adminTabInit[tabId]) {
-    _adminTabInit[tabId] = true;
-    switch (tabId) {
-      case 'feed-health': loadBoardHealth(); break;
-      case 'cohorts': loadCohortTab(); break;
-      case 'entitlements': loadEntitlementsTab(); break;
-      case 'users': loadUsersTab(); break;
-      case 'seo': loadSeoTab(); break;
-      case 'revenue': loadRevenueTab(); break;
-      case 'surveys': loadSurveysTab(); break;
-      case 'ghost': loadGhostTab(); break;
-      case 'feedback': loadFeedbackTab(); break;
-      case 'merch': loadMerchTab(); break;
-      case 'signals': loadAdminSignals(); break;
-      case 'referrals': loadReferralsAdminTab(); break;
-      case 'content': loadContentTab(); break;
-      case 'enrichment': loadEnrichmentTab(); break;
-      case 'mock-ats': loadMockAtsTab(); break;
-      case 'notifications': loadNotificationsTab(); break;
-      case 'templates': loadTemplatesTab(); break;
-      case 'notif-analytics': loadNotifAnalyticsTab(); break;
-      case 'email-cohorts': loadEmailCohortsTab(); break;
-      case 'cadence': loadCadenceTab(); break;
-      case 'cache': refreshCacheHealthPanel(); break;
-    }
-  }
+  navigateAdminSubpage(tabId);
 }
 
 // ─── Helpers ───
@@ -4907,6 +5028,353 @@ async function loadMVStalenessPanel() {
 }
 
 
+// === js/admin-companies.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-companies.js — Companies Sub-page (Admin IA v2 S2)
+   v6.85 — Board inventory, platform breakdown, industry mix
+   ─────────────────────────────────────────────────────────── */
+
+function loadAdminCompanies() {
+  var panel = document.getElementById('admin-panel-companies');
+  if (!panel) return;
+
+  panel.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">Loading company data…</div>';
+
+  sb.rpc('get_admin_companies').then(function(res) {
+    if (res.error) {
+      panel.innerHTML = '<div style="color:var(--red);padding:20px;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    var d = res.data;
+    renderCompaniesPage(panel, d);
+  }).catch(function(e) {
+    panel.innerHTML = '<div style="color:var(--red);padding:20px;">Failed to load: ' + e.message + '</div>';
+  });
+}
+
+function renderCompaniesPage(panel, d) {
+  var html = '';
+
+  // ── Stat Cards ──
+  var enrichPct = d.total_boards ? Math.round((d.enriched_boards / d.total_boards) * 100) : 0;
+  var industryPct = d.total_boards ? Math.round((d.with_industry / d.total_boards) * 100) : 0;
+  var activePct = d.total_boards ? Math.round((d.active_boards / d.total_boards) * 100) : 0;
+
+  html += '<div class="admin-stat-row">';
+  html += _adminStatCard('Total Boards', fmtAdminNum(d.total_boards), '');
+  html += _adminStatCard('Active', fmtAdminNum(d.active_boards), activePct + '%');
+  html += _adminStatCard('Inactive', fmtAdminNum(d.inactive_boards), '');
+  html += _adminStatCard('PDL Enriched', fmtAdminNum(d.enriched_boards), enrichPct + '%');
+  html += _adminStatCard('With Industry', fmtAdminNum(d.with_industry), industryPct + '%');
+  html += _adminStatCard('Staffing Agencies', fmtAdminNum(d.staffing_agencies), '');
+  html += '</div>';
+
+  // ── Platform Breakdown Table ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Boards by Platform</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Platform</th><th style="text-align:right">Boards</th><th style="text-align:right">Active</th><th style="text-align:right">Jobs</th><th style="text-align:right">Enriched</th><th style="text-align:right">Industry</th><th style="text-align:right">Staffing</th>';
+  html += '</tr></thead><tbody>';
+
+  (d.by_platform || []).forEach(function(p) {
+    html += '<tr>';
+    html += '<td style="font-weight:600;text-transform:capitalize;">' + _escHtml(p.source) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.boards) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.active) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.jobs) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.enriched) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.with_industry) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.staffing) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  // ── Top Industries ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Top Industries</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Industry</th><th style="text-align:right">Boards</th><th>Share</th>';
+  html += '</tr></thead><tbody>';
+
+  var maxInd = 0;
+  (d.top_industries || []).forEach(function(ind) { if (ind.cnt > maxInd) maxInd = ind.cnt; });
+
+  (d.top_industries || []).forEach(function(ind) {
+    var pct = d.with_industry ? Math.round((ind.cnt / d.with_industry) * 100) : 0;
+    var barW = maxInd ? Math.round((ind.cnt / maxInd) * 100) : 0;
+    html += '<tr>';
+    html += '<td style="text-transform:capitalize;">' + _escHtml(ind.industry) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(ind.cnt) + '</td>';
+    html += '<td style="width:40%;"><div style="background:var(--accent);height:6px;border-radius:3px;width:' + barW + '%;opacity:0.7;"></div><span style="font-size:11px;color:var(--text-faint);">' + pct + '%</span></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  // ── Recently Discovered ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Recently Discovered</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Slug</th><th>Name</th><th>Platform</th><th style="text-align:right">Jobs</th><th>Discovered</th>';
+  html += '</tr></thead><tbody>';
+
+  (d.recently_discovered || []).forEach(function(c) {
+    var ago = _timeAgo(c.created_at);
+    html += '<tr>';
+    html += '<td style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(c.slug) + '</td>';
+    html += '<td>' + _escHtml(c.name || '—') + '</td>';
+    html += '<td style="text-transform:capitalize;">' + _escHtml(c.source) + '</td>';
+    html += '<td style="text-align:right">' + (c.job_count || 0) + '</td>';
+    html += '<td style="color:var(--text-faint);font-size:12px;">' + ago + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  panel.innerHTML = html;
+}
+
+// ── Reusable Stat Card ──
+function _adminStatCard(label, value, sub) {
+  return '<div class="admin-stat-card">' +
+    '<div class="admin-stat-value">' + value + '</div>' +
+    '<div class="admin-stat-label">' + label + '</div>' +
+    (sub ? '<div class="admin-stat-sub">' + sub + '</div>' : '') +
+    '</div>';
+}
+
+// ── HTML escape ──
+function _escHtml(s) {
+  if (!s) return '';
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Time ago ──
+function _timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  var diff = Date.now() - new Date(dateStr).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins + 'm ago';
+  var hrs = Math.floor(mins / 60);
+  if (hrs < 24) return hrs + 'h ago';
+  var days = Math.floor(hrs / 24);
+  if (days < 30) return days + 'd ago';
+  return Math.floor(days / 30) + 'mo ago';
+}
+
+
+// === js/admin-jobs.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-jobs.js — Jobs Sub-page (Admin IA v2 S2)
+   v6.85 — Job inventory, enrichment stats, age distribution
+   ─────────────────────────────────────────────────────────── */
+
+function loadAdminJobs() {
+  var panel = document.getElementById('admin-panel-jobs');
+  if (!panel) return;
+
+  panel.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">Loading job data…</div>';
+
+  sb.rpc('get_admin_jobs').then(function(res) {
+    if (res.error) {
+      panel.innerHTML = '<div style="color:var(--red);padding:20px;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    renderJobsPage(panel, res.data);
+  }).catch(function(e) {
+    panel.innerHTML = '<div style="color:var(--red);padding:20px;">Failed to load: ' + e.message + '</div>';
+  });
+}
+
+function renderJobsPage(panel, d) {
+  var html = '';
+
+  // ── Stat Cards ──
+  var enrichPct = d.total_jobs ? Math.round((d.enriched_jd / d.total_jobs) * 100) : 0;
+  var salaryPct = d.total_jobs ? Math.round((d.with_salary / d.total_jobs) * 100) : 0;
+  var remotePct = d.open_jobs ? Math.round((d.remote_jobs / d.open_jobs) * 100) : 0;
+  var skillsPct = d.total_jobs ? Math.round((d.with_skills / d.total_jobs) * 100) : 0;
+
+  html += '<div class="admin-stat-row">';
+  html += _adminStatCard('Total Jobs', fmtAdminNum(d.total_jobs), '');
+  html += _adminStatCard('Open', fmtAdminNum(d.open_jobs), '');
+  html += _adminStatCard('Closed', fmtAdminNum(d.closed_jobs), '');
+  html += _adminStatCard('JD Enriched', fmtAdminNum(d.enriched_jd), enrichPct + '%');
+  html += _adminStatCard('With Salary', fmtAdminNum(d.with_salary), salaryPct + '%');
+  html += _adminStatCard('Remote', fmtAdminNum(d.remote_jobs), remotePct + '%');
+  html += _adminStatCard('With Skills', fmtAdminNum(d.with_skills), skillsPct + '%');
+  html += _adminStatCard('AI Scored', fmtAdminNum(d.ai_scored), '');
+  html += '</div>';
+
+  // ── Platform Breakdown ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Jobs by Platform</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Platform</th><th style="text-align:right">Total</th><th style="text-align:right">Open</th><th style="text-align:right">Enriched</th><th style="text-align:right">With Salary</th><th style="text-align:right">Remote</th>';
+  html += '</tr></thead><tbody>';
+
+  (d.by_platform || []).forEach(function(p) {
+    var ePct = p.total ? Math.round((p.enriched / p.total) * 100) : 0;
+    html += '<tr>';
+    html += '<td style="font-weight:600;text-transform:capitalize;">' + _escHtml(p.ats_source) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.total) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.open) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.enriched) + ' <span style="color:var(--text-faint);font-size:11px;">(' + ePct + '%)</span></td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.with_salary) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(p.remote) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  // ── Age Distribution ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Open Job Age Distribution</div>';
+  html += '<div style="display:flex;gap:12px;flex-wrap:wrap;padding:8px 0;">';
+
+  (d.age_distribution || []).forEach(function(b) {
+    var pct = d.open_jobs ? Math.round((b.cnt / d.open_jobs) * 100) : 0;
+    html += '<div class="admin-age-bucket">';
+    html += '<div class="admin-age-bar" style="height:' + Math.max(4, pct * 2) + 'px;"></div>';
+    html += '<div class="admin-age-count">' + fmtAdminNum(b.cnt) + '</div>';
+    html += '<div class="admin-age-label">' + b.age_bucket + '</div>';
+    html += '<div class="admin-age-pct">' + pct + '%</div>';
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+
+  // ── Daily New Jobs (7d) ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">New Jobs (Last 7 Days)</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Date</th><th style="text-align:right">New Jobs</th><th>Bar</th>';
+  html += '</tr></thead><tbody>';
+
+  var maxDaily = 0;
+  (d.daily_new_7d || []).forEach(function(row) { if (row.cnt > maxDaily) maxDaily = row.cnt; });
+
+  (d.daily_new_7d || []).forEach(function(row) {
+    var barW = maxDaily ? Math.round((row.cnt / maxDaily) * 100) : 0;
+    html += '<tr>';
+    html += '<td>' + row.day + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(row.cnt) + '</td>';
+    html += '<td style="width:50%;"><div style="background:var(--green);height:6px;border-radius:3px;width:' + barW + '%;opacity:0.7;"></div></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  panel.innerHTML = html;
+}
+
+
+// === js/admin-email.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-email.js — Email Sub-page (Admin IA v2 S2)
+   v6.85 — Notification performance, deliverability, log
+   ─────────────────────────────────────────────────────────── */
+
+function loadAdminEmail() {
+  var panel = document.getElementById('admin-panel-email');
+  if (!panel) return;
+
+  panel.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-faint);font-size:13px;">Loading email data…</div>';
+
+  sb.rpc('get_admin_email').then(function(res) {
+    if (res.error) {
+      panel.innerHTML = '<div style="color:var(--red);padding:20px;">Error: ' + res.error.message + '</div>';
+      return;
+    }
+    renderEmailPage(panel, res.data);
+  }).catch(function(e) {
+    panel.innerHTML = '<div style="color:var(--red);padding:20px;">Failed to load: ' + e.message + '</div>';
+  });
+}
+
+function renderEmailPage(panel, d) {
+  var html = '';
+
+  // ── Status breakdown for stat cards ──
+  var statusMap = {};
+  (d.by_status || []).forEach(function(s) { statusMap[s.status] = s.cnt; });
+  var sent = statusMap['sent'] || 0;
+  var delivered = statusMap['delivered'] || 0;
+  var failed = statusMap['failed'] || 0;
+  var blocked = statusMap['blocked'] || 0;
+
+  html += '<div class="admin-stat-row">';
+  html += _adminStatCard('Total Sent', fmtAdminNum(d.total_sent), '');
+  html += _adminStatCard('Sent', fmtAdminNum(sent), '');
+  html += _adminStatCard('Delivered', fmtAdminNum(delivered), d.total_sent ? Math.round((delivered / d.total_sent) * 100) + '%' : '');
+  html += _adminStatCard('Failed', fmtAdminNum(failed), failed > 0 ? 'alert' : '');
+  html += _adminStatCard('Blocked', fmtAdminNum(blocked), '');
+  html += '</div>';
+
+  // ── Channel Split ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">By Channel</div>';
+  html += '<div style="display:flex;gap:16px;flex-wrap:wrap;padding:8px 0;">';
+
+  (d.by_channel || []).forEach(function(ch) {
+    var pct = d.total_sent ? Math.round((ch.cnt / d.total_sent) * 100) : 0;
+    var color = ch.channel === 'email' ? 'var(--accent)' : 'var(--warm)';
+    html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 20px;min-width:120px;text-align:center;">';
+    html += '<div style="font-size:20px;font-weight:700;color:' + color + ';">' + fmtAdminNum(ch.cnt) + '</div>';
+    html += '<div style="font-size:12px;color:var(--text-faint);text-transform:capitalize;">' + _escHtml(ch.channel) + ' (' + pct + '%)</div>';
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+
+  // ── By Notification Type ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">By Notification Type</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Type</th><th style="text-align:right">Total</th><th style="text-align:right">Delivered</th><th style="text-align:right">Sent</th><th style="text-align:right">Failed</th><th style="text-align:right">Blocked</th>';
+  html += '</tr></thead><tbody>';
+
+  (d.by_type || []).forEach(function(t) {
+    html += '<tr>';
+    html += '<td style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(t.notification_type) + '</td>';
+    html += '<td style="text-align:right">' + fmtAdminNum(t.cnt) + '</td>';
+    html += '<td style="text-align:right;color:var(--green);">' + (t.delivered || 0) + '</td>';
+    html += '<td style="text-align:right">' + (t.sent || 0) + '</td>';
+    html += '<td style="text-align:right;' + (t.failed > 0 ? 'color:var(--red);font-weight:600;' : '') + '">' + (t.failed || 0) + '</td>';
+    html += '<td style="text-align:right;' + (t.blocked > 0 ? 'color:var(--warm);' : '') + '">' + (t.blocked || 0) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  // ── Recent Sends ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Recent Sends</div>';
+  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
+  html += '<th>Type</th><th>Channel</th><th>Status</th><th>Time</th>';
+  html += '</tr></thead><tbody>';
+
+  (d.recent_sends || []).forEach(function(r) {
+    var statusColor = r.status === 'delivered' ? 'var(--green)' :
+                      r.status === 'failed' ? 'var(--red)' :
+                      r.status === 'blocked' ? 'var(--warm)' : 'var(--text)';
+    html += '<tr>';
+    html += '<td style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(r.notification_type) + '</td>';
+    html += '<td style="text-transform:capitalize;">' + _escHtml(r.channel) + '</td>';
+    html += '<td style="color:' + statusColor + ';font-weight:600;text-transform:capitalize;">' + _escHtml(r.status) + '</td>';
+    html += '<td style="color:var(--text-faint);font-size:12px;">' + _timeAgo(r.created_at) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div></div>';
+
+  panel.innerHTML = html;
+}
+
+
 // === js/admin-notifications.js ===
 /* ───────────────────────────────────────────────────────────
    admin-notifications.js — Notification Management + Template Manager
@@ -7447,7 +7915,7 @@ async function rerunCadenceAnalysis() {
 // === js/admin-shell.js ===
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + init for standalone /admin page
-   v6.26 — Separated from dashboard shell (app.js)
+   v6.85 — IA v2 S2 block pages (Companies, Jobs, Email)
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check

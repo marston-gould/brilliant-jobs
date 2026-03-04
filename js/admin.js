@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.84 — Sidebar replaces flat tab bar
+   v6.85 — Sidebar replaces flat tab bar + S2 block pages
    4 sections: Operations, Growth, Audience, Business
    17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
@@ -29,15 +29,15 @@ var ADMIN_SUBPAGE_MAP = {
   // ── Operations ──
   'feed-health':    { section: 'operations',  label: 'Feed Health',    init: function(){ loadBoardHealth(); } },
   'enrichment':     { section: 'operations',  label: 'Enrichment',     init: function(){ loadEnrichmentTab(); } },
-  'companies':      { section: 'operations',  label: 'Companies',      init: null },
-  'jobs':           { section: 'operations',  label: 'Jobs',           init: null },
+  'companies':      { section: 'operations',  label: 'Companies',      init: function(){ loadAdminCompanies(); } },
+  'jobs':           { section: 'operations',  label: 'Jobs',           init: function(){ loadAdminJobs(); } },
   'ghost':          { section: 'operations',  label: 'Ghost Detection',init: function(){ loadGhostTab(); } },
   'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
   'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
   // ── Growth ──
   'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
   'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
-  'email':          { section: 'growth',      label: 'Email',          init: null },
+  'email':          { section: 'growth',      label: 'Email',          init: function(){ loadAdminEmail(); } },
   'merch':          { section: 'growth',      label: 'Merchandising',  init: function(){ loadMerchTab(); } },
   'notifications':  { section: 'growth',      label: 'Notifications',  init: function(){ loadNotificationsTab(); } },
   'templates':      { section: 'growth',      label: 'Templates',      init: function(){ loadTemplatesTab(); } },
