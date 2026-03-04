@@ -10,10 +10,16 @@ const jsFiles = [
   'js/admin-jobs.js',
   'js/admin-email.js',
   'js/admin-notifications.js',
+  'js/admin-signals.js',
+  'js/admin-feed-health.js',
+  'js/admin-cache-health.js',
   'js/admin-shell.js',
 ];
 
-const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
+const combined = jsFiles.map(f => `// === ${f} ===
+${readFileSync(f, 'utf-8')}`).join('
+
+');
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/admin.js', combined);
