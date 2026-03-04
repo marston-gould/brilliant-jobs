@@ -1,3 +1,11 @@
+## v7.01 — 2026-03-04
+
+### Overlay Pipeline S7: Fraud + AI Content Score Display
+
+- **extension/toolbar-overlay.js v1.2.0** — Fraud indicator (red shield) shown in toolbar if `pipeline.fraud_score >= 60`. AI content indicator (orange warning) shown if `pipeline.ai_content_score >= 0.7`. Both read from pipeline entry returned by `bj:toolbar:getEntry` — no new Edge Function call. Silent/hidden if scores are null.
+- **extension/background.js v2.21.0** — Expanded `getEntry` SELECT to include `fraud_score`, `fraud_label`, `ai_content_score`, `ai_content_label` columns. Previously only returned `id, stage, entry_source, job_title, company_name`.
+- No DB migration required — all four columns (`fraud_score`, `fraud_label`, `ai_content_score`, `ai_content_label`) already exist on `pipeline` table.
+
 ## v7.00 — 2026-03-04
 
 ### Overlay Pipeline S6: Match Score Overlay Badge
@@ -2584,3 +2592,4 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
+

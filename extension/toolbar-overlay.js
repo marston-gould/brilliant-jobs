@@ -1,6 +1,7 @@
 // extension/toolbar-overlay.js — Brilliant Jobs Job Page Toolbar
 // v1.0.0 / v6.98: Overlay Pipeline S4 — Toolbar Shell
 // v1.1.0 / v7.00: Overlay Pipeline S6 — Match Score Badge
+// v1.2.0 / v7.01: Overlay Pipeline S7 — Fraud + AI Content Score Indicators
 //
 // Injected by contentScript.js on job listing pages across:
 // LinkedIn (/jobs/view/*), Greenhouse, Lever, Ashby, Workable, Recruitee, Indeed
@@ -8,12 +9,15 @@
 // Renders a persistent bottom toolbar on job pages with:
 //   - Job title + company (parsed from page)
 //   - Pipeline stage badge (loaded from _newPipelineCache via background message)
-//   - Save button (writes to pipeline table via background.js → saveToNewPipeline)
+//   - Fraud indicator: red shield if fraud_score >= 60
+//   - AI content indicator: orange label if ai_content_score >= 0.7
+//   - Match score badge (async, fades in — S6)
+//   - Save button (writes to pipeline table via background.js → pipeline-write EF)
 //   - "Already Saved" state if job exists in pipeline
 //
-// Session 4 scope: Shell only — UI, DOM injection, page meta parsing,
-// background message relay for pipeline state check.
-// Save write path wired to background.js → direct REST (S5 will replace with Edge Function).
+// Session 7 scope: Read pipeline.fraud_score + pipeline.ai_content_score from
+// the entry returned by bj:toolbar:getEntry (already includes columns as of v2.21.0).
+// Display cached values only — no new Edge Function call.
 
 (function () {
   'use strict';
@@ -214,6 +218,37 @@
       #${TOOLBAR_ID} .bj-tb-score.bj-score-fair   { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
       #${TOOLBAR_ID} .bj-tb-score.bj-score-low    { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
       #${TOOLBAR_ID} .bj-tb-score.bj-score-loading { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; }
+
+      /* S7: Fraud + AI Content indicators */
+      #${TOOLBAR_ID} .bj-tb-fraud {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 20px;
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+        flex-shrink: 0;
+        cursor: default;
+        title: attr(data-tooltip);
+      }
+      #${TOOLBAR_ID} .bj-tb-ai-content {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 20px;
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #fdba74;
+        flex-shrink: 0;
+        cursor: default;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -231,6 +266,16 @@
     const stageClass = stage ? 'bj-stage-' + stage : '';
     const stageLabel = stage ? stage.replace('_', ' ') : null;
 
+    // S7: Fraud indicator — show if fraud_score >= 60
+    const fraudScore = pipelineEntry?.fraud_score ?? null;
+    const fraudLabel = pipelineEntry?.fraud_label || null;
+    const showFraud = fraudScore !== null && fraudScore >= 60;
+
+    // S7: AI content indicator — show if ai_content_score >= 0.7
+    const aiScore = pipelineEntry?.ai_content_score ?? null;
+    const aiLabel = pipelineEntry?.ai_content_label || null;
+    const showAI = aiScore !== null && parseFloat(aiScore) >= 0.7;
+
     el.innerHTML = `
       <span class="bj-tb-logo">BJ</span>
       <div class="bj-tb-left">
@@ -239,6 +284,8 @@
       </div>
       <div class="bj-tb-right">
         ${stageLabel ? `<span class="bj-tb-badge ${stageClass}">${escHtml(stageLabel)}</span>` : ''}
+        ${showFraud ? `<span class="bj-tb-fraud" title="Fraud risk: ${escHtml(fraudLabel || String(fraudScore))}">🛡 Fraud Risk</span>` : ''}
+        ${showAI ? `<span class="bj-tb-ai-content" title="AI-generated content detected (${escHtml(aiLabel || String(aiScore))})">⚠ AI Content</span>` : ''}
         <span class="bj-tb-score bj-score-loading" id="bj-tb-score-badge">…</span>
         <button class="bj-tb-save-btn${stage ? ' bj-saved' : ''}" id="bj-tb-save-btn">
           ${stage ? '✓ ' + escHtml(stageLabel) : 'Save Job'}
