@@ -1,3 +1,12 @@
+## v7.02 — 2026-03-04
+
+### Overlay Pipeline S8: Save/Apply CTA + Stage Picker
+
+- **extension/toolbar-overlay.js v1.3.0** — Replaced single "Save Job" button with a split Save/Stage picker CTA. On first visit to an unsaved job: single "Save Job" button writes `stage=saved` via pipeline-write EF. Once saved: button transitions to split-button (label on left, ▾ chevron on right). Chevron opens stage picker dropdown above toolbar with 4 stages: Saved → Applied → Interview → Offer. Forward-only movement (disabled options for stages below current rank). Stage rank enforcement also enforced server-side in pipeline-write EF.
+- **No new Edge Function** — all stage writes go through existing `pipeline-write` EF (S5). Stage rank enforcement already present server-side.
+- **No DB migration** — stage column and enum already support all picker values.
+
+
 ## v7.01 — 2026-03-04
 
 ### Overlay Pipeline S7: Fraud + AI Content Score Display
@@ -2592,4 +2601,5 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
+
 
