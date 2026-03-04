@@ -1,7 +1,7 @@
 // ============================================================
-// CHAT MODE — Conversational Job Search (Session 2)
-// Toggle between Filters and Chat on Jobs Feed
-// Wires to chat-job-search Edge Function from Session 1
+// CHAT MODE — Conversational Job Search (Session 3)
+// Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync
+// Wires to chat-job-search, filter-to-prompt, prompt-to-filter Edge Functions
 // ============================================================
 
 // --- State ---
@@ -10,6 +10,8 @@ var _chatMessages = []; // { role: 'user'|'assistant', content: string, filters?
 var _chatSending = false;
 var _chatRateLimit = { remaining: null, resetAt: null };
 var _chatMessageCap = 20;
+var _chatSyncInProgress = false;
+var _chatLastSyncedFilterHash = null;
 
 // Off-topic blocklist (Layer 1 client-side protection)
 var _chatBlockedPatterns = [
@@ -82,10 +84,17 @@ function initChatMode() {
         sendChatMessage();
       }
     });
-    // Auto-resize textarea
+    // Auto-resize textarea + track user edits to auto-generated prompts
     chatInput.addEventListener('input', function() {
       this.style.height = 'auto';
       this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      // Track if user modified an auto-generated prompt
+      if (this.getAttribute('data-auto-generated') === 'true') {
+        this.setAttribute('data-auto-generated', 'modified');
+        if (window.posthog) {
+          try { posthog.capture('chat_prompt_modified'); } catch(e) {}
+        }
+      }
     });
   }
   if (chatSendBtn) {
@@ -96,15 +105,28 @@ function initChatMode() {
   var clearBtn = document.getElementById('chat-clear-btn');
   if (clearBtn) {
     clearBtn.addEventListener('click', function() {
+      // Track if user scrapped an auto-generated prompt
+      var chatInput = document.getElementById('chat-input');
+      if (chatInput && chatInput.getAttribute('data-auto-generated')) {
+        chatInput.removeAttribute('data-auto-generated');
+        if (window.posthog) {
+          try { posthog.capture('chat_prompt_scrapped'); } catch(e) {}
+        }
+      }
       _chatSession.clear();
       _chatMessages = [];
+      _chatLastSyncedFilterHash = null;
       renderChatMessages();
       updateChatCounter();
+      // Hide sync banner if visible
+      var syncBanner = document.getElementById('chat-sync-banner');
+      if (syncBanner) syncBanner.style.display = 'none';
     });
   }
 }
 
 function setSearchMode(mode) {
+  var prevMode = _chatMode ? 'chat' : 'filters';
   _chatMode = (mode === 'chat');
 
   var toggle = document.getElementById('search-mode-toggle');
@@ -135,6 +157,11 @@ function setSearchMode(mode) {
         var chatInput = document.getElementById('chat-input');
         if (chatInput) chatInput.focus();
       }, 200);
+
+      // --- Filter→Chat sync: pre-fill chat input from active filters ---
+      if (prevMode === 'filters') {
+        syncFilterToChat();
+      }
     } else {
       chatPanel.style.opacity = '0';
       chatPanel.style.pointerEvents = 'none';
@@ -146,12 +173,314 @@ function setSearchMode(mode) {
           filterPanel.style.pointerEvents = 'auto';
         });
       }, 200);
+
+      // --- Chat→Filter sync: extract filters from conversation ---
+      if (prevMode === 'chat') {
+        syncChatToFilter();
+      }
     }
   }
 
   // PostHog event
   if (window.posthog) {
     try { posthog.capture('search_mode_toggled', { mode: mode }); } catch(e) {}
+  }
+}
+
+
+// --- Bidirectional Sync (Session 3) ---
+
+// Collect current builder pill state into a filter object for the Edge Function
+function _collectBuilderFilters() {
+  var filters = {};
+  // Read pill arrays from global scope (query-builder.js exports these)
+  if (typeof whatPills !== 'undefined' && whatPills.length) {
+    filters.what_pills = [];
+    whatPills.forEach(function(p) { filters.what_pills = filters.what_pills.concat(p.values); });
+  }
+  if (typeof wherePills !== 'undefined' && wherePills.length) {
+    filters.where_pills = [];
+    wherePills.forEach(function(p) { filters.where_pills = filters.where_pills.concat(p.values); });
+  }
+  if (typeof whoPills !== 'undefined' && whoPills.length) {
+    filters.who_pills = [];
+    whoPills.forEach(function(p) { filters.who_pills = filters.who_pills.concat(p.values); });
+  }
+  if (typeof whatNotPills !== 'undefined' && whatNotPills.length) {
+    filters.not_pills = [];
+    whatNotPills.forEach(function(p) { filters.not_pills = filters.not_pills.concat(p.values); });
+  }
+  // Type pills from whenPills that are workplace types
+  if (typeof whenPills !== 'undefined' && whenPills.length) {
+    filters.type_pills = [];
+    whenPills.forEach(function(p) { filters.type_pills = filters.type_pills.concat(p.values); });
+  }
+  // Salary from payPills
+  if (typeof payPills !== 'undefined' && payPills.length) {
+    payPills.forEach(function(p) {
+      p.values.forEach(function(v) {
+        var clean = v.replace(/[^0-9kK+\-]/g, '').toLowerCase();
+        var num = parseInt(clean.replace('k', '000'));
+        if (!isNaN(num)) {
+          if (v.indexOf('+') >= 0 || v.indexOf('min') >= 0) {
+            filters.salary_min = num;
+          } else {
+            // If we already have a min, this is likely max
+            if (filters.salary_min) {
+              filters.salary_max = num;
+            } else {
+              filters.salary_min = num;
+            }
+          }
+        }
+      });
+    });
+  }
+  return filters;
+}
+
+// Hash filter object to detect changes (avoid redundant syncs)
+function _hashFilters(filters) {
+  try { return JSON.stringify(filters); } catch(e) { return ''; }
+}
+
+// Filter→Chat: On toggle to Chat with active filters, call filter-to-prompt and pre-fill input
+async function syncFilterToChat() {
+  if (_chatSyncInProgress) return;
+  if (_chatSession.messages.length > 0) return; // Don't overwrite active conversation
+
+  var filters = _collectBuilderFilters();
+  var hash = _hashFilters(filters);
+  if (!filters || Object.keys(filters).length === 0) return; // No active filters
+  if (hash === _chatLastSyncedFilterHash) return; // Already synced these exact filters
+
+  _chatSyncInProgress = true;
+  var chatInput = document.getElementById('chat-input');
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { _chatSyncInProgress = false; return; }
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/filter-to-prompt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ filters: filters })
+    });
+
+    if (!resp.ok) {
+      console.warn('[BJ] filter-to-prompt failed:', resp.status);
+      _chatSyncInProgress = false;
+      return;
+    }
+
+    var data = await resp.json();
+    var prompt = (data.prompt || '').trim();
+
+    if (prompt && chatInput) {
+      chatInput.value = prompt;
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+      chatInput.setAttribute('data-auto-generated', 'true');
+      _chatLastSyncedFilterHash = hash;
+
+      // Show subtle hint that this was auto-generated
+      var banner = document.getElementById('chat-filter-banner');
+      if (banner) {
+        banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>' +
+          '<span>Pre-filled from your active filters — edit or send as-is</span>';
+        banner.style.display = 'flex';
+        // Auto-hide after 6s
+        setTimeout(function() { banner.style.display = 'none'; }, 6000);
+      }
+
+      // PostHog event
+      if (window.posthog) {
+        try { posthog.capture('chat_prompt_auto_generated', { filter_count: Object.keys(filters).length, fallback: !!data.fallback }); } catch(e) {}
+      }
+    }
+  } catch (err) {
+    console.error('[BJ] Filter→Chat sync error:', err);
+  }
+
+  _chatSyncInProgress = false;
+}
+
+// Chat→Filter: On toggle to Filters with conversation, call prompt-to-filter and populate pills
+async function syncChatToFilter() {
+  if (_chatSyncInProgress) return;
+  if (_chatSession.messages.length === 0) return; // No conversation to extract from
+
+  _chatSyncInProgress = true;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { _chatSyncInProgress = false; return; }
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/prompt-to-filter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ conversation: _chatSession.getHistory() })
+    });
+
+    if (!resp.ok) {
+      console.warn('[BJ] prompt-to-filter failed:', resp.status);
+      _chatSyncInProgress = false;
+      return;
+    }
+
+    var data = await resp.json();
+    var filters = data.filters;
+
+    if (!filters || typeof filters !== 'object' || Object.keys(filters).length === 0) {
+      // Partial extraction or empty — no pills to populate
+      if (data.parse_error) {
+        console.warn('[BJ] prompt-to-filter parse error');
+      }
+      _chatSyncInProgress = false;
+      return;
+    }
+
+    // Show confirmation banner before populating pills
+    _showSyncConfirmation(filters);
+
+  } catch (err) {
+    console.error('[BJ] Chat→Filter sync error:', err);
+  }
+
+  _chatSyncInProgress = false;
+}
+
+// Show a confirmation banner with extracted filters, user can Accept or Dismiss
+function _showSyncConfirmation(filters) {
+  var banner = document.getElementById('chat-sync-banner');
+  if (!banner) return;
+
+  // Build summary of what was extracted
+  var parts = [];
+  if (filters.what_pills && filters.what_pills.length) parts.push(filters.what_pills.length + ' role' + (filters.what_pills.length > 1 ? 's' : ''));
+  if (filters.where_pills && filters.where_pills.length) parts.push(filters.where_pills.length + ' location' + (filters.where_pills.length > 1 ? 's' : ''));
+  if (filters.who_pills && filters.who_pills.length) parts.push(filters.who_pills.length + ' compan' + (filters.who_pills.length > 1 ? 'ies' : 'y'));
+  if (filters.not_pills && filters.not_pills.length) parts.push(filters.not_pills.length + ' exclusion' + (filters.not_pills.length > 1 ? 's' : ''));
+  if (filters.type_pills && filters.type_pills.length) parts.push(filters.type_pills.join(', '));
+  if (filters.salary_min || filters.salary_max) parts.push('salary range');
+  if (filters.additional_context) parts.push('preferences');
+
+  if (parts.length === 0) { banner.style.display = 'none'; return; }
+
+  var summary = parts.join(', ');
+
+  banner.innerHTML = '<div class="chat-sync-msg">' +
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<span>Extracted from chat: ' + escapeHtml(summary) + '</span>' +
+    '</div>' +
+    '<div class="chat-sync-actions">' +
+    '<button class="chat-sync-accept" id="chat-sync-accept">Apply to filters</button>' +
+    '<button class="chat-sync-dismiss" id="chat-sync-dismiss">Dismiss</button>' +
+    '</div>';
+  banner.style.display = 'flex';
+
+  // Bind accept
+  document.getElementById('chat-sync-accept').addEventListener('click', function() {
+    _applySyncedFilters(filters);
+    banner.style.display = 'none';
+    // PostHog
+    if (window.posthog) {
+      try { posthog.capture('chat_to_filter_sync', { action: 'accepted', filter_count: Object.keys(filters).length }); } catch(e) {}
+    }
+  });
+
+  // Bind dismiss
+  document.getElementById('chat-sync-dismiss').addEventListener('click', function() {
+    banner.style.display = 'none';
+    // PostHog
+    if (window.posthog) {
+      try { posthog.capture('chat_to_filter_sync', { action: 'dismissed' }); } catch(e) {}
+    }
+  });
+}
+
+// Apply extracted filters from chat to the pill system
+function _applySyncedFilters(filters) {
+  // Clear existing builder pills before applying new ones
+  // We use the global pill arrays + renderAllPills from query-builder.js
+
+  if (filters.what_pills && filters.what_pills.length) {
+    if (typeof whatPills !== 'undefined') {
+      // Reset what pills, add new ones
+      whatPills.length = 0;
+      filters.what_pills.forEach(function(v) {
+        whatPills.push({ values: [v], type: 'keyword' });
+      });
+    }
+  }
+
+  if (filters.where_pills && filters.where_pills.length) {
+    if (typeof wherePills !== 'undefined') {
+      wherePills.length = 0;
+      filters.where_pills.forEach(function(v) {
+        wherePills.push({ values: [v], type: 'location' });
+      });
+    }
+  }
+
+  if (filters.who_pills && filters.who_pills.length) {
+    if (typeof whoPills !== 'undefined') {
+      whoPills.length = 0;
+      filters.who_pills.forEach(function(v) {
+        whoPills.push({ values: [v], type: 'keyword' });
+      });
+    }
+  }
+
+  if (filters.not_pills && filters.not_pills.length) {
+    if (typeof whatNotPills !== 'undefined') {
+      whatNotPills.length = 0;
+      filters.not_pills.forEach(function(v) {
+        whatNotPills.push({ values: [v], type: 'keyword' });
+      });
+    }
+  }
+
+  if (filters.salary_min || filters.salary_max) {
+    if (typeof payPills !== 'undefined') {
+      payPills.length = 0;
+      if (filters.salary_min && filters.salary_max) {
+        var minK = Math.round(filters.salary_min / 1000);
+        var maxK = Math.round(filters.salary_max / 1000);
+        payPills.push({ values: ['$' + minK + 'k-$' + maxK + 'k'], type: 'salary' });
+      } else if (filters.salary_min) {
+        var minK = Math.round(filters.salary_min / 1000);
+        payPills.push({ values: ['$' + minK + 'k+'], type: 'salary' });
+      } else if (filters.salary_max) {
+        var maxK = Math.round(filters.salary_max / 1000);
+        payPills.push({ values: ['<$' + maxK + 'k'], type: 'salary' });
+      }
+    }
+  }
+
+  // Render all pills visually
+  if (typeof renderAllPills === 'function') {
+    renderAllPills();
+  }
+
+  // Trigger job feed refresh
+  if (typeof debouncedSearchJobs === 'function') {
+    debouncedSearchJobs();
+  }
+
+  // Show toast confirmation
+  if (typeof showToast === 'function') {
+    showToast('Chat filters applied to search', 'success');
   }
 }
 
@@ -181,9 +510,10 @@ async function sendChatMessage() {
     return;
   }
 
-  // Clear input
+  // Clear input and auto-generated flag
   chatInput.value = '';
   chatInput.style.height = 'auto';
+  chatInput.removeAttribute('data-auto-generated');
 
   // Add user message
   _chatSession.addMessage('user', text);
