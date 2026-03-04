@@ -4,6 +4,10 @@
 // by ApplicationTracker, automatically create/update pending_applications
 // row in Supabase with status and timestamp.
 //
+// v3.10.0: v6.97 — Overlay Pipeline S3: Dual-write to new `pipeline` table
+// on every autoTracker write. entry_source='auto_apply'. Dedup by source_url.
+// pending_applications write preserved unchanged — zero regression risk.
+//
 // Runs in background.js service worker context.
 // Receives ats:submitDetected and ats:confirmationDetected messages
 // from contentScript.js (relayed through ApplicationTracker).
@@ -14,6 +18,8 @@ var BJ_AUTO_TRACKER = (function () {
   // ── Pending submissions awaiting confirmation ──
   const _pendingSubmissions = {};
   const CONFIRMATION_TIMEOUT = 60000; // 60s to detect confirmation
+
+  const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 
   // ── Parse ATS source from URL ──
   function guessAtsSource(url) {
@@ -81,6 +87,115 @@ var BJ_AUTO_TRACKER = (function () {
     }
   }
 
+  // ── Overlay Pipeline S3: Dual-write to new pipeline table ──────────────
+  // Non-blocking — errors are warnings only, never affect pending_applications write
+  async function _writeToNewPipeline(url, info, status, token, userId) {
+    try {
+      if (!url || !userId || !token) return;
+
+      const now = new Date().toISOString();
+      const jobMeta = extractJobMeta(url);
+      const isConfirmed = status === 'submitted_confirmed';
+      const stage = isConfirmed ? 'applied' : 'saved';
+
+      const logEntry = {
+        action: isConfirmed ? 'applied' : 'submit_detected',
+        timestamp: now,
+        detail: {
+          status: status,
+          source: 'auto_apply',
+          confirmation_pattern: info.pattern || null,
+        }
+      };
+
+      // Check for existing row by source_url
+      const checkResp = await fetch(
+        `${SB_URL}/rest/v1/pipeline?user_id=eq.${userId}&source_url=eq.${encodeURIComponent(url)}&select=id,stage,activity_log&limit=1`,
+        {
+          headers: {
+            'apikey': token,
+            'Authorization': 'Bearer ' + token,
+          },
+        }
+      );
+
+      if (checkResp.ok) {
+        const existing = await checkResp.json();
+        if (existing && existing.length > 0) {
+          // Existing row: advance stage if confirmed, always append log
+          const existingLog = existing[0].activity_log || [];
+          const newLog = [...existingLog, logEntry];
+          const updateBody = {
+            activity_log: newLog,
+            updated_at: now,
+          };
+          // Only advance stage if confirmed and current stage is 'saved'
+          if (isConfirmed && existing[0].stage === 'saved') {
+            updateBody.stage = 'applied';
+            updateBody.stage_changed_at = now;
+            updateBody.applied_at = now;
+          }
+          const updateResp = await fetch(
+            `${SB_URL}/rest/v1/pipeline?id=eq.${existing[0].id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'apikey': token,
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal',
+              },
+              body: JSON.stringify(updateBody),
+            }
+          );
+          if (updateResp.ok) {
+            console.log('[BJ_AUTO_TRACKER] pipeline table updated (stage advance):', existing[0].id);
+          }
+          return;
+        }
+      }
+
+      // No existing row — insert new
+      const insertBody = {
+        user_id: userId,
+        source_url: url,
+        source_platform: jobMeta.atsSource || 'unknown',
+        job_id_ref: jobMeta.externalJobId || null,
+        ats_source_ref: jobMeta.atsSource || null,
+        stage: stage,
+        entry_source: 'auto_apply',
+        stage_changed_at: now,
+        applied_at: isConfirmed ? now : null,
+        activity_log: [logEntry],
+        migration_version: 1,
+      };
+
+      const insertResp = await fetch(
+        `${SB_URL}/rest/v1/pipeline`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': token,
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(insertBody),
+        }
+      );
+
+      if (insertResp.ok) {
+        console.log('[BJ_AUTO_TRACKER] pipeline table row created for:', url.substring(0, 80));
+      } else {
+        const errText = await insertResp.text();
+        console.warn('[BJ_AUTO_TRACKER] pipeline insert failed (non-fatal):', insertResp.status, errText);
+      }
+    } catch (e) {
+      // Non-fatal — never let pipeline write errors affect pending_applications
+      console.warn('[BJ_AUTO_TRACKER] pipeline dual-write error (non-fatal):', e.message);
+    }
+  }
+
   // ── Record a submit detection ──
   function onSubmitDetected(info) {
     const url = info.url || '';
@@ -124,7 +239,7 @@ var BJ_AUTO_TRACKER = (function () {
     return { tracked: true, confirmed: true };
   }
 
-  // ── Write to Supabase pending_applications ──
+  // ── Write to Supabase pending_applications + pipeline (dual-write) ──
   async function _recordToSupabase(url, info, status) {
     try {
       // Get auth session
@@ -137,8 +252,13 @@ var BJ_AUTO_TRACKER = (function () {
 
       const jobMeta = extractJobMeta(url);
 
+      // ── Overlay Pipeline S3: Dual-write to new pipeline table (non-blocking) ──
+      _writeToNewPipeline(url, info, status, session.access_token, session.user_id)
+        .catch(e => console.warn('[BJ_AUTO_TRACKER] pipeline write failed silently:', e.message));
+
+      // ── Primary write: pending_applications (unchanged) ──
+
       // Check if pending_applications row already exists for this URL + user
-      const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
       const checkResp = await fetch(
         `${SB_URL}/rest/v1/pending_applications?user_id=eq.${session.user_id}&job_url=eq.${encodeURIComponent(url)}&select=id,status&limit=1`,
         {
