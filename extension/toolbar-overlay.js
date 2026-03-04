@@ -1,5 +1,6 @@
 // extension/toolbar-overlay.js — Brilliant Jobs Job Page Toolbar
 // v1.0.0 / v6.98: Overlay Pipeline S4 — Toolbar Shell
+// v1.1.0 / v7.00: Overlay Pipeline S6 — Match Score Badge
 //
 // Injected by contentScript.js on job listing pages across:
 // LinkedIn (/jobs/view/*), Greenhouse, Lever, Ashby, Workable, Recruitee, Indeed
@@ -193,6 +194,26 @@
         letter-spacing: 0.02em;
         flex-shrink: 0;
       }
+
+      #${TOOLBAR_ID} .bj-tb-score {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 20px;
+        letter-spacing: 0.03em;
+        flex-shrink: 0;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      #${TOOLBAR_ID} .bj-tb-score.loaded { opacity: 1; }
+      #${TOOLBAR_ID} .bj-tb-score.bj-score-strong { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+      #${TOOLBAR_ID} .bj-tb-score.bj-score-good   { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+      #${TOOLBAR_ID} .bj-tb-score.bj-score-fair   { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
+      #${TOOLBAR_ID} .bj-tb-score.bj-score-low    { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+      #${TOOLBAR_ID} .bj-tb-score.bj-score-loading { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; }
     `;
     document.head.appendChild(style);
   }
@@ -218,6 +239,7 @@
       </div>
       <div class="bj-tb-right">
         ${stageLabel ? `<span class="bj-tb-badge ${stageClass}">${escHtml(stageLabel)}</span>` : ''}
+        <span class="bj-tb-score bj-score-loading" id="bj-tb-score-badge">…</span>
         <button class="bj-tb-save-btn${stage ? ' bj-saved' : ''}" id="bj-tb-save-btn">
           ${stage ? '✓ ' + escHtml(stageLabel) : 'Save Job'}
         </button>
@@ -335,6 +357,30 @@
     return false;
   }
 
+  // ── Match Score Badge (S6) ───────────────────────────────────
+  function loadMatchScore(url) {
+    chrome.runtime.sendMessage({
+      type: 'bj:toolbar:matchScore',
+      payload: { source_url: url }
+    }, (response) => {
+      if (chrome.runtime.lastError) return;
+      const badge = document.getElementById('bj-tb-score-badge');
+      if (!badge) return;
+
+      const score = response?.score;
+      const label = response?.label;
+
+      if (score === null || score === undefined || !label) {
+        // No resume on file or no JD found — hide badge silently
+        badge.style.display = 'none';
+        return;
+      }
+
+      badge.textContent = score + ' match';
+      badge.className = 'bj-tb-score bj-score-' + label + ' loaded';
+    });
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   function init() {
     if (!isJobPage()) return;
@@ -347,6 +393,8 @@
     // Check pipeline state, then render toolbar
     checkPipelineState(meta.url, (entry) => {
       buildToolbar(meta, entry);
+      // S6: Async match score — non-blocking, updates badge when ready
+      loadMatchScore(meta.url);
     });
 
     // Log toolbar view to overlay_analytics
