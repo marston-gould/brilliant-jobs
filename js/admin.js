@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.86 — S3 action bars + paginated tables + shared blocks
+   v6.87 — S3 action bars + paginated tables + shared blocks
    4 sections: Operations, Growth, Audience, Business
    17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */

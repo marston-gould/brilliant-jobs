@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-03-04
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.85
+**Current version:** v6.87
 
 ---
 
@@ -2661,3 +2661,24 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - Job feed: Source breakdown chips in hero stats bar
 - Compact formatting, tooltips with salary coverage
 
+
+### 74.18 Admin IA v2 S1–S2: Sidebar Nav + Block Pages — v6.83–v6.86
+- Admin console restructured to sidebar navigation (4 sections: Operations, Growth, Audience, Business, 17 sub-pages)
+- 3 new sub-pages with full stat cards + platform breakdowns: Companies, Jobs, Email
+- 3 new SECURITY DEFINER RPCs: get_admin_companies, get_admin_jobs, get_admin_email
+- Shared CSS: .admin-stat-row, .admin-stat-card, .admin-block, .admin-age-bucket
+- build-admin.js: 9 files now (added admin-blocks.js, admin-companies.js, admin-jobs.js, admin-email.js, admin-shell.js)
+
+### 74.19 Admin IA v2 S3: Shared Utilities + Action Bars + Paginated Tables — v6.86
+- admin-blocks.js (new shared utility file): _adminStatCard, _escHtml, _timeAgo, _adminActionBar, _adminPagedTable, _fmtSalary, _fmtLocation
+- Companies: search/filter action bar + paginated table (50/page) via get_admin_companies_list RPC
+- Jobs: search/filter/status action bar + paginated table (50/page) via get_admin_jobs_list RPC
+- New RPCs: get_admin_companies_list, get_admin_jobs_list (both SECURITY DEFINER, paginated jsonb)
+
+### 74.20 Admin IA v2 S4: Detail Panels + ECharts Charts — v6.87
+- Companies + Jobs tables: click-to-expand rows with lazy detail loading
+- Company detail: board URL, PDL data, enrichment stats, HTTP status, discovered via
+- Job detail: JD preview, enrichment fields, salary breakdown, skills pills, AI scores
+- ECharts line chart: Jobs daily volume (last 7d, smooth area, green fill)
+- ECharts funnel chart: Email delivery funnel (sent → delivered → failed → blocked)
+- New RPCs: get_admin_company_detail, get_admin_job_detail
