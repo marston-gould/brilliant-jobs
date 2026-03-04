@@ -1,3 +1,11 @@
+## v6.99 — 2026-03-04
+
+### Overlay Pipeline S5: pipeline-write Edge Function
+
+- **NEW** `supabase/functions/pipeline-write/index.ts` — Canonical server-side write path for all toolbar and autoTracker pipeline events. Validates auth via `sb.auth.getUser()`, handles upsert on `(user_id, source_url)`, stage advancement (only advances if incoming rank > current rank), and activity_log append.
+- **extension/background.js v2.19.0** — `bj:toolbar:save` handler now calls `pipeline-write` Edge Function instead of direct PostgREST upsert. `bj:toolbar:getEntry` unchanged (read-only path).
+- **extension/utils/autoTracker.js v3.11.0** — `_writeToNewPipeline()` now calls `pipeline-write` Edge Function. Removes dual direct-REST calls (select + insert/update pattern replaced by single Edge Function call).
+
 ## v6.98 — 2026-03-04
 
 ### Overlay Pipeline Session 4: Toolbar Shell
