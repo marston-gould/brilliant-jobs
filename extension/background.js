@@ -7,6 +7,7 @@
 // v2.18.0: Overlay Pipeline S4 — toolbar message handlers (v6.98)
 // v2.19.0: Overlay Pipeline S5 — pipeline-write Edge Function integration (v6.99)
 // v2.20.0: Overlay Pipeline S6 — match-score-overlay EF integration (v7.00)
+// v2.21.0: Overlay Pipeline S7 — fraud + AI content score columns in getEntry (v7.01)
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
@@ -1257,7 +1258,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
         const url = encodeURIComponent(msg.payload?.source_url || '');
         const resp = await fetch(
-          `${SB_URL}/rest/v1/pipeline?user_id=eq.${session.user_id}&source_url=eq.${url}&select=id,stage,entry_source,job_title,company_name&limit=1`,
+          `${SB_URL}/rest/v1/pipeline?user_id=eq.${session.user_id}&source_url=eq.${url}&select=id,stage,entry_source,job_title,company_name,fraud_score,fraud_label,ai_content_score,ai_content_label&limit=1`,
           { headers: { 'apikey': session.access_token, 'Authorization': 'Bearer ' + session.access_token } }
         );
         if (resp.ok) {
@@ -1812,4 +1813,5 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.tabs.query({ active: true, currentWindow: true }).then(tabs => {
   if (tabs[0]) updateIcon(tabs[0].url);
 });
+
 
