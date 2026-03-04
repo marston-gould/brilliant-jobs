@@ -1,3 +1,13 @@
+## v6.78 Phase 16 Session 1 — Passive Mode Toggle + Threshold Config (2026-03-03)
+- Feat: profiles.passive_mode (boolean, default false) + profiles.passive_config (jsonb) columns added
+- Feat: passive_config schema: match_score_floor, min_salary, required_remote, required_level, target_companies, active_filters, frequency_preset, score_floor
+- Feat: Settings tab — Job Search Mode card with Active/Passive toggle switch + mode badge
+- Feat: Passive threshold panel (expandable): match score slider (70-95%, default 85%), min salary input, remote-only checkbox, seniority level dropdown
+- Feat: 500ms debounce auto-save to profiles via Supabase upsert on any threshold change
+- Feat: Passive ON suppresses new_jobs_daily notifications (sets frequency = 'none' in notification_channels)
+- Feat: Passive OFF restores new_jobs_daily to 'daily'
+- Feat: PostHog events: passive_mode_toggled (with on/off + config snapshot), passive_threshold_changed (per-field)
+
 ## v6.78 Roadmap Cleanup — ATS Discovery (2026-03-03)
 - Chore: [GH] Board discovery from LinkedIn outbound links → wontdo (Common Crawl supersedes, 14.6K GH boards already discovered)
 - Chore: [GJ] DataForSEO Google Jobs API → wontdo (Common Crawl career page URL queries replace at zero cost)
