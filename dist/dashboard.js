@@ -1,25 +1,19 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.61';
+var BJ_VERSION = 'v6.85';
 (function() {
   function populateVersion() {
     // Populate all .bj-version elements
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
       el.textContent = BJ_VERSION;
     });
-    // Populate all .bj-year elements
-    var year = new Date().getFullYear();
-    document.querySelectorAll(".bj-year").forEach(function(el) {
-      el.textContent = year;
-    });
-    // Console log
-    console.log("[BJ] " + BJ_VERSION);
   }
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", populateVersion);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', populateVersion);
   } else {
     populateVersion();
   }
 })();
+
 
 
 // === js/globals.js ===
@@ -2070,15 +2064,102 @@ function getCheckedSavedFilters() {
   }).filter(Boolean);
 }
 
+
+// --- Session 5: Convert saved prompt derived_filters to a saved-filter-compatible object ---
+function promptDerivedToFilterObj(derived, promptName, promptColor) {
+  // derived_filters shape: { keywords:[], locations:[], salary_min:N, salary_max:N, level:'', remote:bool, companies:[], excludeCompanies:[] }
+  if (!derived || typeof derived !== 'object') return null;
+
+  var whatPills = [];
+  if (derived.keywords && derived.keywords.length > 0) {
+    derived.keywords.forEach(function(kw) {
+      whatPills.push({ values: [kw] });
+    });
+  }
+
+  var wherePills = [];
+  if (derived.locations && derived.locations.length > 0) {
+    derived.locations.forEach(function(loc) {
+      wherePills.push({ values: [loc] });
+    });
+  }
+
+  var whoPills = [];
+  if (derived.companies && derived.companies.length > 0) {
+    derived.companies.forEach(function(co) {
+      whoPills.push({ values: [co] });
+    });
+  }
+
+  var whoNotPills = [];
+  if (derived.excludeCompanies && derived.excludeCompanies.length > 0) {
+    derived.excludeCompanies.forEach(function(co) {
+      whoNotPills.push({ values: [co] });
+    });
+  }
+
+  var payPills = [];
+  if (derived.salary_min || derived.salary_max) {
+    var payVal = '';
+    if (derived.salary_min && derived.salary_max) {
+      payVal = '$' + (derived.salary_min / 1000) + 'K - $' + (derived.salary_max / 1000) + 'K';
+    } else if (derived.salary_min) {
+      payVal = '>$' + (derived.salary_min / 1000) + 'K';
+    } else {
+      payVal = '<$' + (derived.salary_max / 1000) + 'K';
+    }
+    payPills.push({ values: [payVal], min: derived.salary_min || 0, max: derived.salary_max || 999999 });
+  }
+
+  return {
+    name: promptName || 'Chat Prompt',
+    whatPills: whatPills,
+    wherePills: wherePills,
+    whenPills: [],
+    whoPills: whoPills,
+    whatNotPills: [],
+    whereNotPills: [],
+    whoNotPills: whoNotPills,
+    payPills: payPills,
+    includeNoSalary: !derived.salary_min && !derived.salary_max,
+    includeRemote: !!derived.remote,
+    _isPromptDerived: true,
+    _promptName: promptName || 'Chat Prompt',
+    _filterNum: promptColor || '',
+    _filterColor: promptColor || '',
+  };
+}
+
+// Get checked saved prompts from filter selector (Session 5)
+function getCheckedSavedPromptFilters() {
+  var checks = document.querySelectorAll('.sf-prompt-check:checked');
+  var results = [];
+  if (!checks || checks.length === 0) return results;
+  if (typeof _savedPrompts === 'undefined' || !_savedPrompts) return results;
+
+  checks.forEach(function(cb) {
+    var promptId = cb.dataset.promptId;
+    var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+    if (prompt && prompt.derived_filters && Object.keys(prompt.derived_filters).length > 0) {
+      var PROMPT_COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#06b6d4','#84cc16'];
+      var color = PROMPT_COLORS[prompt.color_index || 0] || '#3b82f6';
+      var filterObj = promptDerivedToFilterObj(prompt.derived_filters, prompt.name, color);
+      if (filterObj) results.push(filterObj);
+    }
+  });
+  return results;
+}
+
 // Main search: OR across all checked saved filters
 async function searchJobs(page = 0) {
   currentJobPage = page;
   const tbody = $('#job-table-body');
   const checked = getCheckedSavedFilters();
+  const checkedPrompts = getCheckedSavedPromptFilters(); // Session 5: prompt-derived filters
   const hasBuilderPills = allPills() > 0;
 
   // If nothing is driving the search, show prompt but with global stats
-  if (checked.length === 0 && !hasBuilderPills) {
+  if (checked.length === 0 && checkedPrompts.length === 0 && !hasBuilderPills) {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-faint);padding:48px 12px;">
       <div style="margin-bottom:12px;color:var(--text-faint);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.25;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
       <div style="font-size:14px;font-weight:600;color:var(--text-dim);margin-bottom:6px;">Select saved searches or add filters to search jobs</div>
@@ -2105,8 +2186,8 @@ async function searchJobs(page = 0) {
   try {
     // Build list of filters to run
     let filtersToRun = [];
-    if (checked.length > 0) {
-      filtersToRun = checked;
+    if (checked.length > 0 || checkedPrompts.length > 0) {
+      filtersToRun = [...checked, ...checkedPrompts]; // Session 5: merge saved filters + prompt-derived
     } else if (hasBuilderPills) {
       filtersToRun = [{
         whatPills: JSON.parse(JSON.stringify(whatPills)),
@@ -2132,6 +2213,15 @@ async function searchJobs(page = 0) {
         'who=', (sf.whoPills || []).flatMap(p => p.values),
       );
     });
+    // Session 5: _chatFilterOverride from live chat conversation -> inject as filter
+    if (filtersToRun.length === 0 && window._chatFilterOverride) {
+      var overrideFilter = promptDerivedToFilterObj(window._chatFilterOverride, 'Live Chat', '#3b82f6');
+      if (overrideFilter) {
+        filtersToRun = [overrideFilter];
+        window._chatFilterOverride = null; // consume once
+      }
+    }
+
     const hasRealCriteria = filtersToRun.some(sf => {
       const w = sf.whatPills || sf.pills || [];
       const wh = sf.wherePills || [];
@@ -2540,6 +2630,55 @@ function updateJobStats(total, companies, newSinceLogin, newToday) {
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
   // Update intel insight card with contextual data
   updateIntelInsight(total, companies, newToday);
+  // A15 S6 v6.62: Populate source chips from MV
+  renderFeedSourceChips();
+}
+
+// ─── A15 S6 v6.62: Per-source count chips in feed hero bar ───
+var _feedSourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
+var _feedSourceLabels = { 'greenhouse':'GH', 'lever':'LV', 'ashby':'AB', 'workable':'WK', 'recruitee':'RC', 'usajobs':'USJ' };
+
+async function renderFeedSourceChips() {
+  var container = document.getElementById('feed-source-chips');
+  if (!container) return;
+  try {
+    var result = await cachedQuery('mv:feed-source-chips', function() {
+      return sb.from('mv_job_feed_counts').select('ats_source,job_count');
+    }, { ttl: 600000 }); // 10 min — matches MV refresh
+    if (!result || !result.data || result.data.length === 0) { container.style.display = 'none'; return; }
+    // Aggregate by source
+    var totals = {};
+    for (var i = 0; i < result.data.length; i++) {
+      var row = result.data[i];
+      var src = row.ats_source || 'unknown';
+      totals[src] = (totals[src] || 0) + row.job_count;
+    }
+    var sources = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; });
+    container.innerHTML = '';
+    for (var s = 0; s < sources.length; s++) {
+      var srcKey = sources[s];
+      var cnt = totals[srcKey];
+      if (cnt === 0) continue;
+      var chip = document.createElement('span');
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:8px;font-size:10px;font-family:var(--mono,monospace);color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);white-space:nowrap;';
+      var dot = document.createElement('span');
+      dot.style.cssText = 'width:5px;height:5px;border-radius:50%;background:' + (_feedSourceColors[srcKey] || '#94a3b8') + ';';
+      chip.appendChild(dot);
+      var label = _feedSourceLabels[srcKey] || srcKey.charAt(0).toUpperCase() + srcKey.slice(1);
+      chip.appendChild(document.createTextNode(label + ' ' + _fmtCompactFeed(cnt)));
+      chip.title = (srcKey.charAt(0).toUpperCase() + srcKey.slice(1)) + ': ' + cnt.toLocaleString() + ' jobs';
+      container.appendChild(chip);
+    }
+    container.style.display = '';
+  } catch (e) {
+    console.warn('[BJ] Feed source chips failed:', e.message);
+    container.style.display = 'none';
+  }
+}
+function _fmtCompactFeed(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
 }
 
 function updateIntelInsight(total, companies, newToday) {
@@ -4457,6 +4596,33 @@ function computeJobMatchScore(job) {
       if (resume) break;
     }
   }
+  // Session 5: If no resume found via saved filter, check prompt-derived filter assignments
+  if (!resume && typeof _savedPrompts !== 'undefined' && _savedPrompts) {
+    for (var pi = 0; pi < _savedPrompts.length; pi++) {
+      var prompt = _savedPrompts[pi];
+      if (!prompt.derived_filters || !prompt.resume_id) continue;
+      // Check if prompt's derived_filters match this job's filter context
+      var promptFilterName = prompt.name;
+      for (var pri = 0; pri < resumes.length; pri++) {
+        if (!resumes[pri].archived && resumes[pri].id === prompt.resume_id && resumes[pri].keywords && resumes[pri].keywords.length > 0) {
+          resume = resumes[pri];
+          matchedFilterName = promptFilterName;
+          break;
+        }
+      }
+      if (resume) break;
+      // Also check by filter name in resume's filterIds
+      for (var pri2 = 0; pri2 < resumes.length; pri2++) {
+        if (!resumes[pri2].archived && (resumes[pri2].filterIds || []).includes(promptFilterName) && resumes[pri2].keywords && resumes[pri2].keywords.length > 0) {
+          resume = resumes[pri2];
+          matchedFilterName = promptFilterName;
+          break;
+        }
+      }
+      if (resume) break;
+    }
+  }
+
   if (!resume || !resume.keywords || !resume.keywords.length) return null;
 
   var text = stripHtmlToText(job.content);
@@ -11335,6 +11501,10 @@ function movePipelineStage(jobId, newStage) {
       var salary = m.salaryEstimate || 80000;
       confirmHireFee(jobId, jobTitle, salary);
     }
+    // Phase 16 S6: auto-pause passive mode on hired
+    if (typeof autoHirePause === 'function') {
+      autoHirePause(m.title || jobId);
+    }
   }
   if (newStage === 'rejected' && !m.rejectedAt) m.rejectedAt = now;
   if (newStage === 'archived' && !m.archivedAt) m.archivedAt = now;
@@ -15869,13 +16039,31 @@ $('#notif-save-escalation')?.addEventListener('click', async () => {
 function populateOverrideFilterSelect() {
   const sel = $('#override-filter-select');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Select a saved filter...</option>';
+  sel.innerHTML = '<option value="">Select a saved filter or prompt...</option>';
+  // Saved filters
   savedFilters.forEach(f => {
     sel.innerHTML += `<option value="${escapeHtml(f.name)}">${escapeHtml(f.name)}</option>`;
   });
+  // Session 5: Saved prompts with derived_filters
+  if (typeof _savedPrompts !== 'undefined' && _savedPrompts && _savedPrompts.length > 0) {
+    var hasPrompts = _savedPrompts.some(p => p.derived_filters && Object.keys(p.derived_filters).length > 0);
+    if (hasPrompts) {
+      sel.innerHTML += '<option disabled>── Chat Prompts ──</option>';
+      _savedPrompts.forEach(p => {
+        if (p.derived_filters && Object.keys(p.derived_filters).length > 0) {
+          sel.innerHTML += `<option value="prompt:${escapeHtml(p.id)}" data-prompt-id="${escapeHtml(p.id)}">💬 ${escapeHtml(p.name)}</option>`;
+        }
+      });
+    }
+  }
 }
 populateOverrideFilterSelect();
 
+
+// Session 5: Refresh override dropdown when saved prompts update
+function refreshOverrideFilterSelectWithPrompts() {
+  populateOverrideFilterSelect();
+}
 $('#override-filter-select')?.addEventListener('change', async (e) => {
   const filterName = e.target.value;
   if (!filterName) {
@@ -16504,6 +16692,596 @@ document.addEventListener('keydown', e => {
 });
 
 
+// ---- Passive Mode (v6.78 Phase 16 Session 1) ----
+var _passiveMode = false;
+var _passiveConfig = {
+  match_score_floor: 85,
+  min_salary: null,
+  required_remote: false,
+  required_level: null,
+  target_companies: [],
+  active_filters: [],
+  frequency_preset: 'high_bar',
+  score_floor: 85
+};
+var _passiveDebounceTimer = null;
+
+async function loadPassiveMode() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { data, error } = await sb
+      .from('profiles')
+      .select('passive_mode, passive_config')
+      .eq('id', currentUser.id)
+      .single();
+    if (error) { console.warn('[BJ] Passive mode load error:', error.message); return; }
+    if (data) {
+      _passiveMode = !!data.passive_mode;
+      if (data.passive_config) _passiveConfig = Object.assign(_passiveConfig, data.passive_config);
+    }
+    syncPassiveUI();
+  } catch (e) { console.warn('[BJ] Passive mode load exception:', e); }
+}
+
+function syncPassiveUI() {
+  var toggle = document.getElementById('passive-mode-toggle');
+  var panel = document.getElementById('passive-threshold-panel');
+  var badge = document.getElementById('passive-mode-badge');
+  if (toggle) toggle.checked = _passiveMode;
+  if (panel) panel.style.display = _passiveMode ? 'block' : 'none';
+  if (badge) { badge.textContent = _passiveMode ? 'Passive' : 'Active'; badge.className = 'passive-mode-badge ' + (_passiveMode ? 'passive' : 'active'); }
+  // Sync threshold inputs
+  var scoreSlider = document.getElementById('passive-score-floor');
+  var scoreDisplay = document.getElementById('passive-score-display');
+  var salaryInput = document.getElementById('passive-min-salary');
+  var remoteToggle = document.getElementById('passive-required-remote');
+  var levelSelect = document.getElementById('passive-required-level');
+  if (scoreSlider) { scoreSlider.value = _passiveConfig.match_score_floor || 85; }
+  if (scoreDisplay) { scoreDisplay.textContent = (_passiveConfig.match_score_floor || 85) + '%'; }
+  if (salaryInput) { salaryInput.value = _passiveConfig.min_salary || ''; }
+  if (remoteToggle) { remoteToggle.checked = !!_passiveConfig.required_remote; }
+  if (levelSelect) { levelSelect.value = _passiveConfig.required_level || ''; }
+}
+
+async function savePassiveMode() {
+  try {
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { error } = await sb
+      .from('profiles')
+      .update({ passive_mode: _passiveMode, passive_config: _passiveConfig })
+      .eq('id', currentUser.id);
+    if (error) throw error;
+    // Suppress daily digest when passive ON
+    await syncPassiveNotificationChannels();
+    if (typeof showToast === 'function') showToast('Mode saved', { type: 'success' });
+  } catch (e) {
+    console.error('[BJ] Passive mode save error:', e);
+    if (typeof showToast === 'function') showToast('Failed to save passive mode', { type: 'error' });
+  }
+}
+
+async function syncPassiveNotificationChannels() {
+  try {
+    if (!currentUser) return;
+    // When passive ON: suppress new_jobs_daily by setting frequency = 'none'
+    // When passive OFF: restore to 'daily'
+    var freq = _passiveMode ? 'none' : 'daily';
+    await sb.from('notification_channels')
+      .upsert({ user_id: currentUser.id, notification_type: 'new_jobs_daily', frequency: freq }, { onConflict: 'user_id,notification_type' });
+  } catch (e) { console.warn('[BJ] Passive notification channel sync error:', e); }
+}
+
+function debounceSavePassiveConfig() {
+  if (_passiveDebounceTimer) clearTimeout(_passiveDebounceTimer);
+  _passiveDebounceTimer = setTimeout(function() { savePassiveMode(); }, 500);
+}
+
+function initPassiveMode() {
+  loadPassiveMode();
+
+  // Main toggle
+  var toggle = document.getElementById('passive-mode-toggle');
+  if (toggle) {
+    toggle.addEventListener('change', function() {
+      _passiveMode = this.checked;
+      syncPassiveUI();
+      savePassiveMode();
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('passive_mode_toggled', { enabled: _passiveMode, config: _passiveConfig, source: 'settings' });
+      }
+    });
+  }
+
+  // Score floor slider
+  var scoreSlider = document.getElementById('passive-score-floor');
+  var scoreDisplay = document.getElementById('passive-score-display');
+  if (scoreSlider) {
+    scoreSlider.addEventListener('input', function() {
+      var val = parseInt(this.value, 10);
+      _passiveConfig.match_score_floor = val;
+      _passiveConfig.score_floor = val;
+      if (scoreDisplay) scoreDisplay.textContent = val + '%';
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'score_floor', value: val });
+      debounceSavePassiveConfig();
+    });
+  }
+
+  // Min salary
+  var salaryInput = document.getElementById('passive-min-salary');
+  if (salaryInput) {
+    salaryInput.addEventListener('input', function() {
+      _passiveConfig.min_salary = this.value ? parseInt(this.value, 10) : null;
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'min_salary', value: _passiveConfig.min_salary });
+      debounceSavePassiveConfig();
+    });
+  }
+
+  // Remote toggle
+  var remoteToggle = document.getElementById('passive-required-remote');
+  if (remoteToggle) {
+    remoteToggle.addEventListener('change', function() {
+      _passiveConfig.required_remote = this.checked;
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'required_remote', value: this.checked });
+      debounceSavePassiveConfig();
+    });
+  }
+
+  // Level select
+  var levelSelect = document.getElementById('passive-required-level');
+  if (levelSelect) {
+    levelSelect.addEventListener('change', function() {
+      _passiveConfig.required_level = this.value || null;
+      if (typeof posthog !== 'undefined') posthog.capture('passive_threshold_changed', { field: 'required_level', value: this.value });
+      debounceSavePassiveConfig();
+    });
+  }
+}
+
+// Auto-init
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() { setTimeout(initPassiveMode, 600); });
+} else {
+  setTimeout(initPassiveMode, 600);
+}
+
+// ---- Passive Frequency Presets (v6.79 Phase 16 Session 2) ----
+var PASSIVE_PRESETS = {
+  slam_dunk: {
+    label: 'Slam-dunk only',
+    description: '1–2 alerts/month · 90%+ match required',
+    score_floor: 90,
+    frequency_preset: 'slam_dunk'
+  },
+  high_bar: {
+    label: 'High bar',
+    description: '1–2 alerts/week · 85%+ match required',
+    score_floor: 85,
+    frequency_preset: 'high_bar'
+  },
+  curated_daily: {
+    label: 'Curated daily',
+    description: 'Daily digest · 80%+ match required',
+    score_floor: 80,
+    frequency_preset: 'curated_daily'
+  }
+};
+
+function syncPassivePresetUI() {
+  var preset = (_passiveConfig.frequency_preset) || 'high_bar';
+  var cards = document.querySelectorAll('.passive-preset-card');
+  cards.forEach(function(card) {
+    var p = card.getAttribute('data-preset');
+    if (p === preset) {
+      card.classList.add('selected');
+      card.style.borderColor = 'var(--accent)';
+      card.style.background = 'var(--bg-hover)';
+    } else {
+      card.classList.remove('selected');
+      card.style.borderColor = 'var(--border)';
+      card.style.background = 'var(--bg-card)';
+    }
+  });
+  // Update score floor to match preset when passive UI loads
+  var presetDef = PASSIVE_PRESETS[preset];
+  if (presetDef) {
+    _passiveConfig.match_score_floor = presetDef.score_floor;
+    _passiveConfig.score_floor = presetDef.score_floor;
+    var scoreSlider = document.getElementById('passive-score-floor');
+    var scoreDisplay = document.getElementById('passive-score-display');
+    if (scoreSlider) scoreSlider.value = presetDef.score_floor;
+    if (scoreDisplay) scoreDisplay.textContent = presetDef.score_floor + '%';
+  }
+}
+
+function selectPassivePreset(presetKey) {
+  var presetDef = PASSIVE_PRESETS[presetKey];
+  if (!presetDef) return;
+  _passiveConfig.frequency_preset = presetDef.frequency_preset;
+  _passiveConfig.match_score_floor = presetDef.score_floor;
+  _passiveConfig.score_floor = presetDef.score_floor;
+  syncPassivePresetUI();
+  debounceSavePassiveConfig();
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('passive_frequency_changed', { preset: presetKey, score_floor: presetDef.score_floor });
+  }
+}
+
+function initPassivePresets() {
+  var cards = document.querySelectorAll('.passive-preset-card');
+  cards.forEach(function(card) {
+    card.addEventListener('click', function() {
+      var preset = this.getAttribute('data-preset');
+      if (preset) selectPassivePreset(preset);
+    });
+  });
+  // Extend syncPassiveUI to also sync presets
+  var origSyncPassiveUI = syncPassiveUI;
+  syncPassiveUI = function() {
+    origSyncPassiveUI();
+    syncPassivePresetUI();
+  };
+  // Sync on init if passive already loaded
+  syncPassivePresetUI();
+}
+
+// Wire initPassivePresets after passive mode init
+(function() {
+  var origInitPassiveMode = initPassiveMode;
+  initPassiveMode = function() {
+    origInitPassiveMode();
+    setTimeout(initPassivePresets, 100);
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════
+// PASSIVE SNOOZE CONTROLS (Phase 16 Session 3 — v6.80)
+// Snooze & Conditional Wake for passive mode
+// ═══════════════════════════════════════════════════════════
+
+var SNOOZE_OPTIONS = [
+  { value: '1w',  label: '1 week',      days: 7   },
+  { value: '2w',  label: '2 weeks',     days: 14  },
+  { value: '1m',  label: '1 month',     days: 30  },
+  { value: 'indef', label: 'Indefinitely', days: 36500 }
+];
+
+function getSnoozeUntilDate(optionValue) {
+  var opt = SNOOZE_OPTIONS.find(function(o) { return o.value === optionValue; });
+  if (!opt) return null;
+  var d = new Date();
+  d.setDate(d.getDate() + opt.days);
+  return d.toISOString();
+}
+
+function formatSnoozeDate(isoString) {
+  if (!isoString) return '';
+  var d = new Date(isoString);
+  // Check for indefinite (far future)
+  if (d.getFullYear() > new Date().getFullYear() + 50) return 'indefinitely';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function isCurrentlySnoozed() {
+  if (!_passiveConfig) return false;
+  var snoozeUntil = _passiveConfig.snoozed_until;
+  if (!snoozeUntil) return false;
+  return new Date(snoozeUntil) > new Date();
+}
+
+function getSnoozedUntilValue() {
+  if (!_passiveConfig) return null;
+  return _passiveConfig.snoozed_until || null;
+}
+
+function syncSnoozeUI() {
+  var badge = document.getElementById('passive-snooze-badge');
+  var resumeBtn = document.getElementById('passive-snooze-resume-btn');
+  var snoozePanel = document.getElementById('passive-snooze-panel');
+
+  if (!badge) return;
+
+  var snoozed = isCurrentlySnoozed();
+  var snoozeUntil = getSnoozedUntilValue();
+
+  if (snoozed && snoozeUntil) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = 'Paused until ' + formatSnoozeDate(snoozeUntil);
+    if (resumeBtn) resumeBtn.style.display = 'inline-block';
+    if (snoozePanel) snoozePanel.style.display = 'none';
+  } else {
+    badge.style.display = 'none';
+    if (resumeBtn) resumeBtn.style.display = 'none';
+    // Don't show snooze panel — only shown when user clicks snooze button
+  }
+}
+
+function activateSnooze(durationValue) {
+  if (!_passiveConfig) return;
+  var until = getSnoozeUntilDate(durationValue);
+  if (!until) return;
+
+  _passiveConfig.snoozed_until = until;
+  syncSnoozeUI();
+  debounceSavePassiveConfig();
+
+  var opt = SNOOZE_OPTIONS.find(function(o) { return o.value === durationValue; });
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('passive_snoozed', {
+      duration: durationValue,
+      expires_at: until
+    });
+  }
+  // Hide snooze panel after activating
+  var snoozePanel = document.getElementById('passive-snooze-panel');
+  if (snoozePanel) snoozePanel.style.display = 'none';
+}
+
+function clearSnooze() {
+  if (!_passiveConfig) return;
+  delete _passiveConfig.snoozed_until;
+  syncSnoozeUI();
+  debounceSavePassiveConfig();
+
+  if (typeof posthog !== 'undefined') {
+    posthog.capture('passive_woken_manually');
+  }
+}
+
+function conditionalWakeCheck() {
+  // If passive mode is on AND snoozed AND user activates a filter → auto-wake
+  if (!_passiveConfig || !isCurrentlySnoozed()) return;
+  clearSnooze();
+  // Show a brief toast if possible
+  if (typeof showToast === 'function') {
+    showToast('Passive mode resumed — you activated a filter.', 'info');
+  }
+}
+
+function initPassiveSnooze() {
+  var snoozeToggleBtn = document.getElementById('passive-snooze-btn');
+  var snoozePanel = document.getElementById('passive-snooze-panel');
+  var resumeBtn = document.getElementById('passive-snooze-resume-btn');
+
+  if (snoozeToggleBtn && snoozePanel) {
+    snoozeToggleBtn.addEventListener('click', function() {
+      var isVisible = snoozePanel.style.display !== 'none';
+      snoozePanel.style.display = isVisible ? 'none' : 'block';
+    });
+  }
+
+  // Wire duration selector buttons
+  var durationBtns = document.querySelectorAll('.passive-snooze-duration-btn');
+  durationBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var dur = this.getAttribute('data-duration');
+      if (dur) activateSnooze(dur);
+    });
+  });
+
+  // Resume/clear snooze button
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', function() {
+      clearSnooze();
+    });
+  }
+
+  syncSnoozeUI();
+}
+
+// Extend initPassiveMode to also init snooze
+(function() {
+  var origInitPassiveMode2 = initPassiveMode;
+  initPassiveMode = function() {
+    origInitPassiveMode2();
+    setTimeout(initPassiveSnooze, 150);
+  };
+})();
+
+// Conditional wake: hook into filter activation
+(function() {
+  if (typeof window._conditionalWakeHooked === 'undefined') {
+    window._conditionalWakeHooked = true;
+    // Watch for filter activation events dispatched from filters.js
+    document.addEventListener('bj:filter-activated', function() {
+      if (_passiveConfig && _passiveConfig.passive_mode) {
+        conditionalWakeCheck();
+      }
+    });
+  }
+})();
+
+
+// ═══════════════════════════════════════════════════════════
+// RESUME-FIRST FILTER BOOTSTRAP (Phase 16 Session 5 — v6.82)
+// On passive mode ON with no active filters, auto-bootstrap
+// 1-3 job filters from resume profile via extract-resume-profile EF.
+// ═══════════════════════════════════════════════════════════
+
+async function bootstrapFiltersFromResume() {
+  try {
+    // Guard: only run when passive mode is being turned ON
+    if (!_passiveMode) return;
+
+    // Guard: skip if user already has 1+ saved filters
+    var existingFilters = safeReadLS('bj_saved_filters', []);
+    if (existingFilters.length > 0) return;
+
+    // Guard: need a resume text to work from
+    if (typeof sb === 'undefined' || !currentUser) return;
+    var { data: resumeRows, error: rtErr } = await sb
+      .from('resume_texts')
+      .select('extracted_text, source_filename')
+      .eq('user_id', currentUser.id)
+      .order('extracted_at', { ascending: false })
+      .limit(1);
+    if (rtErr || !resumeRows || resumeRows.length === 0) return;
+
+    var resumeText = resumeRows[0].extracted_text;
+    if (!resumeText || resumeText.length < 50) return;
+
+    // Call extract-resume-profile EF
+    var session = await sb.auth.getSession();
+    var token = session?.data?.session?.access_token;
+    if (!token) return;
+
+    var resp = await fetch(
+      'https://qojhagupdnbtomfoxnsf.supabase.co/functions/v1/extract-resume-profile',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json',
+          'apikey': typeof SUPABASE_KEY !== 'undefined' ? SUPABASE_KEY : ''
+        },
+        body: JSON.stringify({ resume_text: resumeText })
+      }
+    );
+    if (!resp.ok) { console.warn('[BJ] extract-resume-profile failed:', resp.status); return; }
+    var result = await resp.json();
+    var profile = result.profile;
+    if (!profile || !profile.titles || profile.titles.length === 0) return;
+
+    // Build up to 3 filters from top titles
+    var newFilters = [];
+    var titles = profile.titles.slice(0, 3);
+    titles.forEach(function(title, idx) {
+      // Build whatPills from title keywords (split and deduplicate)
+      var titleWords = title.split(/\s+/).filter(function(w) {
+        return w.length > 2 && !/^(and|the|of|in|at|for|to|a|an)$/i.test(w);
+      });
+      var filter = {
+        name: title,
+        whatPills: titleWords,
+        wherePills: [],
+        whenPills: [],
+        whoPills: [],
+        payPills: [],
+        whatNotPills: [],
+        whereNotPills: [],
+        whoNotPills: [],
+        includeRemote: !!profile.remote_preference && profile.remote_preference === 'remote',
+        includeNoSalary: true,
+        _bootstrapped: true,
+        _bootstrappedAt: new Date().toISOString()
+      };
+      newFilters.push(filter);
+    });
+
+    if (newFilters.length === 0) return;
+
+    // Persist to localStorage
+    saveUserData('bj_saved_filters', JSON.stringify(newFilters));
+    savedFilters = newFilters;
+
+    // Reflect in in-memory state if state.js setSavedFilters exists
+    if (typeof setSavedFilters === 'function') {
+      setSavedFilters(newFilters);
+    }
+
+    // Show toast
+    var filterNames = newFilters.map(function(f) { return f.name; }).join(', ');
+    if (typeof showToast === 'function') {
+      showToast(
+        'We created ' + newFilters.length + ' filter' + (newFilters.length > 1 ? 's' : '') +
+        ' based on your resume to get started.',
+        { type: 'info' }
+      );
+    }
+
+    // PostHog
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('passive_resume_bootstrap', {
+        filters_created: newFilters.length,
+        titles: titles,
+        seniority: profile.seniority || null,
+        remote_preference: profile.remote_preference || null
+      });
+    }
+
+    console.log('[BJ] Passive bootstrap: created ' + newFilters.length + ' filter(s) from resume —', titles.join(', '));
+  } catch (e) {
+    console.warn('[BJ] bootstrapFiltersFromResume exception:', e);
+  }
+}
+
+// Hook: call bootstrap whenever passive mode is toggled ON
+(function() {
+  var origInitPassiveMode3 = initPassiveMode;
+  initPassiveMode = function() {
+    origInitPassiveMode3();
+    // Extend the main toggle listener to trigger bootstrap on ON
+    var toggle = document.getElementById('passive-mode-toggle');
+    if (toggle) {
+      toggle.addEventListener('change', function() {
+        if (this.checked) {
+          // Small delay so savePassiveMode() completes first
+          setTimeout(bootstrapFiltersFromResume, 300);
+        }
+      });
+    }
+  };
+})();
+
+// ── Phase 16 Session 6: autoHirePause ──────────────────────────────────────
+// Called from pipeline.js when user moves a job to hired stage.
+// Auto-pauses passive mode, shows congrats toast, fires PostHog event.
+async function autoHirePause(jobTitle) {
+  if (!currentUser) return;
+  try {
+    // Check if passive mode is currently on
+    var passive = safeReadLS('bj_passive_mode');
+    var isPassive = passive === 'true' || passive === true;
+
+    // Update DB: set passive_mode = false
+    var { error } = await sb
+      .from('profiles')
+      .update({ passive_mode: false })
+      .eq('id', currentUser.id);
+    if (error) {
+      console.warn('[BJ] autoHirePause DB update error:', error.message);
+      return;
+    }
+
+    // Update in-memory flag if global exists
+    if (typeof _passiveMode !== 'undefined') {
+      _passiveMode = false;
+    }
+
+    // Update toggle UI if visible (settings panel open)
+    var toggle = document.getElementById('passive-mode-toggle');
+    if (toggle) toggle.checked = false;
+
+    // Hide passive settings panel if visible
+    var panel = document.getElementById('passive-settings-panel');
+    if (panel) panel.style.display = 'none';
+
+    // Update passive badge / mode card label if present
+    var modeLabel = document.getElementById('search-mode-label');
+    if (modeLabel) modeLabel.textContent = 'Active';
+
+    // Show congrats toast (only if passive was on, to avoid noise)
+    if (isPassive && typeof showToast === 'function') {
+      showToast(
+        'Congrats! Passive mode paused — you can re-activate anytime in Settings.',
+        { type: 'success', duration: 6000 }
+      );
+    }
+
+    // PostHog
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('passive_auto_paused_hired', {
+        job_title: jobTitle || null,
+        was_passive: isPassive
+      });
+    }
+
+    console.log('[BJ] autoHirePause: passive mode paused on hired status for', jobTitle || 'unknown job');
+  } catch (e) {
+    console.warn('[BJ] autoHirePause exception:', e);
+  }
+}
+
+
 // === js/stats.js ===
 // === js/stats.js ===
 // Stats page — filter-scoped analytics with ECharts
@@ -16618,6 +17396,60 @@ function renderFilterPills() {
 
 function persistFilterSelection() { localStorage.setItem('bj_stats_filters', JSON.stringify(statsSelectedFilters)); }
 
+// ─── A15 S6 v6.62: Source pill counts from mv_job_feed_counts ───
+// Shows per-ATS-source job counts as small chips in the stats filter bar (All mode only)
+var _sourceCountsRendered = false;
+var _sourcePillColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
+var _sourcePillLabels = { 'greenhouse':'Greenhouse', 'lever':'Lever', 'ashby':'Ashby', 'workable':'Workable', 'recruitee':'Recruitee', 'usajobs':'USAJobs' };
+
+async function renderSourceCountPills() {
+  var container = document.getElementById('stats-filter-pills');
+  if (!container) return;
+  // Remove old source pills
+  var oldPills = container.querySelectorAll('.stats-source-pill');
+  for (var i = 0; i < oldPills.length; i++) oldPills[i].remove();
+  // Only show in All mode
+  if (!statsSelectedFilters.includes('__all__')) { _sourceCountsRendered = false; return; }
+
+  var totals = await fetchSourceTotalsFromMV();
+  if (!totals) return;
+
+  // Sort sources by job count descending
+  var sources = Object.keys(totals).sort(function(a, b) { return totals[b].jobs - totals[a].jobs; });
+
+  // Insert a separator dot before source pills
+  var sep = document.createElement('span');
+  sep.className = 'stats-source-pill';
+  sep.style.cssText = 'width:3px;height:3px;border-radius:50%;background:var(--border);margin:0 2px;align-self:center;';
+  // Insert before MV freshness badge if it exists, else append
+  var freshBadge = document.getElementById('stats-mv-freshness');
+  if (freshBadge) container.insertBefore(sep, freshBadge);
+  else container.appendChild(sep);
+
+  for (var s = 0; s < sources.length; s++) {
+    var src = sources[s];
+    var count = totals[src].jobs;
+    if (count === 0) continue;
+    var chip = document.createElement('span');
+    chip.className = 'stats-source-pill';
+    chip.title = (_sourcePillLabels[src] || src) + ': ' + count.toLocaleString() + ' jobs (' + totals[src].withSalary.toLocaleString() + ' with salary)';
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:10px;font-family:var(--mono);color:var(--text-dim);border:1px solid var(--border);background:var(--bg-card);cursor:default;white-space:nowrap;';
+    var dot = document.createElement('span');
+    dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:' + (_sourcePillColors[src] || '#475569') + ';flex-shrink:0;';
+    chip.appendChild(dot);
+    chip.appendChild(document.createTextNode((_sourcePillLabels[src] || src) + ' ' + _formatCompact(count)));
+    if (freshBadge) container.insertBefore(chip, freshBadge);
+    else container.appendChild(chip);
+  }
+  _sourceCountsRendered = true;
+}
+
+function _formatCompact(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
 function initCompareToggle() {
   var sel = document.getElementById('stats-compare-toggle');
   if (!sel) return;
@@ -16730,6 +17562,9 @@ async function fetchAndRenderStats() {
       renderStatCards(stats);
       hideMVFreshnessNotice();
     }
+
+    // A15 S6 v6.62: Render source count pills from MV (All mode)
+    renderSourceCountPills();
 
     // Use MV-powered source timeline when available, otherwise standard
     if (mvSourceTimeline && mvSourceTimeline.length > 0) {
@@ -20376,6 +21211,1546 @@ if (_origLoadResumeMetrics) {
 window.canAccessFeature = canAccess;
 window.getUserTier = getUserTier;
 window.requiredTierFor = requiredTier;
+
+
+// === js/chat.js ===
+// ============================================================
+// CHAT MODE — Conversational Job Search (Session 5)
+// Toggle between Filters and Chat on Jobs Feed + Bidirectional Sync + Saved Prompts
+// Wires to chat-job-search, filter-to-prompt, prompt-to-filter Edge Functions
+// Saved prompts: Save/Load with Supabase persistence + derived_filters auto-update
+// Session 5: System Integration — prompts as first-class filters, notifications, auto-apply, match %
+// ============================================================
+
+// --- State ---
+var _chatMode = false;
+var _chatMessages = []; // { role: 'user'|'assistant', content: string, filters?: object }
+var _chatSending = false;
+var _chatRateLimit = { remaining: null, resetAt: null };
+var _chatMessageCap = 20;
+var _chatSyncInProgress = false;
+var _chatLastSyncedFilterHash = null;
+
+// Off-topic blocklist (Layer 1 client-side protection)
+var _chatBlockedPatterns = [
+  /write\s+(me\s+)?(a\s+)?(poem|story|essay|song|code|script)/i,
+  /ignore\s+(previous|all|above)\s+(instructions|prompts)/i,
+  /you\s+are\s+(now|a)\s/i,
+  /pretend\s+(to\s+be|you)/i,
+  /act\s+as\s+(a|an)\s/i,
+  /what\s+is\s+the\s+meaning\s+of\s+life/i,
+  /tell\s+me\s+(a\s+)?joke/i,
+  /translate\s+.+\s+to\s/i,
+  /system\s*prompt/i,
+  /<\/?[a-z]+>/i,  // HTML injection
+  // Session 6: Enhanced injection hardening (10 adversarial vectors)
+  /\bDAN\b.*\bmode\b/i,                    // DAN jailbreak
+  /do\s+anything\s+now/i,                   // DAN variant
+  /forget\s+(everything|your|all)/i,        // Memory wipe attacks
+  /new\s+instructions?\s*:/i,               // Instruction override
+  /\[system\]|\[INST\]|\<\|im_start\|/i,   // Token injection
+  /base64|atob|eval\s*\(/i,                 // Code injection
+  /\brepeat\s+(after|back|everything)/i,    // Prompt extraction
+  /what\s+(were|are)\s+your\s+(instructions|rules|prompt)/i, // Prompt leak
+  /\broleplay\b|\bcharacter\b.*\bplay\b/i,  // Roleplay jailbreak
+  /reveal\s+(your|the)\s+(system|initial|original)/i, // System prompt extraction
+];
+
+// --- Rate limit tiers ---
+var _chatLimits = {
+  free:    { perConvo: 10, perDay: 30 },
+  starter: { perConvo: 30, perDay: 100 },
+  pro:     { perConvo: 100, perDay: 500 }
+};
+
+// --- ChatSession class ---
+function ChatSession() {
+  this.messages = [];
+  this.messageCount = 0;
+}
+
+ChatSession.prototype.addMessage = function(role, content, filters) {
+  this.messages.push({ role: role, content: content, filters: filters || null, ts: Date.now() });
+  if (role === 'user') this.messageCount++;
+  // Cap at 20 messages (10 user + 10 assistant) for context window
+  if (this.messages.length > _chatMessageCap) {
+    this.messages = this.messages.slice(-_chatMessageCap);
+  }
+};
+
+ChatSession.prototype.getHistory = function() {
+  return this.messages.map(function(m) {
+    return { role: m.role, content: m.content };
+  });
+};
+
+ChatSession.prototype.clear = function() {
+  this.messages = [];
+  this.messageCount = 0;
+};
+
+var _chatSession = new ChatSession();
+
+// --- Mode Toggle ---
+function initChatMode() {
+  var toggle = document.getElementById('search-mode-toggle');
+  if (!toggle) return;
+
+  var filtersBtn = toggle.querySelector('[data-mode="filters"]');
+  var chatBtn = toggle.querySelector('[data-mode="chat"]');
+
+  if (filtersBtn) filtersBtn.addEventListener('click', function() { setSearchMode('filters'); });
+  if (chatBtn) chatBtn.addEventListener('click', function() { setSearchMode('chat'); });
+
+  // Init chat input handlers
+  var chatInput = document.getElementById('chat-input');
+  var chatSendBtn = document.getElementById('chat-send-btn');
+
+  if (chatInput) {
+    chatInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    });
+    // Auto-resize textarea + track user edits to auto-generated prompts
+    chatInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+      // Track if user modified an auto-generated prompt
+      if (this.getAttribute('data-auto-generated') === 'true') {
+        this.setAttribute('data-auto-generated', 'modified');
+        if (window.posthog) {
+          try { posthog.capture('chat_prompt_modified'); } catch(e) {}
+        }
+      }
+    });
+  }
+  if (chatSendBtn) {
+    chatSendBtn.addEventListener('click', sendChatMessage);
+  }
+
+  // Init saved prompts (Session 4)
+  initSavedPrompts();
+
+  // Session 11: Onboarding tooltip for chat mode toggle
+  // Shows once per user, dismissed on click or after first chat toggle
+  if (!localStorage.getItem('bj_chat_tooltip_dismissed')) {
+    var chatBtn = toggle.querySelector('[data-mode="chat"]');
+    if (chatBtn) {
+      var tooltip = document.createElement('div');
+      tooltip.id = 'chat-onboarding-tooltip';
+      tooltip.className = 'chat-onboarding-tooltip';
+      tooltip.innerHTML = '<span class="tooltip-arrow"></span>' +
+        '<strong>New: Chat Search</strong><br>' +
+        'Describe what you\'re looking for in plain English and we\'ll find matching jobs.' +
+        '<button class="tooltip-dismiss" aria-label="Dismiss">Got it</button>';
+      tooltip.style.cssText = 'position:absolute;top:calc(100% + 8px);right:0;z-index:1000;' +
+        'background:#1a1a2e;color:#fff;padding:12px 16px;border-radius:8px;font-size:13px;' +
+        'line-height:1.4;width:240px;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+      // Arrow style
+      var arrowStyle = document.createElement('style');
+      arrowStyle.textContent = '.chat-onboarding-tooltip .tooltip-arrow{position:absolute;top:-6px;right:24px;' +
+        'width:12px;height:12px;background:#1a1a2e;transform:rotate(45deg);}' +
+        '.chat-onboarding-tooltip .tooltip-dismiss{display:block;margin-top:8px;padding:4px 12px;' +
+        'background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;}' +
+        '.chat-onboarding-tooltip .tooltip-dismiss:hover{background:rgba(255,255,255,0.25);}';
+      document.head.appendChild(arrowStyle);
+
+      // Position relative to toggle
+      toggle.style.position = 'relative';
+      toggle.appendChild(tooltip);
+
+      var dismissTooltip = function() {
+        if (tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+        localStorage.setItem('bj_chat_tooltip_dismissed', '1');
+      };
+      tooltip.querySelector('.tooltip-dismiss').addEventListener('click', dismissTooltip);
+      // Also dismiss on first toggle to chat
+      chatBtn.addEventListener('click', dismissTooltip, { once: true });
+      // Auto-dismiss after 10 seconds
+      setTimeout(function() {
+        if (tooltip.parentNode) dismissTooltip();
+      }, 10000);
+
+      // PostHog: track tooltip impression and dismissal
+      if (window.posthog) {
+        try { posthog.capture('chat_onboarding_tooltip_shown'); } catch(e) {}
+        tooltip.querySelector('.tooltip-dismiss').addEventListener('click', function() {
+          try { posthog.capture('chat_onboarding_tooltip_dismissed', { method: 'button' }); } catch(e) {}
+        });
+      }
+    }
+  }
+
+  // Clear chat button
+  var clearBtn = document.getElementById('chat-clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function() {
+      // Track if user scrapped an auto-generated prompt
+      var chatInput = document.getElementById('chat-input');
+      if (chatInput && chatInput.getAttribute('data-auto-generated')) {
+        chatInput.removeAttribute('data-auto-generated');
+        if (window.posthog) {
+          try { posthog.capture('chat_prompt_scrapped'); } catch(e) {}
+        }
+      }
+      _chatSession.clear();
+      _chatMessages = [];
+      _chatLastSyncedFilterHash = null;
+      _currentPromptId = null;
+      renderChatMessages();
+      updateChatCounter();
+      updateLoadedPromptIndicator();
+      // Hide sync banner if visible
+      var syncBanner = document.getElementById('chat-sync-banner');
+      if (syncBanner) syncBanner.style.display = 'none';
+    });
+  }
+}
+
+function setSearchMode(mode) {
+  var prevMode = _chatMode ? 'chat' : 'filters';
+  _chatMode = (mode === 'chat');
+
+  var toggle = document.getElementById('search-mode-toggle');
+  if (!toggle) return;
+
+  var filtersBtn = toggle.querySelector('[data-mode="filters"]');
+  var chatBtn = toggle.querySelector('[data-mode="chat"]');
+
+  // Update toggle state
+  if (filtersBtn) filtersBtn.classList.toggle('active', !_chatMode);
+  if (chatBtn) chatBtn.classList.toggle('active', _chatMode);
+
+  // Crossfade panels
+  var filterPanel = document.getElementById('filter-panel-wrap');
+  var chatPanel = document.getElementById('chat-panel');
+
+  if (filterPanel && chatPanel) {
+    if (_chatMode) {
+      filterPanel.style.opacity = '0';
+      filterPanel.style.pointerEvents = 'none';
+      setTimeout(function() {
+        filterPanel.style.display = 'none';
+        chatPanel.style.display = 'flex';
+        requestAnimationFrame(function() {
+          chatPanel.style.opacity = '1';
+          chatPanel.style.pointerEvents = 'auto';
+        });
+        var chatInput = document.getElementById('chat-input');
+        if (chatInput) chatInput.focus();
+      }, 200);
+
+      // --- Filter→Chat sync: pre-fill chat input from active filters ---
+      if (prevMode === 'filters') {
+        syncFilterToChat();
+      }
+    } else {
+      chatPanel.style.opacity = '0';
+      chatPanel.style.pointerEvents = 'none';
+      setTimeout(function() {
+        chatPanel.style.display = 'none';
+        filterPanel.style.display = 'block';
+        requestAnimationFrame(function() {
+          filterPanel.style.opacity = '1';
+          filterPanel.style.pointerEvents = 'auto';
+        });
+      }, 200);
+
+      // --- Chat→Filter sync: extract filters from conversation ---
+      if (prevMode === 'chat') {
+        syncChatToFilter();
+      }
+    }
+  }
+
+  // PostHog event
+  if (window.posthog) {
+    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) {}
+  }
+}
+
+
+// --- Bidirectional Sync (Session 3) ---
+
+// Collect current builder pill state into a filter object for the Edge Function
+function _collectBuilderFilters() {
+  var filters = {};
+  // Read pill arrays from global scope (query-builder.js exports these)
+  if (typeof whatPills !== 'undefined' && whatPills.length) {
+    filters.what_pills = [];
+    whatPills.forEach(function(p) { filters.what_pills = filters.what_pills.concat(p.values); });
+  }
+  if (typeof wherePills !== 'undefined' && wherePills.length) {
+    filters.where_pills = [];
+    wherePills.forEach(function(p) { filters.where_pills = filters.where_pills.concat(p.values); });
+  }
+  if (typeof whoPills !== 'undefined' && whoPills.length) {
+    filters.who_pills = [];
+    whoPills.forEach(function(p) { filters.who_pills = filters.who_pills.concat(p.values); });
+  }
+  if (typeof whatNotPills !== 'undefined' && whatNotPills.length) {
+    filters.not_pills = [];
+    whatNotPills.forEach(function(p) { filters.not_pills = filters.not_pills.concat(p.values); });
+  }
+  // Type pills from whenPills that are workplace types
+  if (typeof whenPills !== 'undefined' && whenPills.length) {
+    filters.type_pills = [];
+    whenPills.forEach(function(p) { filters.type_pills = filters.type_pills.concat(p.values); });
+  }
+  // Salary from payPills
+  if (typeof payPills !== 'undefined' && payPills.length) {
+    payPills.forEach(function(p) {
+      p.values.forEach(function(v) {
+        var clean = v.replace(/[^0-9kK+\-]/g, '').toLowerCase();
+        var num = parseInt(clean.replace('k', '000'));
+        if (!isNaN(num)) {
+          if (v.indexOf('+') >= 0 || v.indexOf('min') >= 0) {
+            filters.salary_min = num;
+          } else {
+            // If we already have a min, this is likely max
+            if (filters.salary_min) {
+              filters.salary_max = num;
+            } else {
+              filters.salary_min = num;
+            }
+          }
+        }
+      });
+    });
+  }
+  return filters;
+}
+
+// Hash filter object to detect changes (avoid redundant syncs)
+function _hashFilters(filters) {
+  try { return JSON.stringify(filters); } catch(e) { return ''; }
+}
+
+// Filter→Chat: On toggle to Chat with active filters, call filter-to-prompt and pre-fill input
+async function syncFilterToChat() {
+  if (_chatSyncInProgress) return;
+  if (_chatSession.messages.length > 0) return; // Don't overwrite active conversation
+
+  var filters = _collectBuilderFilters();
+  var hash = _hashFilters(filters);
+  if (!filters || Object.keys(filters).length === 0) return; // No active filters
+  if (hash === _chatLastSyncedFilterHash) return; // Already synced these exact filters
+
+  _chatSyncInProgress = true;
+  var chatInput = document.getElementById('chat-input');
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { _chatSyncInProgress = false; return; }
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/filter-to-prompt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ filters: filters })
+    });
+
+    if (!resp.ok) {
+      console.warn('[BJ] filter-to-prompt failed:', resp.status);
+      _chatSyncInProgress = false;
+      return;
+    }
+
+    var data = await resp.json();
+    var prompt = (data.prompt || '').trim();
+
+    if (prompt && chatInput) {
+      chatInput.value = prompt;
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+      chatInput.setAttribute('data-auto-generated', 'true');
+      _chatLastSyncedFilterHash = hash;
+
+      // Show subtle hint that this was auto-generated
+      var banner = document.getElementById('chat-filter-banner');
+      if (banner) {
+        banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>' +
+          '<span>Pre-filled from your active filters — edit or send as-is</span>';
+        banner.style.display = 'flex';
+        // Auto-hide after 6s
+        setTimeout(function() { banner.style.display = 'none'; }, 6000);
+      }
+
+      // PostHog event
+      if (window.posthog) {
+        try { posthog.capture('chat_prompt_auto_generated', { filter_count: Object.keys(filters).length, fallback: !!data.fallback }); } catch(e) {}
+      }
+    }
+  } catch (err) {
+    console.error('[BJ] Filter→Chat sync error:', err);
+  }
+
+  _chatSyncInProgress = false;
+}
+
+// Chat→Filter: On toggle to Filters with conversation, call prompt-to-filter and populate pills
+async function syncChatToFilter() {
+  if (_chatSyncInProgress) return;
+  if (_chatSession.messages.length === 0) return; // No conversation to extract from
+
+  _chatSyncInProgress = true;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) { _chatSyncInProgress = false; return; }
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/prompt-to-filter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ conversation: _chatSession.getHistory() })
+    });
+
+    if (!resp.ok) {
+      console.warn('[BJ] prompt-to-filter failed:', resp.status);
+      _chatSyncInProgress = false;
+      return;
+    }
+
+    var data = await resp.json();
+    var filters = data.filters;
+
+    if (!filters || typeof filters !== 'object' || Object.keys(filters).length === 0) {
+      // Partial extraction or empty — no pills to populate
+      if (data.parse_error) {
+        console.warn('[BJ] prompt-to-filter parse error');
+      }
+      _chatSyncInProgress = false;
+      return;
+    }
+
+    // Show confirmation banner before populating pills
+    _showSyncConfirmation(filters);
+
+  } catch (err) {
+    console.error('[BJ] Chat→Filter sync error:', err);
+  }
+
+  _chatSyncInProgress = false;
+}
+
+// Show a confirmation banner with extracted filters, user can Accept or Dismiss
+function _showSyncConfirmation(filters) {
+  var banner = document.getElementById('chat-sync-banner');
+  if (!banner) return;
+
+  // Build summary of what was extracted
+  var parts = [];
+  if (filters.what_pills && filters.what_pills.length) parts.push(filters.what_pills.length + ' role' + (filters.what_pills.length > 1 ? 's' : ''));
+  if (filters.where_pills && filters.where_pills.length) parts.push(filters.where_pills.length + ' location' + (filters.where_pills.length > 1 ? 's' : ''));
+  if (filters.who_pills && filters.who_pills.length) parts.push(filters.who_pills.length + ' compan' + (filters.who_pills.length > 1 ? 'ies' : 'y'));
+  if (filters.not_pills && filters.not_pills.length) parts.push(filters.not_pills.length + ' exclusion' + (filters.not_pills.length > 1 ? 's' : ''));
+  if (filters.type_pills && filters.type_pills.length) parts.push(filters.type_pills.join(', '));
+  if (filters.salary_min || filters.salary_max) parts.push('salary range');
+  if (filters.additional_context) parts.push('preferences');
+
+  if (parts.length === 0) { banner.style.display = 'none'; return; }
+
+  var summary = parts.join(', ');
+
+  banner.innerHTML = '<div class="chat-sync-msg">' +
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<span>Extracted from chat: ' + escapeHtml(summary) + '</span>' +
+    '</div>' +
+    '<div class="chat-sync-actions">' +
+    '<button class="chat-sync-accept" id="chat-sync-accept">Apply to filters</button>' +
+    '<button class="chat-sync-dismiss" id="chat-sync-dismiss">Dismiss</button>' +
+    '</div>';
+  banner.style.display = 'flex';
+
+  // Bind accept
+  document.getElementById('chat-sync-accept').addEventListener('click', function() {
+    _applySyncedFilters(filters);
+    banner.style.display = 'none';
+    // PostHog
+    if (window.posthog) {
+      try { posthog.capture('chat_to_filter_sync', { action: 'accepted', filter_count: Object.keys(filters).length }); } catch(e) {}
+    }
+  });
+
+  // Bind dismiss
+  document.getElementById('chat-sync-dismiss').addEventListener('click', function() {
+    banner.style.display = 'none';
+    // PostHog
+    if (window.posthog) {
+      try { posthog.capture('chat_to_filter_sync', { action: 'dismissed' }); } catch(e) {}
+    }
+  });
+}
+
+// Apply extracted filters from chat to the pill system
+function _applySyncedFilters(filters) {
+  // Clear existing builder pills before applying new ones
+  // We use the global pill arrays + renderAllPills from query-builder.js
+
+  if (filters.what_pills && filters.what_pills.length) {
+    if (typeof whatPills !== 'undefined') {
+      // Reset what pills, add new ones
+      whatPills.length = 0;
+      filters.what_pills.forEach(function(v) {
+        whatPills.push({ values: [v], type: 'keyword' });
+      });
+    }
+  }
+
+  if (filters.where_pills && filters.where_pills.length) {
+    if (typeof wherePills !== 'undefined') {
+      wherePills.length = 0;
+      filters.where_pills.forEach(function(v) {
+        wherePills.push({ values: [v], type: 'location' });
+      });
+    }
+  }
+
+  if (filters.who_pills && filters.who_pills.length) {
+    if (typeof whoPills !== 'undefined') {
+      whoPills.length = 0;
+      filters.who_pills.forEach(function(v) {
+        whoPills.push({ values: [v], type: 'keyword' });
+      });
+    }
+  }
+
+  if (filters.not_pills && filters.not_pills.length) {
+    if (typeof whatNotPills !== 'undefined') {
+      whatNotPills.length = 0;
+      filters.not_pills.forEach(function(v) {
+        whatNotPills.push({ values: [v], type: 'keyword' });
+      });
+    }
+  }
+
+  if (filters.salary_min || filters.salary_max) {
+    if (typeof payPills !== 'undefined') {
+      payPills.length = 0;
+      if (filters.salary_min && filters.salary_max) {
+        var minK = Math.round(filters.salary_min / 1000);
+        var maxK = Math.round(filters.salary_max / 1000);
+        payPills.push({ values: ['$' + minK + 'k-$' + maxK + 'k'], type: 'salary' });
+      } else if (filters.salary_min) {
+        var minK = Math.round(filters.salary_min / 1000);
+        payPills.push({ values: ['$' + minK + 'k+'], type: 'salary' });
+      } else if (filters.salary_max) {
+        var maxK = Math.round(filters.salary_max / 1000);
+        payPills.push({ values: ['<$' + maxK + 'k'], type: 'salary' });
+      }
+    }
+  }
+
+  // Render all pills visually
+  if (typeof renderAllPills === 'function') {
+    renderAllPills();
+  }
+
+  // Trigger job feed refresh
+  // PostHog: chat_filters_applied
+  if (window.posthog) {
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+  }
+
+  if (typeof debouncedSearchJobs === 'function') {
+    debouncedSearchJobs();
+  }
+
+  // Show toast confirmation
+  if (typeof showToast === 'function') {
+    showToast('Chat filters applied to search', 'success');
+  }
+}
+
+// --- Send message ---
+async function sendChatMessage() {
+  if (_chatSending) return;
+
+  var chatInput = document.getElementById('chat-input');
+  if (!chatInput) return;
+
+  var text = chatInput.value.trim();
+  if (!text) return;
+
+  // Client-side off-topic check (Layer 1)
+  for (var i = 0; i < _chatBlockedPatterns.length; i++) {
+    if (_chatBlockedPatterns[i].test(text)) {
+      appendChatBubble('assistant', 'I can only help with job search queries. Try describing the kind of role, location, company, or salary range you\'re looking for.');
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      return;
+    }
+  }
+
+  // Check message cap
+  if (_chatSession.messageCount >= _chatMessageCap / 2) {
+    appendChatBubble('assistant', 'You\'ve reached the conversation limit (' + (_chatMessageCap / 2) + ' messages). Clear the conversation to start fresh.');
+    return;
+  }
+
+  // Clear input and auto-generated flag
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  chatInput.removeAttribute('data-auto-generated');
+
+  // Add user message
+  _chatSession.addMessage('user', text);
+  appendChatBubble('user', text);
+
+  // PostHog: chat_message_sent
+  if (window.posthog) {
+    try { posthog.capture('chat_message_sent', { tier: getUserTier(), msg_count: _chatSession.messageCount, has_filters: !!window._chatFilterOverride }); } catch(e) {}
+  }
+  updateChatCounter();
+
+  // Show typing indicator
+  showTypingIndicator(true);
+  _chatSending = true;
+
+  // Session 6: Visual sending state on button
+  var sendBtn = document.getElementById('chat-send-btn');
+  if (sendBtn) sendBtn.classList.add('sending');
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) {
+      showTypingIndicator(false);
+      appendChatBubble('assistant', 'Please sign in to use chat search.');
+      _chatSending = false;
+      return;
+    }
+
+    var token = session.data.session.access_token;
+    var _chatFetchStart = performance.now();
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/chat-job-search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        messages: _chatSession.getHistory(),
+        tier: getUserTier()
+      })
+    });
+    var _chatLatencyMs = Math.round(performance.now() - _chatFetchStart);
+
+    showTypingIndicator(false);
+
+    // Session 11: PostHog latency tracking for Edge Function performance monitoring
+    if (window.posthog) {
+      try {
+        posthog.capture('chat_edge_function_latency', {
+          latency_ms: _chatLatencyMs,
+          status: resp.status,
+          tier: getUserTier(),
+          message_count: _chatSession.messages.length,
+          p95_target_ms: 2000
+        });
+      } catch(e) {}
+    }
+    if (_chatLatencyMs > 2000) {
+      console.warn('[BJ] Chat edge function slow: ' + _chatLatencyMs + 'ms (p95 target: 2000ms)');
+    }
+
+    if (resp.status === 429) {
+      var rateLimitData = null;
+      try { rateLimitData = await resp.json(); } catch(e) {}
+      showChatRateLimit(rateLimitData);
+      _chatSending = false;
+      return;
+    }
+
+    if (!resp.ok) {
+      var errText = '';
+      try { var errJ = await resp.json(); errText = errJ.error || errJ.message || ''; } catch(e) {}
+      appendChatBubble('assistant', 'Something went wrong. ' + (errText || 'Please try again.'));
+      _chatSending = false;
+      return;
+    }
+
+    var data = await resp.json();
+
+    // Extract response text and filters
+    var assistantText = data.response || data.text || '';
+    var extractedFilters = data.filters || null;
+
+    // PostHog: chat_filters_extracted
+    if (extractedFilters && Object.keys(extractedFilters).length > 0 && window.posthog) {
+      try { posthog.capture('chat_filters_extracted', { filter_count: Object.keys(extractedFilters).length, keywords: (extractedFilters.keywords || []).join(',') }); } catch(e) {}
+    }
+
+    // Add assistant message
+    _chatSession.addMessage('assistant', assistantText, extractedFilters);
+    appendChatBubble('assistant', assistantText);
+
+    // Update rate limit display
+    if (data.remaining !== undefined) {
+      _chatRateLimit.remaining = data.remaining;
+      updateChatRateLimitDisplay();
+    }
+
+    // If filters were extracted, update the job feed
+    if (extractedFilters && Object.keys(extractedFilters).length > 0) {
+      applyChatFilters(extractedFilters);
+    }
+
+    // Session 4: Update derived_filters in saved prompt on every conversation update
+    if (_currentPromptId) {
+      updateDerivedFilters();
+    }
+
+  } catch (err) {
+    showTypingIndicator(false);
+    console.error('[BJ] Chat error:', err);
+    appendChatBubble('assistant', 'Connection error. Please check your network and try again.');
+  }
+
+  _chatSending = false;
+
+  // Session 6: Remove sending state
+  var sendBtnEnd = document.getElementById('chat-send-btn');
+  if (sendBtnEnd) sendBtnEnd.classList.remove('sending');
+}
+
+// --- Apply extracted filters to job feed ---
+function applyChatFilters(filters) {
+  // The Edge Function extracts structured filters like:
+  // { keywords: [...], locations: [...], salary_min: N, salary_max: N, level: '...', remote: bool }
+  // We trigger a fresh job feed query with these params
+  console.log('[BJ] Chat extracted filters:', JSON.stringify(filters));
+
+  // Show a subtle banner that filters were applied
+  var banner = document.getElementById('chat-filter-banner');
+  if (banner) {
+    var count = 0;
+    if (filters.keywords) count += filters.keywords.length;
+    if (filters.locations) count += filters.locations.length;
+    if (filters.level) count++;
+    if (filters.remote) count++;
+    if (filters.salary_min || filters.salary_max) count++;
+
+    banner.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg> ' +
+      '<span>' + count + ' filter' + (count !== 1 ? 's' : '') + ' extracted from conversation</span>';
+    banner.style.display = 'flex';
+
+    // Auto-hide after 5s
+    setTimeout(function() { banner.style.display = 'none'; }, 5000);
+  }
+
+  // Build a temporary search config and trigger job feed refresh
+  // This integrates with the existing searchJobs() pipeline
+  if (typeof window._chatFilterOverride === 'undefined') {
+    window._chatFilterOverride = null;
+  }
+  window._chatFilterOverride = filters;
+
+  // Trigger refresh
+  // PostHog: chat_filters_applied
+  if (window.posthog) {
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+  }
+
+  if (typeof debouncedSearchJobs === 'function') {
+    debouncedSearchJobs();
+  }
+}
+
+// --- UI Rendering ---
+function appendChatBubble(role, text) {
+  var container = document.getElementById('chat-messages');
+  if (!container) return;
+
+  var bubble = document.createElement('div');
+  bubble.className = 'chat-bubble chat-bubble-' + role;
+
+  if (role === 'assistant') {
+    // Parse basic markdown-like formatting
+    var html = escapeHtml(text)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    bubble.innerHTML = html;
+  } else {
+    bubble.textContent = text;
+  }
+
+  container.appendChild(bubble);
+
+  // Scroll to bottom
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderChatMessages() {
+  var container = document.getElementById('chat-messages');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (_chatSession.messages.length === 0) {
+    container.innerHTML = '<div class="chat-empty">' +
+      '<div class="chat-empty-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>' +
+      '<div class="chat-empty-title">Describe your ideal role</div>' +
+      '<div class="chat-empty-sub">Try: "Senior product manager roles in Austin, TX paying over $150K" or "Remote React developer positions at mid-size companies"</div>' +
+      '</div>';
+    return;
+  }
+
+  _chatSession.messages.forEach(function(msg) {
+    appendChatBubble(msg.role, msg.content);
+  });
+}
+
+function showTypingIndicator(show) {
+  var indicator = document.getElementById('chat-typing');
+  if (indicator) {
+    indicator.style.display = show ? 'flex' : 'none';
+  }
+  // Disable send button while typing
+  var sendBtn = document.getElementById('chat-send-btn');
+  if (sendBtn) sendBtn.disabled = show;
+}
+
+function updateChatCounter() {
+  var counter = document.getElementById('chat-msg-counter');
+  if (!counter) return;
+
+  var used = _chatSession.messageCount;
+  var tier = getUserTier();
+  var limit = _chatLimits[tier] ? _chatLimits[tier].perConvo : _chatLimits.free.perConvo;
+
+  counter.textContent = used + '/' + limit;
+  counter.style.color = (used >= limit * 0.8) ? 'var(--warm)' : 'var(--text-faint)';
+}
+
+function updateChatRateLimitDisplay() {
+  var el = document.getElementById('chat-remaining');
+  if (!el) return;
+
+  if (_chatRateLimit.remaining !== null) {
+    el.textContent = _chatRateLimit.remaining + ' remaining today';
+    el.style.display = 'inline';
+    el.style.color = _chatRateLimit.remaining <= 5 ? 'var(--warm)' : 'var(--text-faint)';
+  }
+}
+
+function showChatRateLimit(data) {
+  var banner = document.getElementById('chat-rate-banner');
+  if (!banner) return;
+
+  var tier = getUserTier();
+  var limit = _chatLimits[tier] ? _chatLimits[tier] : _chatLimits.free;
+  var resetText = '';
+  if (data && data.reset_at) {
+    var resetDate = new Date(data.reset_at);
+    var now = new Date();
+    var diffMin = Math.ceil((resetDate - now) / 60000);
+    if (diffMin > 0) {
+      resetText = ' Resets in ' + (diffMin > 60 ? Math.ceil(diffMin / 60) + 'h' : diffMin + 'min') + '.';
+    }
+  }
+
+  var isConvoLimit = data && data.limit_type === 'conversation';
+  var msg = isConvoLimit
+    ? 'Conversation limit reached (' + limit.perConvo + ' messages). Clear the chat to continue.'
+    : 'Daily chat limit reached (' + limit.perDay + '/day).' + resetText;
+
+  banner.innerHTML = '<div class="chat-rate-msg">' +
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+    '<span>' + msg + '</span></div>';
+
+  if (tier !== 'pro') {
+    banner.innerHTML += '<a href="#" class="chat-rate-upgrade" onclick="event.preventDefault();document.querySelector(\'[data-page=billing]\')?.click();">Upgrade for more →</a>';
+  }
+
+  // PostHog: chat_rate_limited
+  if (window.posthog) {
+    try { posthog.capture('chat_rate_limited', { limit_type: (data && data.limit_type) || 'daily', tier: getUserTier() }); } catch(e) {}
+  }
+  banner.style.display = 'block';
+}
+
+
+// ============================================================
+// SESSION 4: Saved Prompts + Persistence
+// Save/load chat prompts to Supabase, derived_filters update on every send
+// ============================================================
+
+// --- Saved Prompts State ---
+var _savedPrompts = []; // { id, name, color_index, conversation, derived_filters, is_active, created_at }
+var _saveDialogOpen = false;
+var _loadDropdownOpen = false;
+var _currentPromptId = null; // ID of the currently loaded prompt (null = unsaved)
+
+// 10-color palette for prompts
+var PROMPT_COLORS = [
+  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#6366f1', '#06b6d4'
+];
+
+// --- Init Save/Load buttons ---
+function initSavedPrompts() {
+  // Save button in header
+  var saveBtn = document.getElementById('chat-save-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openSaveDialog();
+    });
+  }
+
+  // Load button in header
+  var loadBtn = document.getElementById('chat-load-btn');
+  if (loadBtn) {
+    loadBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleLoadDropdown();
+    });
+  }
+
+  // Close load dropdown on outside click
+  document.addEventListener('click', function(e) {
+    if (_loadDropdownOpen) {
+      var dropdown = document.getElementById('chat-load-dropdown');
+      var loadBtn = document.getElementById('chat-load-btn');
+      if (dropdown && !dropdown.contains(e.target) && loadBtn && !loadBtn.contains(e.target)) {
+        closeLoadDropdown();
+      }
+    }
+  });
+
+  // Load saved prompts from Supabase
+  loadSavedPromptsFromDB();
+}
+
+// --- Save Dialog ---
+function openSaveDialog() {
+  if (_chatSession.messages.length === 0) {
+    if (typeof showToast === 'function') showToast('Start a conversation first', 'info');
+    return;
+  }
+
+  var dialog = document.getElementById('chat-save-dialog');
+  if (!dialog) return;
+
+  // Pre-fill name if editing existing
+  var nameInput = dialog.querySelector('#save-prompt-name');
+  if (nameInput) {
+    if (_currentPromptId) {
+      var existing = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+      if (existing) nameInput.value = existing.name;
+    } else {
+      nameInput.value = '';
+    }
+  }
+
+  // Render color palette
+  var paletteEl = dialog.querySelector('#save-prompt-palette');
+  if (paletteEl) {
+    paletteEl.innerHTML = '';
+    var selectedIdx = 0;
+    if (_currentPromptId) {
+      var existing = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+      if (existing) selectedIdx = existing.color_index || 0;
+    }
+    PROMPT_COLORS.forEach(function(color, idx) {
+      var swatch = document.createElement('button');
+      swatch.className = 'save-color-swatch' + (idx === selectedIdx ? ' active' : '');
+      swatch.style.background = color;
+      swatch.setAttribute('data-color-idx', idx);
+      swatch.addEventListener('click', function() {
+        paletteEl.querySelectorAll('.save-color-swatch').forEach(function(s) { s.classList.remove('active'); });
+        swatch.classList.add('active');
+      });
+      paletteEl.appendChild(swatch);
+    });
+  }
+
+  // Show derived filters preview
+  renderDerivedFiltersPreview(dialog);
+
+  dialog.style.display = 'flex';
+  _saveDialogOpen = true;
+  if (nameInput) nameInput.focus();
+
+  // Bind save action
+  var confirmBtn = dialog.querySelector('#save-prompt-confirm');
+  var cancelBtn = dialog.querySelector('#save-prompt-cancel');
+
+  // Clone and replace to remove old listeners
+  if (confirmBtn) {
+    var newConfirm = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    newConfirm.addEventListener('click', executeSavePrompt);
+  }
+  if (cancelBtn) {
+    var newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+    newCancel.addEventListener('click', closeSaveDialog);
+  }
+}
+
+function closeSaveDialog() {
+  var dialog = document.getElementById('chat-save-dialog');
+  if (dialog) dialog.style.display = 'none';
+  _saveDialogOpen = false;
+}
+
+function renderDerivedFiltersPreview(dialog) {
+  var previewEl = dialog.querySelector('#save-prompt-filters-preview');
+  if (!previewEl) return;
+
+  // Get last extracted filters from conversation
+  var lastFilters = null;
+  for (var i = _chatSession.messages.length - 1; i >= 0; i--) {
+    if (_chatSession.messages[i].filters) {
+      lastFilters = _chatSession.messages[i].filters;
+      break;
+    }
+  }
+
+  if (!lastFilters || Object.keys(lastFilters).length === 0) {
+    previewEl.innerHTML = '<span class="save-filters-empty">No filters extracted yet — send a message to generate filters</span>';
+    return;
+  }
+
+  var parts = [];
+  if (lastFilters.keywords && lastFilters.keywords.length) parts.push('<span class="sfp-tag">' + lastFilters.keywords.map(escapeHtml).join('</span><span class="sfp-tag">') + '</span>');
+  if (lastFilters.locations && lastFilters.locations.length) parts.push('<span class="sfp-tag sfp-loc">' + lastFilters.locations.map(escapeHtml).join('</span><span class="sfp-tag sfp-loc">') + '</span>');
+  if (lastFilters.level) parts.push('<span class="sfp-tag sfp-level">' + escapeHtml(lastFilters.level) + '</span>');
+  if (lastFilters.salary_min || lastFilters.salary_max) {
+    var sal = '';
+    if (lastFilters.salary_min) sal += '$' + Math.round(lastFilters.salary_min/1000) + 'k';
+    if (lastFilters.salary_min && lastFilters.salary_max) sal += '-';
+    if (lastFilters.salary_max) sal += '$' + Math.round(lastFilters.salary_max/1000) + 'k';
+    if (lastFilters.salary_min && !lastFilters.salary_max) sal += '+';
+    parts.push('<span class="sfp-tag sfp-sal">' + sal + '</span>');
+  }
+  if (lastFilters.remote) parts.push('<span class="sfp-tag sfp-type">Remote</span>');
+
+  previewEl.innerHTML = parts.length > 0 ? parts.join('') : '<span class="save-filters-empty">No structured filters detected</span>';
+}
+
+async function executeSavePrompt() {
+  var dialog = document.getElementById('chat-save-dialog');
+  if (!dialog) return;
+
+  var nameInput = dialog.querySelector('#save-prompt-name');
+  var name = nameInput ? nameInput.value.trim() : '';
+  if (!name) {
+    nameInput.style.borderColor = 'var(--red)';
+    nameInput.focus();
+    return;
+  }
+  if (name.length > 60) {
+    if (typeof showToast === 'function') showToast('Name too long (max 60 characters)', 'error');
+    return;
+  }
+
+  // Get selected color
+  var activeSwatch = dialog.querySelector('.save-color-swatch.active');
+  var colorIndex = activeSwatch ? parseInt(activeSwatch.getAttribute('data-color-idx')) : 0;
+
+  // Get derived filters from last assistant message
+  var derivedFilters = {};
+  for (var i = _chatSession.messages.length - 1; i >= 0; i--) {
+    if (_chatSession.messages[i].filters) {
+      derivedFilters = _chatSession.messages[i].filters;
+      break;
+    }
+  }
+
+  var conversation = _chatSession.getHistory();
+
+  // Disable button
+  var confirmBtn = dialog.querySelector('#save-prompt-confirm');
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Saving...'; }
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) {
+      if (typeof showToast === 'function') showToast('Please sign in', 'error');
+      return;
+    }
+
+    var token = session.data.session.access_token;
+    var userId = session.data.session.user.id;
+    var body = {
+      user_id: userId,
+      name: name,
+      color_index: colorIndex,
+      conversation: conversation,
+      derived_filters: derivedFilters,
+      is_active: true
+    };
+
+    var method = 'POST';
+    var url = SUPABASE_URL + '/rest/v1/saved_prompts';
+    var headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token,
+      'apikey': SUPABASE_KEY,
+      'Prefer': 'return=representation'
+    };
+
+    // If updating existing prompt
+    if (_currentPromptId) {
+      url += '?id=eq.' + _currentPromptId;
+      method = 'PATCH';
+      delete body.user_id; // Don't update user_id
+    }
+
+    var resp = await fetch(url, {
+      method: method,
+      headers: headers,
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      var errData = null;
+      try { errData = await resp.json(); } catch(e) {}
+      console.error('[BJ] Save prompt error:', errData);
+      if (typeof showToast === 'function') showToast('Failed to save prompt', 'error');
+      return;
+    }
+
+    var saved = await resp.json();
+    if (Array.isArray(saved) && saved.length > 0) {
+      _currentPromptId = saved[0].id;
+    }
+
+    // Refresh saved prompts list
+    await loadSavedPromptsFromDB();
+
+    closeSaveDialog();
+    if (typeof showToast === 'function') showToast('Prompt saved: ' + name, 'success');
+
+    // Update header to show loaded prompt name
+    updateLoadedPromptIndicator();
+
+    // PostHog
+    if (window.posthog) {
+      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) {}
+    }
+
+  } catch (err) {
+    console.error('[BJ] Save prompt error:', err);
+    if (typeof showToast === 'function') showToast('Save failed', 'error');
+  } finally {
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Save'; }
+  }
+}
+
+// --- Load Dropdown ---
+function toggleLoadDropdown() {
+  if (_loadDropdownOpen) {
+    closeLoadDropdown();
+  } else {
+    openLoadDropdown();
+  }
+}
+
+function openLoadDropdown() {
+  var dropdown = document.getElementById('chat-load-dropdown');
+  if (!dropdown) return;
+
+  // Render prompt list
+  renderLoadDropdownItems(dropdown);
+
+  dropdown.style.display = 'block';
+  _loadDropdownOpen = true;
+}
+
+function closeLoadDropdown() {
+  var dropdown = document.getElementById('chat-load-dropdown');
+  if (dropdown) dropdown.style.display = 'none';
+  _loadDropdownOpen = false;
+}
+
+function renderLoadDropdownItems(dropdown) {
+  if (!dropdown) return;
+
+  if (_savedPrompts.length === 0) {
+    dropdown.innerHTML = '<div class="cld-empty">No saved prompts yet</div>';
+    return;
+  }
+
+  var html = '';
+  _savedPrompts.forEach(function(prompt) {
+    var color = PROMPT_COLORS[prompt.color_index || 0];
+    var isLoaded = prompt.id === _currentPromptId;
+    var filterCount = prompt.derived_filters ? Object.keys(prompt.derived_filters).length : 0;
+    var timeAgo = _timeAgo(prompt.updated_at || prompt.created_at);
+
+    html += '<div class="cld-item' + (isLoaded ? ' cld-item-active' : '') + '" data-prompt-id="' + prompt.id + '">' +
+      '<div class="cld-item-color" style="background:' + color + ';"></div>' +
+      '<div class="cld-item-info">' +
+        '<div class="cld-item-name">' + escapeHtml(prompt.name) + '</div>' +
+        '<div class="cld-item-meta">' + filterCount + ' filter' + (filterCount !== 1 ? 's' : '') + ' · ' + timeAgo + '</div>' +
+      '</div>' +
+      '<div class="cld-item-actions">' +
+        '<button class="cld-delete-btn" data-prompt-id="' + prompt.id + '" title="Delete">' +
+          '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+  });
+
+  dropdown.innerHTML = html;
+
+  // Bind click handlers
+  dropdown.querySelectorAll('.cld-item').forEach(function(item) {
+    item.addEventListener('click', function(e) {
+      if (e.target.closest('.cld-delete-btn')) return;
+      var promptId = item.getAttribute('data-prompt-id');
+      loadPrompt(promptId);
+      closeLoadDropdown();
+    });
+  });
+
+  dropdown.querySelectorAll('.cld-delete-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var promptId = btn.getAttribute('data-prompt-id');
+      deletePrompt(promptId);
+    });
+  });
+}
+
+function _timeAgo(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  var now = new Date();
+  var diffMs = now - d;
+  var diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return diffMin + 'm ago';
+  var diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return diffHr + 'h ago';
+  var diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return diffDay + 'd ago';
+  return d.toLocaleDateString();
+}
+
+// --- Load prompt into chat session ---
+async function loadPrompt(promptId) {
+  var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+  if (!prompt) return;
+
+  // Clear current session
+  _chatSession.clear();
+  _chatMessages = [];
+  _chatLastSyncedFilterHash = null;
+
+  // Restore conversation
+  if (prompt.conversation && Array.isArray(prompt.conversation)) {
+    prompt.conversation.forEach(function(msg) {
+      _chatSession.addMessage(msg.role, msg.content, null);
+    });
+  }
+
+  _currentPromptId = promptId;
+  renderChatMessages();
+  updateChatCounter();
+  updateLoadedPromptIndicator();
+
+  // If derived_filters exist, apply to job feed
+  if (prompt.derived_filters && Object.keys(prompt.derived_filters).length > 0) {
+    applyChatFilters(prompt.derived_filters);
+  }
+
+  if (typeof showToast === 'function') showToast('Loaded: ' + prompt.name, 'success');
+
+  // PostHog
+  if (window.posthog) {
+    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) {}
+  }
+}
+
+// --- Delete prompt ---
+async function deletePrompt(promptId) {
+  if (!confirm('Delete this saved prompt?')) return;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + promptId, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      }
+    });
+
+    if (resp.ok) {
+      // If we deleted the currently loaded prompt, clear reference
+      if (_currentPromptId === promptId) {
+        _currentPromptId = null;
+        updateLoadedPromptIndicator();
+      }
+
+      await loadSavedPromptsFromDB();
+      renderLoadDropdownItems(document.getElementById('chat-load-dropdown'));
+
+      if (typeof showToast === 'function') showToast('Prompt deleted', 'success');
+
+      // Also remove from filter selector
+      renderSavedPromptsInFilterSelector();
+
+      // PostHog
+      if (window.posthog) {
+        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) {}
+      }
+    }
+  } catch (err) {
+    console.error('[BJ] Delete prompt error:', err);
+  }
+}
+
+// --- Load saved prompts from DB ---
+async function loadSavedPromptsFromDB() {
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?select=id,name,color_index,conversation,derived_filters,is_active,resume_id,created_at,updated_at&order=updated_at.desc&limit=50', {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      }
+    });
+
+    if (resp.ok) {
+      _savedPrompts = await resp.json();
+      // Update filter selector
+      renderSavedPromptsInFilterSelector();
+    }
+  } catch (err) {
+    console.error('[BJ] Load saved prompts error:', err);
+  }
+}
+
+// --- Update derived_filters on every conversation message ---
+async function updateDerivedFilters() {
+  if (!_currentPromptId) return; // Only update if we have a saved prompt loaded
+  if (_chatSession.messages.length === 0) return;
+
+  try {
+    var session = await sb.auth.getSession();
+    if (!session.data.session) return;
+
+    var token = session.data.session.access_token;
+
+    // Call prompt-to-filter to re-extract
+    var resp = await fetch(SUPABASE_URL + '/functions/v1/prompt-to-filter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({ conversation: _chatSession.getHistory() })
+    });
+
+    if (!resp.ok) return;
+
+    var data = await resp.json();
+    var filters = data.filters;
+    if (!filters || typeof filters !== 'object') return;
+
+    // Update the saved prompt in DB
+    await fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + _currentPromptId, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+        'apikey': SUPABASE_KEY
+      },
+      body: JSON.stringify({
+        derived_filters: filters,
+        conversation: _chatSession.getHistory()
+      })
+    });
+
+    // Update local cache
+    var cached = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+    if (cached) {
+      cached.derived_filters = filters;
+      cached.conversation = _chatSession.getHistory();
+    }
+
+  } catch (err) {
+    console.error('[BJ] Update derived_filters error:', err);
+  }
+}
+
+// --- Show loaded prompt name in header ---
+function updateLoadedPromptIndicator() {
+  var indicator = document.getElementById('chat-loaded-prompt');
+  if (!indicator) return;
+
+  if (_currentPromptId) {
+    var prompt = _savedPrompts.find(function(p) { return p.id === _currentPromptId; });
+    if (prompt) {
+      var color = PROMPT_COLORS[prompt.color_index || 0];
+      indicator.innerHTML = '<span class="clp-dot" style="background:' + color + ';"></span>' +
+        '<span class="clp-name">' + escapeHtml(prompt.name) + '</span>';
+      indicator.style.display = 'flex';
+      return;
+    }
+  }
+  indicator.style.display = 'none';
+}
+
+// --- Add saved prompts to filter selector ---
+function renderSavedPromptsInFilterSelector() {
+  var container = document.getElementById('sf-list');
+  if (!container) return;
+
+  // Remove existing chat prompt items
+  container.querySelectorAll('.sf-item-prompt').forEach(function(el) { el.remove(); });
+
+  if (_savedPrompts.length === 0) return;
+
+  // Add a separator before chat prompts
+  var sep = document.createElement('div');
+  sep.className = 'sf-item-prompt sf-prompt-separator';
+  sep.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;opacity:0.5;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    '<span style="font-size:10px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.5px;">Chat Prompts</span>';
+  container.appendChild(sep);
+
+  // Add each saved prompt as a filter selector item
+  _savedPrompts.forEach(function(prompt) {
+    var color = PROMPT_COLORS[prompt.color_index || 0];
+    var filterCount = prompt.derived_filters ? Object.keys(prompt.derived_filters).length : 0;
+
+    var item = document.createElement('div');
+    item.className = 'sf-item sf-item-prompt';
+    item.setAttribute('data-prompt-id', prompt.id);
+
+    item.innerHTML =
+      '<div class="sf-item-left">' +
+        '<div class="sf-color-dot" style="background:' + color + ';"></div>' +
+        '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="' + color + '" stroke-width="2" style="flex-shrink:0;margin-right:4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+        '<span class="sf-name">' + escapeHtml(prompt.name) + '</span>' +
+        '<span class="sf-count">' + filterCount + '</span>' +
+      '</div>';
+
+    item.addEventListener('click', function() {
+      // Switch to chat mode and load this prompt
+      setSearchMode('chat');
+      setTimeout(function() { loadPrompt(prompt.id); }, 300);
+    });
+
+    container.appendChild(item);
+  });
+}
+
+
+// ============================================================
+// SESSION 5: System Integration
+// Prompts integrated with job feed, notifications, auto-apply, match %
+// ============================================================
+
+// --- Session 5: Prompt resume assignment ---
+// Track which resume is assigned to a prompt (for auto-apply + match %)
+function assignResumeToPrompt(promptId, resumeId) {
+  if (!promptId || !currentUser) return;
+  var prompt = _savedPrompts.find(function(p) { return p.id === promptId; });
+  if (!prompt) return;
+
+  prompt.resume_id = resumeId;
+
+  // Persist to Supabase
+  fetch(SUPABASE_URL + '/rest/v1/saved_prompts?id=eq.' + promptId, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + (sb.auth.session()?.access_token || SUPABASE_ANON_KEY),
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ resume_id: resumeId })
+  }).then(function(resp) {
+    if (resp.ok) {
+      console.log('[BJ] Resume assigned to prompt:', promptId, '->', resumeId);
+      if (typeof posthog !== 'undefined') {
+        posthog.capture('chat_prompt_resume_assigned', { prompt_id: promptId, resume_id: resumeId });
+      }
+    }
+  }).catch(function(err) {
+    console.error('[BJ] Prompt resume assignment failed:', err);
+  });
+}
+
+// --- Session 5: Prompt → Saved Filter interoperability ---
+// Convert a saved prompt's derived_filters to the same shape searchJobs() consumes
+// This is called by job-feed.js getCheckedSavedPromptFilters() via the global promptDerivedToFilterObj()
+
+// --- Session 5: Register prompts with notification system ---
+// After prompts load, refresh the notification override dropdown to include them
+function integratePromptsWithNotifications() {
+  if (typeof refreshOverrideFilterSelectWithPrompts === 'function') {
+    refreshOverrideFilterSelectWithPrompts();
+  }
+}
+
+// --- Session 5: Register prompts with auto-apply system ---
+// Prompts with resume assignments and derived_filters participate in auto-apply matching
+function getPromptAutoApplyConfigs() {
+  if (!_savedPrompts || _savedPrompts.length === 0) return [];
+  return _savedPrompts.filter(function(p) {
+    return p.derived_filters && Object.keys(p.derived_filters).length > 0 && p.resume_id;
+  }).map(function(p) {
+    return {
+      type: 'prompt',
+      id: p.id,
+      name: p.name,
+      derived_filters: p.derived_filters,
+      resume_id: p.resume_id,
+      color_index: p.color_index
+    };
+  });
+}
+
+// --- Session 5: Hook into prompt lifecycle ---
+// After loading prompts from DB, run system integrations
+var _origLoadSavedPromptsFromDB = loadSavedPromptsFromDB;
+loadSavedPromptsFromDB = async function() {
+  await _origLoadSavedPromptsFromDB();
+  // Run integrations after prompts are loaded
+  integratePromptsWithNotifications();
+  // Recompute match scores if jobs are loaded
+  if (typeof computeVisibleJobScores === 'function') {
+    computeVisibleJobScores();
+  }
+};
+
+// --- Session 5: Expose prompt configs for auto-apply Edge Function consumption ---
+// The auto-apply system checks both saved filters and saved prompts
+window._getPromptAutoApplyConfigs = getPromptAutoApplyConfigs;
+window._assignResumeToPrompt = assignResumeToPrompt;
+
+// --- Initialize on page load ---
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initChatMode);
+} else {
+  initChatMode();
+}
 
 
 // === js/apply-workflow.js ===

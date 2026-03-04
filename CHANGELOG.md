@@ -1,3 +1,14 @@
+## v6.85 — 2026-03-04
+### Admin Console IA v2 — Session 2: Block System + No-Dependency Pages
+- **admin-companies.js (NEW):** Companies sub-page — loadAdminCompanies() calls get_admin_companies() RPC. Stat cards (total/active/inactive/enriched/industry/staffing). Platform breakdown table (boards, active, jobs, enriched, industry, staffing per source). Top 15 industries with bar chart. Recently discovered boards (last 10). Reusable _adminStatCard(), _escHtml(), _timeAgo() helpers.
+- **admin-jobs.js (NEW):** Jobs sub-page — loadAdminJobs() calls get_admin_jobs() RPC. 8 stat cards (total/open/closed/enriched/salary/remote/skills/AI scored). Platform breakdown with enrichment percentages. Open job age distribution (visual buckets: <1d, 1-7d, 7-30d, 30-90d, 90d+). Daily new jobs 7-day sparkline table.
+- **admin-email.js (NEW):** Email/notification sub-page — loadAdminEmail() calls get_admin_email() RPC. Status cards (total/sent/delivered/failed/blocked). Channel split (email vs SMS). Per-notification-type breakdown with delivery stats. Recent sends log (last 20) with color-coded status.
+- **Database:** 3 new SECURITY DEFINER RPCs: get_admin_companies(), get_admin_jobs(), get_admin_email() — aggregate stats from ats_companies, ats_jobs, notification_log.
+- **admin.js:** ADMIN_SUBPAGE_MAP entries for companies, jobs, email wired to init functions (replaced null). Header updated to v6.85.
+- **admin.html:** Removed Session 2 empty states for Companies, Jobs, Email. Added reusable block CSS: .admin-stat-row, .admin-stat-card, .admin-block, .admin-block-title, .admin-age-bucket components.
+- **build-admin.js:** Added admin-companies.js, admin-jobs.js, admin-email.js to concatenation list (8 files total).
+- **admin-shell.js:** Version comment updated to v6.85.
+
 ## v6.84 — 2026-03-04
 ### Admin Console IA v2 — Session 1: Navigation Shell + Migration
 - **admin.html:** Replaced flat 5→20 tab bar with two-level sidebar navigation (210px fixed left sidebar, 4 collapsible section groups: Operations, Growth, Audience, Business). Added `.admin-layout` flex container, `.admin-sidebar`, `.admin-main` content area, breadcrumb trail, page title. All 17 sub-pages routed through sidebar. Empty state panels added for future pages (Companies, Jobs, Email, Paid, Social, Analytics, Costs, Forecasting). Mobile-responsive: sidebar collapses to full-width on ≤768px.

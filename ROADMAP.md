@@ -1,8 +1,8 @@
 # Brilliant Jobs — Architecture Hardening Roadmap
 
-**Last updated:** 2026-03-03
+**Last updated:** 2026-03-04
 **Target launch:** Monday, March 23, 2026
-**Current version:** v6.84
+**Current version:** v6.85
 
 ---
 

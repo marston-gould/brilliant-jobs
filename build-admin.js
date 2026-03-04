@@ -5,6 +5,9 @@ const jsFiles = [
   'js/version.js',
   'js/globals.js',
   'js/admin.js',
+  'js/admin-companies.js',
+  'js/admin-jobs.js',
+  'js/admin-email.js',
   'js/admin-notifications.js',
   'js/admin-shell.js',
 ];
