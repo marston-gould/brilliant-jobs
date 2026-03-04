@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + init for standalone /admin page
-   v6.26 — Separated from dashboard shell (app.js)
+   v6.84 — IA v2 sidebar navigation
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check
