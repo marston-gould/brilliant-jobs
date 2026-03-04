@@ -1,3 +1,11 @@
+## v6.72 Chat Mode Session 10: Global Cache Buster Remediation & Hardening (2026-03-03)
+- Fix: 11 HTML files with stale cache busters remediated (admin.html v6.60/v6.62, compare.html v6.07/v6.62, career-level-data/data-lab/ghost-report/hiring-trends/jobs-by-industry/market-dynamics/pricing/roadmap/salary-data all v6.62 → v6.72)
+- Fix: admin.html version comment v6.62 → v6.72, styles.css buster v6.60 → v6.72, admin.min.js buster v6.60 → v6.72
+- Fix: compare.html version comment v6.07 → v6.72
+- Chore: Primary surfaces (version.js, dashboard.html, index.html) bumped v6.71 → v6.72
+- Scope: 14 files updated total — prevents stale cached assets across all public pages
+- Version: v6.71 → v6.72 across all surfaces per VERSION_METHODOLOGY
+
 ## v6.71 Chat Mode Session 9: Cache Buster Remediation & Environment Sync (2026-03-03)
 - Fix: Stale cache busters in dashboard.html — version.js, notification-center.js, dashboard.min.js, canny.js all stuck at v6.64, now v6.71
 - Fix: Stale cache buster in index.html — version.js stuck at v6.60 (missing 'v' prefix), now v6.71
