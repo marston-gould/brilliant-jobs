@@ -2682,3 +2682,19 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 - ECharts line chart: Jobs daily volume (last 7d, smooth area, green fill)
 - ECharts funnel chart: Email delivery funnel (sent → delivered → failed → blocked)
 - New RPCs: get_admin_company_detail, get_admin_job_detail
+
+### 74.21 Admin IA v2 S5: Notifications Log + Feed/Cache/Signals — v6.88–v6.89
+- Notifications Log: paginated notification_log viewer, search (type/company/subject), status + channel filters, click-to-expand rows with full detail
+- New RPC: get_admin_notification_log (SECURITY DEFINER, 20 fields/row)
+- Feed Health sub-page: platform breakdown, 7d ECharts chart, refresh log (admin-feed-health.js)
+- Cache Health sub-page: monitoring alerts, MV row counts, major_job_cache table (admin-cache-health.js)
+- Signals sub-page: pipeline_signals + signal_patterns, ECharts charts (admin-signals.js)
+
+### 74.22 Admin IA v2 S6: Enrichment, SEO, Content, Merchandising, Referrals — v6.90
+- Bundle expanded 12 → 17 files: admin-enrichment.js, admin-seo.js, admin-content.js, admin-merch.js, admin-referrals.js wired into build-admin.js
+- Enrichment: coverage % stat cards, gate indicators, platform breakdown chart, refresh schedule
+- SEO: 9-tool dashboard (GSC, PSI, CF, YLT, CrUX), URL+date filters, Sync All, Export Report
+- Content: editorial queue, detect/generate actions, click-to-preview story panel
+- Merchandising: placements→rules→content CRUD, bulk import, cohort targeting
+- Referrals: referral admin stats and management
+
