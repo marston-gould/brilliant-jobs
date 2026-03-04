@@ -4,6 +4,7 @@
 // v2.2: C4 complete — notification firing on confirmation detection (v5.42)
 // v2.15.0: Item #2 — Dynamic contentScript injection on ATS domains (v5.55)
 // v2.17.0: Extension heartbeat for disconnect detection (v6.08)
+// v2.18.0: Overlay Pipeline S4 — toolbar message handlers (v6.98)
 
 importScripts('supabase.js');
 importScripts('utils/autoTracker.js');
@@ -1233,6 +1234,120 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
 
     sendResponse(result);
+    return;
+  }
+
+
+  // ── Overlay Pipeline S4: Toolbar message handlers ──────────────
+  // bj:toolbar:getEntry — check if job URL is in pipeline cache
+  if (msg.type === 'bj:toolbar:getEntry') {
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) {
+          sendResponse({ entry: null });
+          return;
+        }
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        const url = encodeURIComponent(msg.payload?.source_url || '');
+        const resp = await fetch(
+          `${SB_URL}/rest/v1/pipeline?user_id=eq.${session.user_id}&source_url=eq.${url}&select=id,stage,entry_source,job_title,company_name&limit=1`,
+          { headers: { 'apikey': session.access_token, 'Authorization': 'Bearer ' + session.access_token } }
+        );
+        if (resp.ok) {
+          const rows = await resp.json();
+          sendResponse({ entry: rows?.[0] || null });
+        } else {
+          sendResponse({ entry: null });
+        }
+      } catch (e) {
+        console.warn('[BJ Toolbar] getEntry error:', e.message);
+        sendResponse({ entry: null });
+      }
+    })();
+    return true;
+  }
+
+  // bj:toolbar:save — write job to pipeline table (entry_source=overlay)
+  if (msg.type === 'bj:toolbar:save') {
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) {
+          sendResponse({ success: false, error: 'no_auth' });
+          return;
+        }
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        const now = new Date().toISOString();
+        const p = msg.payload || {};
+        const body = {
+          user_id: session.user_id,
+          source_url: p.source_url,
+          source_platform: p.source_platform || 'unknown',
+          job_title: p.job_title || 'Unknown Title',
+          company_name: p.company_name || '',
+          stage: p.stage || 'saved',
+          entry_source: 'overlay',
+          stage_changed_at: now,
+          activity_log: [{ action: 'saved', timestamp: now, detail: { source: 'overlay', platform: p.source_platform } }],
+          migration_version: 1,
+        };
+        const resp = await fetch(`${SB_URL}/rest/v1/pipeline`, {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify(body),
+        });
+        if (resp.ok || resp.status === 201) {
+          console.log('[BJ Toolbar] Job saved to pipeline:', p.source_url?.substring(0, 60));
+          sendResponse({ success: true });
+        } else {
+          const err = await resp.text();
+          console.warn('[BJ Toolbar] Save failed:', resp.status, err);
+          sendResponse({ success: false, error: err });
+        }
+      } catch (e) {
+        console.warn('[BJ Toolbar] Save error:', e.message);
+        sendResponse({ success: false, error: e.message });
+      }
+    })();
+    return true;
+  }
+
+  // bj:toolbar:analytics — log toolbar funnel event to overlay_analytics
+  if (msg.type === 'bj:toolbar:analytics') {
+    (async () => {
+      try {
+        const data = await chrome.storage.local.get('authSession');
+        const session = data.authSession;
+        if (!session?.user_id || !session?.access_token) return;
+        const SB_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
+        const p = msg.payload || {};
+        await fetch(`${SB_URL}/rest/v1/overlay_analytics`, {
+          method: 'POST',
+          headers: {
+            'apikey': session.access_token,
+            'Authorization': 'Bearer ' + session.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            user_id: session.user_id,
+            session_id: p.session_id || null,
+            source_platform: p.source_platform || 'unknown',
+            action_type: p.action_type || 'result_viewed',
+            url_hash: p.url_hash || null,
+            tier: p.tier || 'free',
+            meta: p.meta || null,
+          }),
+        });
+      } catch (e) { /* analytics is best-effort */ }
+    })();
     return;
   }
 
