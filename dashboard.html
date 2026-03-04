@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v7.06 -->
+<!-- Brilliant Jobs Dashboard v7.07 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,17 +11,17 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v7.06"></script>
-  <script src="/js/pipeline-migration.js?v=v7.06"></script>
-  <script src="/js/notification-center.js?v=v7.06"></script>
+  <script src="/js/version.js?v=v7.07"></script>
+  <script src="/js/pipeline-migration.js?v=v7.07"></script>
+  <script src="/js/notification-center.js?v=v7.07"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v7.06" defer></script>
-  <script src="js/canny.js?v=v7.06" defer></script>
+  <script src="dist/dashboard.min.js?v=v7.07" defer></script>
+  <script src="js/canny.js?v=v7.07" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css?v=v7.06">
@@ -1538,6 +1538,20 @@
             <div class="empty-state" style="padding:32px 20px;grid-column:1/-1;">
               <h3>No resumes yet — drop one here and we'll show you how it stacks up against real job postings</h3>
               <p>Upload your first resume to get started.</p>
+            </div>
+          </div>
+
+
+          <!-- Gap Insights — Rejection Pattern Analysis (v7.07) -->
+          <div id="gap-insights-section" style="display:none;margin-top:20px;">
+            <div class="card" style="padding:16px 20px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div class="card-title" style="margin:0;">Skills gaps spotted across your recent applications</div>
+                <span style="font-size:10px;color:var(--text-faint);">Last 90 days</span>
+              </div>
+              <div id="gap-insights-content" style="min-height:32px;">
+                <p style="color:var(--text-faint);font-size:12px;margin:0;">Loading pattern analysis…</p>
+              </div>
             </div>
           </div>
 
