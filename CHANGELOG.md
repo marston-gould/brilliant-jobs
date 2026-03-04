@@ -1,3 +1,21 @@
+## v6.89 — 2026-03-04
+
+### Admin IA v2 · Session 5 — Signals, Feed Health, Cache Health
+
+**New files:**
+- `js/admin-signals.js` — Pipeline Signals sub-page: stat cards, by-source/type breakdown, recent signals table, signal_patterns table
+- `js/admin-feed-health.js` — Feed Health sub-page: platform breakdown, 7-day ECharts line chart, refresh log table
+- `js/admin-cache-health.js` — Cache Health sub-page: monitoring alerts, MV row counts, major_job_cache table
+
+**New Supabase RPCs (SECURITY DEFINER):**
+- `get_admin_signals()` — pipeline_signals totals + by_source + by_type + signal_patterns + recent 50
+- `get_admin_feed_health()` — feed_health_daily today/7d + refresh_log summary
+- `get_admin_cache_health()` — monitoring_alerts + MV pg_stat rows + major_job_cache
+
+**Updated:**
+- `build-admin.js` — 9 → 12 files (added signals, feed-health, cache-health)
+- Version bumped: version.js, dashboard.html (6 refs), index.html (2 refs), admin-shell.js
+
 ## v6.88 --- 2026-03-04
 ### Admin IA v2 --- Session 5: Notifications Log + Complete S5 Sub-Pages
 - **Notifications Log (new sub-page):** Added `notif-log` sub-page under Growth → Notif Log. Paginated viewer of `notification_log` table with search (type/company/subject), status filter (sent/delivered/opened/clicked/failed/bounced/complained), channel filter (email/sms), and 50 rows per page. Click-to-expand rows show full detail: classification, send decision, send reason, template version, message ID, cohort, job ID, delivered/opened/clicked/bounced timestamps. Pagination prev/next with row count.

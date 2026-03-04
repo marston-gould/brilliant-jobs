@@ -1,8 +1,7 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.86';
+var BJ_VERSION = 'v6.89';
 (function() {
   function populateVersion() {
-    // Populate all .bj-version elements
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
       el.textContent = BJ_VERSION;
     });
@@ -13,6 +12,7 @@ var BJ_VERSION = 'v6.86';
     populateVersion();
   }
 })();
+
 
 // === js/globals.js ===
 // ============================================================
@@ -1082,10 +1082,11 @@ async function safeQuery(queryFn, opts) {
   }
 }
 
+
 // === js/admin.js ===
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.86 — S3 action bars + paginated tables + shared blocks
+   v6.87 — S3 action bars + paginated tables + shared blocks
    4 sections: Operations, Growth, Audience, Business
    17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
@@ -1129,6 +1130,7 @@ var ADMIN_SUBPAGE_MAP = {
   'notif-analytics':{ section: 'growth',      label: 'Notif Analytics', init: function(){ loadNotifAnalyticsTab(); } },
   'email-cohorts':  { section: 'growth',      label: 'Email Cohorts',  init: function(){ loadEmailCohortsTab(); } },
   'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
+  'notif-log':      { section: 'growth',      label: 'Notif Log',      init: function(){ loadNotifLogTab(); } },
   'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
   'paid':           { section: 'growth',      label: 'Paid',           init: null },
   'social':         { section: 'growth',      label: 'Social',         init: null },
@@ -5025,10 +5027,11 @@ async function loadMVStalenessPanel() {
 }
 
 
+
 // === js/admin-blocks.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-blocks.js — Shared Admin Block Components (IA v2 S3)
-   v6.86 — Extracted from admin-companies.js + new utilities
+   admin-blocks.js — Shared Admin Block Components (IA v2)
+   v6.87 — S4: _adminDetailPanel(), expand row wiring
    ─────────────────────────────────────────────────────────── */
 
 // ── Reusable Stat Card ──
@@ -5063,16 +5066,13 @@ function _timeAgo(dateStr) {
 
 // ── Action Bar (search + platform filter + sort) ──
 function _adminActionBar(opts) {
-  // opts: { id, placeholder, platforms, sorts, defaultSort, statusOptions }
   var id = opts.id;
   var html = '<div class="admin-action-bar">';
 
-  // Search input
   html += '<div class="admin-search-wrap">';
   html += '<input type="text" id="' + id + '-search" class="admin-search-input" placeholder="' + (opts.placeholder || 'Search…') + '" />';
   html += '</div>';
 
-  // Platform filter
   if (opts.platforms) {
     html += '<select id="' + id + '-platform" class="admin-select">';
     html += '<option value="">All Platforms</option>';
@@ -5082,7 +5082,6 @@ function _adminActionBar(opts) {
     html += '</select>';
   }
 
-  // Status filter
   if (opts.statusOptions) {
     html += '<select id="' + id + '-status" class="admin-select">';
     opts.statusOptions.forEach(function(s) {
@@ -5091,7 +5090,6 @@ function _adminActionBar(opts) {
     html += '</select>';
   }
 
-  // Sort
   if (opts.sorts) {
     html += '<select id="' + id + '-sort" class="admin-select">';
     opts.sorts.forEach(function(s) {
@@ -5106,7 +5104,6 @@ function _adminActionBar(opts) {
 
 // ── Paginated Table Renderer ──
 function _adminPagedTable(opts) {
-  // opts: { id, columns:[{key,label,align,width,render}], rows, total, offset, limit, onPage }
   var id = opts.id;
   var html = '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
 
@@ -5117,19 +5114,34 @@ function _adminPagedTable(opts) {
     html += '<th' + (style ? ' style="' + style + '"' : '') + '>' + col.label + '</th>';
   });
 
+  // expand chevron column header if expandable
+  if (opts.expandable) {
+    html += '<th style="width:32px;"></th>';
+  }
+
   html += '</tr></thead><tbody>';
 
   if (!opts.rows || opts.rows.length === 0) {
-    html += '<tr><td colspan="' + opts.columns.length + '" style="text-align:center;color:var(--text-faint);padding:24px;">No results found</td></tr>';
+    html += '<tr><td colspan="' + (opts.columns.length + (opts.expandable ? 1 : 0)) + '" style="text-align:center;color:var(--text-faint);padding:24px;">No results found</td></tr>';
   } else {
-    opts.rows.forEach(function(row) {
-      html += '<tr>';
+    opts.rows.forEach(function(row, rowIdx) {
+      var rowId = opts.id + '-row-' + rowIdx;
+      var expandId = opts.id + '-expand-' + rowIdx;
+      html += '<tr id="' + rowId + '" style="cursor:' + (opts.expandable ? 'pointer' : 'default') + ';">';
       opts.columns.forEach(function(col) {
         var style = col.align ? 'text-align:' + col.align + ';' : '';
         var val = col.render ? col.render(row) : _escHtml(String(row[col.key] || '—'));
         html += '<td style="' + style + '">' + val + '</td>';
       });
+      if (opts.expandable) {
+        html += '<td style="text-align:center;color:var(--text-faint);font-size:11px;" class="expand-chevron" id="chev-' + expandId + '">▶</td>';
+      }
       html += '</tr>';
+      if (opts.expandable) {
+        html += '<tr id="' + expandId + '" style="display:none;"><td colspan="' + (opts.columns.length + 1) + '" style="padding:0;background:var(--bg-main);">';
+        html += '<div class="admin-detail-panel" id="dp-' + expandId + '" style="padding:16px 20px;font-size:13px;"><span style="color:var(--text-faint);">Loading…</span></div>';
+        html += '</td></tr>';
+      }
     });
   }
 
@@ -5146,14 +5158,67 @@ function _adminPagedTable(opts) {
     html += '<div class="admin-pager">';
     html += '<span class="admin-pager-info">Showing ' + (offset + 1) + '–' + Math.min(offset + limit, total) + ' of ' + fmtAdminNum(total) + '</span>';
     html += '<div class="admin-pager-btns">';
-    html += '<button class="admin-pager-btn" id="' + id + '-prev"' + (page <= 1 ? ' disabled' : '') + '>&laquo; Prev</button>';
+    html += '<button class="admin-pager-btn" id="' + id + '-prev"' + (page <= 1 ? ' disabled' : '') + '>« Prev</button>';
     html += '<span class="admin-pager-page">Page ' + page + ' / ' + totalPages + '</span>';
-    html += '<button class="admin-pager-btn" id="' + id + '-next"' + (page >= totalPages ? ' disabled' : '') + '>Next &raquo;</button>';
+    html += '<button class="admin-pager-btn" id="' + id + '-next"' + (page >= totalPages ? ' disabled' : '') + '>Next »</button>';
     html += '</div></div>';
   } else if (total > 0) {
     html += '<div class="admin-pager"><span class="admin-pager-info">' + fmtAdminNum(total) + ' total</span></div>';
   }
 
+  return html;
+}
+
+// ── Expandable Row Wiring ──
+// opts: { tableId, rows, loadDetail(row, panelEl) }
+function _wireExpandableRows(opts) {
+  var tableId = opts.tableId;
+  var rows = opts.rows || [];
+  rows.forEach(function(row, idx) {
+    var rowEl = document.getElementById(tableId + '-row-' + idx);
+    var expandEl = document.getElementById(tableId + '-expand-' + idx);
+    var chevEl = document.getElementById('chev-' + tableId + '-expand-' + idx);
+    var panelEl = document.getElementById('dp-' + tableId + '-expand-' + idx);
+    var loaded = false;
+    if (!rowEl || !expandEl) return;
+
+    rowEl.addEventListener('click', function() {
+      var isOpen = expandEl.style.display !== 'none';
+      if (isOpen) {
+        expandEl.style.display = 'none';
+        if (chevEl) chevEl.textContent = '▶';
+      } else {
+        expandEl.style.display = '';
+        if (chevEl) chevEl.textContent = '▼';
+        if (!loaded && panelEl) {
+          loaded = true;
+          opts.loadDetail(row, panelEl);
+        }
+      }
+    });
+  });
+}
+
+// ── Detail Panel: Key-Value Grid ──
+function _adminDetailPanel(sections) {
+  // sections: [{ title, rows: [{label, value, wide}] }]
+  var html = '<div style="display:flex;flex-wrap:wrap;gap:20px;">';
+  sections.forEach(function(sec) {
+    html += '<div style="flex:1;min-width:220px;">';
+    if (sec.title) {
+      html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:8px;">' + sec.title + '</div>';
+    }
+    html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;">';
+    sec.rows.forEach(function(r) {
+      if (!r || r.value === undefined || r.value === null || r.value === '' || r.value === '—') {
+        return; // skip empty
+      }
+      html += '<span style="color:var(--text-faint);font-size:12px;white-space:nowrap;">' + r.label + '</span>';
+      html += '<span style="font-size:12px;font-family:' + (r.mono ? 'var(--font-mono)' : 'inherit') + ';word-break:break-word;">' + r.value + '</span>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
   return html;
 }
 
@@ -5180,11 +5245,11 @@ function _fmtLocation(city, state, country) {
   return parts.length ? parts.join(', ') : '—';
 }
 
+
 // === js/admin-companies.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-companies.js — Companies Sub-page (Admin IA v2 S3)
-   v6.86 — Stats + action bar + paginated company table
-   Helpers moved to admin-blocks.js
+   admin-companies.js — Companies Sub-page (Admin IA v2)
+   v6.87 — S4: click-to-expand company detail panels
    ─────────────────────────────────────────────────────────── */
 
 var _companyListState = { search: '', platform: '', sort: 'boards_desc', offset: 0, limit: 50 };
@@ -5269,7 +5334,7 @@ function renderCompaniesPage(panel, d) {
 
   // ── Action Bar + Paginated Company List ──
   html += '<div class="admin-block" style="margin-top:16px;">';
-  html += '<div class="admin-block-title">All Companies</div>';
+  html += '<div class="admin-block-title">All Companies <span style="font-size:11px;font-weight:400;color:var(--text-faint);">— click row to expand</span></div>';
 
   var platforms = [];
   (d.by_platform || []).forEach(function(p) { platforms.push(p.source); });
@@ -5298,13 +5363,12 @@ function renderCompaniesPage(panel, d) {
   html += '</tr></thead><tbody>';
 
   (d.recently_discovered || []).forEach(function(c) {
-    var ago = _timeAgo(c.created_at);
     html += '<tr>';
     html += '<td style="font-family:var(--font-mono);font-size:12px;">' + _escHtml(c.slug) + '</td>';
     html += '<td>' + _escHtml(c.name || '—') + '</td>';
     html += '<td style="text-transform:capitalize;">' + _escHtml(c.source) + '</td>';
     html += '<td style="text-align:right">' + (c.job_count || 0) + '</td>';
-    html += '<td style="color:var(--text-faint);font-size:12px;">' + ago + '</td>';
+    html += '<td style="color:var(--text-faint);font-size:12px;">' + _timeAgo(c.created_at) + '</td>';
     html += '</tr>';
   });
 
@@ -5312,7 +5376,6 @@ function renderCompaniesPage(panel, d) {
 
   panel.innerHTML = html;
 
-  // Wire action bar events
   _wireCompanyListEvents();
   _fetchCompanyList();
 }
@@ -5390,7 +5453,8 @@ function _renderCompanyTable(target, data) {
     rows: data.rows,
     total: data.total,
     offset: data.offset,
-    limit: data.limit
+    limit: data.limit,
+    expandable: true
   });
 
   // Wire pagination
@@ -5404,13 +5468,77 @@ function _renderCompanyTable(target, data) {
     _companyListState.offset += _companyListState.limit;
     _fetchCompanyList();
   });
+
+  // Wire expand rows
+  _wireExpandableRows({
+    tableId: 'co-paged',
+    rows: data.rows,
+    loadDetail: function(row, panelEl) {
+      _loadCompanyDetailPanel(row, panelEl);
+    }
+  });
 }
+
+function _loadCompanyDetailPanel(row, panelEl) {
+  panelEl.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Loading detail…</span>';
+
+  sb.rpc('get_admin_company_detail', { p_slug: row.slug, p_source: row.source }).then(function(res) {
+    if (res.error || !res.data) {
+      panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Error loading detail</span>';
+      return;
+    }
+    var d = res.data;
+    var boardUrl = d.board_url;
+    var boardLink = boardUrl ? '<a href="' + _escHtml(boardUrl) + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + _escHtml(boardUrl) + '</a>' : '—';
+    var websiteLink = d.website ? '<a href="' + _escHtml(d.website) + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + _escHtml(d.website) + '</a>' : '—';
+    var linkedinLink = d.linkedin_url ? '<a href="' + _escHtml(d.linkedin_url) + '" target="_blank" style="color:var(--accent);text-decoration:none;">LinkedIn</a>' : '—';
+
+    panelEl.innerHTML = _adminDetailPanel([
+      {
+        title: 'Board',
+        rows: [
+          { label: 'Board URL', value: boardLink },
+          { label: 'ATS Source', value: d.source },
+          { label: 'Discovered Via', value: d.discovered_via || '—' },
+          { label: 'Last Scraped', value: _timeAgo(d.last_refresh_at) },
+          { label: 'Last HTTP', value: d.last_http_status ? String(d.last_http_status) : '—' },
+          { label: 'First Seen', value: _timeAgo(d.created_at) },
+          { label: 'Last Checked', value: _timeAgo(d.last_checked) }
+        ]
+      },
+      {
+        title: 'Company Info',
+        rows: [
+          { label: 'Website', value: websiteLink },
+          { label: 'LinkedIn', value: linkedinLink },
+          { label: 'Industry', value: d.industry ? d.industry.charAt(0).toUpperCase() + d.industry.slice(1) : '—' },
+          { label: 'Employees', value: d.employee_size || '—' },
+          { label: 'Location', value: [d.locality, d.region, d.country].filter(Boolean).join(', ') || '—' },
+          { label: 'Founded', value: d.founded ? String(d.founded) : '—' },
+          { label: 'Staffing Agency', value: d.is_staffing_agency ? 'Yes' : 'No' }
+        ]
+      },
+      {
+        title: 'PDL & Enrichment',
+        rows: [
+          { label: 'PDL Matched', value: d.pdl_matched ? '✓ Yes (ID: ' + d.ref_company_id + ')' : 'No' },
+          { label: 'JD AI Rate', value: d.ai_jd_rate != null ? (Math.round(d.ai_jd_rate * 100) + '%') : '—' },
+          { label: 'JD Rate Updated', value: _timeAgo(d.ai_jd_rate_updated_at) },
+          { label: 'Open Jobs', value: fmtAdminNum(d.open_jobs) },
+          { label: 'Total Jobs', value: fmtAdminNum(d.job_count) }
+        ]
+      }
+    ]);
+  }).catch(function(e) {
+    panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Failed: ' + e.message + '</span>';
+  });
+}
+
 
 // === js/admin-jobs.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-jobs.js — Jobs Sub-page (Admin IA v2 S3)
-   v6.86 — Stats + action bar + paginated job table
-   Helpers moved to admin-blocks.js
+   admin-jobs.js — Jobs Sub-page (Admin IA v2)
+   v6.87 — S4: click-to-expand job detail panels + daily volume ECharts line chart
    ─────────────────────────────────────────────────────────── */
 
 var _jobListState = { search: '', platform: '', status: 'open', sort: 'newest', offset: 0, limit: 50 };
@@ -5475,6 +5603,12 @@ function renderJobsPage(panel, d) {
 
   html += '</tbody></table></div></div>';
 
+  // ── Daily Volume ECharts Line Chart ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">New Jobs — Last 7 Days</div>';
+  html += '<div id="admin-jobs-daily-chart" style="width:100%;height:220px;"></div>';
+  html += '</div>';
+
   // ── Age Distribution ──
   html += '<div class="admin-block" style="margin-top:16px;">';
   html += '<div class="admin-block-title">Open Job Age Distribution</div>';
@@ -5492,30 +5626,9 @@ function renderJobsPage(panel, d) {
 
   html += '</div></div>';
 
-  // ── Daily New Jobs (7d) ──
-  html += '<div class="admin-block" style="margin-top:16px;">';
-  html += '<div class="admin-block-title">New Jobs (Last 7 Days)</div>';
-  html += '<div style="overflow-x:auto;"><table class="admin-table" style="width:100%"><thead><tr>';
-  html += '<th>Date</th><th style="text-align:right">New Jobs</th><th>Bar</th>';
-  html += '</tr></thead><tbody>';
-
-  var maxDaily = 0;
-  (d.daily_new_7d || []).forEach(function(row) { if (row.cnt > maxDaily) maxDaily = row.cnt; });
-
-  (d.daily_new_7d || []).forEach(function(row) {
-    var barW = maxDaily ? Math.round((row.cnt / maxDaily) * 100) : 0;
-    html += '<tr>';
-    html += '<td>' + row.day + '</td>';
-    html += '<td style="text-align:right">' + fmtAdminNum(row.cnt) + '</td>';
-    html += '<td style="width:50%;"><div style="background:var(--green);height:6px;border-radius:3px;width:' + barW + '%;opacity:0.7;"></div></td>';
-    html += '</tr>';
-  });
-
-  html += '</tbody></table></div></div>';
-
   // ── Action Bar + Paginated Job List ──
   html += '<div class="admin-block" style="margin-top:16px;">';
-  html += '<div class="admin-block-title">All Jobs</div>';
+  html += '<div class="admin-block-title">All Jobs <span style="font-size:11px;font-weight:400;color:var(--text-faint);">— click row to expand</span></div>';
 
   html += _adminActionBar({
     id: 'job-list',
@@ -5542,9 +5655,66 @@ function renderJobsPage(panel, d) {
 
   panel.innerHTML = html;
 
-  // Wire events
+  // Render ECharts daily line chart
+  _renderJobsDailyChart(d.daily_new_7d || []);
+
   _wireJobListEvents();
   _fetchJobList();
+}
+
+function _renderJobsDailyChart(dailyData) {
+  if (typeof echarts === 'undefined') return;
+  var el = document.getElementById('admin-jobs-daily-chart');
+  if (!el) return;
+  var chart = echarts.init(el, null, { renderer: 'svg' });
+
+  var dates = dailyData.map(function(r) { return r.day; });
+  var counts = dailyData.map(function(r) { return r.cnt; });
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'var(--bg-card)',
+      borderColor: 'var(--border)',
+      textStyle: { color: 'var(--text)', fontSize: 12 },
+      formatter: function(params) {
+        return params[0].name + '<br/><b>' + params[0].value.toLocaleString() + '</b> new jobs';
+      }
+    },
+    grid: { top: 16, right: 16, bottom: 40, left: 60 },
+    xAxis: {
+      type: 'category',
+      data: dates,
+      axisLine: { lineStyle: { color: 'var(--border)' } },
+      axisTick: { show: false },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11 }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'var(--border)', type: 'dashed' } },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11, formatter: function(v) { return v >= 1000 ? Math.round(v/1000) + 'K' : v; } }
+    },
+    series: [{
+      type: 'line',
+      data: counts,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { color: 'var(--green)', width: 2 },
+      itemStyle: { color: 'var(--green)' },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [
+          { offset: 0, color: 'rgba(34,197,94,0.25)' },
+          { offset: 1, color: 'rgba(34,197,94,0.02)' }
+        ]
+      }}
+    }]
+  });
+
+  window.addEventListener('resize', function() { chart.resize(); });
 }
 
 function _wireJobListEvents() {
@@ -5631,7 +5801,8 @@ function _renderJobTable(target, data) {
     rows: data.rows,
     total: data.total,
     offset: data.offset,
-    limit: data.limit
+    limit: data.limit,
+    expandable: true
   });
 
   // Wire pagination
@@ -5645,12 +5816,107 @@ function _renderJobTable(target, data) {
     _jobListState.offset += _jobListState.limit;
     _fetchJobList();
   });
+
+  // Wire expand rows
+  _wireExpandableRows({
+    tableId: 'job-paged',
+    rows: data.rows,
+    loadDetail: function(row, panelEl) {
+      _loadJobDetailPanel(row, panelEl);
+    }
+  });
 }
+
+function _loadJobDetailPanel(row, panelEl) {
+  panelEl.innerHTML = '<span style="color:var(--text-faint);font-size:12px;">Loading detail…</span>';
+
+  sb.rpc('get_admin_job_detail', { p_id: row.greenhouse_id, p_source: row.ats_source }).then(function(res) {
+    if (res.error || !res.data) {
+      panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Error loading detail</span>';
+      return;
+    }
+    var d = res.data;
+
+    var applyLink = d.apply_url ? '<a href="' + _escHtml(d.apply_url) + '" target="_blank" style="color:var(--accent);text-decoration:none;">Apply Link</a>' : '—';
+    var jobLink = d.url ? '<a href="' + _escHtml(d.url) + '" target="_blank" style="color:var(--accent);text-decoration:none;">Job Posting</a>' : '—';
+
+    var skills = [];
+    if (d.jd_skills && d.jd_skills.length) skills = d.jd_skills;
+    else if (d.extracted_skills && d.extracted_skills.length) skills = d.extracted_skills;
+    var skillsHtml = skills.length
+      ? skills.slice(0, 12).map(function(s) {
+          return '<span style="display:inline-block;background:var(--bg-main);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:11px;margin:2px;">' + _escHtml(s) + '</span>';
+        }).join(' ')
+      : '—';
+
+    var contentPreview = d.content_preview
+      ? '<div style="max-height:120px;overflow:hidden;font-size:12px;color:var(--text-dim);line-height:1.6;margin-top:8px;-webkit-mask-image:linear-gradient(to bottom, black 60%, transparent 100%);">' + _escHtml(d.content_preview) + '</div>'
+      : '';
+
+    var detailHtml = _adminDetailPanel([
+      {
+        title: 'Job Info',
+        rows: [
+          { label: 'ID', value: d.greenhouse_id, mono: true },
+          { label: 'Platform', value: d.ats_source },
+          { label: 'Status', value: d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : '—' },
+          { label: 'Department', value: d.department || '—' },
+          { label: 'Category', value: d.job_cat || '—' },
+          { label: 'Employment', value: d.employment_type || '—' },
+          { label: 'Apply', value: applyLink },
+          { label: 'Posting', value: jobLink }
+        ]
+      },
+      {
+        title: 'Enrichment',
+        rows: [
+          { label: 'JD Enriched', value: d.jd_enriched ? '✓ Yes' : '✗ No' },
+          { label: 'Enriched At', value: _timeAgo(d.jd_extracted_at) },
+          { label: 'Priority', value: d.enrichment_priority != null ? String(d.enrichment_priority) : '—' },
+          { label: 'Seniority', value: (d.jd_seniority || d.extracted_seniority || '—') },
+          { label: 'Education', value: d.jd_education || '—' },
+          { label: 'Experience', value: (d.jd_years_min || d.jd_years_max) ? (d.jd_years_min || '?') + '–' + (d.jd_years_max || '?') + ' yrs' : '—' },
+          { label: 'AI Score', value: d.ai_content_score != null ? d.ai_content_score.toFixed(2) : '—' },
+          { label: 'AI Label', value: d.ai_label || '—' },
+          { label: 'AI Scored', value: _timeAgo(d.ai_scored_at) }
+        ]
+      },
+      {
+        title: 'Salary',
+        rows: [
+          { label: 'Range', value: _fmtSalary(d.salary_min, d.salary_max, d.salary_currency) },
+          { label: 'Rate', value: d.salary_rate || '—' },
+          { label: 'Currency', value: d.salary_currency || '—' },
+          { label: 'Raw', value: d.salary_raw || '—' }
+        ]
+      }
+    ]);
+
+    // Skills row + JD preview appended below panels
+    var extra = '';
+    extra += '<div style="margin-top:12px;">';
+    extra += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:6px;">Skills</div>';
+    extra += skillsHtml;
+    extra += '</div>';
+
+    if (contentPreview) {
+      extra += '<div style="margin-top:12px;">';
+      extra += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-bottom:4px;">JD Preview</div>';
+      extra += contentPreview;
+      extra += '</div>';
+    }
+
+    panelEl.innerHTML = detailHtml + extra;
+  }).catch(function(e) {
+    panelEl.innerHTML = '<span style="color:var(--red);font-size:12px;">Failed: ' + e.message + '</span>';
+  });
+}
+
 
 // === js/admin-email.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-email.js — Email Sub-page (Admin IA v2 S2)
-   v6.85 — Notification performance, deliverability, log
+   admin-email.js — Email Sub-page (Admin IA v2)
+   v6.87 — S4: delivery funnel ECharts bar chart
    ─────────────────────────────────────────────────────────── */
 
 function loadAdminEmail() {
@@ -5673,7 +5939,6 @@ function loadAdminEmail() {
 function renderEmailPage(panel, d) {
   var html = '';
 
-  // ── Status breakdown for stat cards ──
   var statusMap = {};
   (d.by_status || []).forEach(function(s) { statusMap[s.status] = s.cnt; });
   var sent = statusMap['sent'] || 0;
@@ -5687,6 +5952,12 @@ function renderEmailPage(panel, d) {
   html += _adminStatCard('Delivered', fmtAdminNum(delivered), d.total_sent ? Math.round((delivered / d.total_sent) * 100) + '%' : '');
   html += _adminStatCard('Failed', fmtAdminNum(failed), failed > 0 ? 'alert' : '');
   html += _adminStatCard('Blocked', fmtAdminNum(blocked), '');
+  html += '</div>';
+
+  // ── Delivery Funnel ECharts Chart ──
+  html += '<div class="admin-block" style="margin-top:16px;">';
+  html += '<div class="admin-block-title">Delivery Funnel</div>';
+  html += '<div id="admin-email-funnel-chart" style="width:100%;height:200px;"></div>';
   html += '</div>';
 
   // ── Channel Split ──
@@ -5747,7 +6018,71 @@ function renderEmailPage(panel, d) {
   html += '</tbody></table></div></div>';
 
   panel.innerHTML = html;
+
+  // Render delivery funnel chart
+  _renderEmailFunnelChart({ sent: sent, delivered: delivered, failed: failed, blocked: blocked, total: d.total_sent });
 }
+
+function _renderEmailFunnelChart(data) {
+  if (typeof echarts === 'undefined') return;
+  var el = document.getElementById('admin-email-funnel-chart');
+  if (!el) return;
+  var chart = echarts.init(el, null, { renderer: 'svg' });
+
+  var stages = [
+    { name: 'Total Sent', value: data.total, color: 'var(--accent)' },
+    { name: 'Sent', value: data.sent, color: '#6366f1' },
+    { name: 'Delivered', value: data.delivered, color: 'var(--green)' },
+    { name: 'Failed', value: data.failed, color: 'var(--red)' },
+    { name: 'Blocked', value: data.blocked, color: 'var(--warm)' }
+  ];
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'none' },
+      backgroundColor: 'var(--bg-card)',
+      borderColor: 'var(--border)',
+      textStyle: { color: 'var(--text)', fontSize: 12 },
+      formatter: function(params) {
+        return params[0].name + ': <b>' + params[0].value.toLocaleString() + '</b>';
+      }
+    },
+    grid: { top: 8, right: 16, bottom: 40, left: 80 },
+    xAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'var(--border)', type: 'dashed' } },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11, formatter: function(v) { return v >= 1000 ? Math.round(v/1000) + 'K' : v; } }
+    },
+    yAxis: {
+      type: 'category',
+      data: stages.map(function(s) { return s.name; }),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: 'var(--text-faint)', fontSize: 11 }
+    },
+    series: [{
+      type: 'bar',
+      data: stages.map(function(s) {
+        return { value: s.value, itemStyle: { color: s.color, borderRadius: [0, 4, 4, 0] } };
+      }),
+      label: {
+        show: true,
+        position: 'right',
+        color: 'var(--text-faint)',
+        fontSize: 11,
+        formatter: function(params) { return params.value.toLocaleString(); }
+      },
+      barMaxWidth: 28
+    }]
+  });
+
+  window.addEventListener('resize', function() { chart.resize(); });
+}
+
 
 // === js/admin-notifications.js ===
 /* ───────────────────────────────────────────────────────────
@@ -8285,10 +8620,610 @@ async function rerunCadenceAnalysis() {
   await loadCadenceTab();
 }
 
+// ═══════════════════════════════════════════════════════════
+// NOTIFICATION LOG VIEWER (S5 — v6.88)
+// Paginated viewer of notification_log with search + filters
+// ═══════════════════════════════════════════════════════════
+
+var _notifLogState = {
+  search: '',
+  status: '',
+  channel: '',
+  type: '',
+  offset: 0,
+  limit: 50,
+  total: 0
+};
+
+async function loadNotifLogTab() {
+  _notifLogState.offset = 0;
+  await _renderNotifLog();
+}
+
+async function _renderNotifLog() {
+  var container = document.getElementById('admin-panel-notif-log');
+  if (!container) return;
+
+  var isFirst = _notifLogState.offset === 0;
+  if (isFirst) {
+    container.innerHTML = '<div class="admin-loading">Loading notification log…</div>';
+  }
+
+  try {
+    var result = await sb.rpc('get_admin_notification_log', {
+      p_search:  _notifLogState.search  || null,
+      p_status:  _notifLogState.status  || null,
+      p_channel: _notifLogState.channel || null,
+      p_type:    _notifLogState.type    || null,
+      p_offset:  _notifLogState.offset,
+      p_limit:   _notifLogState.limit
+    });
+    if (result.error) throw result.error;
+    var d = result.data || {};
+    var rows = d.rows || [];
+    _notifLogState.total = d.total || 0;
+
+    var statusOptions = ['', 'sent', 'delivered', 'opened', 'clicked', 'failed', 'bounced', 'complained'];
+    var channelOptions = ['', 'email', 'sms'];
+
+    // Action bar
+    var html = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">';
+    html += '<input type="text" id="notif-log-search" placeholder="Search type / company / subject…" value="' + _escHtml(_notifLogState.search) + '" oninput="notifLogFilter()" style="flex:1;min-width:200px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;font-family:var(--mono)">';
+    html += '<select id="notif-log-status" onchange="notifLogFilter()" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">';
+    statusOptions.forEach(function(s) {
+      html += '<option value="' + s + '"' + (_notifLogState.status === s ? ' selected' : '') + '>' + (s || 'All Statuses') + '</option>';
+    });
+    html += '</select>';
+    html += '<select id="notif-log-channel" onchange="notifLogFilter()" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px">';
+    channelOptions.forEach(function(ch) {
+      html += '<option value="' + ch + '"' + (_notifLogState.channel === ch ? ' selected' : '') + '>' + (ch || 'All Channels') + '</option>';
+    });
+    html += '</select>';
+    html += '<span style="font-size:12px;color:var(--text-dim);font-family:var(--mono);white-space:nowrap">' + _notifLogState.total.toLocaleString() + ' rows</span>';
+    html += '</div>';
+
+    // Table
+    html += '<div style="overflow-x:auto">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)">';
+    html += '<thead><tr style="border-bottom:2px solid var(--border);text-align:left">';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Time</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Type</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Channel</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Status</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">User</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Company</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Subject</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Plan</th>';
+    html += '<th style="padding:6px 8px;color:var(--text-dim)">Decision</th>';
+    html += '</tr></thead><tbody id="notif-log-body">';
+
+    rows.forEach(function(r) {
+      var statusColor = r.status === 'delivered' || r.status === 'opened' || r.status === 'clicked' ? '#22c55e'
+        : r.status === 'failed' || r.status === 'bounced' || r.status === 'complained' ? '#ef4444'
+        : r.status === 'sent' ? '#a78bfa' : 'var(--text-dim)';
+      var dt = r.created_at ? new Date(r.created_at) : null;
+      var dateStr = dt ? (dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})) : '—';
+      var openDot = r.opened_at ? ' <span style="color:#22c55e" title="Opened">●</span>' : '';
+      var clickDot = r.clicked_at ? ' <span style="color:#f59e0b" title="Clicked">●</span>' : '';
+
+      html += '<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="toggleNotifLogDetail(this,\'' + r.id + '\')">';
+      html += '<td style="padding:5px 8px;color:var(--text-faint);white-space:nowrap">' + dateStr + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text)">' + _escHtml(r.notification_type || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim)">' + _escHtml(r.channel || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:' + statusColor + ';font-weight:600">' + _escHtml(r.status || '—') + openDot + clickDot + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-faint);font-size:10px">' + (r.user_id ? r.user_id.substring(0,8) + '…' : '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text)">' + _escHtml(r.company_name || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escHtml(r.subject || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim)">' + _escHtml(r.user_plan || '—') + '</td>';
+      html += '<td style="padding:5px 8px;color:var(--text-dim)">' + _escHtml(r.send_decision || '—') + '</td>';
+      html += '</tr>';
+      // Detail row (hidden)
+      html += '<tr id="notif-log-detail-' + r.id + '" style="display:none"><td colspan="9" style="padding:0 8px 12px 8px">';
+      html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">';
+      var fields = [
+        ['Classification', r.classification],['Send Reason', r.send_reason],['Template v', r.template_version],
+        ['Message ID', r.message_id ? r.message_id.substring(0,24)+'…' : null],
+        ['Cohort', r.user_cohort],['Job ID', r.job_id],
+        ['Delivered', r.delivered_at ? new Date(r.delivered_at).toLocaleString() : null],
+        ['Opened', r.opened_at ? new Date(r.opened_at).toLocaleString() : null],
+        ['Clicked', r.clicked_at ? new Date(r.clicked_at).toLocaleString() : null],
+        ['Bounced', r.bounced_at ? new Date(r.bounced_at).toLocaleString() + (r.bounce_type ? ' ('+r.bounce_type+')' : '') : null]
+      ];
+      fields.forEach(function(f) {
+        if (!f[1]) return;
+        html += '<div><span style="color:var(--text-faint)">' + f[0] + ':</span> <span style="color:var(--text)">' + _escHtml(String(f[1])) + '</span></div>';
+      });
+      html += '</div></td></tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    // Pagination
+    var hasMore = (_notifLogState.offset + rows.length) < _notifLogState.total;
+    if (_notifLogState.offset > 0 || hasMore) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">';
+      html += '<span style="font-size:12px;color:var(--text-dim);font-family:var(--mono)">';
+      html += (_notifLogState.offset + 1) + '–' + (_notifLogState.offset + rows.length) + ' of ' + _notifLogState.total.toLocaleString();
+      html += '</span><div style="display:flex;gap:8px">';
+      if (_notifLogState.offset > 0) {
+        html += '<button onclick="notifLogPage(-1)" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--mono)">← Prev</button>';
+      }
+      if (hasMore) {
+        html += '<button onclick="notifLogPage(1)" style="padding:5px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:12px;cursor:pointer;font-family:var(--mono)">Next →</button>';
+      }
+      html += '</div></div>';
+    }
+
+    container.innerHTML = html;
+
+  } catch (e) {
+    console.error('[Admin] Notif log error:', e);
+    var container2 = document.getElementById('admin-panel-notif-log');
+    if (container2) container2.innerHTML = '<div style="color:#ef4444;padding:16px">Failed to load notification log: ' + _escHtml(e.message || String(e)) + '</div>';
+  }
+}
+
+function toggleNotifLogDetail(row, id) {
+  var detail = document.getElementById('notif-log-detail-' + id);
+  if (!detail) return;
+  detail.style.display = detail.style.display === 'none' ? '' : 'none';
+}
+
+var _notifLogTimer = null;
+function notifLogFilter() {
+  clearTimeout(_notifLogTimer);
+  _notifLogTimer = setTimeout(function() {
+    _notifLogState.search  = (document.getElementById('notif-log-search')  || {}).value || '';
+    _notifLogState.status  = (document.getElementById('notif-log-status')  || {}).value || '';
+    _notifLogState.channel = (document.getElementById('notif-log-channel') || {}).value || '';
+    _notifLogState.offset  = 0;
+    _renderNotifLog();
+  }, 300);
+}
+
+function notifLogPage(dir) {
+  _notifLogState.offset = Math.max(0, _notifLogState.offset + (dir * _notifLogState.limit));
+  _renderNotifLog();
+}
+
+
+// === js/admin-signals.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-signals.js — Pipeline Signals + Signal Patterns
+   Admin IA v2 · Session 5 (v6.88)
+   ─────────────────────────────────────────────────────────── */
+
+var _signalsState = { loaded: false, data: null };
+
+async function loadAdminSignals() {
+  var container = document.getElementById('admin-panel-signals');
+  if (!container) return;
+  if (_signalsState.loaded && _signalsState.data) {
+    renderSignalsPanel(container, _signalsState.data);
+    return;
+  }
+  container.innerHTML = '<div class="admin-loading">Loading signals…</div>';
+  try {
+    var { data, error } = await sb.rpc('get_admin_signals');
+    if (error) throw error;
+    _signalsState.data = data;
+    _signalsState.loaded = true;
+    renderSignalsPanel(container, data);
+  } catch (e) {
+    container.innerHTML = '<div class="admin-error">Failed to load signals: ' + _escHtml(e.message || String(e)) + '</div>';
+  }
+}
+
+function renderSignalsPanel(container, d) {
+  var ps = d.pipeline_signals || {};
+  var alertsHtml = '';
+
+  // ── Stat cards ──
+  var statCards = [
+    { label: 'Total Signals',     value: (ps.total || 0).toLocaleString(),                            sub: 'all time' },
+    { label: 'Pending',           value: (ps.pending || 0).toLocaleString(),                          sub: 'awaiting user', accent: ps.pending > 0 },
+    { label: 'Accepted',          value: (ps.accepted || 0).toLocaleString(),                         sub: 'confirmed' },
+    { label: 'Avg Confidence',    value: ps.avg_confidence != null ? (ps.avg_confidence * 100).toFixed(1) + '%' : '—', sub: 'across signals' },
+    { label: 'Last 7 Days',       value: (ps.last_7d || 0).toLocaleString(),                          sub: 'new signals' },
+  ];
+  var statRow = '<div class="admin-stat-row">' + statCards.map(function(c) {
+    return '<div class="admin-stat-card' + (c.accent ? ' admin-stat-card--alert' : '') + '">'
+      + '<div class="asc-label">' + c.label + '</div>'
+      + '<div class="asc-value">' + c.value + '</div>'
+      + '<div class="asc-sub">' + c.sub + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+
+  // ── Zero-state if no signals yet ──
+  if (!ps.total || ps.total === 0) {
+    container.innerHTML = statRow
+      + '<div class="admin-block" style="margin-top:20px;text-align:center;padding:40px 20px;color:var(--text-dim)">'
+      + '<div style="font-size:32px;margin-bottom:12px">📡</div>'
+      + '<div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No pipeline signals yet</div>'
+      + '<div style="font-size:12px">Signals are generated when Gmail or Calendar integrations detect application status changes.</div>'
+      + '</div>'
+      + renderSignalPatterns(d.signal_patterns || []);
+    return;
+  }
+
+  // ── By Source ──
+  var bySource = d.by_source || [];
+  var sourceRows = bySource.map(function(s) {
+    return '<tr>'
+      + '<td>' + _escHtml(s.signal_source || '—') + '</td>'
+      + '<td>' + (s.cnt || 0).toLocaleString() + '</td>'
+      + '<td>' + (s.avg_conf != null ? (s.avg_conf * 100).toFixed(1) + '%' : '—') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // ── By Type ──
+  var byType = d.by_type || [];
+  var typeRows = byType.map(function(t) {
+    return '<tr><td>' + _escHtml(t.signal_type || '—') + '</td><td>' + (t.cnt || 0).toLocaleString() + '</td></tr>';
+  }).join('');
+
+  // ── Recent signals table ──
+  var recent = d.recent || [];
+  var recentRows = recent.map(function(r) {
+    var statusColor = r.status === 'accepted' ? 'var(--green)' : r.status === 'dismissed' ? 'var(--text-faint)' : 'var(--amber, #f59e0b)';
+    return '<tr>'
+      + '<td>' + _escHtml(r.signal_source || '—') + '</td>'
+      + '<td>' + _escHtml(r.signal_type || '—') + '</td>'
+      + '<td>' + _escHtml(r.proposed_stage || '—') + '</td>'
+      + '<td>' + (r.confidence != null ? (r.confidence * 100).toFixed(0) + '%' : '—') + '</td>'
+      + '<td style="color:' + statusColor + '">' + _escHtml(r.status || '—') + '</td>'
+      + '<td style="color:var(--text-dim);font-size:11px">' + (r.created_at ? _timeAgo(r.created_at) : '—') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var html = statRow;
+
+  // Source + type tables side by side
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">';
+  html += '<div class="admin-block"><div class="admin-block-title">By Source</div>'
+    + '<table class="admin-table"><thead><tr><th>Source</th><th>Count</th><th>Avg Conf</th></tr></thead><tbody>'
+    + (sourceRows || '<tr><td colspan="3" style="color:var(--text-dim)">No data</td></tr>')
+    + '</tbody></table></div>';
+  html += '<div class="admin-block"><div class="admin-block-title">By Type</div>'
+    + '<table class="admin-table"><thead><tr><th>Signal Type</th><th>Count</th></tr></thead><tbody>'
+    + (typeRows || '<tr><td colspan="2" style="color:var(--text-dim)">No data</td></tr>')
+    + '</tbody></table></div>';
+  html += '</div>';
+
+  // Recent signals
+  html += '<div class="admin-block" style="margin-top:16px">'
+    + '<div class="admin-block-title">Recent Signals</div>'
+    + '<table class="admin-table"><thead><tr><th>Source</th><th>Type</th><th>Proposed Stage</th><th>Conf</th><th>Status</th><th>When</th></tr></thead>'
+    + '<tbody>' + (recentRows || '<tr><td colspan="6" style="color:var(--text-dim)">No signals</td></tr>') + '</tbody>'
+    + '</table></div>';
+
+  // Signal patterns
+  html += renderSignalPatterns(d.signal_patterns || []);
+
+  container.innerHTML = html;
+}
+
+function renderSignalPatterns(patterns) {
+  if (!patterns || patterns.length === 0) {
+    return '<div class="admin-block" style="margin-top:16px"><div class="admin-block-title">Signal Patterns <span style="font-size:11px;color:var(--text-dim);font-weight:400">(21 learned)</span></div>'
+      + '<div style="padding:20px;text-align:center;color:var(--text-dim);font-size:12px">Pattern library exists but has no display data yet.</div></div>';
+  }
+  var rows = patterns.map(function(p) {
+    var conf = p.confidence_score != null ? (p.confidence_score * 100).toFixed(0) + '%' : '—';
+    var ratio = (p.confirmations + p.dismissals) > 0
+      ? Math.round(p.confirmations / (p.confirmations + p.dismissals) * 100) + '%'
+      : '—';
+    return '<tr>'
+      + '<td>' + _escHtml(p.pattern_type || '—') + '</td>'
+      + '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escHtml(p.pattern_value || '—') + '</td>'
+      + '<td>' + _escHtml(p.associated_signal_type || '—') + '</td>'
+      + '<td>' + (p.confirmations || 0) + '</td>'
+      + '<td>' + (p.dismissals || 0) + '</td>'
+      + '<td>' + ratio + '</td>'
+      + '<td>' + conf + '</td>'
+      + '<td>' + _escHtml(p.ats_source || 'all') + '</td>'
+      + '</tr>';
+  }).join('');
+  return '<div class="admin-block" style="margin-top:16px">'
+    + '<div class="admin-block-title">Signal Patterns <span style="font-size:11px;color:var(--text-dim);font-weight:400">(' + patterns.length + ' patterns)</span></div>'
+    + '<table class="admin-table"><thead><tr><th>Pattern Type</th><th>Value</th><th>Signal Type</th><th>Confirms</th><th>Dismissals</th><th>Acc Rate</th><th>Confidence</th><th>ATS</th></tr></thead>'
+    + '<tbody>' + rows + '</tbody></table></div>';
+}
+
+
+// === js/admin-feed-health.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-feed-health.js — Feed Health + Refresh Log
+   Admin IA v2 · Session 5 (v6.88)
+   ─────────────────────────────────────────────────────────── */
+
+var _feedHealthState = { loaded: false, data: null };
+
+async function refreshFeedHealthPanel() {
+  var container = document.getElementById('admin-panel-feed-health');
+  if (!container) return;
+  if (_feedHealthState.loaded && _feedHealthState.data) {
+    renderFeedHealthPanel(container, _feedHealthState.data);
+    return;
+  }
+  container.innerHTML = '<div class="admin-loading">Loading feed health…</div>';
+  try {
+    var { data, error } = await sb.rpc('get_admin_feed_health');
+    if (error) throw error;
+    _feedHealthState.data = data;
+    _feedHealthState.loaded = true;
+    renderFeedHealthPanel(container, data);
+  } catch (e) {
+    container.innerHTML = '<div class="admin-error">Failed to load feed health: ' + _escHtml(e.message || String(e)) + '</div>';
+  }
+}
+
+var _feedHealthChartInst = null;
+
+function renderFeedHealthPanel(container, d) {
+  var totals = d.totals_today || {};
+  var today = d.today || [];
+  var rs = d.refresh_summary || {};
+  var rl = d.refresh_log || [];
+
+  // ── Stat cards ──
+  var lastRun = rs.last_run ? _timeAgo(rs.last_run) : '—';
+  var statCards = [
+    { label: 'Total Boards',    value: (totals.total_boards || 0).toLocaleString(),  sub: 'indexed today' },
+    { label: 'Active Boards',   value: (totals.active_boards || 0).toLocaleString(), sub: 'have open jobs' },
+    { label: 'Total Jobs',      value: (totals.total_jobs || 0).toLocaleString(),     sub: 'live today' },
+    { label: 'Refresh Runs',    value: (rs.total_runs || 0).toLocaleString(),         sub: 'all time' },
+    { label: 'Last Refresh',    value: lastRun,                                       sub: rs.last_run ? new Date(rs.last_run).toLocaleDateString() : '—', accent: !rs.last_run || (Date.now() - new Date(rs.last_run)) > 24*60*60*1000 },
+    { label: 'Avg Duration',    value: rs.avg_duration_sec != null ? rs.avg_duration_sec + 's' : '—', sub: 'per run' },
+  ];
+  var statRow = '<div class="admin-stat-row">' + statCards.map(function(c) {
+    return '<div class="admin-stat-card' + (c.accent ? ' admin-stat-card--alert' : '') + '">'
+      + '<div class="asc-label">' + c.label + '</div>'
+      + '<div class="asc-value">' + c.value + '</div>'
+      + '<div class="asc-sub">' + c.sub + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+
+  // ── Platform breakdown table ──
+  var platformColors = { greenhouse: '#22c55e', lever: '#3b82f6', ashby: '#a855f7', workable: '#f59e0b', recruitee: '#ec4899', usajobs: '#14b8a6' };
+  var platformRows = today.map(function(p) {
+    var color = platformColors[p.platform] || 'var(--accent)';
+    var dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px"></span>';
+    return '<tr>'
+      + '<td>' + dot + _escHtml(p.platform) + '</td>'
+      + '<td>' + (p.total_boards || 0).toLocaleString() + '</td>'
+      + '<td>' + (p.active_boards || 0).toLocaleString() + '</td>'
+      + '<td>' + (p.active_pct != null ? p.active_pct + '%' : '—') + '</td>'
+      + '<td>' + (p.total_jobs || 0).toLocaleString() + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // ── 7-day bar chart data ──
+  var history = d.history_7d || [];
+  var platforms = [...new Set(history.map(function(r) { return r.platform; }))];
+  var dates = [...new Set(history.map(function(r) { return r.snapshot_date; }))].sort();
+
+  // ── Refresh log table ──
+  var refreshRows = rl.slice(0, 15).map(function(r) {
+    var ok = r.error_count === 0;
+    var dur = r.duration_sec != null ? r.duration_sec + 's' : '—';
+    return '<tr>'
+      + '<td style="color:var(--text-dim);font-size:11px">' + (r.started_at ? new Date(r.started_at).toLocaleString() : '—') + '</td>'
+      + '<td>' + (r.boards_total || 0).toLocaleString() + '</td>'
+      + '<td>' + (r.batches_run || 0) + '</td>'
+      + '<td>' + (r.jobs_upserted || 0).toLocaleString() + '</td>'
+      + '<td>' + (r.jobs_closed || 0).toLocaleString() + '</td>'
+      + '<td>' + dur + '</td>'
+      + '<td style="color:' + (ok ? 'var(--green)' : 'var(--red,#ef4444)') + '">' + (ok ? '✓ Clean' : r.error_count + ' errors') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var html = statRow;
+
+  // Platform breakdown
+  html += '<div class="admin-block" style="margin-top:20px">'
+    + '<div class="admin-block-title">Platform Breakdown — Today</div>'
+    + '<table class="admin-table"><thead><tr><th>Platform</th><th>Total Boards</th><th>Active</th><th>Active %</th><th>Jobs</th></tr></thead>'
+    + '<tbody>' + (platformRows || '<tr><td colspan="5" style="color:var(--text-dim)">No data for today</td></tr>') + '</tbody>'
+    + '</table></div>';
+
+  // 7-day chart container
+  html += '<div class="admin-block" style="margin-top:16px">'
+    + '<div class="admin-block-title">Job Inventory — 7 Day Trend</div>'
+    + '<div id="feed-health-chart" style="width:100%;height:280px"></div>'
+    + '</div>';
+
+  // Refresh log
+  html += '<div class="admin-block" style="margin-top:16px">'
+    + '<div class="admin-block-title">Refresh Log</div>'
+    + '<table class="admin-table"><thead><tr><th>Started</th><th>Boards</th><th>Batches</th><th>Upserted</th><th>Closed</th><th>Duration</th><th>Status</th></tr></thead>'
+    + '<tbody>' + (refreshRows || '<tr><td colspan="7" style="color:var(--text-dim)">No refresh runs recorded</td></tr>') + '</tbody>'
+    + '</table></div>';
+
+  container.innerHTML = html;
+
+  // Render ECharts after DOM update
+  if (typeof echarts !== 'undefined' && dates.length > 0) {
+    setTimeout(function() {
+      var el = document.getElementById('feed-health-chart');
+      if (!el) return;
+      if (_feedHealthChartInst) { try { _feedHealthChartInst.dispose(); } catch(e){} }
+      _feedHealthChartInst = echarts.init(el, 'dark');
+
+      var series = platforms.map(function(plat) {
+        var color = platformColors[plat] || '#6b7280';
+        var vals = dates.map(function(dt) {
+          var row = history.find(function(r) { return r.platform === plat && r.snapshot_date === dt; });
+          return row ? (row.total_jobs || 0) : null;
+        });
+        return {
+          name: plat,
+          type: 'line',
+          smooth: true,
+          connectNulls: true,
+          data: vals,
+          itemStyle: { color: color },
+          lineStyle: { color: color, width: 2 },
+        };
+      });
+
+      _feedHealthChartInst.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        legend: { data: platforms, textStyle: { color: '#9ca3af', fontSize: 11 }, bottom: 0 },
+        grid: { top: 20, left: 60, right: 20, bottom: 40 },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#9ca3af', fontSize: 11 },
+          axisLine: { lineStyle: { color: '#374151' } } },
+        yAxis: { type: 'value',
+          axisLabel: { color: '#9ca3af', fontSize: 11, formatter: function(v) { return v >= 1000 ? (v/1000).toFixed(0)+'K' : v; } },
+          splitLine: { lineStyle: { color: '#1f2937' } } },
+        series: series
+      });
+    }, 50);
+  }
+}
+
+
+// === js/admin-cache-health.js ===
+/* ───────────────────────────────────────────────────────────
+   admin-cache-health.js — Cache Health + MV Staleness + Alerts
+   Admin IA v2 · Session 5 (v6.88)
+   ─────────────────────────────────────────────────────────── */
+
+var _cacheHealthState = { loaded: false, data: null };
+
+async function refreshCacheHealthPanel() {
+  var container = document.getElementById('admin-panel-cache-health');
+  if (!container) return;
+  if (_cacheHealthState.loaded && _cacheHealthState.data) {
+    renderCacheHealthPanel(container, _cacheHealthState.data);
+    return;
+  }
+  container.innerHTML = '<div class="admin-loading">Loading cache health…</div>';
+  try {
+    var { data, error } = await sb.rpc('get_admin_cache_health');
+    if (error) throw error;
+    _cacheHealthState.data = data;
+    _cacheHealthState.loaded = true;
+    renderCacheHealthPanel(container, data);
+  } catch (e) {
+    container.innerHTML = '<div class="admin-error">Failed to load cache health: ' + _escHtml(e.message || String(e)) + '</div>';
+  }
+}
+
+function renderCacheHealthPanel(container, d) {
+  var alertsSummary = d.alerts_summary || {};
+  var alerts = d.monitoring_alerts || [];
+  var mvRows = d.mv_row_counts || [];
+  var cache = d.major_job_cache || [];
+  var cacheAt = d.cache_computed_at;
+
+  // ── Stat cards ──
+  var statCards = [
+    { label: 'Open Alerts',   value: (alertsSummary.open || 0).toString(),     sub: 'unresolved',    accent: (alertsSummary.open || 0) > 0 },
+    { label: 'Critical',      value: (alertsSummary.critical || 0).toString(), sub: 'severity',      accent: (alertsSummary.critical || 0) > 0 },
+    { label: 'Warnings',      value: (alertsSummary.warning || 0).toString(),  sub: 'severity' },
+    { label: 'Total Alerts',  value: (alertsSummary.total || 0).toString(),    sub: 'all time' },
+    { label: 'MVs Tracked',   value: mvRows.length.toString(),                 sub: 'materialized views' },
+    { label: 'Cache Age',     value: cacheAt ? _timeAgo(cacheAt) : '—',        sub: 'major_job_cache', accent: cacheAt && (Date.now() - new Date(cacheAt)) > 7*24*60*60*1000 },
+  ];
+  var statRow = '<div class="admin-stat-row">' + statCards.map(function(c) {
+    return '<div class="admin-stat-card' + (c.accent ? ' admin-stat-card--alert' : '') + '">'
+      + '<div class="asc-label">' + c.label + '</div>'
+      + '<div class="asc-value">' + c.value + '</div>'
+      + '<div class="asc-sub">' + c.sub + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+
+  // ── Monitoring alerts table ──
+  var severityColor = { critical: 'var(--red,#ef4444)', warning: 'var(--amber,#f59e0b)', info: 'var(--accent)' };
+  var alertRows = alerts.map(function(a) {
+    var sev = a.severity || 'info';
+    var sc = severityColor[sev] || 'var(--text)';
+    var resolvedBadge = a.resolved
+      ? '<span style="color:var(--green);font-size:11px">✓ resolved</span>'
+      : '<span style="color:' + sc + ';font-size:11px">● open</span>';
+    return '<tr>'
+      + '<td style="color:' + sc + ';font-weight:600">' + sev.toUpperCase() + '</td>'
+      + '<td>' + _escHtml(a.check_name || '—') + '</td>'
+      + '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _escHtml(a.message || '—') + '</td>'
+      + '<td>' + resolvedBadge + '</td>'
+      + '<td style="color:var(--text-dim);font-size:11px">' + (a.created_at ? _timeAgo(a.created_at) : '—') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // ── MV row counts table ──
+  var mvTableRows = mvRows.map(function(mv) {
+    var stale = !mv.last_autovacuum && !mv.last_vacuum;
+    var freshness = mv.last_autovacuum ? _timeAgo(mv.last_autovacuum)
+                  : mv.last_vacuum ? _timeAgo(mv.last_vacuum)
+                  : '<span style="color:var(--text-faint)">—</span>';
+    return '<tr>'
+      + '<td>' + _escHtml(mv.name || '—') + '</td>'
+      + '<td>' + (mv.rows || 0).toLocaleString() + '</td>'
+      + '<td>' + freshness + '</td>'
+      + '</tr>';
+  }).join('');
+
+  // ── Major job cache table ──
+  var cacheRows = cache.map(function(c) {
+    return '<tr>'
+      + '<td>' + _escHtml(c.major_category || '—') + '</td>'
+      + '<td>' + (c.open_jobs || 0).toLocaleString() + '</td>'
+      + '<td>' + (c.median_salary ? '$' + parseInt(c.median_salary).toLocaleString() : '—') + '</td>'
+      + '<td>' + (c.remote_jobs || 0).toLocaleString() + '</td>'
+      + '<td>' + (c.remote_pct != null ? c.remote_pct + '%' : '—') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var html = statRow;
+
+  // Monitoring alerts
+  html += '<div class="admin-block" style="margin-top:20px">'
+    + '<div class="admin-block-title">Monitoring Alerts</div>'
+    + '<table class="admin-table"><thead><tr><th>Severity</th><th>Check</th><th>Message</th><th>Status</th><th>Age</th></tr></thead>'
+    + '<tbody>' + (alertRows || '<tr><td colspan="5" style="color:var(--green)">✓ No alerts</td></tr>') + '</tbody>'
+    + '</table></div>';
+
+  // MV row counts side by side with major_job_cache
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">';
+
+  html += '<div class="admin-block"><div class="admin-block-title">Materialized View Row Counts</div>'
+    + '<table class="admin-table"><thead><tr><th>View</th><th>Rows</th><th>Last Vacuum</th></tr></thead>'
+    + '<tbody>' + (mvTableRows || '<tr><td colspan="3" style="color:var(--text-dim)">No MV data</td></tr>') + '</tbody>'
+    + '</table></div>';
+
+  html += '<div class="admin-block"><div class="admin-block-title">Major Job Cache'
+    + (cacheAt ? '<span style="font-size:11px;color:var(--text-dim);font-weight:400;margin-left:8px">computed ' + _timeAgo(cacheAt) + '</span>' : '')
+    + '</div>'
+    + '<table class="admin-table"><thead><tr><th>Category</th><th>Jobs</th><th>Median Salary</th><th>Remote</th><th>Rem%</th></tr></thead>'
+    + '<tbody>' + (cacheRows || '<tr><td colspan="5" style="color:var(--text-dim)">No cache data</td></tr>') + '</tbody>'
+    + '</table></div>';
+
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+async function resolveMonitoringAlert(id) {
+  try {
+    var { error } = await sb.from('monitoring_alerts')
+      .update({ resolved: true, resolved_at: new Date().toISOString() })
+      .eq('id', id);
+    if (error) throw error;
+    _cacheHealthState.loaded = false;
+    await refreshCacheHealthPanel();
+    if (typeof toastSuccess === 'function') toastSuccess('Alert resolved');
+  } catch (e) {
+    if (typeof toastError === 'function') toastError('Resolve failed: ' + (e.message || e));
+  }
+}
+
+
 // === js/admin-shell.js ===
 /* ───────────────────────────────────────────────────────────
    admin-shell.js — Auth gate + init for standalone /admin page
-   v6.86 — IA v2 S2 block pages (Companies, Jobs, Email)
+   v6.89 — Admin IA v2 S5: Signals, Feed Health, Cache Health
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check
