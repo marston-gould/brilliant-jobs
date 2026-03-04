@@ -1,3 +1,12 @@
+## v6.73 Chat Mode Session 11: Post-Launch Optimization (2026-03-03)
+- Feat: Cache buster automation script (scripts/bump-version.sh) — auto-updates ALL ?v= params across all HTML files
+- Feat: Enhanced pre-commit hook (v2) — global cache buster scan prevents Session 7/9/10-type drift
+- Feat: Edge Function latency tracking — PostHog event chat_edge_function_latency with p95 target monitoring
+- Feat: Chat mode onboarding tooltip — one-time tooltip guiding new users to chat search toggle
+- Feat: PostHog events for tooltip impression/dismissal + latency tracking (3 new events total)
+- Chore: Version bumped v6.72 → v6.73 across all surfaces per VERSION_METHODOLOGY
+- Scope: 16 files updated — build pipeline hardening + UX refinement + performance monitoring
+
 ## v6.72 Chat Mode Session 10: Global Cache Buster Remediation & Hardening (2026-03-03)
 - Fix: 11 HTML files with stale cache busters remediated (admin.html v6.60/v6.62, compare.html v6.07/v6.62, career-level-data/data-lab/ghost-report/hiring-trends/jobs-by-industry/market-dynamics/pricing/roadmap/salary-data all v6.62 → v6.72)
 - Fix: admin.html version comment v6.62 → v6.72, styles.css buster v6.60 → v6.72, admin.min.js buster v6.60 → v6.72
