@@ -327,6 +327,10 @@ function movePipelineStage(jobId, newStage) {
       var salary = m.salaryEstimate || 80000;
       confirmHireFee(jobId, jobTitle, salary);
     }
+    // Phase 16 S6: auto-pause passive mode on hired
+    if (typeof autoHirePause === 'function') {
+      autoHirePause(m.title || jobId);
+    }
   }
   if (newStage === 'rejected' && !m.rejectedAt) m.rejectedAt = now;
   if (newStage === 'archived' && !m.archivedAt) m.archivedAt = now;

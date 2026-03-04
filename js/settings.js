@@ -797,3 +797,62 @@ async function bootstrapFiltersFromResume() {
     }
   };
 })();
+
+// ── Phase 16 Session 6: autoHirePause ──────────────────────────────────────
+// Called from pipeline.js when user moves a job to hired stage.
+// Auto-pauses passive mode, shows congrats toast, fires PostHog event.
+async function autoHirePause(jobTitle) {
+  if (!currentUser) return;
+  try {
+    // Check if passive mode is currently on
+    var passive = safeReadLS('bj_passive_mode');
+    var isPassive = passive === 'true' || passive === true;
+
+    // Update DB: set passive_mode = false
+    var { error } = await sb
+      .from('profiles')
+      .update({ passive_mode: false })
+      .eq('id', currentUser.id);
+    if (error) {
+      console.warn('[BJ] autoHirePause DB update error:', error.message);
+      return;
+    }
+
+    // Update in-memory flag if global exists
+    if (typeof _passiveMode !== 'undefined') {
+      _passiveMode = false;
+    }
+
+    // Update toggle UI if visible (settings panel open)
+    var toggle = document.getElementById('passive-mode-toggle');
+    if (toggle) toggle.checked = false;
+
+    // Hide passive settings panel if visible
+    var panel = document.getElementById('passive-settings-panel');
+    if (panel) panel.style.display = 'none';
+
+    // Update passive badge / mode card label if present
+    var modeLabel = document.getElementById('search-mode-label');
+    if (modeLabel) modeLabel.textContent = 'Active';
+
+    // Show congrats toast (only if passive was on, to avoid noise)
+    if (isPassive && typeof showToast === 'function') {
+      showToast(
+        'Congrats! Passive mode paused — you can re-activate anytime in Settings.',
+        { type: 'success', duration: 6000 }
+      );
+    }
+
+    // PostHog
+    if (typeof posthog !== 'undefined') {
+      posthog.capture('passive_auto_paused_hired', {
+        job_title: jobTitle || null,
+        was_passive: isPassive
+      });
+    }
+
+    console.log('[BJ] autoHirePause: passive mode paused on hired status for', jobTitle || 'unknown job');
+  } catch (e) {
+    console.warn('[BJ] autoHirePause exception:', e);
+  }
+}
