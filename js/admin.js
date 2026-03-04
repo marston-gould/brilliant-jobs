@@ -1,13 +1,11 @@
 /* ───────────────────────────────────────────────────────────
-   admin.js — Tabbed Admin Console
-   Tab 1: Feed Health (existing)
-   Tab 2: Cohorts
-   Tab 3: Users + Sessions
-   Tab 4: SEO / Data Coverage
-   Tab 5: Revenue
+   admin.js — Admin Console with Sidebar Navigation (IA v2)
+   v6.84 — Sidebar replaces flat tab bar
+   4 sections: Operations, Growth, Audience, Business
+   17 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
 
-// ─── Admin access gate ───
+// ─── Admin access gate (dashboard nav-item visibility) ───
 function checkAdminAccess() {
   if (typeof sb === 'undefined') { console.warn('[Admin] No sb client'); return; }
   sb.auth.getUser().then(function(res) {
@@ -23,38 +21,199 @@ function checkAdminAccess() {
   }).catch(function(e) { console.error('[Admin] getUser failed:', e); });
 }
 
-// ─── Tab state ───
-var adminActiveTab = localStorage.getItem('bj_admin_tab') || 'feed-health';
+// ═══════════════════════════════════════════════════════════
+// ADMIN SUBPAGE MAP — 17 sub-pages across 4 sections
+// ═══════════════════════════════════════════════════════════
+
+var ADMIN_SUBPAGE_MAP = {
+  // ── Operations ──
+  'feed-health':    { section: 'operations',  label: 'Feed Health',    init: function(){ loadBoardHealth(); } },
+  'enrichment':     { section: 'operations',  label: 'Enrichment',     init: function(){ loadEnrichmentTab(); } },
+  'companies':      { section: 'operations',  label: 'Companies',      init: null },
+  'jobs':           { section: 'operations',  label: 'Jobs',           init: null },
+  'ghost':          { section: 'operations',  label: 'Ghost Detection',init: function(){ loadGhostTab(); } },
+  'cache':          { section: 'operations',  label: 'Cache Health',   init: function(){ refreshCacheHealthPanel(); } },
+  'signals':        { section: 'operations',  label: 'Signals',        init: function(){ loadAdminSignals(); } },
+  // ── Growth ──
+  'seo':            { section: 'growth',      label: 'SEO',            init: function(){ loadSeoTab(); } },
+  'content':        { section: 'growth',      label: 'Content',        init: function(){ loadContentTab(); } },
+  'email':          { section: 'growth',      label: 'Email',          init: null },
+  'merch':          { section: 'growth',      label: 'Merchandising',  init: function(){ loadMerchTab(); } },
+  'notifications':  { section: 'growth',      label: 'Notifications',  init: function(){ loadNotificationsTab(); } },
+  'templates':      { section: 'growth',      label: 'Templates',      init: function(){ loadTemplatesTab(); } },
+  'notif-analytics':{ section: 'growth',      label: 'Notif Analytics', init: function(){ loadNotifAnalyticsTab(); } },
+  'email-cohorts':  { section: 'growth',      label: 'Email Cohorts',  init: function(){ loadEmailCohortsTab(); } },
+  'cadence':        { section: 'growth',      label: 'Cadence',        init: function(){ loadCadenceTab(); } },
+  'referrals':      { section: 'growth',      label: 'Referrals',      init: function(){ loadReferralsAdminTab(); } },
+  'paid':           { section: 'growth',      label: 'Paid',           init: null },
+  'social':         { section: 'growth',      label: 'Social',         init: null },
+  'analytics':      { section: 'growth',      label: 'Analytics',      init: null },
+  // ── Audience ──
+  'cohorts':        { section: 'audience',    label: 'Cohorts',        init: function(){ loadCohortTab(); } },
+  'entitlements':   { section: 'audience',    label: 'Entitlements',   init: function(){ loadEntitlementsTab(); } },
+  'users':          { section: 'audience',    label: 'Users',          init: function(){ loadUsersTab(); } },
+  'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
+  // ── Business ──
+  'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
+  'costs':          { section: 'business',    label: 'Costs',          init: null },
+  'forecasting':    { section: 'business',    label: 'Forecasting',    init: null }
+};
+
+var ADMIN_SECTIONS = [
+  { key: 'operations', label: 'Operations',  icon: '⚙' },
+  { key: 'growth',     label: 'Growth',      icon: '📈' },
+  { key: 'audience',   label: 'Audience',    icon: '👥' },
+  { key: 'business',   label: 'Business',    icon: '💰' }
+];
+
+// ─── Nav state ───
+var _adminNavState = null; // { active, collapsed: {} }
 var _adminTabInit = {};
 var adminPeriod = parseInt(localStorage.getItem('bj_admin_period')) || 168;
+// Keep legacy alias for any code referencing adminActiveTab
+var adminActiveTab = 'feed-health';
 
-function initAdminPage() {
-  var page = document.getElementById('page-admin');
-  if (!page || !page.classList.contains('active')) {
-    console.log('[Admin] page not active, skipping');
-    return;
+function _loadAdminNavState() {
+  try {
+    var raw = localStorage.getItem('bj_admin_state');
+    if (raw) { _adminNavState = JSON.parse(raw); }
+  } catch(e) {}
+  if (!_adminNavState) {
+    _adminNavState = { active: 'feed-health', collapsed: {} };
   }
-  // Guard: don't load data until user is authenticated
-  if (typeof currentUser === 'undefined' || !currentUser) {
-    console.log('[Admin] waiting for auth, deferring load');
-    _adminTabInit = {}; // reset so it reloads when auth is ready
-    return;
-  }
-  console.log('[Admin] initAdminPage called');
-  initAdminTabs();
+  adminActiveTab = _adminNavState.active || 'feed-health';
 }
 
-function initAdminTabs() {
-  var tabBar = document.getElementById('admin-tabs');
-  if (!tabBar) return;
+function _saveAdminNavState() {
+  try {
+    localStorage.setItem('bj_admin_state', JSON.stringify(_adminNavState));
+    // Keep legacy key in sync
+    localStorage.setItem('bj_admin_tab', _adminNavState.active);
+  } catch(e) {}
+}
 
-  tabBar.addEventListener('click', function(e) {
-    var btn = e.target.closest('.admin-tab');
-    if (!btn || btn.classList.contains('disabled')) return;
-    switchAdminTab(btn.dataset.tab);
+// ─── Build Sidebar ───
+function _buildAdminSidebar() {
+  var sidebar = document.getElementById('admin-sidebar');
+  if (!sidebar) return;
+
+  var html = '';
+  ADMIN_SECTIONS.forEach(function(sec) {
+    var isCollapsed = _adminNavState.collapsed[sec.key];
+    var expandedClass = isCollapsed ? '' : ' expanded';
+
+    html += '<div class="admin-sidebar-section' + expandedClass + '" data-section="' + sec.key + '">';
+    html += '<div class="admin-sidebar-header" data-section-toggle="' + sec.key + '">';
+    html += '<span>' + sec.label + '</span>';
+    html += '<svg class="admin-sidebar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+    html += '</div>';
+    html += '<div class="admin-sidebar-items">';
+
+    // Get sub-pages in this section (ordered by ADMIN_SUBPAGE_MAP insertion order)
+    Object.keys(ADMIN_SUBPAGE_MAP).forEach(function(key) {
+      var sp = ADMIN_SUBPAGE_MAP[key];
+      if (sp.section !== sec.key) return;
+      var isDisabled = sp.init === null && !document.getElementById('admin-panel-' + key);
+      var cls = 'admin-sidebar-item';
+      if (isDisabled) cls += ' disabled';
+      html += '<div class="' + cls + '" data-subpage="' + key + '">' + sp.label + '</div>';
+    });
+
+    html += '</div></div>';
   });
 
-  // Period toggle for Revenue tab
+  sidebar.innerHTML = html;
+
+  // Wire section toggle
+  sidebar.querySelectorAll('[data-section-toggle]').forEach(function(hdr) {
+    hdr.addEventListener('click', function() {
+      var secKey = this.getAttribute('data-section-toggle');
+      var secEl = sidebar.querySelector('[data-section="' + secKey + '"]');
+      if (!secEl) return;
+      secEl.classList.toggle('expanded');
+      _adminNavState.collapsed[secKey] = !secEl.classList.contains('expanded');
+      _saveAdminNavState();
+    });
+  });
+
+  // Wire sub-page clicks
+  sidebar.querySelectorAll('[data-subpage]').forEach(function(item) {
+    item.addEventListener('click', function() {
+      if (this.classList.contains('disabled')) return;
+      var key = this.getAttribute('data-subpage');
+      if (key === _adminNavState.active) return; // don't re-init
+      navigateAdminSubpage(key);
+    });
+  });
+}
+
+// ─── Navigate to sub-page ───
+function navigateAdminSubpage(key) {
+  var sp = ADMIN_SUBPAGE_MAP[key];
+  if (!sp) return;
+
+  // Update active state in sidebar
+  var sidebar = document.getElementById('admin-sidebar');
+  if (sidebar) {
+    sidebar.querySelectorAll('.admin-sidebar-item').forEach(function(item) {
+      item.classList.toggle('active', item.getAttribute('data-subpage') === key);
+    });
+    // Ensure parent section is expanded
+    var secEl = sidebar.querySelector('[data-section="' + sp.section + '"]');
+    if (secEl && !secEl.classList.contains('expanded')) {
+      secEl.classList.add('expanded');
+      _adminNavState.collapsed[sp.section] = false;
+    }
+  }
+
+  // Update breadcrumb + title
+  var sectionLabel = '';
+  ADMIN_SECTIONS.forEach(function(s) { if (s.key === sp.section) sectionLabel = s.label; });
+  var bc = document.getElementById('admin-breadcrumb');
+  if (bc) bc.textContent = sectionLabel + ' > ' + sp.label;
+  var title = document.getElementById('admin-page-title');
+  if (title) title.textContent = sp.label;
+
+  // Show correct panel, hide all others
+  document.querySelectorAll('.admin-panel').forEach(function(p) {
+    p.classList.remove('active');
+  });
+  var panel = document.getElementById('admin-panel-' + key);
+  if (panel) panel.classList.add('active');
+
+  // Persist
+  _adminNavState.active = key;
+  adminActiveTab = key;
+  _saveAdminNavState();
+
+  // Lazy-init
+  if (!_adminTabInit[key] && sp.init) {
+    _adminTabInit[key] = true;
+    sp.init();
+  }
+}
+
+// ─── Init ───
+function initAdminPage() {
+  var page = document.getElementById('page-admin');
+  if (!page) {
+    console.log('[Admin] page-admin not found, skipping');
+    return;
+  }
+  if (typeof currentUser === 'undefined' || !currentUser) {
+    console.log('[Admin] waiting for auth, deferring load');
+    _adminTabInit = {};
+    return;
+  }
+  console.log('[Admin] initAdminPage called — IA v2 sidebar');
+  initAdminNav();
+}
+
+function initAdminNav() {
+  _loadAdminNavState();
+  _buildAdminSidebar();
+
+  // Period toggle for Revenue tab (keep existing wiring)
   var revPeriod = document.getElementById('admin-rev-period');
   if (revPeriod) {
     revPeriod.addEventListener('click', function(e) {
@@ -67,45 +226,13 @@ function initAdminTabs() {
     });
   }
 
-  switchAdminTab(adminActiveTab);
+  // Navigate to persisted sub-page
+  navigateAdminSubpage(_adminNavState.active);
 }
 
+// Legacy compat: switchAdminTab still works
 function switchAdminTab(tabId) {
-  document.querySelectorAll('.admin-tab').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.tab === tabId);
-  });
-  document.querySelectorAll('.admin-panel').forEach(function(p) {
-    p.classList.toggle('active', p.id === 'admin-panel-' + tabId);
-  });
-  adminActiveTab = tabId;
-  localStorage.setItem('bj_admin_tab', tabId);
-
-  if (!_adminTabInit[tabId]) {
-    _adminTabInit[tabId] = true;
-    switch (tabId) {
-      case 'feed-health': loadBoardHealth(); break;
-      case 'cohorts': loadCohortTab(); break;
-      case 'entitlements': loadEntitlementsTab(); break;
-      case 'users': loadUsersTab(); break;
-      case 'seo': loadSeoTab(); break;
-      case 'revenue': loadRevenueTab(); break;
-      case 'surveys': loadSurveysTab(); break;
-      case 'ghost': loadGhostTab(); break;
-      case 'feedback': loadFeedbackTab(); break;
-      case 'merch': loadMerchTab(); break;
-      case 'signals': loadAdminSignals(); break;
-      case 'referrals': loadReferralsAdminTab(); break;
-      case 'content': loadContentTab(); break;
-      case 'enrichment': loadEnrichmentTab(); break;
-      case 'mock-ats': loadMockAtsTab(); break;
-      case 'notifications': loadNotificationsTab(); break;
-      case 'templates': loadTemplatesTab(); break;
-      case 'notif-analytics': loadNotifAnalyticsTab(); break;
-      case 'email-cohorts': loadEmailCohortsTab(); break;
-      case 'cadence': loadCadenceTab(); break;
-      case 'cache': refreshCacheHealthPanel(); break;
-    }
-  }
+  navigateAdminSubpage(tabId);
 }
 
 // ─── Helpers ───
