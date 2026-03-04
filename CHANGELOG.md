@@ -1,3 +1,14 @@
+## v6.86 — 2026-03-04
+### Admin Console IA v2 — Session 3: Shared Utilities + Action Bars + Paginated Tables
+- **admin-blocks.js (NEW):** Shared admin utility file — extracted _adminStatCard(), _escHtml(), _timeAgo() from admin-companies.js. New helpers: _adminActionBar() (search + platform filter + status filter + sort dropdown), _adminPagedTable() (paginated table with prev/next + page info + column renderers), _fmtSalary() (salary range formatter), _fmtLocation() (city/state/country formatter).
+- **admin-companies.js:** Removed duplicate helpers (now in admin-blocks.js). Added search/filter action bar (text search by slug/name, platform filter, sort: newest/oldest/name A-Z/Z-A). Added paginated company data table with 8 columns (slug, name, platform, status dot, open jobs, total jobs, industry, last check). Pagination via get_admin_companies_list() RPC (50 per page, prev/next).
+- **admin-jobs.js:** Removed duplicate helpers (now in admin-blocks.js). Added search/filter action bar (text search by title/company, platform filter, status filter: open/closed/all, sort: newest/oldest/title/company). Added paginated job data table with 7 columns (title, company, platform, location/remote, salary, seniority level, first seen). Pagination via get_admin_jobs_list() RPC (50 per page, prev/next).
+- **Database:** 2 new SECURITY DEFINER RPCs: get_admin_companies_list(search, platform, sort, offset, limit), get_admin_jobs_list(search, platform, status, sort, offset, limit) — both return paginated jsonb with total count.
+- **admin.html:** New CSS classes: .admin-action-bar, .admin-search-wrap, .admin-search-input, .admin-select, .admin-pager, .admin-pager-btns, .admin-pager-btn, .admin-pager-page, .admin-pager-info. Cache-bust updated to v6.86.
+- **build-admin.js:** Added admin-blocks.js to bundle (9 files total, up from 8). Positioned before admin-companies.js in concatenation order.
+- **admin.js:** Header version updated to v6.86.
+- **admin-shell.js:** Version comment updated to v6.86.
+
 ## v6.85 — 2026-03-04
 ### Admin Console IA v2 — Session 2: Block System + No-Dependency Pages
 - **admin-companies.js (NEW):** Companies sub-page — loadAdminCompanies() calls get_admin_companies() RPC. Stat cards (total/active/inactive/enriched/industry/staffing). Platform breakdown table (boards, active, jobs, enriched, industry, staffing per source). Top 15 industries with bar chart. Recently discovered boards (last 10). Reusable _adminStatCard(), _escHtml(), _timeAgo() helpers.
@@ -2321,3 +2332,4 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
+
