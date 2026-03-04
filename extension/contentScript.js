@@ -6,6 +6,7 @@
 // v3.9.0: Item #1 — Generic fallback handler for unrecognized ATS sites.
 // v3.10.0: Item #3 — On-page status overlay during fill. Item #5 — Fill metrics wiring.
 // v5.75: Added iCIMS, Taleo, SmartRecruiters, Avature handlers + detection + JD selectors.
+// v6.98: Overlay Pipeline S4 — inject toolbar-overlay.js on job pages.
 //
 // This script is injected on all ATS domains (manifest content_scripts)
 // and dynamically by background.js on unknown ATS domains.
@@ -14,6 +15,21 @@
 
 (function () {
   'use strict';
+
+
+  // ── Overlay Pipeline S4: Inject toolbar on job listing pages ──────────
+  // toolbar-overlay.js manages its own isJobPage() check and SPA re-init.
+  // Injected once per page load alongside contentScript.
+  (function injectToolbar() {
+    try {
+      const script = document.createElement('script');
+      script.src = chrome.runtime.getURL('toolbar-overlay.js');
+      script.onload = function() { this.remove(); };
+      (document.head || document.documentElement).appendChild(script);
+    } catch (e) {
+      console.warn('[BJ] Toolbar inject error:', e.message);
+    }
+  })();
 
   // ============================================================
   // ATS DETECTION
