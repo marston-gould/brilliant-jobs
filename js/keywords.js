@@ -2713,6 +2713,8 @@ async function openJobModal(jobId, e) {
     footerHtml += '<button class="job-action-btn" onclick="aiScoreJob(\'' + jobId + '\')" id="ai-score-btn" style="padding:4px 10px;font-size:11px;border-color:var(--accent);color:var(--accent);">AI Score</button>';
   }
   footerHtml += '<button class="job-modal-close-btn" onclick="closeJobModal()" style="margin-left:auto;">Close</button>';
+  // Referral Outreach button — v7.06
+  footerHtml += '<button class="job-action-btn" onclick="openReferralOutreachModal(window._modalJobId)" style="padding:4px 10px;font-size:11px;border-color:#7c9ef7;color:#7c9ef7;" title="Request a referral from a connection at this company">Request Referral</button>';
   footerEl.innerHTML = footerHtml;
 
   // AI score result container
