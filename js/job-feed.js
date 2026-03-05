@@ -999,12 +999,22 @@ async function searchJobs(page = 0) {
     currentJobs = applyAiScoringExclusions(currentJobs);
     const exclusionsActive = currentJobs.length !== beforeExclusions;
 
-    // v7.15/v7.17: Sync j-total and totalCount after ALL client-side filters + scoring exclusions
-    if (isTrustFilterActive() || isAiFilterActive() || exclusionsActive) {
-      totalCount = currentJobs.length;
-      var $jt = $('#j-total');
-      if ($jt) $jt.textContent = totalCount.toLocaleString();
-    }
+    // v7.18: Always sync j-total after ALL client-side filters (trust, AI content, exclusions)
+    // Prior conditional (isTrustFilterActive || isAiFilterActive || exclusionsActive) failed when
+    // all checkboxes were checked (filters "not active") but exclusions still reduced count.
+    totalCount = currentJobs.length;
+    var $jt = $('#j-total');
+    if ($jt) $jt.textContent = totalCount.toLocaleString();
+
+    // v7.18: Sync j-new to match jobs actually shown with green "new" styling (last 24h)
+    // DB query uses rolling 24h but client-side filters may remove some; sync to rendered set
+    var _now18 = new Date();
+    var _24hAgo = new Date(_now18.getTime() - 86400000);
+    var _renderedNewCount = currentJobs.filter(function(j) {
+      return j.first_seen_at && new Date(j.first_seen_at) >= _24hAgo;
+    }).length;
+    var $jnew = $('#j-new');
+    if ($jnew) $jnew.textContent = _renderedNewCount.toLocaleString();
 
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
