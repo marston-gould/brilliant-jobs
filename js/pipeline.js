@@ -421,15 +421,6 @@ function movePipelineStage(jobId, newStage) {
   if (newStage === 'rejected' && !m.rejectedAt) m.rejectedAt = now;
   if (newStage === 'archived' && !m.archivedAt) m.archivedAt = now;
 
-  // v7.08: Trigger gap analysis on rejected/ghosted outcomes
-  if (newStage === 'rejected' || newStage === 'archived') {
-    var gapOutcome = newStage === 'archived' ? 'ghosted' : 'rejected';
-    var gapResumeId = m.resumeUsed || null;
-    if (typeof window.triggerGapAnalysis === 'function') {
-      window.triggerGapAnalysis(jobId, gapResumeId, gapOutcome);
-    }
-  }
-
   // Save to Supabase (async, non-blocking for UI)
   savePipelineEntry(jobId, m);
 
