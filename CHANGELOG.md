@@ -1,3 +1,29 @@
+## v7.18 — 2026-03-04
+
+### Fix: j-total always syncs to rendered job count
+- Removed conditional `(isTrustFilterActive || isAiFilterActive || exclusionsActive)` guard
+- Previously: if all trust/AI checkboxes were checked (filters "not active"), j-total showed DB count (23) while feed showed filtered count (5)
+- Now: j-total unconditionally reflects `currentJobs.length` after all client-side filters
+
+### Fix: j-new (New Today) syncs to rendered jobs after client filters
+- Hero stat now recalculates "New Today" from rendered job set (first_seen_at >= last 24h)
+- Eliminates mismatch where DB query counted 0 new but rendered jobs showed green "1d" badge
+
+### Fix: Trust Level button no longer wraps
+- Added `white-space:nowrap` to trust filter button — shield emoji + text no longer break across lines
+
+### Fix: Chat save/load/clear prompt icons removed
+- Redundant save-prompt / load-prompt / clear icons removed from chat header
+- Saved prompts were separate from Saved Searches — confusing UX with two parallel systems
+- Only the clear conversation button remains
+
+### Fix: Admin unlimited chat
+- Edge function now checks `profiles.role = 'admin'` and assigns `admin` tier (99999/hr, 99999/day)
+- Previously: admin fell through to `free` tier (10/hr limit), causing `ai_unavailable` after first message
+- Note: separate Anthropic API key credit issue — check console.anthropic.com for billing
+
+---
+
 ## v7.17 — 2026-03-05
 
 ### Fix: stat card and footer both now reflect AI scoring exclusions
