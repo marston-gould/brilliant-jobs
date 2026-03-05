@@ -814,7 +814,7 @@ async function searchJobs(page = 0) {
       // Single filter — A14 pagination: 500-row cap with Load More
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -840,7 +840,7 @@ async function searchJobs(page = 0) {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
       const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -1100,12 +1100,12 @@ async function updateJobStatsFromFilters(filters) {
         // TOTAL: all matching jobs WITHOUT time restriction (WHEN filter stripped)
         // This prevents TOTAL < NEW TODAY which is mathematically impossible
         const sfNoWhen = Object.assign({}, sf, { whenPills: [] });
-        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        let q = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
         q = buildFilterQuery(sfNoWhen, q, locIds);
         q = excludeHidden(q);
 
         // NEW TODAY: all matching jobs updated in last 24h (also without WHEN, uses its own time window)
-        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+        let q2 = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
         q2 = buildFilterQuery(sfNoWhen, q2, locIds);
         q2 = excludeHidden(q2);
         q2 = q2.gte('first_seen_at', last24h.toISOString());
@@ -1116,7 +1116,7 @@ async function updateJobStatsFromFilters(filters) {
         ];
 
         if (lastViewDate) {
-          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'exact', head: true });
+          let qLogin = sb.from('ats_jobs').select('greenhouse_id', { count: 'planned', head: true });
           qLogin = buildFilterQuery(sf, qLogin, locIds);
           qLogin = excludeHidden(qLogin);
           qLogin = qLogin.gte('first_seen_at', lastViewDate.toISOString());
