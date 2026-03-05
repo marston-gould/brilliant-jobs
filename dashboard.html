@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v7.15 -->
+<!-- Brilliant Jobs Dashboard v7.16 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -14,20 +14,20 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v7.15"></script>
-  <script src="/js/pipeline-migration.js?v=v7.15"></script>
-  <script src="/js/notification-center.js?v=v7.15"></script>
+  <script src="/js/version.js?v=v7.16"></script>
+  <script src="/js/pipeline-migration.js?v=v7.16"></script>
+  <script src="/js/notification-center.js?v=v7.16"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v7.15" defer></script>
-  <script src="js/canny.js?v=v7.15" defer></script>
+  <script src="dist/dashboard.min.js?v=v7.16" defer></script>
+  <script src="js/canny.js?v=v7.16" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v7.15">
+  <link rel="stylesheet" href="styles.css?v=v7.16">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -778,7 +778,7 @@
               <div class="hero-stat"><div class="hero-stat-val" id="j-new" style="color:#3b82f6;">0</div><div class="hero-stat-label">New Today</div></div>
               <div class="hero-stat" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="hero-stat-val hs-green" id="j-saved">0</div><div class="hero-stat-label">Pipeline</div></div>
             </div>
-            <!-- feed-source-chips removed v7.15 (user request) -->
+            <!-- feed-source-chips removed v7.16 (user request) -->
             <div id="feed-source-chips" style="display:none;"></div>
           </div>
           <!-- Chat Panel (Chat Mode Session 2) -->
@@ -852,6 +852,20 @@
             </div>
           </div>
 
+          <!-- Search Mode Toggle (Chat Mode Session 2) -->
+          <div class="search-mode-bar" id="search-mode-bar">
+            <div class="search-mode-toggle" id="search-mode-toggle">
+              <button class="smt-btn active" data-mode="filters">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+                Filters
+              </button>
+              <button class="smt-btn" data-mode="chat">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Chat
+              </button>
+            </div>
+          </div>
+
           <!-- filter-panel-wrap: visible in Filters mode, hidden in Chat mode -->
           <div id="filter-panel-wrap" style="transition:opacity 0.2s;">
 
@@ -876,20 +890,6 @@
                 <a class="intel-card-cta" href="#" onclick="event.preventDefault();document.querySelector('[data-page=resumes]').click()">Score my resume →</a>
               </div>
               <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
-            </div>
-          </div>
-
-          <!-- Search Mode Toggle (Chat Mode Session 2) -->
-          <div class="search-mode-bar" id="search-mode-bar">
-            <div class="search-mode-toggle" id="search-mode-toggle">
-              <button class="smt-btn active" data-mode="filters">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
-                Filters
-              </button>
-              <button class="smt-btn" data-mode="chat">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Chat
-              </button>
             </div>
           </div>
 
@@ -1102,13 +1102,13 @@
               <div id="ai-filter-dropdown" style="display:none;position:absolute;top:100%;left:0;z-index:60;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.2);padding:8px;min-width:190px;margin-top:4px;">
                 <div style="font-size:10px;font-weight:700;color:var(--text-dim);padding:2px 6px 6px;border-bottom:1px solid var(--border);margin-bottom:4px;">Show jobs by AI content level:</div>
                 <label class="ai-filter-opt" data-label="human">
-                  <input type="checkbox" class="ai-filter-cb" value="human" checked> ✅ <span style="color:var(--green);">Human-Written</span>
+                  <input type="checkbox" class="ai-filter-cb" value="human" checked> <span style="color:var(--green);font-weight:500;">Human-Written</span>
                 </label>
                 <label class="ai-filter-opt" data-label="mixed">
-                  <input type="checkbox" class="ai-filter-cb" value="mixed" checked> ⚠️ <span style="color:var(--warm);">Mixed Content</span>
+                  <input type="checkbox" class="ai-filter-cb" value="mixed" checked> <span style="color:var(--warm);font-weight:500;">Mixed Content</span>
                 </label>
                 <label class="ai-filter-opt" data-label="ai_generated">
-                  <input type="checkbox" class="ai-filter-cb" value="ai_generated" checked> 🤖 <span style="color:var(--red);">AI-Generated</span>
+                  <input type="checkbox" class="ai-filter-cb" value="ai_generated" checked> <span style="color:var(--red);font-weight:500;">AI-Generated</span>
                 </label>
                 <label class="ai-filter-opt" data-label="unscored">
                   <input type="checkbox" class="ai-filter-cb" value="unscored" checked> <span style="color:var(--text-faint);">Unscored</span>
