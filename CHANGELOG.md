@@ -13,6 +13,19 @@
 
 ### JS
 - `js/referral-outreach.js` — patched `sendReferralTemplate()` to call `upsert_referral_outreach` RPC on every send (fire-and-forget); fires `referral_saved` PostHog event on success
+### UI — Pod 1
+- `js/referrals.js` — Added `initReferralTracking()` called from `initReferralHub()` after stats load
+- **Referral Outreach section** — log table rendered below existing referral stats; sorted by `sent_at DESC`
+- **Row columns:** Job/Company, Channel badge (LinkedIn/Email), Their Name, Status badge, Sent date, Action
+- **Status badges:** sent=blue, pending=yellow, accepted=green, declined=gray
+- **Status dropdown** — calls `update_referral_status` RPC on change; patches badge in-place (no full reload)
+- **Accepted flow** — inline referral link input (optional); passes `p_referral_link` to RPC on save
+- **Apply via referral link →** — shown when `referral_link` non-null; accent button (#2e6da4), opens new tab
+- **Empty state** — shown when 0 rows; navigates to job feed
+- **Correlation card** — 4 stats from `get_referral_correlation` above log; threshold-gated at total_sent >= 3
+- **PostHog:** `referral_log_viewed` (row_count), `referral_status_changed` (old/new_status, has_referral_link), `referral_link_clicked` (job_id)
+- No changes to `referral-outreach.js` or dashboard modals (AC #8)
+
 
 ---
 
