@@ -2449,7 +2449,7 @@ document.addEventListener('click', e => {
     openJobModal(link.dataset.jobid);
     // Log click signal (fire-and-forget)
     if (typeof sb !== 'undefined' && sb.auth) {
-      sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' }).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: link.dataset.jobid, p_signal_type: 'click' })).catch(() => {});
     }
   }
   // "→" click in preview snippet opens modal
@@ -3273,7 +3273,7 @@ function modalApply(jobId, url) {
   window.open(url, '_blank');
   // Log apply signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' }).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'apply' })).catch(() => {});
   }
   // Don't auto-mark as applied — the webRequest listener or manual confirmation will handle it
 }
@@ -3443,7 +3443,7 @@ function hideJob(jobId, btn) {
   const job = currentJobs.find(j => j.greenhouse_id === jobId) || {};
   // Log hide signal
   if (typeof sb !== 'undefined' && sb.auth) {
-    sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' }).catch(() => {});
+    Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'hide' })).catch(() => {});
   }
   // Track which filter(s) were active when this job was hidden
   var activeFilterIdxs = [];
@@ -3470,7 +3470,7 @@ function toggleSaveJob(jobId, btn) {
     btn.classList.add('saved-btn');
     // Log save signal
     if (typeof sb !== 'undefined' && sb.auth) {
-      sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' }).catch(() => {});
+      Promise.resolve(sb.rpc('log_feed_signal', { p_greenhouse_id: jobId, p_signal_type: 'save' })).catch(() => {});
     }
     if (!meta[jobId]) meta[jobId] = { stage: 'saved', savedAt: new Date().toISOString(), filterTags: [] };
   }
