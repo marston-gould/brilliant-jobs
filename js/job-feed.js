@@ -239,8 +239,7 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
       if (!safe) return [];
       return [
         `title.ilike.%${safe}%`,
-        `search_vector.wfts(english).${safe}`,
-      ];
+      ]; // wfts removed v7.13 — trigram ilike sufficient, wfts caused timeouts
     });
   });
   if (allWhatClauses.length > 0) query = query.or(allWhatClauses.join(','));
@@ -368,9 +367,8 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
           allClauses.push(
             `location.ilike.%${v}%`,
             `loc_display.ilike.%${v}%`,
-            `loc_country.ilike.%${v}%`,
-            `search_vector.wfts(english).${v}`
-          );
+            `loc_country.ilike.%${v}%`
+          ); // wfts removed v7.13
         }
       }
       if (allClauses.length > 0) {
@@ -435,12 +433,11 @@ function buildFilterQuery(sf, baseQuery, locationIds) {
   // WHO — company_name ilike + FTS
   for (const pill of wo) {
     if (pill.values.length === 1) {
-      query = query.or(`company_name.ilike.%${pill.values[0]}%,search_vector.wfts(english).${pill.values[0]}`);
+      query = query.or(`company_name.ilike.%${pill.values[0]}%`); // wfts removed v7.13
     } else {
       const clauses = pill.values.flatMap(v => [
         `company_name.ilike.%${v}%`,
-        `search_vector.wfts(english).${v}`,
-      ]);
+      ]); // wfts removed v7.13
       query = query.or(clauses.join(','));
     }
   }
@@ -817,7 +814,7 @@ async function searchJobs(page = 0) {
       // Single filter — A14 pagination: 500-row cap with Load More
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -843,7 +840,7 @@ async function searchJobs(page = 0) {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
       const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
+        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
