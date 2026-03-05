@@ -1,3 +1,16 @@
+## v7.14 — 2026-03-05
+
+### Fix ATS source pills still showing
+- `renderFeedSourceChips()` call removed from `updateJobStats()` — JS was still populating the hidden container
+- HTML container already hidden in v7.12 but the function was still executing
+
+### Fix 509 vs 23 total count mismatch
+- Reverted `count:'planned'` back to `count:'exact'` — planner estimate (509) was shown instead of actual filtered count (23)
+- `count:'planned'` was introduced in v7.13 to reduce timeout risk but broke the stat display
+- Timeout risk addressed instead via DB-level `statement_timeout` increases (already applied)
+
+---
+
 ## v7.13 — 2026-03-05
 
 ### Fix feed query timeouts (500 errors on keyword searches)

@@ -814,7 +814,7 @@ async function searchJobs(page = 0) {
       // Single filter — A14 pagination: 500-row cap with Load More
       const feedCacheKey = 'feed:' + _filterCacheKey('single', filtersToRun[0]) + ':p' + page;
       const feedResult = await cachedQuery(feedCacheKey, async function() {
-        let query = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let query = sb.from('ats_jobs').select('*', { count: 'exact' });
         query = buildFilterQuery(filtersToRun[0], query, filtersToRun[0]._locationIds);
         if (hiddenIds.length > 0) {
           query = query.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -840,7 +840,7 @@ async function searchJobs(page = 0) {
       // Multiple filters — fetch up to limit per filter, merge, dedupe
       const perFilter = Math.min(Math.ceil(MAX_FEED_ROWS / filtersToRun.length), 250);
       const promises = filtersToRun.map(sf => {
-        let q = sb.from('ats_jobs').select('*', { count: 'planned' });
+        let q = sb.from('ats_jobs').select('*', { count: 'exact' });
         q = buildFilterQuery(sf, q, sf._locationIds);
         if (hiddenIds.length > 0) {
           q = q.not('greenhouse_id', 'in', `(${hiddenIds.join(',')})`);
@@ -1158,56 +1158,10 @@ function updateJobStats(total, companies, newSinceLogin, newToday) {
   $('#j-saved').textContent = savedJobIds.length.toLocaleString();
   // Update intel insight card with contextual data
   updateIntelInsight(total, companies, newToday);
-  // A15 S6 v6.62: Populate source chips from MV
-  renderFeedSourceChips();
+  // renderFeedSourceChips() removed v7.14 — per user request
 }
 
 // ─── A15 S6 v6.62: Per-source count chips in feed hero bar ───
-var _feedSourceColors = { 'greenhouse':'#22c55e', 'lever':'#6366f1', 'ashby':'#f59e0b', 'workable':'#ec4899', 'recruitee':'#06b6d4', 'usajobs':'#3b82f6' };
-var _feedSourceLabels = { 'greenhouse':'GH', 'lever':'LV', 'ashby':'AB', 'workable':'WK', 'recruitee':'RC', 'usajobs':'USJ' };
-
-async function renderFeedSourceChips() {
-  var container = document.getElementById('feed-source-chips');
-  if (!container) return;
-  try {
-    var result = await cachedQuery('mv:feed-source-chips', function() {
-      return sb.from('mv_job_feed_counts').select('ats_source,job_count');
-    }, { ttl: 600000 }); // 10 min — matches MV refresh
-    if (!result || !result.data || result.data.length === 0) { container.style.display = 'none'; return; }
-    // Aggregate by source
-    var totals = {};
-    for (var i = 0; i < result.data.length; i++) {
-      var row = result.data[i];
-      var src = row.ats_source || 'unknown';
-      totals[src] = (totals[src] || 0) + row.job_count;
-    }
-    var sources = Object.keys(totals).sort(function(a, b) { return totals[b] - totals[a]; });
-    container.innerHTML = '';
-    for (var s = 0; s < sources.length; s++) {
-      var srcKey = sources[s];
-      var cnt = totals[srcKey];
-      if (cnt === 0) continue;
-      var chip = document.createElement('span');
-      chip.style.cssText = 'display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:8px;font-size:10px;font-family:var(--mono,monospace);color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);white-space:nowrap;';
-      var dot = document.createElement('span');
-      dot.style.cssText = 'width:5px;height:5px;border-radius:50%;background:' + (_feedSourceColors[srcKey] || '#94a3b8') + ';';
-      chip.appendChild(dot);
-      var label = _feedSourceLabels[srcKey] || srcKey.charAt(0).toUpperCase() + srcKey.slice(1);
-      chip.appendChild(document.createTextNode(label + ' ' + _fmtCompactFeed(cnt)));
-      chip.title = (srcKey.charAt(0).toUpperCase() + srcKey.slice(1)) + ': ' + cnt.toLocaleString() + ' jobs';
-      container.appendChild(chip);
-    }
-    container.style.display = '';
-  } catch (e) {
-    console.warn('[BJ] Feed source chips failed:', e.message);
-    container.style.display = 'none';
-  }
-}
-function _fmtCompactFeed(n) {
-  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return String(n);
-}
 
 function updateIntelInsight(total, companies, newToday) {
   var titleEl = $('#intel-insight-title');
