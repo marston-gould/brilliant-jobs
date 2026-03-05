@@ -2189,9 +2189,9 @@ function render() {
     visible = visible.filter(f => f.g === activeGroup);
   }
 
-  const done = visible.filter(f => f.s === 'done');
+  const done = visible.filter(f => f.s === 'done' || f.s === 'complete');
   const progress = visible.filter(f => f.s === 'progress');
-  const todo = visible.filter(f => f.s === 'todo');
+  const todo = visible.filter(f => f.s === 'todo' || f.s === 'prelaunch' || f.s === 'postlaunch');
   const wontdo = visible.filter(f => f.s === 'wontdo');
 
   document.getElementById('count-done').textContent = done.length;
@@ -2200,7 +2200,7 @@ function render() {
   document.getElementById('count-wontdo').textContent = wontdo.length;
 
   const total = features.filter(f => f.s !== 'wontdo').length;
-  const allDone = features.filter(f => f.s === 'done').length;
+  const allDone = features.filter(f => f.s === 'done' || f.s === 'complete').length;
   const pct = Math.round((allDone / total) * 100);
   setTimeout(() => {
     document.getElementById('progress-fill').style.width = pct + '%';
