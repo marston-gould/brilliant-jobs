@@ -1,3 +1,11 @@
+## v7.20 — 2026-03-05
+### Fixed
+- **Query timeouts**: Switched all PostgREST feed + stats queries from `count: 'exact'` to `count: 'planned'` — eliminates full COUNT(*) table scans on 400K+ rows that caused statement timeouts (500 errors) on keyword searches
+
+## v7.19 — 2026-03-05
+### Fixed
+- 8 dashboard/admin issues: Your Market stale count, New Today = 0, filter/chat toggle layout shift, AI content dropdown styling, trust shield wrapping, Block Similar resume requirement, admin console version stuck at v6.90, Workable XML pipeline 30min timeout
+
 ## v7.18 — 2026-03-04
 
 ### Fix: j-total always syncs to rendered job count
@@ -2806,6 +2814,3 @@
 
 ## Earlier versions
 See roadmap.html for full feature history across P0–P18.
-
-
-
