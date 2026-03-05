@@ -644,8 +644,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Authorization required' }),
         { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
-    if (!auth.includes('service_role')) {
-      const { data: { user } } = await sb.auth.getUser(auth.replace('Bearer ', ''));
+    const bearerToken = auth.replace('Bearer ', '');
+    const isServiceRole = bearerToken === SB_KEY;
+    if (!isServiceRole) {
+      const { data: { user } } = await sb.auth.getUser(bearerToken);
       if (!user) {
         return new Response(JSON.stringify({ error: 'Invalid token' }),
           { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });

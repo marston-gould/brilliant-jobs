@@ -429,9 +429,10 @@ Deno.serve(async (req) => {
       });
     }
     // Allow service_role calls (from cron jobs), otherwise verify admin
-    if (!authHeader.includes("service_role")) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    const bearerToken = authHeader.replace("Bearer ", "");
+    const isServiceRole = bearerToken === serviceKey;
+    if (!isServiceRole) {
+      const { data: { user }, error: authErr } = await supabase.auth.getUser(bearerToken);
       if (authErr || !user) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
