@@ -45,15 +45,20 @@
       ]
     },
     {
-      "source": "/js/version.js",
+      "source": "/js/vendor/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        },
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/js/(.*)",
+      "headers": [
         {
-          "key": "Pragma",
-          "value": "no-cache"
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     },
@@ -67,29 +72,11 @@
       ]
     },
     {
-      "source": "/js/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=86400"
-        }
-      ]
-    },
-    {
       "source": "/styles.css",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=86400"
-        }
-      ]
-    },
-    {
-      "source": "/js/vendor/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }
