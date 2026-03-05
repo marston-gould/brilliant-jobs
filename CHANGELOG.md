@@ -1,3 +1,18 @@
+## v7.16 — 2026-03-05
+
+### Fix: chat mode hides the Filters/Chat toggle (no way back to filters)
+- `search-mode-bar` was moved inside `filter-panel-wrap` in v7.12, which hid it when chat mode activated
+- Moved back outside `filter-panel-wrap` (between chat-panel and filter-panel-wrap) so toggle is always visible
+
+### Fix: AI Content filter label styling
+- Removed redundant emojis from checkbox labels (checkbox + emoji looked doubled)
+- Labels now use clean colored text only (green/warm/red/faint)
+
+### Chat AI unavailable
+- Root cause: Anthropic API key is out of credits — needs billing top-up at console.anthropic.com
+
+---
+
 ## v7.15 — 2026-03-05
 
 ### Fix j-total stat card mismatching rendered row count
