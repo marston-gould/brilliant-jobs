@@ -1,3 +1,21 @@
+## v7.12 — 2026-03-05
+
+### Remove ATS source pills (GH WK LV AB RC USJ)
+- `feed-source-chips` container hidden; `renderFeedSourceChips()` gracefully no-ops
+
+### Fix Admin nav link color
+- Was `color:inherit` (inherited black from parent), now `rgba(255,255,255,0.85)` (white)
+
+### Move filter/chat toggle below intel cards
+- `search-mode-bar` moved from above chat-panel to after `intel-section` (the two white cards)
+
+### Fix stale dashboard version on non-hard-refresh
+- `/js/version.js` now served with `no-cache, no-store` — was inheriting 86400s max-age from `/js/*` rule
+- `/dist/*` explicitly set to `max-age=0, must-revalidate`
+- Root cause: browser cached old version.js → loaded old cache-busted URL → got stale bundle
+
+---
+
 ## v7.11 — 2026-03-04
 
 ### Bug Fix: sb.rpc().catch is not a function — job modal errors

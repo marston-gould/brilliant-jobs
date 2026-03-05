@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Brilliant Jobs — Roadmap</title>
   <meta name="robots" content="noindex, nofollow">
-  <script src="/js/version.js?v=v7.11"></script>
+  <script src="/js/version.js?v=v7.12"></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <style>
@@ -720,7 +720,7 @@ const features = [
 
   // Phase 9 — Intelligence
   { s: 'done', n: 'Referral outreach templates', d: 'Pre-written LinkedIn/email templates for requesting real referrals from connections. Personalized with job title, company, and connection context. One-click send from job modal. Shipped v7.06.', p: 9, e: '3h'},
-  { s: 'done', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates. Shipped v7.11 (Pod 2 DB/RPCs + Pod 1 UI).', p: 9, e: '4h'},
+  { s: 'done', n: 'Referral request tracking', d: 'Track outreach sent, accepted, pending, declined. If connection submits real referral, user gets the employee referral link to apply through. Correlation analysis: referred vs cold response rates. Shipped v7.12 (Pod 2 DB/RPCs + Pod 1 UI).', p: 9, e: '4h'},
   { s: 'done', n: 'Rejection gap analysis', d: 'When user is ghosted or rejected, diff the job spec ngrams against the resume that was sent. Aggregate over time: "Jobs you didn\'t advance on frequently mention X, Y, Z — your resume doesn\'t include these." Surface patterns on Resumes page as improvement suggestions. Shipped v7.07.', p: 9, e: '6h'},
   { s: 'done', n: 'Job market trend velocity', d: 'CE Phase 2B+4: content_snapshots daily counts, detect-editorial-insights anomaly rules (role_volume_spike, metro_volume_spike). v4.65', b: 'needs-data', p: 4, b: 'needs-data' },
   { s: 'done', n: 'Filter-driven trend indicators', d: 'filterTrendEmail template implemented in email-templates.ts. Stats compare mode shows per-filter dual-series trends. Trend velocity computed from content_snapshots daily counts. v6.17.', p: 4 },
