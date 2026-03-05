@@ -1,3 +1,12 @@
+## v7.10 — 2026-03-04
+
+### Bug Fix: Stat Card — Companies count now filter-aware
+- **Root cause**: `mv_landing_stats.total_companies` was a global total (~8,798 across all jobs), completely ignoring the user's active filter context
+- **Fix**: Company count now derived from a distinct `company_slug` query scoped to the user's active filtered result set (same `buildFilterQuery` + `excludeHidden` pipeline, capped at 500 rows)
+- Removed dead MV path (`mv_job_feed_counts` + `mv_landing_stats`) that was never filter-aware
+
+---
+
 ## v7.09 — Referral Request Tracking: Backend & Data Layer
 **March 2026 | Pod 2**
 
