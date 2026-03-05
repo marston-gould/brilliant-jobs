@@ -1,3 +1,12 @@
+## v7.17 — 2026-03-05
+
+### Fix: stat card and footer both now reflect AI scoring exclusions
+- `applyAiScoringExclusions` was removing jobs from the rendered list but NOT updating `totalCount`
+- Result: footer showed "Showing 5 of 509" while stat card showed 23 — none of those matched
+- Now: if scoring exclusions remove any jobs, totalCount and j-total both update to match
+
+---
+
 ## v7.16 — 2026-03-05
 
 ### Fix: chat mode hides the Filters/Chat toggle (no way back to filters)
