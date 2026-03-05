@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Brilliant Jobs Dashboard v7.11 -->
+<!-- Brilliant Jobs Dashboard v7.12 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,20 +11,20 @@
   <meta http-equiv="Pragma" content="no-cache">
   <title>Brilliant Jobs — Dashboard</title>
   <script src="/js/vendor/supabase.min.js"></script>
-  <script src="/js/version.js?v=v7.11"></script>
-  <script src="/js/pipeline-migration.js?v=v7.11"></script>
-  <script src="/js/notification-center.js?v=v7.11"></script>
+  <script src="/js/version.js?v=v7.12"></script>
+  <script src="/js/pipeline-migration.js?v=v7.12"></script>
+  <script src="/js/notification-center.js?v=v7.12"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.4/purify.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
-  <script src="dist/dashboard.min.js?v=v7.11" defer></script>
-  <script src="js/canny.js?v=v7.11" defer></script>
+  <script src="dist/dashboard.min.js?v=v7.12" defer></script>
+  <script src="js/canny.js?v=v7.12" defer></script>
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=v7.11">
+  <link rel="stylesheet" href="styles.css?v=v7.12">
   <style>/* P13 micro-survey styles */
   .micro-survey-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-block-end:16px;position:relative;animation:microFadeIn .3s ease-out}
   .micro-survey-card.micro-survey-toast{position:fixed;inset-block-end:24px;inset-inline-end:24px;z-index:1000;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.4);margin:0}
@@ -212,7 +212,7 @@
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
           <span>Feedback</span>
         </div>
-        <a href="/admin" class="nav-item" id="nav-admin" style="display:none;text-decoration:none;color:inherit">
+        <a href="/admin" class="nav-item" id="nav-admin" style="display:none;text-decoration:none;color:rgba(255,255,255,0.85)">
           <div class="nav-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg></div>
           <span>Admin</span>
         </a>
@@ -775,25 +775,9 @@
               <div class="hero-stat"><div class="hero-stat-val" id="j-new" style="color:#3b82f6;">0</div><div class="hero-stat-label">New Today</div></div>
               <div class="hero-stat" id="j-saved-card" style="cursor:pointer;" title="View in Pipeline"><div class="hero-stat-val hs-green" id="j-saved">0</div><div class="hero-stat-label">Pipeline</div></div>
             </div>
-            <!-- A15 S6 v6.62: Per-source job count chips (populated from mv_job_feed_counts) -->
-            <div id="feed-source-chips" style="display:none;margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;"></div>
+            <!-- feed-source-chips removed v7.12 (user request) -->
+            <div id="feed-source-chips" style="display:none;"></div>
           </div>
-          <!-- Search Mode Toggle (Chat Mode Session 2) -->
-          <div class="search-mode-bar" id="search-mode-bar">
-            <div class="search-mode-toggle" id="search-mode-toggle">
-              <button class="smt-btn active" data-mode="filters">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
-                Filters
-              </button>
-              <button class="smt-btn" data-mode="chat">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Chat
-              </button>
-            </div>
-          </div>
-
-
-
           <!-- Chat Panel (Chat Mode Session 2) -->
           <div class="chat-panel" id="chat-panel" style="display:none;opacity:0;">
             <div class="chat-header">
@@ -889,6 +873,20 @@
                 <a class="intel-card-cta" href="#" onclick="event.preventDefault();document.querySelector('[data-page=resumes]').click()">Score my resume →</a>
               </div>
               <button class="intel-dismiss" onclick="this.closest('.intel-card').style.display='none'">&times;</button>
+            </div>
+          </div>
+
+          <!-- Search Mode Toggle (Chat Mode Session 2) -->
+          <div class="search-mode-bar" id="search-mode-bar">
+            <div class="search-mode-toggle" id="search-mode-toggle">
+              <button class="smt-btn active" data-mode="filters">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>
+                Filters
+              </button>
+              <button class="smt-btn" data-mode="chat">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Chat
+              </button>
             </div>
           </div>
 
