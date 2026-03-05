@@ -1,11 +1,20 @@
-## v7.08 — 2026-03-04
+## v7.09 — Referral Request Tracking: Backend & Data Layer
+**March 2026 | Pod 2**
 
-### Rejection Gap Analysis — Phase B (Insight Surfacing Wiring)
+### Database
+- Created `referral_outreach` table with RLS (users own their rows), unique index on `(user_id, job_id, channel)`, index on `(user_id, sent_at DESC)`
+- Created `updated_at` auto-update trigger `trg_referral_outreach_updated_at`
 
-- **js/app.js** — Wired `renderGapInsights()` call into Resumes tab show handler. Gap insights section now auto-loads whenever the user navigates to the Resumes tab (AC #8, #9).
-- **js/pipeline.js** — Wired `triggerGapAnalysis()` into `movePipelineStage()`. When a pipeline entry moves to `rejected` or `archived` (ghosted), the edge function is invoked with the job ID, resume used, and outcome. Completes the data collection loop (AC #3).
-- **PostHog events** — All 4 gap analysis events now fire in correct contexts: `gap_analysis_triggered` and `gap_analysis_completed` (edge function on outcome mark), `gap_insights_viewed` (Resumes tab load), `gap_term_clicked` (pill click) (AC #10).
-- **Version bump** — All surfaces updated to v7.08: version.js, app.js console, dashboard.html comment + cache-bust params, index.html comment + cache-bust params.
+### RPCs (all SECURITY DEFINER, granted to anon + authenticated)
+- `upsert_referral_outreach` — inserts/updates outreach record per user+job+channel
+- `update_referral_status` — updates status + referral_link on existing row
+- `get_referral_outreach` — returns all outreach rows for current user ordered by sent_at DESC
+- `get_referral_correlation` — returns aggregate stats (total_sent, accepted_count, acceptance_rate, applied_with_referral, applied_cold)
+
+### JS
+- `js/referral-outreach.js` — patched `sendReferralTemplate()` to call `upsert_referral_outreach` RPC on every send (fire-and-forget); fires `referral_saved` PostHog event on success
+
+---
 
 ## v7.07 — 2026-03-04
 

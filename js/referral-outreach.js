@@ -1,5 +1,5 @@
 /**
- * Brilliant Jobs — Referral Outreach v7.06
+ * Brilliant Jobs — Referral Outreach v7.09
  * Part 1: Referral Request Templates (LinkedIn DM + Email)
  * Spec: pod1-referral-feature-brief.docx (March 2026)
  * PostHog events: referral_template_opened, referral_template_sent
@@ -203,6 +203,29 @@ function sendReferralTemplate() {
     try { document.execCommand('copy'); } catch(e) {}
     document.body.removeChild(ta);
   }
+
+  // Persist outreach record (fire-and-forget)
+  (async function() {
+    try {
+      var sb = window.bjSupabase;
+      if (!sb) return;
+      await sb.rpc('upsert_referral_outreach', {
+        p_job_id: String(job.greenhouse_id || ''),
+        p_company: job.company_name || '',
+        p_job_title: job.title || '',
+        p_channel: _referralOutreachChannel,
+        p_their_name: theirName || null,
+        p_status: 'sent'
+      });
+      if (window.posthog) {
+        posthog.capture('referral_saved', {
+          job_id: job.greenhouse_id,
+          channel: _referralOutreachChannel,
+          status: 'sent'
+        });
+      }
+    } catch(e) { /* silent --- do not break send flow */ }
+  })();
 
   // Open destination
   if (_referralOutreachChannel === 'linkedin') {
