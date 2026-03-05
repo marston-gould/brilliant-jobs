@@ -1,3 +1,7 @@
+## v7.21 — 2026-03-05
+### Fixed
+- **Nav items dimmed (Search Tuning, Resumes, Applications, Ghost, Stats, Notifications, Feedback)**: `applyProgressiveNav()` ran synchronously at parse time before async Supabase filter fetch completed — `savedFilters` was always `[]` so step stayed 0 and all nav items locked. Fix: re-run step detection + `applyProgressiveNav()` immediately after filters load from DB.
+
 ## v7.20 — 2026-03-05
 ### Fixed
 - **Query timeouts**: Switched all PostgREST feed + stats queries from `count: 'exact'` to `count: 'planned'` — eliminates full COUNT(*) table scans on 400K+ rows that caused statement timeouts (500 errors) on keyword searches
