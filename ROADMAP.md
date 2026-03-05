@@ -2727,224 +2727,370 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 ---
 
-## Phase 0a: Audit Remediation — Pre-Launch (Mar 5 → Mar 28)
+## Phase 0: Audit Remediation & Launch Readiness (Mar 5 → Late March 2026)
 
-**Pod 3 (Technical Audit) + Pod 4 (CX Examination) — 73 pre-launch execution sessions**
-**Velocity basis:** 13 versioned deploys in 3.5 hours observed March 5, 2026. 10–15 sessions/day achievable.
+**Status:** IN PROGRESS
+**Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
+**Combined:** ~160 findings → 92 execution sessions → 10 quality gates → 15 launch gates
+**Velocity basis:** 13 versioned deploys in 3.5 hours observed March 5. 10–15 sessions/day.
+**Monitoring platform:** PostHog (replaces Sentry per AD-ADR-001 — already deployed)
 
-### Audit Scope Completed
+### 0-A: Security — Dashboard + Platform (Pod 3, P0)
 
-| Surface | Pod 3 Sessions | Pod 3 Findings | Pod 4 Sessions | Pod 4 Findings |
-|---------|---------------|----------------|---------------|----------------|
-| Dashboard | Sessions 1–5 | 40 (7 P0, 19 P1, 9 P2, 5 P3) | DS1, DS1-A | 21 (5 P1, 10 P2, 6 P3) |
-| Extension | EXT-1–EXT-3 | 43 (6 P0, 14 P1, 18 P2, 5 P3) | ES1 | 8 (3 P1, 3 P2, 2 P3) |
-| Landing Page | IX-1–IX-4 | 30 (6 P0, 13 P1, 9 P2, 2 P3) | LS1 | 11 (3 P1, 4 P2, 4 P3) |
-| Admin | AD-1–AD-4 | [N] ([X] P0, [Y] P1, [Z] P2, [W] P3) | — | — |
-| Transactional | — | — | TS1 | 6 (2 P1, 2 P2, 2 P3) |
-| **TOTAL** | **17 sessions** | **113+ findings** | **5 sessions** | **46 findings** |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.001 | SE-001: JWT auth on enrich-job endpoint | 1h | — | 🔲 | Unauthenticated writes to ats_jobs. Add verifyJWT + rate limit 100/min/user. |
+| 0.002 | SE-002: Service role key rotation + git history clean | 2h | — | 🔲 | Key exposed commit 4a5191787f15 (Feb 23). Bypasses all RLS. Rotate, BFG clean, invalidate old. |
+| 0.003 | SE-003: Auth on generate-editorial-content | 1h | — | 🔲 | Zero JWT verification. Uncapped Anthropic API spend. Add verifyAdminRole(). |
+| 0.004 | SE-004: Classify + gate 25 unauthenticated Edge Functions | 3h | — | 🔲 | 25/88 EFs no JWT. Classify authenticated/admin/cron-internal. edge-function-auth.yaml registry. |
+| 0.005 | SE-005: CSP unsafe-inline on dashboard | 1h | — | 🔲 | Tighten to nonce-based after module wrapper (0.057). |
 
-### ADRs Recorded (14 total)
+### 0-B: Security — Landing Page (Pod 3, P0)
 
-| ADR | Decision |
-|-----|----------|
-| ADR-001–005 | Dashboard: Sentry SDK (superseded by AD-ADR-001), safeQuery strategy, connection pooler, module wrapper, silenced-error philosophy |
-| ADR-006–009 | Extension: kill-switch 3-layer, extension Sentry (superseded), website distribution, self-update deferral |
-| IX-ADR-001–003 | Landing page: DOMPurify CDN strategy, CSP staged deployment, accessibility scope for launch |
-| AD-ADR-001 | **PostHog replaces Sentry** as primary monitoring platform. Already deployed. Broader coverage. |
-| AD-ADR-002 | Monitoring architecture: hybrid (Supabase Views + External API Proxy + PostHog SDK Direct) |
-| AD-ADR-003 | Admin auth model (committed during AD-4 War Room) |
-| AD-ADR-004 | Audit trail storage (dedicated table + async logging) |
-| AD-ADR-005 | Admin scope phasing: 4 phases (Security → Core Monitoring → Extended Monitoring → Compliance) |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.006 | IX-SE-001: postMessage wildcard origin → restrict | 30min | — | 🔲 | Broadcasts full session to * including tokens. Restrict to brilliantjobs.app. |
+| 0.007 | IX-SE-004: DOMPurify on 3 innerHTML injections | 1h | — | 🔲 | Exploitable XSS on public internet. CDN + SRI per IX-ADR-001. |
+| 0.008 | IX-SE-005: Tighten profiles RLS for anon | 1h | — | 🔲 | Anon key overexposes profile data. Restrict columns. |
+| 0.009 | IX-SE-006: Cookies without Secure/HttpOnly | 30min | — | 🔲 | All cookies missing Secure flag. Bundle into headers pass. |
+| 0.010 | IX-SE-007: CSP + security headers | 1h | — | 🔲 | Zero CSP, no X-Frame-Options. Report-Only 48h → enforce per IX-ADR-002. |
+| 0.011 | IX-SE-008: Anon key exposed in source | 30min | — | 🔲 | Mitigated by RLS tightening (0.008). Document as accepted. |
+| 0.012 | IX-SE-003: validate-signup dead attack surface | 30min | — | 🔲 | Unused EF still deployed. Disable or delete. |
 
-### Execution Sessions: Phase 1 — Security + Observability + CX Foundation (Week 1)
+### 0-C: Security — Extension (Pod 3, P0)
 
-| ID | Pod | Title | Surface | Status |
-|----|-----|-------|---------|--------|
-| P3-1.01 | 3 | SE-001: enrich-job JWT auth | Dashboard EF | [ ] |
-| P3-1.02 | 3 | SE-002: service role key rotation + git clean | Platform | [ ] |
-| P3-1.03 | 3 | PostHog SDK integration (error tracking + session replay + feature flags) | All web | [ ] |
-| P3-1.04 | 3 | Landing: postMessage wildcard fix + safeReadLS definition | Landing | [ ] |
-| P3-1.05 | 3 | Landing: DOMPurify + stale anon key fix | Landing | [ ] |
-| P3-1.06 | 3 | Landing: CSP + security headers | Landing | [ ] |
-| P3-1.07 | 3 | Admin auth enforcement (3 Edge Functions) | Admin | [ ] |
-| P3-1.08 | 3 | Admin audit trail schema + logging middleware | Admin | [ ] |
-| P3-1.09 | 3 | Admin error handling cleanup | Admin | [ ] |
-| P3-1.10 | 3 | Admin service role key audit | Admin | [ ] |
-| P3-1.11 | 3 | Extension token encryption | Extension | [ ] |
-| P3-1.12 | 3 | Extension XSS fix (popup) | Extension | [ ] |
-| P3-1.13 | 3 | Connection pooler enable (Supavisor) | Platform | [ ] |
-| P3-1.14 | 3 | Privacy policy + manifest update | Extension | [ ] |
-| P4-1.01 | 4 | PostHog identity resolution (posthog.identify on all surfaces) | All web | [ ] |
-| P4-1.02 | 4 | Extension PostHog instrumentation | Extension | [ ] |
-| P4-1.03 | 4 | Dashboard accessibility Phase 1 (ARIA + focus + keyboard) | Dashboard | [ ] |
-| P4-1.04 | 4 | Extension accessibility Phase 1 | Extension | [ ] |
-| P4-1.05 | 4 | Landing accessibility + H1 fix | Landing | [ ] |
-| P4-1.06 | 4 | Landing PostHog direct init (replace GTM dependency) | Landing | [ ] |
-| P4-1.07 | 4 | Dashboard pageview events (14 pages) | Dashboard | [ ] |
-| P4-1.08 | 4 | Email PostHog attribution (UTM tagging) | Transactional | [ ] |
-| P4-1.09 | 4 | SMS PostHog attribution | Transactional | [ ] |
-| P4-1.10 | 4 | Notification inputs instrumentation (75 inputs → PostHog) | Dashboard | [ ] |
-| P4-1.11 | 4 | Subscription page instrumentation | Dashboard | [ ] |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.013 | EXT-SEC-001: Token encryption in chrome.storage | 1h | — | 🔲 | authSession plaintext. Encrypt at rest. |
+| 0.014 | EXT-SEC-002: Remove broad host permissions | 1h | — | 🔲 | Minimize to required ATS domains only. |
+| 0.015 | EXT-SEC-003: Popup innerHTML XSS | 1h | — | 🔲 | innerHTML in privileged context. Sanitize all. |
+| 0.016 | EXT-SEC-004: PII minimization for AI answerer | 1h | — | 🔲 | Full profile sent every call. Per-question field subsets. |
+| 0.017 | EXT-SEC-005: Content script CSP bypass vectors | 1h | — | 🔲 | Audit all injection points in ATS pages. |
 
-### Execution Sessions: Phase 2 — Tests + Core Fixes + CX Sprint 2 (Week 1–2)
+### 0-D: Security — Admin (Pod 3, P0)
 
-| ID | Pod | Title | Surface | Status |
-|----|-----|-------|---------|--------|
-| P3-2.01 | 3 | Critical-path smoke tests batch 1 (auth + home + jobs) | Dashboard | [ ] |
-| P3-2.02 | 3 | Critical-path smoke tests batch 2 (resumes + apps + settings) | Dashboard | [ ] |
-| P3-2.03 | 3 | safeQuery wiring batch 1 (~12 call sites) | Dashboard | [ ] |
-| P3-2.04 | 3 | safeQuery wiring batch 2 (~12 call sites) | Dashboard | [ ] |
-| P3-2.05 | 3 | safeQuery wiring batch 3 (~16 call sites) | Dashboard | [ ] |
-| P3-2.06 | 3 | Empty catch replacement batch 1 (~25 catches) | Dashboard | [ ] |
-| P3-2.07 | 3 | Empty catch replacement batch 2 (~25 catches) | Dashboard | [ ] |
-| P3-2.08 | 3 | Empty catch replacement batch 3 (~17 catches) | Dashboard | [ ] |
-| P3-2.09 | 3 | Error boundaries on dashboard tabs | Dashboard | [ ] |
-| P3-2.10 | 3 | Landing page RLS tightening + profiles | Landing | [ ] |
-| P4-2.01 | 4 | ECharts lazy load (Stats page) | Dashboard | [ ] |
-| P4-2.02 | 4 | Landing CSS extraction (97 inline → external) | Landing | [ ] |
-| P4-2.03 | 4 | Landing 1024px breakpoint | Landing | [ ] |
-| P4-2.04 | 4 | Extension sideload UX + version display | Extension | [ ] |
-| P4-2.05 | 4 | Tuning page instrumentation | Dashboard | [ ] |
-| P4-2.06 | 4 | Dark-first email rendering | Transactional | [ ] |
-| P4-2.07 | 4 | Ahrefs analytics audit + decision | Landing | [ ] |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.018 | AD-SE-001: Admin auth enforcement — server-side | 2h | — | 🔲 | Client-side only or none. Shared admin-auth.ts middleware. 401/403 non-admin. |
+| 0.019 | AD-SE-002: Admin Edge Function auth (3 functions) | 1h | — | 🔲 | generate-editorial, build-extension, seo-sync require admin role. |
+| 0.020 | AD-SE-003: Service role key in admin client code | 1h | — | 🔲 | Remove client-side refs after 0.002 rotation. |
+| 0.021 | AD-SE-004 + AD-CP-004: Admin audit trail | 2h | — | 🔲 | admin_audit_log table + logAdminAction() async + wire all admin EFs. |
 
-### Execution Sessions: Phase 3 — Extension + P1s + Kill-Switch + CX Sprint 3 (Week 2)
+### 0-E: Observability + Monitoring (Pod 3, P0/P1)
 
-| ID | Pod | Title | Surface | Status |
-|----|-----|-------|---------|--------|
-| P3-3.01 | 3 | Extension empty catch replacement (20 catches) | Extension | [ ] |
-| P3-3.02 | 3 | Extension retry + timeout on all fetches | Extension | [ ] |
-| P3-3.03 | 3 | Kill-switch: heartbeat directive layer | Extension | [ ] |
-| P3-3.04 | 3 | Kill-switch: externally_connectable + DB flag | Extension | [ ] |
-| P3-3.05 | 3 | PII data minimization for AI answerer | Extension | [ ] |
-| P3-3.06 | 3 | Dashboard P1: loading states | Dashboard | [ ] |
-| P3-3.07 | 3 | Dashboard P1: pagination + cron alerting | Dashboard | [ ] |
-| P3-3.08 | 3 | Landing P1: catch remediation + loading states | Landing | [ ] |
-| P3-3.09 | 3 | Landing P1: a11y + staleness badge + profile timeout | Landing | [ ] |
-| P4-3.01 | 4 | Shadow DOM isolation (extension) | Extension | [ ] |
-| P4-3.02 | 4 | Token alignment with dashboard | Extension | [ ] |
-| P4-3.03 | 4 | ATS coverage expansion testing | Extension | [ ] |
-| P4-3.04 | 4 | Dark mode support batch 1 (7 pages) | Dashboard | [ ] |
-| P4-3.05 | 4 | Dark mode support batch 2 (7 pages) | Dashboard | [ ] |
-| P4-3.06 | 4 | Onboarding path rationalization | Dashboard | [ ] |
-| P4-3.07 | 4 | Landing P3 batch: segment, modal a11y, JSON-LD, carousel | Landing | [ ] |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.022 | DO-001: PostHog SDK integration — all surfaces | 1h | — | 🔲 | Zero error monitoring. posthog.init() dashboard+admin+landing. Error tracking+session replay+feature flags. |
+| 0.023 | DO-002: Supavisor connection pooler | 1h | — | 🔲 | No pooling. Exhausts at ~50 concurrent. Enable, validate 300+. |
+| 0.024 | DO-003: Feature flags via PostHog | 30min | — | 🔲 | PostHog native. posthog.isFeatureEnabled() wrapper. |
+| 0.025 | DO-004: Cron failure alerting | 2h | — | 🔲 | 45 pg_cron jobs zero alerting. PostHog alerts on failure. |
+| 0.026 | AD-DO-001: Monitoring infra baseline inventory | 1h | — | 🔲 | Inventory Supabase metrics, Vercel logs, PostHog. Document gaps. |
+| 0.027 | AD-DO-002: PostHog API for admin error dashboard | 1h | — | 🔲 | Rate limits, retention, query patterns for admin UI. |
+| 0.028 | AD-DO-003: Alerting pipeline — no infrastructure | 2h | — | 🔲 | PostHog alerts + custom routing for cron/feed/error. |
+| 0.029 | AD-DO-004: Admin availability during outages | 1h | — | 🔲 | Assess independent health check for admin surface. |
 
-### Execution Sessions: Phase 4 — Architecture + Polish (Week 2–3)
+### 0-F: Error Handling — Dashboard (Pod 3, P0/P1)
 
-| ID | Pod | Title | Surface | Status |
-|----|-----|-------|---------|--------|
-| P3-4.01 | 3 | Bundle split: route-based code splitting setup | Dashboard | [ ] |
-| P3-4.02 | 3 | Bundle split: migrate top 5 tab modules | Dashboard | [ ] |
-| P3-4.03 | 3 | Bundle split: migrate remaining modules | Dashboard | [ ] |
-| P3-4.04 | 3 | Landing CSS/JS extraction + consent gate + PostHog identity | Landing | [ ] |
-| P3-4.05 | 3 | Module wrapper + TypeScript migration (core modules) | Dashboard | [ ] |
-| P3-4.06 | 3 | Caching layer: MV refresh optimization | Dashboard | [ ] |
-| P3-4.07 | 3 | pgAudit + SRI hashes + rate limits (compliance batch) | Platform | [ ] |
-| P4-4.01 | 4 | Referrals CSS cleanup + !important removal | Dashboard | [ ] |
-| P4-4.02 | 4 | A/B testing framework setup (PostHog experiments) | Transactional | [ ] |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.030 | BE-001: safeQuery() wiring — 40+ call sites | 6h | — | 🔲 | safeQuery exists, zero calls. 3 batches ~12-15. Highest-leverage code change. |
+| 0.031 | ES-001: Replace 67 empty catches | 6h | — | 🔲 | 67 catch(e){} vanish errors. 3 batches ~22. safeQuery.handleError + PostHog. |
+| 0.032 | ES-002: Replace 40 console-only catches | 3h | — | 🔲 | Invisible in production. Upgrade to PostHog capture. |
+| 0.033 | BE-003: 17 unchecked {data, error} | 2h | — | 🔲 | Supabase errors produce undefined silently. Billing, resumes, browsers. |
+| 0.034 | BE-004: 7 fire-and-forget RPCs | 1h | — | 🔲 | Analytics calls discard failures. Wire to PostHog. |
+| 0.035 | BE-005: Suppressed network errors | 1h | — | 🔲 | Network failures hidden. Retry + user notification. |
+| 0.036 | BE-006: Edge Function empty catches | 2h | — | 🔲 | EF catches mirror dashboard pattern. |
+| 0.037 | FE-002: Error boundaries all tabs | 2h | — | 🔲 | Zero error boundaries. Blank screen on failure. Fallback UI + retry. |
+| 0.038 | FE-003: Loading states all fetches | 2h | — | 🔲 | No loading indicators. Add skeleton loaders. |
+| 0.039 | FE-004: Pagination on unbounded queries | 2h | — | 🔲 | Full table returns. limit + Load More. |
 
-### Execution Sessions: Phase 5 — Validation + Launch (Week 3–4)
+### 0-G: Error Handling — Extension (Pod 3, P1)
 
-| ID | Pod | Title | Surface | Status |
-|----|-----|-------|---------|--------|
-| P3-5.01 | 3 | Load testing at 1,200 concurrent users | All | [ ] |
-| P3-5.02 | 3 | Staging environment + CI/CD automation | Platform | [ ] |
-| P3-5.03 | 3 | Extension E2E tests against live ATS sites | Extension | [ ] |
-| P3-5.04 | 3 | Kill-switch integration test (bulk disable/enable) | Extension | [ ] |
-| P3-5.05 | 3 | 72-hour dry run (all surfaces monitored) | All | [ ] |
-| P4-5.01 | 4 | Final CX validation: axe-core + instrumentation + measurement review | All | [ ] |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.040 | EXT-ES-001: 20 empty catches | 2h | — | 🔲 | popup.js(6), background.js(8), handlers(1), utils(3), build-ext(1), interceptor(1). |
+| 0.041 | EXT-ES-002: 19 fire-and-forget .catch(()=>{}) | 1h | — | 🔲 | chrome.runtime.sendMessage calls suppress errors. |
+| 0.042 | EXT-ES-003: 7 console/comment-only handlers | 1h | — | 🔲 | Catch blocks with only console or comment. |
+| 0.043 | EXT-ES-004: 14+ missing lastError checks | 2h | — | 🔲 | Only toolbar-overlay checks (4x). All other chrome API calls skip. |
+| 0.044 | EXT-BE-001: No fetch timeouts | 1h | — | 🔲 | Zero AbortController. Add timeout on all fetches. |
+| 0.045 | EXT-BE-002: No retry with backoff | 2h | — | 🔲 | Zero retry. Exponential backoff on auth, scan, pipeline. |
 
-### Launch Gate Criteria (15 conditions)
+### 0-H: Error Handling — Landing Page (Pod 3, P1)
 
-| # | Gate | Pod |
-|---|------|-----|
-| 1 | All P0 findings resolved across all 4 surfaces | 3 |
-| 2 | PostHog error tracking live on all surfaces | 3 |
-| 3 | Service role key rotated, old key invalidated | 3 |
-| 4 | Extension kill-switch operational | 3 |
-| 5 | Critical-path tests exist and pass | 3 |
-| 6 | Connection pooler live, load-tested | 3 |
-| 7 | Privacy policy published, DPA requests sent | 3 |
-| 8 | 72-hour dry run clean across all surfaces | 3 |
-| 9 | Landing page XSS patched and CSP enforced | 3 |
-| 10 | Landing page referral pipeline functional | 3 |
-| 11 | Admin auth enforced server-side | 3 |
-| 12 | Admin audit trail recording | 3 |
-| 13 | PostHog identity resolved on all surfaces | 4 |
-| 14 | axe-core critical violations: zero on all surfaces | 4 |
-| 15 | All 10 quality gates active in CI | 3+4 |
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.046 | IX-ES-001: safeReadLS undefined | 30min | — | 🔲 | ReferenceError every load for returning visitors. Define the function. |
+| 0.047 | IX-ES-002: Stale anon key referral-capture.js | 30min | — | 🔲 | Wrong key = referral tracking silently broken. One-line fix. |
+| 0.048 | IX-FE-003: 7 empty + 5 console-only catches | 1h | — | 🔲 | 12 silenced errors on public landing. Wire to PostHog. |
+| 0.049 | IX-FE-004: Loading/error/retry states (5 flows) | 1h | — | 🔲 | preview-jobs, profile check, merch, referral, auth — all missing feedback. |
+| 0.050 | IX-BE-001: preview-jobs no auth + no rate limit | 1h | — | 🔲 | Public EF, no rate limiting. Add rate limit + optional auth. |
+| 0.051 | IX-BE-003: Supabase client re-initialization | 30min | — | 🔲 | New client per call instead of singleton. |
+| 0.052 | IX-BE-004: Profile verification stuck state | 1h | — | 🔲 | No timeout. Spinner forever. AbortController + 10s timeout + error state. |
+
+### 0-I: Error Handling — Admin (Pod 3, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.053 | AD-ES-001: Admin EF empty catches | 1h | — | 🔲 | generate-editorial, build-extension, seo-sync catch and swallow. |
+| 0.054 | AD-ES-005: No error states in admin UI | 1h | — | 🔲 | Operations fail silently. No user feedback on failure. |
+| 0.055 | AD-ES-007: generate-editorial no rate limit/cost cap | 1h | — | 🔲 | Per-user rate limit + daily cost cap for Anthropic calls. |
+
+### 0-J: Frontend + Performance (Pod 3, P0/P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.056 | FE-001: 818KB unsplit bundle → code split | 6h | — | 🔲 | Route-based split. <200KB initial. 3 sessions. |
+| 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | — | 🔲 | Module wrapper per ADR-004. |
+| 0.058 | FE-006: No TypeScript | 4h | — | 🔲 | Incremental: new files .ts, tsconfig strict. |
+| 0.059 | BE-007: No API versioning | 1h | — | 🔲 | Design versioning approach for Edge Functions. |
+| 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | — | 🔲 | 656 lines CSS + 614 lines JS inline. Extract for caching. |
+| 0.061 | IX-FE-005: No search debounce | 30min | — | 🔲 | Query per keystroke. Add 300ms debounce. |
+
+### 0-K: Test Infrastructure (Pod 3, P0)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.062 | QA-001: Critical-path smoke tests | 6h | — | 🔲 | Zero tests. Auth, home, jobs, resumes, apps, settings. Framework setup. |
+| 0.063 | QA-002: Extension handler DOM snapshot tests | 3h | — | 🔲 | 15 ATS handlers with no tests. Snapshot per handler. |
+| 0.064 | QA-003: Integration tests critical API paths | 3h | — | 🔲 | enrich-job, score-resume, generate-filter, preview-jobs E2E. |
+
+### 0-L: Extension Features + Reliability (Pod 3, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.065 | EXT-FEAT-001: Kill-switch (3-layer ADR-006) | 4h | — | 🔲 | Heartbeat directive + externally_connectable + DB flag. Admin UI kill toggle. 2 sessions. |
+| 0.066 | EXT-BE-003: Token refresh reliability | 1h | — | 🔲 | Refresh fails silently. Retry + notification + re-auth. |
+| 0.067 | EXT-CWS-001: Manifest permissions minimize | 1h | — | 🔲 | Justify each permission or remove. |
+| 0.068 | EXT-CWS-002: Privacy policy + manifest link | 1h | — | 🔲 | Publish policy, link in manifest. Required for distribution. |
+| 0.069 | EXT-FE-001: Content script selector fragility | 2h | — | 🔲 | Brittle selectors break on ATS redesigns. Add monitoring. |
+
+### 0-M: Data Engineering (Pod 3, P1/P2)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.070 | DE-001: Cron failure alerting | 2h | — | 🔲 | 45 crons zero alerting. PostHog hooks. |
+| 0.071 | DE-002: Stale MV indicators | 1h | — | 🔲 | "Live" badge on stale data. Add refreshed_at display. |
+| 0.072 | DE-003: Scale ceiling at 1M records | 2h | — | 🔲 | EXPLAIN ANALYZE primary queries. Missing indexes. |
+| 0.073 | DE-004: Dead cron #78 (Feb 31) | 15min | — | 🔲 | Impossible date. Remove. |
+| 0.074 | DE-005: Redundant purge crons #22/#24 | 15min | — | 🔲 | Both purge email_signals Sunday. Remove duplicate. |
+
+### 0-N: CSS + Design System (Pod 3, P2/P3)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.075 | CSS-001: Zero accessibility (dashboard) | 3h | — | 🔲 | Combined with Pod 4 DS1-2 (0.107). |
+| 0.076 | CSS-002: No dark mode | 4h | — | 🔲 | CSS vars ready, no dark variants. Combined with DS1-5 (0.125). |
+| 0.077 | CSS-003: 30+ regex safelist (Tailwind) | 1h | — | 🔲 | Inflates CSS. Correct for current arch. |
+| 0.078 | CSS-004: 128KB CSS from 170KB input | 1h | — | 🔲 | Dead CSS possible. Usage analysis needed. |
+
+### 0-O: Compliance + Privacy (Pod 3, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.079 | CP-001: No PII inventory | 2h | — | 🔲 | 72+ tables undocumented. Foundation for deletion + export. |
+| 0.080 | CP-002: No DPAs for resume data → Anthropic | 2h | — | 🔲 | Resume PII sent every score/rewrite. Initiate DPAs: Anthropic, PostHog, Stripe, Resend, Vonage. |
+| 0.081 | CP-003: No audit logging (platform) | 1h | — | 🔲 | Combined with 0.021 admin trail + pgAudit. |
+| 0.082 | AD-CP-001: Admin PII exposure scope | 1h | — | 🔲 | Document all admin-visible PII. Logging per access path. |
+| 0.083 | AD-CP-002: No user deletion capability | 5h | — | 🔲 | GDPR Art 17. 72+ table cascade + third-party propagation. Post-launch. |
+| 0.084 | AD-CP-003: No data export / portability | 3h | — | 🔲 | GDPR Art 20. Export format + query agg + download. Post-launch. |
+| 0.085 | IX-CP-001: No consent gate for PostHog | 1h | — | 🔲 | Tracks all visitors, no GDPR/CCPA consent. Cookie banner + conditional trigger. |
+
+### 0-P: Dependencies + Cost (Pod 3, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.086 | DM-001: No vulnerability scanning | 1h | — | 🔲 | Add to CI pipeline. |
+| 0.087 | DM-002: CDN deps without SRI hashes | 1h | — | 🔲 | 5+ scripts no integrity=. Generate SRI for all. |
+| 0.088 | IX-DM-001: Landing CDN deps without SRI | 30min | — | 🔲 | Landing-specific SRI pass. |
+| 0.089 | CE-001: No AI API spend controls | 2h | — | 🔲 | Uncontrolled Anthropic spend. Per-function tracking + budget alerts + kill switches. |
+| 0.090 | CE-002: No infrastructure cost visibility | 1h | — | 🔲 | No consolidated spend view. Cost dashboard post-launch. |
+
+### 0-Q: Landing Page — SEO + Analytics (Pod 3, P2)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.091 | IX-SEO-001: No canonical URL tag | 15min | — | 🔲 | Duplicate URL indexing risk. |
+| 0.092 | IX-SEO-002: No OG / Twitter Card tags | 15min | — | 🔲 | Blank social sharing preview. |
+| 0.093 | IX-SEO-003: JSON-LD structured data stale | 15min | — | 🔲 | 315K vs 400K mismatch. |
+| 0.094 | IX-DA-001: PostHog no identity bridge | 1h | — | 🔲 | Combined with DS1-4 (0.101). |
+| 0.095 | IX-DA-002: Broken referral pipeline | 30min | — | 🔲 | Resolved by 0.047 anon key fix. |
+| 0.096 | IX-BE-002: Stale "Live" stats labels | 30min | — | 🔲 | Add staleness badge with refresh timestamp. |
+| 0.097 | IX-FE-006: URL hardcoding (brilliantjobs.io refs) | 30min | — | 🔲 | Old domain refs. Replace. |
+
+### 0-R: DevOps + Infra (Pod 3, P2)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.098 | DO-005: Staging environment + CI/CD | 3h | — | 🔲 | Preview per PR. Vercel auto-deploy. Gate 9 installed here. |
+| 0.099 | FE-007: 3 sync scripts blocking render | 1h | — | 🔲 | Ahrefs, GTM, other. Defer or async. |
+| 0.100 | FE-008: No content hashing static assets | 1h | — | 🔲 | Stale CDN. Hash filenames or cache-bust params. |
+
+### 0-S: CX — PostHog Identity + Instrumentation (Pod 4, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.101 | DS1-4: PostHog identity resolution | 1h | — | 🔲 | posthog.identify() all surfaces. 0%→100%. HIGHEST-LEVERAGE CX FIX. Unblocks 9. |
+| 0.102 | DS1-6: Pageview events (14 pages) | 1h | — | 🔲 | 10/14 dark. posthog.capture('$pageview') every tab change. |
+| 0.103 | ES1-1: Extension PostHog — zero events | 2h | — | 🔲 | 100% dark. popup_opened, scan_started, scan_complete, pipeline_save. |
+| 0.104 | LS1-3: PostHog not initialized (GTM-dependent) | 1h | — | 🔲 | All 12 events fragile. Direct init. Upgraded P2→P1. |
+| 0.105 | TS1-1: Email-to-PostHog attribution | 2h | — | 🔲 | Zero UTM. No email→dashboard attribution. |
+| 0.106 | TS1-2: SMS-to-PostHog attribution | 1h | — | 🔲 | Zero SMS tracking. UTM + events. |
+
+### 0-T: CX — Accessibility (Pod 4, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.107 | DS1-2: Dashboard accessibility Phase 1 | 3h | — | 🔲 | Scored 1.0/5.0. ARIA tablist/tab/tabpanel, focus mgmt, :focus-visible. axe-core 0 critical. |
+| 0.108 | ES1-2: Extension accessibility 1.0 | 2h | — | 🔲 | Scored 1.0/5.0. ARIA popup, keyboard nav, focus, screen reader. |
+| 0.109 | LS1-1: Landing accessibility (19 btns, 6 inputs, 0 ARIA) | 2h | — | 🔲 | Scored 2.0/5.0. Zero ARIA. Roles, labels, states needed. |
+| 0.110 | LS1-4: 3 H1 tags in DOM | 30min | — | 🔲 | display:none→conditional render. SEO + a11y. Upgraded P2→P1. |
+| 0.111 | IX-A11Y-001: Zero ARIA landing page | 2h | — | 🔲 | Combined with LS1-1 (0.109). |
+| 0.112 | IX-A11Y-002: Keyboard trap auth modal | 1h | — | 🔲 | No Tab trap, no Escape handler. |
+| 0.113 | IX-A11Y-003: Form labels not linked | 30min | — | 🔲 | 6 inputs no for/id. Screen readers can't identify. |
+
+### 0-U: CX — Bundle + Audit (Pod 4, P1)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.114 | DS1-1: Bundle Phase 1 — lazy loading | 2h | — | 🔲 | Defer tab JS until activation. Precursor to full split (0.056). |
+| 0.115 | DS1-3: Inline style audit kickoff | 1h | — | 🔲 | 827 dashboard inline styles. Categorize: token-migrate vs keep. Enables Sprint 2. |
+
+### 0-V: CX — Dashboard P2 (Pod 4)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.116 | DS1-7: Pipeline drag-drop uninstrumented | 1h | — | 🔲 | Zero events on applications pipeline. |
+| 0.117 | DS1-8: Gmail connection buried | 1h | — | 🔲 | IA/UX improvement for discoverability. |
+| 0.118 | DS1-9: ECharts global load | 1h | — | 🔲 | Lazy-load on Stats tab activation. |
+| 0.119 | DS1-10: 14 pages single HTML | 4h | — | 🔲 | Architectural. display:none tabs → proper routing. Long-term. |
+| 0.120 | DS1A-13: Extension sideload friction | 1h | — | 🔲 | Smoother install UX for website distribution (ADR-008). |
+| 0.121 | DS1A-14: Tuning page dark | 1h | — | 🔲 | Zero events. filter_changed, weight_adjusted, save_tuning. |
+| 0.122 | DS1A-17: 75 notification inputs, 0 events | 1h | — | 🔲 | Quick-win instrumentation. |
+| 0.123 | DS1A-19: Subscription page dark | 1h | — | 🔲 | plan_viewed, upgrade_clicked, payment_started. |
+| 0.124 | DS1-12: No perf timing events | 1h | — | 🔲 | page_load_time, tab_switch_time, api_response_time. |
+
+### 0-W: CX — Dashboard P3 (Pod 4)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.125 | DS1-5: Dark mode (14 pages) | 4h | — | 🔲 | CSS vars ready, no dark variants. 2×7 page batches. |
+| 0.126 | DS1-11: Competing onboarding paths | 1h | — | 🔲 | Setup + Get Started both exist. Rationalize. |
+| 0.127 | DS1A-15: Pipeline hidden page | 30min | — | 🔲 | Force-hidden CSS. Confirm intentional or remove. |
+| 0.128 | DS1A-16: Resume token bypass #f59e0b | 30min | — | 🔲 | Hardcoded hex → var(--amber). |
+| 0.129 | DS1A-18: Settings snooze duplication | 30min | — | 🔲 | Duplicate CSS. Consolidate. |
+| 0.130 | DS1A-20: Admin survey data in Feedback | 30min | — | 🔲 | user_feedback visible to non-admin. Scope review. |
+| 0.131 | DS1A-21: Referrals !important fights | 1h | — | 🔲 | JS renders with inline styles fighting Tailwind. Refactor. |
+
+### 0-X: CX — Extension (Pod 4, P2/P3)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.132 | ES1-3: No Shadow DOM isolation | 3h | — | 🔲 | Host CSS bleeds into toolbar/overlay. High effort. |
+| 0.133 | ES1-4: Token divergence from dashboard | 1h | — | 🔲 | Extension popup uses different CSS tokens. Align. |
+| 0.134 | ES1-5: Version mismatch display | 1h | — | 🔲 | Popup version ≠ manifest version. |
+| 0.135 | ES1-6: Incomplete ATS coverage | 2h | — | 🔲 | Toolbar missing on some of 12 platforms. Test + fix. |
+| 0.136 | ES1-7: Password reset dead end | 30min | — | 🔲 | No completion state in popup. |
+| 0.137 | ES1-8: Technical tab labels | 30min | — | 🔲 | Developer terms → user-friendly. |
+
+### 0-Y: CX — Landing Page (Pod 4, P2/P3)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.138 | LS1-2: 97 inline styles (token bypass) | 1h | — | 🔲 | Migrate to CSS variables. |
+| 0.139 | LS1-5: 30KB inline CSS uncacheable | 2h | — | 🔲 | Extract to external file. Upgraded P3→P2. |
+| 0.140 | LS1-6: Ahrefs analytics audit | 30min | — | 🔲 | If redundant with PostHog+GSC, remove. Decision item. |
+| 0.141 | LS1-7: Only 2 responsive breakpoints | 1h | — | 🔲 | Add 1024px. Benefits/pricing/comparison break 768→desktop. |
+| 0.142 | LS1-8: Segment localStorage fragility | 30min | — | 🔲 | Incognito resets to 'new'. Fix detection order. |
+| 0.143 | LS1-9: Auth modal a11y refinements | 30min | — | 🔲 | aria-pressed, aria-live, heading structure. |
+| 0.144 | LS1-10: JSON-LD count mismatch | 15min | — | 🔲 | 315K vs 400K vs live. Make consistent. |
+| 0.145 | LS1-11: Carousel lazy-load + fallback | 30min | — | 🔲 | 5 SVGs load regardless of scroll. No JS-off fallback. |
+
+### 0-Z: CX — Transactional Email/SMS (Pod 4, P2/P3)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.146 | TS1-3: Dark-first email rendering | 2h | — | 🔲 | Templates not optimized for dark mode clients. |
+| 0.147 | TS1-4: No A/B testing drip emails | 2h | — | 🔲 | PostHog experiments. Depends on TS1-1. |
+| 0.148 | TS1-5: Credit alert SMS overflow | 30min | — | 🔲 | Truncates on some carriers. Shorten. |
+| 0.149 | TS1-6: 181KB monolithic email template | 3h | — | 🔲 | Split into composable modules. Backlog. |
+
+### 0-AA: Quality Gates — Regression Prevention (Phase 0d, parallel)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.150 | Gate 1: No Silent Failures — ESLint | 1h | — | 🔲 | no-empty-catch, no-console-only-catch, require-supabase-error-check. CI blocks. After 0.031. |
+| 0.151 | Gate 2: PostHog Verification — CI+Runtime | 1h | — | 🔲 | posthog.init() check + silence alert >2h. With 0.022. |
+| 0.152 | Gate 3: Test Coverage Floor — CI | 1h | — | 🔲 | 80% new-code. Critical-path protection. After 0.062. |
+| 0.153 | Gate 4: Edge Function Auth — CI+YAML | 1h | — | 🔲 | JWT scan + edge-function-auth.yaml. With 0.018. |
+| 0.154 | Gate 5: Access Control — pre-commit+CI | 1h | — | 🔲 | service_role block + RLS check. With 0.002. |
+| 0.155 | Gate 6: Instrumentation — YAML+CI | 1h | — | 🔲 | posthog-events.yaml + coverage check. After 0.106. |
+| 0.156 | Gate 7: Type Safety — CI | 1h | — | 🔲 | .ts required + strict + no-implicit-globals. With 0.058. |
+| 0.157 | Gate 8: Design System — Stylelint | 1h | — | 🔲 | no-hardcoded-colors + no-inline-styles + CODEOWNERS. With 0.138. |
+| 0.158 | Gate 9: Deploy Pipeline — full CI suite | 2h | — | 🔲 | All checks + preview envs + feature flag rollout. With 0.098. |
+| 0.159 | Gate 10: Compliance — PR template | 1h | — | 🔲 | PII questions + SRI check + PII table auto-flag. With 0.021. |
+
+### 0-BB: Post-Launch — Admin Monitoring Dashboards (Phase 0b)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.160 | Cron Dashboard — meta-cron logger | 2h | — | 🔲 | Pattern 1: Supabase Views. cron_health_log table. |
+| 0.161 | Cron Dashboard — admin UI | 3h | — | 🔲 | 45 jobs, status, history, duration trend. Color-coded. Expandable. |
+| 0.162 | Cron Dashboard — alerts | 1h | — | 🔲 | PostHog: P0-cron fail, 2+ missed, 2x duration. |
+| 0.163 | Feed Health — Supabase views | 2h | — | 🔲 | Pattern 1. ats_jobs, pipeline, resumes timestamps. |
+| 0.164 | Feed Health — admin UI | 2h | — | 🔲 | Cards per feed. Throughput, staleness, error rate. 24h chart. |
+| 0.165 | Error Dashboard — PostHog API | 2h | — | 🔲 | Pattern 3: PostHog SDK Direct. Real-time error feed. |
+| 0.166 | Error Dashboard — admin UI + replay | 2h | — | 🔲 | Trends, click-to-replay, new vs recurring. |
+| 0.167 | Alerting pipeline — PostHog + routing | 2h | — | 🔲 | Error rate spikes, cron/feed conditions. Channels configured. |
+| 0.168 | Edge Function Health — proxy + instrumentation | 3h | — | 🔲 | Pattern 2. 88 EFs: invocations, errors, latency p50/p95/p99. |
+| 0.169 | Database Activity — pg_stat + UI | 3h | — | 🔲 | Connections, slow queries, table sizes. |
+| 0.170 | Cost Monitoring — Anthropic proxy + cache | 3h | — | 🔲 | Pattern 2. Daily/weekly/monthly. Per-function. |
+| 0.171 | Cost Monitoring — UI + alerts + kill switches | 3h | — | 🔲 | Budget alerts 50/75/90/100%. Per-function kill switch. |
+| 0.172 | PII inventory + data map | 2h | — | 🔲 | 72+ tables. Flows to Anthropic, PostHog, Stripe, Resend, Vonage. |
+| 0.173 | User deletion (72+ table cascade) | 5h | — | 🔲 | GDPR Art 17. Cascade + third-party propagation. Admin-executable. |
+| 0.174 | Data export + compliance dashboard | 4h | — | 🔲 | GDPR Art 20 + audit log viewer + PII status + DPA tracker. |
+
+### 0-CC: Post-Launch — CX Optimization (Phase 0b)
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.175 | PostHog baseline + funnel analysis | 2h | — | 🔲 | signup→first save→first apply. Identify friction. |
+| 0.176 | First A/B test | 2h | — | 🔲 | PostHog experiments on highest-friction flow. |
+| 0.177 | Admin dashboard UX review | 2h | — | 🔲 | Pod 4 design input after monitoring UI ships. |
+| 0.178 | Design system maturity assessment | 2h | — | 🔲 | Token coverage, a11y maintenance, event taxonomy doc. Phase 1 standards. |
+
+### 0-DD: Validation + Launch
+
+| # | Item | Est. | Actual | Status | Notes |
+|---|------|------|--------|--------|-------|
+| 0.179 | Load test 1,200 concurrent | 3h | — | 🔲 | p95 <2s, error <0.1%, heartbeat stable, preview-jobs rate limit holds. |
+| 0.180 | Staging + CI/CD automation | 3h | — | 🔲 | Full CI suite. Preview per PR. Gate 9 installed. |
+| 0.181 | Extension E2E against live ATS | 2h | — | 🔲 | 15 handlers validated. Snapshot tests. |
+| 0.182 | Kill-switch integration test | 1h | — | 🔲 | Bulk disable within 15 min. Re-enable verified. |
+| 0.183 | 72-hour dry run | 72h cal | — | 🔲 | 4 surfaces monitored. Zero P0 errors. Go/no-go confirmed. |
+| 0.184 | Final CX validation | 2h | — | 🔲 | axe-core 0 critical. PostHog 100% identified. All targets met. |
+
+### Launch Gates (15)
+
+| # | Gate | Pod | Status |
+|---|------|-----|--------|
+| G1 | All P0s resolved (all surfaces) | 3 | 🔲 |
+| G2 | PostHog error tracking live (within 60s) | 3 | 🔲 |
+| G3 | Service role key rotated, old invalidated | 3 | 🔲 |
+| G4 | Kill-switch operational | 3 | 🔲 |
+| G5 | Critical-path tests pass | 3 | 🔲 |
+| G6 | Connection pooler live (300+) | 3 | 🔲 |
+| G7 | Privacy policy + DPAs sent | 3 | 🔲 |
+| G8 | 72-hour dry run clean | 3 | 🔲 |
+| G9 | Landing XSS + CSP enforced | 3 | 🔲 |
+| G10 | Referral pipeline functional | 3 | 🔲 |
+| G11 | Admin auth server-side | 3 | 🔲 |
+| G12 | Admin audit trail recording | 3 | 🔲 |
+| G13 | PostHog identity 100% | 4 | 🔲 |
+| G14 | axe-core 0 critical | 4 | 🔲 |
+| G15 | All 10 quality gates in CI | 3+4 | 🔲 |
 
 ---
 
-## Phase 0b: Admin Monitoring Build (Apr → May, post-launch)
+## Phase 1: Feature Development (Post-Launch)
 
-**19 execution sessions — Pod 3 primary, Pod 4 UX input**
-
-| ID | Title | Surface | Status |
-|----|-------|---------|--------|
-| P3-PL.01 | Cron dashboard: meta-cron health logger | Admin | [ ] |
-| P3-PL.02 | Cron dashboard: admin UI (table + status + history) | Admin | [ ] |
-| P3-PL.03 | Cron dashboard: alert configuration | Admin | [ ] |
-| P3-PL.04 | Feed health dashboard: Supabase views | Admin | [ ] |
-| P3-PL.05 | Feed health dashboard: admin UI (cards + charts) | Admin | [ ] |
-| P3-PL.06 | Error state dashboard: PostHog API integration | Admin | [ ] |
-| P3-PL.07 | Error state dashboard: admin UI + session replay | Admin | [ ] |
-| P3-PL.08 | Alerting pipeline: PostHog + custom routing | Admin | [ ] |
-| P3-PL.09 | Edge Function health: instrumentation + proxy | Admin | [ ] |
-| P3-PL.10 | Database activity: pg_stat views + admin UI | Admin | [ ] |
-| P3-PL.11 | Cost monitoring: Anthropic API proxy + cache | Admin | [ ] |
-| P3-PL.12 | Cost monitoring: admin UI + budget alerts + kill switches | Admin | [ ] |
-| P3-PL.13 | PII inventory + data map | Admin | [ ] |
-| P3-PL.14 | User deletion capability (72+ table cascade) | Admin | [ ] |
-| P3-PL.15 | Data export + compliance dashboard | Admin | [ ] |
-| P4-PL.01 | PostHog baseline + first funnel analysis | All | [ ] |
-| P4-PL.02 | First A/B test: highest-friction flow | Dashboard | [ ] |
-| P4-PL.03 | Admin monitoring dashboard UX review | Admin | [ ] |
-| P4-PL.04 | Design system maturity assessment + CX standards | All | [ ] |
-
----
-
-## Phase 0c: Stabilization (May → Jun)
-
-- P2 completion sprint
-- P3 items reviewed (keep/backlog/close)
-- Full audit retrospective (Pods 3 + 4)
-- CX retrospective + design standards for Phase 1 features
-- Stack tracing gap review (AD-ADR-001): evaluate Sentry as supplement if needed
-
----
-
-## Phase 0d: Quality Gates — Regression Prevention (parallel with 0a)
-
-**10 gates installed inside existing execution sessions. Not separate work.**
-
-| Gate | Root-Cause Pattern | Enforcement | Installed In | Findings Prevented |
-|------|-------------------|-------------|--------------|-------------------|
-| 1 | Error silencing (130+ instances) | ESLint: no-empty-catch, no-console-only-catch, require-supabase-error-check | P3-2.08 | 130+ |
-| 2 | Zero monitoring | CI check for posthog.init() + runtime silence alert | P3-1.03 | 15+ |
-| 3 | Zero tests | 80% new-code coverage floor + critical-path protection | P3-2.02 | 10+ |
-| 4 | Unauthenticated Edge Functions | CI scan for JWT middleware + auth classification YAML | P3-1.07 | 15+ |
-| 5 | No access control model | Pre-commit hook (service role key) + RLS CI check | P3-1.02 | 10+ |
-| 6 | 5% analytics visibility | Event taxonomy YAML + CI validation | P4-1.11 | 20+ |
-| 7 | No type safety | New files must be .ts + strict mode | P3-4.05 | 10+ |
-| 8 | No design system discipline | Stylelint: no-hardcoded-colors, no-inline-style-additions | P4-2.02 | 20+ |
-| 9 | No deployment gates | Full CI suite + preview environments + feature flag rollout | P3-5.02 | 10+ |
-| 10 | No compliance infrastructure | PR template PII checklist + SRI check on CDN deps | P3-1.08 | 10+ |
-
-**Exit criteria:** All 10 gates active in CI. PR with empty catch → CI fails. PR with new .js file → CI fails. PR with hardcoded hex → CI fails.
-
----
-
-## Phase 1: Feature Development (Jun onwards)
-
-Features built on remediated, gated foundation with:
-- PostHog monitoring (errors, session replay, feature flags, LLM analytics) across all surfaces
-- Admin operational dashboards (cron, feeds, database, cost, errors, compliance)
-- Test coverage with 80% floor enforced
-- 10 quality gates active in CI/CD pipeline
-- TypeScript strict mode for all new code
-- Design token enforcement via Stylelint
-- Full accessibility baseline (WCAG 2.1 AA, axe-core zero critical)
-- Admin audit trail recording all privileged actions
-- Kill-switch operational for extension scanner control
-
+Features built on remediated, gated foundation: PostHog monitoring (errors, session replay, feature flags, LLM analytics) • Admin operational dashboards (cron, feeds, database, cost, errors, compliance) • Test coverage 80% floor • 10 quality gates in CI/CD • TypeScript strict • Design tokens enforced • WCAG 2.1 AA baseline • Audit trail • Kill-switch operational
