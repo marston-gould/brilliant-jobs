@@ -1823,97 +1823,259 @@ const features = [
 { s: 'complete', n: 'Overlay Analytics Drilldown Fix (v7.05)', d: 'Fixed #oa-drilldown-link placement: moved from Pipeline page into Stats Overlay Analytics tab. View Overlay Pipeline Entries button now renders correctly.', p: 'P72', e: '0.5h', g: 'overlay', h: 'docs/OVERLAY_PIPELINE_SESSION10_HANDOFF.md' },
 { s: 'complete', n: 'Overlay Pipeline S10 (v7.04)', d: 'Overlay Pipeline tab in Pipeline page: Legacy/Overlay view toggle, stage-grouped table of pipeline table entries (title, company, platform, match/fraud/AI scores, dates, source URL link). 4 stat cards. loadNewPipelineFromSupabase() wired into initPipeline(). Drill-down from Overlay Analytics tab to Pipeline Overlay view. Overlay Pipeline workstream COMPLETE (S1–S10).', p: 'Phase 74', e: '1 session', g: 'overlay', h: 'docs/specs/OVERLAY_PIPELINE_SESSION10_HANDOFF.md' },
 
-// ═══════════════ PHASE 0a: AUDIT REMEDIATION — PRE-LAUNCH (92 execution sessions) ═══════════════
-// Pod 3 Technical Audit: 113+ findings across dashboard, extension, landing page, admin
-// Pod 4 CX Examination: 46 findings across dashboard, extension, landing page, transactional
-// Velocity-calibrated: 10–15 sessions/day based on March 5 deploy data (13 deploys in 3.5 hours)
 
-// Phase 1: Security + Observability + CX Foundation (Week 1) — 25 sessions
-{ s: 'prelaunch', n: 'P3-1.01: SE-001 enrich-job JWT auth', d: 'Add JWT verification middleware to enrich-job Edge Function. Add rate limiting (100/min/user). Return 401 for unauthenticated, 429 for rate-limited.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.02: SE-002 service role key rotation + git clean', d: 'Generate new service_role key. Update all Edge Function secrets. Clean old key from git history via BFG/filter-repo. Force-push. Invalidate old key.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-1.03: PostHog SDK integration (all surfaces)', d: 'Add posthog-js SDK to dashboard, admin, landing. Direct posthog.init() (not GTM-dependent). Error tracking, session replay, feature flags enabled. Replaces Sentry per AD-ADR-001.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.04: Landing postMessage fix + safeReadLS', d: 'Restrict postMessage to brilliantjobs.app origin (was wildcard *). Define safeReadLS() function for localStorage fallback.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.05: Landing DOMPurify + stale anon key', d: 'Add DOMPurify CDN (pinned v3.0.8 + SRI) per IX-ADR-001. Sanitize all 3 innerHTML injection points. Fix stale anon key in referral-capture.js.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.06: Landing CSP + security headers', d: 'Deploy Content-Security-Policy via vercel.json. Stage: Report-Only for 48h, then enforce. Add X-Frame-Options, X-Content-Type-Options.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.07: Admin auth enforcement (3 Edge Functions)', d: 'Create shared admin-auth.ts middleware (verifyAdminRole). Apply to generate-editorial-content, build-extension, seo-sync. 401/403 for non-admin.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-1.08: Admin audit trail schema + logging', d: 'Create admin_audit_log table. logAdminAction() shared function (async). Wire into all 3 admin Edge Functions. RLS: admin-read, service-role-write.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-1.09: Admin error handling cleanup', d: 'Replace all empty catches and console-only catches in admin JS with proper error handling via safeQuery/PostHog.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.10: Admin service role key audit', d: 'Audit admin code for client-side service_role references. Remove or replace with anon key + RLS. Depends on P3-1.02 rotation.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.11: Extension token encryption', d: 'Encrypt authSession in chrome.storage.local. Decrypt on read. Eliminate plaintext token storage.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.12: Extension XSS fix (popup)', d: 'Sanitize all innerHTML in popup.js. Eliminate XSS vector in privileged extension context.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.13: Connection pooler enable (Supavisor)', d: 'Enable Supavisor connection pooler in Supabase. Validate 300+ concurrent connections. Load test.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-1.14: Privacy policy + manifest update', d: 'Draft and publish privacy policy on brilliantjobs.app. Link in extension manifest. Required for website distribution.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-1.01: PostHog identity resolution', d: 'posthog.identify(user.id, {email, plan, created_at}) on all surfaces post-login. posthog.reset() on logout. Unblocks 9 downstream items.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-1.02: Extension PostHog instrumentation', d: 'Add PostHog to extension popup. Track popup_opened, scan events, pipeline events. First extension analytics.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P4-1.03: Dashboard accessibility Phase 1', d: 'ARIA roles (tablist/tab/tabpanel), focus management on tab change, :focus-visible styles. axe-core target: 0 critical.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P4-1.04: Extension accessibility Phase 1', d: 'ARIA attributes on popup UI. Keyboard navigation. Focus management. Screen reader compatibility.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P4-1.05: Landing accessibility + H1 fix', d: '19 buttons + 6 inputs need ARIA. Fix 3 simultaneous H1 tags (display:none → conditional render). axe-core target: 0 critical.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P4-1.06: Landing PostHog direct init', d: 'Replace GTM-dependent PostHog with direct posthog.init(). All 12 events become reliable regardless of ad blockers.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-1.07: Dashboard pageview events (14 pages)', d: 'posthog.capture($pageview) on every tab change. 10 of 14 pages currently dark → all 14 instrumented.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-1.08: Email PostHog attribution', d: 'UTM tags on all email CTAs. posthog.capture on email link clicks. Email-to-dashboard attribution chain.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P4-1.09: SMS PostHog attribution', d: 'UTM tags on SMS links. SMS-to-dashboard attribution chain.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-1.10: Notification inputs instrumentation', d: '75 notification preference inputs → PostHog events. Currently zero events on notifications page.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-1.11: Subscription page instrumentation', d: 'PostHog events for plan selection, upgrade/downgrade clicks, payment flow. Revenue page currently dark.', p: 75, e: '1h' },
 
-// Phase 2: Tests + Core Fixes + CX Sprint 2 (Week 1–2) — 17 sessions
-{ s: 'prelaunch', n: 'P3-2.01: Smoke tests batch 1 (auth + home + jobs)', d: 'Critical-path smoke tests for authentication flow, home page load, job feed with filters. Test framework setup.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P3-2.02: Smoke tests batch 2 (resumes + apps + settings)', d: 'Smoke tests for resume scoring, application flow, settings page. Coverage threshold gate installed.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P3-2.03–05: safeQuery wiring (3 batches, ~40 call sites)', d: 'Wire safeQuery() to all 40+ Supabase call sites in 3 batches of ~12-15. Incremental per ADR-002. Highest-leverage remediation.', p: 75, e: '6h' },
-{ s: 'prelaunch', n: 'P3-2.06–08: Empty catch replacement (3 batches, 67 catches)', d: 'Replace all 67 empty catches with safeQuery error handling + PostHog capture. 3 batches of ~22. ESLint gate installed after last batch.', p: 75, e: '6h' },
-{ s: 'prelaunch', n: 'P3-2.09: Error boundaries on dashboard tabs', d: 'Component-level error boundaries on all dashboard tabs. Fallback UI on failure instead of blank screen.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-2.10: Landing page RLS tightening', d: 'Tighten profiles RLS. Restrict anon SELECT. Mitigate exposed anon key risk.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-2.01: ECharts lazy load', d: 'Stats page: defer ECharts load until Stats tab activated. Reduce initial bundle impact.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P4-2.02: Landing CSS extraction', d: '97 inline styles → external file. 30KB inline CSS → cacheable. Stylelint gate installed. Add 1024px breakpoint.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P4-2.03–07: CX Sprint 2 batch', d: 'Extension sideload UX, version display, tuning page instrumentation, dark-first email, Ahrefs audit decision.', p: 75, e: '4h' },
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 0: AUDIT REMEDIATION — 184 items + 10 gates + 15 launch gates
+// Pod 3 (Technical Audit, 113+ findings) + Pod 4 (CX Examination, 46 findings)
+// Velocity: 13 deploys in 3.5h observed March 5. 10-15 sessions/day.
+// ═══════════════════════════════════════════════════════════════════
 
-// Phase 3: Extension + P1s + Kill-Switch + CX Sprint 3 (Week 2) — 16 sessions
-{ s: 'prelaunch', n: 'P3-3.01: Extension empty catches (20)', d: 'Replace 20 empty catch blocks in extension code with PostHog error capture + retry logic.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-3.02: Extension retry + timeout', d: 'AbortSignal.timeout on all fetch calls. Retry with backoff on critical paths.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-3.03–04: Kill-switch (2 sessions)', d: 'Three-layer per ADR-006: heartbeat directive, externally_connectable + DB flag. Admin UI shows active scanners with kill toggle.', p: 75, e: '4h' },
-{ s: 'prelaunch', n: 'P3-3.05: PII data minimization for AI', d: 'Edge Function accepts per-question field subsets. Full profile no longer sent on every AI answerer call.', p: 75, e: '1h' },
-{ s: 'prelaunch', n: 'P3-3.06–09: Dashboard + Landing P1 bundle', d: 'Loading states, pagination, cron alerting, landing catch remediation, a11y fixes, staleness badge, profile timeout.', p: 75, e: '6h' },
-{ s: 'prelaunch', n: 'P4-3.01–03: Extension CX Sprint 3', d: 'Shadow DOM isolation, token alignment with dashboard, ATS coverage expansion testing.', p: 75, e: '4h' },
-{ s: 'prelaunch', n: 'P4-3.04–05: Dark mode (14 pages, 2 batches)', d: 'Dark mode support across all 14 dashboard pages. 2 batches of 7 pages each.', p: 75, e: '4h' },
-{ s: 'prelaunch', n: 'P4-3.06–07: CX Sprint 3 remainder', d: 'Onboarding path rationalization, landing P3 batch (segment, modal a11y, JSON-LD, carousel).', p: 75, e: '2h' },
+// 0-A: Security — Dashboard + Platform (Pod 3, P0)
+{ s: 'prelaunch', n: '0.001 SE-001: JWT auth on enrich-job', d: 'Unauthenticated writes to ats_jobs. Add verifyJWT + rate limit 100/min/user.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.002 SE-002: Service role key rotation + git clean', d: 'Key exposed commit 4a5191787f15 (Feb 23). Bypasses all RLS. Rotate, BFG clean, invalidate.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.003 SE-003: Auth on generate-editorial-content', d: 'Zero JWT. Uncapped Anthropic spend. Add verifyAdminRole().', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.004 SE-004: Classify+gate 25 unauthenticated EFs', d: '25/88 EFs no JWT. Classify authenticated/admin/cron-internal. edge-function-auth.yaml.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.005 SE-005: CSP unsafe-inline on dashboard', d: 'Tighten to nonce-based after module wrapper.', p: 75, e: '1h' },
 
-// Phase 4: Architecture + Polish (Week 2–3) — 9 sessions
-{ s: 'prelaunch', n: 'P3-4.01–03: Bundle split (3 sessions)', d: 'Route-based code splitting setup → migrate top 5 modules → remaining modules. 818KB → <200KB initial.', p: 75, e: '6h' },
-{ s: 'prelaunch', n: 'P3-4.04: Landing CSS/JS extraction + consent gate', d: 'Full CSS/JS extraction to external files. PostHog consent gate. Cookie consent banner site-wide.', p: 75, e: '2h' },
-{ s: 'prelaunch', n: 'P3-4.05: Module wrapper + TypeScript migration', d: 'Module wrapper for 30 JS files. TypeScript strict mode for new files. TS gate installed in CI.', p: 75, e: '4h' },
-{ s: 'prelaunch', n: 'P3-4.06–07: Caching + compliance batch', d: 'MV refresh optimization. pgAudit + SRI hashes on all CDN deps + rate limits.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P4-4.01–02: CX architecture', d: 'Referrals CSS cleanup + !important removal. A/B testing framework via PostHog experiments.', p: 75, e: '2h' },
+// 0-B: Security — Landing Page (Pod 3, P0)
+{ s: 'prelaunch', n: '0.006 IX-SE-001: postMessage wildcard → restrict', d: 'Broadcasts full session incl tokens to *. Restrict to brilliantjobs.app.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.007 IX-SE-004: DOMPurify on 3 innerHTML injections', d: 'Exploitable XSS on public internet. CDN+SRI per IX-ADR-001.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.008 IX-SE-005: Tighten profiles RLS for anon', d: 'Anon key overexposes profile data. Restrict columns.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.009 IX-SE-006: Cookies without Secure/HttpOnly', d: 'Missing Secure flag. Bundle into headers pass.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.010 IX-SE-007: CSP + security headers landing', d: 'Zero CSP, no X-Frame-Options. Report-Only 48h → enforce.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.011 IX-SE-008: Anon key exposed in source', d: 'Mitigated by RLS tightening. Document accepted risk.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.012 IX-SE-003: validate-signup dead surface', d: 'Unused EF still deployed. Disable or delete.', p: 75, e: '30min' },
 
-// Phase 5: Validation + Launch (Week 3–4) — 6 sessions
-{ s: 'prelaunch', n: 'P3-5.01: Load test (1,200 concurrent)', d: 'Load test dashboard + extension API + landing page traffic at 1,200 concurrent users. p95 < 2s target.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P3-5.02: Staging + CI/CD automation', d: 'Full CI check suite activated: lint, type check, tests, coverage, EF auth scan, PostHog init check, service role scan. Preview environments. Deployment pipeline gate installed.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P3-5.03–04: Extension E2E + kill-switch test', d: 'All 15 ATS handlers against live DOM. Kill-switch bulk disable/enable integration test.', p: 75, e: '3h' },
-{ s: 'prelaunch', n: 'P3-5.05: 72-hour dry run', d: '72 hours full monitoring across all 4 surfaces. Zero P0-class errors. PostHog alerts resolved. Go/no-go confirmed.', p: 75, e: '72h calendar' },
-{ s: 'prelaunch', n: 'P4-5.01: Final CX validation', d: 'axe-core 0 critical on all surfaces. PostHog identified users 100%. All instrumentation verified. Sprint 3 measurement targets met.', p: 75, e: '2h' },
+// 0-C: Security — Extension (Pod 3, P0)
+{ s: 'prelaunch', n: '0.013 EXT-SEC-001: Token encryption', d: 'authSession plaintext in chrome.storage. Encrypt at rest.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.014 EXT-SEC-002: Remove broad host permissions', d: 'Minimize to required ATS domains only.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.015 EXT-SEC-003: Popup innerHTML XSS', d: 'innerHTML in privileged context. Sanitize all.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.016 EXT-SEC-004: PII minimization AI answerer', d: 'Full profile every call. Per-question field subsets.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.017 EXT-SEC-005: Content script CSP bypass', d: 'Audit all injection points in ATS pages.', p: 75, e: '1h' },
 
-// ═══════════════ PHASE 0b: ADMIN MONITORING BUILD (post-launch) ═══════════════
-{ s: 'postlaunch', n: 'P3-PL.01–03: Cron Job Dashboard', d: 'Meta-cron health logger → admin UI (all 45 crons, status, history) → alert configuration. Pattern 1: Supabase Views.', p: 76, e: '6h' },
-{ s: 'postlaunch', n: 'P3-PL.04–05: Feed Health Dashboard', d: 'Supabase views for pipeline throughput → admin UI (cards + charts per feed). Pattern 1: Supabase Views.', p: 76, e: '4h' },
-{ s: 'postlaunch', n: 'P3-PL.06–07: Error State Dashboard', d: 'PostHog API integration → admin UI (real-time error feed + session replay access). Pattern 3: PostHog SDK Direct.', p: 76, e: '4h' },
-{ s: 'postlaunch', n: 'P3-PL.08: Alerting pipeline', d: 'PostHog alerts + custom routing for cron/feed/error conditions. Notification channels configured.', p: 76, e: '2h' },
-{ s: 'postlaunch', n: 'P3-PL.09: Edge Function health dashboard', d: 'Instrumentation + proxy for 88 Edge Functions. Invocation counts, error rates, latency. Pattern 2: External API Proxy.', p: 76, e: '3h' },
-{ s: 'postlaunch', n: 'P3-PL.10: Database activity dashboard', d: 'pg_stat views + admin UI. Connection pool status, slow queries, table sizes.', p: 76, e: '3h' },
-{ s: 'postlaunch', n: 'P3-PL.11–12: Cost monitoring dashboard', d: 'Anthropic API proxy + cache → admin UI with budget alerts + kill switches per function. Pattern 2: External API Proxy.', p: 76, e: '5h' },
-{ s: 'postlaunch', n: 'P3-PL.13: PII inventory + data map', d: 'Document all PII across 72+ tables. Map data flows to third parties (Anthropic, PostHog, Stripe).', p: 76, e: '2h' },
-{ s: 'postlaunch', n: 'P3-PL.14: User deletion capability', d: 'GDPR Article 17: 72+ table cascade, third-party propagation, verification flow. Executable from admin.', p: 76, e: '5h' },
-{ s: 'postlaunch', n: 'P3-PL.15: Data export + compliance dashboard', d: 'GDPR Article 20 data export. Compliance dashboard: audit log viewer, PII inventory status, DPA tracker.', p: 76, e: '4h' },
-{ s: 'postlaunch', n: 'P4-PL.01–04: CX optimization (post-launch)', d: 'PostHog baseline + funnel analysis → first A/B test → admin dashboard UX review → design system maturity assessment.', p: 76, e: '8h' },
+// 0-D: Security — Admin (Pod 3, P0)
+{ s: 'prelaunch', n: '0.018 AD-SE-001: Admin auth server-side', d: 'Client-side only or none. admin-auth.ts middleware. 401/403.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.019 AD-SE-002: Admin EF auth (3 functions)', d: 'generate-editorial, build-extension, seo-sync require admin role.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.020 AD-SE-003: Service role key in admin client', d: 'Remove client-side refs after rotation.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.021 AD-SE-004+CP-004: Admin audit trail', d: 'admin_audit_log table + logAdminAction() async + wire all admin EFs.', p: 75, e: '2h' },
 
-// ═══════════════ PHASE 0d: QUALITY GATES — 10 gates installed in parallel with 0a ═══════════════
-{ s: 'prelaunch', n: 'Gate 1: No Silent Failures (ESLint)', d: 'ESLint rules: no-empty-catch, no-console-only-catch, require-supabase-error-check, no-fire-and-forget. CI blocks merge. Installed in P3-2.08.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 2: PostHog Verification (CI + Runtime)', d: 'CI check for posthog.init() on all HTML entry points. Runtime silence alert if any surface goes dark > 2h. Installed in P3-1.03.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 3: Test Coverage Floor (CI)', d: '80% new-code coverage threshold. Critical-path test protection. new-feature-needs-tests auto-label. Installed in P3-2.02.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 4: Edge Function Auth (CI + YAML)', d: 'CI scan for JWT middleware in all Edge Functions. edge-function-auth.yaml classification registry. Scaffolding template. Installed in P3-1.07.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 5: Access Control (pre-commit + CI)', d: 'Pre-commit hook blocks service_role key in code. CI checks all tables have RLS. Quarterly review. Installed in P3-1.02.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 6: Instrumentation Coverage (CI + YAML)', d: 'posthog-events.yaml taxonomy registry. CI validates event coverage. Runtime alert for pages going dark. Installed in P4-1.11.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 7: Type Safety (CI)', d: 'New files must be .ts/.tsx. tsconfig strict mode. ESLint no-implicit-globals. Installed in P3-4.05.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 8: Design System (Stylelint + CODEOWNERS)', d: 'Stylelint: no-hardcoded-colors, no-inline-style-additions. UI PRs routed to Pod 4 via CODEOWNERS. Installed in P4-2.02.', p: 78, e: '1h' },
-{ s: 'prelaunch', n: 'Gate 9: Deployment Pipeline (CI/CD)', d: 'Full CI suite required: lint + type check + tests + coverage + EF auth + PostHog init + key scan. Preview environments mandatory. Installed in P3-5.02.', p: 78, e: '2h' },
-{ s: 'prelaunch', n: 'Gate 10: Compliance Checklist (PR template)', d: 'PR template with PII handling questions. CI checks SRI on CDN deps. New tables with PII columns auto-flagged. Installed in P3-1.08.', p: 78, e: '1h' },
+// 0-E: Observability (Pod 3, P0/P1)
+{ s: 'prelaunch', n: '0.022 DO-001: PostHog SDK all surfaces', d: 'Zero error monitoring. posthog.init() dashboard+admin+landing. Replaces Sentry per AD-ADR-001.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.023 DO-002: Supavisor connection pooler', d: 'No pooling. Exhausts ~50 concurrent. Enable, validate 300+.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.024 DO-003: Feature flags via PostHog', d: 'PostHog native. posthog.isFeatureEnabled() wrapper.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.025 DO-004: Cron failure alerting', d: '45 pg_cron jobs zero alerting. PostHog alerts on failure.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.026 AD-DO-001: Monitoring infra baseline', d: 'Inventory Supabase metrics, Vercel logs, PostHog. Document gaps.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.027 AD-DO-002: PostHog API for admin', d: 'Rate limits, retention, query patterns for admin UI.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.028 AD-DO-003: Alerting pipeline', d: 'PostHog alerts + custom routing for cron/feed/error.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.029 AD-DO-004: Admin availability', d: 'Assess independent health check for admin surface.', p: 75, e: '1h' },
+
+// 0-F: Error Handling — Dashboard (Pod 3, P0/P1)
+{ s: 'prelaunch', n: '0.030 BE-001: safeQuery() 40+ call sites', d: 'safeQuery exists, zero calls. 3 batches ~12-15. Highest-leverage.', p: 75, e: '6h' },
+{ s: 'prelaunch', n: '0.031 ES-001: Replace 67 empty catches', d: '67 catch(e){} vanish errors. 3 batches ~22. safeQuery + PostHog.', p: 75, e: '6h' },
+{ s: 'prelaunch', n: '0.032 ES-002: Replace 40 console-only catches', d: 'Invisible in production. PostHog capture.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.033 BE-003: 17 unchecked {data,error}', d: 'Supabase errors → undefined silently. Billing, resumes, browsers.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.034 BE-004: 7 fire-and-forget RPCs', d: 'Analytics calls discard failures. Wire to PostHog.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.035 BE-005: Suppressed network errors', d: 'Network failures hidden. Retry + notification.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.036 BE-006: Edge Function empty catches', d: 'EF catches mirror dashboard pattern.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.037 FE-002: Error boundaries all tabs', d: 'Zero boundaries. Blank on failure. Fallback UI + retry.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.038 FE-003: Loading states all fetches', d: 'No indicators. Skeleton loaders.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.039 FE-004: Pagination unbounded queries', d: 'Full table returns. limit + Load More.', p: 75, e: '2h' },
+
+// 0-G: Error Handling — Extension (Pod 3, P1)
+{ s: 'prelaunch', n: '0.040 EXT-ES-001: 20 empty catches', d: 'popup.js(6) background.js(8) handlers(1) utils(3) build-ext(1) interceptor(1).', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.041 EXT-ES-002: 19 fire-and-forget', d: 'chrome.runtime.sendMessage .catch(()=>{}).', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.042 EXT-ES-003: 7 console/comment handlers', d: 'Catch with only console or comment.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.043 EXT-ES-004: 14+ missing lastError', d: 'Only toolbar-overlay checks. All other chrome API skip.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.044 EXT-BE-001: No fetch timeouts', d: 'Zero AbortController. Add timeout all fetches.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.045 EXT-BE-002: No retry with backoff', d: 'Zero retry. Exponential backoff on auth, scan, pipeline.', p: 75, e: '2h' },
+
+// 0-H: Error Handling — Landing (Pod 3, P1)
+{ s: 'prelaunch', n: '0.046 IX-ES-001: safeReadLS undefined', d: 'ReferenceError every load returning visitors. Define function.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.047 IX-ES-002: Stale anon key referral', d: 'Wrong key = referral tracking broken. One-line fix.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.048 IX-FE-003: 7 empty + 5 console catches', d: '12 silenced on public landing. PostHog wire.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.049 IX-FE-004: Loading/error/retry 5 flows', d: 'preview-jobs, profile, merch, referral, auth — no feedback.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.050 IX-BE-001: preview-jobs no auth/rate limit', d: 'Public EF no limiting. Add rate limit.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.051 IX-BE-003: Supabase re-init per call', d: 'New client per function. Singleton.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.052 IX-BE-004: Profile check stuck state', d: 'No timeout. AbortController + 10s + error state.', p: 75, e: '1h' },
+
+// 0-I: Error Handling — Admin (Pod 3, P1)
+{ s: 'prelaunch', n: '0.053 AD-ES-001: Admin EF empty catches', d: 'generate-editorial, build-ext, seo-sync catch and swallow.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.054 AD-ES-005: No error states admin UI', d: 'Operations fail silently. No user feedback.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.055 AD-ES-007: No rate limit/cost cap editorial', d: 'Per-user rate limit + daily cost cap for Anthropic.', p: 75, e: '1h' },
+
+// 0-J: Frontend + Performance (Pod 3, P0/P1)
+{ s: 'prelaunch', n: '0.056 FE-001: 818KB bundle → code split', d: 'Route-based split. <200KB initial. 3 sessions.', p: 75, e: '6h' },
+{ s: 'prelaunch', n: '0.057 FE-005: Global scope 30 JS via window', d: 'Module wrapper per ADR-004.', p: 75, e: '4h' },
+{ s: 'prelaunch', n: '0.058 FE-006: No TypeScript', d: 'New files .ts. tsconfig strict.', p: 75, e: '4h' },
+{ s: 'prelaunch', n: '0.059 BE-007: No API versioning', d: 'Design versioning for Edge Functions.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: '656 CSS + 614 JS inline. Extract for caching.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.061 IX-FE-005: No search debounce', d: 'Query per keystroke. 300ms debounce.', p: 75, e: '30min' },
+
+// 0-K: Tests (Pod 3, P0)
+{ s: 'prelaunch', n: '0.062 QA-001: Critical-path smoke tests', d: 'Zero tests. Auth, home, jobs, resumes, apps, settings. Framework.', p: 75, e: '6h' },
+{ s: 'prelaunch', n: '0.063 QA-002: Extension DOM snapshot tests', d: '15 ATS handlers no tests. Snapshot per handler.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.064 QA-003: Integration tests critical APIs', d: 'enrich-job, score-resume, generate-filter, preview-jobs E2E.', p: 75, e: '3h' },
+
+// 0-L: Extension reliability (Pod 3, P1)
+{ s: 'prelaunch', n: '0.065 EXT-FEAT-001: Kill-switch 3-layer', d: 'Heartbeat + externally_connectable + DB flag. Admin toggle. 2 sessions.', p: 75, e: '4h' },
+{ s: 'prelaunch', n: '0.066 EXT-BE-003: Token refresh reliability', d: 'Refresh fails silently. Retry + notify + re-auth.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.067 EXT-CWS-001: Manifest permissions minimize', d: 'Justify each or remove.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.068 EXT-CWS-002: Privacy policy + manifest', d: 'Publish + link. Required for distribution.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.069 EXT-FE-001: Selector fragility', d: 'Brittle selectors. Add monitoring.', p: 75, e: '2h' },
+
+// 0-M: Data Engineering (Pod 3, P1/P2)
+{ s: 'prelaunch', n: '0.070 DE-001: Cron failure alerting', d: '45 crons zero alerting. PostHog hooks.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.071 DE-002: Stale MV indicators', d: '"Live" on stale data. Add refreshed_at.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.072 DE-003: Scale ceiling 1M records', d: 'EXPLAIN ANALYZE. Missing indexes.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.073 DE-004: Dead cron #78 (Feb 31)', d: 'Impossible date. Remove.', p: 75, e: '15min' },
+{ s: 'prelaunch', n: '0.074 DE-005: Redundant purge crons', d: '#22 and #24 both purge Sundays. Remove dup.', p: 75, e: '15min' },
+
+// 0-N: CSS (Pod 3, P2/P3)
+{ s: 'prelaunch', n: '0.075 CSS-001: Zero a11y dashboard', d: 'Combined with Pod 4 DS1-2.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.076 CSS-002: No dark mode', d: 'Vars ready, no dark variants. Combined with DS1-5.', p: 75, e: '4h' },
+{ s: 'prelaunch', n: '0.077 CSS-003: 30+ regex safelist', d: 'Inflates CSS. Correct for arch.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.078 CSS-004: 128KB CSS from 170KB', d: 'Dead CSS possible. Usage analysis.', p: 75, e: '1h' },
+
+// 0-O: Compliance (Pod 3, P1)
+{ s: 'prelaunch', n: '0.079 CP-001: No PII inventory', d: '72+ tables undocumented. Foundation for deletion+export.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.080 CP-002: No DPAs resume → Anthropic', d: 'PII sent every score/rewrite. Initiate DPAs.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.081 CP-003: No audit logging platform', d: 'Combined with admin trail + pgAudit.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.082 AD-CP-001: Admin PII exposure scope', d: 'Document admin-visible PII. Logging per path.', p: 75, e: '1h' },
+{ s: 'postlaunch', n: '0.083 AD-CP-002: No user deletion', d: 'GDPR Art 17. 72+ table cascade + third-party. Post-launch.', p: 76, e: '5h' },
+{ s: 'postlaunch', n: '0.084 AD-CP-003: No data export', d: 'GDPR Art 20. Export + query agg + download. Post-launch.', p: 76, e: '3h' },
+{ s: 'prelaunch', n: '0.085 IX-CP-001: No consent gate PostHog', d: 'Tracks all visitors no GDPR consent. Cookie banner.', p: 75, e: '1h' },
+
+// 0-P: Dependencies + Cost (Pod 3, P1)
+{ s: 'prelaunch', n: '0.086 DM-001: No vuln scanning', d: 'Add to CI.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.087 DM-002: CDN deps no SRI', d: '5+ scripts no integrity=. Generate SRI.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.088 IX-DM-001: Landing CDN no SRI', d: 'Landing-specific SRI pass.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.089 CE-001: No AI spend controls', d: 'Uncontrolled Anthropic. Per-function tracking + alerts + kill switches.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.090 CE-002: No cost visibility', d: 'No consolidated spend. Cost dashboard post-launch.', p: 75, e: '1h' },
+
+// 0-Q: Landing SEO+Analytics (Pod 3, P2)
+{ s: 'prelaunch', n: '0.091 IX-SEO-001: No canonical URL', d: 'Duplicate URL risk.', p: 75, e: '15min' },
+{ s: 'prelaunch', n: '0.092 IX-SEO-002: No OG/Twitter cards', d: 'Blank social preview.', p: 75, e: '15min' },
+{ s: 'prelaunch', n: '0.093 IX-SEO-003: JSON-LD stale', d: '315K vs 400K mismatch.', p: 75, e: '15min' },
+{ s: 'prelaunch', n: '0.094 IX-DA-001: PostHog no identity', d: 'Combined with DS1-4.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.095 IX-DA-002: Broken referral pipeline', d: 'Resolved by anon key fix.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.096 IX-BE-002: Stale "Live" labels', d: 'Add staleness badge.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.097 IX-FE-006: URL hardcoding .io refs', d: 'Old domain. Replace.', p: 75, e: '30min' },
+
+// 0-R: DevOps (Pod 3, P2)
+{ s: 'prelaunch', n: '0.098 DO-005: Staging + CI/CD', d: 'Preview per PR. Auto-deploy. Gate 9.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.099 FE-007: 3 sync scripts block render', d: 'Ahrefs, GTM. Defer/async.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.100 FE-008: No content hashing', d: 'Stale CDN. Hash filenames.', p: 75, e: '1h' },
+
+// 0-S: CX PostHog Identity (Pod 4, P1)
+{ s: 'prelaunch', n: '0.101 DS1-4: PostHog identity resolution', d: 'posthog.identify() all surfaces. 0%→100%. HIGHEST-LEVERAGE. Unblocks 9.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.102 DS1-6: Pageview events 14 pages', d: '10/14 dark. $pageview on tab change.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.103 ES1-1: Extension PostHog zero', d: '100% dark. popup_opened, scan, pipeline events.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.104 LS1-3: PostHog not init (GTM)', d: 'All 12 events fragile. Direct init. P2→P1.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.105 TS1-1: Email PostHog attribution', d: 'Zero UTM. No email→dashboard chain.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.106 TS1-2: SMS PostHog attribution', d: 'Zero SMS tracking.', p: 75, e: '1h' },
+
+// 0-T: CX Accessibility (Pod 4, P1)
+{ s: 'prelaunch', n: '0.107 DS1-2: Dashboard a11y Phase 1', d: 'Scored 1.0. ARIA tablist/tab/tabpanel, focus, :focus-visible. axe 0 critical.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.108 ES1-2: Extension a11y 1.0', d: 'Scored 1.0. ARIA popup, keyboard, focus, screen reader.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.109 LS1-1: Landing a11y (19 btn, 6 input)', d: 'Scored 2.0. Zero ARIA. Roles, labels, states.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.110 LS1-4: 3 H1 tags in DOM', d: 'display:none→conditional render. P2→P1.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.111 IX-A11Y-001: Zero ARIA landing', d: 'Combined with LS1-1.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.112 IX-A11Y-002: Keyboard trap modal', d: 'No Tab trap, no Escape.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.113 IX-A11Y-003: Form labels unlinked', d: '6 inputs no for/id.', p: 75, e: '30min' },
+
+// 0-U: CX Bundle+Audit (Pod 4, P1)
+{ s: 'prelaunch', n: '0.114 DS1-1: Bundle lazy loading Phase 1', d: 'Defer tab JS. Precursor to full split.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.115 DS1-3: Inline style audit kickoff', d: '827 styles. Categorize token-migrate vs keep.', p: 75, e: '1h' },
+
+// 0-V: CX Dashboard P2 (Pod 4)
+{ s: 'prelaunch', n: '0.116 DS1-7: Pipeline drag-drop dark', d: 'Zero events on applications.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.117 DS1-8: Gmail connection buried', d: 'IA/UX discoverability fix.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.118 DS1-9: ECharts global load', d: 'Lazy-load on Stats activation.', p: 75, e: '1h' },
+{ s: 'deferred', n: '0.119 DS1-10: 14 pages single HTML', d: 'Architectural. display:none→routing. Long-term.', p: 75, e: '4h' },
+{ s: 'prelaunch', n: '0.120 DS1A-13: Extension sideload friction', d: 'Smoother install UX (ADR-008).', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.121 DS1A-14: Tuning page dark', d: 'Zero events. filter_changed, weight_adjusted.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.122 DS1A-17: 75 notif inputs 0 events', d: 'Quick-win instrumentation.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.123 DS1A-19: Subscription page dark', d: 'plan_viewed, upgrade_clicked.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.124 DS1-12: No perf timing events', d: 'page_load_time, tab_switch, api_response.', p: 75, e: '1h' },
+
+// 0-W: CX Dashboard P3 (Pod 4)
+{ s: 'prelaunch', n: '0.125 DS1-5: Dark mode 14 pages', d: 'CSS vars ready. 2×7 batches.', p: 75, e: '4h' },
+{ s: 'prelaunch', n: '0.126 DS1-11: Competing onboarding', d: 'Setup+Get Started. Rationalize.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.127 DS1A-15: Pipeline hidden page', d: 'Force-hidden. Confirm or remove.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.128 DS1A-16: Resume token #f59e0b', d: 'Hardcoded hex→var(--amber).', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.129 DS1A-18: Snooze style dup', d: 'Duplicate CSS. Consolidate.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.130 DS1A-20: Admin survey in Feedback', d: 'user_feedback visible. Scope review.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.131 DS1A-21: Referrals !important', d: 'JS inline fights Tailwind. Refactor.', p: 75, e: '1h' },
+
+// 0-X: CX Extension (Pod 4, P2/P3)
+{ s: 'prelaunch', n: '0.132 ES1-3: No Shadow DOM', d: 'Host CSS bleeds. High effort.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.133 ES1-4: Token divergence', d: 'Different tokens from dashboard. Align.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.134 ES1-5: Version mismatch', d: 'Popup ≠ manifest version.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.135 ES1-6: Incomplete ATS coverage', d: 'Toolbar missing platforms. Test+fix.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.136 ES1-7: Password reset dead end', d: 'No completion state popup.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.137 ES1-8: Technical tab labels', d: 'Dev terms→user-friendly.', p: 75, e: '30min' },
+
+// 0-Y: CX Landing (Pod 4, P2/P3)
+{ s: 'prelaunch', n: '0.138 LS1-2: 97 inline styles', d: 'Token bypass. Migrate to vars.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.139 LS1-5: 30KB inline CSS', d: 'Extract external. P3→P2.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.140 LS1-6: Ahrefs audit', d: 'If redundant remove. Decision item.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.141 LS1-7: Only 2 breakpoints', d: 'Add 1024px. Grids break.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.142 LS1-8: Segment localStorage fragility', d: 'Incognito resets. Fix detection.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.143 LS1-9: Auth modal a11y', d: 'aria-pressed, aria-live, headings.', p: 75, e: '30min' },
+{ s: 'prelaunch', n: '0.144 LS1-10: JSON-LD count mismatch', d: '315K vs 400K vs live.', p: 75, e: '15min' },
+{ s: 'prelaunch', n: '0.145 LS1-11: Carousel lazy+fallback', d: '5 SVGs load always. No JS-off fallback.', p: 75, e: '30min' },
+
+// 0-Z: CX Transactional (Pod 4, P2/P3)
+{ s: 'prelaunch', n: '0.146 TS1-3: Dark-first email', d: 'Templates not dark-mode optimized.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.147 TS1-4: No A/B drip emails', d: 'PostHog experiments. Depends TS1-1.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.148 TS1-5: SMS overflow', d: 'Truncates carriers. Shorten.', p: 75, e: '30min' },
+{ s: 'deferred', n: '0.149 TS1-6: 181KB email template', d: 'Monolithic. Split modules. Backlog.', p: 75, e: '3h' },
+
+// 0-AA: Quality Gates (Phase 0d)
+{ s: 'prelaunch', n: '0.150 Gate 1: No Silent Failures', d: 'ESLint: no-empty-catch, no-console-only, require-error-check. CI blocks.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.151 Gate 2: PostHog Verification', d: 'CI posthog.init() check + runtime silence alert >2h.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.152 Gate 3: Test Coverage Floor', d: '80% new-code. Critical-path protection.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.153 Gate 4: Edge Function Auth', d: 'CI JWT scan + edge-function-auth.yaml.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.154 Gate 5: Access Control', d: 'Pre-commit service_role block + RLS CI check.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.155 Gate 6: Instrumentation Coverage', d: 'posthog-events.yaml + CI validation.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.156 Gate 7: Type Safety', d: '.ts required + strict + no-implicit-globals.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.157 Gate 8: Design System', d: 'Stylelint no-hardcoded-colors + CODEOWNERS.', p: 78, e: '1h' },
+{ s: 'prelaunch', n: '0.158 Gate 9: Deploy Pipeline', d: 'Full CI suite + previews + feature flags.', p: 78, e: '2h' },
+{ s: 'prelaunch', n: '0.159 Gate 10: Compliance', d: 'PR template PII + SRI check + PII table flag.', p: 78, e: '1h' },
+
+// 0-BB: Post-Launch Admin Monitoring (Phase 0b)
+{ s: 'postlaunch', n: '0.160 Cron Dashboard — logger', d: 'Pattern 1: Supabase Views. cron_health_log.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.161 Cron Dashboard — admin UI', d: '45 jobs, status, history, duration. Color-coded.', p: 76, e: '3h' },
+{ s: 'postlaunch', n: '0.162 Cron Dashboard — alerts', d: 'PostHog: P0-cron fail, 2+ missed, 2x duration.', p: 76, e: '1h' },
+{ s: 'postlaunch', n: '0.163 Feed Health — views', d: 'Pattern 1. ats_jobs, pipeline, resumes timestamps.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.164 Feed Health — admin UI', d: 'Cards, throughput, staleness, error rate, 24h chart.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.165 Error Dashboard — PostHog API', d: 'Pattern 3. Real-time error feed.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.166 Error Dashboard — UI + replay', d: 'Trends, click-to-replay, new vs recurring.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.167 Alerting pipeline', d: 'Error spikes, cron/feed conditions. Channels.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.168 Edge Function Health', d: 'Pattern 2. 88 EFs: invocations, errors, latency.', p: 76, e: '3h' },
+{ s: 'postlaunch', n: '0.169 Database Activity', d: 'pg_stat connections, slow queries, table sizes.', p: 76, e: '3h' },
+{ s: 'postlaunch', n: '0.170 Cost Monitoring — proxy', d: 'Pattern 2. Anthropic API. Daily/weekly/monthly.', p: 76, e: '3h' },
+{ s: 'postlaunch', n: '0.171 Cost Monitoring — UI + kills', d: 'Budget alerts 50/75/90/100%. Per-function kill.', p: 76, e: '3h' },
+{ s: 'postlaunch', n: '0.172 PII inventory + data map', d: '72+ tables. Flows to 5 third parties.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.173 User deletion cascade', d: 'GDPR Art 17. 72+ tables + propagation.', p: 76, e: '5h' },
+{ s: 'postlaunch', n: '0.174 Data export + compliance dash', d: 'GDPR Art 20 + audit viewer + PII + DPA tracker.', p: 76, e: '4h' },
+
+// 0-CC: Post-Launch CX Optimization (Phase 0b)
+{ s: 'postlaunch', n: '0.175 PostHog baseline + funnel', d: 'signup→save→apply. Identify friction.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.176 First A/B test', d: 'PostHog experiments on friction flow.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.177 Admin dashboard UX review', d: 'Pod 4 design input after monitoring ships.', p: 76, e: '2h' },
+{ s: 'postlaunch', n: '0.178 Design system assessment', d: 'Token coverage, a11y maint, event taxonomy doc.', p: 76, e: '2h' },
+
+// 0-DD: Validation + Launch
+{ s: 'prelaunch', n: '0.179 Load test 1,200 concurrent', d: 'p95<2s, error<0.1%, heartbeat stable.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.180 Staging + CI/CD automation', d: 'Full CI suite. Preview per PR. Gate 9.', p: 75, e: '3h' },
+{ s: 'prelaunch', n: '0.181 Extension E2E live ATS', d: '15 handlers validated. Snapshots.', p: 75, e: '2h' },
+{ s: 'prelaunch', n: '0.182 Kill-switch integration test', d: 'Bulk disable 15 min. Re-enable.', p: 75, e: '1h' },
+{ s: 'prelaunch', n: '0.183 72-hour dry run', d: '4 surfaces. Zero P0 errors. Go/no-go.', p: 75, e: '72h' },
+{ s: 'prelaunch', n: '0.184 Final CX validation', d: 'axe 0 critical. PostHog 100%. All targets.', p: 75, e: '2h' },
+
+
 ];
 
 
