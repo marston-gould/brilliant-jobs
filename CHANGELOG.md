@@ -1,3 +1,13 @@
+## v7.13 — 2026-03-05
+
+### Fix feed query timeouts (500 errors on keyword searches)
+- Removed `search_vector.wfts(english)` from all PostgREST OR clauses (WHAT/WHERE/WHO filters)
+- Trigram `ilike` on `title` already uses `idx_ats_jobs_title_trgm` GIN index — wfts was redundant and caused statement timeouts under load
+- Changed feed queries from `count:'exact'` to `count:'planned'` — eliminates the extra COUNT(*) pass; stat cards use their own lightweight head queries
+- Raised `statement_timeout`: `authenticated` 15s→30s, `anon` 10s→20s (DB-level, already applied)
+
+---
+
 ## v7.12 — 2026-03-05
 
 ### Remove ATS source pills (GH WK LV AB RC USJ)
