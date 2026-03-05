@@ -1,6 +1,6 @@
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.90 — S6: SEO, Merch, Referrals, Content, Enrichment extracted
+   v7.19 — versioned with dashboard; sidebar nav, feed health, all tabs
    4 sections: Operations, Growth, Audience, Business
    27 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
@@ -215,6 +215,11 @@ function initAdminPage() {
 function initAdminNav() {
   _loadAdminNavState();
   _buildAdminSidebar();
+  // v7.19: Set admin console version in topbar
+  var adminVerEl = document.getElementById('admin-version');
+  if (adminVerEl) {
+    adminVerEl.textContent = (typeof BJ_VERSION !== 'undefined' ? BJ_VERSION : 'v7.19');
+  }
 
   // Period toggle for Revenue tab (keep existing wiring)
   var revPeriod = document.getElementById('admin-rev-period');
