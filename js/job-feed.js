@@ -997,6 +997,12 @@ async function searchJobs(page = 0) {
     // Phase 72 Session 4.1: Apply AI scoring exclusions (dimmed badges, deprioritized)
     currentJobs = applyAiScoringExclusions(currentJobs);
 
+    // v7.15: Sync j-total with post-client-filter count so stat card matches rendered rows
+    if (isTrustFilterActive() || isAiFilterActive()) {
+      var $jt = $('#j-total');
+      if ($jt) $jt.textContent = totalCount.toLocaleString();
+    }
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger
