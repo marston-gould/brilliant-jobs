@@ -430,7 +430,11 @@ Deno.serve(async (req) => {
     }
     // Allow service_role calls (from cron jobs), otherwise verify admin
     const bearerToken = authHeader.replace("Bearer ", "");
-    const isServiceRole = bearerToken === serviceKey;
+    let isServiceRole = false;
+    try {
+      const payload = JSON.parse(atob(bearerToken.split(".")[1]));
+      isServiceRole = payload.role === "service_role";
+    } catch { /* not a valid JWT — will fail user auth below */ }
     if (!isServiceRole) {
       const { data: { user }, error: authErr } = await supabase.auth.getUser(bearerToken);
       if (authErr || !user) {

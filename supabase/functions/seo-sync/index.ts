@@ -645,7 +645,12 @@ serve(async (req) => {
         { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
     const bearerToken = auth.replace('Bearer ', '');
-    const isServiceRole = bearerToken === SB_KEY;
+    // Check if this is a service_role JWT (used by cron jobs / server-side calls)
+    let isServiceRole = false;
+    try {
+      const payload = JSON.parse(atob(bearerToken.split('.')[1]));
+      isServiceRole = payload.role === 'service_role';
+    } catch { /* not a valid JWT — will fail user auth below */ }
     if (!isServiceRole) {
       const { data: { user } } = await sb.auth.getUser(bearerToken);
       if (!user) {
