@@ -23,6 +23,7 @@ const RATE_LIMITS: Record<string, { hourly: number; daily: number }> = {
   free:    { hourly: 10,  daily: 30  },
   starter: { hourly: 30,  daily: 100 },
   pro:     { hourly: 100, daily: 500 },
+  admin:   { hourly: 99999, daily: 99999 },
 };
 
 // ─── Valid filter keys ───
@@ -138,8 +139,9 @@ serve(async (req: Request) => {
     }
 
     // ─── Get user tier ───
-    const { data: profile } = await sb.from('profiles').select('plan').eq('id', user.id).single();
-    const tier = profile?.plan || 'free';
+    const { data: profile } = await sb.from('profiles').select('plan, role').eq('id', user.id).single();
+    // Admins get unlimited rate limits regardless of plan
+    const tier = profile?.role === 'admin' ? 'admin' : (profile?.plan || 'free');
     const limits = RATE_LIMITS[tier] || RATE_LIMITS.free;
 
     // ─── Rate limit check ───
