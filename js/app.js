@@ -1,5 +1,5 @@
-// [BJ] Dashboard v7.20 loaded
-console.log('[BJ] Dashboard v7.20 loaded');
+// [BJ] Dashboard v7.21 loaded
+console.log('[BJ] Dashboard v7.21 loaded');
 // BJ_VERSION is defined in js/version.js (single source of truth)
 // version.js auto-populates #nav-version and .bj-version elements
 
@@ -109,6 +109,18 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
       localStorage.setItem('bj_filters_migrated', '1');
       showToast('Your saved searches are now synced to the cloud.', { type: 'success', duration: 5000 });
     }
+  }
+
+  // v7.21: Re-apply progressive nav now that savedFilters is loaded from DB
+  // initOnboarding() runs synchronously at parse time before this async fetch completes,
+  // so nav items were always dimmed for users with saved filters.
+  {
+    let _step = getOnboardingStep();
+    if (_step < 1 && resumes && resumes.length > 0) { updateOnboardingStep(1); _step = 1; }
+    if (_step < 2 && savedFilters && savedFilters.length > 0) { updateOnboardingStep(2); _step = 2; }
+    if (_step < 3 && localStorage.getItem('bj_first_search_done')) { updateOnboardingStep(3); _step = 3; }
+    if (_step < 4 && localStorage.getItem('bj_pipeline_used')) { updateOnboardingStep(4); _step = 4; }
+    applyProgressiveNav(_step);
   }
 
   // Block 7: Check for pending pills from city page conversion
