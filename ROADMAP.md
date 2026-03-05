@@ -2603,7 +2603,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 73.1 | Cron cost optimization Session 1 | v6.51 | Done | Reduced enrichment cron 12/hr to 1/hr (Tier 1+2 only). DataForSEO discovery 4/day to 1/day. enrichment_priority column. |
 | 73.2 | Cron cost optimization Session 2 | v6.52 | Done | Merged AI-content detection into enrichment prompt (eliminated crons 86-88). enrich-job-ondemand EF for Tier 3. |
 | 73.3 | Version audit + roadmap sync | v6.53 | Done | Cache-bust audit across all pages. Roadmap entries for v6.51-v6.52. version.js added to hiring-trends + market-dynamics. |
-| 73.4 | Common Crawl board discovery pipeline | — | Todo | Use Common Crawl columnar index for ATS board discovery at zero marginal cost. |
+| 73.4 | Athena ATS URL Discovery Pipeline | — | Ready | Amazon Athena → Common Crawl columnar index → 14 ATS platform queries → staged URL inventory. Steps 1–3 (Athena setup, query dev, URL processing) parallel with Phase 0 — zero code overlap. Step 4 (ingestion integration) in Phase 1 after DE-003 resolved. ~$4/yr operating cost. See `Athena_ATS_URL_Discovery_Plan.docx`. |
 
 ## Phase 74 — A14 Client-Side Cache Enhancement (v6.54–v6.55)
 
