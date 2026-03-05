@@ -9,12 +9,25 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 const SB_URL  = Deno.env.get('SUPABASE_URL')!;
 const SB_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const GOOGLE_SA_KEY = Deno.env.get('GOOGLE_SA_KEY_JSON');
-const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY') || '***REDACTED_GOOGLE_API_KEY***';
-const DFS_LOGIN = Deno.env.get('DFS_LOGIN') || 'gould.marston@gmail.com';
-const DFS_API_KEY = Deno.env.get('DFS_API_KEY') || '***REDACTED_DFS_KEY***';
-const POSTHOG_KEY = Deno.env.get('POSTHOG_PERSONAL_KEY') || '***REDACTED_POSTHOG_KEY***';
-const CF_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN') || '***REDACTED_CF_TOKEN***';
-const CF_ZONE = Deno.env.get('CLOUDFLARE_ZONE_ID') || '***REDACTED_CF_ZONE***';
+const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+const DFS_LOGIN = Deno.env.get('DFS_LOGIN');
+const DFS_API_KEY = Deno.env.get('DFS_API_KEY');
+const POSTHOG_KEY = Deno.env.get('POSTHOG_PERSONAL_KEY');
+const CF_TOKEN = Deno.env.get('CLOUDFLARE_API_TOKEN');
+const CF_ZONE = Deno.env.get('CLOUDFLARE_ZONE_ID');
+
+// Fail loud if any required secret is missing
+const _missingSecrets = [
+  !GOOGLE_API_KEY && 'GOOGLE_API_KEY',
+  !DFS_LOGIN && 'DFS_LOGIN',
+  !DFS_API_KEY && 'DFS_API_KEY',
+  !POSTHOG_KEY && 'POSTHOG_PERSONAL_KEY',
+  !CF_TOKEN && 'CLOUDFLARE_API_TOKEN',
+  !CF_ZONE && 'CLOUDFLARE_ZONE_ID',
+].filter(Boolean);
+if (_missingSecrets.length) {
+  console.error('seo-sync: missing required secrets:', _missingSecrets);
+}
 
 const GSC_SITE = 'sc-domain:brilliantjobs.app';
 const SITE_URLS = [
@@ -625,12 +638,21 @@ async function syncCloudflare(daysBack = 7): Promise<{ days: number }> {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   try {
+    // CS-001: Auth fix — reject if no Authorization header (was: no header = bypass all checks)
     const auth = req.headers.get('Authorization');
-    if (auth && !auth.includes('service_role')) {
+    if (!auth) {
+      return new Response(JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+    if (!auth.includes('service_role')) {
       const { data: { user } } = await sb.auth.getUser(auth.replace('Bearer ', ''));
-      if (user) {
-        const { data: p } = await sb.from('profiles').select('role').eq('id', user.id).single();
-        if (p?.role !== 'admin') return new Response(JSON.stringify({ error: 'Admin only' }),
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Invalid token' }),
+          { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+      const { data: p } = await sb.from('profiles').select('role').eq('id', user.id).single();
+      if (p?.role !== 'admin') {
+        return new Response(JSON.stringify({ error: 'Admin only' }),
           { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } });
       }
     }
