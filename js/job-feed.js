@@ -1112,21 +1112,10 @@ async function updateJobStatsFromFilters(filters) {
         }
       }
 
-      // Company count — A14 v6.60: try MV data first, fallback to capped query
+      // Company count — always derived from the user's active filtered result set
+      // (mv_landing_stats.total_companies is a global total, not filter-aware)
       let companyCountVal = 0;
       try {
-        // Try MV — instant, pre-aggregated
-        const { data: mvCounts } = await sb.from('mv_job_feed_counts').select('ats_source, job_count');
-        if (mvCounts && mvCounts.length > 0) {
-          // MV has total_companies via mv_landing_stats
-          const { data: mvLanding } = await sb.from('mv_landing_stats').select('total_companies').single();
-          companyCountVal = mvLanding ? mvLanding.total_companies : 0;
-        }
-      } catch(mvErr) {
-        console.warn('[BJ] MV company count fallback:', mvErr.message);
-      }
-      if (!companyCountVal) {
-        // Fallback: capped distinct slug query (max 500 rows, not 1000)
         const firstLocIds = effectiveFilters[0]._statsLocationIds || null;
         const sfNoWhenFirst = Object.assign({}, effectiveFilters[0], { whenPills: [] });
         let cq2 = sb.from('ats_jobs').select('company_slug');
@@ -1137,6 +1126,8 @@ async function updateJobStatsFromFilters(filters) {
         const uniqueCos = new Set();
         if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
         companyCountVal = uniqueCos.size;
+      } catch(coErr) {
+        console.warn('[BJ] Company count error:', coErr.message);
       }
 
       return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: companyCountVal } };
