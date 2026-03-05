@@ -1288,16 +1288,12 @@ async function analyzeHiddenJob(jobId, btn) {
   var hidden = hiddenJobIds.find(function(h) { return h.id === jobId; });
   if (!hidden) return;
   
-  // Get resume text — use the most recent non-archived resume
+  // Get resume text if available (optional — not required for block similar)
   var resumesWithText = (typeof resumes !== 'undefined' ? resumes : []).filter(function(r) {
     return r.extractedText && r.extractedText.length > 100 && !r.archived;
   });
-  if (resumesWithText.length === 0) {
-    alert('Upload a resume first (Resumes tab) to enable AI filter analysis.');
-    return;
-  }
-  var resume = resumesWithText[resumesWithText.length - 1];
-  
+  var resume = resumesWithText.length > 0 ? resumesWithText[resumesWithText.length - 1] : null;
+
   // Get the source filter's pills if available
   var filterPills = null;
   if (hidden.filterIdxs && hidden.filterIdxs.length > 0 && typeof savedFilters !== 'undefined') {
@@ -1345,7 +1341,7 @@ async function analyzeHiddenJob(jobId, btn) {
       },
       body: JSON.stringify({
         job_id: jobId,
-        resume_text: resume.extractedText.slice(0, 6000),
+        resume_text: resume ? resume.extractedText.slice(0, 6000) : null,
         filter_pills: filterPills
       })
     });

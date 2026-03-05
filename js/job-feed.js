@@ -1016,6 +1016,14 @@ async function searchJobs(page = 0) {
     var $jnew = $('#j-new');
     if ($jnew) $jnew.textContent = _renderedNewCount.toLocaleString();
 
+    // v7.19: Re-sync intel insight card after all client-side filters applied
+    // (updateJobStats above ran with DB totals before trust/AI/exclusion filters)
+    if (typeof updateIntelInsight === 'function') {
+      var jcos = $('#j-companies');
+      var coCount = jcos ? parseInt(jcos.textContent.replace(/,/g,''), 10) || 0 : 0;
+      updateIntelInsight(totalCount, coCount, _renderedNewCount);
+    }
+
     renderJobRows(currentJobs, totalCount, page, filtersToRun);
 
     // P13-04: Track search for micro-survey trigger

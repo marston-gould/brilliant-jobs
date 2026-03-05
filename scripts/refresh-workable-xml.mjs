@@ -31,7 +31,7 @@ import { stat, unlink } from "fs/promises";
 const WORKABLE_XML_URL = "https://www.workable.com/boards/workable.xml";
 const LOCAL_XML_PATH = "/tmp/workable-feed.xml";
 const BATCH_SIZE = 500;
-const MAX_REDIRECT_RESOLVES = 3000;
+const MAX_REDIRECT_RESOLVES = 500; // v7.19: reduced to prevent timeout
 const REDIRECT_CONCURRENCY = 15;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -396,9 +396,16 @@ async function main() {
   console.log(`   Unique companies in feed: ${newCompanies.size}`);
 
   // ── Step 3: Board discovery ──
-  console.log("\n🔍 Discovering new boards...");
-  await discoverBoards(newCompanies);
-  console.log(`   Discovered: ${stats.boardsDiscovered} new boards`);
+  // v7.19: Skip discovery if >22min elapsed to avoid GitHub Actions 30m timeout
+  const elapsedSoFar = Date.now() - new Date(cycleStartedAt).getTime();
+  if (elapsedSoFar > 22 * 60 * 1000) {
+    console.log("\n⏩ Skipping board discovery — time budget exceeded (>22min elapsed)");
+    stats.boardsDiscovered = 0;
+  } else {
+    console.log("\n🔍 Discovering new boards...");
+    await discoverBoards(newCompanies);
+    console.log(`   Discovered: ${stats.boardsDiscovered} new boards`);
+  }
 
   // ── Step 4: Mark closed jobs ──
   console.log("\n🗑️  Marking closed jobs...");
