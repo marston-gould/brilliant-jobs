@@ -995,10 +995,13 @@ async function searchJobs(page = 0) {
     }
 
     // Phase 72 Session 4.1: Apply AI scoring exclusions (dimmed badges, deprioritized)
+    const beforeExclusions = currentJobs.length;
     currentJobs = applyAiScoringExclusions(currentJobs);
+    const exclusionsActive = currentJobs.length !== beforeExclusions;
 
-    // v7.15: Sync j-total with post-client-filter count so stat card matches rendered rows
-    if (isTrustFilterActive() || isAiFilterActive()) {
+    // v7.15/v7.17: Sync j-total and totalCount after ALL client-side filters + scoring exclusions
+    if (isTrustFilterActive() || isAiFilterActive() || exclusionsActive) {
+      totalCount = currentJobs.length;
       var $jt = $('#j-total');
       if ($jt) $jt.textContent = totalCount.toLocaleString();
     }
