@@ -1297,7 +1297,7 @@
     .job-snippet-text .preview-more { color: var(--accent); cursor: pointer; font-weight: 600; }
     .show-previews tr.job-snippet-row { display: table-row; }
     .show-previews tr.job-data-row td { border-block-end: none !important; padding-block-end: 2px; }
-    .job-table .jt-title { font-weight: 600; color: var(--text); text-transform: lowercase; white-space: normal; overflow: hidden; }
+    .job-table .jt-title { font-weight: 600; color: var(--text); text-transform: lowercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .job-title-link { cursor: pointer; transition: color 0.1s; }
     .job-title-link:hover { color: var(--accent) !important; text-decoration: underline; }
     .job-table .jt-company { text-transform: lowercase; }

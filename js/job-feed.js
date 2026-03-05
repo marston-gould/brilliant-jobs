@@ -1046,7 +1046,7 @@ async function searchJobs(page = 0) {
 async function updateJobStatsFromFilters(filters) {
   try {
     const now = new Date();
-    const last24h = new Date(now.getTime() - 86400000);
+    const last24h = new Date(now.getTime() - 2 * 86400000); // 48h — includes "1d" jobs in NEW TODAY
     const lastFeedView = localStorage.getItem('bj_last_feed_view');
     const lastViewDate = lastFeedView ? new Date(lastFeedView) : null;
 
@@ -1164,6 +1164,8 @@ async function updateJobStatsFromFilters(filters) {
       companyCount = cachedStats.data.companyCount;
     }
 
+    // Guard: company count can never exceed total jobs
+    if (total > 0 && companyCount > total) companyCount = total;
     updateJobStats(total, companyCount, newSinceLoginCount, todayCount);
   } catch (e) {
     console.error('Stats update error:', e);
