@@ -1,3 +1,15 @@
+## v7.15 — 2026-03-05
+
+### Fix j-total stat card mismatching rendered row count
+- After trust/AI content client-side post-filters reduce jobs, j-total now updates to match
+- Previously: stat card showed DB count (e.g. 23), feed showed filtered count (e.g. 5)
+
+### Add proper favicon + apple-touch-icon
+- Replaced SVG data URI favicon with `/img/favicon-32.png`, `/img/favicon-16.png`, `/img/logo-300.png`
+- Applies to both dashboard.html and index.html
+
+---
+
 ## v7.14 — 2026-03-05
 
 ### Fix ATS source pills still showing
