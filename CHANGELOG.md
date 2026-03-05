@@ -1,3 +1,21 @@
+## v7.09 — Referral Request Tracking: Backend & Data Layer
+**March 2026 | Pod 2**
+
+### Database
+- Created `referral_outreach` table with RLS (users own their rows), unique index on `(user_id, job_id, channel)`, index on `(user_id, sent_at DESC)`
+- Created `updated_at` auto-update trigger `trg_referral_outreach_updated_at`
+
+### RPCs (all SECURITY DEFINER, granted to anon + authenticated)
+- `upsert_referral_outreach` — inserts/updates outreach record per user+job+channel
+- `update_referral_status` — updates status + referral_link on existing row
+- `get_referral_outreach` — returns all outreach rows for current user ordered by sent_at DESC
+- `get_referral_correlation` — returns aggregate stats (total_sent, accepted_count, acceptance_rate, applied_with_referral, applied_cold)
+
+### JS
+- `js/referral-outreach.js` — patched `sendReferralTemplate()` to call `upsert_referral_outreach` RPC on every send (fire-and-forget); fires `referral_saved` PostHog event on success
+
+---
+
 ## v7.07 — 2026-03-04
 
 ### Rejection Gap Analysis — Phase A (Data Collection)
