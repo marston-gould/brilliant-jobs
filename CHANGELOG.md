@@ -1,3 +1,17 @@
+## v7.11 — 2026-03-04
+
+### Bug Fix: sb.rpc().catch is not a function — job modal errors
+- `sb.rpc()` returns a PromiseLike, not a native Promise — `.catch()` unavailable directly
+- Fixed all 4 instances in `keywords.js` (click, apply, hide, save signal logging) by wrapping: `Promise.resolve(sb.rpc(...)).catch(() => {})`
+- Affected every job modal open (click, apply, hide, save actions threw uncaught TypeError)
+
+### DB Backfill: Salary extraction for split-span salary HTML
+- Jobs like Zscaler render salary as `<span>$133,000</span><span>—</span><span>$190,000 USD</span>`
+- parseSalaryFromContent correctly handles this after HTML stripping — issue was enrichJob never wrote salary for jobs whose content was already in DB
+- DB-side regex backfill run: extracted salary_min/max/raw for ~11K open jobs with content but no salary
+
+---
+
 ## v7.10 — 2026-03-04
 
 ### Bug Fix: Stat Card — Companies count now filter-aware
