@@ -72,6 +72,9 @@
 
       renderReferralHub(container);
 
+      // AC #1-8: Init outreach tracking log + correlation card
+      await initReferralTracking();
+
       // Phase 4A: Check and grant any pending tier bonuses
       if (referralStats && referralStats.current_tier > 0) {
         try {
@@ -308,7 +311,11 @@
     if (!referralStats) return;
     const link = referralStats.referral_link || '';
     const subject = encodeURIComponent('285K+ tracked jobs across 10K companies \u2014 free access');
-    const body = encodeURIComponent(`Hey, I\u2019ve been using Brilliant Jobs \u2014 it aggregates real-time job data from 5 major ATS platforms (285K+ positions across 10K+ companies). The AI credits are useful: 25 credits is enough to score 8 resumes against live postings.\n\nSign up with my link and we both get 7 days of Pro + 25 credits: ${link}\n\nOr use my code: ${referralStats.referral_code}`);
+    const body = encodeURIComponent(`Hey, I\u2019ve been using Brilliant Jobs \u2014 it aggregates real-time job data from 5 major ATS platforms (285K+ positions across 10K+ companies). The AI credits are useful: 25 credits is enough to score 8 resumes against live postings.
+
+Sign up with my link and we both get 7 days of Pro + 25 credits: ${link}
+
+Or use my code: ${referralStats.referral_code}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
     trackInvite('email');
   };
@@ -546,6 +553,327 @@
     `;
     document.body.appendChild(modal);
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  };
+
+})();
+
+// ============================================================
+// REFERRAL OUTREACH TRACKING — v7.09 Pod 1 UI Layer
+// Spec: HANDOFF_REFERRAL_TRACKING_POD1.docx
+// AC #1-8: Log view, status controls, correlation card, PostHog
+// ============================================================
+
+(function () {
+  'use strict';
+
+  // ---- State ----
+  let _outreachRows = [];
+  let _correlationData = null;
+
+  // ---- Status badge colors ----
+  const STATUS_COLORS = {
+    sent: '#3b82f6',
+    pending: '#f59e0b',
+    accepted: '#22c55e',
+    declined: '#64748b'
+  };
+
+  // ---- Date formatter: "Mar 3" or "Mar 3, 2025" ----
+  function formatOutreachDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    const now = new Date();
+    const opts = { month: 'short', day: 'numeric' };
+    if (d.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+    return d.toLocaleDateString('en-US', opts);
+  }
+
+  // ---- Status badge HTML ----
+  function statusBadge(status) {
+    const color = STATUS_COLORS[status] || '#64748b';
+    const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : '—';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${color}18;color:${color};border:1px solid ${color}30;">
+      <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;"></span>${label}
+    </span>`;
+  }
+
+  // ---- Channel badge HTML ----
+  function channelBadge(channel) {
+    const isLinkedIn = channel === 'linkedin';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:var(--bg-input);color:var(--text-dim);">
+      ${isLinkedIn
+        ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>'
+        : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>'
+      }
+      ${isLinkedIn ? 'LinkedIn' : 'Email'}
+    </span>`;
+  }
+
+  // ---- Render correlation card ----
+  function renderCorrelationCard(data) {
+    if (!data) return '';
+    const totalSent = data.total_sent || 0;
+
+    if (totalSent < 3) {
+      return `
+        <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+          <div class="card-title" style="margin-bottom:12px;">Referral vs. Cold Comparison</div>
+          <div style="font-size:13px;color:var(--text-dim);text-align:center;padding:12px 0;">
+            Send more outreach to unlock referral vs. cold stats.
+          </div>
+        </div>
+      `;
+    }
+
+    const rate = data.acceptance_rate != null ? Math.round(data.acceptance_rate) : 0;
+    const stats = [
+      { label: 'Outreach Sent', val: totalSent, mono: true },
+      { label: 'Acceptance Rate', val: `${rate}%`, mono: true, color: '#22c55e' },
+      { label: 'Applied w/ Referral', val: data.applied_with_referral || 0, mono: true, color: '#3b82f6' },
+      { label: 'Applied Cold', val: data.applied_cold || 0, mono: true, color: '#64748b' }
+    ];
+
+    return `
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:14px;">Referral vs. Cold Comparison</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+          ${stats.map(s => `
+            <div style="text-align:center;">
+              <div style="font-family:var(--mono);font-size:22px;font-weight:800;color:${s.color || 'var(--text)'};line-height:1.1;">${s.val}</div>
+              <div style="font-size:11px;color:var(--text-faint);margin-top:4px;line-height:1.3;">${s.label}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // ---- Render single outreach row ----
+  function renderOutreachRow(row) {
+    const statusOptions = ['sent', 'pending', 'accepted', 'declined'];
+    const selectOptions = statusOptions.map(s =>
+      `<option value="${s}" ${row.status === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`
+    ).join('');
+
+    const referralLinkBtn = (row.referral_link && row.referral_link.trim())
+      ? `<a href="${row.referral_link}" target="_blank" rel="noopener noreferrer"
+           style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#fff;background:#2e6da4;text-decoration:none;white-space:nowrap;"
+           onclick="window._trackReferralLinkClick('${row.id}')">
+           Apply via referral link →
+         </a>`
+      : '';
+
+    // Referral link input (shown when accepted, if no link yet)
+    const linkInputHtml = (row.status === 'accepted' && !row.referral_link)
+      ? `<div style="margin-top:6px;display:flex;gap:6px;align-items:center;">
+           <input type="text" placeholder="Paste referral link (optional)" 
+             style="flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);"
+             id="ref-link-input-${row.id}" />
+           <button onclick="window._saveReferralLink('${row.id}')" style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer;">Save</button>
+         </div>`
+      : '';
+
+    return `
+      <tr data-outreach-id="${row.id}">
+        <td>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">${row.job_title || '—'}</div>
+          <div style="font-size:11px;color:var(--text-faint);margin-top:2px;">${row.company || '—'}</div>
+        </td>
+        <td>${channelBadge(row.channel)}</td>
+        <td style="font-size:13px;color:var(--text-dim);">${row.their_name || '—'}</td>
+        <td>
+          <div id="ref-badge-${row.id}">${statusBadge(row.status)}</div>
+        </td>
+        <td style="font-size:12px;color:var(--text-faint);white-space:nowrap;">${formatOutreachDate(row.sent_at)}</td>
+        <td>
+          ${referralLinkBtn}
+          <div style="${referralLinkBtn ? 'margin-top:6px;' : ''}">
+            <select
+              style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer;"
+              onchange="window._updateOutreachStatus('${row.id}', this.value, this)">
+              ${selectOptions}
+            </select>
+          </div>
+          ${linkInputHtml}
+        </td>
+      </tr>
+    `;
+  }
+
+  // ---- Render outreach log table ----
+  function renderOutreachLog(rows) {
+    if (!rows || rows.length === 0) {
+      return `
+        <div style="text-align:center;padding:28px 16px;">
+          <div style="font-size:13px;color:var(--text-dim);margin-bottom:10px;">No outreach sent yet. Use Request Referral from any job to get started.</div>
+          <button class="btn btn-secondary btn-sm" onclick="window.navigateTo && window.navigateTo('feed')">Browse Jobs →</button>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="overflow-x:auto;margin-top:12px;">
+        <table class="admin-table" style="min-width:600px;">
+          <thead>
+            <tr>
+              <th>Job / Company</th>
+              <th>Channel</th>
+              <th>Their Name</th>
+              <th>Status</th>
+              <th>Sent</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(renderOutreachRow).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ---- Main init function (called from initReferralHub) ----
+  window.initReferralTracking = async function () {
+    const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    if (!sb) return;
+
+    // Fetch outreach + correlation in parallel
+    const [outreachResult, correlationResult] = await Promise.allSettled([
+      sb.rpc('get_referral_outreach'),
+      sb.rpc('get_referral_correlation')
+    ]);
+
+    _outreachRows = (outreachResult.status === 'fulfilled' && outreachResult.value.data) ? outreachResult.value.data : [];
+    _correlationData = (correlationResult.status === 'fulfilled' && correlationResult.value.data) ? correlationResult.value.data : null;
+
+    // PostHog: referral_log_viewed
+    if (window.posthog) {
+      window.posthog.capture('referral_log_viewed', { row_count: _outreachRows.length });
+    }
+
+    // Inject tracking section into ref-hub-content (after existing content)
+    const container = document.getElementById('ref-hub-content');
+    if (!container) return;
+
+    // Remove existing tracking section if already rendered
+    const existing = document.getElementById('ref-tracking-section');
+    if (existing) existing.remove();
+
+    const section = document.createElement('div');
+    section.id = 'ref-tracking-section';
+    section.innerHTML = `
+      ${renderCorrelationCard(_correlationData)}
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:0;">Referral Outreach</div>
+        <div id="ref-outreach-log">
+          ${renderOutreachLog(_outreachRows)}
+        </div>
+      </div>
+    `;
+    container.appendChild(section);
+  };
+
+  // ---- Status update handler ----
+  window._updateOutreachStatus = async function (rowId, newStatus, selectEl) {
+    const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    if (!sb) return;
+
+    const row = _outreachRows.find(r => r.id === rowId);
+    const oldStatus = row ? row.status : null;
+
+    try {
+      const params = { p_outreach_id: rowId, p_new_status: newStatus };
+      await sb.rpc('update_referral_status', params);
+
+      // Update in-memory state
+      if (row) row.status = newStatus;
+
+      // Patch badge in-place
+      const badgeEl = document.getElementById(`ref-badge-${rowId}`);
+      if (badgeEl) badgeEl.innerHTML = statusBadge(newStatus);
+
+      // If accepted, show referral link input inline (if no link yet)
+      if (newStatus === 'accepted') {
+        const tr = selectEl.closest('tr');
+        if (tr && !row?.referral_link) {
+          const actionCell = tr.querySelector('td:last-child');
+          if (actionCell && !actionCell.querySelector(`#ref-link-input-${rowId}`)) {
+            const inputWrap = document.createElement('div');
+            inputWrap.style.marginTop = '6px';
+            inputWrap.style.display = 'flex';
+            inputWrap.style.gap = '6px';
+            inputWrap.innerHTML = `
+              <input type="text" id="ref-link-input-${rowId}" placeholder="Paste referral link (optional)"
+                style="flex:1;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);" />
+              <button onclick="window._saveReferralLink('${rowId}')" style="padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer;">Save</button>
+            `;
+            actionCell.appendChild(inputWrap);
+          }
+        }
+      }
+
+      // PostHog: referral_status_changed
+      if (window.posthog) {
+        window.posthog.capture('referral_status_changed', {
+          old_status: oldStatus,
+          new_status: newStatus,
+          has_referral_link: !!(row && row.referral_link)
+        });
+      }
+    } catch (err) {
+      console.error('[Referrals] Status update error:', err);
+    }
+  };
+
+  // ---- Save referral link after accepting ----
+  window._saveReferralLink = async function (rowId) {
+    const sb = window.bjSupabase || window.supabase?.createClient?.(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    if (!sb) return;
+    const input = document.getElementById(`ref-link-input-${rowId}`);
+    const link = input ? input.value.trim() : '';
+    if (!link) return;
+
+    try {
+      await sb.rpc('update_referral_status', {
+        p_outreach_id: rowId,
+        p_new_status: 'accepted',
+        p_referral_link: link
+      });
+
+      // Update in-memory + UI
+      const row = _outreachRows.find(r => r.id === rowId);
+      if (row) row.referral_link = link;
+
+      const tr = input ? input.closest('tr') : null;
+      if (tr) {
+        const actionCell = tr.querySelector('td:last-child');
+        if (actionCell) {
+          // Replace input area with apply button
+          const inputWrap = input.closest('div');
+          if (inputWrap) inputWrap.remove();
+          const btn = document.createElement('a');
+          btn.href = link;
+          btn.target = '_blank';
+          btn.rel = 'noopener noreferrer';
+          btn.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;color:#fff;background:#2e6da4;text-decoration:none;margin-top:6px;';
+          btn.textContent = 'Apply via referral link →';
+          btn.onclick = () => window._trackReferralLinkClick(rowId);
+          actionCell.insertBefore(btn, actionCell.firstChild);
+        }
+      }
+    } catch (err) {
+      console.error('[Referrals] Save referral link error:', err);
+    }
+  };
+
+  // ---- Referral link click tracker ----
+  window._trackReferralLinkClick = function (rowId) {
+    const row = _outreachRows.find(r => r.id === rowId);
+    if (window.posthog) {
+      window.posthog.capture('referral_link_clicked', {
+        job_id: row ? row.job_id : null
+      });
+    }
   };
 
 })();
