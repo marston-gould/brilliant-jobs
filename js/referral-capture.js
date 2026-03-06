@@ -96,7 +96,7 @@
   // Track click in referral_invites table
   function trackReferralClick(code, source) {
     // Only if Supabase anon client available (public pages use anon key)
-    var anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzNjc2NjUsImV4cCI6MjA1Mzk0MzY2NX0.lGdiNzPsETKVVxzNhJSvGNPmFSMYxUv43jj5B_pMz5Q';
+    var anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
     var supabaseUrl = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 
     // Fire and forget — update clicked_at on matching invite

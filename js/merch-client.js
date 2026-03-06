@@ -97,7 +97,7 @@
         var html = content[field]
           .replace(/\{JOBS\}/g, '<span class="merch-stat" data-merch-stat="jobs">—</span>')
           .replace(/\{COMPANIES\}/g, '<span class="merch-stat" data-merch-stat="companies">—</span>');
-        target.innerHTML = html;
+        target.innerHTML = (typeof DOMPurify !== 'undefined') ? DOMPurify.sanitize(html) : '';
       }
     });
 

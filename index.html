@@ -811,6 +811,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     }
   })();
   </script>
+  <!-- CS-005: DOMPurify for innerHTML sanitization (IX-SE-004) -->
+  <script src="/js/vendor/purify.min.js"></script>
+  <!-- CS-005: safeReadLS utility — wraps localStorage reads (IX-FE-001) -->
+  <script>
+  window.safeReadLS = function safeReadLS(key, defaultVal) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (raw === null) return defaultVal;
+      try { return JSON.parse(raw); } catch(e) { return raw; }
+    } catch(e) { return defaultVal; }
+  };
+  </script>
   <script src="/js/merch-client.js" defer></script>
   <script src="/js/fingerprint.js" defer></script>
   <script src="/js/referral-capture.js" defer></script>
@@ -1728,7 +1740,7 @@ document.addEventListener('DOMContentLoaded', function() {
             refreshToken: session.refresh_token,
             userId: user.id,
             email: user.email
-          }, '*');
+          }, window.location.origin);
         }
       } catch (e) {}
     }
@@ -1920,9 +1932,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
           // Populate teaser titles
           const titlesEl = document.getElementById('pv-titles');
-          titlesEl.innerHTML = data.titles.map(t =>
+          titlesEl.innerHTML = DOMPurify.sanitize(data.titles.map(t =>
             '<div class="preview-title-row"><span class="preview-title">' + t + '</span><span class="preview-company">Sign up to reveal</span></div>'
-          ).join('');
+          ).join(''));
 
           document.getElementById('pv-cta-text').textContent = 'Create your free account to see all ' + data.total.toLocaleString() + ' jobs';
           document.getElementById('preview-results').style.display = '';
@@ -2071,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(function(cards) {
       if (!cards || !cards.length) return;
       section.style.display = 'block';
-      grid.innerHTML = cards.slice(0, 3).map(function(c) {
+      grid.innerHTML = DOMPurify.sanitize(cards.slice(0, 3).map(function(c) {
         var col = catColors[c.category] || { bg:'#f3f4f6', fg:'#374151' };
         return '<div class="insight-card">'
           + '<span class="insight-cat" style="background:' + col.bg + ';color:' + col.fg + '">' + (c.category || 'insight') + '</span>'
@@ -2080,7 +2092,7 @@ document.addEventListener('DOMContentLoaded', function() {
           + '<p class="insight-lede">' + (c.lede || '') + '</p>'
           + '<a href="/blog/' + c.slug + '" class="insight-link">Read more &rarr;</a>'
           + '</div>';
-      }).join('');
+      }).join(''));
 
       if (window.posthog) posthog.capture('merch_insights_shown', { count: cards.length });
     })
