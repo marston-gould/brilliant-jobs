@@ -66,7 +66,8 @@ async function callAnthropic(
   userPrompt: string,
   maxTokens: number = 3000,
   temperature: number = 0
-): Promise<{ text: string; ok: boolean; error?: string }> {
+): Promise<{ text: string; ok: boolean; error?: string; usage?: { input_tokens: number; output_tokens: number } }> {
+  const startMs = Date.now();
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -92,11 +93,33 @@ async function callAnthropic(
 
     const data = await res.json();
     const text = data.content?.[0]?.text || '';
-    return { text, ok: true };
+    const usage = data.usage ? { input_tokens: data.usage.input_tokens || 0, output_tokens: data.usage.output_tokens || 0 } : undefined;
+    return { text, ok: true, usage };
   } catch (e) {
     console.error(`[score-resume] Anthropic ${model} exception:`, e);
     return { text: '', ok: false, error: String(e) };
   }
+}
+
+// ─── AI usage logging (fire-and-forget) ───
+async function logUsage(sb: any, userId: string, model: string, usage: { input_tokens: number; output_tokens: number } | undefined, durationMs: number) {
+  if (!usage) return;
+  try {
+    const inputCostPer1k = model.includes('haiku') ? 0.00025 : model.includes('opus') ? 0.015 : 0.003;
+    const outputCostPer1k = model.includes('haiku') ? 0.00125 : model.includes('opus') ? 0.075 : 0.015;
+    const cost = (usage.input_tokens / 1000 * inputCostPer1k) + (usage.output_tokens / 1000 * outputCostPer1k);
+    await sb.from('ai_usage_log').insert({
+      function_name: 'score-resume',
+      user_id: userId || null,
+      model: model,
+      input_tokens: usage.input_tokens,
+      output_tokens: usage.output_tokens,
+      total_tokens: usage.input_tokens + usage.output_tokens,
+      duration_ms: durationMs,
+      estimated_cost_usd: Math.round(cost * 1000000) / 1000000,
+      created_at: new Date().toISOString(),
+    });
+  } catch (e) { console.warn('[score-resume] Usage log failed:', e.message); }
 }
 
 // ─── JSON parser with retry ───
@@ -542,10 +565,28 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
 
-    // Rate limit
+    // Rate limit (in-memory fast check)
     if (!checkDailyLimit(user.id)) {
       return new Response(JSON.stringify({ error: 'Daily AI scoring limit reached (20/day)' }), { status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
     }
+
+    // Rate limit (database-backed persistent check)
+    try {
+      const { data: allowed } = await sb.rpc('check_ef_rate_limit', {
+        p_function_name: 'score-resume',
+        p_caller_id: user.id.substring(0, 20),
+        p_max_calls: 20,
+        p_window_minutes: 60
+      });
+      if (allowed === false) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Max 20 calls per hour.' }), {
+          status: 429,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json', 'Retry-After': '3600' },
+        });
+      }
+    } catch (rlErr) { console.warn('[score-resume] DB rate limit check failed:', rlErr.message); }
+
+    const _scoreStartMs = Date.now();
 
     // Check entitlement (Pro vs Free)
     const { data: profile } = await sb.from('profiles').select('plan').eq('id', user.id).single();
@@ -821,6 +862,12 @@ Assess. Return ONLY JSON.`;
       // Non-blocking — don't fail the scoring response
       console.error('[score-resume] History dual-write error:', histErr);
     }
+
+    // Log AI usage for cost tracking (fire-and-forget)
+    logUsage(sb, user.id, result?.tier === 'premium' ? SONNET_MODEL : HAIKU_MODEL,
+      result?._usage || { input_tokens: 0, output_tokens: 0 },
+      Date.now() - _scoreStartMs
+    ).catch(() => {});
 
     return new Response(JSON.stringify(result), {
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }

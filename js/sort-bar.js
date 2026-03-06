@@ -92,7 +92,7 @@ async function searchCompanies(query) {
         name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
       }));
     }
-  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+  } catch(e) { reportError('sort-bar', e); console.warn('[BJ] ATS company search failed:', e); }
 
   try {
     // Search user's connections by parsed_company
@@ -118,7 +118,7 @@ async function searchCompanies(query) {
           }
         });
     }
-  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
+  } catch(e) { reportError('sort-bar', e); console.warn('[BJ] Connection company search failed:', e); }
 
   renderCompanyDropdown(results, query);
 }

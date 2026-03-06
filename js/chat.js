@@ -105,7 +105,7 @@ function initChatMode() {
       if (this.getAttribute('data-auto-generated') === 'true') {
         this.setAttribute('data-auto-generated', 'modified');
         if (window.posthog) {
-          try { posthog.capture('chat_prompt_modified'); } catch(e) {}
+          try { posthog.capture('chat_prompt_modified'); } catch(e) { reportError('chat:chat', e); }
         }
       }
     });
@@ -159,9 +159,9 @@ function initChatMode() {
 
       // PostHog: track tooltip impression and dismissal
       if (window.posthog) {
-        try { posthog.capture('chat_onboarding_tooltip_shown'); } catch(e) {}
+        try { posthog.capture('chat_onboarding_tooltip_shown'); } catch(e) { reportError('chat:chat', e); }
         tooltip.querySelector('.tooltip-dismiss').addEventListener('click', function() {
-          try { posthog.capture('chat_onboarding_tooltip_dismissed', { method: 'button' }); } catch(e) {}
+          try { posthog.capture('chat_onboarding_tooltip_dismissed', { method: 'button' }); } catch(e) { reportError('chat:chat', e); }
         });
       }
     }
@@ -176,7 +176,7 @@ function initChatMode() {
       if (chatInput && chatInput.getAttribute('data-auto-generated')) {
         chatInput.removeAttribute('data-auto-generated');
         if (window.posthog) {
-          try { posthog.capture('chat_prompt_scrapped'); } catch(e) {}
+          try { posthog.capture('chat_prompt_scrapped'); } catch(e) { reportError('chat:chat', e); }
         }
       }
       _chatSession.clear();
@@ -251,7 +251,7 @@ function setSearchMode(mode) {
 
   // PostHog event
   if (window.posthog) {
-    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) {}
+    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -368,11 +368,10 @@ async function syncFilterToChat() {
 
       // PostHog event
       if (window.posthog) {
-        try { posthog.capture('chat_prompt_auto_generated', { filter_count: Object.keys(filters).length, fallback: !!data.fallback }); } catch(e) {}
+        try { posthog.capture('chat_prompt_auto_generated', { filter_count: Object.keys(filters).length, fallback: !!data.fallback }); } catch(e) { reportError('chat:chat', e); }
       }
     }
-  } catch (err) {
-    console.error('[BJ] Filter→Chat sync error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Filter→Chat sync error:', err);
   }
 
   _chatSyncInProgress = false;
@@ -421,8 +420,7 @@ async function syncChatToFilter() {
     // Show confirmation banner before populating pills
     _showSyncConfirmation(filters);
 
-  } catch (err) {
-    console.error('[BJ] Chat→Filter sync error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Chat→Filter sync error:', err);
   }
 
   _chatSyncInProgress = false;
@@ -463,7 +461,7 @@ function _showSyncConfirmation(filters) {
     banner.style.display = 'none';
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_to_filter_sync', { action: 'accepted', filter_count: Object.keys(filters).length }); } catch(e) {}
+      try { posthog.capture('chat_to_filter_sync', { action: 'accepted', filter_count: Object.keys(filters).length }); } catch(e) { reportError('chat:chat', e); }
     }
   });
 
@@ -472,7 +470,7 @@ function _showSyncConfirmation(filters) {
     banner.style.display = 'none';
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_to_filter_sync', { action: 'dismissed' }); } catch(e) {}
+      try { posthog.capture('chat_to_filter_sync', { action: 'dismissed' }); } catch(e) { reportError('chat:chat', e); }
     }
   });
 }
@@ -544,7 +542,7 @@ function _applySyncedFilters(filters) {
   // Trigger job feed refresh
   // PostHog: chat_filters_applied
   if (window.posthog) {
-    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) { reportError('chat:chat', e); }
   }
 
   if (typeof debouncedSearchJobs === 'function') {
@@ -594,7 +592,7 @@ async function sendChatMessage() {
 
   // PostHog: chat_message_sent
   if (window.posthog) {
-    try { posthog.capture('chat_message_sent', { tier: getUserTier(), msg_count: _chatSession.messageCount, has_filters: !!window._chatFilterOverride }); } catch(e) {}
+    try { posthog.capture('chat_message_sent', { tier: getUserTier(), msg_count: _chatSession.messageCount, has_filters: !!window._chatFilterOverride }); } catch(e) { reportError('chat:chat', e); }
   }
   updateChatCounter();
 
@@ -643,7 +641,7 @@ async function sendChatMessage() {
           message_count: _chatSession.messages.length,
           p95_target_ms: 2000
         });
-      } catch(e) {}
+      } catch(e) { reportError('chat:chat', e); }
     }
     if (_chatLatencyMs > 2000) {
       console.warn('[BJ] Chat edge function slow: ' + _chatLatencyMs + 'ms (p95 target: 2000ms)');
@@ -651,7 +649,7 @@ async function sendChatMessage() {
 
     if (resp.status === 429) {
       var rateLimitData = null;
-      try { rateLimitData = await resp.json(); } catch(e) {}
+      try { rateLimitData = await resp.json(); } catch(e) { reportError('chat:chat', e); }
       showChatRateLimit(rateLimitData);
       _chatSending = false;
       return;
@@ -659,7 +657,7 @@ async function sendChatMessage() {
 
     if (!resp.ok) {
       var errText = '';
-      try { var errJ = await resp.json(); errText = errJ.error || errJ.message || ''; } catch(e) {}
+      try { var errJ = await resp.json(); errText = errJ.error || errJ.message || ''; } catch(e) { reportError('chat:chat', e); }
       appendChatBubble('assistant', 'Something went wrong. ' + (errText || 'Please try again.'));
       _chatSending = false;
       return;
@@ -673,7 +671,7 @@ async function sendChatMessage() {
 
     // PostHog: chat_filters_extracted
     if (extractedFilters && Object.keys(extractedFilters).length > 0 && window.posthog) {
-      try { posthog.capture('chat_filters_extracted', { filter_count: Object.keys(extractedFilters).length, keywords: (extractedFilters.keywords || []).join(',') }); } catch(e) {}
+      try { posthog.capture('chat_filters_extracted', { filter_count: Object.keys(extractedFilters).length, keywords: (extractedFilters.keywords || []).join(',') }); } catch(e) { reportError('chat:chat', e); }
     }
 
     // Add assistant message
@@ -744,7 +742,7 @@ function applyChatFilters(filters) {
   // Trigger refresh
   // PostHog: chat_filters_applied
   if (window.posthog) {
-    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) { reportError('chat:chat', e); }
   }
 
   if (typeof debouncedSearchJobs === 'function') {
@@ -860,7 +858,7 @@ function showChatRateLimit(data) {
 
   // PostHog: chat_rate_limited
   if (window.posthog) {
-    try { posthog.capture('chat_rate_limited', { limit_type: (data && data.limit_type) || 'daily', tier: getUserTier() }); } catch(e) {}
+    try { posthog.capture('chat_rate_limited', { limit_type: (data && data.limit_type) || 'daily', tier: getUserTier() }); } catch(e) { reportError('chat:chat', e); }
   }
   banner.style.display = 'block';
 }
@@ -1103,7 +1101,7 @@ async function executeSavePrompt() {
 
     if (!resp.ok) {
       var errData = null;
-      try { errData = await resp.json(); } catch(e) {}
+      try { errData = await resp.json(); } catch(e) { reportError('chat:chat', e); }
       console.error('[BJ] Save prompt error:', errData);
       if (typeof showToast === 'function') showToast('Failed to save prompt', 'error');
       return;
@@ -1125,7 +1123,7 @@ async function executeSavePrompt() {
 
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) {}
+      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) { reportError('chat:chat', e); }
     }
 
   } catch (err) {
@@ -1258,7 +1256,7 @@ async function loadPrompt(promptId) {
 
   // PostHog
   if (window.posthog) {
-    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) {}
+    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -1296,11 +1294,10 @@ async function deletePrompt(promptId) {
 
       // PostHog
       if (window.posthog) {
-        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) {}
+        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) { reportError('chat:chat', e); }
       }
     }
-  } catch (err) {
-    console.error('[BJ] Delete prompt error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Delete prompt error:', err);
   }
 }
 
@@ -1323,8 +1320,7 @@ async function loadSavedPromptsFromDB() {
       // Update filter selector
       renderSavedPromptsInFilterSelector();
     }
-  } catch (err) {
-    console.error('[BJ] Load saved prompts error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Load saved prompts error:', err);
   }
 }
 
@@ -1377,8 +1373,7 @@ async function updateDerivedFilters() {
       cached.conversation = _chatSession.getHistory();
     }
 
-  } catch (err) {
-    console.error('[BJ] Update derived_filters error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Update derived_filters error:', err);
   }
 }
 

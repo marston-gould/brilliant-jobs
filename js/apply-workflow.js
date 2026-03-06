@@ -59,11 +59,11 @@ function loadApplySettings() {
   try {
     var raw = localStorage.getItem('bj_apply_settings');
     if (raw) userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS, JSON.parse(raw));
-  } catch (e) {}
+  } catch(e) { reportError('apply-workflow:apply-workflow', e); }
 }
 
 function saveApplySettings() {
-  try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch (e) {}
+  try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch(e) { reportError('apply-workflow:apply-workflow', e); }
 }
 
 // ─── Supabase-backed pending applications ───────────────────
@@ -229,7 +229,7 @@ function _getActiveResume() {
       var resumes = JSON.parse(raw);
       if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
     }
-  } catch (e) {}
+  } catch(e) { reportError('apply-workflow:apply-workflow', e); }
   return { id: crypto.randomUUID(), filename: 'resume.pdf' };
 }
 
@@ -255,8 +255,7 @@ async function _fireApplyNotification(type, opts) {
         notification_type: type,
       }, opts)),
     });
-  } catch (e) {
-    console.error('[apply-workflow] Notification send error:', e);
+  } catch(e) { reportError('apply-workflow', e); console.error('[apply-workflow] Notification send error:', e);
   }
 }
 
@@ -402,7 +401,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
       .eq('id', resume.id)
       .single();
     resumeText = archiveData?.parsed_text || '';
-  } catch (e) {}
+  } catch(e) { reportError('apply-workflow:apply-workflow', e); }
 
   if (!resumeText) {
     // Fallback: check localStorage
@@ -412,7 +411,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
         var resumes = JSON.parse(raw);
         if (resumes.length > 0) resumeText = resumes[0].text || '';
       }
-    } catch (e) {}
+    } catch(e) { reportError('apply-workflow:apply-workflow', e); }
   }
 
   if (!resumeText) {

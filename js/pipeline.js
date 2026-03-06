@@ -302,8 +302,7 @@ async function migratePipelineToSupabase() {
   if (!currentUser?.id) return;
 
   // Check if already migrated — if Supabase has data, skip
-  const { data: existing } = await sb.from('user_pipeline')
-    .select('id').eq('user_id', currentUser.id).limit(1);
+  const existing = await safeQuery(() => sb.from('user_pipeline').select('id').eq('user_id', currentUser.id).limit(1), { label: 'pipeline:user_pipeline', fallback: [] });
   if (existing?.length) {
     console.log('[BJ] Pipeline already in Supabase, skipping migration');
     return false;
@@ -329,9 +328,8 @@ async function migratePipelineToSupabase() {
   for (let i = 0; i < idList.length; i += 100) {
     const batch = idList.slice(i, i + 100);
     try {
-      const { data } = await sb.from('ats_jobs')
-        .select('greenhouse_id, title, company_name, ats_source, status')
-        .in('greenhouse_id', batch);
+      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, ats_source, status')
+        .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
     } catch (e) { console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
   }
@@ -568,9 +566,8 @@ async function renderPipeline() {
   for (let i = 0; i < allIds.length; i += batchSize) {
     const batch = allIds.slice(i, i + batchSize);
     try {
-      const { data } = await sb.from('ats_jobs')
-        .select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
-        .in('greenhouse_id', batch);
+      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
+        .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) allJobData = allJobData.concat(data);
     } catch (e) { console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
   }
@@ -1074,7 +1071,7 @@ async function saveManualPipelineEntry() {
   // Derive company domain from URL or name
   let companyDomain = '';
   if (url) {
-    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch (e) {}
+    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch(e) { reportError('pipeline:pipeline', e); }
   }
   if (!companyDomain) {
     companyDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
@@ -1245,11 +1242,10 @@ function showRecruiterResults(jobId, company, contacts, cached) {
 async function loadRecruiterContacts() {
   if (!currentUser?.id) return {};
   try {
-    const { data } = await sb.from('recruiter_contacts')
-      .select('company_name, recruiter_email, recruiter_name, recruiter_title, confidence_score')
+    const data = await safeQuery(() => sb.from('recruiter_contacts').select('company_name, recruiter_email, recruiter_name, recruiter_title, confidence_score')
       .eq('user_id', currentUser.id)
       .order('confidence_score', { ascending: false })
-      .limit(200);
+      .limit(200), { label: 'pipeline:recruiter_contacts', fallback: [] });
     if (!data) return {};
     const byCompany = {};
     data.forEach(c => {

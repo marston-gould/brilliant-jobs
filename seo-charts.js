@@ -346,7 +346,7 @@
           var parsed = JSON.parse(stored);
           token = parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token);
         }
-      } catch(e) {}
+      } catch(e) { reportError("seo-charts", e); }
       if (!token) { _authChecked = true; return cb(null); }
       // Verify token
       fetch(SB_URL + '/auth/v1/user', {
@@ -398,7 +398,7 @@
     function addFilterForUser(type, value, btn) {
       // Store pending filter in localStorage for dashboard to pick up
       var pending = [];
-      try { pending = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]'); } catch(e) {}
+      try { pending = JSON.parse(localStorage.getItem('bj_pending_pills') || '[]'); } catch(e) { reportError("seo-charts", e); }
       pending.push({ type: type, value: value, added_from: window.location.pathname, added_at: new Date().toISOString() });
       localStorage.setItem('bj_pending_pills', JSON.stringify(pending));
 

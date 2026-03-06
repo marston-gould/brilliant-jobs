@@ -40,7 +40,7 @@ async function getRefCityRadius() {
         _refCityCache = parsed.data;
         return _refCityCache;
       }
-    } catch (e) {}
+    } catch(e) { reportError('location:location', e); }
   }
   // Fetch static JSON
   try {
@@ -50,7 +50,7 @@ async function getRefCityRadius() {
       localStorage.setItem('bj_ref_city_radius', JSON.stringify({ data: _refCityCache, ts: Date.now() }));
       return _refCityCache;
     }
-  } catch (e) { console.warn('[Location] Failed to load ref_city_radius.json:', e); }
+  } catch(e) { reportError('location', e); console.warn('[Location] Failed to load ref_city_radius.json:', e); }
   // Fallback to Supabase
   _refCityCache = [];
   return _refCityCache;
@@ -228,8 +228,7 @@ async function searchLocations(query) {
     });
 
     renderLocationDropdown(results.slice(0, 10), query);
-  } catch (e) {
-    console.warn('[BJ] Location search failed:', e);
+  } catch(e) { reportError('location', e); console.warn('[BJ] Location search failed:', e);
   }
 }
 
@@ -431,8 +430,7 @@ async function searchLocationsForNot(query) {
     }
 
     renderLocationNotDropdown(results.slice(0, 10), query);
-  } catch (e) {
-    console.warn('[BJ] NOT location search failed:', e);
+  } catch(e) { reportError('location', e); console.warn('[BJ] NOT location search failed:', e);
   }
 }
 
@@ -1288,8 +1286,7 @@ async function updateSavedFilterCounts() {
       savedFilters[i].jobsMonth = c3;
       savedFilters[i].jobsPrevWeek = c4;
       savedFilters[i].trendPct = trendPct;
-    } catch (e) {
-      console.error(`Count error for filter ${i} "${sf.name}":`, e);
+    } catch(e) { reportError('location', e); console.error(`Count error for filter ${i} "${sf.name}":`, e);
     }
   }
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
@@ -1502,7 +1499,7 @@ async function _doAiFilterAnalysis() {
   try {
     // Get auth token
     var session = null;
-    try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
+    try { session = (await sb.auth.getSession()).data.session; } catch(e) { reportError('location:location', e); }
     if (!session) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Please sign in to use AI features.</div>';
       return;

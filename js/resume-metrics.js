@@ -29,7 +29,7 @@ window.switchStatsTab = function(tab) {
     marketBtn.classList.add('active');
     resumeBtn.classList.remove('active');
     // Dispose metrics charts to free memory
-    Object.values(_metricsCharts).forEach(c => { try { c.dispose(); } catch(e) {} });
+    Object.values(_metricsCharts).forEach(c => { try { c.dispose(); } catch(e) { /* chart cleanup - expected */ } });
     _metricsCharts = {};
   }
 };
@@ -150,7 +150,7 @@ function renderSparkline(data) {
   const el = document.getElementById('metrics-sparkline');
   if (!el || typeof echarts === 'undefined') return;
 
-  if (_metricsCharts.sparkline) { try { _metricsCharts.sparkline.dispose(); } catch(e) {} }
+  if (_metricsCharts.sparkline) { try { _metricsCharts.sparkline.dispose(); } catch(e) { /* chart cleanup - expected */ } }
   if (data.length < 2) { el.innerHTML = ''; return; }
 
   const chart = echarts.init(el, null, { renderer: 'svg' });
@@ -182,7 +182,7 @@ function renderLevelFitChart(scores) {
   const insightEl = $('#metrics-level-fit-insight');
   if (!el || typeof echarts === 'undefined') return;
 
-  if (_metricsCharts.levelFit) { try { _metricsCharts.levelFit.dispose(); } catch(e) {} }
+  if (_metricsCharts.levelFit) { try { _metricsCharts.levelFit.dispose(); } catch(e) { /* chart cleanup - expected */ } }
 
   // Group scores by level_fit
   const levels = ['Entry', 'Mid', 'Senior', 'Lead', 'Executive'];
@@ -241,7 +241,7 @@ function renderPipelineFunnel(usage) {
   const el = document.getElementById('metrics-funnel-chart');
   if (!el || typeof echarts === 'undefined') return;
 
-  if (_metricsCharts.funnel) { try { _metricsCharts.funnel.dispose(); } catch(e) {} }
+  if (_metricsCharts.funnel) { try { _metricsCharts.funnel.dispose(); } catch(e) { /* chart cleanup - expected */ } }
 
   const stages = ['applied', 'screened', 'interview', 'offer'];
   const stageLabels = { applied: 'Applied', screened: 'Screened', interview: 'Interview', offer: 'Offer' };
@@ -332,7 +332,7 @@ function formatMetricsDate(isoStr) {
 
 // Resize handler
 window.addEventListener('resize', function() {
-  Object.values(_metricsCharts).forEach(c => { try { c.resize(); } catch(e) {} });
+  Object.values(_metricsCharts).forEach(c => { try { c.resize(); } catch(e) { /* chart resize - expected */ } });
 });
 
 // Search filter for usage log

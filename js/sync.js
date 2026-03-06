@@ -99,8 +99,7 @@ async function syncHealthCheck() {
         }
       }
     }
-  } catch (e) {
-    console.warn('[sync] Health check cloud fetch error:', e.message);
+  } catch(e) { reportError('sync', e); console.warn('[sync] Health check cloud fetch error:', e.message);
   }
 
   // Try dedicated tables for filters and tuning
@@ -114,7 +113,7 @@ async function syncHealthCheck() {
         localStorage.setItem('bj_saved_filters', JSON.stringify(recovered));
         console.log('[sync] Recovered', filters.length, 'filters from user_filters table');
       }
-    } catch (e) { /* table may not exist */ }
+    } catch(e) { reportError('sync:table may not exist', e); }
   }
 
   if (missing.includes('tuning')) {
@@ -132,15 +131,15 @@ async function syncHealthCheck() {
         levelHierarchy = tuningSettings.levelHierarchy || [];
         console.log('[sync] Recovered tuning from user_tuning table');
       }
-    } catch (e) { /* table may not exist */ }
+    } catch(e) { reportError('sync:table may not exist', e); }
   }
 
   // Trigger re-renders for recovered UI data
   if (missing.includes('saved_filters') && typeof renderSavedFilters === 'function') {
-    try { renderSavedFilters(); } catch(e) {}
+    try { renderSavedFilters(); } catch(e) { reportError('sync:sync', e); }
   }
   if (missing.includes('resumes') && typeof renderResumes === 'function') {
-    try { renderResumes(); } catch(e) {}
+    try { renderResumes(); } catch(e) { reportError('sync:sync', e); }
   }
 
   console.log('[sync] Health check recovery complete');

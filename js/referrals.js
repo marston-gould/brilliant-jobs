@@ -63,11 +63,10 @@
       referralStats = stats;
 
       // Fetch referral history
-      const { data: history } = await sb.from('referrals')
-        .select('id, referred_email, attribution_method, status, fraud_score, signup_at, activated_at, rewarded_at')
+      const history = await safeQuery(() => sb.from('referrals').select('id, referred_email, attribution_method, status, fraud_score, signup_at, activated_at, rewarded_at')
         .eq('referrer_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(50), { label: 'referrals:referrals', fallback: [] });
       referralHistory = history || [];
 
       renderReferralHub(container);
@@ -86,8 +85,7 @@
               showToast(`🎉 ${g.name} tier unlocked! You earned ${parts.join(' + ')}`, { type: 'success', duration: 6000 });
             });
           }
-        } catch (bonusErr) {
-          console.warn('[Referrals] Tier bonus check:', bonusErr.message);
+        } catch(bonusErr) { reportError('referrals', bonusErr); console.warn('[Referrals] Tier bonus check:', bonusErr.message);
         }
       }
     } catch (err) {
@@ -419,8 +417,7 @@ Or use my code: ${referralStats.referral_code}`);
         const body = document.getElementById('ref-leaderboard-body');
         if (body) body.innerHTML = '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>';
       }
-    } catch (err) {
-      console.error('[Referrals] Toggle leaderboard error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Toggle leaderboard error:', err);
     }
   };
 
@@ -504,8 +501,7 @@ Or use my code: ${referralStats.referral_code}`);
         channel: channel,
         utm_medium: channel
       });
-    } catch (err) {
-      console.error('[Referrals] Track invite error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Track invite error:', err);
     }
   }
 
@@ -820,8 +816,7 @@ Or use my code: ${referralStats.referral_code}`);
           has_referral_link: !!(row && row.referral_link)
         });
       }
-    } catch (err) {
-      console.error('[Referrals] Status update error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Status update error:', err);
     }
   };
 
@@ -861,8 +856,7 @@ Or use my code: ${referralStats.referral_code}`);
           actionCell.insertBefore(btn, actionCell.firstChild);
         }
       }
-    } catch (err) {
-      console.error('[Referrals] Save referral link error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Save referral link error:', err);
     }
   };
 

@@ -10,7 +10,7 @@ async function loadCollections() {
     const { data, error } = await sb.from('company_collections')
       .select('*').eq('user_id', currentUser.id).order('name');
     if (!error && data) userCollections = data;
-  } catch (e) { console.warn('[BJ] Load collections failed:', e); }
+  } catch(e) { reportError('browsers', e); console.warn('[BJ] Load collections failed:', e); }
 }
 
 // Save or update a collection
@@ -579,10 +579,9 @@ async function loadCompanyBrowser() {
     // Load ghost stats for companies that have data
     let ghostStats = {};
     try {
-      const { data: gs } = await sb.from('company_ghost_stats')
-        .select('company_slug, ghost_rate, avg_response_days, total_applications');
+      const gs = await safeQuery(() => sb.from('company_ghost_stats').select('company_slug, ghost_rate, avg_response_days, total_applications'), { label: 'browsers:company_ghost_stats', fallback: [] });
       (gs || []).forEach(g => { ghostStats[g.company_slug] = g; });
-    } catch (e) { /* ghost stats optional */ }
+    } catch(e) { reportError('browsers:ghost stats optional', e); }
 
     cbAllCompanies = allData.map(c => ({
       slug: c.slug,
@@ -808,16 +807,14 @@ function renderCompanyBrowserList() {
           .like('content_id', slug + '/%');
         if (error || !data || data.length === 0) {
           // Try alternate: get jobs for this company first
-          const { data: jobs } = await sb.from('ats_jobs')
-            .select('id')
+          const jobs = await safeQuery(() => sb.from('ats_jobs').select('id')
             .eq('company_slug', slug)
-            .limit(500);
+            .limit(500), { label: 'browsers:ats_jobs', fallback: [] });
           if (jobs && jobs.length > 0) {
             const jobIds = jobs.map(j => String(j.id));
-            const { data: scores } = await sb.from('content_ai_scores')
-              .select('ai_label')
+            const scores = await safeQuery(() => sb.from('content_ai_scores').select('ai_label')
               .eq('content_type', 'jd')
-              .in('content_id', jobIds);
+              .in('content_id', jobIds), { label: 'browsers:content_ai_scores', fallback: [] });
             renderBreakdown(panel, scores || [], slug);
           } else {
             panel.innerHTML = '<div style="color:var(--text-faint);">No scored job descriptions found for this company.</div>';

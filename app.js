@@ -170,7 +170,7 @@ async function showLoggedIn(user) {
       $('#li-pending').style.display = 'block';
       $('#li-approved').style.display = 'none';
     }
-  } catch (e) {}
+  } catch (e) { reportError("app", e); }
   try {
     var sess = await sb.auth.getSession();
     if (sess.data.session) {
@@ -182,7 +182,7 @@ async function showLoggedIn(user) {
         email: user.email
       }, '*');
     }
-  } catch (e) {}
+  } catch (e) { reportError("app", e); }
 }
 
 // ---- Session check on load ----

@@ -99,7 +99,7 @@ async function _flushUserData() {
     Object.assign(cached, patch);
     localStorage.setItem('_bj_ud_cache', JSON.stringify(cached));
     console.log('[sync] Flushed', Object.keys(patch).join(', '));
-  } catch(e) { console.warn('[sync] Flush error:', e.message); }
+  } catch(e) { reportError('state', e); console.warn('[sync] Flush error:', e.message); }
 }
 
 export async function loadUserData(userId) {
@@ -117,7 +117,7 @@ export async function loadUserData(userId) {
       else if (isEmpty(cloudVal) && !isEmpty(localParsed)) { needsSync = true; _udPendingKeys.add(shortKey); }
     }
     if (needsSync) _flushUserData();
-  } catch(e) { console.warn('[sync] Load error:', e.message); }
+  } catch(e) { reportError('state', e); console.warn('[sync] Load error:', e.message); }
 }
 
 export 

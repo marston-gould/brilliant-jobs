@@ -89,7 +89,7 @@
         if (!sessionStorage.getItem(SOURCE_KEY)) {
           sessionStorage.setItem(SOURCE_KEY, 'cookie_return');
         }
-      } catch(e) {}
+      } catch(e) { reportError("referral-capture", e); }
     }
   }
 

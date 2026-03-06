@@ -266,7 +266,7 @@ async function fetchAndRenderStats() {
         mvSourceTotals = mvResults[0];
         mvSourceTimeline = mvResults[1];
         mvLandingStats = mvResults[2];
-      } catch (e) { console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
+      } catch(e) { reportError('stats', e); console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
     }
 
     // A15 S5: Render stat cards from MV when in All mode (instant, no row aggregation)
@@ -1086,7 +1086,7 @@ async function fetchSourceTotalsFromMV() {
       }
       return totals;
     }
-  } catch (e) { console.warn('[Stats] MV source totals failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV source totals failed:', e.message); }
   return null;
 }
 
@@ -1098,7 +1098,7 @@ async function fetchSourceBreakdownFromMV() {
       return sb.from('mv_source_breakdown').select('ats_source,week,jobs_added,companies,refreshed_at').order('week', { ascending: false });
     }, { ttl: 600000 }); // 10 min
     return (result && result.data) || null;
-  } catch (e) { console.warn('[Stats] MV source breakdown failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV source breakdown failed:', e.message); }
   return null;
 }
 
@@ -1110,7 +1110,7 @@ async function fetchLandingStatsFromMV() {
       return sb.from('mv_landing_stats').select('*').single();
     }, { ttl: 600000 }); // 10 min — matches MV refresh cycle
     return (result && result.data) || null;
-  } catch (e) { console.warn('[Stats] MV landing stats failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV landing stats failed:', e.message); }
   return null;
 }
 
@@ -1171,7 +1171,7 @@ async function checkMVStaleness() {
       var ageStr = ageMins < 60 ? ageMins + 'min ago' : Math.round(ageMins / 60) + 'h ' + (ageMins % 60) + 'min ago';
       return { fresh: ageMins <= 15, ageMs: ageMs, ageStr: ageStr, refreshedAt: result.data.refreshed_at };
     }
-  } catch (e) { console.warn('[Stats] MV staleness check failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV staleness check failed:', e.message); }
   return { fresh: false, ageStr: 'unknown', refreshedAt: null };
 }
 

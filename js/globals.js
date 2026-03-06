@@ -5,8 +5,25 @@
 
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// DO-002: Connection management — Supavisor pooler enabled at project level.
+// REST API (PostgREST) is automatically pooled. Client-side uses REST only.
+// Edge Functions use pooled connection via SUPABASE_SERVICE_ROLE_KEY.
+// Global fetch wrapper adds 30s timeout to prevent hung connections.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  db: { schema: 'public' },
+  auth: { persistSession: true, autoRefreshToken: true },
+  global: {
+    fetch: function(url, options) {
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+      return fetch(url, Object.assign({}, options, { signal: controller.signal }))
+        .finally(function() { clearTimeout(timeoutId); });
+    }
+  }
+});
 window.bjSupabase = sb; // Expose for IIFE modules (referrals.js, etc.)
+window._bjSupa = sb; // Legacy alias for admin modules
 
 // PostHog analytics (A13)
 window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
@@ -722,7 +739,7 @@ function _handleStorageFull(failedKey) {
         localStorage.setItem(key, JSON.stringify(arr));
         console.log('[BJ] Trimmed ' + key + ' to 500 items');
       }
-    } catch (e) {}
+    } catch (e) { reportError('storage-trim', e); }
   });
   // Trim app_history to last 200
   try {
@@ -732,7 +749,7 @@ function _handleStorageFull(failedKey) {
       saveUserData('bj_app_history', JSON.stringify(hist));
       console.log('[BJ] Trimmed bj_app_history to 200 items');
     }
-  } catch (e) {}
+  } catch (e) { reportError("storage-trim-history", e); }
 }
 
 // ============================================================
@@ -869,7 +886,7 @@ function getCacheStats() {
     var ageMs = now - e.ts;
     var pctLife = Math.round((ageMs / tierTTL) * 100);
     // rough memory estimate: JSON serialization length
-    try { memEstimate += JSON.stringify(e.data).length; } catch(x) {}
+    try { memEstimate += JSON.stringify(e.data).length; } catch(x) { /* circular ref ok */ }
     return {
       key: k,
       age: Math.round(ageMs / 1000) + 's',
@@ -1037,10 +1054,29 @@ function initGlobalErrorHandlers() {
 }
 
 /** Safe Supabase query wrapper — handles offline, retries, fallback */
+// ── Error reporting helper ──
+function reportError(label, error, extra) {
+  var msg = error && error.message ? error.message : String(error);
+  console.warn('[BJ] ' + label + ' failed:', msg);
+  try {
+    if (window.posthog) {
+      posthog.capture('query_error', {
+        label: label,
+        error_message: msg,
+        error_stack: error && error.stack ? error.stack.slice(0, 500) : undefined,
+        page: window.location.pathname,
+        timestamp: new Date().toISOString(),
+        ...(extra || {})
+      });
+    }
+  } catch (_) { /* never let reporting break the app */ }
+}
+
 async function safeQuery(queryFn, opts) {
   var label = (opts && opts.label) || 'query';
   var fallback = opts && opts.fallback;
   var retry = opts && opts.retry !== false;
+  var silent = opts && opts.silent;
 
   if (!_isOnline) {
     console.warn('[BJ] Offline — skipping ' + label);
@@ -1061,7 +1097,13 @@ async function safeQuery(queryFn, opts) {
       return result.data;
     }
   } catch (e) {
-    console.warn('[BJ] ' + label + ' failed:', e.message);
+    if (!silent) reportError(label, e);
     return fallback !== undefined ? fallback : null;
   }
+}
+
+// ── Convenience wrapper: safeRpc ──
+async function safeRpc(fnName, params, opts) {
+  var label = (opts && opts.label) || ('rpc:' + fnName);
+  return safeQuery(function() { return sb.rpc(fnName, params); }, { ...opts, label: label });
 }

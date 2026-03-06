@@ -29,10 +29,7 @@ const jsFiles = [
   'js/admin-shell.js',
 ];
 
-const combined = jsFiles.map(f => '// === ' + f + ' ===
-' + readFileSync(f, 'utf-8')).join('
-
-');
+const combined = jsFiles.map(f => `// === ${f} ===\n${readFileSync(f, 'utf-8')}`).join('\n\n');
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/admin.js', combined);

@@ -800,8 +800,8 @@ tuningInputs.forEach(t => {
 
     // ref_city_radius
     try {
-      const { data: refData } = await sb.from('ref_city_radius').select('city, state, type')
-        .or(`city.ilike.%${query}%,aliases.cs.{${query}}`).limit(10);
+      const refData = await safeQuery(() => sb.from('ref_city_radius').select('city, state, type')
+        .or(`city.ilike.%${query}%,aliases.cs.{${query}}`).limit(10), { label: 'tuning:ref_city_radius', fallback: [] });
       if (refData) {
         for (const r of refData) {
           const display = r.type === 'metro' ? r.city : `${r.city}, ${r.state}`;
@@ -809,12 +809,12 @@ tuningInputs.forEach(t => {
           if (!seenKeys.has(key)) { seenKeys.add(key); results.push({ display, badge: r.type === 'metro' ? 'metro' : 'city' }); }
         }
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     // location_cache
     try {
-      const { data: cacheData } = await sb.from('location_cache').select('raw_input, normalized')
-        .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`).limit(8);
+      const cacheData = await safeQuery(() => sb.from('location_cache').select('raw_input, normalized')
+        .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`).limit(8), { label: 'tuning:location_cache', fallback: [] });
       if (cacheData) {
         for (const loc of cacheData) {
           const display = loc.normalized || loc.raw_input;
@@ -822,7 +822,7 @@ tuningInputs.forEach(t => {
           if (!seenKeys.has(key) && !key.startsWith('remote')) { seenKeys.add(key); results.push({ display, badge: 'pin' }); }
         }
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     // Countries
     var COUNTRIES = ['Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Czechia','Denmark','Djibouti','Dominican Republic','DR Congo','Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon','Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kosovo','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein','Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Mauritania','Mauritius','Mexico','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Sierra Leone','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Togo','Trinidad and Tobago','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','UK','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
@@ -964,7 +964,7 @@ tuningInputs.forEach(t => {
           name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
         }));
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     try {
       const { data: connData } = await sb
@@ -988,7 +988,7 @@ tuningInputs.forEach(t => {
             }
           });
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     return results;
   }
@@ -1123,9 +1123,8 @@ async function updatePoorMatchSuggestions() {
   const needsBackfill = hiddenJobIds.filter(h => !h.title);
   if (needsBackfill.length > 0) {
     const ids = needsBackfill.map(h => h.id);
-    const { data: jobRows } = await sb.from('ats_jobs')
-      .select('greenhouse_id, title, company_name, company_slug, url')
-      .in('greenhouse_id', ids);
+    const jobRows = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, company_slug, url')
+      .in('greenhouse_id', ids), { label: 'tuning:ats_jobs', fallback: [] });
     if (jobRows) {
       const lookup = Object.fromEntries(jobRows.map(j => [j.greenhouse_id, j]));
       let changed = false;
@@ -1326,7 +1325,7 @@ async function analyzeHiddenJob(jobId, btn) {
   
   try {
     var session = null;
-    try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
+    try { session = (await sb.auth.getSession()).data.session; } catch(e) { reportError('tuning:tuning', e); }
     if (!session) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Please sign in to use AI features.</div>';
       return;

@@ -22,8 +22,25 @@ var BJ_VERSION = 'v7.22';
 
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// DO-002: Connection management — Supavisor pooler enabled at project level.
+// REST API (PostgREST) is automatically pooled. Client-side uses REST only.
+// Edge Functions use pooled connection via SUPABASE_SERVICE_ROLE_KEY.
+// Global fetch wrapper adds 30s timeout to prevent hung connections.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  db: { schema: 'public' },
+  auth: { persistSession: true, autoRefreshToken: true },
+  global: {
+    fetch: function(url, options) {
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+      return fetch(url, Object.assign({}, options, { signal: controller.signal }))
+        .finally(function() { clearTimeout(timeoutId); });
+    }
+  }
+});
 window.bjSupabase = sb; // Expose for IIFE modules (referrals.js, etc.)
+window._bjSupa = sb; // Legacy alias for admin modules
 
 // PostHog analytics (A13)
 window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
@@ -739,7 +756,7 @@ function _handleStorageFull(failedKey) {
         localStorage.setItem(key, JSON.stringify(arr));
         console.log('[BJ] Trimmed ' + key + ' to 500 items');
       }
-    } catch (e) {}
+    } catch (e) { reportError('storage-trim', e); }
   });
   // Trim app_history to last 200
   try {
@@ -749,7 +766,7 @@ function _handleStorageFull(failedKey) {
       saveUserData('bj_app_history', JSON.stringify(hist));
       console.log('[BJ] Trimmed bj_app_history to 200 items');
     }
-  } catch (e) {}
+  } catch (e) { reportError("storage-trim-history", e); }
 }
 
 // ============================================================
@@ -886,7 +903,7 @@ function getCacheStats() {
     var ageMs = now - e.ts;
     var pctLife = Math.round((ageMs / tierTTL) * 100);
     // rough memory estimate: JSON serialization length
-    try { memEstimate += JSON.stringify(e.data).length; } catch(x) {}
+    try { memEstimate += JSON.stringify(e.data).length; } catch(x) { /* circular ref ok */ }
     return {
       key: k,
       age: Math.round(ageMs / 1000) + 's',
@@ -1054,10 +1071,29 @@ function initGlobalErrorHandlers() {
 }
 
 /** Safe Supabase query wrapper — handles offline, retries, fallback */
+// ── Error reporting helper ──
+function reportError(label, error, extra) {
+  var msg = error && error.message ? error.message : String(error);
+  console.warn('[BJ] ' + label + ' failed:', msg);
+  try {
+    if (window.posthog) {
+      posthog.capture('query_error', {
+        label: label,
+        error_message: msg,
+        error_stack: error && error.stack ? error.stack.slice(0, 500) : undefined,
+        page: window.location.pathname,
+        timestamp: new Date().toISOString(),
+        ...(extra || {})
+      });
+    }
+  } catch (_) { /* never let reporting break the app */ }
+}
+
 async function safeQuery(queryFn, opts) {
   var label = (opts && opts.label) || 'query';
   var fallback = opts && opts.fallback;
   var retry = opts && opts.retry !== false;
+  var silent = opts && opts.silent;
 
   if (!_isOnline) {
     console.warn('[BJ] Offline — skipping ' + label);
@@ -1078,9 +1114,15 @@ async function safeQuery(queryFn, opts) {
       return result.data;
     }
   } catch (e) {
-    console.warn('[BJ] ' + label + ' failed:', e.message);
+    if (!silent) reportError(label, e);
     return fallback !== undefined ? fallback : null;
   }
+}
+
+// ── Convenience wrapper: safeRpc ──
+async function safeRpc(fnName, params, opts) {
+  var label = (opts && opts.label) || ('rpc:' + fnName);
+  return safeQuery(function() { return sb.rpc(fnName, params); }, { ...opts, label: label });
 }
 
 
@@ -1186,8 +1228,7 @@ async function syncHealthCheck() {
         }
       }
     }
-  } catch (e) {
-    console.warn('[sync] Health check cloud fetch error:', e.message);
+  } catch(e) { reportError('sync', e); console.warn('[sync] Health check cloud fetch error:', e.message);
   }
 
   // Try dedicated tables for filters and tuning
@@ -1201,7 +1242,7 @@ async function syncHealthCheck() {
         localStorage.setItem('bj_saved_filters', JSON.stringify(recovered));
         console.log('[sync] Recovered', filters.length, 'filters from user_filters table');
       }
-    } catch (e) { /* table may not exist */ }
+    } catch(e) { reportError('sync:table may not exist', e); }
   }
 
   if (missing.includes('tuning')) {
@@ -1219,15 +1260,15 @@ async function syncHealthCheck() {
         levelHierarchy = tuningSettings.levelHierarchy || [];
         console.log('[sync] Recovered tuning from user_tuning table');
       }
-    } catch (e) { /* table may not exist */ }
+    } catch(e) { reportError('sync:table may not exist', e); }
   }
 
   // Trigger re-renders for recovered UI data
   if (missing.includes('saved_filters') && typeof renderSavedFilters === 'function') {
-    try { renderSavedFilters(); } catch(e) {}
+    try { renderSavedFilters(); } catch(e) { reportError('sync:sync', e); }
   }
   if (missing.includes('resumes') && typeof renderResumes === 'function') {
-    try { renderResumes(); } catch(e) {}
+    try { renderResumes(); } catch(e) { reportError('sync:sync', e); }
   }
 
   console.log('[sync] Health check recovery complete');
@@ -1552,8 +1593,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
         data.forEach(r => allIds.add(r.greenhouse_id));
       }
       console.log(`[BJ] Batched state search: [${simpleCodes.join(',')}] → ${data?.length || 0} jobs`);
-    } catch (e) {
-      console.warn('[BJ] Batched state search failed', e);
+    } catch(e) { reportError('job-feed', e); console.warn('[BJ] Batched state search failed', e);
     }
   }
 
@@ -1600,8 +1640,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
         data.forEach(r => allIds.add(r.greenhouse_id));
       }
       console.log(`[BJ] Remote search → ${data?.length || 0} jobs`);
-    } catch (e) {
-      console.warn('[BJ] Remote search failed', e);
+    } catch(e) { reportError('job-feed', e); console.warn('[BJ] Remote search failed', e);
     }
   }
 
@@ -1620,8 +1659,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
           if (!error && data) {
             data.forEach(r => allIds.add(r.greenhouse_id));
           }
-        } catch (e) {
-          console.warn('[BJ] Text location search failed for', v, e);
+        } catch(e) { reportError('job-feed', e); console.warn('[BJ] Text location search failed for', v, e);
         }
       }
     }
@@ -2609,8 +2647,7 @@ async function updateJobStatsFromFilters(filters) {
         const uniqueCos = new Set();
         if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
         companyCountVal = uniqueCos.size;
-      } catch(coErr) {
-        console.warn('[BJ] Company count error:', coErr.message);
+      } catch(coErr) { reportError('job-feed', coErr); console.warn('[BJ] Company count error:', coErr.message);
       }
 
       return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: companyCountVal } };
@@ -2634,7 +2671,7 @@ async function updateJobStatsFromFilters(filters) {
       var cos = new Set();
       jobs.forEach(function(j) { if (j.company_slug) cos.add(j.company_slug); });
       updateJobStats(jobs.length, cos.size, 0, 0);
-    } catch (e2) {}
+    } catch(e2) { reportError('job-feed:job-feed', e2); }
   }
 }
 
@@ -2664,7 +2701,7 @@ function updateIntelInsight(total, companies, newToday) {
     var sf = typeof savedFilters !== 'undefined' ? savedFilters : [];
     var active = sf.find(function(f) { return f.active; });
     if (active) filterName = active.name || '';
-  } catch(e) {}
+  } catch(e) { reportError('job-feed:job-feed', e); }
 
   if (withSalary.length >= 3) {
     // Salary insight
@@ -3002,7 +3039,7 @@ window.addEventListener('ai-scoring-prefs-changed', function(e) {
       if (resp.data && resp.data.ai_scoring_prefs) {
         _userAiScoringPrefsCache = resp.data.ai_scoring_prefs;
       }
-    } catch (e) { /* silent — prefs default to no exclusions */ }
+    } catch(e) { reportError('job-feed:silent — prefs default to no exclusions', e); }
   }, 1000);
 })();
 
@@ -3135,8 +3172,7 @@ async function fetchFraudScores(jobs) {
         };
       });
     }
-  } catch (e) {
-    console.warn('[BJ] Fraud score fetch failed:', e);
+  } catch(e) { reportError('job-feed', e); console.warn('[BJ] Fraud score fetch failed:', e);
   }
 }
 
@@ -3183,8 +3219,7 @@ async function fetchAiJdScores(jobs) {
         });
       }
     }
-  } catch (e) {
-    console.warn('[BJ] AI JD score fetch failed:', e);
+  } catch(e) { reportError('job-feed', e); console.warn('[BJ] AI JD score fetch failed:', e);
   }
 }
 
@@ -3748,7 +3783,7 @@ async function backgroundEnrichSalary() {
 
         // Polite delay between API calls
         await new Promise(r => setTimeout(r, 300));
-      } catch (e) { /* skip failed jobs silently */ }
+      } catch(e) { reportError('job-feed:skip failed jobs silently', e); }
     }
   } finally {
     _enrichRunning = false;
@@ -3853,7 +3888,7 @@ async function searchCompanies(query) {
         name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
       }));
     }
-  } catch (e) { console.warn('[BJ] ATS company search failed:', e); }
+  } catch(e) { reportError('sort-bar', e); console.warn('[BJ] ATS company search failed:', e); }
 
   try {
     // Search user's connections by parsed_company
@@ -3879,7 +3914,7 @@ async function searchCompanies(query) {
           }
         });
     }
-  } catch (e) { console.warn('[BJ] Connection company search failed:', e); }
+  } catch(e) { reportError('sort-bar', e); console.warn('[BJ] Connection company search failed:', e); }
 
   renderCompanyDropdown(results, query);
 }
@@ -4461,7 +4496,7 @@ async function batchFetchJDContent(jobs, maxFetch) {
         enrichJob(job.greenhouse_id, { content: job.content });
       }
       await new Promise(function(r){ setTimeout(r, 200); });
-    } catch (e) { /* skip */ }
+    } catch(e) { reportError('keywords:skip', e); }
   }
   return fetched;
 }
@@ -5009,7 +5044,7 @@ async function runReadinessAnalysis(opts) {
           }
           window.triggerScoreNotification(_user.id, _jobId || 'readiness-' + _ri, _sd.overallScore, _analysisSummary, _jobTitle, _companyName);
         }
-      } catch(e) { console.warn('[score-notif] Hook error:', e.message); }
+      } catch(e) { reportError('keywords', e); console.warn('[score-notif] Hook error:', e.message); }
     })();
   }
 
@@ -6255,7 +6290,7 @@ async function bjSubmitFeedback(stateKey) {
           .eq('session_id', state.rewriteResult.session_id)
           .eq('round_number', state.rewriteResult.round_number || 1);
       }
-    } catch (e) { console.error('[BJ] Feedback save error:', e); }
+    } catch(e) { reportError('keywords', e); console.error('[BJ] Feedback save error:', e); }
   }
 
   // G33: Call Revision Assessor
@@ -6878,7 +6913,7 @@ async function openJobModal(jobId, e) {
   let job = allJobs.find(j => j.greenhouse_id === jobId);
   if (!job) {
     // Fallback: quick fetch just this one row
-    const { data } = await sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single();
+    const data = await safeQuery(() => sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single(), { label: 'keywords:ats_jobs', fallback: null });
     job = data;
   }
 
@@ -7102,7 +7137,7 @@ function toggleApplyForm() {
         // Cross-origin: can't read URL, but we can detect if content shrinks
         // (confirmation page is much shorter than the application form)
         // Also try to detect via frame load events
-      } catch(e) {}
+      } catch(e) { reportError('keywords:keywords', e); }
     }, 1000);
 
     // Listen for the iframe to load a new page (confirmation page after submission)
@@ -7433,8 +7468,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         return;
       }
     }
-  } catch (err) {
-    console.log('[BJ] Greenhouse API fetch failed:', err.message);
+  } catch(err) { reportError('keywords', err); console.log('[BJ] Greenhouse API fetch failed:', err.message);
   }
 
   // Fallback: try using company slug from ats_companies + greenhouse_id
@@ -7483,8 +7517,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         return;
       }
     }
-  } catch (err) {
-    console.log('[BJ] Slug fallback failed:', err.message);
+  } catch(err) { reportError('keywords', err); console.log('[BJ] Slug fallback failed:', err.message);
   }
 
   // Try Edge Function proxy as backup
@@ -7504,8 +7537,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         return;
       }
     }
-  } catch (err) {
-    console.log('[BJ] Edge function fallback failed:', err.message);
+  } catch(err) { reportError('keywords', err); console.log('[BJ] Edge function fallback failed:', err.message);
   }
 
   // Final fallback
@@ -8080,7 +8112,7 @@ async function bjSaveCoverLetter(data, filterName) {
         scoreCoverLetterAI(session.data.session, clText, filterName);
       }
     }
-  } catch (e) { console.error('[BJ] Cover letter save exception:', e); }
+  } catch(e) { reportError('keywords', e); console.error('[BJ] Cover letter save exception:', e); }
 }
 
 async function bjRenderCoverLetterArchive() {
@@ -8103,7 +8135,7 @@ async function bjRenderCoverLetterArchive() {
         .eq('content_type', 'cover_letter')
         .in('content_id', clIds);
       if (scores) scores.forEach(function(s) { aiScores[s.content_id] = s; });
-    } catch (e) { console.warn('[ai-score] CL score fetch error:', e.message); }
+    } catch(e) { reportError('keywords', e); console.warn('[ai-score] CL score fetch error:', e.message); }
 
     container.style.display = '';
     var html = '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">';
@@ -8160,7 +8192,7 @@ async function bjRenderCoverLetterArchive() {
 async function bjDeleteCoverLetter(id) {
   if (!confirm('Delete this cover letter?')) return;
   try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
-  catch (e) { console.error('[BJ] Delete cover letter error:', e); }
+  catch(e) { reportError('keywords', e); console.error('[BJ] Delete cover letter error:', e); }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -8214,8 +8246,7 @@ async function scoreCoverLetterAI(session, text, filterName) {
       // Refresh archive to show badge
       bjRenderCoverLetterArchive();
     }
-  } catch (e) {
-    console.warn('[ai-score] Cover letter scoring error:', e.message);
+  } catch(e) { reportError('keywords', e); console.warn('[ai-score] Cover letter scoring error:', e.message);
   }
 }
 
@@ -8292,8 +8323,7 @@ window.bjRescoreCoverLetter = async function(clId) {
         });
       }
     }
-  } catch (e) {
-    console.warn('[ai-score] CL rescore error:', e.message);
+  } catch(e) { reportError('keywords', e); console.warn('[ai-score] CL rescore error:', e.message);
   } finally {
     // Start cooldown timer on button
     _startClRescoreCooldown(clId);
@@ -8337,7 +8367,7 @@ async function loadCollections() {
     const { data, error } = await sb.from('company_collections')
       .select('*').eq('user_id', currentUser.id).order('name');
     if (!error && data) userCollections = data;
-  } catch (e) { console.warn('[BJ] Load collections failed:', e); }
+  } catch(e) { reportError('browsers', e); console.warn('[BJ] Load collections failed:', e); }
 }
 
 // Save or update a collection
@@ -8906,10 +8936,9 @@ async function loadCompanyBrowser() {
     // Load ghost stats for companies that have data
     let ghostStats = {};
     try {
-      const { data: gs } = await sb.from('company_ghost_stats')
-        .select('company_slug, ghost_rate, avg_response_days, total_applications');
+      const gs = await safeQuery(() => sb.from('company_ghost_stats').select('company_slug, ghost_rate, avg_response_days, total_applications'), { label: 'browsers:company_ghost_stats', fallback: [] });
       (gs || []).forEach(g => { ghostStats[g.company_slug] = g; });
-    } catch (e) { /* ghost stats optional */ }
+    } catch(e) { reportError('browsers:ghost stats optional', e); }
 
     cbAllCompanies = allData.map(c => ({
       slug: c.slug,
@@ -9135,16 +9164,14 @@ function renderCompanyBrowserList() {
           .like('content_id', slug + '/%');
         if (error || !data || data.length === 0) {
           // Try alternate: get jobs for this company first
-          const { data: jobs } = await sb.from('ats_jobs')
-            .select('id')
+          const jobs = await safeQuery(() => sb.from('ats_jobs').select('id')
             .eq('company_slug', slug)
-            .limit(500);
+            .limit(500), { label: 'browsers:ats_jobs', fallback: [] });
           if (jobs && jobs.length > 0) {
             const jobIds = jobs.map(j => String(j.id));
-            const { data: scores } = await sb.from('content_ai_scores')
-              .select('ai_label')
+            const scores = await safeQuery(() => sb.from('content_ai_scores').select('ai_label')
               .eq('content_type', 'jd')
-              .in('content_id', jobIds);
+              .in('content_id', jobIds), { label: 'browsers:content_ai_scores', fallback: [] });
             renderBreakdown(panel, scores || [], slug);
           } else {
             panel.innerHTML = '<div style="color:var(--text-faint);">No scored job descriptions found for this company.</div>';
@@ -9473,7 +9500,7 @@ async function getRefCityRadius() {
         _refCityCache = parsed.data;
         return _refCityCache;
       }
-    } catch (e) {}
+    } catch(e) { reportError('location:location', e); }
   }
   // Fetch static JSON
   try {
@@ -9483,7 +9510,7 @@ async function getRefCityRadius() {
       localStorage.setItem('bj_ref_city_radius', JSON.stringify({ data: _refCityCache, ts: Date.now() }));
       return _refCityCache;
     }
-  } catch (e) { console.warn('[Location] Failed to load ref_city_radius.json:', e); }
+  } catch(e) { reportError('location', e); console.warn('[Location] Failed to load ref_city_radius.json:', e); }
   // Fallback to Supabase
   _refCityCache = [];
   return _refCityCache;
@@ -9661,8 +9688,7 @@ async function searchLocations(query) {
     });
 
     renderLocationDropdown(results.slice(0, 10), query);
-  } catch (e) {
-    console.warn('[BJ] Location search failed:', e);
+  } catch(e) { reportError('location', e); console.warn('[BJ] Location search failed:', e);
   }
 }
 
@@ -9864,8 +9890,7 @@ async function searchLocationsForNot(query) {
     }
 
     renderLocationNotDropdown(results.slice(0, 10), query);
-  } catch (e) {
-    console.warn('[BJ] NOT location search failed:', e);
+  } catch(e) { reportError('location', e); console.warn('[BJ] NOT location search failed:', e);
   }
 }
 
@@ -10721,8 +10746,7 @@ async function updateSavedFilterCounts() {
       savedFilters[i].jobsMonth = c3;
       savedFilters[i].jobsPrevWeek = c4;
       savedFilters[i].trendPct = trendPct;
-    } catch (e) {
-      console.error(`Count error for filter ${i} "${sf.name}":`, e);
+    } catch(e) { reportError('location', e); console.error(`Count error for filter ${i} "${sf.name}":`, e);
     }
   }
   saveUserData('bj_saved_filters', JSON.stringify(savedFilters));
@@ -10935,7 +10959,7 @@ async function _doAiFilterAnalysis() {
   try {
     // Get auth token
     var session = null;
-    try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
+    try { session = (await sb.auth.getSession()).data.session; } catch(e) { reportError('location:location', e); }
     if (!session) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Please sign in to use AI features.</div>';
       return;
@@ -11448,8 +11472,7 @@ async function migratePipelineToSupabase() {
   if (!currentUser?.id) return;
 
   // Check if already migrated — if Supabase has data, skip
-  const { data: existing } = await sb.from('user_pipeline')
-    .select('id').eq('user_id', currentUser.id).limit(1);
+  const existing = await safeQuery(() => sb.from('user_pipeline').select('id').eq('user_id', currentUser.id).limit(1), { label: 'pipeline:user_pipeline', fallback: [] });
   if (existing?.length) {
     console.log('[BJ] Pipeline already in Supabase, skipping migration');
     return false;
@@ -11475,9 +11498,8 @@ async function migratePipelineToSupabase() {
   for (let i = 0; i < idList.length; i += 100) {
     const batch = idList.slice(i, i + 100);
     try {
-      const { data } = await sb.from('ats_jobs')
-        .select('greenhouse_id, title, company_name, ats_source, status')
-        .in('greenhouse_id', batch);
+      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, ats_source, status')
+        .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) data.forEach(j => { jobMap[j.greenhouse_id] = j; });
     } catch (e) { console.error('[BJ] Migration fetch error:', e); toastWarning('Pipeline migration data fetch failed'); }
   }
@@ -11714,9 +11736,8 @@ async function renderPipeline() {
   for (let i = 0; i < allIds.length; i += batchSize) {
     const batch = allIds.slice(i, i + batchSize);
     try {
-      const { data } = await sb.from('ats_jobs')
-        .select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
-        .in('greenhouse_id', batch);
+      const data = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, location, loc_display, status, closed_at, first_seen_at, content, salary_min, salary_max')
+        .in('greenhouse_id', batch), { label: 'pipeline:ats_jobs', fallback: [] });
       if (data) allJobData = allJobData.concat(data);
     } catch (e) { console.error('[BJ] Pipeline fetch error:', e); toastWarning('Some pipeline job details failed to load'); }
   }
@@ -12220,7 +12241,7 @@ async function saveManualPipelineEntry() {
   // Derive company domain from URL or name
   let companyDomain = '';
   if (url) {
-    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch (e) {}
+    try { companyDomain = new URL(url).hostname.replace('www.', ''); } catch(e) { reportError('pipeline:pipeline', e); }
   }
   if (!companyDomain) {
     companyDomain = company.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
@@ -12391,11 +12412,10 @@ function showRecruiterResults(jobId, company, contacts, cached) {
 async function loadRecruiterContacts() {
   if (!currentUser?.id) return {};
   try {
-    const { data } = await sb.from('recruiter_contacts')
-      .select('company_name, recruiter_email, recruiter_name, recruiter_title, confidence_score')
+    const data = await safeQuery(() => sb.from('recruiter_contacts').select('company_name, recruiter_email, recruiter_name, recruiter_title, confidence_score')
       .eq('user_id', currentUser.id)
       .order('confidence_score', { ascending: false })
-      .limit(200);
+      .limit(200), { label: 'pipeline:recruiter_contacts', fallback: [] });
     if (!data) return {};
     const byCompany = {};
     data.forEach(c => {
@@ -13215,8 +13235,8 @@ tuningInputs.forEach(t => {
 
     // ref_city_radius
     try {
-      const { data: refData } = await sb.from('ref_city_radius').select('city, state, type')
-        .or(`city.ilike.%${query}%,aliases.cs.{${query}}`).limit(10);
+      const refData = await safeQuery(() => sb.from('ref_city_radius').select('city, state, type')
+        .or(`city.ilike.%${query}%,aliases.cs.{${query}}`).limit(10), { label: 'tuning:ref_city_radius', fallback: [] });
       if (refData) {
         for (const r of refData) {
           const display = r.type === 'metro' ? r.city : `${r.city}, ${r.state}`;
@@ -13224,12 +13244,12 @@ tuningInputs.forEach(t => {
           if (!seenKeys.has(key)) { seenKeys.add(key); results.push({ display, badge: r.type === 'metro' ? 'metro' : 'city' }); }
         }
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     // location_cache
     try {
-      const { data: cacheData } = await sb.from('location_cache').select('raw_input, normalized')
-        .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`).limit(8);
+      const cacheData = await safeQuery(() => sb.from('location_cache').select('raw_input, normalized')
+        .or(`raw_input.ilike.%${query}%,normalized.ilike.%${query}%`).limit(8), { label: 'tuning:location_cache', fallback: [] });
       if (cacheData) {
         for (const loc of cacheData) {
           const display = loc.normalized || loc.raw_input;
@@ -13237,7 +13257,7 @@ tuningInputs.forEach(t => {
           if (!seenKeys.has(key) && !key.startsWith('remote')) { seenKeys.add(key); results.push({ display, badge: 'pin' }); }
         }
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     // Countries
     var COUNTRIES = ['Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cambodia','Cameroon','Canada','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Czechia','Denmark','Djibouti','Dominican Republic','DR Congo','Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon','Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Ivory Coast','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kosovo','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein','Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Mauritania','Mauritius','Mexico','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman','Pakistan','Palestine','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Sierra Leone','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Togo','Trinidad and Tobago','Tunisia','Turkey','Turkmenistan','Uganda','Ukraine','United Arab Emirates','United Kingdom','UK','United States','Uruguay','Uzbekistan','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
@@ -13379,7 +13399,7 @@ tuningInputs.forEach(t => {
           name: c.name || c.slug, slug: c.slug, source: 'ats', ats: c.source || 'greenhouse'
         }));
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     try {
       const { data: connData } = await sb
@@ -13403,7 +13423,7 @@ tuningInputs.forEach(t => {
             }
           });
       }
-    } catch (e) {}
+    } catch(e) { reportError('tuning:tuning', e); }
 
     return results;
   }
@@ -13538,9 +13558,8 @@ async function updatePoorMatchSuggestions() {
   const needsBackfill = hiddenJobIds.filter(h => !h.title);
   if (needsBackfill.length > 0) {
     const ids = needsBackfill.map(h => h.id);
-    const { data: jobRows } = await sb.from('ats_jobs')
-      .select('greenhouse_id, title, company_name, company_slug, url')
-      .in('greenhouse_id', ids);
+    const jobRows = await safeQuery(() => sb.from('ats_jobs').select('greenhouse_id, title, company_name, company_slug, url')
+      .in('greenhouse_id', ids), { label: 'tuning:ats_jobs', fallback: [] });
     if (jobRows) {
       const lookup = Object.fromEntries(jobRows.map(j => [j.greenhouse_id, j]));
       let changed = false;
@@ -13741,7 +13760,7 @@ async function analyzeHiddenJob(jobId, btn) {
   
   try {
     var session = null;
-    try { session = (await sb.auth.getSession()).data.session; } catch(e) {}
+    try { session = (await sb.auth.getSession()).data.session; } catch(e) { reportError('tuning:tuning', e); }
     if (!session) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Please sign in to use AI features.</div>';
       return;
@@ -13979,8 +13998,7 @@ function renderResumes() {
           saveResumes();
           renderResumes();
         }
-      } catch (e) {
-        console.warn('[resume-render] Cloud recovery failed:', e);
+      } catch(e) { reportError('resumes', e); console.warn('[resume-render] Cloud recovery failed:', e);
       }
     })();
   }
@@ -14562,8 +14580,7 @@ async function reconcileResumeArchive() {
       renderResumes();
       console.log('[resume-sync] Reconciliation complete — synced ' + resumes.length + ' resumes');
     }
-  } catch (e) {
-    console.warn('[resume-sync] Reconciliation error:', e);
+  } catch(e) { reportError('resumes', e); console.warn('[resume-sync] Reconciliation error:', e);
   }
 }
 
@@ -14667,8 +14684,7 @@ async function reExtractStuckResumes() {
       } else {
         console.log('[BJ] Re-extraction got no text for', r.name);
       }
-    } catch (e) {
-      console.error('[BJ] Re-extraction error for', r.name, e);
+    } catch(e) { reportError('resumes', e); console.error('[BJ] Re-extraction error for', r.name, e);
     }
   }
   if (changed) {
@@ -15103,7 +15119,7 @@ window.downloadResume = async function(idx) {
           bjFileStore.put(r.id, blob).catch(() => {});
           console.log('[resume-storage] Restored from cloud:', r.storagePath);
         }
-      } catch (e) { console.warn('[resume-storage] Download failed:', e.message); }
+      } catch(e) { reportError('resumes', e); console.warn('[resume-storage] Download failed:', e.message); }
     }
     if (file) {
       const url = URL.createObjectURL(file);
@@ -15497,8 +15513,7 @@ window.renderGapInsights = async function() {
     contentEl.innerHTML = html;
     container.style.display = '';
 
-  } catch (e) {
-    console.warn('[BJ] renderGapInsights error:', e.message);
+  } catch(e) { reportError('resumes', e); console.warn('[BJ] renderGapInsights error:', e.message);
   }
 };
 
@@ -15966,8 +15981,7 @@ async function loadNotifPrefs() {
     applyPrefsToUI();
     applyPhoneUI();
     applyEscalationUI();
-  } catch (e) {
-    console.warn('[Notif] Failed to load preferences:', e);
+  } catch(e) { reportError('applications', e); console.warn('[Notif] Failed to load preferences:', e);
   }
 }
 
@@ -16257,7 +16271,7 @@ $('#override-filter-select')?.addEventListener('change', async (e) => {
         .eq('user_id', currentUser.id)
         .eq('filter_name', filterName);
       (data || []).forEach(o => { overrides[o.notification_type] = o; });
-    } catch (e) { /* ignore */ }
+    } catch(e) { reportError('applications:ignore', e); }
   }
 
   // Build override matrix rows
@@ -16330,7 +16344,7 @@ $('#override-clear')?.addEventListener('click', async () => {
       .eq('filter_name', filterName);
     // Re-trigger the dropdown to reload fresh
     $('#override-filter-select').dispatchEvent(new Event('change'));
-  } catch (e) { console.error('[Notif] Override clear failed:', e); }
+  } catch(e) { reportError('applications', e); console.error('[Notif] Override clear failed:', e); }
 });
 
 // ---- Notification Log ----
@@ -16401,8 +16415,7 @@ async function loadNotifLog() {
         <td>${notifStatusBadge(log.status)}</td>
       </tr>`;
     }).join('');
-  } catch (e) {
-    console.warn('[Notif] Log load failed:', e);
+  } catch(e) { reportError('applications', e); console.warn('[Notif] Log load failed:', e);
   }
 }
 
@@ -16437,7 +16450,7 @@ $('#notif-export-csv')?.addEventListener('click', async () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  } catch (e) { console.error('[Notif] CSV export failed:', e); }
+  } catch(e) { reportError('applications', e); console.error('[Notif] CSV export failed:', e); }
 });
 
 // ---- Pulsing Nav Dots ----
@@ -16479,8 +16492,7 @@ async function checkNavPulses() {
     await sb.from('profiles')
       .update({ last_seen_at: new Date().toISOString() })
       .eq('id', currentUser.id);
-  } catch (e) {
-    console.warn('[Pulse] Check failed:', e);
+  } catch(e) { reportError('applications', e); console.warn('[Pulse] Check failed:', e);
   }
 }
 
@@ -16536,8 +16548,7 @@ async function loadPipelineIntelligenceSettings() {
     if (el('pi-ch-sms')) el('pi-ch-sms').checked = channels.includes('sms');
     const confRadios = document.querySelectorAll('input[name="pi-confidence"]');
     confRadios.forEach(r => { r.checked = parseFloat(r.value) === (data.confidence_threshold || 0.6); });
-  } catch (e) {
-    console.log('[BJ] No pipeline intelligence settings yet');
+  } catch(e) { reportError('applications', e); console.log('[BJ] No pipeline intelligence settings yet');
   }
   // Show Gmail status
   try {
@@ -16553,7 +16564,7 @@ async function loadPipelineIntelligenceSettings() {
       // v6.04: Mark integration connected for adoption suppression
       if (typeof markIntegrationConnected === 'function') markIntegrationConnected('gmail');
     }
-  } catch (e) { /* no connection */ }
+  } catch(e) { reportError('applications:no connection', e); }
 }
 
 async function savePipelineIntelligenceSettings() {
@@ -16583,8 +16594,7 @@ async function savePipelineIntelligenceSettings() {
     await sb.from('pipeline_tracking_settings').upsert(settings, { onConflict: 'user_id' });
     const btn = el('pi-save-btn');
     if (btn) { btn.textContent = 'Saved!'; setTimeout(() => btn.textContent = 'Save Pipeline Settings', 1500); }
-  } catch (e) {
-    console.error('[BJ] Pipeline settings save error:', e);
+  } catch(e) { reportError('applications', e); console.error('[BJ] Pipeline settings save error:', e);
   }
 }
 
@@ -16614,7 +16624,7 @@ $('#st-change-pw')?.addEventListener('click', async () => {
 });
 $('#st-export')?.addEventListener('click', async () => {
   try {
-    const { data } = await sb.from('connections').select('*').limit(5000);
+    const data = await safeQuery(() => sb.from('connections').select('*').limit(5000), { label: 'settings:connections', fallback: [] });
     if (!data?.length) { showToast('Nothing to export yet — start tracking applications first.', { type: 'info' }); return; }
     const csv = [Object.keys(data[0]).join(','), ...data.map(r => Object.values(r).map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -16652,8 +16662,7 @@ async function loadAiScoringPrefs() {
     var aiGenEl = document.getElementById('ai-pref-ai-generated');
     if (mixedEl) mixedEl.checked = !!_userAiScoringPrefs.mixed_content;
     if (aiGenEl) aiGenEl.checked = !!_userAiScoringPrefs.ai_generated;
-  } catch (e) {
-    console.warn('[BJ] AI prefs load exception:', e);
+  } catch(e) { reportError('settings', e); console.warn('[BJ] AI prefs load exception:', e);
   }
 }
 
@@ -16893,7 +16902,7 @@ async function loadPassiveMode() {
       if (data.passive_config) _passiveConfig = Object.assign(_passiveConfig, data.passive_config);
     }
     syncPassiveUI();
-  } catch (e) { console.warn('[BJ] Passive mode load exception:', e); }
+  } catch(e) { reportError('settings', e); console.warn('[BJ] Passive mode load exception:', e); }
 }
 
 function syncPassiveUI() {
@@ -16941,7 +16950,7 @@ async function syncPassiveNotificationChannels() {
     var freq = _passiveMode ? 'none' : 'daily';
     await sb.from('notification_channels')
       .upsert({ user_id: currentUser.id, notification_type: 'new_jobs_daily', frequency: freq }, { onConflict: 'user_id,notification_type' });
-  } catch (e) { console.warn('[BJ] Passive notification channel sync error:', e); }
+  } catch(e) { reportError('settings', e); console.warn('[BJ] Passive notification channel sync error:', e); }
 }
 
 function debounceSavePassiveConfig() {
@@ -17372,8 +17381,7 @@ async function bootstrapFiltersFromResume() {
     }
 
     console.log('[BJ] Passive bootstrap: created ' + newFilters.length + ' filter(s) from resume —', titles.join(', '));
-  } catch (e) {
-    console.warn('[BJ] bootstrapFiltersFromResume exception:', e);
+  } catch(e) { reportError('settings', e); console.warn('[BJ] bootstrapFiltersFromResume exception:', e);
   }
 }
 
@@ -17449,8 +17457,7 @@ async function autoHirePause(jobTitle) {
     }
 
     console.log('[BJ] autoHirePause: passive mode paused on hired status for', jobTitle || 'unknown job');
-  } catch (e) {
-    console.warn('[BJ] autoHirePause exception:', e);
+  } catch(e) { reportError('settings', e); console.warn('[BJ] autoHirePause exception:', e);
   }
 }
 
@@ -17724,7 +17731,7 @@ async function fetchAndRenderStats() {
         mvSourceTotals = mvResults[0];
         mvSourceTimeline = mvResults[1];
         mvLandingStats = mvResults[2];
-      } catch (e) { console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
+      } catch(e) { reportError('stats', e); console.warn('[Stats] MV fetch failed, falling back to row data:', e.message); }
     }
 
     // A15 S5: Render stat cards from MV when in All mode (instant, no row aggregation)
@@ -18544,7 +18551,7 @@ async function fetchSourceTotalsFromMV() {
       }
       return totals;
     }
-  } catch (e) { console.warn('[Stats] MV source totals failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV source totals failed:', e.message); }
   return null;
 }
 
@@ -18556,7 +18563,7 @@ async function fetchSourceBreakdownFromMV() {
       return sb.from('mv_source_breakdown').select('ats_source,week,jobs_added,companies,refreshed_at').order('week', { ascending: false });
     }, { ttl: 600000 }); // 10 min
     return (result && result.data) || null;
-  } catch (e) { console.warn('[Stats] MV source breakdown failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV source breakdown failed:', e.message); }
   return null;
 }
 
@@ -18568,7 +18575,7 @@ async function fetchLandingStatsFromMV() {
       return sb.from('mv_landing_stats').select('*').single();
     }, { ttl: 600000 }); // 10 min — matches MV refresh cycle
     return (result && result.data) || null;
-  } catch (e) { console.warn('[Stats] MV landing stats failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV landing stats failed:', e.message); }
   return null;
 }
 
@@ -18629,7 +18636,7 @@ async function checkMVStaleness() {
       var ageStr = ageMins < 60 ? ageMins + 'min ago' : Math.round(ageMins / 60) + 'h ' + (ageMins % 60) + 'min ago';
       return { fresh: ageMins <= 15, ageMs: ageMs, ageStr: ageStr, refreshedAt: result.data.refreshed_at };
     }
-  } catch (e) { console.warn('[Stats] MV staleness check failed:', e.message); }
+  } catch(e) { reportError('stats', e); console.warn('[Stats] MV staleness check failed:', e.message); }
   return { fresh: false, ageStr: 'unknown', refreshedAt: null };
 }
 
@@ -18799,7 +18806,7 @@ async function loadUserSubscription() {
       _userSubscription = data;
       renderSubscriptionPeriod(data);
     }
-  } catch (e) {}
+  } catch(e) { reportError('billing:billing', e); }
 }
 
 async function loadCreditHistory() {
@@ -19397,8 +19404,7 @@ function _initTierChangeListener() {
         }
       })
       .subscribe();
-  } catch (e) {
-    console.warn('[billing] Tier change listener setup failed:', e);
+  } catch(e) { reportError('billing', e); console.warn('[billing] Tier change listener setup failed:', e);
   }
 }
 
@@ -20738,15 +20744,14 @@ window.showVersionTimeline = async function(resumeId) {
 
   try {
     // Get the resume and all versions in its lineage
-    const { data: resume } = await sb.from('resume_archive').select('*').eq('resume_id', resumeId).single();
+    const resume = await safeQuery(() => sb.from('resume_archive').select('*').eq('resume_id', resumeId).single(), { label: 'resume-archive:resume_archive', fallback: null });
     if (!resume) return;
 
     // Find all versions: same display_name or linked by parent
-    const { data: versions } = await sb.from('resume_archive')
-      .select('*')
+    const versions = await safeQuery(() => sb.from('resume_archive').select('*')
       .eq('user_id', resume.user_id)
       .eq('display_name', resume.display_name)
-      .order('version_number', { ascending: false });
+      .order('version_number', { ascending: false }), { label: 'resume-archive:resume_archive', fallback: [] });
 
     if (!versions || versions.length === 0) {
       list.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;">No version history found</div>';
@@ -20925,7 +20930,7 @@ window.switchStatsTab = function(tab) {
     marketBtn.classList.add('active');
     resumeBtn.classList.remove('active');
     // Dispose metrics charts to free memory
-    Object.values(_metricsCharts).forEach(c => { try { c.dispose(); } catch(e) {} });
+    Object.values(_metricsCharts).forEach(c => { try { c.dispose(); } catch(e) { /* chart cleanup - expected */ } });
     _metricsCharts = {};
   }
 };
@@ -21046,7 +21051,7 @@ function renderSparkline(data) {
   const el = document.getElementById('metrics-sparkline');
   if (!el || typeof echarts === 'undefined') return;
 
-  if (_metricsCharts.sparkline) { try { _metricsCharts.sparkline.dispose(); } catch(e) {} }
+  if (_metricsCharts.sparkline) { try { _metricsCharts.sparkline.dispose(); } catch(e) { /* chart cleanup - expected */ } }
   if (data.length < 2) { el.innerHTML = ''; return; }
 
   const chart = echarts.init(el, null, { renderer: 'svg' });
@@ -21078,7 +21083,7 @@ function renderLevelFitChart(scores) {
   const insightEl = $('#metrics-level-fit-insight');
   if (!el || typeof echarts === 'undefined') return;
 
-  if (_metricsCharts.levelFit) { try { _metricsCharts.levelFit.dispose(); } catch(e) {} }
+  if (_metricsCharts.levelFit) { try { _metricsCharts.levelFit.dispose(); } catch(e) { /* chart cleanup - expected */ } }
 
   // Group scores by level_fit
   const levels = ['Entry', 'Mid', 'Senior', 'Lead', 'Executive'];
@@ -21137,7 +21142,7 @@ function renderPipelineFunnel(usage) {
   const el = document.getElementById('metrics-funnel-chart');
   if (!el || typeof echarts === 'undefined') return;
 
-  if (_metricsCharts.funnel) { try { _metricsCharts.funnel.dispose(); } catch(e) {} }
+  if (_metricsCharts.funnel) { try { _metricsCharts.funnel.dispose(); } catch(e) { /* chart cleanup - expected */ } }
 
   const stages = ['applied', 'screened', 'interview', 'offer'];
   const stageLabels = { applied: 'Applied', screened: 'Screened', interview: 'Interview', offer: 'Offer' };
@@ -21228,7 +21233,7 @@ function formatMetricsDate(isoStr) {
 
 // Resize handler
 window.addEventListener('resize', function() {
-  Object.values(_metricsCharts).forEach(c => { try { c.resize(); } catch(e) {} });
+  Object.values(_metricsCharts).forEach(c => { try { c.resize(); } catch(e) { /* chart resize - expected */ } });
 });
 
 // Search filter for usage log
@@ -21885,7 +21890,7 @@ function initChatMode() {
       if (this.getAttribute('data-auto-generated') === 'true') {
         this.setAttribute('data-auto-generated', 'modified');
         if (window.posthog) {
-          try { posthog.capture('chat_prompt_modified'); } catch(e) {}
+          try { posthog.capture('chat_prompt_modified'); } catch(e) { reportError('chat:chat', e); }
         }
       }
     });
@@ -21939,9 +21944,9 @@ function initChatMode() {
 
       // PostHog: track tooltip impression and dismissal
       if (window.posthog) {
-        try { posthog.capture('chat_onboarding_tooltip_shown'); } catch(e) {}
+        try { posthog.capture('chat_onboarding_tooltip_shown'); } catch(e) { reportError('chat:chat', e); }
         tooltip.querySelector('.tooltip-dismiss').addEventListener('click', function() {
-          try { posthog.capture('chat_onboarding_tooltip_dismissed', { method: 'button' }); } catch(e) {}
+          try { posthog.capture('chat_onboarding_tooltip_dismissed', { method: 'button' }); } catch(e) { reportError('chat:chat', e); }
         });
       }
     }
@@ -21956,7 +21961,7 @@ function initChatMode() {
       if (chatInput && chatInput.getAttribute('data-auto-generated')) {
         chatInput.removeAttribute('data-auto-generated');
         if (window.posthog) {
-          try { posthog.capture('chat_prompt_scrapped'); } catch(e) {}
+          try { posthog.capture('chat_prompt_scrapped'); } catch(e) { reportError('chat:chat', e); }
         }
       }
       _chatSession.clear();
@@ -22031,7 +22036,7 @@ function setSearchMode(mode) {
 
   // PostHog event
   if (window.posthog) {
-    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) {}
+    try { posthog.capture('chat_mode_toggled', { mode: mode }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -22148,11 +22153,10 @@ async function syncFilterToChat() {
 
       // PostHog event
       if (window.posthog) {
-        try { posthog.capture('chat_prompt_auto_generated', { filter_count: Object.keys(filters).length, fallback: !!data.fallback }); } catch(e) {}
+        try { posthog.capture('chat_prompt_auto_generated', { filter_count: Object.keys(filters).length, fallback: !!data.fallback }); } catch(e) { reportError('chat:chat', e); }
       }
     }
-  } catch (err) {
-    console.error('[BJ] Filter→Chat sync error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Filter→Chat sync error:', err);
   }
 
   _chatSyncInProgress = false;
@@ -22201,8 +22205,7 @@ async function syncChatToFilter() {
     // Show confirmation banner before populating pills
     _showSyncConfirmation(filters);
 
-  } catch (err) {
-    console.error('[BJ] Chat→Filter sync error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Chat→Filter sync error:', err);
   }
 
   _chatSyncInProgress = false;
@@ -22243,7 +22246,7 @@ function _showSyncConfirmation(filters) {
     banner.style.display = 'none';
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_to_filter_sync', { action: 'accepted', filter_count: Object.keys(filters).length }); } catch(e) {}
+      try { posthog.capture('chat_to_filter_sync', { action: 'accepted', filter_count: Object.keys(filters).length }); } catch(e) { reportError('chat:chat', e); }
     }
   });
 
@@ -22252,7 +22255,7 @@ function _showSyncConfirmation(filters) {
     banner.style.display = 'none';
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_to_filter_sync', { action: 'dismissed' }); } catch(e) {}
+      try { posthog.capture('chat_to_filter_sync', { action: 'dismissed' }); } catch(e) { reportError('chat:chat', e); }
     }
   });
 }
@@ -22324,7 +22327,7 @@ function _applySyncedFilters(filters) {
   // Trigger job feed refresh
   // PostHog: chat_filters_applied
   if (window.posthog) {
-    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) { reportError('chat:chat', e); }
   }
 
   if (typeof debouncedSearchJobs === 'function') {
@@ -22374,7 +22377,7 @@ async function sendChatMessage() {
 
   // PostHog: chat_message_sent
   if (window.posthog) {
-    try { posthog.capture('chat_message_sent', { tier: getUserTier(), msg_count: _chatSession.messageCount, has_filters: !!window._chatFilterOverride }); } catch(e) {}
+    try { posthog.capture('chat_message_sent', { tier: getUserTier(), msg_count: _chatSession.messageCount, has_filters: !!window._chatFilterOverride }); } catch(e) { reportError('chat:chat', e); }
   }
   updateChatCounter();
 
@@ -22423,7 +22426,7 @@ async function sendChatMessage() {
           message_count: _chatSession.messages.length,
           p95_target_ms: 2000
         });
-      } catch(e) {}
+      } catch(e) { reportError('chat:chat', e); }
     }
     if (_chatLatencyMs > 2000) {
       console.warn('[BJ] Chat edge function slow: ' + _chatLatencyMs + 'ms (p95 target: 2000ms)');
@@ -22431,7 +22434,7 @@ async function sendChatMessage() {
 
     if (resp.status === 429) {
       var rateLimitData = null;
-      try { rateLimitData = await resp.json(); } catch(e) {}
+      try { rateLimitData = await resp.json(); } catch(e) { reportError('chat:chat', e); }
       showChatRateLimit(rateLimitData);
       _chatSending = false;
       return;
@@ -22439,7 +22442,7 @@ async function sendChatMessage() {
 
     if (!resp.ok) {
       var errText = '';
-      try { var errJ = await resp.json(); errText = errJ.error || errJ.message || ''; } catch(e) {}
+      try { var errJ = await resp.json(); errText = errJ.error || errJ.message || ''; } catch(e) { reportError('chat:chat', e); }
       appendChatBubble('assistant', 'Something went wrong. ' + (errText || 'Please try again.'));
       _chatSending = false;
       return;
@@ -22453,7 +22456,7 @@ async function sendChatMessage() {
 
     // PostHog: chat_filters_extracted
     if (extractedFilters && Object.keys(extractedFilters).length > 0 && window.posthog) {
-      try { posthog.capture('chat_filters_extracted', { filter_count: Object.keys(extractedFilters).length, keywords: (extractedFilters.keywords || []).join(',') }); } catch(e) {}
+      try { posthog.capture('chat_filters_extracted', { filter_count: Object.keys(extractedFilters).length, keywords: (extractedFilters.keywords || []).join(',') }); } catch(e) { reportError('chat:chat', e); }
     }
 
     // Add assistant message
@@ -22524,7 +22527,7 @@ function applyChatFilters(filters) {
   // Trigger refresh
   // PostHog: chat_filters_applied
   if (window.posthog) {
-    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) {}
+    try { posthog.capture('chat_filters_applied', { filter_count: Object.keys(filters).length }); } catch(e) { reportError('chat:chat', e); }
   }
 
   if (typeof debouncedSearchJobs === 'function') {
@@ -22640,7 +22643,7 @@ function showChatRateLimit(data) {
 
   // PostHog: chat_rate_limited
   if (window.posthog) {
-    try { posthog.capture('chat_rate_limited', { limit_type: (data && data.limit_type) || 'daily', tier: getUserTier() }); } catch(e) {}
+    try { posthog.capture('chat_rate_limited', { limit_type: (data && data.limit_type) || 'daily', tier: getUserTier() }); } catch(e) { reportError('chat:chat', e); }
   }
   banner.style.display = 'block';
 }
@@ -22883,7 +22886,7 @@ async function executeSavePrompt() {
 
     if (!resp.ok) {
       var errData = null;
-      try { errData = await resp.json(); } catch(e) {}
+      try { errData = await resp.json(); } catch(e) { reportError('chat:chat', e); }
       console.error('[BJ] Save prompt error:', errData);
       if (typeof showToast === 'function') showToast('Failed to save prompt', 'error');
       return;
@@ -22905,7 +22908,7 @@ async function executeSavePrompt() {
 
     // PostHog
     if (window.posthog) {
-      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) {}
+      try { posthog.capture('chat_prompt_saved', { name: name, color_index: colorIndex, filter_count: Object.keys(derivedFilters).length, is_update: !!_currentPromptId }); } catch(e) { reportError('chat:chat', e); }
     }
 
   } catch (err) {
@@ -23038,7 +23041,7 @@ async function loadPrompt(promptId) {
 
   // PostHog
   if (window.posthog) {
-    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) {}
+    try { posthog.capture('chat_prompt_loaded', { prompt_id: promptId, name: prompt.name }); } catch(e) { reportError('chat:chat', e); }
   }
 }
 
@@ -23076,11 +23079,10 @@ async function deletePrompt(promptId) {
 
       // PostHog
       if (window.posthog) {
-        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) {}
+        try { posthog.capture('chat_prompt_deleted', { prompt_id: promptId }); } catch(e) { reportError('chat:chat', e); }
       }
     }
-  } catch (err) {
-    console.error('[BJ] Delete prompt error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Delete prompt error:', err);
   }
 }
 
@@ -23103,8 +23105,7 @@ async function loadSavedPromptsFromDB() {
       // Update filter selector
       renderSavedPromptsInFilterSelector();
     }
-  } catch (err) {
-    console.error('[BJ] Load saved prompts error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Load saved prompts error:', err);
   }
 }
 
@@ -23157,8 +23158,7 @@ async function updateDerivedFilters() {
       cached.conversation = _chatSession.getHistory();
     }
 
-  } catch (err) {
-    console.error('[BJ] Update derived_filters error:', err);
+  } catch(err) { reportError('chat', err); console.error('[BJ] Update derived_filters error:', err);
   }
 }
 
@@ -23379,11 +23379,11 @@ function loadApplySettings() {
   try {
     var raw = localStorage.getItem('bj_apply_settings');
     if (raw) userApplySettings = Object.assign({}, DEFAULT_APPLY_SETTINGS, JSON.parse(raw));
-  } catch (e) {}
+  } catch(e) { reportError('apply-workflow:apply-workflow', e); }
 }
 
 function saveApplySettings() {
-  try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch (e) {}
+  try { localStorage.setItem('bj_apply_settings', JSON.stringify(userApplySettings)); } catch(e) { reportError('apply-workflow:apply-workflow', e); }
 }
 
 // ─── Supabase-backed pending applications ───────────────────
@@ -23549,7 +23549,7 @@ function _getActiveResume() {
       var resumes = JSON.parse(raw);
       if (resumes.length > 0) return { id: resumes[0].id || crypto.randomUUID(), filename: resumes[0].name || 'resume.pdf' };
     }
-  } catch (e) {}
+  } catch(e) { reportError('apply-workflow:apply-workflow', e); }
   return { id: crypto.randomUUID(), filename: 'resume.pdf' };
 }
 
@@ -23575,8 +23575,7 @@ async function _fireApplyNotification(type, opts) {
         notification_type: type,
       }, opts)),
     });
-  } catch (e) {
-    console.error('[apply-workflow] Notification send error:', e);
+  } catch(e) { reportError('apply-workflow', e); console.error('[apply-workflow] Notification send error:', e);
   }
 }
 
@@ -23722,7 +23721,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
       .eq('id', resume.id)
       .single();
     resumeText = archiveData?.parsed_text || '';
-  } catch (e) {}
+  } catch(e) { reportError('apply-workflow:apply-workflow', e); }
 
   if (!resumeText) {
     // Fallback: check localStorage
@@ -23732,7 +23731,7 @@ async function scoreAndRecheck(jobId, jobTitle, companyName, jobUrl) {
         var resumes = JSON.parse(raw);
         if (resumes.length > 0) resumeText = resumes[0].text || '';
       }
-    } catch (e) {}
+    } catch(e) { reportError('apply-workflow:apply-workflow', e); }
   }
 
   if (!resumeText) {
@@ -24599,11 +24598,10 @@ function updateApplySettingsVisibility(mode) {
       referralStats = stats;
 
       // Fetch referral history
-      const { data: history } = await sb.from('referrals')
-        .select('id, referred_email, attribution_method, status, fraud_score, signup_at, activated_at, rewarded_at')
+      const history = await safeQuery(() => sb.from('referrals').select('id, referred_email, attribution_method, status, fraud_score, signup_at, activated_at, rewarded_at')
         .eq('referrer_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(50), { label: 'referrals:referrals', fallback: [] });
       referralHistory = history || [];
 
       renderReferralHub(container);
@@ -24622,8 +24620,7 @@ function updateApplySettingsVisibility(mode) {
               showToast(`🎉 ${g.name} tier unlocked! You earned ${parts.join(' + ')}`, { type: 'success', duration: 6000 });
             });
           }
-        } catch (bonusErr) {
-          console.warn('[Referrals] Tier bonus check:', bonusErr.message);
+        } catch(bonusErr) { reportError('referrals', bonusErr); console.warn('[Referrals] Tier bonus check:', bonusErr.message);
         }
       }
     } catch (err) {
@@ -24955,8 +24952,7 @@ Or use my code: ${referralStats.referral_code}`);
         const body = document.getElementById('ref-leaderboard-body');
         if (body) body.innerHTML = '<div class="ref-empty">Top referrers earn credits and Pro time every week. Show your ranking to compete.</div>';
       }
-    } catch (err) {
-      console.error('[Referrals] Toggle leaderboard error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Toggle leaderboard error:', err);
     }
   };
 
@@ -25040,8 +25036,7 @@ Or use my code: ${referralStats.referral_code}`);
         channel: channel,
         utm_medium: channel
       });
-    } catch (err) {
-      console.error('[Referrals] Track invite error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Track invite error:', err);
     }
   }
 
@@ -25356,8 +25351,7 @@ Or use my code: ${referralStats.referral_code}`);
           has_referral_link: !!(row && row.referral_link)
         });
       }
-    } catch (err) {
-      console.error('[Referrals] Status update error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Status update error:', err);
     }
   };
 
@@ -25397,8 +25391,7 @@ Or use my code: ${referralStats.referral_code}`);
           actionCell.insertBefore(btn, actionCell.firstChild);
         }
       }
-    } catch (err) {
-      console.error('[Referrals] Save referral link error:', err);
+    } catch(err) { reportError('referrals', err); console.error('[Referrals] Save referral link error:', err);
     }
   };
 
@@ -25503,7 +25496,7 @@ function openReferralOutreachModal(jobId) {
     var session = window.bjSupabase && window.bjSupabase.auth && window.bjSupabase.auth.getSession
       ? null : null;
     if (window._bjUserEmail) userName = window._bjUserEmail.split('@')[0];
-  } catch(e) {}
+  } catch(e) { reportError('referral-outreach:referral-outreach', e); }
 
   // Render modal
   var modal = document.getElementById('referral-outreach-modal');
@@ -25618,7 +25611,7 @@ function sendReferralTemplate() {
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); } catch(e) {}
+    try { document.execCommand('copy'); } catch(e) { reportError('referral-outreach:referral-outreach', e); }
     document.body.removeChild(ta);
   }
 
@@ -25642,7 +25635,7 @@ function sendReferralTemplate() {
           status: 'sent'
         });
       }
-    } catch(e) { /* silent --- do not break send flow */ }
+    } catch(e) { reportError('referral-outreach:silent --- do not break send flow', e); }
   })();
 
   // Open destination
@@ -25691,6 +25684,13 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session?.user) { window.location.href = '/'; return; }
   currentUser = session.user;
+  // CS-003: PostHog identity resolution — identify user post-login (CX-01)
+  if (window.posthog && currentUser) {
+    posthog.identify(currentUser.id, {
+      email: currentUser.email,
+      created_at: currentUser.created_at,
+    });
+  }
   // Persist account flag for landing page segment detection (survives logout)
   localStorage.setItem('bj_has_account', 'true');
 
@@ -25705,7 +25705,7 @@ if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
 if (typeof initSessionManagement === 'function') initSessionManagement();
   let profile = null;
   try {
-    const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
+    const p = await safeQuery(() => sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
     profile = p;
     if (!p?.approved) { window.location.href = '/?pending=1'; return; }
     currentUser._cohortId = p.cohort_id || null;
@@ -25715,7 +25715,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
   // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
-  try { await processReferralAttribution(currentUser); } catch(e) { console.warn('[Referral] Attribution check skipped:', e.message); }
+  try { await processReferralAttribution(currentUser); } catch(e) { reportError('app', e); console.warn('[Referral] Attribution check skipped:', e.message); }
   // Show admin nav immediately — profile already fetched, no extra round trip
   if (profile && profile.role === 'admin') {
     var navAdmin = document.getElementById('nav-admin');
@@ -25770,7 +25770,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Load filters from Supabase
   let filtersFromCloud = false;
   if (userId) {
-    const { data: cloudFilters } = await sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order');
+    const cloudFilters = await safeQuery(() => sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order'), { label: 'app:user_filters', fallback: [] });
     if (cloudFilters && cloudFilters.length > 0) {
       savedFilters = cloudFilters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
       filtersFromCloud = true;
@@ -25829,7 +25829,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
         if (window.posthog) posthog.capture('pending_pills_applied', { count: pendingPills.length, pills: pendingPills });
       }
     }
-  } catch(e) { console.warn('[pills] Pending pill apply failed:', e.message); }
+  } catch(e) { reportError('app', e); console.warn('[pills] Pending pill apply failed:', e.message); }
   
   // Load tuning from Supabase
   // First: normalize any legacy WHEN pills in saved filters
@@ -25862,7 +25862,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
 
   let tuningFromCloud = false;
   if (userId) {
-    const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
+    const cloudTuning = await safeQuery(() => sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single(), { label: 'app:user_tuning', fallback: null });
     if (cloudTuning?.tuning_data && Object.keys(cloudTuning.tuning_data).length > 0) {
       tuningSettings = cloudTuning.tuning_data;
       tuningFromCloud = true;
@@ -25894,14 +25894,14 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
   if (resumes.length === 0 && userId) {
     try {
-      const { data: prof } = await sb.from('profiles').select('user_data').eq('id', userId).single();
+      const prof = await safeQuery(() => sb.from('profiles').select('user_data').eq('id', userId).single(), { label: 'app:profiles', fallback: null });
       const cloudResumes = prof?.user_data?.resumes;
       if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
         resumes = cloudResumes;
         saveUserData('bj_resumes', JSON.stringify(resumes));
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
-    } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
+    } catch(e) { reportError('app', e); console.warn('[sync] Resume recovery failed:', e.message); }
   }
   // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
   if (resumes.length > 0 && currentUser) {
@@ -25920,7 +25920,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
               console.log('[resume-storage] Backfilled', path);
             }
           }
-        } catch (e) { /* silent */ }
+        } catch(e) { reportError('app:silent', e); }
       });
     }
   }
@@ -26191,9 +26191,8 @@ function compareVersions(installed, required) {
 
 async function checkExtensionStatus() {
   try {
-    const { data: profile } = await sb.from('profiles')
-      .select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
-      .eq('id', currentUser.id).single();
+    const profile = await safeQuery(() => sb.from('profiles').select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
+      .eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
 
     const navDot = $('#ext-status-dot');
     const dot = $('#ext-dot');
@@ -26257,7 +26256,7 @@ async function checkExtensionStatus() {
         }
       }
     }
-  } catch (e) { /* ignore */ }
+  } catch(e) { reportError('app:ignore', e); }
 }
 checkExtensionStatus();
 setInterval(checkExtensionStatus, 60000);
@@ -26321,15 +26320,13 @@ async function initGmailStatus() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-    const { data: conn } = await sb.from('gmail_connections')
-      .select('gmail_address, sync_status')
+    const conn = await safeQuery(() => sb.from('gmail_connections').select('gmail_address, sync_status')
       .eq('user_id', session.user.id)
-      .maybeSingle();
+      .maybeSingle(), { label: 'app:gmail_connections', fallback: [] });
 
     const isConnected = conn && conn.sync_status === 'active';
     updateGmailUI(isConnected, conn?.gmail_address || '');
-  } catch (e) {
-    console.warn('[BJ] Gmail status check failed:', e.message);
+  } catch(e) { reportError('app', e); console.warn('[BJ] Gmail status check failed:', e.message);
   }
 }
 
@@ -26645,7 +26642,7 @@ async function processReferralAttribution(user) {
   try {
     refCode = sessionStorage.getItem('bj_referral_code') || '';
     refSource = sessionStorage.getItem('bj_referral_source') || 'direct';
-  } catch(e) {}
+  } catch(e) { reportError('app:app', e); }
 
   // Also check cookie
   if (!refCode) {
@@ -26658,9 +26655,9 @@ async function processReferralAttribution(user) {
 
   // Get fingerprint if available
   var fingerprint = '';
-  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) {}
+  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) { reportError('app:app', e); }
   if (!fingerprint && window.bjFingerprint) {
-    try { fingerprint = window.bjFingerprint.generate(); } catch(e) {}
+    try { fingerprint = window.bjFingerprint.generate(); } catch(e) { reportError('app:app', e); }
   }
 
   // Call attribution RPC
@@ -26678,8 +26675,7 @@ async function processReferralAttribution(user) {
     } else {
       console.log('[Referral] Attribution result:', data);
     }
-  } catch(e) {
-    console.warn('[Referral] Attribution call failed:', e.message);
+  } catch(e) { reportError('app', e); console.warn('[Referral] Attribution call failed:', e.message);
   }
 
   // Mark as attributed so we don't re-run
@@ -26689,5 +26685,5 @@ async function processReferralAttribution(user) {
   try {
     sessionStorage.removeItem('bj_referral_code');
     sessionStorage.removeItem('bj_referral_source');
-  } catch(e) {}
+  } catch(e) { reportError('app:app', e); }
 }

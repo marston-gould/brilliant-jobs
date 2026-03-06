@@ -55,7 +55,7 @@ async function loadUserSubscription() {
       _userSubscription = data;
       renderSubscriptionPeriod(data);
     }
-  } catch (e) {}
+  } catch(e) { reportError('billing:billing', e); }
 }
 
 async function loadCreditHistory() {
@@ -653,7 +653,6 @@ function _initTierChangeListener() {
         }
       })
       .subscribe();
-  } catch (e) {
-    console.warn('[billing] Tier change listener setup failed:', e);
+  } catch(e) { reportError('billing', e); console.warn('[billing] Tier change listener setup failed:', e);
   }
 }

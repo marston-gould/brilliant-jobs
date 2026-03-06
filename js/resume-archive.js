@@ -189,15 +189,14 @@ window.showVersionTimeline = async function(resumeId) {
 
   try {
     // Get the resume and all versions in its lineage
-    const { data: resume } = await sb.from('resume_archive').select('*').eq('resume_id', resumeId).single();
+    const resume = await safeQuery(() => sb.from('resume_archive').select('*').eq('resume_id', resumeId).single(), { label: 'resume-archive:resume_archive', fallback: null });
     if (!resume) return;
 
     // Find all versions: same display_name or linked by parent
-    const { data: versions } = await sb.from('resume_archive')
-      .select('*')
+    const versions = await safeQuery(() => sb.from('resume_archive').select('*')
       .eq('user_id', resume.user_id)
       .eq('display_name', resume.display_name)
-      .order('version_number', { ascending: false });
+      .order('version_number', { ascending: false }), { label: 'resume-archive:resume_archive', fallback: [] });
 
     if (!versions || versions.length === 0) {
       list.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px;">No version history found</div>';

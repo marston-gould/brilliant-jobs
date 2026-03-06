@@ -78,8 +78,7 @@ async function ncLoadState() {
     } else {
       ncState = data;
     }
-  } catch (e) {
-    console.warn('[NC] Failed to load notification state:', e);
+  } catch(e) { reportError('notification-center', e); console.warn('[NC] Failed to load notification state:', e);
   }
 }
 
@@ -87,12 +86,10 @@ async function ncLoadPrefs() {
   if (typeof sb === 'undefined') return;
   if (!currentUser) return;
   try {
-    var { data } = await sb.from('user_notification_preferences')
-      .select('*').eq('user_id', currentUser.id);
+    var data = await safeQuery(() => sb.from('user_notification_preferences').select('*').eq('user_id', currentUser.id), { label: 'notification-center:user_notification_preferences', fallback: [] });
     ncPrefs = {};
     (data || []).forEach(function(p) { ncPrefs[p.notification_type] = p; });
-  } catch (e) {
-    console.warn('[NC] Failed to load preferences:', e);
+  } catch(e) { reportError('notification-center', e); console.warn('[NC] Failed to load preferences:', e);
   }
 }
 
@@ -156,7 +153,7 @@ function ncShowOptInModal() {
   try {
     var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
     isEU = tz.indexOf('Europe') === 0;
-  } catch(e) {}
+  } catch(e) { reportError('notification-center:notification-center', e); }
 
   var modal = document.createElement('div');
   modal.id = 'nc-optin-modal';
@@ -292,8 +289,7 @@ async function ncSyncFromUI() {
         .upsert(rows, { onConflict: 'user_id,notification_type' });
       console.log('[NC] Synced ' + rows.length + ' preferences to user_notification_preferences');
     }
-  } catch (e) {
-    console.warn('[NC] Sync to new table failed:', e);
+  } catch(e) { reportError('notification-center', e); console.warn('[NC] Sync to new table failed:', e);
   }
 }
 
@@ -330,8 +326,7 @@ async function ncToggleSmsForType(type, enabled) {
       .eq('notification_type', type);
     if (ncPrefs[type]) ncPrefs[type].sms_enabled = enabled;
     console.log('[NC] SMS ' + (enabled ? 'enabled' : 'disabled') + ' for ' + type);
-  } catch (e) {
-    console.warn('[NC] SMS toggle failed for ' + type + ':', e);
+  } catch(e) { reportError('notification-center', e); console.warn('[NC] SMS toggle failed for ' + type + ':', e);
   }
 }
 

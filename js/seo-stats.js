@@ -75,7 +75,7 @@
     try {
       var c = JSON.parse(sessionStorage.getItem(CACHE_KEY));
       if (c && Date.now() - c.ts < CACHE_TTL) { hydrate(c.data); return; }
-    } catch(e) {}
+    } catch(e) { reportError('seo-stats:seo-stats', e); }
 
     // Fetch live
     fetch(RPC_URL, {
@@ -87,7 +87,7 @@
     .then(function(data) {
       if (data && data.open_jobs) {
         hydrate(data);
-        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) {}
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data })); } catch(e) { reportError('seo-stats:seo-stats', e); }
       }
     })
     .catch(function() { /* keep static fallback */ });

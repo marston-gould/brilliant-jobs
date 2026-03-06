@@ -335,8 +335,7 @@ async function loadNotifPrefs() {
     applyPrefsToUI();
     applyPhoneUI();
     applyEscalationUI();
-  } catch (e) {
-    console.warn('[Notif] Failed to load preferences:', e);
+  } catch(e) { reportError('applications', e); console.warn('[Notif] Failed to load preferences:', e);
   }
 }
 
@@ -626,7 +625,7 @@ $('#override-filter-select')?.addEventListener('change', async (e) => {
         .eq('user_id', currentUser.id)
         .eq('filter_name', filterName);
       (data || []).forEach(o => { overrides[o.notification_type] = o; });
-    } catch (e) { /* ignore */ }
+    } catch(e) { reportError('applications:ignore', e); }
   }
 
   // Build override matrix rows
@@ -699,7 +698,7 @@ $('#override-clear')?.addEventListener('click', async () => {
       .eq('filter_name', filterName);
     // Re-trigger the dropdown to reload fresh
     $('#override-filter-select').dispatchEvent(new Event('change'));
-  } catch (e) { console.error('[Notif] Override clear failed:', e); }
+  } catch(e) { reportError('applications', e); console.error('[Notif] Override clear failed:', e); }
 });
 
 // ---- Notification Log ----
@@ -770,8 +769,7 @@ async function loadNotifLog() {
         <td>${notifStatusBadge(log.status)}</td>
       </tr>`;
     }).join('');
-  } catch (e) {
-    console.warn('[Notif] Log load failed:', e);
+  } catch(e) { reportError('applications', e); console.warn('[Notif] Log load failed:', e);
   }
 }
 
@@ -806,7 +804,7 @@ $('#notif-export-csv')?.addEventListener('click', async () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  } catch (e) { console.error('[Notif] CSV export failed:', e); }
+  } catch(e) { reportError('applications', e); console.error('[Notif] CSV export failed:', e); }
 });
 
 // ---- Pulsing Nav Dots ----
@@ -848,8 +846,7 @@ async function checkNavPulses() {
     await sb.from('profiles')
       .update({ last_seen_at: new Date().toISOString() })
       .eq('id', currentUser.id);
-  } catch (e) {
-    console.warn('[Pulse] Check failed:', e);
+  } catch(e) { reportError('applications', e); console.warn('[Pulse] Check failed:', e);
   }
 }
 
@@ -905,8 +902,7 @@ async function loadPipelineIntelligenceSettings() {
     if (el('pi-ch-sms')) el('pi-ch-sms').checked = channels.includes('sms');
     const confRadios = document.querySelectorAll('input[name="pi-confidence"]');
     confRadios.forEach(r => { r.checked = parseFloat(r.value) === (data.confidence_threshold || 0.6); });
-  } catch (e) {
-    console.log('[BJ] No pipeline intelligence settings yet');
+  } catch(e) { reportError('applications', e); console.log('[BJ] No pipeline intelligence settings yet');
   }
   // Show Gmail status
   try {
@@ -922,7 +918,7 @@ async function loadPipelineIntelligenceSettings() {
       // v6.04: Mark integration connected for adoption suppression
       if (typeof markIntegrationConnected === 'function') markIntegrationConnected('gmail');
     }
-  } catch (e) { /* no connection */ }
+  } catch(e) { reportError('applications:no connection', e); }
 }
 
 async function savePipelineIntelligenceSettings() {
@@ -952,8 +948,7 @@ async function savePipelineIntelligenceSettings() {
     await sb.from('pipeline_tracking_settings').upsert(settings, { onConflict: 'user_id' });
     const btn = el('pi-save-btn');
     if (btn) { btn.textContent = 'Saved!'; setTimeout(() => btn.textContent = 'Save Pipeline Settings', 1500); }
-  } catch (e) {
-    console.error('[BJ] Pipeline settings save error:', e);
+  } catch(e) { reportError('applications', e); console.error('[BJ] Pipeline settings save error:', e);
   }
 }
 

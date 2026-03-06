@@ -214,7 +214,7 @@ async function batchFetchJDContent(jobs, maxFetch) {
         enrichJob(job.greenhouse_id, { content: job.content });
       }
       await new Promise(function(r){ setTimeout(r, 200); });
-    } catch (e) { /* skip */ }
+    } catch(e) { reportError('keywords:skip', e); }
   }
   return fetched;
 }
@@ -762,7 +762,7 @@ async function runReadinessAnalysis(opts) {
           }
           window.triggerScoreNotification(_user.id, _jobId || 'readiness-' + _ri, _sd.overallScore, _analysisSummary, _jobTitle, _companyName);
         }
-      } catch(e) { console.warn('[score-notif] Hook error:', e.message); }
+      } catch(e) { reportError('keywords', e); console.warn('[score-notif] Hook error:', e.message); }
     })();
   }
 
@@ -2008,7 +2008,7 @@ async function bjSubmitFeedback(stateKey) {
           .eq('session_id', state.rewriteResult.session_id)
           .eq('round_number', state.rewriteResult.round_number || 1);
       }
-    } catch (e) { console.error('[BJ] Feedback save error:', e); }
+    } catch(e) { reportError('keywords', e); console.error('[BJ] Feedback save error:', e); }
   }
 
   // G33: Call Revision Assessor
@@ -2631,7 +2631,7 @@ async function openJobModal(jobId, e) {
   let job = allJobs.find(j => j.greenhouse_id === jobId);
   if (!job) {
     // Fallback: quick fetch just this one row
-    const { data } = await sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single();
+    const data = await safeQuery(() => sb.from('ats_jobs').select('*').eq('greenhouse_id', jobId).single(), { label: 'keywords:ats_jobs', fallback: null });
     job = data;
   }
 
@@ -2855,7 +2855,7 @@ function toggleApplyForm() {
         // Cross-origin: can't read URL, but we can detect if content shrinks
         // (confirmation page is much shorter than the application form)
         // Also try to detect via frame load events
-      } catch(e) {}
+      } catch(e) { reportError('keywords:keywords', e); }
     }, 1000);
 
     // Listen for the iframe to load a new page (confirmation page after submission)
@@ -3186,8 +3186,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         return;
       }
     }
-  } catch (err) {
-    console.log('[BJ] Greenhouse API fetch failed:', err.message);
+  } catch(err) { reportError('keywords', err); console.log('[BJ] Greenhouse API fetch failed:', err.message);
   }
 
   // Fallback: try using company slug from ats_companies + greenhouse_id
@@ -3236,8 +3235,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         return;
       }
     }
-  } catch (err) {
-    console.log('[BJ] Slug fallback failed:', err.message);
+  } catch(err) { reportError('keywords', err); console.log('[BJ] Slug fallback failed:', err.message);
   }
 
   // Try Edge Function proxy as backup
@@ -3257,8 +3255,7 @@ async function fetchJobSpec(jobId, jobUrl, bodyEl) {
         return;
       }
     }
-  } catch (err) {
-    console.log('[BJ] Edge function fallback failed:', err.message);
+  } catch(err) { reportError('keywords', err); console.log('[BJ] Edge function fallback failed:', err.message);
   }
 
   // Final fallback
@@ -3833,7 +3830,7 @@ async function bjSaveCoverLetter(data, filterName) {
         scoreCoverLetterAI(session.data.session, clText, filterName);
       }
     }
-  } catch (e) { console.error('[BJ] Cover letter save exception:', e); }
+  } catch(e) { reportError('keywords', e); console.error('[BJ] Cover letter save exception:', e); }
 }
 
 async function bjRenderCoverLetterArchive() {
@@ -3856,7 +3853,7 @@ async function bjRenderCoverLetterArchive() {
         .eq('content_type', 'cover_letter')
         .in('content_id', clIds);
       if (scores) scores.forEach(function(s) { aiScores[s.content_id] = s; });
-    } catch (e) { console.warn('[ai-score] CL score fetch error:', e.message); }
+    } catch(e) { reportError('keywords', e); console.warn('[ai-score] CL score fetch error:', e.message); }
 
     container.style.display = '';
     var html = '<div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">';
@@ -3913,7 +3910,7 @@ async function bjRenderCoverLetterArchive() {
 async function bjDeleteCoverLetter(id) {
   if (!confirm('Delete this cover letter?')) return;
   try { await sb.from('cover_letters').delete().eq('id', id); bjRenderCoverLetterArchive(); }
-  catch (e) { console.error('[BJ] Delete cover letter error:', e); }
+  catch(e) { reportError('keywords', e); console.error('[BJ] Delete cover letter error:', e); }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -3967,8 +3964,7 @@ async function scoreCoverLetterAI(session, text, filterName) {
       // Refresh archive to show badge
       bjRenderCoverLetterArchive();
     }
-  } catch (e) {
-    console.warn('[ai-score] Cover letter scoring error:', e.message);
+  } catch(e) { reportError('keywords', e); console.warn('[ai-score] Cover letter scoring error:', e.message);
   }
 }
 
@@ -4045,8 +4041,7 @@ window.bjRescoreCoverLetter = async function(clId) {
         });
       }
     }
-  } catch (e) {
-    console.warn('[ai-score] CL rescore error:', e.message);
+  } catch(e) { reportError('keywords', e); console.warn('[ai-score] CL rescore error:', e.message);
   } finally {
     // Start cooldown timer on button
     _startClRescoreCooldown(clId);

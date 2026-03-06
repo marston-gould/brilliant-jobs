@@ -85,7 +85,7 @@ function openReferralOutreachModal(jobId) {
     var session = window.bjSupabase && window.bjSupabase.auth && window.bjSupabase.auth.getSession
       ? null : null;
     if (window._bjUserEmail) userName = window._bjUserEmail.split('@')[0];
-  } catch(e) {}
+  } catch(e) { reportError('referral-outreach:referral-outreach', e); }
 
   // Render modal
   var modal = document.getElementById('referral-outreach-modal');
@@ -200,7 +200,7 @@ function sendReferralTemplate() {
     ta.style.opacity = '0';
     document.body.appendChild(ta);
     ta.select();
-    try { document.execCommand('copy'); } catch(e) {}
+    try { document.execCommand('copy'); } catch(e) { reportError('referral-outreach:referral-outreach', e); }
     document.body.removeChild(ta);
   }
 
@@ -224,7 +224,7 @@ function sendReferralTemplate() {
           status: 'sent'
         });
       }
-    } catch(e) { /* silent --- do not break send flow */ }
+    } catch(e) { reportError('referral-outreach:silent --- do not break send flow', e); }
   })();
 
   // Open destination

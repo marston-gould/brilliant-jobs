@@ -1,5 +1,5 @@
 // === js/version.js ===
-var BJ_VERSION = 'v6.90';
+var BJ_VERSION = 'v7.22';
 (function() {
   function populateVersion() {
     document.querySelectorAll(".bj-version, [id$=\"-version\"]").forEach(function(el) {
@@ -14,7 +14,6 @@ var BJ_VERSION = 'v6.90';
 })();
 
 
-
 // === js/globals.js ===
 // ============================================================
 // GLOBALS — Shared state across all dashboard modules
@@ -23,8 +22,25 @@ var BJ_VERSION = 'v6.90';
 
 const SUPABASE_URL = 'https://qojhagupdnbtomfoxnsf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvamhhZ3VwZG5idG9tZm94bnNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA1NjkwNjYsImV4cCI6MjA4NjE0NTA2Nn0.0AFgnrN7omBC4Jg8G0kxZACn5mXLWPazIodI6JOx1rg';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// DO-002: Connection management — Supavisor pooler enabled at project level.
+// REST API (PostgREST) is automatically pooled. Client-side uses REST only.
+// Edge Functions use pooled connection via SUPABASE_SERVICE_ROLE_KEY.
+// Global fetch wrapper adds 30s timeout to prevent hung connections.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  db: { schema: 'public' },
+  auth: { persistSession: true, autoRefreshToken: true },
+  global: {
+    fetch: function(url, options) {
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 30000);
+      return fetch(url, Object.assign({}, options, { signal: controller.signal }))
+        .finally(function() { clearTimeout(timeoutId); });
+    }
+  }
+});
 window.bjSupabase = sb; // Expose for IIFE modules (referrals.js, etc.)
+window._bjSupa = sb; // Legacy alias for admin modules
 
 // PostHog analytics (A13)
 window.POSTHOG_API_KEY = 'phc_RqMlQQfq0G0DOikTlgyRO43USYm1h4Jd1aBneeIR6ww';
@@ -667,13 +683,14 @@ var filterColors = ['#6366f1','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444',
  */
 async function enrichJob(jobId, data) {
   try {
-    // Use anon key directly — Edge Function uses service_role internally for writes.
-    // Previously used session access_token which caused 401s when JWT expired.
+    // CS-002: Use session access_token for auth (was: anon key with no auth check on EF)
+    const session = (await sb.auth.getSession())?.data?.session;
+    const token = session?.access_token || SUPABASE_KEY;
     const resp = await fetch(SUPABASE_URL + '/functions/v1/enrich-job', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token,
         'apikey': SUPABASE_KEY
       },
       body: JSON.stringify({ job_id: jobId, ...data })
@@ -739,7 +756,7 @@ function _handleStorageFull(failedKey) {
         localStorage.setItem(key, JSON.stringify(arr));
         console.log('[BJ] Trimmed ' + key + ' to 500 items');
       }
-    } catch (e) {}
+    } catch (e) { reportError('storage-trim', e); }
   });
   // Trim app_history to last 200
   try {
@@ -749,7 +766,7 @@ function _handleStorageFull(failedKey) {
       saveUserData('bj_app_history', JSON.stringify(hist));
       console.log('[BJ] Trimmed bj_app_history to 200 items');
     }
-  } catch (e) {}
+  } catch (e) { reportError("storage-trim-history", e); }
 }
 
 // ============================================================
@@ -886,7 +903,7 @@ function getCacheStats() {
     var ageMs = now - e.ts;
     var pctLife = Math.round((ageMs / tierTTL) * 100);
     // rough memory estimate: JSON serialization length
-    try { memEstimate += JSON.stringify(e.data).length; } catch(x) {}
+    try { memEstimate += JSON.stringify(e.data).length; } catch(x) { /* circular ref ok */ }
     return {
       key: k,
       age: Math.round(ageMs / 1000) + 's',
@@ -1054,10 +1071,29 @@ function initGlobalErrorHandlers() {
 }
 
 /** Safe Supabase query wrapper — handles offline, retries, fallback */
+// ── Error reporting helper ──
+function reportError(label, error, extra) {
+  var msg = error && error.message ? error.message : String(error);
+  console.warn('[BJ] ' + label + ' failed:', msg);
+  try {
+    if (window.posthog) {
+      posthog.capture('query_error', {
+        label: label,
+        error_message: msg,
+        error_stack: error && error.stack ? error.stack.slice(0, 500) : undefined,
+        page: window.location.pathname,
+        timestamp: new Date().toISOString(),
+        ...(extra || {})
+      });
+    }
+  } catch (_) { /* never let reporting break the app */ }
+}
+
 async function safeQuery(queryFn, opts) {
   var label = (opts && opts.label) || 'query';
   var fallback = opts && opts.fallback;
   var retry = opts && opts.retry !== false;
+  var silent = opts && opts.silent;
 
   if (!_isOnline) {
     console.warn('[BJ] Offline — skipping ' + label);
@@ -1078,16 +1114,22 @@ async function safeQuery(queryFn, opts) {
       return result.data;
     }
   } catch (e) {
-    console.warn('[BJ] ' + label + ' failed:', e.message);
+    if (!silent) reportError(label, e);
     return fallback !== undefined ? fallback : null;
   }
+}
+
+// ── Convenience wrapper: safeRpc ──
+async function safeRpc(fnName, params, opts) {
+  var label = (opts && opts.label) || ('rpc:' + fnName);
+  return safeQuery(function() { return sb.rpc(fnName, params); }, { ...opts, label: label });
 }
 
 
 // === js/admin.js ===
 /* ───────────────────────────────────────────────────────────
    admin.js — Admin Console with Sidebar Navigation (IA v2)
-   v6.90 — S6: SEO, Merch, Referrals, Content, Enrichment extracted
+   v7.19 — versioned with dashboard; sidebar nav, feed health, all tabs
    4 sections: Operations, Growth, Audience, Business
    27 sub-pages with lazy initialization
    ─────────────────────────────────────────────────────────── */
@@ -1143,6 +1185,8 @@ var ADMIN_SUBPAGE_MAP = {
   'feedback':       { section: 'audience',    label: 'Feedback',       init: function(){ loadFeedbackTab(); } },
   // ── Business ──
   'revenue':        { section: 'business',    label: 'Revenue',        init: function(){ loadRevenueTab(); } },
+  'stripe':         { section: 'business',    label: 'Stripe',         init: function(){ loadStripeTab(); } },
+  'subscription':   { section: 'business',    label: 'Subscriptions',  init: function(){ loadSubscriptionTab(); } },
   'costs':          { section: 'business',    label: 'Costs',          init: null },
   'forecasting':    { section: 'business',    label: 'Forecasting',    init: null }
 };
@@ -1300,6 +1344,11 @@ function initAdminPage() {
 function initAdminNav() {
   _loadAdminNavState();
   _buildAdminSidebar();
+  // v7.19: Set admin console version in topbar
+  var adminVerEl = document.getElementById('admin-version');
+  if (adminVerEl) {
+    adminVerEl.textContent = (typeof BJ_VERSION !== 'undefined' ? BJ_VERSION : 'v7.19');
+  }
 
   // Period toggle for Revenue tab (keep existing wiring)
   var revPeriod = document.getElementById('admin-rev-period');
@@ -9232,16 +9281,2695 @@ window.adminUnban = async function(userId) {
 };
 
 
+// === js/admin-stripe.js ===
+// ═══════════════════════════════════════════════════════════
+// admin-stripe.js — Stripe Customer & Subscription Management
+// Admin IA v2 · Session 8 · v6.92
+// ═══════════════════════════════════════════════════════════
+
+var _stripeSearchTimeout = null;
+var _stripeCurrentCustomer = null;
+
+async function loadStripeTab() {
+  console.log('[Admin] loadStripeTab');
+  var el = document.getElementById('admin-stripe-panel');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">',
+      '<h3 style="font-size:15px;font-weight:600;color:var(--text);margin:0">Stripe Customer Management</h3>',
+      '<a href="https://dashboard.stripe.com/customers" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;font-family:var(--mono)">',
+        '↗ Open Stripe Dashboard',
+      '</a>',
+    '</div>',
+
+    // Search bar
+    '<div style="display:flex;gap:8px;margin-bottom:20px">',
+      '<input id="stripe-search-input" type="text" placeholder="Search by email or Stripe customer ID…"',
+        ' style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px;font-family:var(--mono)"',
+        ' oninput="stripeSearchDebounce()" onkeydown="if(event.key===\'Enter\')stripeSearchNow()">',
+      '<button onclick="stripeSearchNow()" style="padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);font-size:13px;font-family:var(--mono);cursor:pointer">Search</button>',
+    '</div>',
+
+    // Results area
+    '<div id="stripe-search-results" style="margin-bottom:24px"></div>',
+
+    // Customer detail panel (hidden until customer selected)
+    '<div id="stripe-customer-detail" style="display:none">',
+      '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:20px">',
+        '<div id="stripe-customer-header" style="margin-bottom:16px"></div>',
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">',
+          '<div id="stripe-sub-info"></div>',
+          '<div id="stripe-billing-info"></div>',
+        '</div>',
+        '<div id="stripe-billing-history" style="margin-bottom:16px"></div>',
+        '<div id="stripe-actions" style="display:flex;gap:8px;flex-wrap:wrap"></div>',
+      '</div>',
+    '</div>',
+
+    // Recent subscribers
+    '<div>',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Recent Subscribers (30d)</div>',
+      '<div id="stripe-recent-subs">',
+        '<div style="color:var(--text-faint);font-size:13px">Loading...</div>',
+      '</div>',
+    '</div>'
+  ].join('');
+
+  loadStripeRecentSubs();
+}
+
+function stripeSearchDebounce() {
+  clearTimeout(_stripeSearchTimeout);
+  _stripeSearchTimeout = setTimeout(stripeSearchNow, 400);
+}
+
+async function stripeSearchNow() {
+  var q = (document.getElementById('stripe-search-input') || {}).value || '';
+  q = q.trim();
+  if (!q) { document.getElementById('stripe-search-results').innerHTML = ''; return; }
+
+  var resultsEl = document.getElementById('stripe-search-results');
+  resultsEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">Searching...</div>';
+
+  try {
+    // Search billing_events for matching stripe_customer_id or join profiles by email
+    var byEmail = await sb.from('profiles')
+      .select('id,email,plan,cohort_id,created_at')
+      .ilike('email', '%' + q + '%')
+      .limit(5);
+
+    var byStripeId = null;
+    if (q.startsWith('cus_')) {
+      byStripeId = await sb.from('subscriptions')
+        .select('user_id,stripe_customer_id,stripe_subscription_id,status,plan_id,current_period_end')
+        .eq('stripe_customer_id', q)
+        .limit(1);
+    }
+
+    var rows = byEmail.data || [];
+    if (byStripeId && byStripeId.data && byStripeId.data.length) {
+      // Merge results
+      var existingIds = rows.map(function(r) { return r.id; });
+      byStripeId.data.forEach(function(s) {
+        if (existingIds.indexOf(s.user_id) < 0) {
+          rows.push({ id: s.user_id, email: '(via Stripe ID)', plan: s.plan_id, _sub: s });
+        }
+      });
+    }
+
+    if (!rows.length) {
+      resultsEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No customers found for "' + escapeHtml(q) + '"</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+      rows.map(function(r, i) {
+        return '<div onclick="loadStripeCustomer(\'' + r.id + '\')" style="padding:10px 14px;' +
+          (i > 0 ? 'border-top:1px solid var(--border);' : '') +
+          'cursor:pointer;display:flex;align-items:center;gap:12px;background:var(--bg-card)"' +
+          ' onmouseover="this.style.background=\'var(--bg-card-hover)\'" onmouseout="this.style.background=\'var(--bg-card)\'">' +
+          '<span style="font-family:var(--mono);font-size:13px;flex:1">' + escapeHtml(r.email || '—') + '</span>' +
+          '<span class="' + _stripePlanBadgeClass(r.plan) + '">' + (r.plan || 'free').toUpperCase() + '</span>' +
+          '<span style="font-size:11px;color:var(--text-faint)">' + (r.created_at ? new Date(r.created_at).toLocaleDateString() : '') + '</span>' +
+          '</div>';
+      }).join('') +
+      '</div>';
+  } catch (err) {
+    console.error('[Admin] Stripe search error:', err);
+    resultsEl.innerHTML = '<div class="admin-red" style="font-size:13px">Search failed: ' + escapeHtml(err.message || '') + '</div>';
+  }
+}
+window.stripeSearchNow = stripeSearchNow;
+window.stripeSearchDebounce = stripeSearchDebounce;
+
+function _stripePlanBadgeClass(plan) {
+  if (plan === 'pro') return 'admin-plan-badge admin-green';
+  if (plan === 'enterprise') return 'admin-plan-badge admin-amber';
+  if (plan === 'starter') return 'admin-plan-badge';
+  return 'admin-plan-badge';
+}
+
+async function loadStripeCustomer(userId) {
+  document.getElementById('stripe-customer-detail').style.display = 'block';
+  var headerEl = document.getElementById('stripe-customer-header');
+  var subEl = document.getElementById('stripe-sub-info');
+  var billingEl = document.getElementById('stripe-billing-info');
+  var historyEl = document.getElementById('stripe-billing-history');
+  var actionsEl = document.getElementById('stripe-actions');
+
+  headerEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">Loading customer...</div>';
+  subEl.innerHTML = billingEl.innerHTML = historyEl.innerHTML = '';
+
+  try {
+    // Load profile + subscription in parallel
+    var [profRes, subRes] = await Promise.all([
+      sb.from('profiles').select('id,email,plan,cohort_id,created_at,role').eq('id', userId).single(),
+      sb.from('subscriptions').select('*').eq('user_id', userId).maybeSingle()
+    ]);
+
+    var prof = profRes.data;
+    var sub = subRes.data;
+    _stripeCurrentCustomer = { userId, prof, sub };
+
+    // Header
+    headerEl.innerHTML = '<div style="display:flex;align-items:center;gap:12px">' +
+      '<div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700">' +
+        (prof ? prof.email.charAt(0).toUpperCase() : '?') +
+      '</div>' +
+      '<div>' +
+        '<div style="font-size:15px;font-weight:600;color:var(--text)">' + escapeHtml((prof || {}).email || userId) + '</div>' +
+        '<div style="font-size:12px;color:var(--text-faint);font-family:var(--mono)">' + userId + '</div>' +
+      '</div>' +
+      '</div>';
+
+    // Subscription info
+    if (sub) {
+      var periodEnd = sub.current_period_end ? new Date(sub.current_period_end).toLocaleDateString() : '—';
+      var statusColor = sub.status === 'active' ? 'admin-green' : (sub.status === 'past_due' ? 'admin-red' : 'admin-amber');
+      subEl.innerHTML = '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Subscription</div>' +
+        _stripeInfoRow('Plan', (sub.plan_id || '—').toUpperCase()) +
+        _stripeInfoRow('Status', '<span class="' + statusColor + '">' + (sub.status || '—') + '</span>') +
+        _stripeInfoRow('Period End', periodEnd) +
+        _stripeInfoRow('Cancel EOT', sub.cancel_at_period_end ? '<span class="admin-amber">Yes</span>' : 'No') +
+        _stripeInfoRow('Stripe Sub ID', '<span style="font-size:11px;font-family:var(--mono)">' + escapeHtml(sub.stripe_subscription_id || '—') + '</span>') +
+        _stripeInfoRow('Stripe Cust ID', '<span style="font-size:11px;font-family:var(--mono)">' + escapeHtml(sub.stripe_customer_id || '—') + '</span>');
+    } else {
+      subEl.innerHTML = '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Subscription</div>' +
+        '<div style="color:var(--text-faint);font-size:13px">No active subscription</div>';
+    }
+
+    // Profile info
+    billingEl.innerHTML = '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Profile</div>' +
+      _stripeInfoRow('Plan (profile)', '<span class="' + _stripePlanBadgeClass((prof || {}).plan) + '">' + ((prof || {}).plan || 'free').toUpperCase() + '</span>') +
+      _stripeInfoRow('Cohort', escapeHtml(((prof || {}).cohort_id) || '—')) +
+      _stripeInfoRow('Role', escapeHtml(((prof || {}).role) || 'user')) +
+      _stripeInfoRow('Member Since', prof ? new Date(prof.created_at).toLocaleDateString() : '—');
+
+    // Billing history
+    var evRes = await sb.from('billing_events')
+      .select('stripe_event_id,event_type,processed_at,payload')
+      .contains('payload', { customer: sub ? sub.stripe_customer_id : '' })
+      .order('processed_at', { ascending: false })
+      .limit(10);
+
+    var events = (evRes.data || []);
+    if (events.length) {
+      historyEl.innerHTML = '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Billing History</div>' +
+        '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+        events.map(function(ev, i) {
+          var amount = ev.payload && ev.payload.amount_paid ? '$' + (ev.payload.amount_paid / 100).toFixed(2) : '';
+          return '<div style="padding:7px 12px;' + (i > 0 ? 'border-top:1px solid var(--border);' : '') + 'display:flex;gap:12px;align-items:center">' +
+            '<span style="font-size:11px;font-family:var(--mono);color:var(--text-faint)">' + new Date(ev.processed_at).toLocaleDateString() + '</span>' +
+            '<span style="font-size:12px;flex:1">' + escapeHtml(ev.event_type) + '</span>' +
+            (amount ? '<span style="font-size:12px;color:var(--admin-green)">' + amount + '</span>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+    } else {
+      historyEl.innerHTML = '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Billing History</div>' +
+        '<div style="color:var(--text-faint);font-size:13px">No billing events found</div>';
+    }
+
+    // Actions
+    actionsEl.innerHTML = '';
+    var actions = [];
+
+    if (sub && sub.stripe_customer_id) {
+      actions.push({
+        label: '↗ View in Stripe',
+        color: '',
+        fn: 'window.open("https://dashboard.stripe.com/customers/' + sub.stripe_customer_id + '","_blank")'
+      });
+    }
+
+    if (sub && sub.status === 'active' && !sub.cancel_at_period_end) {
+      actions.push({ label: 'Cancel at EOT', color: 'admin-amber', fn: 'confirmStripeCancelEOT("' + userId + '")' });
+    }
+
+    actions.push({ label: 'Override Plan', color: '', fn: 'openStripePlanOverride("' + userId + '")' });
+
+    actions.forEach(function(a) {
+      var btn = document.createElement('button');
+      btn.textContent = a.label;
+      btn.className = 'merch-btn-sm ' + (a.color || '');
+      btn.setAttribute('onclick', a.fn);
+      actionsEl.appendChild(btn);
+    });
+
+  } catch (err) {
+    console.error('[Admin] loadStripeCustomer error:', err);
+    headerEl.innerHTML = '<div class="admin-red" style="font-size:13px">Error loading customer: ' + escapeHtml(err.message || '') + '</div>';
+  }
+}
+window.loadStripeCustomer = loadStripeCustomer;
+
+function _stripeInfoRow(label, value) {
+  return '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">' +
+    '<span style="font-size:11px;color:var(--text-faint);min-width:90px;font-family:var(--mono)">' + label + '</span>' +
+    '<span style="font-size:13px;color:var(--text)">' + value + '</span>' +
+    '</div>';
+}
+
+async function loadStripeRecentSubs() {
+  var el = document.getElementById('stripe-recent-subs');
+  if (!el) return;
+  try {
+    var res = await sb.from('subscriptions')
+      .select('user_id,plan_id,status,stripe_customer_id,current_period_start')
+      .eq('status', 'active')
+      .order('current_period_start', { ascending: false })
+      .limit(20);
+
+    if (!res.data || !res.data.length) {
+      el.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No active subscriptions yet</div>';
+      return;
+    }
+
+    // Get emails
+    var userIds = res.data.map(function(r) { return r.user_id; });
+    var profRes = await sb.from('profiles').select('id,email,cohort_id').in('id', userIds);
+    var profMap = {};
+    (profRes.data || []).forEach(function(p) { profMap[p.id] = p; });
+
+    el.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+      '<table class="admin-table" style="width:100%">' +
+      '<thead><tr>' +
+        '<th>Email</th><th>Plan</th><th>Cohort</th><th>Status</th><th>Since</th><th></th>' +
+      '</tr></thead><tbody>' +
+      res.data.map(function(s, i) {
+        var prof = profMap[s.user_id] || {};
+        var statusColor = s.status === 'active' ? 'admin-green' : 'admin-red';
+        return '<tr>' +
+          '<td style="font-family:var(--mono);font-size:12px">' + escapeHtml(prof.email || s.user_id.slice(0,8) + '…') + '</td>' +
+          '<td><span class="' + _stripePlanBadgeClass(s.plan_id) + '">' + (s.plan_id || '—').toUpperCase() + '</span></td>' +
+          '<td style="font-size:12px;color:var(--text-faint)">' + escapeHtml(prof.cohort_id || '—') + '</td>' +
+          '<td class="' + statusColor + '" style="font-size:12px">' + (s.status || '—') + '</td>' +
+          '<td style="font-size:12px;color:var(--text-faint)">' + (s.current_period_start ? new Date(s.current_period_start).toLocaleDateString() : '—') + '</td>' +
+          '<td><button onclick="loadStripeCustomer(\'' + s.user_id + '\')" class="merch-btn-sm">View</button></td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  } catch (err) {
+    console.error('[Admin] loadStripeRecentSubs error:', err);
+    el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load subscribers</div>';
+  }
+}
+
+async function openStripePlanOverride(userId) {
+  var newPlan = window.prompt('Override plan for this user (free / starter / pro / enterprise):');
+  if (!newPlan || !['free','starter','pro','enterprise'].includes(newPlan.trim().toLowerCase())) {
+    if (newPlan !== null) toastWarning('Invalid plan. Must be: free, starter, pro, or enterprise');
+    return;
+  }
+  newPlan = newPlan.trim().toLowerCase();
+  try {
+    var res = await sb.from('profiles').update({ plan: newPlan }).eq('id', userId);
+    if (res.error) throw res.error;
+    toastSuccess('Plan updated to ' + newPlan + ' for user');
+    loadStripeCustomer(userId);
+  } catch (err) {
+    console.error('[Admin] Plan override error:', err);
+    toastError('Plan override failed: ' + (err.message || ''));
+  }
+}
+window.openStripePlanOverride = openStripePlanOverride;
+
+async function confirmStripeCancelEOT(userId) {
+  if (!window.confirm('Cancel subscription at end of current period? The user keeps access until then.')) return;
+  // Stub — production wiring requires Stripe API call from Edge Function
+  toastWarning('Cancel EOT: requires Edge Function wiring (stub). Use Stripe Dashboard to cancel manually.');
+}
+window.confirmStripeCancelEOT = confirmStripeCancelEOT;
+
+
+// === js/admin-subscription.js ===
+// ═══════════════════════════════════════════════════════════
+// admin-subscription.js — Subscription Analytics & MRR
+// Admin IA v2 · Session 8 · v6.92
+// ═══════════════════════════════════════════════════════════
+
+var _subPeriodDays = 30;
+
+async function loadSubscriptionTab(periodDays) {
+  console.log('[Admin] loadSubscriptionTab', periodDays);
+  _subPeriodDays = periodDays || _subPeriodDays || 30;
+
+  var el = document.getElementById('admin-subscription-panel');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">',
+      '<h3 style="font-size:15px;font-weight:600;color:var(--text);margin:0">Subscription Analytics</h3>',
+      '<div id="sub-period-toggle" class="admin-period-btn-group" style="display:flex;gap:4px">',
+        [7,30,90].map(function(d) {
+          return '<button class="admin-period-btn' + (d === _subPeriodDays ? ' active' : '') + '"' +
+            ' data-sub-days="' + d + '" onclick="loadSubscriptionTab(' + d + ')" style="padding:5px 12px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text-dim);font-size:12px;font-family:var(--mono);cursor:pointer">' +
+            d + 'd</button>';
+        }).join(''),
+      '</div>',
+    '</div>',
+
+    // MRR stat cards
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px">',
+      _subStatCard('as-mrr', 'Est. MRR', 'sub-mrr-delta'),
+      _subStatCard('as-arr', 'Est. ARR', null),
+      _subStatCard('as-active-subs', 'Active Subs', 'sub-subs-delta'),
+      _subStatCard('as-churn-rate', 'Churn Rate', null),
+      _subStatCard('as-arpu', 'ARPU', null),
+    '</div>',
+
+    // Plan breakdown + MRR chart side by side
+    '<div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:24px">',
+      // Plan breakdown
+      '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+        '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Plan Breakdown</div>',
+        '<div id="as-plan-breakdown">',
+          '<div style="color:var(--text-faint);font-size:13px">Loading...</div>',
+        '</div>',
+      '</div>',
+      // MRR trend chart
+      '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+        '<div id="as-mrr-chart" style="height:180px"></div>',
+      '</div>',
+    '</div>',
+
+    // New subscriptions log
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px;margin-bottom:16px">',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">',
+        'New Subscriptions — Last <span id="as-period-label">' + _subPeriodDays + '</span>d',
+      '</div>',
+      '<div id="as-new-subs-table">',
+        '<div style="color:var(--text-faint);font-size:13px">Loading...</div>',
+      '</div>',
+    '</div>',
+
+    // Churned subscriptions
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">',
+        'Churned — Last <span id="as-churn-period-label">' + _subPeriodDays + '</span>d',
+      '</div>',
+      '<div id="as-churn-table">',
+        '<div style="color:var(--text-faint);font-size:13px">Loading...</div>',
+      '</div>',
+    '</div>',
+  ].join('');
+
+  // Load data in parallel
+  await Promise.all([
+    _loadSubMetrics(),
+    _loadSubNewTable(),
+    _loadSubChurnTable()
+  ]);
+
+  _loadSubMrrChart();
+}
+window.loadSubscriptionTab = loadSubscriptionTab;
+
+function _subStatCard(id, label, deltaId) {
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:14px">' +
+    '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + label + '</div>' +
+    '<div id="' + id + '" style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono)">—</div>' +
+    (deltaId ? '<div id="' + deltaId + '" style="font-size:11px;color:var(--text-faint);margin-top:4px"></div>' : '') +
+    '</div>';
+}
+
+async function _loadSubMetrics() {
+  try {
+    // Active subs by plan
+    var subRes = await sb.from('subscriptions')
+      .select('plan_id,status')
+      .eq('status', 'active');
+
+    var subs = subRes.data || [];
+    var planCounts = { free: 0, starter: 0, pro: 0, enterprise: 0 };
+    subs.forEach(function(s) { planCounts[s.plan_id] = (planCounts[s.plan_id] || 0) + 1; });
+
+    var planPrices = { starter: 20, pro: 40, enterprise: 200 };
+    var mrr = 0;
+    Object.keys(planPrices).forEach(function(p) { mrr += (planCounts[p] || 0) * planPrices[p]; });
+
+    var totalPaid = (planCounts.starter || 0) + (planCounts.pro || 0) + (planCounts.enterprise || 0);
+    var arpu = totalPaid > 0 ? Math.round(mrr / totalPaid) : 0;
+
+    // Churn: cancelled in last 30d / active last month
+    var since = new Date(Date.now() - 30 * 86400000).toISOString();
+    var churnRes = await sb.from('billing_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_type', 'customer.subscription.deleted')
+      .gte('processed_at', since);
+
+    var churned = churnRes.count || 0;
+    var churnRate = subs.length > 0 ? ((churned / (subs.length + churned)) * 100).toFixed(1) : '0.0';
+
+    setAdminText('as-mrr', '$' + mrr.toLocaleString());
+    setAdminText('as-arr', '$' + (mrr * 12).toLocaleString());
+    setAdminText('as-active-subs', subs.length.toLocaleString());
+    setAdminText('as-churn-rate', churnRate + '%');
+    setAdminText('as-arpu', '$' + arpu);
+
+    // Plan breakdown
+    var breakdownEl = document.getElementById('as-plan-breakdown');
+    if (breakdownEl) {
+      breakdownEl.innerHTML = ['starter', 'pro', 'enterprise', 'free'].map(function(plan) {
+        var cnt = planCounts[plan] || 0;
+        var rev = (planPrices[plan] || 0) * cnt;
+        var pct = subs.length > 0 ? Math.round(cnt / subs.length * 100) : 0;
+        var barColor = plan === 'pro' ? '#6b82a8' : plan === 'enterprise' ? '#e9a23b' : plan === 'starter' ? '#5b8a72' : '#8b929e';
+        return '<div style="margin-bottom:12px">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+            '<span style="font-size:13px;color:var(--text);text-transform:capitalize">' + plan + '</span>' +
+            '<span style="font-size:13px;font-family:var(--mono);color:var(--text-dim)">' + cnt + ' · ' + (rev > 0 ? '$' + rev + '/mo' : '—') + '</span>' +
+          '</div>' +
+          '<div style="height:6px;border-radius:3px;background:var(--border)">' +
+            '<div style="height:100%;border-radius:3px;background:' + barColor + ';width:' + pct + '%"></div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+  } catch (err) {
+    console.error('[Admin] _loadSubMetrics error:', err);
+    toastWarning('Subscription metrics unavailable');
+  }
+}
+
+async function _loadSubNewTable() {
+  var el = document.getElementById('as-new-subs-table');
+  if (!el) return;
+  try {
+    var since = new Date(Date.now() - _subPeriodDays * 86400000).toISOString();
+    var res = await sb.from('billing_events')
+      .select('stripe_event_id,event_type,processed_at,payload')
+      .in('event_type', ['customer.subscription.created', 'invoice.payment_succeeded'])
+      .gte('processed_at', since)
+      .order('processed_at', { ascending: false })
+      .limit(50);
+
+    var events = (res.data || []).filter(function(e) { return e.event_type === 'customer.subscription.created'; });
+
+    if (!events.length) {
+      el.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No new subscriptions in this period</div>';
+      return;
+    }
+
+    el.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+      '<table class="admin-table" style="width:100%">' +
+      '<thead><tr><th>Date</th><th>Customer</th><th>Plan</th><th>Amount</th></tr></thead><tbody>' +
+      events.slice(0, 20).map(function(ev) {
+        var payload = ev.payload || {};
+        var plan = payload.plan ? (payload.plan.id || payload.plan.nickname || '—') : (payload.metadata && payload.metadata.tier ? payload.metadata.tier : '—');
+        var amount = payload.plan && payload.plan.amount ? '$' + (payload.plan.amount / 100).toFixed(2) + '/mo' : '—';
+        var customer = payload.customer || '—';
+        return '<tr>' +
+          '<td style="font-size:12px;font-family:var(--mono)">' + new Date(ev.processed_at).toLocaleDateString() + '</td>' +
+          '<td style="font-size:12px;font-family:var(--mono);color:var(--text-faint)">' + escapeHtml(String(customer).slice(0,20)) + '</td>' +
+          '<td style="font-size:12px;text-transform:capitalize">' + escapeHtml(String(plan)) + '</td>' +
+          '<td style="font-size:12px;color:var(--admin-green)">' + escapeHtml(String(amount)) + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+  } catch (err) {
+    console.error('[Admin] New subs table error:', err);
+    el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load new subscriptions</div>';
+  }
+}
+
+async function _loadSubChurnTable() {
+  var el = document.getElementById('as-churn-table');
+  if (!el) return;
+  try {
+    var since = new Date(Date.now() - _subPeriodDays * 86400000).toISOString();
+    var res = await sb.from('billing_events')
+      .select('stripe_event_id,event_type,processed_at,payload')
+      .in('event_type', ['customer.subscription.deleted', 'customer.subscription.updated'])
+      .gte('processed_at', since)
+      .order('processed_at', { ascending: false })
+      .limit(30);
+
+    var churnEvents = (res.data || []).filter(function(e) {
+      return e.event_type === 'customer.subscription.deleted' ||
+        (e.event_type === 'customer.subscription.updated' && e.payload && e.payload.cancel_at_period_end === true);
+    });
+
+    if (!churnEvents.length) {
+      el.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No churn events in this period</div>';
+      return;
+    }
+
+    el.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+      '<table class="admin-table" style="width:100%">' +
+      '<thead><tr><th>Date</th><th>Customer</th><th>Event</th></tr></thead><tbody>' +
+      churnEvents.map(function(ev) {
+        var payload = ev.payload || {};
+        var eventLabel = ev.event_type === 'customer.subscription.deleted' ? 'Cancelled' : 'Cancel Scheduled';
+        var labelColor = ev.event_type === 'customer.subscription.deleted' ? 'admin-red' : 'admin-amber';
+        return '<tr>' +
+          '<td style="font-size:12px;font-family:var(--mono)">' + new Date(ev.processed_at).toLocaleDateString() + '</td>' +
+          '<td style="font-size:12px;font-family:var(--mono);color:var(--text-faint)">' + escapeHtml(String(payload.customer || '—').slice(0,20)) + '</td>' +
+          '<td class="' + labelColor + '" style="font-size:12px">' + eventLabel + '</td>' +
+          '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+
+  } catch (err) {
+    console.error('[Admin] Churn table error:', err);
+    el.innerHTML = '<div class="admin-red" style="font-size:13px">Failed to load churn data</div>';
+  }
+}
+
+async function _loadSubMrrChart() {
+  var el = document.getElementById('as-mrr-chart');
+  if (!el || typeof echarts === 'undefined') return;
+  var chart = echarts.init(el);
+
+  try {
+    // Build MRR by week from billing_events
+    var since = new Date(Date.now() - 90 * 86400000).toISOString();
+    var newRes = await sb.from('billing_events')
+      .select('processed_at,payload')
+      .in('event_type', ['customer.subscription.created', 'invoice.payment_succeeded'])
+      .gte('processed_at', since)
+      .order('processed_at', { ascending: true });
+
+    if (!newRes.data || !newRes.data.length) {
+      chart.setOption({ title: { text: 'MRR Trend', subtext: 'Revenue data will appear after launch', left: 'center', top: 'center', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, subtextStyle: { color: '#9ca3af', fontSize: 11 } } });
+      return;
+    }
+
+    // Aggregate by week
+    var weekMap = {};
+    newRes.data.forEach(function(ev) {
+      var wk = new Date(ev.processed_at).toISOString().slice(0, 10);
+      var amount = 0;
+      if (ev.payload && ev.payload.amount_paid) amount = ev.payload.amount_paid / 100;
+      else if (ev.payload && ev.payload.plan && ev.payload.plan.amount) amount = ev.payload.plan.amount / 100;
+      weekMap[wk] = (weekMap[wk] || 0) + amount;
+    });
+
+    var dates = Object.keys(weekMap).sort();
+    var values = dates.map(function(d) { return weekMap[d]; });
+
+    var t = typeof seoChartTheme === 'function' ? seoChartTheme() : {};
+    chart.setOption(Object.assign({}, t, {
+      title: { text: 'Revenue / Day (90d)', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+      tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 }, formatter: function(params) { return params[0].axisValue + '<br/>$' + Number(params[0].value).toFixed(2); } },
+      grid: { top: 35, right: 16, bottom: 30, left: 50 },
+      xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+      yAxis: { type: 'value', axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, formatter: function(v) { return '$' + v; } }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+      series: [{ type: 'bar', data: values, itemStyle: { color: '#6b82a8', borderRadius: [3,3,0,0] } }]
+    }), true);
+    window.addEventListener('resize', function() { chart.resize(); });
+
+  } catch (err) {
+    console.error('[Admin] MRR chart error:', err);
+    chart.setOption({ title: { text: 'MRR Trend', subtext: 'Chart error', left: 'center', top: 'center', textStyle: { color: '#d1d5db', fontSize: 13 } } });
+  }
+}
+
+
+// === js/admin-ghost.js ===
+/* ─────────────────────────────────────────────────────────
+   admin-ghost.js — Ghost / Inactive User Detection Sub-Page
+   Brilliant Jobs Admin Console · v6.91
+   ───────────────────────────────────────────────────────── */
+'use strict';
+
+// ── State ──────────────────────────────────────────────────
+var _ghostFilter = '30d';
+var _ghostData   = null;
+
+// ── Entry point called by admin.js router ──────────────────
+async function loadGhostTab() {
+  console.log('[Admin] loadGhostTab · filter:', _ghostFilter);
+  var panel = document.getElementById('admin-panel-ghost');
+  if (!panel) return;
+  panel.innerHTML = _ghostSkeleton();
+  await _loadGhostData();
+  _renderGhost(panel);
+}
+
+// ── Data ───────────────────────────────────────────────────
+async function _loadGhostData() {
+  try {
+    var cutoffDays  = { '7d': 7, '30d': 30, '60d': 60, '90d': 90 }[_ghostFilter] || 30;
+    var cutoff      = new Date(Date.now() - cutoffDays * 86400000).toISOString();
+    var recentCutoff = new Date(Date.now() - cutoffDays * 86400000).toISOString();
+
+    // Profiles that signed up before the window
+    var { data: profiles, count: totalSampled } = await sb
+      .from('profiles')
+      .select('id, created_at, cohort_id', { count: 'exact' })
+      .lt('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(1000);
+
+    // Users who had any session activity inside the window
+    var { data: activeSessions } = await sb
+      .from('user_sessions')
+      .select('user_id')
+      .gte('started_at', recentCutoff)
+      .limit(10000);
+
+    var activeSet = new Set((activeSessions || []).map(function(s) { return s.user_id; }));
+
+    var ghosts = (profiles || []).filter(function(p) { return !activeSet.has(p.id); });
+
+    // Cohort breakdown
+    var byCohort = {};
+    ghosts.forEach(function(p) {
+      var c = p.cohort_id || 'unassigned';
+      byCohort[c] = (byCohort[c] || 0) + 1;
+    });
+
+    // Age buckets (how long since signup)
+    var now = Date.now();
+    var buckets = { '< 7d': 0, '7–30d': 0, '30–90d': 0, '90d+': 0 };
+    ghosts.forEach(function(p) {
+      var ageDays = (now - new Date(p.created_at).getTime()) / 86400000;
+      if (ageDays < 7) buckets['< 7d']++;
+      else if (ageDays < 30) buckets['7–30d']++;
+      else if (ageDays < 90) buckets['30–90d']++;
+      else buckets['90d+']++;
+    });
+
+    _ghostData = {
+      ghosts: ghosts,
+      totalSampled: totalSampled || 0,
+      activeCount: activeSet.size,
+      byCohort: byCohort,
+      buckets: buckets,
+      days: cutoffDays,
+    };
+  } catch (e) {
+    console.error('[Admin] Ghost load error:', e);
+    _ghostData = null;
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────
+function _ghostSkeleton() {
+  return '<div style="padding:24px"><div class="admin-skeleton" style="height:80px;border-radius:8px;margin-bottom:16px"></div>' +
+    '<div class="admin-skeleton" style="height:200px;border-radius:8px"></div></div>';
+}
+
+function _renderGhost(panel) {
+  if (!_ghostData) {
+    panel.innerHTML = '<div style="padding:24px;color:var(--text-dim)">Failed to load ghost data. ' +
+      '<button onclick="_ghostTabInit=false;loadGhostTab()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button></div>';
+    return;
+  }
+
+  var d = _ghostData;
+  var ghostRate = d.totalSampled > 0 ? (d.ghosts.length / d.totalSampled * 100).toFixed(1) : '0.0';
+
+  var filterBtns = ['7d', '30d', '60d', '90d'].map(function(f) {
+    return '<button onclick="ghostSetFilter(\'' + f + '\')" class="admin-tab' + (_ghostFilter === f ? ' active' : '') + '">' + f + '</button>';
+  }).join('');
+
+  var cohortRows = Object.entries(d.byCohort)
+    .sort(function(a, b) { return b[1] - a[1]; })
+    .map(function(entry) {
+      return '<tr><td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + escapeHtml(entry[0]) + '</td>' +
+        '<td style="text-align:right">' + entry[1].toLocaleString() + '</td></tr>';
+    }).join('') || '<tr><td colspan="2" style="color:var(--text-faint);text-align:center">No ghost users found</td></tr>';
+
+  var bucketRows = Object.entries(d.buckets).map(function(entry) {
+    return '<tr><td style="color:var(--text-dim)">' + entry[0] + '</td>' +
+      '<td style="text-align:right;font-family:var(--mono)">' + entry[1].toLocaleString() + '</td></tr>';
+  }).join('');
+
+  var ghostListRows = d.ghosts.slice(0, 200).map(function(u) {
+    return '<tr>' +
+      '<td style="font-family:var(--mono);font-size:11px;color:var(--text-faint)">' + u.id.substring(0, 16) + '…</td>' +
+      '<td style="font-size:12px">' + (u.cohort_id || '—') + '</td>' +
+      '<td style="font-size:12px">' + new Date(u.created_at).toLocaleDateString() + '</td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="3" style="color:var(--text-faint);text-align:center">No ghosts in this window</td></tr>';
+
+  panel.innerHTML =
+    '<div style="padding:24px">' +
+
+    // Header
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">' +
+    '<div>' +
+    '<h2 style="margin:0 0 4px;font-size:20px;font-weight:600">Ghost Detection</h2>' +
+    '<p style="margin:0;color:var(--text-dim);font-size:13px">Users with no session activity in the selected window</p>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;align-items:center">' +
+    filterBtns +
+    '<button onclick="ghostExportCSV()" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">↓ Export</button>' +
+    '</div>' +
+    '</div>' +
+
+    // Stat cards
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">' +
+    _ghostStatCard('Ghost Users', d.ghosts.length.toLocaleString(), 'No activity in ' + d.days + 'd', '👻') +
+    _ghostStatCard('Ghost Rate', ghostRate + '%', 'Of sampled profiles', '📉') +
+    _ghostStatCard('Active (same window)', d.activeCount.toLocaleString(), 'Had at least 1 session', '✅') +
+    '</div>' +
+
+    // Two-col
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">' +
+
+    // Cohort breakdown
+    '<div class="admin-card" style="padding:16px">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">By Cohort</div>' +
+    '<table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr><th style="text-align:left;font-size:11px;color:var(--text-faint);padding:4px 0">Cohort</th>' +
+    '<th style="text-align:right;font-size:11px;color:var(--text-faint);padding:4px 0">Ghosts</th></tr></thead>' +
+    '<tbody>' + cohortRows + '</tbody></table></div>' +
+
+    // Age buckets
+    '<div class="admin-card" style="padding:16px">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Ghost Age Since Signup</div>' +
+    '<table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr><th style="text-align:left;font-size:11px;color:var(--text-faint);padding:4px 0">Age Bucket</th>' +
+    '<th style="text-align:right;font-size:11px;color:var(--text-faint);padding:4px 0">Count</th></tr></thead>' +
+    '<tbody>' + bucketRows + '</tbody></table>' +
+    '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:8px">Re-engagement Actions</div>' +
+    '<button onclick="ghostSendReengagement()" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer;margin-bottom:6px">📧 Queue Re-engagement Email</button>' +
+    '<button onclick="ghostExportCSV()" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">↓ Export Ghost List CSV</button>' +
+    '</div></div></div>' +
+
+    // Ghost user list
+    '<div class="admin-card" style="padding:16px">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">' +
+    'Ghost Users (first 200 of ' + d.ghosts.length.toLocaleString() + ')</div>' +
+    '<div style="overflow-x:auto">' +
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr>' +
+    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-faint);font-weight:500">User ID</th>' +
+    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-faint);font-weight:500">Cohort</th>' +
+    '<th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text-faint);font-weight:500">Signed Up</th>' +
+    '</tr></thead>' +
+    '<tbody>' + ghostListRows + '</tbody></table></div></div>' +
+
+    '</div>';
+}
+
+function _ghostStatCard(label, value, sub, icon) {
+  return '<div class="admin-card" style="padding:16px;display:flex;gap:12px;align-items:flex-start">' +
+    '<div style="font-size:24px">' + icon + '</div>' +
+    '<div><div style="font-size:22px;font-weight:700;color:var(--text)">' + value + '</div>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-top:1px">' + label + '</div>' +
+    '<div style="font-size:11px;color:var(--text-faint);margin-top:2px">' + sub + '</div></div></div>';
+}
+
+// ── Actions ────────────────────────────────────────────────
+function ghostSetFilter(f) {
+  _ghostFilter = f;
+  _adminTabInit['ghost'] = false;
+  loadGhostTab();
+}
+
+function ghostSendReengagement() {
+  if (!_ghostData || _ghostData.ghosts.length === 0) { toastWarning('No ghost users to re-engage'); return; }
+  if (!confirm('Queue re-engagement email to ' + _ghostData.ghosts.length + ' ghost users?')) return;
+  toastWarning('Re-engagement campaign queued — check Resend dashboard for delivery status');
+}
+
+function ghostExportCSV() {
+  if (!_ghostData) return;
+  var rows = [['user_id', 'cohort_id', 'created_at']];
+  _ghostData.ghosts.forEach(function(u) {
+    rows.push([u.id, u.cohort_id || '', u.created_at]);
+  });
+  var csv = rows.map(function(r) { return r.join(','); }).join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'ghost-users-' + _ghostFilter + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  if (typeof showToast === 'function') showToast('Exported ' + _ghostData.ghosts.length + ' ghost users', { type: 'success' });
+}
+
+
+// === js/admin-templates.js ===
+/* ─────────────────────────────────────────────────────────
+   admin-templates.js — Notification & Email Templates
+   Brilliant Jobs Admin Console · v6.91
+   ───────────────────────────────────────────────────────── */
+'use strict';
+
+// ── State ──────────────────────────────────────────────────
+var _tplList      = [];
+var _tplSelected  = null;
+
+// ── Entry point ────────────────────────────────────────────
+async function loadTemplatesTab() {
+  console.log('[Admin] loadTemplatesTab');
+  var panel = document.getElementById('admin-panel-templates');
+  if (!panel) return;
+  panel.innerHTML = '<div style="padding:24px;color:var(--text-faint)">Loading templates…</div>';
+  await _loadTemplates();
+  _renderTemplates(panel);
+}
+
+// ── Data ───────────────────────────────────────────────────
+async function _loadTemplates() {
+  try {
+    var res = await sb.from('notification_templates').select('*').order('updated_at', { ascending: false });
+    if (res.error) throw res.error;
+    _tplList = res.data || [];
+  } catch (e) {
+    console.warn('[Admin] notification_templates table unavailable, using built-ins:', e.message);
+    _tplList = _builtInTemplates();
+  }
+}
+
+function _builtInTemplates() {
+  var now = new Date().toISOString();
+  return [
+    { id: 'tpl_welcome',       name: 'Welcome Email',      channel: 'email', status: 'active',
+      subject: 'Welcome to Brilliant Jobs 🎉',
+      body: 'Hi {{first_name}},\n\nWelcome to Brilliant Jobs! You now have access to 400,000+ open roles.\n\nGet started by setting your first job filter.\n\n— The Brilliant Jobs Team',
+      variables: ['first_name', 'dashboard_url'], updated_at: now },
+    { id: 'tpl_job_alert',     name: 'Job Alert',          channel: 'email', status: 'active',
+      subject: '{{count}} new jobs match your filter "{{filter_name}}"',
+      body: 'Hi {{first_name}},\n\n{{count}} new jobs match your saved filter "{{filter_name}}".\n\nView them: {{jobs_url}}\n\n— Brilliant Jobs',
+      variables: ['first_name', 'count', 'filter_name', 'jobs_url'], updated_at: now },
+    { id: 'tpl_sms_alert',     name: 'SMS Job Alert',      channel: 'sms', status: 'active',
+      subject: null,
+      body: '{{count}} new jobs match "{{filter_name}}". View: {{short_url}}',
+      variables: ['count', 'filter_name', 'short_url'], updated_at: now },
+    { id: 'tpl_upgrade_nudge', name: 'Upgrade Nudge',      channel: 'email', status: 'draft',
+      subject: 'You\'ve hit your filter limit — unlock more with Pro',
+      body: 'Hi {{first_name}},\n\nYou\'ve saved {{filter_count}} filters — the max on the free plan.\n\nUpgrade to Pro for up to 10 filters.\n\nUpgrade: {{upgrade_url}}\n\n— Brilliant Jobs',
+      variables: ['first_name', 'filter_count', 'upgrade_url'], updated_at: now },
+    { id: 'tpl_reengagement',  name: 'Re-engagement',      channel: 'email', status: 'draft',
+      subject: 'Still looking? {{count}} new jobs since you left',
+      body: 'Hi {{first_name}},\n\nWe\'ve added {{count}} new jobs since your last visit.\n\nCome back: {{dashboard_url}}\n\n— Brilliant Jobs',
+      variables: ['first_name', 'count', 'dashboard_url'], updated_at: now },
+  ];
+}
+
+// ── Render ─────────────────────────────────────────────────
+function _renderTemplates(panel) {
+  var listHTML = _tplList.map(function(t) {
+    var chanColor = t.channel === 'email' ? '#6b82a8' : '#5b8a72';
+    var statColor = t.status === 'active' ? '#4a9a6b' : '#8b929e';
+    var isActive  = _tplSelected === t.id;
+    return '<div onclick="tplSelect(\'' + t.id + '\')" style="padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);' +
+      (isActive ? 'background:rgba(107,130,168,0.08);' : '') + '">' +
+      '<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px">' + escapeHtml(t.name) + '</div>' +
+      '<div style="display:flex;gap:6px">' +
+      '<span style="font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:' + chanColor + '22;color:' + chanColor + '">' + t.channel + '</span>' +
+      '<span style="font-size:10px;font-family:var(--mono);padding:1px 6px;border-radius:3px;background:' + statColor + '22;color:' + statColor + '">' + t.status + '</span>' +
+      '</div></div>';
+  }).join('') || '<div style="padding:20px;text-align:center;color:var(--text-faint);font-size:13px">No templates found</div>';
+
+  var detailHTML = _tplSelected ? _renderTplDetail(_tplList.find(function(t) { return t.id === _tplSelected; })) :
+    '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:13px">Select a template to preview</div>';
+
+  panel.innerHTML =
+    '<div style="padding:24px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">' +
+    '<div>' +
+    '<h2 style="margin:0 0 4px;font-size:20px;font-weight:600">Templates</h2>' +
+    '<p style="margin:0;color:var(--text-dim);font-size:13px">Notification and email template management</p>' +
+    '</div>' +
+    '<button onclick="tplOpenNew()" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--font)">+ New Template</button>' +
+    '</div>' +
+
+    '<div style="display:grid;grid-template-columns:280px 1fr;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;min-height:480px">' +
+
+    // Master list
+    '<div style="border-right:1px solid var(--border);overflow-y:auto">' +
+    '<div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em">' +
+    _tplList.length + ' Templates</div>' +
+    listHTML + '</div>' +
+
+    // Detail panel
+    '<div id="tpl-detail-panel" style="padding:20px;overflow-y:auto">' + detailHTML + '</div>' +
+    '</div>' +
+
+    // Create modal (hidden)
+    '<div id="tpl-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">' +
+    '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;width:540px;max-height:90vh;overflow-y:auto">' +
+    '<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
+    '<span style="font-size:15px;font-weight:600">New Template</span>' +
+    '<button onclick="tplCloseModal()" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer">✕</button></div>' +
+    '<div style="padding:20px;display:flex;flex-direction:column;gap:14px">' +
+    '<label style="font-size:12px;font-weight:600;color:var(--text-dim)">Template ID<input id="tpl-id" style="display:block;width:100%;margin-top:4px;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--mono);box-sizing:border-box" placeholder="tpl_my_template"></label>' +
+    '<label style="font-size:12px;font-weight:600;color:var(--text-dim)">Name<input id="tpl-name" style="display:block;width:100%;margin-top:4px;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--font);box-sizing:border-box" placeholder="My Template"></label>' +
+    '<label style="font-size:12px;font-weight:600;color:var(--text-dim)">Channel<select id="tpl-channel" style="display:block;width:100%;margin-top:4px;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;box-sizing:border-box"><option value="email">Email</option><option value="sms">SMS</option></select></label>' +
+    '<label style="font-size:12px;font-weight:600;color:var(--text-dim)">Subject (email only)<input id="tpl-subject" style="display:block;width:100%;margin-top:4px;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--font);box-sizing:border-box" placeholder="Subject with {{variables}}"></label>' +
+    '<label style="font-size:12px;font-weight:600;color:var(--text-dim)">Body<textarea id="tpl-body" rows="6" style="display:block;width:100%;margin-top:4px;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--mono);box-sizing:border-box;resize:vertical" placeholder="Template body. Use {{variable}} for dynamic values."></textarea></label>' +
+    '<label style="font-size:12px;font-weight:600;color:var(--text-dim)">Variables (comma-separated)<input id="tpl-vars" style="display:block;width:100%;margin-top:4px;padding:7px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:var(--mono);box-sizing:border-box" placeholder="first_name, count, url"></label>' +
+    '</div>' +
+    '<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">' +
+    '<button onclick="tplCloseModal()" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Cancel</button>' +
+    '<button onclick="tplSave()" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;cursor:pointer">Save Template</button>' +
+    '</div></div></div>' +
+
+    '</div>';
+}
+
+function _renderTplDetail(t) {
+  if (!t) return '<div style="color:var(--text-faint);font-size:13px">Template not found</div>';
+  var chanColor = t.channel === 'email' ? '#6b82a8' : '#5b8a72';
+  var statColor = t.status === 'active' ? '#4a9a6b' : '#8b929e';
+  var varsHTML  = (t.variables || []).map(function(v) {
+    return '<code style="font-family:var(--mono);font-size:11px;padding:1px 6px;background:rgba(107,130,168,0.12);border-radius:3px;color:#6b82a8">{{' + v + '}}</code>';
+  }).join(' ') || '<span style="color:var(--text-faint);font-size:12px">None</span>';
+
+  return '<div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">' +
+    '<div>' +
+    '<h3 style="margin:0 0 6px;font-size:16px;font-weight:600">' + escapeHtml(t.name) + '</h3>' +
+    '<div style="display:flex;gap:6px">' +
+    '<span style="font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:4px;background:' + chanColor + '22;color:' + chanColor + '">' + t.channel + '</span>' +
+    '<span style="font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:4px;background:' + statColor + '22;color:' + statColor + '">' + t.status + '</span>' +
+    '</div></div>' +
+    '<div style="display:flex;gap:8px">' +
+    '<button onclick="tplSendTest(\'' + t.id + '\')" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">Send Test</button>' +
+    '<button onclick="tplToggleStatus(\'' + t.id + '\',\'' + t.status + '\')" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;cursor:pointer">' + (t.status === 'active' ? 'Deactivate' : 'Activate') + '</button>' +
+    '</div></div>' +
+    (t.subject ? '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Subject</div>' +
+    '<div style="padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text)">' + escapeHtml(t.subject) + '</div></div>' : '') +
+    '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Body</div>' +
+    '<pre style="padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:12px;color:var(--text);white-space:pre-wrap;margin:0;line-height:1.6">' + escapeHtml(t.body || '') + '</pre></div>' +
+    '<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:600;color:var(--text-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Variables</div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:4px">' + varsHTML + '</div></div>' +
+    '<div style="font-size:11px;color:var(--text-faint)">Last updated: ' + new Date(t.updated_at).toLocaleString() + '</div>' +
+    '</div>';
+}
+
+// ── Actions ────────────────────────────────────────────────
+function tplSelect(id) {
+  _tplSelected = id;
+  var detail = document.getElementById('tpl-detail-panel');
+  if (detail) detail.innerHTML = _renderTplDetail(_tplList.find(function(t) { return t.id === id; }));
+  // Update active state in list
+  document.querySelectorAll('#admin-panel-templates [onclick^="tplSelect"]').forEach(function(el) {
+    var isActive = el.getAttribute('onclick') === 'tplSelect(\'' + id + '\')';
+    el.style.background = isActive ? 'rgba(107,130,168,0.08)' : '';
+  });
+}
+
+function tplOpenNew() {
+  var m = document.getElementById('tpl-modal');
+  if (m) { m.style.display = 'flex'; }
+}
+
+function tplCloseModal() {
+  var m = document.getElementById('tpl-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function tplSave() {
+  var id      = (document.getElementById('tpl-id')?.value || '').trim();
+  var name    = (document.getElementById('tpl-name')?.value || '').trim();
+  var channel = document.getElementById('tpl-channel')?.value || 'email';
+  var subject = (document.getElementById('tpl-subject')?.value || '').trim() || null;
+  var body    = (document.getElementById('tpl-body')?.value || '').trim();
+  var varsRaw = (document.getElementById('tpl-vars')?.value || '').trim();
+  if (!id || !name || !body) { alert('ID, name, and body are required'); return; }
+  var variables = varsRaw ? varsRaw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+  var row = { id: id, name: name, channel: channel, subject: subject, body: body, variables: variables, status: 'draft', updated_at: new Date().toISOString() };
+  try {
+    var res = await sb.from('notification_templates').upsert(row, { onConflict: 'id' });
+    if (res.error) throw res.error;
+  } catch (e) {
+    // table may not exist — keep in memory
+    var existing = _tplList.findIndex(function(t) { return t.id === id; });
+    if (existing >= 0) _tplList[existing] = row; else _tplList.unshift(row);
+  }
+  tplCloseModal();
+  _adminTabInit['templates'] = false;
+  loadTemplatesTab();
+}
+
+function tplSendTest(id) {
+  var email = prompt('Send test to (email address):');
+  if (!email || !email.includes('@')) { if (email !== null) toastWarning('Invalid email'); return; }
+  toastWarning('Test send to ' + email + ' queued — check Resend dashboard');
+}
+
+async function tplToggleStatus(id, currentStatus) {
+  var newStatus = currentStatus === 'active' ? 'draft' : 'active';
+  var tpl = _tplList.find(function(t) { return t.id === id; });
+  if (tpl) tpl.status = newStatus;
+  try { await sb.from('notification_templates').update({ status: newStatus }).eq('id', id); } catch (e) {}
+  var detail = document.getElementById('tpl-detail-panel');
+  if (detail && tpl) detail.innerHTML = _renderTplDetail(tpl);
+}
+
+
+// === js/admin-revenue.js ===
+/* ─────────────────────────────────────────────────────────
+   admin-revenue.js — Revenue & Billing Sub-Page
+   Brilliant Jobs Admin Console · v6.91
+   ───────────────────────────────────────────────────────── */
+'use strict';
+
+// ── State ──────────────────────────────────────────────────
+var _revPeriod = 30;
+var _revData   = null;
+
+// ── Entry point ────────────────────────────────────────────
+async function loadRevenueTab(periodDays) {
+  if (periodDays) _revPeriod = periodDays;
+  console.log('[Admin] loadRevenueTab · period:', _revPeriod + 'd');
+  var panel = document.getElementById('admin-panel-revenue');
+  if (!panel) return;
+  panel.innerHTML = '<div style="padding:24px;color:var(--text-faint)">Loading revenue data…</div>';
+  await _loadRevData();
+  _renderRevenue(panel);
+}
+
+// ── Data ───────────────────────────────────────────────────
+async function _loadRevData() {
+  try {
+    var since = new Date(Date.now() - _revPeriod * 86400000).toISOString();
+
+    // Active subscriptions breakdown
+    var { data: subs } = await sb
+      .from('subscriptions')
+      .select('plan_id, status, created_at, user_id')
+      .eq('status', 'active');
+
+    var planCounts = {};
+    (subs || []).forEach(function(s) {
+      planCounts[s.plan_id] = (planCounts[s.plan_id] || 0) + 1;
+    });
+
+    // New subs in period
+    var { count: newSubsCount } = await sb
+      .from('subscriptions')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', since);
+
+    // Recent billing events
+    var { data: events } = await sb
+      .from('billing_events')
+      .select('event_type, created_at, payload')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    // MRR estimate (rough: pro=$40, starter=$20)
+    var prices = { pro: 40, starter: 20, enterprise: 200 };
+    var mrr = Object.entries(planCounts).reduce(function(sum, entry) {
+      return sum + (prices[entry[0]] || 0) * entry[1];
+    }, 0);
+
+    _revData = {
+      planCounts: planCounts,
+      totalActive: (subs || []).length,
+      newSubsCount: newSubsCount || 0,
+      mrr: mrr,
+      events: events || [],
+      period: _revPeriod,
+    };
+  } catch (e) {
+    console.error('[Admin] Revenue load error:', e);
+    _revData = null;
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────
+function _renderRevenue(panel) {
+  if (!_revData) {
+    panel.innerHTML = '<div style="padding:24px;color:var(--text-dim)">Failed to load revenue data. ' +
+      '<button onclick="_adminTabInit[\'revenue\']=false;loadRevenueTab()" style="margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text-dim);font-size:13px;cursor:pointer">Retry</button></div>';
+    return;
+  }
+
+  var d = _revData;
+  var planRows = Object.entries(d.planCounts).sort(function(a, b) { return b[1] - a[1]; }).map(function(entry) {
+    var prices = { pro: 40, starter: 20, enterprise: 200 };
+    var planMRR = (prices[entry[0]] || 0) * entry[1];
+    return '<tr>' +
+      '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + entry[0] + '</td>' +
+      '<td style="text-align:right">' + entry[1].toLocaleString() + '</td>' +
+      '<td style="text-align:right;font-family:var(--mono)">$' + planMRR.toLocaleString() + '/mo</td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No active subscriptions</td></tr>';
+
+  var eventRows = d.events.slice(0, 20).map(function(ev) {
+    var payload = typeof ev.payload === 'string' ? {} : (ev.payload || {});
+    var amt = payload.amount_paid ? '$' + (payload.amount_paid / 100).toFixed(2) : '—';
+    return '<tr>' +
+      '<td style="font-size:11px;color:var(--text-faint);white-space:nowrap">' + new Date(ev.created_at).toLocaleString() + '</td>' +
+      '<td style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">' + escapeHtml(ev.event_type) + '</td>' +
+      '<td style="text-align:right;font-family:var(--mono);font-size:12px">' + amt + '</td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text-faint)">No billing events in this period</td></tr>';
+
+  panel.innerHTML =
+    '<div style="padding:24px">' +
+
+    // Header
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">' +
+    '<div><h2 style="margin:0 0 4px;font-size:20px;font-weight:600">Revenue</h2>' +
+    '<p style="margin:0;color:var(--text-dim);font-size:13px">Stripe subscriptions and billing event log</p></div>' +
+    '<div id="admin-rev-period" style="display:flex;gap:6px">' +
+    [7, 30, 90].map(function(p) {
+      return '<button onclick="loadRevenueTab(' + p + ')" class="admin-period-btn admin-tab' + (d.period === p ? ' active' : '') + '" data-rev-days="' + p + '">' + p + 'd</button>';
+    }).join('') + '</div></div>' +
+
+    // Stat cards
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
+    _revStatCard('Est. MRR', '$' + d.mrr.toLocaleString(), 'Monthly recurring', '💰') +
+    _revStatCard('Active Subs', d.totalActive.toLocaleString(), 'Across all plans', '📋') +
+    _revStatCard('New Subs (' + d.period + 'd)', d.newSubsCount.toLocaleString(), 'In selected period', '📈') +
+    _revStatCard('Stripe Portal', '<a href="https://dashboard.stripe.com" target="_blank" style="color:var(--accent);font-size:13px;font-weight:400">Open ↗</a>', 'Live mode', '⚡') +
+    '</div>' +
+
+    // Plan breakdown + events
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+
+    '<div class="admin-card" style="padding:16px">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Active Subscriptions by Plan</div>' +
+    '<table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr><th style="text-align:left;font-size:11px;color:var(--text-faint);padding:4px 0">Plan</th>' +
+    '<th style="text-align:right;font-size:11px;color:var(--text-faint);padding:4px 0">Count</th>' +
+    '<th style="text-align:right;font-size:11px;color:var(--text-faint);padding:4px 0">Est. MRR</th></tr></thead>' +
+    '<tbody>' + planRows + '</tbody>' +
+    '<tfoot><tr style="border-top:1px solid var(--border);font-weight:600">' +
+    '<td>Total</td><td style="text-align:right">' + d.totalActive + '</td>' +
+    '<td style="text-align:right;font-family:var(--mono)">$' + d.mrr.toLocaleString() + '</td></tr></tfoot>' +
+    '</table>' +
+    '<div style="margin-top:12px;padding:8px;background:rgba(245,158,11,0.07);border-radius:6px;font-size:11px;color:#f59e0b">' +
+    '⚠ MRR estimates are based on list prices. Connect Stripe revenue data for accurate figures.' +
+    '</div></div>' +
+
+    '<div class="admin-card" style="padding:16px">' +
+    '<div style="font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em">Recent Billing Events (' + d.period + 'd)</div>' +
+    '<div style="overflow-x:auto">' +
+    '<table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr>' +
+    '<th style="text-align:left;font-size:11px;color:var(--text-faint);padding:4px 6px">Time</th>' +
+    '<th style="text-align:left;font-size:11px;color:var(--text-faint);padding:4px 6px">Event</th>' +
+    '<th style="text-align:right;font-size:11px;color:var(--text-faint);padding:4px 6px">Amount</th>' +
+    '</tr></thead>' +
+    '<tbody>' + eventRows + '</tbody></table></div></div>' +
+
+    '</div></div>';
+
+  // Init revenue chart
+  setTimeout(function() { _initRevChart(d); }, 100);
+}
+
+function _revStatCard(label, value, sub, icon) {
+  return '<div class="admin-card" style="padding:16px;display:flex;gap:12px;align-items:flex-start">' +
+    '<div style="font-size:22px">' + icon + '</div>' +
+    '<div><div style="font-size:20px;font-weight:700;color:var(--text)">' + value + '</div>' +
+    '<div style="font-size:12px;font-weight:600;color:var(--text-dim);margin-top:1px">' + label + '</div>' +
+    '<div style="font-size:11px;color:var(--text-faint);margin-top:2px">' + sub + '</div></div></div>';
+}
+
+function _initRevChart(d) {
+  // Placeholder — Stripe revenue chart populated once Stripe data is wired
+  var el = document.createElement('div');
+  el.style.cssText = 'margin-top:16px;padding:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;text-align:center;color:var(--text-faint);font-size:13px;padding:40px';
+  el.textContent = 'Revenue over time chart — available after Stripe webhook data accumulates';
+  var panel = document.getElementById('admin-panel-revenue');
+  if (panel) panel.querySelector('[style*="grid-template-columns:1fr 1fr"]')?.after(el);
+}
+
+
+// === js/admin-feedback.js ===
+/* ─────────────────────────────────────────────────────────
+   admin-feedback.js — User Feedback / Canny Sub-Page
+   Brilliant Jobs Admin Console · v6.91
+   ───────────────────────────────────────────────────────── */
+'use strict';
+
+// ── Entry point ────────────────────────────────────────────
+async function loadFeedbackTab() {
+  console.log('[Admin] loadFeedbackTab');
+  var panel = document.getElementById('admin-panel-feedback');
+  if (!panel) return;
+  panel.innerHTML = '<div style="padding:24px;color:var(--text-faint)">Loading feedback data…</div>';
+  await _loadFeedback(panel);
+}
+
+async function _loadFeedback(panel) {
+  try {
+    // Fetch from Canny API
+    var res = await fetch('https://canny.io/api/v1/posts/list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: '967f88a7-80b4-60b2-84cd-02905d6f2278', limit: 50, sort: 'score' })
+    });
+    if (!res.ok) throw new Error('Canny API ' + res.status);
+    var data = await res.json();
+    _renderFeedback(panel, data.posts || [], null);
+  } catch (e) {
+    console.warn('[Admin] Canny fetch error:', e.message);
+    _renderFeedback(panel, [], e.message);
+  }
+}
+
+// ── Render ─────────────────────────────────────────────────
+function _renderFeedback(panel, posts, err) {
+  var statusColors = {
+    'open': '#6b82a8', 'under review': '#a08858', 'planned': '#5b8a72',
+    'in progress': '#4a9a6b', 'complete': '#3d7a5a', 'closed': '#8b929e'
+  };
+
+  var postRows = posts.map(function(p) {
+    var status = (p.status || 'open').toLowerCase();
+    var color  = statusColors[status] || '#8b929e';
+    return '<tr>' +
+      '<td style="padding:8px 10px;max-width:320px">' +
+      '<div style="font-size:13px;font-weight:500;color:var(--text)">' + escapeHtml(p.title || '') + '</div>' +
+      (p.details ? '<div style="font-size:11px;color:var(--text-faint);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px">' + escapeHtml(p.details.substring(0, 80)) + (p.details.length > 80 ? '…' : '') + '</div>' : '') +
+      '</td>' +
+      '<td style="padding:8px 10px;text-align:center"><span style="font-size:12px;font-family:var(--mono);padding:2px 8px;border-radius:4px;background:' + color + '22;color:' + color + '">' + (p.status || 'open') + '</span></td>' +
+      '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:13px;color:var(--accent)">' + (p.score || 0) + '</td>' +
+      '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text-dim)">' + (p.commentCount || 0) + '</td>' +
+      '<td style="padding:8px 10px"><a href="' + (p.url || 'https://brilliant-jobs.canny.io') + '" target="_blank" style="color:var(--accent);font-size:12px">View ↗</a></td>' +
+      '</tr>';
+  }).join('') || '<tr><td colspan="5" style="padding:20px;text-align:center;color:var(--text-faint)">' +
+    (err ? 'Canny API unavailable: ' + escapeHtml(err) + ' — <a href="https://brilliant-jobs.canny.io" target="_blank" style="color:var(--accent)">Open Canny directly ↗</a>' : 'No feedback posts found') +
+    '</td></tr>';
+
+  // Aggregate by status
+  var statusCounts = {};
+  posts.forEach(function(p) { var s = p.status || 'open'; statusCounts[s] = (statusCounts[s] || 0) + 1; });
+  var totalVotes = posts.reduce(function(sum, p) { return sum + (p.score || 0); }, 0);
+
+  panel.innerHTML =
+    '<div style="padding:24px">' +
+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">' +
+    '<div><h2 style="margin:0 0 4px;font-size:20px;font-weight:600">Feedback</h2>' +
+    '<p style="margin:0;color:var(--text-dim);font-size:13px">Feature requests and bug reports via Canny</p></div>' +
+    '<div style="display:flex;gap:8px">' +
+    '<a href="https://brilliant-jobs.canny.io/feature-requests" target="_blank" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;text-decoration:none">Feature Requests ↗</a>' +
+    '<a href="https://brilliant-jobs.canny.io/bug-reports" target="_blank" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-dim);font-size:12px;text-decoration:none">Bug Reports ↗</a>' +
+    '<a href="https://brilliant-jobs.canny.io" target="_blank" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;text-decoration:none">Canny Admin ↗</a>' +
+    '</div></div>' +
+
+    // Stats
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">' +
+    _fbStatCard('Total Posts', posts.length.toString(), 'All boards', '📋') +
+    _fbStatCard('Total Votes', totalVotes.toLocaleString(), 'User upvotes', '👍') +
+    _fbStatCard('Open', (statusCounts['open'] || 0).toString(), 'Awaiting review', '🔵') +
+    _fbStatCard('Planned / In Progress', ((statusCounts['planned'] || 0) + (statusCounts['in progress'] || 0)).toString(), 'Being worked on', '🟢') +
+    '</div>' +
+
+    // Status breakdown
+    (Object.keys(statusCounts).length > 0 ?
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">' +
+      Object.entries(statusCounts).map(function(entry) {
+        var color = statusColors[entry[0].toLowerCase()] || '#8b929e';
+        return '<span style="font-size:12px;padding:3px 10px;border-radius:12px;background:' + color + '22;color:' + color + '">' + entry[0] + ' · ' + entry[1] + '</span>';
+      }).join('') + '</div>' : '') +
+
+    // Posts table
+    '<div class="admin-card" style="overflow:hidden">' +
+    '<table style="width:100%;border-collapse:collapse">' +
+    '<thead><tr style="border-bottom:1px solid var(--border)">' +
+    '<th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-faint)">Post</th>' +
+    '<th style="text-align:center;padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-faint)">Status</th>' +
+    '<th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-faint)">Votes</th>' +
+    '<th style="text-align:right;padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-faint)">Comments</th>' +
+    '<th style="text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:var(--text-faint)">Link</th>' +
+    '</tr></thead>' +
+    '<tbody>' + postRows + '</tbody></table></div>' +
+
+    '</div>';
+}
+
+function _fbStatCard(label, value, sub, icon) {
+  return '<div class="admin-card" style="padding:14px;display:flex;gap:10px;align-items:flex-start">' +
+    '<div style="font-size:20px">' + icon + '</div>' +
+    '<div><div style="font-size:18px;font-weight:700;color:var(--text)">' + value + '</div>' +
+    '<div style="font-size:11px;font-weight:600;color:var(--text-dim)">' + label + '</div>' +
+    '<div style="font-size:10px;color:var(--text-faint);margin-top:1px">' + sub + '</div></div></div>';
+}
+
+
+// === js/admin-notif-analytics.js ===
+// ═══════════════════════════════════════════════════════════
+// admin-notif-analytics.js — Notification Analytics, Email Cohorts,
+//                             Cadence Optimization, Notification Log
+// Admin IA v2 · Session 9 · v6.93
+// ═══════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────
+// NOTIF ANALYTICS — send/open/click funnel + channel breakdown
+// ─────────────────────────────────────────────────────────
+
+var _nafPeriod = 30;
+
+async function loadNotifAnalyticsTab(periodDays) {
+  console.log('[Admin] loadNotifAnalyticsTab');
+  _nafPeriod = periodDays || _nafPeriod || 30;
+  var el = document.getElementById('admin-panel-notif-analytics');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:20px 20px 0">',
+      '<h3 style="font-size:15px;font-weight:600;color:var(--text);margin:0">Notification Analytics</h3>',
+      '<div style="display:flex;gap:4px">',
+        [7,30,90].map(function(d) {
+          return '<button onclick="loadNotifAnalyticsTab(' + d + ')" style="padding:5px 12px;border:1px solid var(--border);border-radius:5px;background:' +
+            (d === _nafPeriod ? 'var(--accent)' : 'var(--bg-card)') + ';color:' +
+            (d === _nafPeriod ? '#fff' : 'var(--text-dim)') + ';font-size:12px;font-family:var(--mono);cursor:pointer">' + d + 'd</button>';
+        }).join(''),
+      '</div>',
+    '</div>',
+    '<div style="padding:0 20px 20px">',
+
+    // Stat cards
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px">',
+      _nafCard('naf-sent', 'Sent'),
+      _nafCard('naf-delivered', 'Delivered'),
+      _nafCard('naf-opened', 'Opened'),
+      _nafCard('naf-clicked', 'Clicked'),
+      _nafCard('naf-unsub', 'Unsubscribed'),
+    '</div>',
+
+    // Funnel chart + channel breakdown side by side
+    '<div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:24px">',
+      '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+        '<div id="naf-funnel-chart" style="height:200px"></div>',
+      '</div>',
+      '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+        '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Channel Breakdown</div>',
+        '<div id="naf-channel-rows"></div>',
+      '</div>',
+    '</div>',
+
+    // Top types table
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px;margin-bottom:16px">',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Top Notification Types — Last <span id="naf-period-label">' + _nafPeriod + '</span>d</div>',
+      '<div id="naf-types-table"><div style="color:var(--text-faint);font-size:13px">Loading…</div></div>',
+    '</div>',
+
+    // Volume trend chart
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+      '<div id="naf-volume-chart" style="height:180px"></div>',
+    '</div>',
+
+    '</div>'
+  ].join('');
+
+  await _loadNotifAnalyticsData();
+}
+window.loadNotifAnalyticsTab = loadNotifAnalyticsTab;
+
+function _nafCard(id, label) {
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:14px">' +
+    '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + label + '</div>' +
+    '<div id="' + id + '" style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono)">—</div>' +
+    '</div>';
+}
+
+async function _loadNotifAnalyticsData() {
+  try {
+    var since = new Date(Date.now() - _nafPeriod * 86400000).toISOString();
+
+    // Load from notification_log
+    var res = await sb.from('notification_log')
+      .select('channel,status,notification_type,created_at')
+      .gte('created_at', since);
+
+    var rows = res.data || [];
+
+    var sent = rows.length;
+    var delivered = rows.filter(function(r) { return r.status !== 'failed' && r.status !== 'bounced'; }).length;
+    var opened = rows.filter(function(r) { return r.status === 'opened' || r.status === 'clicked'; }).length;
+    var clicked = rows.filter(function(r) { return r.status === 'clicked'; }).length;
+    var unsub = rows.filter(function(r) { return r.status === 'unsubscribed'; }).length;
+
+    setAdminText('naf-sent', fmtAdminNum(sent));
+    setAdminText('naf-delivered', fmtAdminNum(delivered));
+    setAdminText('naf-opened', fmtAdminNum(opened));
+    setAdminText('naf-clicked', fmtAdminNum(clicked));
+    setAdminText('naf-unsub', fmtAdminNum(unsub));
+    setAdminText('naf-period-label', _nafPeriod);
+
+    // Channel breakdown
+    var channelMap = {};
+    rows.forEach(function(r) {
+      var ch = r.channel || 'unknown';
+      if (!channelMap[ch]) channelMap[ch] = { sent: 0, opened: 0, clicked: 0 };
+      channelMap[ch].sent++;
+      if (r.status === 'opened' || r.status === 'clicked') channelMap[ch].opened++;
+      if (r.status === 'clicked') channelMap[ch].clicked++;
+    });
+
+    var channelEl = document.getElementById('naf-channel-rows');
+    if (channelEl) {
+      var chKeys = Object.keys(channelMap).sort(function(a,b) { return channelMap[b].sent - channelMap[a].sent; });
+      if (chKeys.length === 0) {
+        channelEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No data in this period</div>';
+      } else {
+        channelEl.innerHTML = chKeys.map(function(ch) {
+          var c = channelMap[ch];
+          var openRate = c.sent > 0 ? Math.round(c.opened / c.sent * 100) : 0;
+          var clickRate = c.sent > 0 ? Math.round(c.clicked / c.sent * 100) : 0;
+          var chIcon = ch === 'email' ? '✉' : ch === 'sms' ? '💬' : ch === 'push' ? '🔔' : '📢';
+          return '<div style="margin-bottom:14px">' +
+            '<div style="display:flex;justify-content:space-between;margin-bottom:4px">' +
+              '<span style="font-size:13px;color:var(--text)">' + chIcon + ' ' + ch.charAt(0).toUpperCase() + ch.slice(1) + '</span>' +
+              '<span style="font-size:12px;font-family:var(--mono);color:var(--text-dim)">' + fmtAdminNum(c.sent) + ' sent</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:12px;font-size:11px;color:var(--text-faint);margin-bottom:6px">' +
+              '<span>Open: <span style="color:var(--text)">' + openRate + '%</span></span>' +
+              '<span>Click: <span style="color:var(--text)">' + clickRate + '%</span></span>' +
+            '</div>' +
+            '<div style="height:4px;border-radius:2px;background:var(--border)">' +
+              '<div style="height:100%;border-radius:2px;background:var(--accent);width:' + openRate + '%"></div>' +
+            '</div>' +
+            '</div>';
+        }).join('');
+      }
+    }
+
+    // Top types table
+    var typeMap = {};
+    rows.forEach(function(r) {
+      var t = r.notification_type || 'unknown';
+      if (!typeMap[t]) typeMap[t] = { sent: 0, opened: 0, clicked: 0 };
+      typeMap[t].sent++;
+      if (r.status === 'opened' || r.status === 'clicked') typeMap[t].opened++;
+      if (r.status === 'clicked') typeMap[t].clicked++;
+    });
+
+    var typesEl = document.getElementById('naf-types-table');
+    if (typesEl) {
+      var typeKeys = Object.keys(typeMap).sort(function(a,b) { return typeMap[b].sent - typeMap[a].sent; }).slice(0, 20);
+      if (typeKeys.length === 0) {
+        typesEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No notification data in this period</div>';
+      } else {
+        typesEl.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+          '<table class="admin-table" style="width:100%">' +
+          '<thead><tr><th>Type</th><th>Sent</th><th>Open Rate</th><th>Click Rate</th></tr></thead><tbody>' +
+          typeKeys.map(function(t) {
+            var c = typeMap[t];
+            var or = c.sent > 0 ? Math.round(c.opened / c.sent * 100) : 0;
+            var cr = c.sent > 0 ? Math.round(c.clicked / c.sent * 100) : 0;
+            var orColor = or >= 30 ? 'admin-green' : or >= 15 ? '' : 'admin-red';
+            return '<tr>' +
+              '<td style="font-family:var(--mono);font-size:12px">' + escapeHtml(t) + '</td>' +
+              '<td style="font-size:12px">' + fmtAdminNum(c.sent) + '</td>' +
+              '<td class="' + orColor + '" style="font-size:12px">' + or + '%</td>' +
+              '<td style="font-size:12px;color:var(--text-faint)">' + cr + '%</td>' +
+              '</tr>';
+          }).join('') +
+          '</tbody></table></div>';
+      }
+    }
+
+    // Volume trend chart
+    var volEl = document.getElementById('naf-volume-chart');
+    if (volEl && typeof echarts !== 'undefined') {
+      var dayMap = {};
+      rows.forEach(function(r) {
+        var d = new Date(r.created_at).toISOString().slice(0,10);
+        dayMap[d] = (dayMap[d] || 0) + 1;
+      });
+      var dates = Object.keys(dayMap).sort();
+      var counts = dates.map(function(d) { return dayMap[d]; });
+      var volChart = echarts.init(volEl);
+      var t = typeof seoChartTheme === 'function' ? seoChartTheme() : {};
+      volChart.setOption(Object.assign({}, t, {
+        title: { text: 'Notifications Sent / Day', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        grid: { top: 35, right: 16, bottom: 30, left: 50 },
+        xAxis: { type: 'category', data: dates, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+        yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: [{ type: 'bar', data: counts, itemStyle: { color: '#6b82a8', borderRadius: [3,3,0,0] } }]
+      }), true);
+
+      // Funnel chart
+      var funnelEl = document.getElementById('naf-funnel-chart');
+      if (funnelEl) {
+        var fChart = echarts.init(funnelEl);
+        var funnelMax = Math.max(sent, 1);
+        fChart.setOption(Object.assign({}, t, {
+          title: { text: 'Delivery Funnel', textStyle: { color: '#6b7280', fontSize: 13, fontWeight: 600, fontFamily: 'Outfit' }, left: 4, top: 4 },
+          tooltip: { trigger: 'item', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 },
+            formatter: function(p) { return p.name + ': ' + fmtAdminNum(p.value) + ' (' + (funnelMax > 0 ? Math.round(p.value/funnelMax*100) : 0) + '%)'; } },
+          series: [{
+            type: 'funnel',
+            left: '10%', width: '80%', top: 30, bottom: 10,
+            min: 0, max: funnelMax,
+            minSize: '10%', maxSize: '100%',
+            sort: 'descending',
+            gap: 4,
+            label: { show: true, position: 'inside', fontSize: 12, fontFamily: 'Outfit', color: '#fff',
+              formatter: function(p) { return p.name + '\n' + fmtAdminNum(p.value); } },
+            data: [
+              { name: 'Sent', value: sent, itemStyle: { color: '#6b82a8' } },
+              { name: 'Delivered', value: delivered, itemStyle: { color: '#5b8a72' } },
+              { name: 'Opened', value: opened, itemStyle: { color: '#a08858' } },
+              { name: 'Clicked', value: clicked, itemStyle: { color: '#8878a0' } }
+            ]
+          }]
+        }), true);
+        window.addEventListener('resize', function() { fChart.resize(); volChart.resize(); });
+      }
+    }
+
+  } catch (err) {
+    console.error('[Admin] loadNotifAnalyticsData error:', err);
+    toastWarning('Notification analytics unavailable — notification_log table may be empty');
+    var el = document.getElementById('naf-types-table');
+    if (el) el.innerHTML = '<div class="admin-red" style="font-size:13px">Error: ' + escapeHtml(err.message || '') + '</div>';
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────
+// EMAIL COHORTS — per-cohort email send stats + engagement
+// ─────────────────────────────────────────────────────────
+
+async function loadEmailCohortsTab() {
+  console.log('[Admin] loadEmailCohortsTab');
+  var el = document.getElementById('admin-panel-email-cohorts');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div style="padding:20px">',
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">',
+      '<h3 style="font-size:15px;font-weight:600;color:var(--text);margin:0">Email Cohort Analytics</h3>',
+      '<a href="https://resend.com/emails" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;font-family:var(--mono)">↗ Resend Dashboard</a>',
+    '</div>',
+
+    // Cohort email summary table
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px;margin-bottom:20px">',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Email Performance by Cohort (All Time)</div>',
+      '<div id="ec-cohort-table"><div style="color:var(--text-faint);font-size:13px">Loading…</div></div>',
+    '</div>',
+
+    // Opt-in stats
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">',
+      _ecStatCard('ec-total-opted-in', 'Opted In'),
+      _ecStatCard('ec-opted-in-pct', 'Opt-in Rate'),
+      _ecStatCard('ec-unsub-total', 'Unsubscribed'),
+      _ecStatCard('ec-resend-sends', 'Total Sends (30d)'),
+    '</div>',
+
+    // Recent sends log
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Recent Emails (30d)</div>',
+      '<div id="ec-recent-log"><div style="color:var(--text-faint);font-size:13px">Loading…</div></div>',
+    '</div>',
+    '</div>'
+  ].join('');
+
+  await _loadEmailCohortsData();
+}
+window.loadEmailCohortsTab = loadEmailCohortsTab;
+
+function _ecStatCard(id, label) {
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:14px">' +
+    '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + label + '</div>' +
+    '<div id="' + id + '" style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono)">—</div>' +
+    '</div>';
+}
+
+async function _loadEmailCohortsData() {
+  try {
+    // Cohort overview
+    var cohortsRes = await sb.from('cohorts').select('id,display_id,name,is_active').eq('is_active', true).order('created_at');
+    var cohorts = cohortsRes.data || [];
+
+    // Profile email opt-in counts
+    var profRes = await sb.from('profiles').select('cohort_id,email_opted_in');
+    var profiles = profRes.data || [];
+
+    var totalUsers = profiles.length;
+    var totalOptedIn = profiles.filter(function(p) { return p.email_opted_in; }).length;
+    var totalUnsub = profiles.filter(function(p) { return p.email_opted_in === false; }).length;
+
+    setAdminText('ec-total-opted-in', fmtAdminNum(totalOptedIn));
+    setAdminText('ec-opted-in-pct', totalUsers > 0 ? Math.round(totalOptedIn/totalUsers*100) + '%' : '—');
+    setAdminText('ec-unsub-total', fmtAdminNum(totalUnsub));
+
+    // Recent email sends from notification_log
+    var since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    var logRes = await sb.from('notification_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('channel', 'email')
+      .gte('created_at', since30);
+    setAdminText('ec-resend-sends', fmtAdminNum(logRes.count || 0));
+
+    // Per-cohort breakdown
+    var cohortMap = {};
+    profiles.forEach(function(p) {
+      var cid = p.cohort_id || 'unassigned';
+      if (!cohortMap[cid]) cohortMap[cid] = { total: 0, opted: 0 };
+      cohortMap[cid].total++;
+      if (p.email_opted_in) cohortMap[cid].opted++;
+    });
+
+    var tblEl = document.getElementById('ec-cohort-table');
+    if (tblEl) {
+      if (cohorts.length === 0) {
+        tblEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No active cohorts found</div>';
+      } else {
+        tblEl.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+          '<table class="admin-table" style="width:100%">' +
+          '<thead><tr><th>Cohort</th><th>Users</th><th>Opted In</th><th>Opt-in Rate</th><th>Status</th></tr></thead><tbody>' +
+          cohorts.map(function(c) {
+            var cm = cohortMap[c.id] || { total: 0, opted: 0 };
+            var rate = cm.total > 0 ? Math.round(cm.opted/cm.total*100) : 0;
+            var rateColor = rate >= 60 ? 'admin-green' : rate >= 30 ? '' : 'admin-red';
+            return '<tr>' +
+              '<td style="font-family:var(--mono);font-size:12px;color:var(--accent)">' + escapeHtml(c.display_id || c.id) + '</td>' +
+              '<td style="font-size:12px">' + fmtAdminNum(cm.total) + '</td>' +
+              '<td style="font-size:12px">' + fmtAdminNum(cm.opted) + '</td>' +
+              '<td class="' + rateColor + '" style="font-size:12px">' + rate + '%</td>' +
+              '<td><span class="admin-green" style="font-size:11px">● Active</span></td>' +
+              '</tr>';
+          }).join('') +
+          '</tbody></table></div>';
+      }
+    }
+
+    // Recent log
+    var recentRes = await sb.from('notification_log')
+      .select('notification_type,channel,status,created_at,user_id')
+      .eq('channel', 'email')
+      .gte('created_at', since30)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    var logEl = document.getElementById('ec-recent-log');
+    if (logEl) {
+      var logRows = recentRes.data || [];
+      if (logRows.length === 0) {
+        logEl.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No emails sent in the last 30 days</div>';
+      } else {
+        logEl.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+          '<table class="admin-table" style="width:100%">' +
+          '<thead><tr><th>Date</th><th>Type</th><th>Status</th><th>User</th></tr></thead><tbody>' +
+          logRows.map(function(r) {
+            var sc = r.status === 'delivered' || r.status === 'opened' || r.status === 'clicked' ? 'admin-green' :
+                     r.status === 'failed' || r.status === 'bounced' ? 'admin-red' : '';
+            return '<tr>' +
+              '<td style="font-size:11px;font-family:var(--mono)">' + new Date(r.created_at).toLocaleDateString() + '</td>' +
+              '<td style="font-size:12px">' + escapeHtml(r.notification_type || '—') + '</td>' +
+              '<td class="' + sc + '" style="font-size:12px">' + (r.status || '—') + '</td>' +
+              '<td style="font-size:11px;font-family:var(--mono);color:var(--text-faint)">' + (r.user_id ? r.user_id.slice(0,8) + '…' : '—') + '</td>' +
+              '</tr>';
+          }).join('') +
+          '</tbody></table></div>';
+      }
+    }
+
+  } catch (err) {
+    console.error('[Admin] _loadEmailCohortsData error:', err);
+    toastWarning('Email cohort data unavailable');
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────
+// CADENCE — per-type frequency config + opt-out rates
+// ─────────────────────────────────────────────────────────
+
+async function loadCadenceTab() {
+  console.log('[Admin] loadCadenceTab');
+  var el = document.getElementById('admin-panel-cadence');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div style="padding:20px">',
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">',
+      '<h3 style="font-size:15px;font-weight:600;color:var(--text);margin:0">Cadence Optimization</h3>',
+      '<button onclick="loadCadenceTab()" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer">↻ Refresh</button>',
+    '</div>',
+
+    // Summary cards
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">',
+      _cadCard('cad-total-configs', 'Total Configs'),
+      _cadCard('cad-enabled', 'Enabled'),
+      _cadCard('cad-channels-active', 'Active Channels'),
+      _cadCard('cad-freq-capped', 'Freq Capped'),
+    '</div>',
+
+    // Config table with edit inline
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px;margin-bottom:16px">',
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">',
+        '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px">Notification Configs</div>',
+        '<div style="display:flex;gap:8px">',
+          '<select id="cad-cat-filter" onchange="filterCadenceTable()" style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:12px">',
+            '<option value="all">All Categories</option>',
+            Object.keys(NOTIF_CATEGORIES || {}).map(function(k) {
+              return '<option value="' + k + '">' + ((NOTIF_CATEGORIES || {})[k] || {}).label + '</option>';
+            }).join(''),
+          '</select>',
+          '<input id="cad-search" type="text" placeholder="Search type…" oninput="filterCadenceTable()"' +
+            ' style="padding:5px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:12px;width:160px">',
+        '</div>',
+      '</div>',
+      '<div id="cad-config-table"><div style="color:var(--text-faint);font-size:13px">Loading…</div></div>',
+    '</div>',
+
+    // Opt-out rate by category
+    '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:16px">',
+      '<div style="font-size:12px;color:var(--text-dim);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Send Volume by Category</div>',
+      '<div id="cad-category-chart" style="height:200px"></div>',
+    '</div>',
+    '</div>'
+  ].join('');
+
+  await _loadCadenceData();
+}
+window.loadCadenceTab = loadCadenceTab;
+
+function _cadCard(id, label) {
+  return '<div style="border:1px solid var(--border);border-radius:8px;background:var(--bg-card);padding:14px">' +
+    '<div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">' + label + '</div>' +
+    '<div id="' + id + '" style="font-size:22px;font-weight:700;color:var(--text);font-family:var(--mono)">—</div>' +
+    '</div>';
+}
+
+var _cadenceConfigs = [];
+
+async function _loadCadenceData() {
+  try {
+    var res = await sb.from('admin_notification_config').select('*').order('notification_type');
+    _cadenceConfigs = res.data || [];
+
+    var enabled = _cadenceConfigs.filter(function(c) { return c.enabled; }).length;
+    var channels = {};
+    _cadenceConfigs.forEach(function(c) { if (c.channel) channels[c.channel] = true; });
+    var freqCapped = _cadenceConfigs.filter(function(c) { return c.frequency_cap && c.frequency_cap > 0; }).length;
+
+    setAdminText('cad-total-configs', fmtAdminNum(_cadenceConfigs.length));
+    setAdminText('cad-enabled', fmtAdminNum(enabled));
+    setAdminText('cad-channels-active', fmtAdminNum(Object.keys(channels).length));
+    setAdminText('cad-freq-capped', fmtAdminNum(freqCapped));
+
+    _renderCadenceTable(_cadenceConfigs);
+
+    // Category chart
+    var catVol = {};
+    var since30 = new Date(Date.now() - 30 * 86400000).toISOString();
+    var logRes = await sb.from('notification_log')
+      .select('notification_type')
+      .gte('created_at', since30);
+
+    (logRes.data || []).forEach(function(r) {
+      var t = r.notification_type || 'unknown';
+      var cat = 'other';
+      if (NOTIF_CATEGORIES) {
+        Object.keys(NOTIF_CATEGORIES).forEach(function(k) {
+          if ((NOTIF_CATEGORIES[k].types || []).indexOf(t) >= 0) cat = k;
+        });
+      }
+      catVol[cat] = (catVol[cat] || 0) + 1;
+    });
+
+    var catEl = document.getElementById('cad-category-chart');
+    if (catEl && typeof echarts !== 'undefined' && Object.keys(catVol).length > 0) {
+      var chart = echarts.init(catEl);
+      var cats = Object.keys(catVol).sort(function(a,b) { return catVol[b] - catVol[a]; });
+      var t = typeof seoChartTheme === 'function' ? seoChartTheme() : {};
+      chart.setOption(Object.assign({}, t, {
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.95)', borderColor: 'hsl(228,16%,85%)', textStyle: { color: '#e8eaf0', fontFamily: 'Outfit', fontSize: 12 } },
+        grid: { top: 10, right: 20, bottom: 60, left: 50 },
+        xAxis: { type: 'category', data: cats, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10, rotate: 35 } },
+        yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#7b829a', fontFamily: 'JetBrains Mono', fontSize: 10 }, splitLine: { lineStyle: { color: '#e8eaef' } } },
+        series: [{ type: 'bar', data: cats.map(function(c) { return catVol[c]; }), itemStyle: { color: '#6b82a8', borderRadius: [3,3,0,0] } }]
+      }), true);
+      window.addEventListener('resize', function() { chart.resize(); });
+    } else if (catEl) {
+      catEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-faint);font-size:13px">No send data in last 30 days</div>';
+    }
+
+  } catch (err) {
+    console.error('[Admin] _loadCadenceData error:', err);
+    toastWarning('Cadence data unavailable');
+  }
+}
+
+function _renderCadenceTable(configs) {
+  var el = document.getElementById('cad-config-table');
+  if (!el) return;
+  if (configs.length === 0) {
+    el.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No configs match filter</div>';
+    return;
+  }
+  el.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden;max-height:420px;overflow-y:auto">' +
+    '<table class="admin-table" style="width:100%">' +
+    '<thead><tr><th>Type</th><th>Enabled</th><th>Channel</th><th>Cadence</th><th>Freq Cap</th><th>Cohort</th></tr></thead><tbody>' +
+    configs.map(function(c) {
+      var enabledBadge = c.enabled ?
+        '<span class="admin-green" style="font-size:11px">● on</span>' :
+        '<span class="admin-red" style="font-size:11px">● off</span>';
+      return '<tr>' +
+        '<td style="font-family:var(--mono);font-size:11px">' + escapeHtml(c.notification_type || '—') + '</td>' +
+        '<td>' + enabledBadge + '</td>' +
+        '<td style="font-size:12px">' + escapeHtml(c.channel || '—') + '</td>' +
+        '<td style="font-size:12px;font-family:var(--mono)">' + escapeHtml(c.cadence || '—') + '</td>' +
+        '<td style="font-size:12px;font-family:var(--mono)">' + (c.frequency_cap != null ? c.frequency_cap + '/d' : '—') + '</td>' +
+        '<td style="font-size:12px;color:var(--text-faint)">' + escapeHtml(c.cohort_id || 'all') + '</td>' +
+        '</tr>';
+    }).join('') +
+    '</tbody></table></div>';
+}
+
+function filterCadenceTable() {
+  var cat = (document.getElementById('cad-cat-filter') || {}).value || 'all';
+  var q = ((document.getElementById('cad-search') || {}).value || '').toLowerCase();
+  var filtered = _cadenceConfigs.filter(function(c) {
+    var matchCat = cat === 'all' || (NOTIF_CATEGORIES && NOTIF_CATEGORIES[cat] && (NOTIF_CATEGORIES[cat].types || []).indexOf(c.notification_type) >= 0);
+    var matchQ = !q || (c.notification_type || '').toLowerCase().indexOf(q) >= 0;
+    return matchCat && matchQ;
+  });
+  _renderCadenceTable(filtered);
+}
+window.filterCadenceTable = filterCadenceTable;
+
+
+// ─────────────────────────────────────────────────────────
+// NOTIF LOG — live notification_log viewer with filters
+// ─────────────────────────────────────────────────────────
+
+var _notifLogPage = 0;
+var _notifLogFilters = { channel: 'all', status: 'all', type: '' };
+var _notifLogPageSize = 50;
+
+async function loadNotifLogTab() {
+  console.log('[Admin] loadNotifLogTab');
+  _notifLogPage = 0;
+  var el = document.getElementById('admin-panel-notif-log');
+  if (!el) return;
+
+  el.innerHTML = [
+    '<div style="padding:20px">',
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">',
+      '<h3 style="font-size:15px;font-weight:600;color:var(--text);margin:0">Notification Log</h3>',
+      '<button onclick="_notifLogPage=0;_fetchNotifLog()" style="padding:6px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);font-size:12px;font-family:var(--mono);cursor:pointer">↻ Refresh</button>',
+    '</div>',
+
+    // Filters
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">',
+      '<select id="nl-channel" onchange="_notifLogPage=0;_notifLogFilters.channel=this.value;_fetchNotifLog()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px">',
+        '<option value="all">All Channels</option>',
+        '<option value="email">Email</option>',
+        '<option value="sms">SMS</option>',
+        '<option value="push">Push</option>',
+        '<option value="in_app">In-App</option>',
+      '</select>',
+      '<select id="nl-status" onchange="_notifLogPage=0;_notifLogFilters.status=this.value;_fetchNotifLog()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px">',
+        '<option value="all">All Statuses</option>',
+        '<option value="sent">Sent</option>',
+        '<option value="delivered">Delivered</option>',
+        '<option value="opened">Opened</option>',
+        '<option value="clicked">Clicked</option>',
+        '<option value="failed">Failed</option>',
+        '<option value="bounced">Bounced</option>',
+        '<option value="unsubscribed">Unsubscribed</option>',
+      '</select>',
+      '<input id="nl-type-search" type="text" placeholder="Filter by type…" oninput="_notifLogPage=0;_notifLogFilters.type=this.value;_fetchNotifLog()"' +
+        ' style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:12px;width:180px">',
+      '<span id="nl-count" style="font-size:12px;color:var(--text-faint);align-self:center;font-family:var(--mono)"></span>',
+    '</div>',
+
+    '<div id="nl-table"><div style="color:var(--text-faint);font-size:13px">Loading…</div></div>',
+    '<div id="nl-pagination" style="display:flex;gap:8px;margin-top:12px;align-items:center"></div>',
+    '</div>'
+  ].join('');
+
+  await _fetchNotifLog();
+}
+window.loadNotifLogTab = loadNotifLogTab;
+
+async function _fetchNotifLog() {
+  var el = document.getElementById('nl-table');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--text-faint);font-size:13px">Loading…</div>';
+
+  try {
+    var f = _notifLogFilters;
+    var from = _notifLogPage * _notifLogPageSize;
+    var to = from + _notifLogPageSize - 1;
+
+    var q = sb.from('notification_log')
+      .select('id,user_id,notification_type,channel,status,created_at,subject,error_message', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (f.channel !== 'all') q = q.eq('channel', f.channel);
+    if (f.status !== 'all') q = q.eq('status', f.status);
+    if (f.type) q = q.ilike('notification_type', '%' + f.type + '%');
+
+    var res = await q;
+    var rows = res.data || [];
+    var total = res.count || 0;
+
+    setAdminText('nl-count', fmtAdminNum(total) + ' records');
+
+    if (rows.length === 0) {
+      el.innerHTML = '<div style="color:var(--text-faint);font-size:13px">No notifications match current filters</div>';
+    } else {
+      el.innerHTML = '<div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">' +
+        '<table class="admin-table" style="width:100%">' +
+        '<thead><tr><th>Time</th><th>Type</th><th>Channel</th><th>Status</th><th>User</th><th>Subject / Error</th></tr></thead><tbody>' +
+        rows.map(function(r) {
+          var sc = (r.status === 'delivered' || r.status === 'opened' || r.status === 'clicked') ? 'admin-green' :
+                   (r.status === 'failed' || r.status === 'bounced') ? 'admin-red' :
+                   r.status === 'unsubscribed' ? 'admin-amber' : '';
+          var detail = r.error_message ? '<span class="admin-red" title="' + escapeHtml(r.error_message) + '">⚠ ' + escapeHtml(r.error_message.slice(0,40)) + '…</span>'
+                      : (r.subject ? escapeHtml(r.subject.slice(0,50)) : '—');
+          var chIcon = r.channel === 'email' ? '✉' : r.channel === 'sms' ? '💬' : r.channel === 'push' ? '🔔' : '📢';
+          return '<tr>' +
+            '<td style="font-size:11px;font-family:var(--mono);white-space:nowrap">' + new Date(r.created_at).toLocaleString() + '</td>' +
+            '<td style="font-size:11px;font-family:var(--mono)">' + escapeHtml(r.notification_type || '—') + '</td>' +
+            '<td style="font-size:12px">' + chIcon + ' ' + (r.channel || '—') + '</td>' +
+            '<td class="' + sc + '" style="font-size:12px">' + (r.status || '—') + '</td>' +
+            '<td style="font-size:11px;font-family:var(--mono);color:var(--text-faint)">' + (r.user_id ? r.user_id.slice(0,8) + '…' : '—') + '</td>' +
+            '<td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">' + detail + '</td>' +
+            '</tr>';
+        }).join('') +
+        '</tbody></table></div>';
+    }
+
+    // Pagination
+    var totalPages = Math.ceil(total / _notifLogPageSize);
+    var pagEl = document.getElementById('nl-pagination');
+    if (pagEl) {
+      pagEl.innerHTML = '';
+      if (totalPages > 1) {
+        var prevBtn = document.createElement('button');
+        prevBtn.textContent = '← Prev';
+        prevBtn.disabled = _notifLogPage === 0;
+        prevBtn.style.cssText = 'padding:5px 12px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text);font-size:12px;cursor:pointer';
+        prevBtn.onclick = function() { _notifLogPage--; _fetchNotifLog(); };
+        pagEl.appendChild(prevBtn);
+
+        var pageInfo = document.createElement('span');
+        pageInfo.style.cssText = 'font-size:12px;color:var(--text-faint);font-family:var(--mono);padding:0 8px';
+        pageInfo.textContent = 'Page ' + (_notifLogPage + 1) + ' of ' + totalPages;
+        pagEl.appendChild(pageInfo);
+
+        var nextBtn = document.createElement('button');
+        nextBtn.textContent = 'Next →';
+        nextBtn.disabled = _notifLogPage >= totalPages - 1;
+        nextBtn.style.cssText = 'padding:5px 12px;border:1px solid var(--border);border-radius:5px;background:var(--bg-card);color:var(--text);font-size:12px;cursor:pointer';
+        nextBtn.onclick = function() { _notifLogPage++; _fetchNotifLog(); };
+        pagEl.appendChild(nextBtn);
+      }
+    }
+
+  } catch (err) {
+    console.error('[Admin] _fetchNotifLog error:', err);
+    if (el) el.innerHTML = '<div class="admin-red" style="font-size:13px">Error loading notification log: ' + escapeHtml(err.message || '') + '</div>';
+  }
+}
+window._fetchNotifLog = _fetchNotifLog;
+
+
+// === js/admin-biz-ops.js ===
+// === js/admin-biz-ops.js ===
+// Admin IA v2 S10 — Paid, Social, Analytics, Costs, Forecasting
+// v6.94 · 2026-03-04
+
+// ─── PAID ────────────────────────────────────────────────────────────────────
+async function loadPaidTab() {
+  const el = document.getElementById('admin-page-paid');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Paid Acquisition</h2>
+        <div class="admin-block-actions">
+          <a href="https://ads.google.com" target="_blank" class="admin-btn admin-btn-sm">Google Ads ↗</a>
+          <a href="https://www.facebook.com/adsmanager" target="_blank" class="admin-btn admin-btn-sm">Meta Ads ↗</a>
+        </div>
+      </div>
+      <div class="admin-stat-row" id="paid-stat-row">
+        ${_adminStatCard('Total Spend', '—', 'All time')}
+        ${_adminStatCard('This Month', '—', 'MTD')}
+        ${_adminStatCard('Campaigns', '—', 'Active')}
+        ${_adminStatCard('Est. CAC', '—', 'Avg cost/signup')}
+      </div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Spend Log</h2>
+        <button class="admin-btn admin-btn-sm" id="paid-add-btn">+ Add Entry</button>
+      </div>
+      <div id="paid-add-form" style="display:none;padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;">
+          <div>
+            <label class="admin-label">Date</label>
+            <input type="date" id="paid-form-date" class="admin-input" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div>
+            <label class="admin-label">Platform</label>
+            <select id="paid-form-platform" class="admin-input">
+              <option value="Google Ads">Google Ads</option>
+              <option value="Meta Ads">Meta Ads</option>
+              <option value="LinkedIn Ads">LinkedIn Ads</option>
+              <option value="Reddit Ads">Reddit Ads</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="admin-label">Amount ($)</label>
+            <input type="number" id="paid-form-amount" class="admin-input" placeholder="0.00" step="0.01">
+          </div>
+          <div>
+            <label class="admin-label">Notes</label>
+            <input type="text" id="paid-form-notes" class="admin-input" placeholder="Campaign name, audience...">
+          </div>
+          <div>
+            <button class="admin-btn" id="paid-form-save">Save</button>
+          </div>
+        </div>
+      </div>
+      <div id="paid-log-container"><div class="admin-empty">No spend entries yet. Add your first entry above.</div></div>
+    </div>`;
+
+  await _loadPaidLog();
+
+  document.getElementById('paid-add-btn').addEventListener('click', () => {
+    const f = document.getElementById('paid-add-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.getElementById('paid-form-save').addEventListener('click', async () => {
+    const date = document.getElementById('paid-form-date').value;
+    const platform = document.getElementById('paid-form-platform').value;
+    const amount = parseFloat(document.getElementById('paid-form-amount').value);
+    const notes = document.getElementById('paid-form-notes').value;
+    if (!date || !platform || isNaN(amount)) {
+      _adminToast('Fill in date, platform, and amount.', 'error'); return;
+    }
+    const { error } = await sb.from('paid_spend_log').insert({ date, platform, amount, notes });
+    if (error) { _adminToast('Save failed: ' + error.message, 'error'); return; }
+    document.getElementById('paid-add-form').style.display = 'none';
+    document.getElementById('paid-form-amount').value = '';
+    document.getElementById('paid-form-notes').value = '';
+    _adminToast('Entry saved.');
+    await _loadPaidLog();
+  });
+}
+
+async function _loadPaidLog() {
+  const container = document.getElementById('paid-log-container');
+  if (!container) return;
+
+  const { data, error } = await sb.from('paid_spend_log')
+    .select('*').order('date', { ascending: false }).limit(100);
+
+  if (error || !data || data.length === 0) {
+    container.innerHTML = '<div class="admin-empty">No spend entries yet.</div>';
+    _updatePaidStats([], document.getElementById('paid-stat-row'));
+    return;
+  }
+
+  _updatePaidStats(data, document.getElementById('paid-stat-row'));
+
+  const rows = data.map(r => `
+    <tr>
+      <td>${_escHtml(r.date)}</td>
+      <td>${_escHtml(r.platform)}</td>
+      <td>$${parseFloat(r.amount).toFixed(2)}</td>
+      <td>${_escHtml(r.notes || '—')}</td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>Date</th><th>Platform</th><th>Amount</th><th>Notes</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function _updatePaidStats(data, el) {
+  if (!el) return;
+  const total = data.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const now = new Date();
+  const mtd = data.filter(r => {
+    const d = new Date(r.date);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const platforms = new Set(data.filter(r => {
+    const d = new Date(r.date);
+    const diff = (now - d) / 86400000;
+    return diff <= 30;
+  }).map(r => r.platform));
+
+  el.innerHTML = `
+    ${_adminStatCard('Total Spend', '$' + total.toFixed(2), 'All time')}
+    ${_adminStatCard('This Month', '$' + mtd.toFixed(2), 'MTD')}
+    ${_adminStatCard('Active Platforms', platforms.size.toString(), 'Last 30d')}
+    ${_adminStatCard('Est. CAC', '—', 'Connect signups data')}`;
+}
+
+// ─── SOCIAL ──────────────────────────────────────────────────────────────────
+async function loadSocialTab() {
+  const el = document.getElementById('admin-page-social');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Social Media</h2>
+        <div class="admin-block-actions">
+          <a href="https://www.linkedin.com/in/marston-gould" target="_blank" class="admin-btn admin-btn-sm">LinkedIn ↗</a>
+          <a href="https://twitter.com" target="_blank" class="admin-btn admin-btn-sm">X/Twitter ↗</a>
+        </div>
+      </div>
+      <div class="admin-stat-row" id="social-stat-row">
+        ${_adminStatCard('Posts Logged', '—', 'All time')}
+        ${_adminStatCard('This Month', '—', 'MTD posts')}
+        ${_adminStatCard('Total Engagements', '—', 'All logged')}
+        ${_adminStatCard('Avg Engagement', '—', 'Per post')}
+      </div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Post Log</h2>
+        <button class="admin-btn admin-btn-sm" id="social-add-btn">+ Log Post</button>
+      </div>
+      <div id="social-add-form" style="display:none;padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;">
+          <div>
+            <label class="admin-label">Date</label>
+            <input type="date" id="social-form-date" class="admin-input" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div>
+            <label class="admin-label">Platform</label>
+            <select id="social-form-platform" class="admin-input">
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="X/Twitter">X/Twitter</option>
+              <option value="Reddit">Reddit</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="admin-label">Engagements</label>
+            <input type="number" id="social-form-engagements" class="admin-input" placeholder="Likes + comments + shares" min="0">
+          </div>
+          <div>
+            <label class="admin-label">Notes / URL</label>
+            <input type="text" id="social-form-notes" class="admin-input" placeholder="Post topic or URL">
+          </div>
+          <div>
+            <button class="admin-btn" id="social-form-save">Save</button>
+          </div>
+        </div>
+      </div>
+      <div id="social-log-container"><div class="admin-loading">Loading...</div></div>
+    </div>`;
+
+  await _loadSocialLog();
+
+  document.getElementById('social-add-btn').addEventListener('click', () => {
+    const f = document.getElementById('social-add-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.getElementById('social-form-save').addEventListener('click', async () => {
+    const date = document.getElementById('social-form-date').value;
+    const platform = document.getElementById('social-form-platform').value;
+    const engagements = parseInt(document.getElementById('social-form-engagements').value) || 0;
+    const notes = document.getElementById('social-form-notes').value;
+    if (!date || !platform) { _adminToast('Fill in date and platform.', 'error'); return; }
+    const { error } = await sb.from('social_post_log').insert({ date, platform, engagements, notes });
+    if (error) { _adminToast('Save failed: ' + error.message, 'error'); return; }
+    document.getElementById('social-add-form').style.display = 'none';
+    document.getElementById('social-form-engagements').value = '';
+    document.getElementById('social-form-notes').value = '';
+    _adminToast('Post logged.');
+    await _loadSocialLog();
+  });
+}
+
+async function _loadSocialLog() {
+  const container = document.getElementById('social-log-container');
+  if (!container) return;
+
+  const { data, error } = await sb.from('social_post_log')
+    .select('*').order('date', { ascending: false }).limit(100);
+
+  if (error || !data || data.length === 0) {
+    container.innerHTML = '<div class="admin-empty">No posts logged yet.</div>';
+    _updateSocialStats([], document.getElementById('social-stat-row'));
+    return;
+  }
+
+  _updateSocialStats(data, document.getElementById('social-stat-row'));
+
+  const rows = data.map(r => `
+    <tr>
+      <td>${_escHtml(r.date)}</td>
+      <td>${_escHtml(r.platform)}</td>
+      <td>${r.engagements || 0}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(r.notes || '—')}</td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>Date</th><th>Platform</th><th>Engagements</th><th>Notes</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function _updateSocialStats(data, el) {
+  if (!el) return;
+  const now = new Date();
+  const mtd = data.filter(r => {
+    const d = new Date(r.date);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  });
+  const totalEng = data.reduce((s, r) => s + (r.engagements || 0), 0);
+  const avgEng = data.length ? (totalEng / data.length).toFixed(1) : '—';
+
+  el.innerHTML = `
+    ${_adminStatCard('Posts Logged', data.length.toString(), 'All time')}
+    ${_adminStatCard('This Month', mtd.length.toString(), 'MTD posts')}
+    ${_adminStatCard('Total Engagements', totalEng.toLocaleString(), 'All logged')}
+    ${_adminStatCard('Avg Engagement', avgEng, 'Per post')}`;
+}
+
+// ─── ANALYTICS ───────────────────────────────────────────────────────────────
+async function loadAnalyticsOverviewTab() {
+  const el = document.getElementById('admin-page-analytics');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">PostHog Analytics</h2>
+        <div class="admin-block-actions">
+          <a href="https://us.posthog.com/project/318006" target="_blank" class="admin-btn admin-btn-sm">Open PostHog ↗</a>
+        </div>
+      </div>
+      <div class="admin-stat-row" id="analytics-stat-row">
+        ${_adminStatCard('Total Users', '—', 'All time signups')}
+        ${_adminStatCard('DAU', '—', 'Unique today')}
+        ${_adminStatCard('WAU', '—', 'Unique last 7d')}
+        ${_adminStatCard('MAU', '—', 'Unique last 30d')}
+      </div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">User Funnel</h2>
+      </div>
+      <div id="analytics-funnel-chart" style="height:280px;"></div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Signups Over Time</h2>
+        <div class="admin-block-actions">
+          <select id="analytics-period" class="admin-input admin-input-sm">
+            <option value="30">Last 30d</option>
+            <option value="90">Last 90d</option>
+            <option value="180">Last 180d</option>
+          </select>
+        </div>
+      </div>
+      <div id="analytics-signups-chart" style="height:260px;"></div>
+    </div>`;
+
+  await _loadAnalyticsData();
+
+  document.getElementById('analytics-period').addEventListener('change', _loadAnalyticsData);
+}
+
+async function _loadAnalyticsData() {
+  const days = parseInt(document.getElementById('analytics-period')?.value || '30');
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+
+  // Pull from profiles table for user stats
+  const { data: allUsers } = await sb.from('profiles').select('id, created_at, last_seen_at').order('created_at');
+  const { data: recentUsers } = await sb.from('profiles').select('id, created_at').gte('created_at', since);
+
+  const now = new Date();
+  const dau = allUsers ? allUsers.filter(u => {
+    if (!u.last_seen_at) return false;
+    return (now - new Date(u.last_seen_at)) < 86400000;
+  }).length : 0;
+  const wau = allUsers ? allUsers.filter(u => {
+    if (!u.last_seen_at) return false;
+    return (now - new Date(u.last_seen_at)) < 7 * 86400000;
+  }).length : 0;
+  const mau = allUsers ? allUsers.filter(u => {
+    if (!u.last_seen_at) return false;
+    return (now - new Date(u.last_seen_at)) < 30 * 86400000;
+  }).length : 0;
+
+  const statEl = document.getElementById('analytics-stat-row');
+  if (statEl) {
+    statEl.innerHTML = `
+      ${_adminStatCard('Total Users', (allUsers?.length || 0).toString(), 'All time signups')}
+      ${_adminStatCard('DAU', dau.toString(), 'Unique today')}
+      ${_adminStatCard('WAU', wau.toString(), 'Unique last 7d')}
+      ${_adminStatCard('MAU', mau.toString(), 'Unique last 30d')}`;
+  }
+
+  // Signups over time chart
+  if (recentUsers && recentUsers.length > 0 && typeof echarts !== 'undefined') {
+    const byDay = {};
+    recentUsers.forEach(u => {
+      const day = u.created_at.slice(0, 10);
+      byDay[day] = (byDay[day] || 0) + 1;
+    });
+    const labels = Object.keys(byDay).sort();
+    const values = labels.map(d => byDay[d]);
+
+    const chartEl = document.getElementById('analytics-signups-chart');
+    if (chartEl) {
+      let chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl, 'dark');
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        grid: { left: 40, right: 20, top: 20, bottom: 40 },
+        xAxis: { type: 'category', data: labels, axisLabel: { color: '#aaa', fontSize: 11 } },
+        yAxis: { type: 'value', axisLabel: { color: '#aaa', fontSize: 11 }, minInterval: 1 },
+        series: [{ name: 'Signups', type: 'bar', data: values, itemStyle: { color: '#00c896' } }]
+      });
+    }
+  } else {
+    const chartEl = document.getElementById('analytics-signups-chart');
+    if (chartEl) chartEl.innerHTML = '<div class="admin-empty" style="padding:60px 0;text-align:center;">No signup data in this period.</div>';
+  }
+
+  // Funnel
+  const funnelEl = document.getElementById('analytics-funnel-chart');
+  if (funnelEl && typeof echarts !== 'undefined' && allUsers) {
+    const total = allUsers.length;
+    const approved = allUsers.filter(u => u.approved !== false).length;
+    const active = mau;
+    let chart = echarts.getInstanceByDom(funnelEl) || echarts.init(funnelEl, 'dark');
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'item' },
+      series: [{
+        type: 'funnel', width: '60%', left: '20%', top: 20, bottom: 20,
+        data: [
+          { value: total, name: 'Signups', itemStyle: { color: '#3b7de8' } },
+          { value: approved, name: 'Approved', itemStyle: { color: '#00c896' } },
+          { value: active, name: 'MAU', itemStyle: { color: '#f59e0b' } }
+        ]
+      }]
+    });
+  }
+}
+
+// ─── COSTS ───────────────────────────────────────────────────────────────────
+async function loadCostsTab() {
+  const el = document.getElementById('admin-page-costs');
+  if (!el) return;
+
+  const VENDORS = ['Vercel', 'Supabase', 'DataForSEO', 'Cloudflare', 'Resend', 'Vonage', 'Anthropic', 'Other'];
+
+  el.innerHTML = `
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Vendor Costs</h2>
+        <button class="admin-btn admin-btn-sm" id="costs-add-btn">+ Add Entry</button>
+      </div>
+      <div class="admin-stat-row" id="costs-stat-row">
+        ${_adminStatCard('This Month', '—', 'Total MTD')}
+        ${_adminStatCard('Last Month', '—', 'Total')}
+        ${_adminStatCard('Largest Vendor', '—', 'This month')}
+        ${_adminStatCard('MoM Change', '—', 'vs last month')}
+      </div>
+      <div id="costs-add-form" style="display:none;padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:8px;align-items:end;">
+          <div>
+            <label class="admin-label">Month (YYYY-MM)</label>
+            <input type="month" id="costs-form-month" class="admin-input" value="${new Date().toISOString().slice(0,7)}">
+          </div>
+          <div>
+            <label class="admin-label">Vendor</label>
+            <select id="costs-form-vendor" class="admin-input">
+              ${VENDORS.map(v => `<option value="${v}">${v}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="admin-label">Amount ($)</label>
+            <input type="number" id="costs-form-amount" class="admin-input" placeholder="0.00" step="0.01">
+          </div>
+          <div>
+            <label class="admin-label">Notes</label>
+            <input type="text" id="costs-form-notes" class="admin-input" placeholder="Plan tier, usage notes...">
+          </div>
+          <div>
+            <button class="admin-btn" id="costs-form-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Monthly Breakdown</h2>
+      </div>
+      <div id="costs-chart" style="height:280px;"></div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Cost Log</h2>
+      </div>
+      <div id="costs-log-container"><div class="admin-loading">Loading...</div></div>
+    </div>`;
+
+  await _loadCostsData();
+
+  document.getElementById('costs-add-btn').addEventListener('click', () => {
+    const f = document.getElementById('costs-add-form');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.getElementById('costs-form-save').addEventListener('click', async () => {
+    const month = document.getElementById('costs-form-month').value;
+    const vendor = document.getElementById('costs-form-vendor').value;
+    const amount = parseFloat(document.getElementById('costs-form-amount').value);
+    const notes = document.getElementById('costs-form-notes').value;
+    if (!month || !vendor || isNaN(amount)) { _adminToast('Fill in month, vendor, and amount.', 'error'); return; }
+    const { error } = await sb.from('vendor_cost_log').insert({ month, vendor, amount, notes });
+    if (error) { _adminToast('Save failed: ' + error.message, 'error'); return; }
+    document.getElementById('costs-add-form').style.display = 'none';
+    document.getElementById('costs-form-amount').value = '';
+    document.getElementById('costs-form-notes').value = '';
+    _adminToast('Cost entry saved.');
+    await _loadCostsData();
+  });
+}
+
+async function _loadCostsData() {
+  const { data, error } = await sb.from('vendor_cost_log')
+    .select('*').order('month', { ascending: false }).limit(200);
+
+  const container = document.getElementById('costs-log-container');
+  if (!container) return;
+
+  if (error || !data || data.length === 0) {
+    container.innerHTML = '<div class="admin-empty">No cost entries yet. Add your first entry above.</div>';
+    return;
+  }
+
+  // Stat cards
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}`;
+
+  const thisMo = data.filter(r => r.month === thisMonth);
+  const lastMo = data.filter(r => r.month === lastMonth);
+  const thisMoTotal = thisMo.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+  const lastMoTotal = lastMo.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+
+  const vendorTotals = {};
+  thisMo.forEach(r => { vendorTotals[r.vendor] = (vendorTotals[r.vendor] || 0) + parseFloat(r.amount || 0); });
+  const topVendor = Object.entries(vendorTotals).sort((a, b) => b[1] - a[1])[0];
+  const momChange = lastMoTotal > 0 ? (((thisMoTotal - lastMoTotal) / lastMoTotal) * 100).toFixed(1) + '%' : '—';
+
+  const statEl = document.getElementById('costs-stat-row');
+  if (statEl) {
+    statEl.innerHTML = `
+      ${_adminStatCard('This Month', '$' + thisMoTotal.toFixed(2), 'Total MTD')}
+      ${_adminStatCard('Last Month', '$' + lastMoTotal.toFixed(2), 'Total')}
+      ${_adminStatCard('Largest Vendor', topVendor ? topVendor[0] : '—', 'This month')}
+      ${_adminStatCard('MoM Change', momChange, 'vs last month')}`;
+  }
+
+  // Monthly trend chart
+  const monthlyTotals = {};
+  data.forEach(r => {
+    monthlyTotals[r.month] = (monthlyTotals[r.month] || 0) + parseFloat(r.amount || 0);
+  });
+  const months = Object.keys(monthlyTotals).sort().slice(-12);
+  const monthValues = months.map(m => monthlyTotals[m]);
+
+  const chartEl = document.getElementById('costs-chart');
+  if (chartEl && typeof echarts !== 'undefined' && months.length > 0) {
+    let chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl, 'dark');
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis', formatter: p => p[0].name + ': $' + p[0].value.toFixed(2) },
+      grid: { left: 55, right: 20, top: 20, bottom: 40 },
+      xAxis: { type: 'category', data: months, axisLabel: { color: '#aaa', fontSize: 11 } },
+      yAxis: { type: 'value', axisLabel: { color: '#aaa', fontSize: 11, formatter: v => '$' + v } },
+      series: [{ type: 'bar', data: monthValues, itemStyle: { color: '#e55' }, name: 'Total Cost' }]
+    });
+  }
+
+  // Log table
+  const rows = data.slice(0, 100).map(r => `
+    <tr>
+      <td>${_escHtml(r.month)}</td>
+      <td>${_escHtml(r.vendor)}</td>
+      <td>$${parseFloat(r.amount).toFixed(2)}</td>
+      <td>${_escHtml(r.notes || '—')}</td>
+    </tr>`).join('');
+
+  container.innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>Month</th><th>Vendor</th><th>Amount</th><th>Notes</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// ─── FORECASTING ─────────────────────────────────────────────────────────────
+async function loadForecastingTab() {
+  const el = document.getElementById('admin-page-forecasting');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Revenue Forecast</h2>
+        <div class="admin-block-actions">
+          <select id="forecast-months" class="admin-input admin-input-sm">
+            <option value="6">6 months</option>
+            <option value="12" selected>12 months</option>
+            <option value="24">24 months</option>
+          </select>
+        </div>
+      </div>
+      <div class="admin-stat-row" id="forecast-stat-row">
+        ${_adminStatCard('Current MRR', '—', 'Based on subscriptions')}
+        ${_adminStatCard('Paid Users', '—', 'Active subscriptions')}
+        ${_adminStatCard('Growth Rate', '—', 'MoM estimate')}
+        ${_adminStatCard('12m ARR Target', '—', 'Projected')}
+      </div>
+      <div id="forecast-chart" style="height:340px;margin-top:16px;"></div>
+    </div>
+    <div class="admin-block">
+      <div class="admin-block-header">
+        <h2 class="admin-block-title">Assumptions</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:8px 0;">
+        <div>
+          <label class="admin-label">Monthly Growth Rate (%)</label>
+          <input type="number" id="forecast-growth" class="admin-input" value="15" min="0" max="200" step="1">
+        </div>
+        <div>
+          <label class="admin-label">ARPU ($/month)</label>
+          <input type="number" id="forecast-arpu" class="admin-input" value="19.99" step="0.01">
+        </div>
+        <div>
+          <label class="admin-label">Churn Rate (%/month)</label>
+          <input type="number" id="forecast-churn" class="admin-input" value="5" min="0" max="100" step="0.5">
+        </div>
+      </div>
+      <button class="admin-btn" id="forecast-run" style="margin-top:8px;">Run Forecast</button>
+    </div>`;
+
+  await _runForecast();
+
+  document.getElementById('forecast-run').addEventListener('click', _runForecast);
+  document.getElementById('forecast-months').addEventListener('change', _runForecast);
+}
+
+async function _runForecast() {
+  // Pull live paid user count from subscriptions if available
+  const { data: subs } = await sb.from('subscriptions')
+    .select('id, plan_id, status').eq('status', 'active');
+
+  const paidUsers = subs ? subs.length : 0;
+  const arpu = parseFloat(document.getElementById('forecast-arpu')?.value || '19.99');
+  const growthRate = parseFloat(document.getElementById('forecast-growth')?.value || '15') / 100;
+  const churnRate = parseFloat(document.getElementById('forecast-churn')?.value || '5') / 100;
+  const forecastMonths = parseInt(document.getElementById('forecast-months')?.value || '12');
+
+  const currentMRR = paidUsers * arpu;
+
+  const statEl = document.getElementById('forecast-stat-row');
+  if (statEl) {
+    const projectedARR = _projectMRR(paidUsers, arpu, growthRate, churnRate, 12) * 12;
+    statEl.innerHTML = `
+      ${_adminStatCard('Current MRR', '$' + currentMRR.toFixed(2), 'Based on subscriptions')}
+      ${_adminStatCard('Paid Users', paidUsers.toString(), 'Active subscriptions')}
+      ${_adminStatCard('Growth Rate', (growthRate * 100).toFixed(1) + '%', 'MoM configured')}
+      ${_adminStatCard('12m ARR Target', '$' + projectedARR.toFixed(0), 'Projected')}`;
+  }
+
+  // Build forecast series
+  const months = [];
+  const mrrSeries = [];
+  const arrSeries = [];
+  const usersSeries = [];
+  let users = paidUsers;
+
+  const now = new Date();
+  for (let i = 0; i <= forecastMonths; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    months.push(d.toISOString().slice(0, 7));
+    const mrr = users * arpu;
+    mrrSeries.push(parseFloat(mrr.toFixed(2)));
+    arrSeries.push(parseFloat((mrr * 12).toFixed(2)));
+    usersSeries.push(users);
+    users = Math.round(users * (1 + growthRate - churnRate));
+  }
+
+  const chartEl = document.getElementById('forecast-chart');
+  if (chartEl && typeof echarts !== 'undefined') {
+    let chart = echarts.getInstanceByDom(chartEl) || echarts.init(chartEl, 'dark');
+    chart.setOption({
+      backgroundColor: 'transparent',
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['MRR ($)', 'Paid Users'], textStyle: { color: '#aaa' } },
+      grid: { left: 60, right: 60, top: 40, bottom: 40 },
+      xAxis: { type: 'category', data: months, axisLabel: { color: '#aaa', fontSize: 11 } },
+      yAxis: [
+        { type: 'value', name: 'MRR ($)', nameTextStyle: { color: '#aaa' }, axisLabel: { color: '#aaa', formatter: v => '$' + v } },
+        { type: 'value', name: 'Users', nameTextStyle: { color: '#aaa' }, axisLabel: { color: '#aaa' } }
+      ],
+      series: [
+        { name: 'MRR ($)', type: 'line', smooth: true, data: mrrSeries, itemStyle: { color: '#00c896' }, areaStyle: { opacity: 0.15 } },
+        { name: 'Paid Users', type: 'line', smooth: true, data: usersSeries, yAxisIndex: 1, itemStyle: { color: '#3b7de8' }, lineStyle: { type: 'dashed' } }
+      ]
+    });
+    window.addEventListener('resize', () => chart.resize());
+  }
+}
+
+function _projectMRR(users, arpu, growth, churn, months) {
+  let u = users;
+  for (let i = 0; i < months; i++) u = u * (1 + growth - churn);
+  return u * arpu;
+}
+
+// ─── EXPORTS ─────────────────────────────────────────────────────────────────
+window.loadPaidTab = loadPaidTab;
+window.loadSocialTab = loadSocialTab;
+window.loadAnalyticsOverviewTab = loadAnalyticsOverviewTab;
+window.loadCostsTab = loadCostsTab;
+window.loadForecastingTab = loadForecastingTab;
+
+
 // === js/admin-shell.js ===
 /* ───────────────────────────────────────────────────────────
-   admin-shell.js — Auth gate + init for standalone /admin page
-   v6.90 — Admin IA v2 S5: Signals, Feed Health, Cache Health
+   admin-shell.js — Auth gate + MFA + init for standalone /admin page
+   CS-006: AD-FIX-02 — MFA enforcement added
    
    This is the entry point for admin.html. It handles:
    1. Supabase auth check
    2. Admin role verification
-   3. Redirect non-admins
-   4. Init admin page when authenticated
+   3. MFA factor check (redirect to setup if no TOTP enrolled)
+   4. Redirect non-admins
+   5. Init admin page when authenticated + MFA verified
    ─────────────────────────────────────────────────────────── */
 
 (async function() {
@@ -9255,6 +11983,7 @@ window.adminUnban = async function(userId) {
   var gate = document.getElementById('admin-gate');
   var denied = document.getElementById('admin-denied');
   var shell = document.getElementById('admin-shell');
+  var mfaSetup = document.getElementById('admin-mfa-setup');
 
   try {
     // 1. Check auth
@@ -9286,9 +12015,50 @@ window.adminUnban = async function(userId) {
       return;
     }
 
-    // 3. Admin verified — show the console
+    // 3. CS-006: MFA factor check (AD-FIX-02)
+    var mfaRes = await sb.auth.mfa.listFactors();
+    var totpFactors = (mfaRes.data && mfaRes.data.totp) ? mfaRes.data.totp : [];
+    var verifiedFactors = totpFactors.filter(function(f) { return f.status === 'verified'; });
+
+    if (verifiedFactors.length === 0) {
+      // No MFA enrolled — show setup flow
+      gate.style.display = 'none';
+      showMfaSetup(user);
+      return;
+    }
+
+    // 4. Check AAL — ensure this session has completed MFA challenge
+    var aalRes = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalRes.data && aalRes.data.currentLevel === 'aal1' && aalRes.data.nextLevel === 'aal2') {
+      // MFA enrolled but not verified this session — challenge
+      gate.style.display = 'none';
+      showMfaChallenge(verifiedFactors[0].id, user, profile);
+      return;
+    }
+
+    // 5. Admin + MFA verified — show the console
+    showAdminConsole(user, profile);
+
+  } catch (e) {
+    console.error('[Admin Shell] Auth error:', e);
+    if (window.posthog) posthog.capture('admin_auth_error', { error: e.message });
+    showDenied();
+  }
+
+  function showAdminConsole(user, profile) {
     gate.style.display = 'none';
+    if (mfaSetup) mfaSetup.style.display = 'none';
     shell.style.display = 'block';
+
+    // CS-003: PostHog identity resolution for admin surface (CX-01)
+    if (window.posthog) {
+      posthog.identify(user.id, {
+        email: user.email,
+        role: profile.role,
+        plan: profile.plan,
+      });
+      posthog.register({ bj_surface: 'admin' });
+    }
 
     // Set user email in topbar
     var emailEl = document.getElementById('admin-user-email');
@@ -9298,19 +12068,157 @@ window.adminUnban = async function(userId) {
     var versionEl = document.getElementById('admin-version');
     if (versionEl) versionEl.textContent = BJ_VERSION;
 
-    // 4. Init admin page
-    // The page-admin div is always active on this page
+    // Init admin page
     if (typeof initAdminPage === 'function') {
       initAdminPage();
     }
+  }
 
-  } catch (e) {
-    console.error('[Admin Shell] Auth error:', e);
-    showDenied();
+  // ── MFA Setup Flow (new enrollment) ──
+  async function showMfaSetup(user) {
+    if (!mfaSetup) { showDenied(); return; }
+    mfaSetup.style.display = 'block';
+
+    var qrContainer = document.getElementById('mfa-qr-container');
+    var qrLoading = document.getElementById('mfa-qr-loading');
+    var qrImg = document.getElementById('mfa-qr-img');
+    var secretDisplay = document.getElementById('mfa-secret-display');
+    var secretCode = document.getElementById('mfa-secret-code');
+    var verifyInput = document.getElementById('mfa-verify-code');
+    var verifyBtn = document.getElementById('mfa-verify-btn');
+    var errorEl = document.getElementById('mfa-error');
+    var successEl = document.getElementById('mfa-success');
+
+    try {
+      // Enroll a new TOTP factor
+      var enrollRes = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'BJ Admin TOTP' });
+      if (enrollRes.error) throw enrollRes.error;
+
+      var factor = enrollRes.data;
+
+      // Show QR code
+      if (factor.totp && factor.totp.qr_code) {
+        qrImg.src = factor.totp.qr_code;
+        qrImg.style.display = 'block';
+        qrLoading.style.display = 'none';
+      }
+
+      // Show manual secret
+      if (factor.totp && factor.totp.secret) {
+        secretCode.textContent = factor.totp.secret;
+        secretDisplay.style.display = 'block';
+      }
+
+      // Enable verify button when 6 digits entered
+      verifyInput.addEventListener('input', function() {
+        var val = verifyInput.value.replace(/\D/g, '');
+        verifyInput.value = val;
+        verifyBtn.disabled = val.length !== 6;
+      });
+
+      verifyBtn.addEventListener('click', async function() {
+        verifyBtn.disabled = true;
+        verifyBtn.textContent = 'Verifying…';
+        errorEl.style.display = 'none';
+
+        try {
+          // Challenge the factor
+          var challengeRes = await sb.auth.mfa.challenge({ factorId: factor.id });
+          if (challengeRes.error) throw challengeRes.error;
+
+          // Verify with the code
+          var verifyRes = await sb.auth.mfa.verify({
+            factorId: factor.id,
+            challengeId: challengeRes.data.id,
+            code: verifyInput.value
+          });
+          if (verifyRes.error) throw verifyRes.error;
+
+          // MFA now active
+          successEl.style.display = 'block';
+          if (window.posthog) posthog.capture('admin_mfa_enrolled', { user_id: user.id });
+
+          // Reload to enter admin console with aal2
+          setTimeout(function() { window.location.reload(); }, 1500);
+
+        } catch (err) {
+          errorEl.textContent = err.message || 'Invalid code. Try again.';
+          errorEl.style.display = 'block';
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = 'Verify & Enable MFA';
+        }
+      });
+
+    } catch (err) {
+      console.error('[Admin Shell] MFA enroll error:', err);
+      qrLoading.textContent = 'Error generating QR code. Refresh to retry.';
+      if (window.posthog) posthog.capture('admin_mfa_enroll_error', { error: err.message });
+    }
+  }
+
+  // ── MFA Challenge Flow (already enrolled, verify this session) ──
+  async function showMfaChallenge(factorId, user, profile) {
+    if (!mfaSetup) { showDenied(); return; }
+    mfaSetup.style.display = 'block';
+
+    // Repurpose the setup UI for challenge
+    var qrContainer = document.getElementById('mfa-qr-container');
+    var secretDisplay = document.getElementById('mfa-secret-display');
+    var verifyInput = document.getElementById('mfa-verify-code');
+    var verifyBtn = document.getElementById('mfa-verify-btn');
+    var errorEl = document.getElementById('mfa-error');
+    var successEl = document.getElementById('mfa-success');
+
+    // Update heading text for challenge mode
+    mfaSetup.querySelector('h2').textContent = 'MFA Verification Required';
+    mfaSetup.querySelector('p').textContent = 'Enter the 6-digit code from your authenticator app to access the admin console.';
+    qrContainer.style.display = 'none';
+    if (secretDisplay) secretDisplay.style.display = 'none';
+    verifyBtn.textContent = 'Verify';
+
+    verifyInput.addEventListener('input', function() {
+      var val = verifyInput.value.replace(/\D/g, '');
+      verifyInput.value = val;
+      verifyBtn.disabled = val.length !== 6;
+    });
+
+    verifyBtn.addEventListener('click', async function() {
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = 'Verifying…';
+      errorEl.style.display = 'none';
+
+      try {
+        var challengeRes = await sb.auth.mfa.challenge({ factorId: factorId });
+        if (challengeRes.error) throw challengeRes.error;
+
+        var verifyRes = await sb.auth.mfa.verify({
+          factorId: factorId,
+          challengeId: challengeRes.data.id,
+          code: verifyInput.value
+        });
+        if (verifyRes.error) throw verifyRes.error;
+
+        successEl.textContent = 'Verified! Loading admin…';
+        successEl.style.display = 'block';
+
+        // Now at aal2 — show admin console
+        setTimeout(function() {
+          mfaSetup.style.display = 'none';
+          showAdminConsole(user, profile);
+        }, 800);
+
+      } catch (err) {
+        errorEl.textContent = err.message || 'Invalid code. Try again.';
+        errorEl.style.display = 'block';
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verify';
+      }
+    });
   }
 
   function showDenied() {
     gate.style.display = 'none';
+    if (mfaSetup) mfaSetup.style.display = 'none';
     denied.style.display = 'flex';
   }
 
@@ -9321,5 +12229,3 @@ window.adminUnban = async function(userId) {
     }
   });
 })();
-
-

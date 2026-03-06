@@ -29,7 +29,7 @@ if (typeof initGlobalErrorHandlers === 'function') initGlobalErrorHandlers();
 if (typeof initSessionManagement === 'function') initSessionManagement();
   let profile = null;
   try {
-    const { data: p } = await sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single();
+    const p = await safeQuery(() => sb.from('profiles').select('approved,cohort_id,plan,role').eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
     profile = p;
     if (!p?.approved) { window.location.href = '/?pending=1'; return; }
     currentUser._cohortId = p.cohort_id || null;
@@ -39,7 +39,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   $('#auth-gate').style.display = 'none';
   $('#app').style.display = 'flex';
   // Referral attribution — check if new user came via referral link (Phase 4 v5.10)
-  try { await processReferralAttribution(currentUser); } catch(e) { console.warn('[Referral] Attribution check skipped:', e.message); }
+  try { await processReferralAttribution(currentUser); } catch(e) { reportError('app', e); console.warn('[Referral] Attribution check skipped:', e.message); }
   // Show admin nav immediately — profile already fetched, no extra round trip
   if (profile && profile.role === 'admin') {
     var navAdmin = document.getElementById('nav-admin');
@@ -94,7 +94,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Load filters from Supabase
   let filtersFromCloud = false;
   if (userId) {
-    const { data: cloudFilters } = await sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order');
+    const cloudFilters = await safeQuery(() => sb.from('user_filters').select('*').eq('user_id', userId).order('sort_order'), { label: 'app:user_filters', fallback: [] });
     if (cloudFilters && cloudFilters.length > 0) {
       savedFilters = cloudFilters.map(f => ({ ...f.filter_data, _id: f.id, name: f.name }));
       filtersFromCloud = true;
@@ -153,7 +153,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
         if (window.posthog) posthog.capture('pending_pills_applied', { count: pendingPills.length, pills: pendingPills });
       }
     }
-  } catch(e) { console.warn('[pills] Pending pill apply failed:', e.message); }
+  } catch(e) { reportError('app', e); console.warn('[pills] Pending pill apply failed:', e.message); }
   
   // Load tuning from Supabase
   // First: normalize any legacy WHEN pills in saved filters
@@ -186,7 +186,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
 
   let tuningFromCloud = false;
   if (userId) {
-    const { data: cloudTuning } = await sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single();
+    const cloudTuning = await safeQuery(() => sb.from('user_tuning').select('tuning_data').eq('user_id', userId).single(), { label: 'app:user_tuning', fallback: null });
     if (cloudTuning?.tuning_data && Object.keys(cloudTuning.tuning_data).length > 0) {
       tuningSettings = cloudTuning.tuning_data;
       tuningFromCloud = true;
@@ -218,14 +218,14 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
   // Safety net: if resumes still empty after loadUserData, try direct cloud fetch (v4.33)
   if (resumes.length === 0 && userId) {
     try {
-      const { data: prof } = await sb.from('profiles').select('user_data').eq('id', userId).single();
+      const prof = await safeQuery(() => sb.from('profiles').select('user_data').eq('id', userId).single(), { label: 'app:profiles', fallback: null });
       const cloudResumes = prof?.user_data?.resumes;
       if (Array.isArray(cloudResumes) && cloudResumes.length > 0) {
         resumes = cloudResumes;
         saveUserData('bj_resumes', JSON.stringify(resumes));
         console.log('[sync] Resume recovery: restored', resumes.length, 'resumes from cloud');
       }
-    } catch (e) { console.warn('[sync] Resume recovery failed:', e.message); }
+    } catch(e) { reportError('app', e); console.warn('[sync] Resume recovery failed:', e.message); }
   }
   // Check for resumes missing storagePath and attempt upload from IndexedDB (v4.46)
   if (resumes.length > 0 && currentUser) {
@@ -244,7 +244,7 @@ if (typeof initSessionManagement === 'function') initSessionManagement();
               console.log('[resume-storage] Backfilled', path);
             }
           }
-        } catch (e) { /* silent */ }
+        } catch(e) { reportError('app:silent', e); }
       });
     }
   }
@@ -515,9 +515,8 @@ function compareVersions(installed, required) {
 
 async function checkExtensionStatus() {
   try {
-    const { data: profile } = await sb.from('profiles')
-      .select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
-      .eq('id', currentUser.id).single();
+    const profile = await safeQuery(() => sb.from('profiles').select('last_scan_at, scanner_running, scanner_today_visited, scanner_today_limit, extension_version')
+      .eq('id', currentUser.id).single(), { label: 'app:profiles', fallback: null });
 
     const navDot = $('#ext-status-dot');
     const dot = $('#ext-dot');
@@ -581,7 +580,7 @@ async function checkExtensionStatus() {
         }
       }
     }
-  } catch (e) { /* ignore */ }
+  } catch(e) { reportError('app:ignore', e); }
 }
 checkExtensionStatus();
 setInterval(checkExtensionStatus, 60000);
@@ -645,15 +644,13 @@ async function initGmailStatus() {
   try {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return;
-    const { data: conn } = await sb.from('gmail_connections')
-      .select('gmail_address, sync_status')
+    const conn = await safeQuery(() => sb.from('gmail_connections').select('gmail_address, sync_status')
       .eq('user_id', session.user.id)
-      .maybeSingle();
+      .maybeSingle(), { label: 'app:gmail_connections', fallback: [] });
 
     const isConnected = conn && conn.sync_status === 'active';
     updateGmailUI(isConnected, conn?.gmail_address || '');
-  } catch (e) {
-    console.warn('[BJ] Gmail status check failed:', e.message);
+  } catch(e) { reportError('app', e); console.warn('[BJ] Gmail status check failed:', e.message);
   }
 }
 
@@ -969,7 +966,7 @@ async function processReferralAttribution(user) {
   try {
     refCode = sessionStorage.getItem('bj_referral_code') || '';
     refSource = sessionStorage.getItem('bj_referral_source') || 'direct';
-  } catch(e) {}
+  } catch(e) { reportError('app:app', e); }
 
   // Also check cookie
   if (!refCode) {
@@ -982,9 +979,9 @@ async function processReferralAttribution(user) {
 
   // Get fingerprint if available
   var fingerprint = '';
-  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) {}
+  try { fingerprint = sessionStorage.getItem('bj_fingerprint') || ''; } catch(e) { reportError('app:app', e); }
   if (!fingerprint && window.bjFingerprint) {
-    try { fingerprint = window.bjFingerprint.generate(); } catch(e) {}
+    try { fingerprint = window.bjFingerprint.generate(); } catch(e) { reportError('app:app', e); }
   }
 
   // Call attribution RPC
@@ -1002,8 +999,7 @@ async function processReferralAttribution(user) {
     } else {
       console.log('[Referral] Attribution result:', data);
     }
-  } catch(e) {
-    console.warn('[Referral] Attribution call failed:', e.message);
+  } catch(e) { reportError('app', e); console.warn('[Referral] Attribution call failed:', e.message);
   }
 
   // Mark as attributed so we don't re-run
@@ -1013,5 +1009,5 @@ async function processReferralAttribution(user) {
   try {
     sessionStorage.removeItem('bj_referral_code');
     sessionStorage.removeItem('bj_referral_source');
-  } catch(e) {}
+  } catch(e) { reportError('app:app', e); }
 }

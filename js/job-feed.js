@@ -93,8 +93,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
         data.forEach(r => allIds.add(r.greenhouse_id));
       }
       console.log(`[BJ] Batched state search: [${simpleCodes.join(',')}] → ${data?.length || 0} jobs`);
-    } catch (e) {
-      console.warn('[BJ] Batched state search failed', e);
+    } catch(e) { reportError('job-feed', e); console.warn('[BJ] Batched state search failed', e);
     }
   }
 
@@ -141,8 +140,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
         data.forEach(r => allIds.add(r.greenhouse_id));
       }
       console.log(`[BJ] Remote search → ${data?.length || 0} jobs`);
-    } catch (e) {
-      console.warn('[BJ] Remote search failed', e);
+    } catch(e) { reportError('job-feed', e); console.warn('[BJ] Remote search failed', e);
     }
   }
 
@@ -161,8 +159,7 @@ async function getLocationMatchIds(wherePillsArr, whereNotPillsArr, tuning, incl
           if (!error && data) {
             data.forEach(r => allIds.add(r.greenhouse_id));
           }
-        } catch (e) {
-          console.warn('[BJ] Text location search failed for', v, e);
+        } catch(e) { reportError('job-feed', e); console.warn('[BJ] Text location search failed for', v, e);
         }
       }
     }
@@ -1150,8 +1147,7 @@ async function updateJobStatsFromFilters(filters) {
         const uniqueCos = new Set();
         if (coRows) coRows.forEach(r => { if (r.company_slug) uniqueCos.add(r.company_slug); });
         companyCountVal = uniqueCos.size;
-      } catch(coErr) {
-        console.warn('[BJ] Company count error:', coErr.message);
+      } catch(coErr) { reportError('job-feed', coErr); console.warn('[BJ] Company count error:', coErr.message);
       }
 
       return { data: { total: _total, todayCount: _todayCount, newSinceLoginCount: _newSinceLoginCount, companyCount: companyCountVal } };
@@ -1175,7 +1171,7 @@ async function updateJobStatsFromFilters(filters) {
       var cos = new Set();
       jobs.forEach(function(j) { if (j.company_slug) cos.add(j.company_slug); });
       updateJobStats(jobs.length, cos.size, 0, 0);
-    } catch (e2) {}
+    } catch(e2) { reportError('job-feed:job-feed', e2); }
   }
 }
 
@@ -1205,7 +1201,7 @@ function updateIntelInsight(total, companies, newToday) {
     var sf = typeof savedFilters !== 'undefined' ? savedFilters : [];
     var active = sf.find(function(f) { return f.active; });
     if (active) filterName = active.name || '';
-  } catch(e) {}
+  } catch(e) { reportError('job-feed:job-feed', e); }
 
   if (withSalary.length >= 3) {
     // Salary insight
@@ -1543,7 +1539,7 @@ window.addEventListener('ai-scoring-prefs-changed', function(e) {
       if (resp.data && resp.data.ai_scoring_prefs) {
         _userAiScoringPrefsCache = resp.data.ai_scoring_prefs;
       }
-    } catch (e) { /* silent — prefs default to no exclusions */ }
+    } catch(e) { reportError('job-feed:silent — prefs default to no exclusions', e); }
   }, 1000);
 })();
 
@@ -1676,8 +1672,7 @@ async function fetchFraudScores(jobs) {
         };
       });
     }
-  } catch (e) {
-    console.warn('[BJ] Fraud score fetch failed:', e);
+  } catch(e) { reportError('job-feed', e); console.warn('[BJ] Fraud score fetch failed:', e);
   }
 }
 
@@ -1724,8 +1719,7 @@ async function fetchAiJdScores(jobs) {
         });
       }
     }
-  } catch (e) {
-    console.warn('[BJ] AI JD score fetch failed:', e);
+  } catch(e) { reportError('job-feed', e); console.warn('[BJ] AI JD score fetch failed:', e);
   }
 }
 
@@ -2289,7 +2283,7 @@ async function backgroundEnrichSalary() {
 
         // Polite delay between API calls
         await new Promise(r => setTimeout(r, 300));
-      } catch (e) { /* skip failed jobs silently */ }
+      } catch(e) { reportError('job-feed:skip failed jobs silently', e); }
     }
   } finally {
     _enrichRunning = false;

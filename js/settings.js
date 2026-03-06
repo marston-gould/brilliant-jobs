@@ -17,7 +17,7 @@ $('#st-change-pw')?.addEventListener('click', async () => {
 });
 $('#st-export')?.addEventListener('click', async () => {
   try {
-    const { data } = await sb.from('connections').select('*').limit(5000);
+    const data = await safeQuery(() => sb.from('connections').select('*').limit(5000), { label: 'settings:connections', fallback: [] });
     if (!data?.length) { showToast('Nothing to export yet — start tracking applications first.', { type: 'info' }); return; }
     const csv = [Object.keys(data[0]).join(','), ...data.map(r => Object.values(r).map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -55,8 +55,7 @@ async function loadAiScoringPrefs() {
     var aiGenEl = document.getElementById('ai-pref-ai-generated');
     if (mixedEl) mixedEl.checked = !!_userAiScoringPrefs.mixed_content;
     if (aiGenEl) aiGenEl.checked = !!_userAiScoringPrefs.ai_generated;
-  } catch (e) {
-    console.warn('[BJ] AI prefs load exception:', e);
+  } catch(e) { reportError('settings', e); console.warn('[BJ] AI prefs load exception:', e);
   }
 }
 
@@ -296,7 +295,7 @@ async function loadPassiveMode() {
       if (data.passive_config) _passiveConfig = Object.assign(_passiveConfig, data.passive_config);
     }
     syncPassiveUI();
-  } catch (e) { console.warn('[BJ] Passive mode load exception:', e); }
+  } catch(e) { reportError('settings', e); console.warn('[BJ] Passive mode load exception:', e); }
 }
 
 function syncPassiveUI() {
@@ -344,7 +343,7 @@ async function syncPassiveNotificationChannels() {
     var freq = _passiveMode ? 'none' : 'daily';
     await sb.from('notification_channels')
       .upsert({ user_id: currentUser.id, notification_type: 'new_jobs_daily', frequency: freq }, { onConflict: 'user_id,notification_type' });
-  } catch (e) { console.warn('[BJ] Passive notification channel sync error:', e); }
+  } catch(e) { reportError('settings', e); console.warn('[BJ] Passive notification channel sync error:', e); }
 }
 
 function debounceSavePassiveConfig() {
@@ -775,8 +774,7 @@ async function bootstrapFiltersFromResume() {
     }
 
     console.log('[BJ] Passive bootstrap: created ' + newFilters.length + ' filter(s) from resume —', titles.join(', '));
-  } catch (e) {
-    console.warn('[BJ] bootstrapFiltersFromResume exception:', e);
+  } catch(e) { reportError('settings', e); console.warn('[BJ] bootstrapFiltersFromResume exception:', e);
   }
 }
 
@@ -852,7 +850,6 @@ async function autoHirePause(jobTitle) {
     }
 
     console.log('[BJ] autoHirePause: passive mode paused on hired status for', jobTitle || 'unknown job');
-  } catch (e) {
-    console.warn('[BJ] autoHirePause exception:', e);
+  } catch(e) { reportError('settings', e); console.warn('[BJ] autoHirePause exception:', e);
   }
 }

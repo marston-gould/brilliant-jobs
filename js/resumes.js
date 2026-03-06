@@ -67,8 +67,7 @@ function renderResumes() {
           saveResumes();
           renderResumes();
         }
-      } catch (e) {
-        console.warn('[resume-render] Cloud recovery failed:', e);
+      } catch(e) { reportError('resumes', e); console.warn('[resume-render] Cloud recovery failed:', e);
       }
     })();
   }
@@ -650,8 +649,7 @@ async function reconcileResumeArchive() {
       renderResumes();
       console.log('[resume-sync] Reconciliation complete — synced ' + resumes.length + ' resumes');
     }
-  } catch (e) {
-    console.warn('[resume-sync] Reconciliation error:', e);
+  } catch(e) { reportError('resumes', e); console.warn('[resume-sync] Reconciliation error:', e);
   }
 }
 
@@ -755,8 +753,7 @@ async function reExtractStuckResumes() {
       } else {
         console.log('[BJ] Re-extraction got no text for', r.name);
       }
-    } catch (e) {
-      console.error('[BJ] Re-extraction error for', r.name, e);
+    } catch(e) { reportError('resumes', e); console.error('[BJ] Re-extraction error for', r.name, e);
     }
   }
   if (changed) {
@@ -1191,7 +1188,7 @@ window.downloadResume = async function(idx) {
           bjFileStore.put(r.id, blob).catch(() => {});
           console.log('[resume-storage] Restored from cloud:', r.storagePath);
         }
-      } catch (e) { console.warn('[resume-storage] Download failed:', e.message); }
+      } catch(e) { reportError('resumes', e); console.warn('[resume-storage] Download failed:', e.message); }
     }
     if (file) {
       const url = URL.createObjectURL(file);
@@ -1585,8 +1582,7 @@ window.renderGapInsights = async function() {
     contentEl.innerHTML = html;
     container.style.display = '';
 
-  } catch (e) {
-    console.warn('[BJ] renderGapInsights error:', e.message);
+  } catch(e) { reportError('resumes', e); console.warn('[BJ] renderGapInsights error:', e.message);
   }
 };
 
