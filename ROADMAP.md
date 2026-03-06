@@ -2596,7 +2596,7 @@ Card 1 (test/activate) → Card 2 (cron) → Cards 3,4,5 (filters + feed)
 Card 7 (entitlements, independent) → Card 8 (freshness gating)
 ```
 
-## Phase 73 — Cron Cost Optimization + Common Crawl (v6.51-v6.53)
+## Phase 73 — Cron Cost Optimization + Athena ATS Discovery Pipeline (v6.51-v6.54)
 
 | # | Item | Version | Status | Notes |
 |---|------|---------|--------|-------|
