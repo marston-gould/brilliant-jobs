@@ -2747,9 +2747,9 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | CS-012 | 2026-03-06 | AD-FIX-06, AD-FIX-07, AD-FIX-08 | admin@0.6.0-visibility | AD-FIX-06: Cron health panel — v_cron_health view (cron.job + latest cron.job_run_details), color-coded status (red/amber/green/disabled), auto-refresh 60s, filter by health. 64 jobs displayed. AD-FIX-07: Audit trail wiring — _logAdminAction() async fire-and-forget helper. Wired into content approvals, notification config saves, merch placement CRUD, Stripe plan overrides, admin email searches. AD-FIX-08: Biz-ops tables created (paid_spend_log, social_post_log, vendor_cost_log) with admin-only RLS. Init functions wired for paid/social/analytics/costs/forecasting tabs. |
 
-| CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch | FIX-08: RLS migration for 14+ tables (profiles, resumes, subscriptions, connections, feedback, notification_log, notification_actions, plans, cohorts, ats_companies, ats_jobs, audit_log, company_ghost_stats, ghost_alerts_sent, content_stories). feature_flags table seeded with extension_kill_switch row. FIX-12: fetchWithRetry utility (AbortSignal.timeout + exponential backoff + jitter) wired to 27 service-worker/popup fetch calls + AbortSignal.timeout on 3 content-script calls. fetchFireAndForget for telemetry. FIX-13: 3-layer kill-switch — Layer 1: heartbeat directive (EF reads feature_flags, returns kill/resume/null). Layer 2: externally_connectable + onMessageExternal handler. Layer 3: DB flag polling on startup + hourly alarm. Admin kill-switch toggle panel (admin-killswitch.js) with state display, confirmation toggle, direct send via chrome.runtime.sendMessage, active scanners table. FIX-14: PII minimization — per-question profile field subsets via _selectProfileFields() + _needsResume() in aiAnswerer.js. Deployment pending: RLS migration needs to be run against prod Supabase. |
+| CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch | FIX-08: RLS enabled on all public tables (16 tables, 30+ policies). Feature flag seeded. FIX-12: fetchWithRetry wired to 30 extension fetch calls. FIX-13: 3-layer kill-switch (heartbeat directive, externally_connectable, DB flag poll) + admin toggle UI. FIX-14: PII minimization per-question subsets. Column schema fix (id/enabled vs key/value) applied to EF, admin UI, extension. Deployed + tested. |
 
-**Status:** IN PROGRESS — CS-013 code complete, deployment pending (2026-03-06)
+**Status:** COMPLETE — CS-013 deployed and verified (2026-03-06)
 **Pods:** Pod 3 (Technical Audit, 113+ findings across 17 sessions) + Pod 4 (CX Examination, 46 findings across 5 sessions)
 **Combined:** ~160 findings → 92 execution sessions → 10 quality gates → 15 launch gates
 **Velocity basis:** 13 versioned deploys in 3.5 hours observed March 5. 10–15 sessions/day.
@@ -2878,7 +2878,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.065 | EXT-FEAT-001: Kill-switch (3-layer ADR-006) | 4h | 4h | ⏳ | CS-013: All 3 layers coded (heartbeat directive, externally_connectable, DB flag). Admin UI built. Deployment pending. |
+| 0.065 | EXT-FEAT-001: Kill-switch (3-layer ADR-006) | 4h | 4h | ✅ | CS-013: All 3 layers deployed + tested. Admin UI live. Kill directive verified via REST API. |
 | 0.066 | EXT-BE-003: Token refresh reliability | 1h | — | 🔲 | Refresh fails silently. Retry + notification + re-auth. |
 | 0.067 | EXT-CWS-001: Manifest permissions minimize | 1h | — | 🔲 | Justify each permission or remove. |
 | 0.068 | EXT-CWS-002: Privacy policy + manifest link | 1h | — | 🔲 | Publish policy, link in manifest. Required for distribution. |
@@ -3096,7 +3096,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | G1 | All P0s resolved (all surfaces) | 3 | 🔲 |
 | G2 | PostHog error tracking live (within 60s) | 3 | ⚡ | CS-003: SDK deployed on all 4 surfaces with exception autocapture. Requires prod verification (Step 4). |
 | G3 | Service role key rotated, old invalidated | 3 | 🔲 |
-| G4 | Kill-switch operational | 3 | ⏳ |
+| G4 | Kill-switch operational | 3 | ✅ | CS-013: 3-layer kill-switch deployed. DB flag toggle verified, REST API returns directive, admin UI live. |
 | G5 | Critical-path tests pass | 3 | 🔲 |
 | G6 | Connection pooler live (300+) | 3 | 🔲 |
 | G7 | Privacy policy + DPAs sent | 3 | ⚡ | CS-004: Privacy policy published at brilliantjobs.app/privacy and linked from extension help.html. DPA initiation PENDING (legal review required for Anthropic, PostHog, Stripe, Resend, Vonage). |

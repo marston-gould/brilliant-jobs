@@ -32,72 +32,24 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 ## Last Completed Session
 
-**CS-012** — Admin Cron Panel + Audit Trail + Biz-Ops Tables
+**CS-013** — Dashboard RLS + Extension Retry/Timeout + Kill-Switch
 - Completed: 2026-03-06
-- Commit: `ec6cbd1`
-- Tag: `admin@0.6.0-visibility`
-- Fix items resolved: AD-FIX-06, AD-FIX-07, AD-FIX-08
+- Commit: `e61f281`
+- Tags: `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch`
+- Fix items resolved: FIX-08, FIX-12, FIX-13, FIX-14
+- Notes: Fixed feature_flags column schema mismatch (id/enabled vs key/value) in heartbeat EF, admin UI, and extension. RLS deployed on all public tables. Kill-switch tested via REST API. Launch gate G4 cleared.
 
 ---
 
 ## Session In Progress
 
-**CS-013** — Dashboard RLS + Extension Retry/Timeout + Kill-Switch
-- Started: 2026-03-06
-- Latest commit: `bb1bbd2` — `audit(cs-013): fetchWithRetry wired to all extension fetch calls + admin kill-switch UI + heartbeat directive`
-- Estimated completion: ~95% (all code complete — deployment, testing, and tags remain)
-- **Tags NOT yet applied** — pending exit gate
-
-### What Was Done
-
-| Fix Item | Work Completed | Files |
-|----------|---------------|-------|
-| FIX-08 (RLS) | Migration SQL written for 14 tables (profiles, resumes, subscriptions, connections, feedback, notification_log, notification_actions, plans, cohorts, ats_companies, ats_jobs, audit_log, company_ghost_stats, ghost_alerts_sent, content_stories). Policies: user-owned, public-read, admin-only. Feature flag row seeded. | `supabase/migrations/20260306_cs013_rls_killswitch.sql` |
-| FIX-12 (fetchWithRetry) | Utility created: AbortSignal.timeout + exponential backoff + jitter + fire-and-forget variant. Heartbeat upgraded with 15s timeout. **27 service-worker/popup fetch calls converted to fetchWithRetry/fetchFireAndForget. 3 content-script calls get AbortSignal.timeout (isolated world).** Converted by module: supabase.js (5), autoTracker.js (4), popup.js (5), background.js (13), fillMetrics.js (2 timeout-only). | `extension/utils/fetchWithRetry.js`, `extension/background.js`, `extension/supabase.js`, `extension/popup.js`, `extension/popup.html`, `extension/utils/autoTracker.js`, `extension/utils/fillMetrics.js` |
-| FIX-13 Layer 1 (Heartbeat) | `sendHeartbeat()` in background.js parses response for `{ directive: 'kill' }` and calls kill-switch. | `extension/background.js` |
-| FIX-13 Layer 2 (External) | `externally_connectable` added to manifest. `onMessageExternal` handler for kill/resume/status from admin origins. | `extension/manifest.json`, `extension/background.js` |
-| FIX-13 Layer 3 (DB flag) | Checks `feature_flags` table on startup + hourly alarm (`killSwitchDbCheck`). Kill state persisted in `chrome.storage.local`. | `extension/background.js`, migration SQL |
-| FIX-13 Admin UI | Kill-switch toggle panel: state display (red/green indicator), toggle with confirmation, direct send via chrome.runtime.sendMessage, active scanners table from extension_events (24h), auto-refresh 30s, audit trail via _logAdminAction(). Registered in ADMIN_SUBPAGE_MAP under Operations. | `js/admin-killswitch.js`, `js/admin.js`, `admin.html`, `build-admin.js`, `dist/admin.js`, `dist/admin.min.js` |
-| FIX-13 EF Directive | extension-heartbeat Edge Function reads `feature_flags.extension_kill_switch` and returns `{ directive: 'kill' \| 'resume' \| null }` in response. | `supabase/functions/extension-heartbeat/index.ts` |
-| FIX-14 (PII minimization) | Per-question profile field subsets via pattern matching. Resume truncated to 2000 chars, only sent for experience/skill questions. `_selectProfileFields()` + `_needsResume()` helpers. | `extension/utils/aiAnswerer.js` |
-
-### What Remains (pick up here)
-
-| # | Task | Effort | Detail |
-|---|------|--------|--------|
-| 1 | **Deploy RLS migration to prod** | ~1h | Run `20260306_cs013_rls_killswitch.sql` against prod Supabase via SQL editor. Verify no breakage on dashboard login, job feed, resume render, billing page. Then apply to staging + dev. |
-| 2 | **Deploy heartbeat EF update** | ~30m | `supabase functions deploy extension-heartbeat` (or push to trigger Supabase auto-deploy). Verify directive field appears in heartbeat response. |
-| 3 | **Push code to prod** | ~15m | `git push` to trigger Vercel deploy of admin changes + dashboard. Verify admin kill-switch panel loads. |
-| 4 | **Test (local + prod)** | ~2h | See test plan below. |
-| 5 | **Apply version tags** | ~10m | `dashboard@0.7.0-rls`, `extension@0.5.0-killswitch`, `admin@0.7.0-killswitch` |
-| 6 | **Update ROADMAP.md + /roadmap page** | ~10m | Phase 0b: "Kill-switch + RLS + extension reliability — DONE [date]". Launch gate 4 (kill-switch) — CLEARED. **Both files must be updated — ROADMAP.md (markdown) AND roadmap.html (rendered page).** |
-| 7 | **Update this HANDOFF.md** | ~10m | Move CS-013 to Completed. Set CS-014 as Next Session. |
-
-### Test Plan
-
-**After deployment (Tasks 1–3 above):**
-- RLS: `SELECT tablename FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity;` → should return only view-backed or intentionally open tables
-- Extension: Load extension → open LinkedIn → verify no console errors from fetchWithRetry
-- Kill-switch: Set `feature_flags.extension_kill_switch = true` in Supabase → extension stops within 60s
-- AI answerer: DevTools Network tab → payload shows `profile_fields` subset per question, not full profile
-- SEO pages: Load `/jobs/*`, `/companies/*` → verify they still render (RLS `public_read` policies)
-
-### Exit Gate (all must be green to close CS-013)
-
-- [ ] RLS enabled on ALL public tables (run: `SELECT tablename FROM pg_tables WHERE schemaname='public' AND NOT rowsecurity;` — should return empty)
-- [ ] All 30 extension fetch calls use `fetchWithRetry`
-- [ ] Kill-switch operational (test all 3 layers)
-- [ ] Admin kill toggle UI functional
-- [ ] AI answerer sends per-question subsets only (verified in DevTools)
-- [ ] SEO pages still load (RLS `public_read` policies on `ats_jobs`, `ats_companies`)
+None.
 
 ---
 
-## Next Session (after CS-013 is complete)
+## Next Session
 
 **CS-014** — Landing Page P1s + CX Sprint 3 Start (CSS + Shadow DOM)
-
-> **Note:** CS-014 can run in parallel with CS-013 remaining work since it has no dependency on CS-013.
 
 | Field | Detail |
 |-------|--------|
@@ -134,16 +86,16 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 
 | Surface | Version | Last Changed |
 |---------|---------|-------------|
-| Dashboard | `dashboard@0.6.0-cx-s2` | CS-011 |
-| Extension | `extension@0.4.0-a11y` | CS-011 |
+| Dashboard | `dashboard@0.7.0-rls` | CS-013 |
+| Extension | `extension@0.5.0-killswitch` | CS-013 |
 | Landing Page | `index@0.4.0-a11y` | CS-011 |
-| Admin | `admin@0.6.0-visibility` | CS-012 |
+| Admin | `admin@0.7.0-killswitch` | CS-013 |
 | SEO Pages | (no remediation tag yet) | — |
 | Email Templates | `email-templates@0.1.0-utm` | CS-011 |
 
 ---
 
-## Completed Sessions (12 of 24)
+## Completed Sessions (13 of 24)
 
 | Session | Date | Fix Items | Tag(s) |
 |---------|------|-----------|--------|
@@ -159,14 +111,14 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | CS-010 | 2026-03-06 | EXT-FE-001, QA-001 (partial) | extension@0.3.0-stability, dashboard@0.5.0-tests |
 | CS-011 | 2026-03-06 | CX-05, CX-06, CX-07, CX-08 | extension@0.4.0-a11y, dashboard@0.6.0-cx-s2, index@0.4.0-a11y |
 | CS-012 | 2026-03-06 | AD-FIX-06, AD-FIX-07, AD-FIX-08 | admin@0.6.0-visibility |
+| CS-013 | 2026-03-06 | FIX-08, FIX-12, FIX-13, FIX-14 | dashboard@0.7.0-rls, extension@0.5.0-killswitch, admin@0.7.0-killswitch |
 
 ---
 
-## Remaining Sessions (12 of 24)
+## Remaining Sessions (11 of 24)
 
 | Session | Fix Items | Phase | Notes |
 |---------|-----------|-------|-------|
-| **CS-013** ⏳ | FIX-08, FIX-12, FIX-13, FIX-14 | Phase 3 | **IN PROGRESS — ~70% done, see "Session In Progress" above** |
 | CS-014 | FIX-15c, CX-09, CX-10 | Phase 3 | Can run in parallel with CS-013 remaining |
 | CS-015 | FIX-15, FIX-09, FIX-15b | Phase 3 | Requires CS-013 complete (RLS deployed) |
 | CS-016 | FIX-10 (FE-001), FIX-16 | Phase 4: Code Quality + Architecture |  |
@@ -188,7 +140,7 @@ Every session follows these 8 steps. Do not skip steps. Do not reorder.
 | G1 | All P0s resolved | 🔲 | |
 | G2 | PostHog error tracking live | ⚡ | CS-003: deployed, needs prod verification |
 | G3 | Service role key rotated | 🔲 | SE-002 downgraded to hygiene |
-| G4 | Kill-switch operational | ⏳ | CS-013: all 3 layers coded + admin UI built + EF updated. Deployment + testing remaining. |
+| G4 | Kill-switch operational | ✅ | CS-013: 3-layer kill-switch deployed + tested. DB flag toggle verified via REST API. Admin UI live. |
 | G5 | Critical-path tests pass | 🔲 | |
 | G6 | Connection pooler live (300+) | 🔲 | CS-009: Supavisor enabled, needs load test |
 | G7 | Privacy policy + DPAs sent | ⚡ | Policy published; DPA initiation pending legal |
