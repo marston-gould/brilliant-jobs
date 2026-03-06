@@ -1913,7 +1913,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.057 FE-005: Global scope 30 JS via window', d: 'Module wrapper per ADR-004.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.058 FE-006: No TypeScript', d: 'New files .ts. tsconfig strict.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.059 BE-007: No API versioning', d: 'Design versioning for Edge Functions.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: '656 CSS + 614 JS inline. Extract for caching.', p: 75, e: '2h' },
+{ s: 'done', b: 'pre-launch', n: '0.060 IX-FE-002: Inline CSS/JS extraction landing', d: 'CS-014 CX-10: 98 inline styles extracted to landing.css (7.4KB cacheable). 4 remain (dynamic JS / !important). 1024px + 768px responsive breakpoints.', p: 75, e: '2h' },
 { s: 'todo', b: 'pre-launch', n: '0.061 IX-FE-005: No search debounce', d: 'Query per keystroke. 300ms debounce.', p: 75, e: '30min' },
 
 // 0-K: Tests (Pod 3, P0)
@@ -2001,7 +2001,7 @@ const features = [
 // 0-V: CX Dashboard P2 (Pod 4)
 { s: 'todo', b: 'pre-launch', n: '0.116 DS1-7: Pipeline drag-drop dark', d: 'Zero events on applications.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.117 DS1-8: Gmail connection buried', d: 'IA/UX discoverability fix.', p: 75, e: '1h' },
-{ s: 'todo', b: 'pre-launch', n: '0.118 DS1-9: ECharts global load', d: 'Lazy-load on Stats activation.', p: 75, e: '1h' },
+{ s: 'done', b: 'pre-launch', n: '0.118 DS1-9: ECharts global load', d: 'CS-014 CX-09: ECharts lazy-loaded via loadECharts() on first Stats tab open. Removed eager CDN script from dashboard head.', p: 75, e: '1h' },
 { s: 'todo', b: 'deferred', n: '0.119 DS1-10: 14 pages single HTML', d: 'Architectural. display:none→routing. Long-term.', p: 75, e: '4h' },
 { s: 'todo', b: 'pre-launch', n: '0.120 DS1A-13: Extension sideload friction', d: 'Smoother install UX (ADR-008).', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.121 DS1A-14: Tuning page dark', d: 'Zero events. filter_changed, weight_adjusted.', p: 75, e: '1h' },
@@ -2019,7 +2019,7 @@ const features = [
 { s: 'todo', b: 'pre-launch', n: '0.131 DS1A-21: Referrals !important', d: 'JS inline fights Tailwind. Refactor.', p: 75, e: '1h' },
 
 // 0-X: CX Extension (Pod 4, P2/P3)
-{ s: 'todo', b: 'pre-launch', n: '0.132 ES1-3: No Shadow DOM', d: 'Host CSS bleeds. High effort.', p: 75, e: '3h' },
+{ s: 'done', b: 'pre-launch', n: '0.132 ES1-3: No Shadow DOM', d: 'CS-014 CX-09: inject-overlay.js + toolbar-overlay.js refactored to attachShadow({ mode: open }). Host page CSS fully isolated from extension UI.', p: 75, e: '3h' },
 { s: 'todo', b: 'pre-launch', n: '0.133 ES1-4: Token divergence', d: 'Different tokens from dashboard. Align.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.134 ES1-5: Version mismatch', d: 'Popup ≠ manifest version.', p: 75, e: '1h' },
 { s: 'todo', b: 'pre-launch', n: '0.135 ES1-6: Incomplete ATS coverage', d: 'Toolbar missing platforms. Test+fix.', p: 75, e: '2h' },

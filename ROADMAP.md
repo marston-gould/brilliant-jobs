@@ -2864,7 +2864,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 | 0.057 | FE-005: Global scope pollution (30 JS via window) | 4h | — | 🔲 | Module wrapper per ADR-004. |
 | 0.058 | FE-006: No TypeScript | 4h | — | 🔲 | Incremental: new files .ts, tsconfig strict. |
 | 0.059 | BE-007: No API versioning | 1h | — | 🔲 | Design versioning approach for Edge Functions. |
-| 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | — | 🔲 | 656 lines CSS + 614 lines JS inline. Extract for caching. |
+| 0.060 | IX-FE-002: Inline CSS/JS extraction landing | 2h | CS-014 | ✅ | 98 inline styles extracted to landing.css (7.4KB). 4 remain (dynamic JS). 1024px + 768px breakpoints. |
 | 0.061 | IX-FE-005: No search debounce | 30min | — | 🔲 | Query per keystroke. Add 300ms debounce. |
 
 ### 0-K: Test Infrastructure (Pod 3, P0)
@@ -2982,7 +2982,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 |---|------|------|--------|--------|-------|
 | 0.116 | DS1-7: Pipeline drag-drop uninstrumented | 1h | — | 🔲 | Zero events on applications pipeline. |
 | 0.117 | DS1-8: Gmail connection buried | 1h | — | 🔲 | IA/UX improvement for discoverability. |
-| 0.118 | DS1-9: ECharts global load | 1h | — | 🔲 | Lazy-load on Stats tab activation. |
+| 0.118 | DS1-9: ECharts global load | 1h | CS-014 | ✅ | ECharts lazy-loaded via loadECharts() on first Stats tab open. Removed from dashboard head. |
 | 0.119 | DS1-10: 14 pages single HTML | 4h | — | 🔲 | Architectural. display:none tabs → proper routing. Long-term. |
 | 0.120 | DS1A-13: Extension sideload friction | 1h | — | 🔲 | Smoother install UX for website distribution (ADR-008). |
 | 0.121 | DS1A-14: Tuning page dark | 1h | — | 🔲 | Zero events. filter_changed, weight_adjusted, save_tuning. |
@@ -3006,7 +3006,7 @@ Card 7 (entitlements, independent) → Card 8 (freshness gating)
 
 | # | Item | Est. | Actual | Status | Notes |
 |---|------|------|--------|--------|-------|
-| 0.132 | ES1-3: No Shadow DOM isolation | 3h | — | 🔲 | Host CSS bleeds into toolbar/overlay. High effort. |
+| 0.132 | ES1-3: No Shadow DOM isolation | 3h | CS-014 | ✅ | inject-overlay.js + toolbar-overlay.js refactored to attachShadow. Host CSS fully isolated. |
 | 0.133 | ES1-4: Token divergence from dashboard | 1h | — | 🔲 | Extension popup uses different CSS tokens. Align. |
 | 0.134 | ES1-5: Version mismatch display | 1h | — | 🔲 | Popup version ≠ manifest version. |
 | 0.135 | ES1-6: Incomplete ATS coverage | 2h | — | 🔲 | Toolbar missing on some of 12 platforms. Test + fix. |
